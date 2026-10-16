@@ -198,7 +198,7 @@ const ChunkPreview = ({
               characterCount={item.content.length}
             >
               <FormattedText>
-                {item.child_chunks.map((child, index) => {
+                {(item.child_chunks ?? []).map((child, index) => {
                   const indexForLabel = index + 1
                   return (
                     <PreviewSlice

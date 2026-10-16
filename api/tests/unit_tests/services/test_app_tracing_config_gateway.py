@@ -276,6 +276,7 @@ def test_prepare_updated_config_preserves_masked_secret_from_current_config(
         manager.encrypt_tracing_config.return_value = encrypted
         manager.decrypt_tracing_config.return_value = decrypted
         manager.check_trace_config_is_effective.return_value = True
+        manager.get_trace_config_project_url.return_value = "https://example.com/project/new"
 
         result = OpsTraceManagerGateway().prepare_updated_config(
             workspace_id="workspace-1",
@@ -285,10 +286,28 @@ def test_prepare_updated_config_preserves_masked_secret_from_current_config(
         )
 
     assert result == encrypted
+    assert result["project_url"] == "https://example.com/project/new"
     assert submitted == {"api_key": "******", "project": "new-project"}
     manager.encrypt_tracing_config.assert_called_once_with("workspace-1", "arize", submitted, current)
     manager.decrypt_tracing_config.assert_called_once_with("workspace-1", "arize", encrypted)
     manager.check_trace_config_is_effective.assert_called_once_with(decrypted, "arize")
+    manager.get_trace_config_project_url.assert_called_once_with(decrypted, "arize")
+
+
+def test_updated_destination_drops_old_project_when_lookup_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(gateway_module, "provider_config_map", {"arize": _provider_entry()})
+    with patch.object(gateway_module, "OpsTraceManager") as manager:
+        manager.encrypt_tracing_config.return_value = {"api_key": "encrypted", "project": "new-project"}
+        manager.decrypt_tracing_config.return_value = {"api_key": "plain", "project": "new-project"}
+        manager.check_trace_config_is_effective.return_value = True
+        manager.get_trace_config_project_url.side_effect = RuntimeError("metadata unavailable")
+        result = OpsTraceManagerGateway().prepare_updated_config(
+            workspace_id="workspace-1",
+            tracing_provider="arize",
+            tracing_config={"project": "new-project"},
+            current_tracing_config={"project_url": "https://example.com/project/old", "api_key": "encrypted"},
+        )
+    assert "project_url" not in result
 
 
 def test_prepare_updated_config_validates_schema_before_encryption(monkeypatch: pytest.MonkeyPatch) -> None:

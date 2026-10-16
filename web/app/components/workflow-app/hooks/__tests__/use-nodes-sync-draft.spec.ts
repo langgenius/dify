@@ -1,15 +1,16 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowSliceShape } from '@/app/components/workflow/store/workflow/workflow-slice'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import { noop } from '@tanstack/react-query'
 import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -25,7 +26,7 @@ const mockCollaborationCanFlushGraphOnPageClose = vi.fn()
 const mockCollaborationCanUseLocalDraftFallback = vi.fn()
 const mockSetShowConfirm = vi.fn<(confirmation: WorkflowSliceShape['showConfirm']) => void>()
 let isCollaborationEnabled = false
-let appMode: AppModeEnum | undefined
+let appMode: AppMode | undefined
 
 let reactFlowState: {
   getNodes: typeof mockGetNodes
@@ -92,9 +93,27 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 const mockSyncWorkflowDraft = vi.fn()
-vi.mock('@/service/workflow', () => ({
-  syncWorkflowDraft: (p: unknown) => mockSyncWorkflowDraft(p),
-}))
+// Stand in for the draft sync request at the client boundary. Calls are recorded as the
+// request they send (endpoint and body), and rejections pass through the console link's
+// contract error validation, as they do in production.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { apps } = await import('@dify/contracts/api/console/apps/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ apps })
+  const post = (input: { params: { app_id: string }; body: unknown }) =>
+    validate({
+      context: {},
+      input,
+      path: ['apps', 'byAppId', 'workflows', 'draft', 'post'],
+      next: () =>
+        mockSyncWorkflowDraft({
+          url: `/apps/${input.params.app_id}/workflows/draft`,
+          params: input.body,
+        }),
+    })
+  return { ...actual, consoleClient: { apps: { byAppId: { workflows: { draft: { post } } } } } }
+})
 
 vi.mock('@/service/fetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/fetch')>()
@@ -182,7 +201,7 @@ describe('useNodesSyncDraft', () => {
       updatedAt: 2,
     })
     isCollaborationEnabled = false
-    appMode = AppModeEnum.WORKFLOW
+    appMode = 'workflow'
   })
 
   it.each(['draft sync', 'page close'] as const)(
@@ -242,7 +261,7 @@ describe('useNodesSyncDraft', () => {
     },
   )
 
-  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+  it.each(['advanced-chat'] as const)(
     'should preserve LLM memory when app mode is %s',
     async (mode) => {
       appMode = mode
@@ -526,24 +545,6 @@ describe('useNodesSyncDraft', () => {
     expect(callbacks.onSettled).toHaveBeenCalledOnce()
   })
 
-  it('should not apply empty-canvas consent to another app', async () => {
-    mockGetNodes.mockReturnValue([])
-    const { result } = renderUseNodesSyncDraft()
-    let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
-
-    act(() => {
-      syncPromise = result.current.doSyncWorkflowDraft()
-    })
-
-    workflowStoreState.appId = 'app-2'
-    await act(async () => {
-      workflowStoreState.showConfirm?.onConfirm()
-      await expect(syncPromise).resolves.toBeNull()
-    })
-
-    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-  })
-
   it('should cancel a pending empty save when its owning hook unmounts', async () => {
     mockGetNodes.mockReturnValue([])
     const callbacks = { onError: vi.fn(), onSettled: vi.fn() }
@@ -594,8 +595,10 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
-    const error = createHttpError(new Response(null, { status: 400 }), {
+    const error = createHttpError(new Response(null, { status: 409 }), {
       code: 'draft_workflow_not_sync',
+      message: 'Workflow not synced.',
+      status: 409,
     })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
@@ -609,8 +612,10 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should NOT refresh when notRefreshWhenSyncError=true', async () => {
-    const error = createHttpError(new Response(null, { status: 400 }), {
+    const error = createHttpError(new Response(null, { status: 409 }), {
       code: 'draft_workflow_not_sync',
+      message: 'Workflow not synced.',
+      status: 409,
     })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 

@@ -19,6 +19,7 @@ from controllers.console.wraps import (
 from extensions.ext_application_services import application_services
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from services.conversation_variable_query import CONVERSATION_VARIABLE_LIMIT, ConversationVariableAppNotFoundError
@@ -83,6 +84,7 @@ register_schema_models(
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-variables")
 class ConversationVariablesApi(Resource):
+    @error_responses(AppNotFoundError)
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for an application")
     @console_ns.doc(params={"app_id": "Application ID"})

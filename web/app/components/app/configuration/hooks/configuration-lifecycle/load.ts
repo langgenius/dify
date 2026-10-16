@@ -4,7 +4,6 @@ import { PromptMode } from '@/models/debug'
 import { consoleClient } from '@/service/console'
 import { fetchDatasets } from '@/service/datasets'
 import { fetchCollectionList } from '@/service/tools'
-import { AppModeEnum } from '@/types/app'
 import { withCollectionIconBasePath } from '../../utils'
 import { buildConfigurationDatasetConfigs } from './dataset'
 import { normalizeChatPromptConfig, normalizeCompletionPromptConfig } from './prompt-config'
@@ -24,11 +23,7 @@ export async function loadConfigurationState({
   const collectionList = withCollectionIconBasePath(await fetchCollectionList(), basePath)
   const response = await consoleClient.apps.byAppId.get({ params: { app_id: appId } })
   const mode = response.mode
-  if (
-    mode !== AppModeEnum.CHAT &&
-    mode !== AppModeEnum.AGENT_CHAT &&
-    mode !== AppModeEnum.COMPLETION
-  )
+  if (mode !== 'chat' && mode !== 'agent-chat' && mode !== 'completion')
     throw new Error(`App mode ${mode} does not use model configuration`)
   const backendModelConfig = response.model_config
   if (!backendModelConfig) throw new Error(`App ${appId} has no model configuration`)
@@ -46,7 +41,6 @@ export async function loadConfigurationState({
 
   if (datasetIds.length) {
     const { data } = await fetchDatasets({
-      url: '/datasets',
       params: {
         page: 1,
         ids: datasetIds,

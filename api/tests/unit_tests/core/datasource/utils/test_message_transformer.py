@@ -354,8 +354,8 @@ class TestDatasourceFileMessageTransformer:
             assert result[0].type == DatasourceMessage.MessageType.BINARY_LINK
             assert _text(result[0]) == "/files/datasources/blob_id_no_name.bin"
 
-    @patch("core.datasource.utils.message_transformer.ToolFileManager")
-    def test_transform_image_message_not_text_message(self, mock_tool_file_manager_cls: MagicMock) -> None:
+    @patch("core.datasource.utils.message_transformer.ToolFileManager", new=MagicMock())
+    def test_transform_image_message_not_text_message(self) -> None:
         # This tests line 24-26 where it checks if message is instance of TextMessage
         messages = [
             DatasourceMessage(

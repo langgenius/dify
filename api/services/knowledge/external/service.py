@@ -243,7 +243,7 @@ class ExternalDatasetService:
             "follow_redirects": True,
         }
 
-        _METHOD_MAP = {
+        _method_map = {
             "get": ssrf_proxy.get,
             "head": ssrf_proxy.head,
             "post": ssrf_proxy.post,
@@ -252,19 +252,16 @@ class ExternalDatasetService:
             "patch": ssrf_proxy.patch,
         }
         method_lc = settings.request_method.lower()
-        if method_lc not in _METHOD_MAP:
+        if method_lc not in _method_map:
             raise InvalidHttpMethodError(f"Invalid http method {settings.request_method}")
 
-        response: httpx.Response = _METHOD_MAP[method_lc](data=json.dumps(settings.params), files=files, **kwargs)
+        response: httpx.Response = _method_map[method_lc](data=json.dumps(settings.params), files=files, **kwargs)
         return response
 
     @staticmethod
     def assembling_headers(authorization: Authorization, headers: dict[str, Any] | None = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
-        if headers:
-            headers = deepcopy(headers)
-        else:
-            headers = {}
+        headers = deepcopy(headers) if headers else {}
         if authorization.type == "api-key":
             if authorization.config is None:
                 raise ValueError("authorization config is required")

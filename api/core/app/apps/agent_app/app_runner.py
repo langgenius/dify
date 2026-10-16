@@ -740,6 +740,17 @@ class AgentAppRunner:
             binding_id=runtime.binding_id,
             snapshot=terminal.session_snapshot,
         )
+        from core.ops.base_trace_instance import application_tracing_hooks
+
+        tracing_hooks = application_tracing_hooks()
+        if tracing_hooks is not None:
+            tracing_hooks.capture_agent_app_terminal(
+                tenant_id=dify_context.tenant_id,
+                app_id=dify_context.app_id,
+                message_id=message_id,
+                outcome="succeeded",
+                output=answer,
+            )
 
     def _build_session_scope(
         self,

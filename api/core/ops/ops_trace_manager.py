@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.helper.trace_id_helper import ParentTraceContext
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.config_entity import (
     BaseTracingConfig,
     TracingProviderEnum,
@@ -443,7 +444,7 @@ class OpsTraceManager:
             keys_to_decrypt = [key for key in secret_keys if key in tracing_config]
             if keys_to_decrypt:
                 decrypted_values = batch_decrypt_token(tenant_id, [tracing_config[key] for key in keys_to_decrypt])
-                new_config.update(zip(keys_to_decrypt, decrypted_values))
+                new_config.update(zip(keys_to_decrypt, decrypted_values, strict=False))
 
             for key in other_keys:
                 new_config[key] = tracing_config.get(key, "")
@@ -1477,7 +1478,15 @@ class TraceQueueManager:
 
         self.app_id = app_id
         self.user_id = user_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+        self.trace_instance = None
+        self._application_tracing_enabled = False
+        if dify_config.OPS_AGENT_TRACE_ENABLED:
+            tracing_hooks = application_tracing_hooks()
+            self._application_tracing_enabled = (
+                tracing_hooks.queue_enabled_at_start(app_id) if tracing_hooks is not None else False
+            )
+        else:
+            self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()  # type: ignore
 
         from core.telemetry.gateway import is_enterprise_telemetry_enabled
@@ -1489,7 +1498,7 @@ class TraceQueueManager:
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer, trace_manager_queue
         try:
-            if self._enterprise_telemetry_enabled or self.trace_instance:
+            if self._enterprise_telemetry_enabled or self._application_tracing_enabled or self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception:

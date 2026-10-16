@@ -6,8 +6,11 @@ vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
 )
 
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
+  ),
 )
 
 const { mockToNodeAvailableVars, mockGetVarType } = vi.hoisted(() => ({
@@ -25,9 +28,7 @@ vi.mock('../../nodes/_base/components/variable/use-match-schema-type', () => ({
 }))
 
 let mockIsChatMode = false
-vi.mock('../use-workflow', () => ({
-  useIsChatMode: () => mockIsChatMode,
-}))
+vi.mock('../use-workflow', () => ({}))
 
 describe('useWorkflowVariables', () => {
   beforeEach(() => {
@@ -45,13 +46,13 @@ describe('useWorkflowVariables', () => {
 
       result.current.getNodeAvailableVars({
         beforeNodes: [],
-        isChatMode: true,
+        isChatflow: true,
         filterVar: () => true,
       })
 
       expect(mockToNodeAvailableVars).toHaveBeenCalledOnce()
       const args = mockToNodeAvailableVars.mock.calls[0]![0]
-      expect(args.isChatMode).toBe(true)
+      expect(args.isChatflow).toBe(true)
       expect(args.conversationVariables).toHaveLength(1)
       expect(args.environmentVariables).toHaveLength(1)
     })
@@ -65,7 +66,7 @@ describe('useWorkflowVariables', () => {
 
       result.current.getNodeAvailableVars({
         beforeNodes: [],
-        isChatMode: false,
+        isChatflow: false,
         filterVar: () => true,
         hideEnv: true,
       })
@@ -83,7 +84,7 @@ describe('useWorkflowVariables', () => {
 
       result.current.getNodeAvailableVars({
         beforeNodes: [],
-        isChatMode: false,
+        isChatflow: false,
         filterVar: () => true,
       })
 
@@ -101,7 +102,7 @@ describe('useWorkflowVariables', () => {
       const type = result.current.getCurrentVariableType({
         valueSelector: ['node-1', 'output'],
         availableNodes: [],
-        isChatMode: false,
+        isChatflow: false,
       })
 
       expect(mockGetVarType).toHaveBeenCalledOnce()
@@ -142,4 +143,11 @@ describe('useWorkflowVariableType', () => {
     expect(args.parentNode).toBeDefined()
     expect((args.parentNode as { id: string }).id).toBe('iter-1')
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

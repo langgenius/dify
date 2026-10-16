@@ -1,18 +1,22 @@
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
-import {
-  fetchInitValidateStatus,
-  fetchSetupStatus,
-  sendForgotPasswordEmail,
-} from '@/service/common'
+import { consoleClient } from '@/service/console'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
-vi.mock('@/service/common', () => ({
-  fetchSetupStatus: vi.fn(),
-  fetchInitValidateStatus: vi.fn(),
-  sendForgotPasswordEmail: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    setup: {
+      get: vi.fn(),
+    },
+    init: {
+      get: vi.fn(),
+    },
+    forgotPassword: {
+      post: vi.fn(),
+    },
+  },
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -20,16 +24,16 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
-const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
-const mockSendForgotPasswordEmail = vi.mocked(sendForgotPasswordEmail)
+const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
+const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
+const mockSendForgotPasswordEmail = vi.mocked(consoleClient.forgotPassword.post)
 const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const prepareLoadedState = () => {
-  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
+  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
-  } as InitValidateStatusResponse)
+  })
 }
 
 describe('ForgotPasswordForm', () => {
@@ -90,7 +94,6 @@ describe('ForgotPasswordForm', () => {
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
-        url: '/forgot-password',
         body: { email: 'test@example.com' },
       })
     })
@@ -115,7 +118,6 @@ describe('ForgotPasswordForm', () => {
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
-        url: '/forgot-password',
         body: { email: 'test@example.com' },
       })
     })
@@ -177,7 +179,7 @@ describe('ForgotPasswordForm', () => {
     })
     mockFetchInitValidateStatus.mockResolvedValue({
       status: 'not_started',
-    } as InitValidateStatusResponse)
+    })
 
     render(<ForgotPasswordForm />)
 

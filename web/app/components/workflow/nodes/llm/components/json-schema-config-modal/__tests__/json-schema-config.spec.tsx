@@ -6,7 +6,6 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { Type } from '../../../types'
@@ -66,7 +65,12 @@ function renderOutput({ readOnly = false, onChange = vi.fn() } = {}) {
     }).queryKey,
     { data: [] },
   )
-  client.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), { data: null })
+  client.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+    { data: null },
+  )
   client.setQueryData(
     consoleQuery.systemFeatures.get.queryOptions().queryKey,
     createSystemFeaturesFixture(),

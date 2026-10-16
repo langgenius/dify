@@ -42,16 +42,6 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
   },
 ]
 
-vi.mock('@/service/use-common', () => ({
-  useModelParameterRules: () => ({
-    data: {
-      data: parameterRules,
-    },
-    isLoading: isRulesLoading,
-    isPending: isRulesPending,
-  }),
-}))
-
 vi.mock('../../hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     currentProvider,
@@ -149,6 +139,19 @@ vi.mock('@/config', async (importOriginal) => {
     ...actual,
     PROVIDER_WITH_PRESET_TONE: ['openai'],
   }
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.modelProviders.byProvider.models.parameterRules.get': () => ({
+      data: {
+        data: parameterRules,
+      },
+      isLoading: isRulesLoading,
+      isPending: isRulesPending,
+    }),
+  })
 })
 
 describe('ModelParameterModal', () => {

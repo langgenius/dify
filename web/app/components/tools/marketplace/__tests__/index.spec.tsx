@@ -47,11 +47,6 @@ vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
-const mockUseAllToolProviders = vi.fn()
-vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (...args: unknown[]) => mockUseAllToolProviders(...args),
-}))
-
 vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
 }))

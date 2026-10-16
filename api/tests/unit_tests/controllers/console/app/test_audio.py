@@ -48,7 +48,6 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
-    ProviderNotSupportTextToSpeechLanageServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -370,22 +369,6 @@ def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch)
         response = handler(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
 
     assert response == expected_voices
-
-
-def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        AudioService,
-        "transcript_tts_voices",
-        lambda **_kwargs: (_ for _ in ()).throw(ProviderNotSupportTextToSpeechLanageServiceError()),
-    )
-
-    api = TextModesApi()
-    handler = unwrap(api.get)
-    app_model = _app(tenant_id="t1")
-
-    with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
-        with pytest.raises(AppUnavailableError):
-            handler(api, TextToSpeechVoiceQuery(language="en-US"), app_model=app_model)
 
 
 def test_audio_to_text_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -202,4 +202,3 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_learn_app: bool = True
     enable_step_by_step_tour: bool = False
     rbac_enabled: bool = False
-    knowledge_fs_enabled: bool = False

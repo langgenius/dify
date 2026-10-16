@@ -16,7 +16,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTimestamp from '@/hooks/use-timestamp'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, isDocumentDisplayStatus } from '@/models/datasets'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { formatNumber } from '@/utils/format'
@@ -39,7 +39,7 @@ type DocumentTableRowProps = {
   onUpdate: () => void
 }
 
-const renderCount = (count: number | undefined) => {
+const renderCount = (count?: number | null) => {
   if (!count) return renderTdValue(0, true)
 
   if (count < 1000) return count
@@ -169,13 +169,17 @@ const DocumentTableRow = React.memo(
         <td>{renderCount(doc.word_count)}</td>
         <td>{renderCount(doc.hit_count)}</td>
         <td className="text-[13px] text-text-secondary">
-          {formatTime(
-            doc.created_at,
-            t(($) => $.dateTimeFormat, { ns: 'datasetHitTesting' }) as string,
-          )}
+          {doc.created_at
+            ? formatTime(
+                doc.created_at,
+                t(($) => $.dateTimeFormat, { ns: 'datasetHitTesting' }) as string,
+              )
+            : '-'}
         </td>
         <td>
-          <StatusItem status={doc.display_status} />
+          {isDocumentDisplayStatus(doc.display_status) && (
+            <StatusItem status={doc.display_status} />
+          )}
         </td>
         <td>
           <Operations

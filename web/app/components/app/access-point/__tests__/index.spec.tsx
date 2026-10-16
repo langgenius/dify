@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/utils/access-point'
@@ -11,11 +12,10 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
-let appMode: AppModeEnum = AppModeEnum.WORKFLOW
+let appMode: AppMode = 'workflow'
 let appPermissionKeys: string[] = [AppACLPermission.AccessPointView]
 const accessPointMocks = vi.hoisted(() => ({
   builtIn: vi.fn(),
@@ -133,7 +133,7 @@ const renderAccessPoint = ({
 describe('AccessPoint', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appMode = AppModeEnum.WORKFLOW
+    appMode = 'workflow'
     appPermissionKeys = [AppACLPermission.AccessPointView]
   })
 
@@ -243,7 +243,7 @@ describe('AccessPoint', () => {
   })
 
   it('hides environment tabs for app types without multi-environment support', () => {
-    appMode = AppModeEnum.CHAT
+    appMode = 'chat'
 
     renderAccessPoint()
 

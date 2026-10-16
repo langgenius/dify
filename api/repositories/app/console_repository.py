@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Sequence
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import datetime
 from typing import Any, cast, override
 
@@ -57,6 +57,7 @@ from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
     AppEvent,
+    AppFieldChanges,
     AppListBaseParams,
     AppListParams,
     AppListSortBy,
@@ -77,6 +78,7 @@ from services.errors.base import NoPermissionError
 from services.openapi.visibility import apply_openapi_gate
 
 logger = logging.getLogger(__name__)
+
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
 
 
@@ -143,6 +145,11 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 raise AppDiscoveryNotFoundError("app not found")
             config = load_app_parameter_config(app, session=session) if include_config else None
             return AppDescription(app_summary(app), bool(app.enable_api), config)
+
+    def list_workspace_app_ids(self, tenant_id: str) -> list[str]:
+        """List every App row in the workspace, ignoring console visibility and status."""
+        with self._session_factory() as session:
+            return list(session.scalars(select(App.id).where(App.tenant_id == tenant_id)).all())
 
     @override
     def find_visible_app(self, app_id: str, tenant_id: str) -> AppSummary | None:
@@ -240,6 +247,13 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             return app_record(app, session=session, projection="detail-with-site")
 
     @override
+    def update_fields(self, context: RequestContext, app_id: str, changes: AppFieldChanges) -> AppRecord:
+        with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
+            app = self.update_app_fields(app, changes, account_id=context.account_id, session=session)
+            return app_record(app, session=session, projection="detail-with-site")
+
+    @override
     def rename(self, context: RequestContext, app_id: str, name: str) -> AppRecord:
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
@@ -279,6 +293,17 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             return AppChange(app_record(app, session=session, projection="detail"), changed)
 
     @override
+    def access_ready(self, context: RequestContext, app_id: str) -> bool:
+        with self._session_factory() as session:
+            return self.is_agent_app_access_ready(require_console_app(session, context, app_id), session=session)
+
+    @override
+    def agent_role(self, context: RequestContext, app_id: str) -> str | None:
+        with self._session_factory() as session:
+            agent = self._get_backing_agent(require_console_app(session, context, app_id), session=session)
+            return agent.role if agent is not None else None
+
+    @override
     def set_starred(self, context: RequestContext, app_id: str, starred: bool) -> None:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
@@ -305,7 +330,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
-            app.tracing = json.dumps({"enabled": settings.enabled, "tracing_provider": settings.tracing_provider})
+            app.tracing = json.dumps(asdict(settings))
 
     @staticmethod
     def _draft_trigger_app_ids(session: Session, workspace_id: str, apps: list[App]) -> set[str]:
@@ -321,14 +346,14 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
         )
         for workflow in workflows:
-            node_id = None
+            _node_id = None
             try:
-                for node_id, node_data in workflow.walk_nodes():
+                for _node_id, node_data in workflow.walk_nodes():
                     if node_data.get("type") in TRIGGER_NODE_TYPES:
                         result.add(workflow.app_id)
                         break
             except Exception:
-                logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
+                logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, _node_id)
         return result
 
     @staticmethod
@@ -353,7 +378,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
-        filters = [App.tenant_id == tenant_id, App.is_universal == False]
+        filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
         if params.mode == "workflow":
             filters.append(App.mode == AppMode.WORKFLOW)
@@ -769,10 +794,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         app.name = args["name"]
         app.description = args["description"]
         icon_type = args.get("icon_type")
-        if icon_type is None:
-            resolved_icon_type = app.icon_type
-        else:
-            resolved_icon_type = IconType(icon_type)
+        resolved_icon_type = app.icon_type if icon_type is None else IconType(icon_type)
 
         app.icon_type = resolved_icon_type
         app.icon = args["icon"]
@@ -797,6 +819,33 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         )
         cls._commit_app_identity_update(app, session=session)
 
+        return app
+
+    @classmethod
+    def update_app_fields(cls, app: App, changes: AppFieldChanges, *, account_id: str, session: Session) -> App:
+        """Write only the fields in `changes`; the others keep their stored values."""
+        app.name = changes.get("name", app.name)
+        app.description = changes.get("description", app.description)
+        app.icon_type = changes.get("icon_type", app.icon_type)
+        app.icon = changes.get("icon", app.icon)
+        app.icon_background = changes.get("icon_background", app.icon_background)
+        app.use_icon_as_answer_icon = changes.get("use_icon_as_answer_icon", app.use_icon_as_answer_icon)
+        app.max_active_requests = changes.get("max_active_requests", app.max_active_requests)
+        app.updated_by = account_id
+        app.updated_at = naive_utc_now()
+        cls._sync_backing_agent_identity(
+            app,
+            name=changes.get("name"),
+            description=changes.get("description"),
+            role=changes.get("role"),
+            icon_type=changes.get("icon_type"),
+            icon=changes.get("icon"),
+            icon_background=changes.get("icon_background"),
+            account_id=account_id,
+            updated_at=app.updated_at,
+            session=session,
+        )
+        cls._commit_app_identity_update(app, session=session)
         return app
 
     @classmethod

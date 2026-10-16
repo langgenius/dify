@@ -242,10 +242,7 @@ class AppQueueManager(ABC):
             )
             return False
 
-        if result is not None:
-            return True
-
-        return False
+        return result is not None
 
     @classmethod
     def _generate_task_belong_cache_key(cls, task_id: str) -> str:

@@ -8,7 +8,7 @@ import type {
   FileItem,
 } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -30,7 +30,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
-import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
@@ -94,7 +94,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     data: dataSourceList,
     isLoading: isLoadingAuthedDataSourceList,
     isError: fetchingAuthedDataSourceListError,
-  } = useGetDefaultDataSourceListAuth()
+  } = useQuery(consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions())
 
   const updateNotionPages = useCallback((value: NotionPage[]) => {
     setNotionPages(value)
@@ -192,7 +192,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               <StepTwo
                 isAPIKeySet={!!embeddingsDefaultModel}
                 onSetting={() => setSettingsDestination('provider')}
-                indexingType={datasetDetail?.indexing_technique}
+                indexingType={datasetDetail?.indexing_technique ?? undefined}
                 datasetId={datasetId}
                 dataSourceType={dataSourceType}
                 files={fileList.map((file) => file.file)}

@@ -11,6 +11,14 @@ describe('trigger-schedule/weekday-selector', () => {
     ).toBeInTheDocument()
   })
 
+  it('exposes the selected weekdays as pressed', () => {
+    render(<WeekdaySelector selectedDays={['mon', 'wed']} onChange={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Mon', pressed: true })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Wed', pressed: true })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tue', pressed: false })).toBeInTheDocument()
+  })
+
   it('keeps at least one weekday selected', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

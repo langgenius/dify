@@ -1,8 +1,7 @@
 'use client'
 
-import type { AppImportPayload, Import } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppImportPayload, AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { AppModeEnum } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -30,7 +29,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
@@ -65,20 +63,20 @@ type ImportSource =
 
 const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
-function getImportedAppMode(mode?: string | null): AppModeEnum | undefined {
+function getImportedAppMode(mode?: string | null): AppMode | undefined {
   switch (mode) {
-    case AppMode.COMPLETION:
-      return AppMode.COMPLETION
-    case AppMode.WORKFLOW:
-      return AppMode.WORKFLOW
-    case AppMode.CHAT:
-      return AppMode.CHAT
-    case AppMode.ADVANCED_CHAT:
-      return AppMode.ADVANCED_CHAT
-    case AppMode.AGENT_CHAT:
-      return AppMode.AGENT_CHAT
-    case AppMode.AGENT:
-      return AppMode.AGENT
+    case 'completion':
+      return 'completion'
+    case 'workflow':
+      return 'workflow'
+    case 'chat':
+      return 'chat'
+    case 'advanced-chat':
+      return 'advanced-chat'
+    case 'agent-chat':
+      return 'agent-chat'
+    case 'agent':
+      return 'agent'
     default:
       return undefined
   }

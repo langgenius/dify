@@ -10,8 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { addAnnotation } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   appId: string
@@ -54,13 +53,13 @@ const AnnotationCtrlButton: FC<Props> = ({
       setShowAnnotationFullModal()
       return
     }
-    const res = await addAnnotation(appId, {
-      message_id: messageId,
-      question: query,
-      answer,
+    const res = await consoleClient.apps.byAppId.annotations.post({
+      params: { app_id: appId },
+      body: { message_id: messageId, question: query, answer },
     })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
-    onAdded(res.id, res.account?.name ?? '')
+    // The create response does not include the author.
+    onAdded(res.id, '')
   }
   return (
     <>

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
@@ -52,6 +53,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
@@ -98,6 +100,7 @@ from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent_tracing_config_service import AgentTracingConfigService
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -167,6 +170,7 @@ from services.recommended_app_query_service import RecommendedAppQueryService
 from services.remote_file_service import RemoteFileService
 from services.resource_access_token_service import ResourceAccessTokenService
 from services.retention.workflow_run.archive_download_adapters import (
+    dispatch_workflow_run_archive_deletion_task,
     dispatch_workflow_run_archive_download_task,
     sign_workflow_run_archive_download_url,
 )
@@ -180,6 +184,7 @@ from services.step_by_step_tour_service import StepByStepTourService
 from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import (
@@ -267,6 +272,7 @@ class ApplicationServices:
     conversation_variables: ConversationVariableQuery
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
+    agent_tracing_configs: AgentTracingConfigService
     billing_portal: BillingPortalService
     compliance_downloads: ComplianceDownloadService
     data_sources: DataSourceServices
@@ -452,6 +458,10 @@ def build_application_services(
         apps=console_apps,
         datasets=dataset_dependencies.datasets,
     )
+    tracing_configs = AppTracingConfigService(
+        configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
+        provider=OpsTraceManagerGateway(),
+    )
     apps = build_app_services(
         database_client=database_client,
         oauth=oauth_server,
@@ -504,6 +514,7 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     workspace_services = build_workspace_services(
+        database_client=database_client,
         workspaces=workspace_repository,
         accounts=accounts,
         files=file_service,
@@ -540,9 +551,11 @@ def build_application_services(
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
-        app_tracing_configs=AppTracingConfigService(
-            configs=SQLAlchemyAppTracingConfigRepository(session_factory=database_client),
-            provider=OpsTraceManagerGateway(),
+        app_tracing_configs=tracing_configs,
+        agent_tracing_configs=AgentTracingConfigService(
+            owners=AgentAppRepository(session_factory=database_client),
+            settings=apps.console,
+            configs=tracing_configs,
         ),
         billing_portal=BillingPortalService(
             accounts=accounts,
@@ -677,6 +690,7 @@ def build_application_services(
             tasks=WorkflowRunArchiveDownloadTaskCache(redis=redis),
             dispatcher=dispatch_workflow_run_archive_download_task,
             sign_download_url=sign_workflow_run_archive_download_url,
+            deletion_dispatcher=dispatch_workflow_run_archive_deletion_task,
         ),
         workflow_runs=WorkflowRunService(
             workflow_runs=workflow_run_repository,
@@ -729,6 +743,7 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    bind_application_tracing_hooks(app, RuntimeApplicationTracingHooks())
     bind_account_loader(app, services.accounts.identity.load_user)
 
 

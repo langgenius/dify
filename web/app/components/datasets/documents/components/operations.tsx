@@ -1,6 +1,4 @@
 import type { OperationName } from '../types'
-import type { CommonResponse } from '@/models/common'
-import type { DocumentDownloadResponse } from '@/service/datasets'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -21,7 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -31,19 +29,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
-import {
-  useDocumentArchive,
-  useDocumentDelete,
-  useDocumentDisable,
-  useDocumentDownload,
-  useDocumentEnable,
-  useDocumentPause,
-  useDocumentResume,
-  useDocumentSummary,
-  useDocumentUnArchive,
-  useSyncDocument,
-  useSyncWebsite,
-} from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
 import s from '../style.module.css'
@@ -52,13 +38,13 @@ import RenameModal from './rename-modal'
 type OperationsProps = {
   embeddingAvailable: boolean
   detail: {
-    name: string
-    enabled: boolean
-    archived: boolean
     id: string
-    data_source_type: string
-    doc_form: string
-    display_status?: string
+    name?: string | null
+    enabled?: boolean | null
+    archived?: boolean | null
+    data_source_type?: string | null
+    doc_form?: string | null
+    display_status?: string | null
   }
   selectedIds?: string[]
   onSelectedIdChange?: (ids: string[]) => void
@@ -90,36 +76,45 @@ const Operations = ({
     select: ({ deployment_edition }) => deployment_edition,
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
-  const {
-    id,
-    name,
-    enabled = false,
-    archived = false,
-    data_source_type,
-    display_status,
-  } = detail || {}
+  const { id, name, data_source_type, display_status } = detail
+  const enabled = detail.enabled ?? false
+  const archived = detail.archived ?? false
   const [showModal, setShowModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const router = useRouter()
-  const { mutateAsync: archiveDocument } = useDocumentArchive()
-  const { mutateAsync: unArchiveDocument } = useDocumentUnArchive()
-  const { mutateAsync: enableDocument } = useDocumentEnable()
-  const { mutateAsync: disableDocument } = useDocumentDisable()
-  const { mutateAsync: deleteDocument } = useDocumentDelete()
-  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
-  const { mutateAsync: syncDocument } = useSyncDocument()
-  const { mutateAsync: syncWebsite } = useSyncWebsite()
-  const { mutateAsync: generateSummary } = useDocumentSummary()
-  const { mutateAsync: pauseDocument } = useDocumentPause()
-  const { mutateAsync: resumeDocument } = useDocumentResume()
+  const documents = consoleQuery.datasets.byDatasetId.documents
+  const { mutateAsync: changeDocumentStatus } = useMutation(
+    documents.status.byAction.batch.patch.mutationOptions(),
+  )
+  const { mutateAsync: deleteDocuments } = useMutation(documents.delete.mutationOptions())
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
+    documents.byDocumentId.download.get.mutationOptions(),
+  )
+  const { mutateAsync: syncNotionDocument } = useMutation(
+    documents.byDocumentId.notion.sync.get.mutationOptions(),
+  )
+  const { mutateAsync: syncWebsiteDocument } = useMutation(
+    documents.byDocumentId.websiteSync.get.mutationOptions(),
+  )
+  const { mutateAsync: generateSummary } = useMutation(
+    documents.generateSummary.post.mutationOptions(),
+  )
+  const { mutateAsync: pauseDocument } = useMutation(
+    documents.byDocumentId.processing.pause.patch.mutationOptions(),
+  )
+  const { mutateAsync: resumeDocument } = useMutation(
+    documents.byDocumentId.processing.resume.patch.mutationOptions(),
+  )
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived
   const canShowSummaryAction = canEdit && !archived && isNonCloudEdition
   const canShowSettingsAction = canViewSettings
   const canShowDownloadAction = canDownload && data_source_type === DataSourceType.FILE
   const canShowSyncAction =
-    canEdit && !archived && ['notion_import', DataSourceType.WEB].includes(data_source_type)
+    canEdit &&
+    !archived &&
+    (data_source_type === DataSourceType.NOTION || data_source_type === DataSourceType.WEB)
   const canShowPauseAction = canEdit && !archived && display_status?.toLowerCase() === 'indexing'
   const canShowResumeAction = canEdit && !archived && display_status?.toLowerCase() === 'paused'
   const canShowArchiveAction = canEdit && !archived
@@ -147,41 +142,39 @@ const Operations = ({
     async (operationName: OperationName) => {
       if (!canOperate(operationName)) return
 
-      let opApi
-      switch (operationName) {
-        case 'archive':
-          opApi = archiveDocument
-          break
-        case 'un_archive':
-          opApi = unArchiveDocument
-          break
-        case 'enable':
-          opApi = enableDocument
-          break
-        case 'disable':
-          opApi = disableDocument
-          break
-        case 'sync':
-          if (data_source_type === 'notion_import') opApi = syncDocument
-          else opApi = syncWebsite
-          break
-        case 'summary':
-          opApi = generateSummary
-          break
-        case 'pause':
-          opApi = pauseDocument
-          break
-        case 'resume':
-          opApi = resumeDocument
-          break
-        default:
-          opApi = deleteDocument
-          setDeleting(true)
-          break
+      const documentParams = { dataset_id: datasetId, document_id: id }
+      const runOperation = (): Promise<unknown> => {
+        switch (operationName) {
+          case 'archive':
+          case 'un_archive':
+          case 'enable':
+          case 'disable':
+            return changeDocumentStatus({
+              params: { dataset_id: datasetId, action: operationName },
+              query: { document_id: [id] },
+            })
+          case 'sync':
+            return data_source_type === 'notion_import'
+              ? syncNotionDocument({ params: documentParams })
+              : syncWebsiteDocument({ params: documentParams })
+          case 'summary':
+            return generateSummary({
+              params: { dataset_id: datasetId },
+              body: { document_list: [id] },
+            })
+          case 'pause':
+            return pauseDocument({ params: documentParams })
+          case 'resume':
+            return resumeDocument({ params: documentParams })
+          default:
+            setDeleting(true)
+            return deleteDocuments({
+              params: { dataset_id: datasetId },
+              query: { document_id: [id] },
+            })
+        }
       }
-      const [e] = await asyncRunSafe<CommonResponse>(
-        opApi({ datasetId, documentId: id }) as Promise<CommonResponse>,
-      )
+      const [e] = await asyncRunSafe(runOperation())
       if (!e) {
         // The switch already shows the result of enable and disable.
         if (operationName !== 'enable' && operationName !== 'disable')
@@ -196,13 +189,11 @@ const Operations = ({
       if (operationName === DocumentActionType.delete) setDeleting(false)
     },
     [
-      archiveDocument,
       canOperate,
+      changeDocumentStatus,
       data_source_type,
       datasetId,
-      deleteDocument,
-      disableDocument,
-      enableDocument,
+      deleteDocuments,
       generateSummary,
       id,
       onSelectedIdChange,
@@ -210,10 +201,9 @@ const Operations = ({
       pauseDocument,
       resumeDocument,
       selectedIds,
-      syncDocument,
-      syncWebsite,
+      syncNotionDocument,
+      syncWebsiteDocument,
       t,
-      unArchiveDocument,
     ],
   )
   const { run: handleSwitch } = useDebounceFn(
@@ -253,20 +243,20 @@ const Operations = ({
     // Avoid repeated clicks while the signed URL request is in-flight.
     if (isDownloading) return
     // Request a signed URL first (it points to `/files/<id>/file-preview?...&as_attachment=true`).
-    const [e, res] = await asyncRunSafe<DocumentDownloadResponse>(
-      downloadDocument({ datasetId, documentId: id }) as Promise<DocumentDownloadResponse>,
+    const [e, res] = await asyncRunSafe(
+      downloadDocument({ params: { dataset_id: datasetId, document_id: id } }),
     )
     if (e || !res?.url) {
       toast.error(t(($) => $['actionMsg.downloadUnsuccessfully'], { ns: 'common' }))
       return
     }
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
-    downloadUrl({ url: res.url, fileName: name })
+    downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
   const handleShowRename = useCallback(() => {
     handleShowRenameModal({
       id: detail.id,
-      name: detail.name,
+      name: detail.name ?? '',
     })
   }, [detail.id, detail.name, handleShowRenameModal])
   const handleMenuOperation = useCallback(

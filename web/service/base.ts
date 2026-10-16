@@ -1202,16 +1202,6 @@ export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOp
  * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
  * flows such as public APIs, marketplace APIs, streaming, upload, or download.
  */
-export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
-}
-
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
 export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }

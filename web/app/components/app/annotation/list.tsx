@@ -60,10 +60,10 @@ function AnnotationTableRow({
           <Checkbox className="shrink-0" value={item.id} aria-labelledby={questionId} />
         </div>
       </td>
-      <td className="max-w-62.5 truncate p-3 pr-2" title={item.question}>
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.question ?? undefined}>
         <span id={questionId}>{item.question}</span>
       </td>
-      <td className="max-w-62.5 truncate p-3 pr-2" title={item.answer}>
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.answer ?? undefined}>
         {item.answer}
       </td>
       <td className="p-3 pr-2">{formattedCreatedAt}</td>
@@ -160,10 +160,14 @@ export function List({
                 <AnnotationTableRow
                   key={item.id}
                   item={item}
-                  formattedCreatedAt={formatTime(
-                    item.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
+                  formattedCreatedAt={
+                    item.created_at
+                      ? formatTime(
+                          item.created_at,
+                          t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                        )
+                      : '-'
+                  }
                   appId={appId}
                   onView={onView}
                   onRemoved={onRemoved}

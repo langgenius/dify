@@ -1,5 +1,5 @@
 'use client'
-import type { createDocumentResponse, FullDocumentDetail } from '@/models/datasets'
+import type { createDocumentResponse } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine } from '@remixicon/react'
@@ -27,7 +27,8 @@ const StepThree = ({
   const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
 
-  const iconInfo = creationCache?.dataset?.icon_info || {
+  // The creation response carries no icon; new knowledge bases start with the default one.
+  const iconInfo = {
     icon: '📙',
     icon_type: 'emoji',
     icon_background: '#FFF4ED',
@@ -49,14 +50,7 @@ const StepThree = ({
                 </div>
               </div>
               <div className="flex items-center gap-x-4">
-                <AppIcon
-                  size="xxl"
-                  iconType={iconInfo.icon_type}
-                  icon={iconInfo.icon}
-                  background={iconInfo.icon_background}
-                  imageUrl={iconInfo.icon_url}
-                  className="shrink-0"
-                />
+                <AppIcon size="xxl" className="shrink-0" icon={iconInfo} />
                 <div className="flex min-w-0 grow flex-col gap-y-1">
                   <div className="flex h-6 items-center system-sm-semibold text-text-secondary">
                     {t(($) => $['stepThree.label'], { ns: 'datasetCreation' })}
@@ -80,11 +74,9 @@ const StepThree = ({
           <EmbeddingProcess
             datasetId={datasetId || creationCache?.dataset?.id || ''}
             batchId={creationCache?.batch || ''}
-            documents={creationCache?.documents as FullDocumentDetail[]}
+            documents={creationCache?.documents}
             indexingType={creationCache?.dataset?.indexing_technique || indexingType}
-            retrievalMethod={
-              creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod
-            }
+            retrievalMethod={retrievalMethod}
           />
         </div>
       </div>

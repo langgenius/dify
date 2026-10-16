@@ -1,6 +1,7 @@
+import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import (
     AliasChoices,
@@ -17,6 +18,12 @@ from pydantic import (
 from pydantic_settings import BaseSettings
 
 from .hosted_service import HostedServiceConfig
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_OAUTH_TTL_DAYS: Final = 14
+MIN_OAUTH_TTL_DAYS: Final = 1
+MAX_OAUTH_TTL_DAYS: Final = 365
 
 
 class SecurityConfig(BaseSettings):
@@ -1153,6 +1160,35 @@ class AuthConfig(BaseSettings):
         default=True,
     )
 
+    OAUTH_TTL_DAYS: int = Field(
+        description="Lifetime in days of the OAuth bearer tokens the device flow issues (difyctl login). "
+        f"Values outside {MIN_OAUTH_TTL_DAYS}-{MAX_OAUTH_TTL_DAYS} are clamped; a non-integer falls back "
+        "to the default.",
+        ge=MIN_OAUTH_TTL_DAYS,
+        le=MAX_OAUTH_TTL_DAYS,
+        default=DEFAULT_OAUTH_TTL_DAYS,
+    )
+
+    @field_validator("OAUTH_TTL_DAYS", mode="before")
+    @classmethod
+    def _clamp_oauth_ttl_days(cls, v: object) -> int:
+        # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
+        try:
+            value = int(str(v))
+        except ValueError:
+            logger.warning("OAUTH_TTL_DAYS=%r is not an int; falling back to %d", v, DEFAULT_OAUTH_TTL_DAYS)
+            return DEFAULT_OAUTH_TTL_DAYS
+        clamped = min(max(value, MIN_OAUTH_TTL_DAYS), MAX_OAUTH_TTL_DAYS)
+        if clamped != value:
+            logger.warning(
+                "OAUTH_TTL_DAYS=%d outside %d-%d; clamping to %d",
+                value,
+                MIN_OAUTH_TTL_DAYS,
+                MAX_OAUTH_TTL_DAYS,
+                clamped,
+            )
+        return clamped
+
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
         "Bucket keyed on sha256(token), shared across api replicas via Redis. "
@@ -1436,6 +1472,31 @@ class MultiModalTransferConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_AGENT_TRACE_ENABLED: bool = Field(
+        default=False, description="Enable application-scoped Agent tracing collection and delivery."
+    )
+    OPS_AGENT_TRACE_MAX_SPANS: PositiveInt = Field(
+        default=4096, description="Maximum runtime spans per application trace."
+    )
+    OPS_AGENT_TRACE_MAX_BYTES: PositiveInt = Field(
+        default=16777216, description="Maximum runtime payload bytes per application trace."
+    )
+    OPS_AGENT_TRACE_BATCH_MAX_BYTES: PositiveInt = Field(
+        default=2097152, description="Maximum inner tracing request body bytes."
+    )
+    OPS_AGENT_TRACE_COLLECTION_TIMEOUT: PositiveInt = Field(
+        default=180, description="Seconds after terminal execution to wait for final Agent batches."
+    )
+    OPS_AGENT_TRACE_EXPORT_LEASE_SECONDS: PositiveInt = Field(
+        default=120, description="Export lease before unconfirmed delivery becomes uncertain."
+    )
+    OPS_AGENT_TRACE_MAX_ATTEMPTS: PositiveInt = Field(
+        default=8, description="Attempts for known retryable trace export failures."
+    )
+    OPS_AGENT_TRACE_RETENTION_DAYS: PositiveInt = Field(
+        default=7, description="Retention of trace payloads and encrypted destination snapshots."
+    )
+
     OPS_TRACE_UNIFIED_ENABLED: bool = Field(
         description="Enable unified ops tracing for providers registered in the unified registry.",
         default=False,
@@ -1491,6 +1552,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
     TOKENER_BOOTSTRAP_RECOVERY_BATCH_SIZE: PositiveInt = Field(
         description="Maximum number of incomplete Tokener bootstraps requeued per recovery sweep",
         default=100,
+    )
+    ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
+        description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
+        default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",

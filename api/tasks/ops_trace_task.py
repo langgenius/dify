@@ -23,6 +23,7 @@ from celery.exceptions import Retry
 from flask import current_app
 
 from configs import dify_config
+from core.ops.base_trace_instance import application_tracing_hooks
 from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
 from core.ops.entities.trace_entity import trace_info_info_map
 from core.ops.exceptions import RetryableTraceDispatchError
@@ -58,7 +59,6 @@ def process_trace_tasks(self, file_info):
     trace_info = file_data.get("trace_info")
     trace_info_type = file_data.get("trace_info_type")
     enterprise_trace_dispatched = bool(file_data.get("_enterprise_trace_dispatched"))
-    trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
 
     if trace_info.get("message_data"):
         trace_info["message_data"] = Message.from_dict(data=trace_info["message_data"])
@@ -74,6 +74,13 @@ def process_trace_tasks(self, file_info):
         if trace_type:
             trace_info = trace_type(**trace_info)
 
+        application_trace_captured = False
+        if dify_config.OPS_AGENT_TRACE_ENABLED:
+            with current_app.app_context():
+                tracing_hooks = application_tracing_hooks()
+                if tracing_hooks is not None:
+                    application_trace_captured = tracing_hooks.capture_terminal(trace_info)
+
         from extensions.ext_enterprise_telemetry import is_enabled as is_ee_telemetry_enabled
 
         if is_ee_telemetry_enabled() and not enterprise_trace_dispatched:
@@ -87,9 +94,11 @@ def process_trace_tasks(self, file_info):
                 file_data["_enterprise_trace_dispatched"] = True
                 enterprise_trace_dispatched = True
 
-        if trace_instance:
-            with current_app.app_context():
-                trace_instance.trace(trace_info)
+        if not application_trace_captured:
+            trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+            if trace_instance:
+                with current_app.app_context():
+                    trace_instance.trace(trace_info)
 
         logger.info("Processing trace tasks success, app_id: %s", app_id)
     except RetryableTraceDispatchError as e:

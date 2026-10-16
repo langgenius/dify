@@ -32,6 +32,7 @@ from .agent import (
 )
 from .agent_sandbox_usage import AgentSandboxExecution, AgentSandboxUsageEvent
 from .api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from .application_trace import ApplicationTraceBatch, ApplicationTraceInvocation, ApplicationTraceRun
 from .comment import (
     WorkflowComment,
     WorkflowCommentMention,
@@ -204,6 +205,9 @@ __all__ = [
     "AppTrigger",
     "AppTriggerStatus",
     "AppTriggerType",
+    "ApplicationTraceBatch",
+    "ApplicationTraceInvocation",
+    "ApplicationTraceRun",
     "BuiltinToolProvider",
     "CeleryTask",
     "CeleryTaskSet",

@@ -1,4 +1,5 @@
 'use client'
+import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
@@ -28,9 +29,9 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const { t } = useTranslation(['common', 'datasetSettings'])
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
-  const [description, setDescription] = useState<string>(dataset.description)
-  const externalKnowledgeId = dataset.external_knowledge_info.external_knowledge_id
-  const externalKnowledgeApiId = dataset.external_knowledge_info.external_knowledge_api_id
+  const [description, setDescription] = useState<string>(dataset.description ?? '')
+  const externalKnowledgeId = dataset.external_knowledge_info?.external_knowledge_id
+  const externalKnowledgeApiId = dataset.external_knowledge_info?.external_knowledge_api_id
   const [appIcon, setAppIcon] = useState<IconPickerValue>(
     dataset.icon_info?.icon_type === 'image'
       ? {
@@ -54,10 +55,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     }
     try {
       setLoading(true)
-      const body: Partial<DataSet> & {
-        external_knowledge_id?: string
-        external_knowledge_api_id?: string
-      } = {
+      const body: DatasetUpdatePayload = {
         name,
         description,
         icon_info: {
@@ -127,9 +125,15 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               <div className="flex items-center gap-x-2">
                 <IconPickerTrigger
                   aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                  className="group/edit-icon shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
+                  className="group/edit-icon relative shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
                 >
-                  <IconPickerIcon size="medium" showEditIcon />
+                  <IconPickerIcon size="medium" />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                  >
+                    <span className="i-ri-edit-line size-5.5 text-text-primary-on-surface" />
+                  </span>
                 </IconPickerTrigger>
                 <Input
                   value={name}

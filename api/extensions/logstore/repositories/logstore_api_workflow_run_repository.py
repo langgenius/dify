@@ -130,9 +130,9 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
             case _:
                 model.finished_at = ensure_naive_utc(finished_at)
 
-    # Compute elapsed_time from started_at and finished_at
-    # LogStore doesn't store elapsed_time, it's computed in WorkflowExecution domain entity
-    if model.finished_at and model.created_at:
+    if data.get("elapsed_time") is not None:
+        model.elapsed_time = safe_float(data["elapsed_time"])
+    elif model.finished_at and model.created_at:
         model.elapsed_time = (model.finished_at - model.created_at).total_seconds()
     else:
         # Use safe conversion to handle 'null' strings and None values

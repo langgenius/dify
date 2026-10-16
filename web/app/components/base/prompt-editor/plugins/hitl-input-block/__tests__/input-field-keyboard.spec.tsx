@@ -6,9 +6,12 @@ import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/
 import { TransferMethod } from '@/types/app'
 import InputField from '../input-field'
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: undefined }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({ data: undefined }),
+  })
+})
 
 it('lets the extension input commit its tag before the field shortcut saves', async () => {
   const user = userEvent.setup()

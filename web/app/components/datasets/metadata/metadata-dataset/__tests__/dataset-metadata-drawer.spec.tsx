@@ -6,13 +6,16 @@ import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
 // Mock service/API calls
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
+      },
+    }),
+  })
+})
 
 // Mock check name hook
 vi.mock('../../hooks/use-check-metadata-name', () => ({

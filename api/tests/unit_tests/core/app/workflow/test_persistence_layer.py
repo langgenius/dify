@@ -4,12 +4,14 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from flask import Flask
 
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -35,6 +37,13 @@ from graphon.graph_events import (
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
+from tests.unit_tests.config_override import apply_config_overrides
+
+
+@pytest.fixture(autouse=True)
+def _application_tracing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=False)
 
 
 class _RepoRecorder:
@@ -114,6 +123,37 @@ def _make_layer(
 
 
 class TestWorkflowPersistenceLayer:
+    def test_start_freezes_tracing_only_after_workflow_save(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
+        layer, workflow_repo, _, _ = _make_layer(extras={"trace_session_id": "external-session"})
+        calls: list[tuple[str, str, str, str, object]] = []
+
+        def freeze(
+            entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+            *,
+            workflow_id: str,
+            workflow_run_id: str,
+            conversation_id: object,
+            graph_data: object,
+        ) -> None:
+            assert workflow_repo.saved
+            assert graph_data == {"nodes": [], "edges": []}
+            saved_execution = workflow_repo.saved[-1]
+            assert isinstance(saved_execution, WorkflowExecution)
+            assert saved_execution.id_ == workflow_run_id
+            calls.append(
+                (entity.app_config.app_id, entity.app_config.tenant_id, workflow_id, workflow_run_id, conversation_id)
+            )
+
+        monkeypatch.setattr(RuntimeApplicationTracingHooks, "freeze_workflow_run", staticmethod(freeze))
+        hooks = RuntimeApplicationTracingHooks()
+        app = Flask(__name__)
+        bind_application_tracing_hooks(app, hooks)
+
+        with app.app_context():
+            layer._handle_graph_run_started()
+        assert calls == [("app", "tenant", "workflow-id", "run-id", "conv-id")]
+
     def test_on_graph_start_resets_state(self):
         layer, _, _, _ = _make_layer()
         layer._workflow_execution = object()

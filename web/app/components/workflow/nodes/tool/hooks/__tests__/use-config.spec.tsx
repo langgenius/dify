@@ -3,7 +3,12 @@ import { renderHook } from '@testing-library/react'
 import { CollectionType } from '@/app/components/tools/types'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import useConfig from '../use-config'
+
+const queryClient = createTestQueryClient()
+const queryClientWrapper = createQueryClientWrapper(queryClient)
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockSetControlPromptEditorRerenderKey = vi.hoisted(() => vi.fn())
@@ -39,10 +44,6 @@ vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
 
 vi.mock('@/service/tools', () => ({
   updateBuiltInToolCredential: vi.fn(),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -162,6 +163,7 @@ describe('useConfig', () => {
 
       const { rerender } = renderHook(({ payload }) => useConfig('tool-node-1', payload), {
         initialProps: { payload: emptyPayload },
+        wrapper: queryClientWrapper,
       })
 
       expect(mockSetInputs).toHaveBeenCalledTimes(1)
@@ -178,14 +180,16 @@ describe('useConfig', () => {
     })
 
     it('should not update inputs when tool values are already populated on first render', () => {
-      renderHook(() =>
-        useConfig(
-          'tool-node-1',
-          createNodeData({
-            tool_parameters: { query: createToolVarInput('existing query') },
-            tool_configurations: { api_key: createToolVarInput('existing secret') },
-          }),
-        ),
+      renderHook(
+        () =>
+          useConfig(
+            'tool-node-1',
+            createNodeData({
+              tool_parameters: { query: createToolVarInput('existing query') },
+              tool_configurations: { api_key: createToolVarInput('existing secret') },
+            }),
+          ),
+        { wrapper: queryClientWrapper },
       )
 
       expect(mockSetInputs).not.toHaveBeenCalled()
@@ -202,7 +206,7 @@ describe('useConfig', () => {
       })
       mockGetConfiguredValue.mockReturnValue({})
 
-      renderHook(() => useConfig('tool-node-1', createNodeData()))
+      renderHook(() => useConfig('tool-node-1', createNodeData()), { wrapper: queryClientWrapper })
 
       expect(mockSetInputs).not.toHaveBeenCalled()
     })

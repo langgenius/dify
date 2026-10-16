@@ -55,10 +55,7 @@ def lb_model_manager():
     lb_model_manager.cooldown = MagicMock(return_value=None)
 
     def is_cooldown(config: ModelLoadBalancingConfiguration):
-        if config.id == "id1":
-            return True
-
-        return False
+        return config.id == "id1"
 
     lb_model_manager.in_cooldown = MagicMock(side_effect=is_cooldown)
 

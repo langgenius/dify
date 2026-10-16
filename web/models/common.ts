@@ -1,31 +1,13 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
-import type { Role } from './access-control'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { I18nText } from '@/i18n/language'
-import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
 }
 
-export type SetupStatusResponse = {
-  step: 'finished' | 'not_started'
-  setup_at?: Date
-}
-
-export type InitValidateStatusResponse = {
-  status: 'finished' | 'not_started'
-}
-
-export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | 'avatar_url'> & {
-  avatar: string
-  last_login_at?: string
-  last_active_at?: string
-  created_at?: string
-  status: 'pending' | 'active' | 'banned' | 'closed'
-  role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
-  roles: Role[]
-}
+export type Member = AccountWithRoleResponse
 
 export type DataSourceNotionPage = {
   page_icon: null | {
@@ -64,20 +46,7 @@ export const DataSourceProvider = {
 } as const
 export type DataSourceProvider = (typeof DataSourceProvider)[keyof typeof DataSourceProvider]
 
-export type FileUploadConfigResponse = {
-  batch_count_limit: number
-  image_file_size_limit?: number | string // default is 10MB
-  image_file_batch_limit: number // default is 10, for dataset attachment upload only
-  single_chunk_attachment_limit: number // default is 10, for dataset attachment upload only
-  attachment_image_file_size_limit: number // default is 2MB, for dataset attachment upload only
-  file_size_limit: number // default is 15MB
-  knowledge_file_size_limit?: number // current workspace's knowledge upload limit in MB
-  audio_file_size_limit?: number // default is 50MB
-  video_file_size_limit?: number // default is 100MB
-  skill_file_size_limit?: number // default is 50MB
-  workflow_file_upload_limit?: number // default is 10
-  file_upload_limit: number // default is 5
-}
+export type FileUploadConfigResponse = UploadConfig
 
 export type CodeBasedExtensionForm = {
   type: string
@@ -110,14 +79,4 @@ export type ExternalDataTool = {
   config?: {
     api_based_extension_id?: string
   } & Record<string, AppConfigJsonValue>
-}
-
-export type StructuredOutputRulesRequestBody = {
-  instruction: string
-  model_config: Model
-}
-
-export type StructuredOutputRulesResponse = {
-  output: string
-  error?: string
 }

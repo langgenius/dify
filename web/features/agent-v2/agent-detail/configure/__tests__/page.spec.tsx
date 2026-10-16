@@ -205,8 +205,31 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: trackEventMock,
 }))
 
+// The agent tool provider catalog reads these lists; the page tests start with none.
+const { emptyToolList } = vi.hoisted(() => ({
+  emptyToolList: (path: string) => ({
+    get: {
+      queryOptions: (options?: object) => ({
+        ...options,
+        queryKey: [path],
+        queryFn: async () => [],
+      }),
+    },
+  }),
+}))
+
 vi.mock('@/service/console', () => ({
   consoleQuery: {
+    workspaces: {
+      current: {
+        tools: {
+          builtin: emptyToolList('tools-builtin'),
+          api: emptyToolList('tools-api'),
+          workflow: emptyToolList('tools-workflow'),
+          mcp: emptyToolList('tools-mcp'),
+        },
+      },
+    },
     systemFeatures: {
       get: {
         queryKey: () => ['system-features'],

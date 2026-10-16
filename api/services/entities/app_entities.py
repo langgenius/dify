@@ -229,6 +229,8 @@ class AppReference:
 class AppTraceSettings:
     enabled: bool = False
     tracing_provider: str | None = None
+    capture_content: bool = False
+    capture_agent: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,6 +271,19 @@ class AppUpdateArguments(TypedDict):
     use_icon_as_answer_icon: bool
     max_active_requests: int
     role: NotRequired[str | None]
+
+
+class AppFieldChanges(TypedDict, total=False):
+    """A partial update of the App row and its backing agent's role: only the keys present are written."""
+
+    name: str
+    description: str
+    icon_type: IconType
+    icon: str
+    icon_background: str
+    use_icon_as_answer_icon: bool
+    max_active_requests: int
+    role: str
 
 
 @dataclass(frozen=True, slots=True)

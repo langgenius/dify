@@ -13,6 +13,7 @@ import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetUpdateForm from '../index'
 
@@ -114,13 +115,16 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 let mockDataSourceList: { result: DataSourceAuth[] } | undefined
 let mockIsLoadingDataSourceList = false
 let mockFetchingError = false
-vi.mock('@/service/use-datasource', () => ({
-  useGetDefaultDataSourceListAuth: () => ({
-    data: mockDataSourceList,
-    isLoading: mockIsLoadingDataSourceList,
-    isError: mockFetchingError,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'auth.plugin.datasource.defaultList.get': () => ({
+      data: mockDataSourceList,
+      isLoading: mockIsLoadingDataSourceList,
+      isError: mockFetchingError,
+    }),
+  })
+})
 
 // Track props passed to child components
 let stepOneProps = {} as StepOneProps
@@ -254,7 +258,13 @@ vi.mock('../step-two', () => ({
         </button>
         <button
           data-testid="step-two-update-result-cache"
-          onClick={() => props.updateResultCache!({ batch: 'batch-1', documents: [] })}
+          onClick={() =>
+            props.updateResultCache!({
+              batch: 'batch-1',
+              dataset: { id: 'dataset-1', name: 'Dataset' },
+              documents: [],
+            })
+          }
         >
           Update Result Cache
         </button>
@@ -290,9 +300,9 @@ vi.mock('../top-bar', () => ({
 }))
 
 const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-123',
   name: 'Test Dataset',
-  indexing_status: 'completed',
   icon_info: { icon: '', icon_background: '', icon_type: 'emoji' as const },
   description: 'Test description',
   permission: DatasetPermission.onlyMe,
@@ -304,23 +314,12 @@ const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 0,
-  total_document_count: 0,
   word_count: 0,
   provider: 'openai',
   embedding_model: 'text-embedding-ada-002',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_mode: undefined,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    weights: undefined,
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_mode: undefined,

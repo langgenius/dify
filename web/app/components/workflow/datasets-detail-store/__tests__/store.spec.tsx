@@ -1,16 +1,17 @@
 import type { DataSet } from '@/models/datasets'
 import { renderHook } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetsDetailContext } from '../provider'
 import { createDatasetsDetailStore, useDatasetsDetailStore } from '../store'
 
 const createDataset = (id: string, name = `dataset-${id}`): DataSet => ({
+  ...createDatasetFixture(),
   id,
   name,
-  indexing_status: 'completed',
   icon_info: {
     icon: 'book',
-    icon_type: 'emoji' as DataSet['icon_info']['icon_type'],
+    icon_type: 'emoji',
   },
   description: `${name} description`,
   permission: DatasetPermission.onlyMe,
@@ -22,14 +23,12 @@ const createDataset = (id: string, name = `dataset-${id}`): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 0,
-  total_document_count: 0,
   word_count: 0,
   provider: 'provider',
   embedding_model: 'model',
   embedding_model_provider: 'provider',
   embedding_available: true,
   retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
-  retrieval_model: {} as DataSet['retrieval_model'],
   tags: [],
   external_knowledge_info: {
     external_knowledge_id: '',

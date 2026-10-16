@@ -28,6 +28,7 @@ from enums import CloudPlan, DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
 from machinery.context import RequestContext
 from services.errors import file as file_errors
@@ -258,6 +259,7 @@ class WorkspaceListApi(Resource):
 
 @console_ns.route("/workspaces/current/summary")
 class CurrentWorkspaceSummaryApi(Resource):
+    @error_responses(CurrentWorkspaceArchivedError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[CurrentWorkspaceSummaryResponse.__name__])
     @console_ns.response(HTTPStatus.CONFLICT, "Current workspace is archived")
     @console_account_admission()
@@ -273,6 +275,7 @@ class CurrentWorkspaceSummaryApi(Resource):
 
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
+    @error_responses(AccountNotLinkTenantError)
     @console_ns.expect(console_ns.models[SwitchWorkspacePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
     @console_account_admission()
@@ -317,6 +320,9 @@ class CustomConfigWorkspaceApi(Resource):
 
 @console_ns.route("/workspaces/custom-config/webapp-logo/upload")
 class WebappLogoWorkspaceApi(Resource):
+    @error_responses(
+        FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, TooManyFilesError, UnsupportedFileTypeError
+    )
     @console_ns.doc(consumes=["multipart/form-data"], params=WORKSPACE_LOGO_UPLOAD_PARAMS)
     @console_ns.response(HTTPStatus.CREATED, "Logo uploaded", console_ns.models[WorkspaceLogoUploadResponse.__name__])
     @console_account_admission(billing_resource="workspace_custom")

@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
+import type { ExternalAPIItem } from '@/models/datasets'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -22,7 +23,7 @@ import Form from './Form'
 
 type AddExternalAPIModalProps = {
   data?: CreateExternalAPIReq
-  onSave: (formValue: CreateExternalAPIReq) => void
+  onSave: (api: ExternalAPIItem) => void
   onCancel: () => void
   onEdit?: (formValue: CreateExternalAPIReq) => Promise<void>
   datasetBindings?: {

@@ -1,18 +1,18 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { StepTwoFile, StepTwoNotionPage } from '../types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { NotionPage } from '@/models/common'
 import type {
   ChunkingMode,
   CrawlOptions,
   CrawlResultItem,
   CreateDocumentReq,
   createDocumentResponse,
-  CustomFile,
   FullDocumentDetail,
   ProcessRule,
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -20,13 +20,8 @@ import { isReRankModelSelected } from '@/app/components/datasets/common/check-re
 import { toast } from '@/app/notifications'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
-import {
-  getNotionInfo,
-  getWebsiteInfo,
-  useCreateDocument,
-  useCreateFirstDocument,
-} from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
+import { getNotionInfo, getWebsiteInfo } from '../creation-params'
 import { IndexingType } from './use-indexing-config'
 import { MAXIMUM_CHUNK_TOKEN_LENGTH } from './use-segmentation-state'
 
@@ -35,8 +30,8 @@ type UseDocumentCreationOptions = {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
   dataSourceType: DataSourceType
-  files: CustomFile[]
-  notionPages: NotionPage[]
+  files: StepTwoFile[]
+  notionPages: StepTwoNotionPage[]
   notionCredentialId: string
   websitePages: CrawlResultItem[]
   crawlOptions?: CrawlOptions
@@ -83,10 +78,17 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     onSave,
     mutateDatasetRes,
   } = options
-  const createFirstDocumentMutation = useCreateFirstDocument()
-  const createDocumentMutation = useCreateDocument(datasetId!)
-  const invalidDatasetList = useInvalidDatasetList()
-  const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
+  const { mutateAsync: createFirstDocument, isPending: isCreatingFirstDocument } = useMutation(
+    consoleQuery.datasets.init.post.mutationOptions(),
+  )
+  const { mutateAsync: createDocument, isPending: isCreatingDocument } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.post.mutationOptions(),
+  )
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
+  const isCreating = isCreatingFirstDocument || isCreatingDocument
   // Validate creation params
   const validateParams = useCallback(
     (params: ValidationParams): boolean => {
@@ -220,21 +222,27 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
       if (datasetId && !isSetting && !canCreateDocument) return
 
       if (!datasetId) {
-        await createFirstDocumentMutation.mutateAsync(params, {
-          onSuccess(data) {
-            updateIndexingTypeCache?.(indexType)
-            updateResultCache?.(data)
-            updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
+        await createFirstDocument(
+          { body: params },
+          {
+            onSuccess(data) {
+              updateIndexingTypeCache?.(indexType)
+              updateResultCache?.(data)
+              updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
+            },
           },
-        })
+        )
       } else {
-        await createDocumentMutation.mutateAsync(params, {
-          onSuccess(data) {
-            updateIndexingTypeCache?.(indexType)
-            updateResultCache?.(data)
-            updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
+        await createDocument(
+          { params: { dataset_id: datasetId }, body: params },
+          {
+            onSuccess(data) {
+              updateIndexingTypeCache?.(indexType)
+              updateResultCache?.(data)
+              updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
+            },
           },
-        })
+        )
       }
       mutateDatasetRes?.()
       invalidDatasetList()
@@ -247,8 +255,8 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
     },
     [
       datasetId,
-      createFirstDocumentMutation,
-      createDocumentMutation,
+      createFirstDocument,
+      createDocument,
       updateIndexingTypeCache,
       updateResultCache,
       updateRetrievalMethodCache,

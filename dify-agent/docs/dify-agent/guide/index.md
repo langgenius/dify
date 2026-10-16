@@ -57,7 +57,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
 | `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
-| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
+| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Required nonblank bearer token when the Local endpoint is configured; must match shellctl's `SHELLCTL_AUTH_TOKEN`. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
 | `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/workspace` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
 | `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
@@ -82,6 +82,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_OUTBOUND_HTTP_MAX_KEEPALIVE_CONNECTIONS` | `20` | Maximum idle shared outbound HTTP connections. |
 | `DIFY_AGENT_OUTBOUND_HTTP_KEEPALIVE_EXPIRY` | `30` | Idle keep-alive expiry in seconds. |
 | `DIFY_AGENT_TRAJECTORY_ENABLED` | `false` | Opt-in switch for the separate Agent trajectory export pipeline. |
+| `DIFY_AGENT_APPLICATION_TRACING_ENABLED` | `false` | Collect API-authorized application spans into the Dify inner API tracing inbox. Requires the server inner API URL and key. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT` | empty | Full HTTP(S) OTLP traces endpoint required when trajectory export is enabled. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_HEADERS` | `{}` | JSON object of request headers sent with Agent OTLP trace exports. |
 | `DIFY_AGENT_TRAJECTORY_SERVICE_NAME` | `dify-agent-trajectory` | Resource service name attached to Agent trajectory spans. |
@@ -118,6 +119,48 @@ The two SDK instances, exporters, enable switch, and content opt-in remain
 separate. The mode is fixed at process initialization and requires a restart
 to change. No extra shared root span is added; incomplete traces may still
 appear temporarily while a run or export is in progress.
+
+Application tracing is a third, independent pipeline. When enabled, a run's
+API-issued `execution_context.tracing` supplies its durable run/invocation IDs,
+OpenTelemetry parent, session and content/sampling policy. Its spans are sent as
+JSON to `POST /inner/api/agent/tracing/batches`, authenticated with the server's
+`DIFY_AGENT_INNER_API_KEY` in `X-Inner-Api-Key`. Provider credentials and routing
+remain in the Dify API. Application spans do not inherit platform or deployment
+trajectory destinations, and one Agent is never instrumented by both application
+and deployment pipelines. Binary content is excluded.
+
+The actual model-call span also carries the Dify gateway's billed amount as
+`dify.llm.total_price` (a decimal string) and `dify.llm.currency` when a usage
+payload is returned. `gen_ai.response.time_to_first_token` is measured in seconds
+(`dify.llm.time_to_first_token_unit=s`): gateway-provided TTFT takes precedence;
+otherwise it measures request issue to the first content/tool-call chunk.
+`dify.llm.time_to_first_token_source` distinguishes those two sources. Missing
+accounting is left absent. The current Graphon LLM gateway does not expose cache
+token counters, so the Agent adapter does not manufacture them.
+
+Each batch has a stable `batch_id`. Retries reuse the same payload, and a 2xx
+response is accepted only with `{result: "success", batch_id, accepted_spans}`
+matching that batch. An invocation emits an empty `final: true` batch after its
+ended spans are flushed and acknowledged, before its normal terminal event when
+delivery completes within five seconds. Failure or cancellation still flushes.
+Collection failures do not fail the Agent run; outstanding delivery can finish
+in the background after the terminal-event deadline. A full in-memory queue or
+unacknowledged data suppresses completion instead of claiming a complete trace.
+The queue is bounded (2048 spans, batches of at most 128), with up to 128 unacknowledged
+batches retained until invocation finalization. Batches are split below 1 MiB
+of UTF-8 JSON. A single oversized span is dropped and marks its invocation
+incomplete rather than silently truncating content or sending a success marker.
+This is not a durable local
+spool: process loss can leave an incomplete trace in the API. Shutdown drains the
+collector after active runs finish.
+
+If setup fails or cancellation arrives before Pydantic AI starts its Agent span,
+the collector emits one failed `invoke_agent` span with the measured setup
+interval, then finalizes normally. It records `dify.agent.execution_state` as
+`initialization_failed` or `cancelled`. Runs that already started their native
+Agent span keep that span without an extra wrapper. Sampling-off invocations
+remain span-free; successful but unexplained empty collections are not converted
+to synthetic success.
 
 Example `.env`:
 
@@ -182,6 +225,25 @@ accepted only as legacy aliases for the two Local settings. New deployments
 must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
 the removed shell-provider selector.
+
+Local shellctl deployments must start with `shellctl serve --require-auth-token`
+and set `SHELLCTL_AUTH_TOKEN` to the same secret as the Agent Backend. Compose's
+`local_sandbox` command enables this check; missing, empty, or whitespace-only
+tokens fail before service initialization. E2B and Enterprise retain their
+existing token requirements, and an unset Local endpoint still disables runtime.
+
+For Compose, set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` in a shared interpolation
+source: the invoking shell, `docker/.env`, or a Compose `--env-file`. This supplies
+the same secret to Agent Backend and shellctl. Setting it only in a service env
+file is insufficient: Compose's explicit `environment` values override that
+file, including with an empty interpolated value. The legacy token alias remains
+accepted. Deploy this change with a rebuilt runtime image containing
+`--require-auth-token`; the previously published `1.17.1` image does not support
+the new flag.
+
+When shellctl path isolation is enabled, any Landlock setup error aborts the job
+with exit code `125` before its user script executes. Deployments may explicitly
+set `SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable shellctl path isolation.
 
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries

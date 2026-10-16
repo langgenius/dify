@@ -49,12 +49,20 @@ vi.mock('@/service/base', () => ({
   request: mockRequest,
 }))
 
-mockRequest.mockImplementation(async (url: string) => {
-  const data = await mockGet(url)
-  return new Response(JSON.stringify(data), {
-    headers: { 'Content-Type': 'application/json' },
-  })
-})
+mockRequest.mockImplementation(
+  async (url: string, _init: RequestInit, options: { request?: Request }) => {
+    const method = options.request?.method ?? 'GET'
+    const data =
+      method === 'GET'
+        ? await mockGet(url)
+        : await mockPost(new URL(url).pathname.replace('/console/api', ''), {
+            body: await options.request?.json(),
+          })
+    return new Response(JSON.stringify(data ?? {}), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  },
+)
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({
@@ -70,13 +78,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const { mockInvalidateAllBuiltInTools } = vi.hoisted(() => ({
-  mockInvalidateAllBuiltInTools: vi.fn(),
-}))
-
-vi.mock('../use-tools', () => ({
-  useInvalidateAllBuiltInTools: () => mockInvalidateAllBuiltInTools,
-}))
+const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
 
 const createQueryClient = () =>
   new QueryClient({
@@ -1057,6 +1059,7 @@ describe('useInvalidateInstalledPluginList', () => {
 
     queryClient.setQueryData(modelInstalledIdsKey, { plugin_ids: ['langgenius/openai'] })
     queryClient.setQueryData(toolInstalledIdsKey, { plugin_ids: ['langgenius/google'] })
+    queryClient.setQueryData(builtInToolsKey, [])
 
     const { result: listResult, unmount } = renderHook(
       () => ({
@@ -1099,11 +1102,12 @@ describe('useInvalidateInstalledPluginList', () => {
     expect(toolCategoryQueries[0]?.state.isInvalidated).toBe(false)
     expect(queryClient.getQueryState(modelInstalledIdsKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(toolInstalledIdsKey)?.isInvalidated).toBe(false)
-    expect(mockInvalidateAllBuiltInTools).not.toHaveBeenCalled()
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(false)
   })
 
   it('also invalidates built-in tools for the tool category', async () => {
     const queryClient = createQueryClient()
+    queryClient.setQueryData(builtInToolsKey, [])
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
 
     const { result } = renderHook(
@@ -1124,7 +1128,7 @@ describe('useInvalidateInstalledPluginList', () => {
       await result.current.invalidate(PluginCategoryEnum.tool)
     })
 
-    expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledOnce()
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
   })
 })
 
@@ -1171,7 +1175,6 @@ describe('usePluginTaskList', () => {
       result.current.handleInstallTaskStart({
         all_installed: false,
         task_id: 'task-new',
-        plugin_unique_identifier: 'langgenius/gitlab_datasource:0.3.11@test',
         task: startedTask,
       })
     })
@@ -1229,7 +1232,6 @@ describe('usePluginTaskList', () => {
       result.current.handleInstallTaskStart({
         all_installed: false,
         task_id: 'task-new',
-        plugin_unique_identifier: 'langgenius/gitlab_datasource:0.3.11@test',
         task: {
           id: 'task-new',
           created_at: '2026-06-05T03:34:59.578653Z',
@@ -1346,7 +1348,7 @@ describe('usePluginAutoUpgradeSettings', () => {
     vi.clearAllMocks()
   })
 
-  it('does not expose frontend default settings before backend data resolves', () => {
+  it('does not expose frontend default settings before backend data resolves', async () => {
     const queryClient = createQueryClient()
     mockGet.mockReturnValue(new Promise(() => {}))
 
@@ -1355,10 +1357,10 @@ describe('usePluginAutoUpgradeSettings', () => {
     })
 
     expect(result.current.data).toBeUndefined()
-    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/auto-upgrade/fetch', {
-      params: {
-        category: PluginCategoryEnum.model,
-      },
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        `http://localhost:5001/console/api/workspaces/current/plugin/auto-upgrade/fetch?category=${PluginCategoryEnum.model}`,
+      )
     })
   })
 

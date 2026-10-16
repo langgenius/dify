@@ -15,6 +15,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -23,13 +24,8 @@ import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import {
-  useAuthorizeMCP,
-  useInvalidateAllMCPTools,
-  useInvalidateMCPTools,
-  useMCPTools,
-  useUpdateMCPTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
+import { selectToolProviderTools } from '../../utils/query-select'
 import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
 import ToolItem from './tool-item'
@@ -56,13 +52,20 @@ const MCPDetailContent: FC<Props> = ({
   const { t } = useTranslation(['common', 'tools'])
   const canManageMCP = useCanManageMCP()
 
-  const { data, isFetching: isGettingTools } = useMCPTools(
-    detail.is_team_authorization ? detail.id : '',
+  const queryClient = useQueryClient()
+  const { data, isFetching: isGettingTools } = useQuery(
+    consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryOptions({
+      input: { params: { provider_id: detail.id } },
+      enabled: !!detail.is_team_authorization && !!detail.id,
+      select: selectToolProviderTools,
+    }),
   )
-  const invalidateMCPTools = useInvalidateMCPTools()
-  const invalidateAllMCPTools = useInvalidateAllMCPTools()
-  const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
-  const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
+  const { mutateAsync: updateTools, isPending: isUpdating } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.update.byProviderId.get.mutationOptions(),
+  )
+  const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.auth.post.mutationOptions(),
+  )
   const toolList = data?.tools || []
 
   const [isShowUpdateConfirm, { setTrue: showUpdateConfirm, setFalse: hideUpdateConfirm }] =
@@ -71,19 +74,17 @@ const MCPDetailContent: FC<Props> = ({
   const handleUpdateTools = useCallback(async () => {
     hideUpdateConfirm()
     if (!canManageMCP || !detail) return
-    await updateTools(detail.id)
-    invalidateMCPTools(detail.id)
-    invalidateAllMCPTools()
+    await updateTools({ params: { provider_id: detail.id } })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey({
+        input: { params: { provider_id: detail.id } },
+      }),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
+    })
     onUpdate()
-  }, [
-    canManageMCP,
-    detail,
-    hideUpdateConfirm,
-    invalidateAllMCPTools,
-    invalidateMCPTools,
-    onUpdate,
-    updateTools,
-  ])
+  }, [canManageMCP, detail, hideUpdateConfirm, onUpdate, queryClient, updateTools])
 
   const hasTriggeredAuthorizeRef = useRef(false)
 
@@ -98,9 +99,7 @@ const MCPDetailContent: FC<Props> = ({
     onFirstCreate()
     if (!detail) return
     try {
-      const res = await authorizeMcp({
-        provider_id: detail.id,
-      })
+      const res = await authorizeMcp({ body: { provider_id: detail.id } })
       if (res.result === 'success') handleUpdateTools()
       else if (res.authorization_url) openOAuthPopup(res.authorization_url, handleOAuthCallback)
     } catch {

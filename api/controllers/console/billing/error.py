@@ -6,7 +6,6 @@ from services.errors.billing import (
     BillingError,
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
-    ComplianceRateLimitExceededError,
     TokenerEducationCheckoutUnsupportedError,
 )
 
@@ -66,8 +65,6 @@ class TokenerEducationCheckoutUnsupportedHTTPError(BaseHTTPException):
 
 
 def to_billing_request_error(error: BillingError) -> BaseHTTPException:
-    if isinstance(error, ComplianceRateLimitExceededError):
-        return ComplianceRateLimitError()
     if isinstance(error, BillingUpstreamInvalidResponseError):
         return BillingOperationFailedError()
     if isinstance(error, BillingUpstreamUnavailableError):

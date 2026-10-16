@@ -222,11 +222,13 @@ def test_streaming_completion_preserves_bytes_headers_and_closes_runtime_iterato
     ("failure", "status", "code", "message"),
     [
         (ConversationNotExistsError(), 404, "not_found", "Conversation Not Exists."),
-        (
+        # Nothing raises ConversationCompletedError today, so the contract does not list its code.
+        pytest.param(
             ConversationCompletedError(),
             400,
             "conversation_completed",
             "The conversation has ended. Please start a new conversation.",
+            marks=pytest.mark.allow_error_contract_violations,
         ),
         (AppModelConfigBrokenError(), 400, "app_unavailable", "App unavailable, please check your app configurations."),
         (

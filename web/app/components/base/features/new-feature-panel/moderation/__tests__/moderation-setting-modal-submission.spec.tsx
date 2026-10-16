@@ -6,6 +6,14 @@ import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ModerationSettingModal from '../moderation-setting-modal'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => ({ data: { data: [] } }),
+    'workspaces.current.modelProviders.get': () => ({ data: { data: [] }, isPending: false }),
+  })
+})
+
 const { getExtensions, createExtension } = vi.hoisted(() => ({
   getExtensions: vi.fn<ConsoleClient['apiBasedExtension']['get']>(),
   createExtension: vi.fn<ConsoleClient['apiBasedExtension']['post']>(),
@@ -28,11 +36,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   })
   return { ...actual, consoleClient, consoleQuery: createConsoleQuery(consoleClient) }
 })
-
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: { data: [] } }),
-  useModelProviderDetails: () => ({ data: { data: [] }, isPending: false }),
-}))
 
 vi.mock('nuqs', async (importOriginal) => ({
   ...(await importOriginal<typeof import('nuqs')>()),

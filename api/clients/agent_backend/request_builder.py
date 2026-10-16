@@ -281,28 +281,30 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
 
         include_shell = run_input.include_shell or run_input.config_layer_config is not None
         if include_shell:
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_RUNTIME_LAYER_ID,
-                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
-                        mode="json"
+            layers.extend(
+                [
+                    RunLayerSpec(
+                        name=DIFY_RUNTIME_LAYER_ID,
+                        config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                            mode="json"
+                        ),
                     ),
-                )
-            )
-            # Sandboxed bash workspace (dify.shell). It enters before config so
-            # eager pulls materialize content in the same filesystem used by model commands.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
-                )
+                    # Sandboxed bash workspace (dify.shell). It enters before config so
+                    # eager pulls materialize content in the same filesystem used by model commands.
+                    RunLayerSpec(
+                        name=DIFY_SHELL_LAYER_ID,
+                        config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
+                    ),
+                ]
             )
 
         if run_input.config_layer_config is not None:
@@ -415,28 +417,30 @@ class AgentBackendRunRequestBuilder:
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
-                    config=(run_input.execution_context).model_dump(mode="json"),
+                    config=run_input.execution_context.model_dump(
+                        mode="json", exclude={"tracing"} if run_input.execution_context.tracing is None else set()
+                    ),
                 ),
             ]
         )
 
         include_shell = run_input.include_shell or run_input.config_layer_config is not None
         if include_shell:
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_RUNTIME_LAYER_ID,
-                    config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
-                        mode="json"
+            layers.extend(
+                [
+                    RunLayerSpec(
+                        name=DIFY_RUNTIME_LAYER_ID,
+                        config=(DifyRuntimeLayerConfig(backend_binding_ref=run_input.backend_binding_ref)).model_dump(
+                            mode="json"
+                        ),
                     ),
-                )
-            )
-            # Sandboxed bash workspace (dify.shell). It enters before config so
-            # eager pulls materialize content in the same filesystem used by model commands.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
-                )
+                    # Sandboxed bash workspace (dify.shell). It enters before config so
+                    # eager pulls materialize content in the same filesystem used by model commands.
+                    RunLayerSpec(
+                        name=DIFY_SHELL_LAYER_ID,
+                        config=(run_input.shell_config or DifyShellLayerConfig()).model_dump(mode="json"),
+                    ),
+                ]
             )
 
         if run_input.config_layer_config is not None:
@@ -531,7 +535,11 @@ def redact_for_agent_backend_log(value: object) -> object:
         is_multimodal_file = value.get("type") == "image" and "filename" in value and "mime_type" in value
         for key, item in value.items():
             key_text = str(key).lower()
-            if any(part in key_text for part in _SENSITIVE_KEY_PARTS) or (is_multimodal_file and key_text == "url"):
+            if (
+                any(part in key_text for part in _SENSITIVE_KEY_PARTS)
+                or (is_multimodal_file and key_text == "url")
+                or (key_text == "tracing" and item is not None)
+            ):
                 redacted[key] = "[REDACTED]"
             else:
                 redacted[key] = redact_for_agent_backend_log(item)

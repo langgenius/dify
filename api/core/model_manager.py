@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
-from typing import IO, TYPE_CHECKING, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
+from typing import IO, TYPE_CHECKING, Any, Literal, Optional, ParamSpec, TypeVar, cast, overload, override
 from uuid import UUID
 
 from configs import dify_config
@@ -180,7 +180,7 @@ class ModelInstance:
         stream: bool = True,
         callbacks: list[Callback] | None = None,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]: ...
+    ) -> LLMResult | Generator: ...
 
     def invoke_llm(
         self,
@@ -191,7 +191,7 @@ class ModelInstance:
         stream: bool = True,
         callbacks: list[Callback] | None = None,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]:
+    ) -> LLMResult | Generator:
         """
         Invoke large language model
 
@@ -208,7 +208,7 @@ class ModelInstance:
             raise Exception("Model type instance is not LargeLanguageModel")
         request_metadata = self._resolve_request_metadata(request_metadata)
         return cast(
-            Union[LLMResult, Generator],
+            LLMResult | Generator,
             self._round_robin_invoke(
                 self.model_type_instance.invoke,
                 model=self.model_name,
@@ -444,7 +444,7 @@ class ModelInstance:
         if not self.load_balancing_manager:
             return function(*args, **kwargs)
 
-        last_exception: Union[InvokeRateLimitError, InvokeAuthorizationError, InvokeConnectionError, None] = None
+        last_exception: InvokeRateLimitError | InvokeAuthorizationError | InvokeConnectionError | None = None
         while True:
             lb_config = self.load_balancing_manager.fetch_next()
             if not lb_config:
@@ -640,7 +640,7 @@ class QuotaManagedModelInstance(ModelInstance):
         stream: bool = True,
         callbacks: list[Callback] | None = None,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]: ...
+    ) -> LLMResult | Generator: ...
 
     @override
     def invoke_llm(
@@ -652,7 +652,7 @@ class QuotaManagedModelInstance(ModelInstance):
         stream: bool = True,
         callbacks: list[Callback] | None = None,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]:
+    ) -> LLMResult | Generator:
         normalized_prompt_messages = list(prompt_messages)
         normalized_stop = list(stop) if stop else None
         if stream:
@@ -1066,9 +1066,7 @@ class ModelManager:
         model_schema = model_type_instance.get_model_schema(model, model_instance.credentials)
         if not model_schema:
             return False
-        if model_schema.features and ModelFeature.VISION in model_schema.features:
-            return True
-        return False
+        return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
 
 
 class LBModelManager:
@@ -1110,9 +1108,7 @@ class LBModelManager:
         Strategy: Round Robin
         :return:
         """
-        cache_key = "model_lb_index:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model
-        )
+        cache_key = f"model_lb_index:{self._tenant_id}:{self._provider}:{self._model_type.value}:{self._model}"
 
         cooldown_load_balancing_configs = []
         max_index = len(self._load_balancing_configs)
@@ -1186,8 +1182,9 @@ model: %s""",
         :param expire: cooldown time
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         redis_client.setex(cooldown_cache_key, expire, "true")
@@ -1198,8 +1195,9 @@ model: %s""",
         :param config: model load balancing config
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         res: bool = redis_client.exists(cooldown_cache_key)
@@ -1218,9 +1216,7 @@ model: %s""",
         :param config_id: model load balancing config id
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            tenant_id, provider, model_type.value, model, config_id
-        )
+        cooldown_cache_key = f"model_lb_index:cooldown:{tenant_id}:{provider}:{model_type.value}:{model}:{config_id}"
 
         ttl = redis_client.ttl(cooldown_cache_key)
         if ttl == -2:

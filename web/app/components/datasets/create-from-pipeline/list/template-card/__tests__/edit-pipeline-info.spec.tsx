@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -16,14 +17,15 @@ const render = (ui: ReactElement) =>
   )
 
 const mockUpdatePipeline = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
 
-vi.mock('@/service/use-pipeline', () => ({
-  useUpdateTemplateInfo: () => ({
-    mutateAsync: mockUpdatePipeline,
-  }),
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.customized.templates.byTemplateId.patch': () => ({
+      mutateAsync: mockUpdatePipeline,
+    }),
+  })
+})
 
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
@@ -82,6 +84,7 @@ describe('EditPipelineInfo', () => {
     })
 
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     mockToastError.mockReset()
   })
@@ -192,7 +195,9 @@ describe('EditPipelineInfo', () => {
       fireEvent.click(saveButton)
 
       await waitFor(() => {
-        expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
+        expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+          queryKey: expect.arrayContaining([['console', 'rag', 'pipeline', 'templates', 'get']]),
+        })
       })
     })
 
@@ -304,9 +309,11 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'image',
-              icon: 'file-id-123',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'image',
+                icon: 'file-id-123',
+              }),
             }),
           }),
           expect.any(Object),
@@ -328,9 +335,11 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: '📊',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: '📊',
+              }),
             }),
           }),
           expect.any(Object),
@@ -384,10 +393,12 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: expect.any(String),
-              icon_background: '#F3FEE7',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: expect.any(String),
+                icon_background: '#F3FEE7',
+              }),
             }),
           }),
           expect.any(Object),
@@ -478,10 +489,12 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: '📊',
-              icon_background: '#F3FEE7',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: '📊',
+                icon_background: '#F3FEE7',
+              }),
             }),
           }),
           expect.any(Object),
@@ -511,10 +524,12 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
-              icon: expect.any(String),
-              icon_background: '#F3FEE7',
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+                icon: expect.any(String),
+                icon_background: '#F3FEE7',
+              }),
             }),
           }),
           expect.any(Object),
@@ -539,11 +554,13 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            template_id: 'pipeline-1',
-            name: 'Test Pipeline',
-            description: 'Test pipeline description',
-            icon_info: expect.objectContaining({
-              icon_type: 'emoji',
+            params: { template_id: 'pipeline-1' },
+            body: expect.objectContaining({
+              name: 'Test Pipeline',
+              description: 'Test pipeline description',
+              icon_info: expect.objectContaining({
+                icon_type: 'emoji',
+              }),
             }),
           }),
           expect.any(Object),
@@ -569,9 +586,11 @@ describe('EditPipelineInfo', () => {
       await waitFor(() => {
         expect(mockUpdatePipeline).toHaveBeenCalledWith(
           expect.objectContaining({
-            template_id: 'pipeline-2',
-            icon_info: expect.objectContaining({
-              icon_type: 'image',
+            params: { template_id: 'pipeline-2' },
+            body: expect.objectContaining({
+              icon_info: expect.objectContaining({
+                icon_type: 'image',
+              }),
             }),
           }),
           expect.any(Object),

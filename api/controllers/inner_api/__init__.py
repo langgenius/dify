@@ -10,6 +10,15 @@ api = ExternalApi(
     version="1.0",
     title="Inner API",
     description="Internal APIs for enterprise features, billing, knowledge retrieval, and plugin communication",
+    authorizations={
+        "InnerApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Inner-Api-Key",
+            "description": "INNER_API_KEY for enterprise callers; INNER_API_KEY_FOR_PLUGIN for plugin/agent callers.",
+        }
+    },
+    security="InnerApiKey",
 )
 
 # Create namespace
@@ -22,6 +31,7 @@ from .agent import files as _agent_files
 from .agent import llm as _agent_llm
 from .agent import runtime_usage as _agent_runtime_usage
 from .agent import tools as _agent_tools
+from .agent import tracing as _agent_tracing
 from .app import dsl as _app_dsl
 from .app import file_grants as _app_file_grants
 from .knowledge import retrieval as _knowledge_retrieval
@@ -38,6 +48,7 @@ __all__ = [
     "_agent_llm",
     "_agent_runtime_usage",
     "_agent_tools",
+    "_agent_tracing",
     "_app_dsl",
     "_app_file_grants",
     "_knowledge_retrieval",
