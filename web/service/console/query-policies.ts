@@ -934,6 +934,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          traceRuns: {
+            bySourceKind: {
+              bySourceId: {
+                get: { queryOptions: { context: { silent: true }, retry: false } },
+              },
+            },
+          },
           workflowRuns: {
             tasks: {
               byTaskId: {
@@ -1633,6 +1640,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       snippets: {
         bySnippetId: {
+          traceRuns: {
+            bySourceKind: {
+              bySourceId: {
+                get: { queryOptions: { context: { silent: true }, retry: false } },
+              },
+            },
+          },
           workflowRuns: {
             tasks: {
               byTaskId: {

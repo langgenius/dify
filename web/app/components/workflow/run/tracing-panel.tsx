@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { WorkflowRunInfo } from './workflow-tool-tracing-context'
+import type { ExternalTraceRun } from './external-trace-row'
 import type { NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
@@ -18,6 +19,7 @@ import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
 type TracingPanelProps = {
   list: NodeTracing[]
+  externalTraceRun?: ExternalTraceRun
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
@@ -34,6 +36,7 @@ function findExecution(nodes: NodeTracing[], id: string): NodeTracing | undefine
 
 const TracingPanel: FC<TracingPanelProps> = ({
   list,
+  externalTraceRun,
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
@@ -165,6 +168,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
     ) : container || logs.showSpecialResultPanel ? (
       <SpecialResultPanel
         {...logs}
+        externalTraceRun={externalTraceRun}
         showIteratingDetail={!!iteration}
         setShowIteratingDetailFalse={() => setContainerId(null)}
         iterationResultList={iteration ? getIterationResultList(iteration, list) : undefined}
