@@ -27,18 +27,29 @@ const render = (ui: ReactElement) => {
       queryFn: () => new Promise(() => {}),
     })
   } else seedFeatures(queryClient, { billing: { subscription: { plan: scenario.planType } } })
+  const annotationsCountQueryKey = consoleQuery.apps.byAppId.annotations.count.get.queryKey({
+    input: { params: { app_id: 'test-app-id' } },
+  })
+  if (mockAnnotationsCountLoading) {
+    void queryClient.query({
+      queryKey: annotationsCountQueryKey,
+      queryFn: () => new Promise(() => {}),
+    })
+  } else if (mockAnnotationsCountData) {
+    queryClient.setQueryData(annotationsCountQueryKey, mockAnnotationsCountData)
+  } else {
+    void queryClient
+      .query({
+        queryKey: annotationsCountQueryKey,
+        queryFn: () => Promise.reject(new Error('annotations count unavailable')),
+      })
+      .catch(() => {})
+  }
   return renderWithConsoleQuery(ui, {
     queryClient,
     systemFeatures: { deployment_edition: scenario.deploymentEdition },
   })
 }
-
-vi.mock('@/service/use-log', () => ({
-  useAnnotationsCount: () => ({
-    data: mockAnnotationsCountData,
-    isLoading: mockAnnotationsCountLoading,
-  }),
-}))
 
 vi.mock('@/app/components/base/chip', async () => {
   const { useState } = await import('react')
@@ -350,7 +361,7 @@ describe('Filter', () => {
     it('should display annotated status with count when annotation_status is annotated', () => {
       const propsWithAnnotation = {
         ...defaultProps,
-        queryParams: { ...defaultQueryParams, annotation_status: 'annotated' },
+        queryParams: { ...defaultQueryParams, annotation_status: 'annotated' as const },
       }
 
       render(<Filter {...propsWithAnnotation} />)
@@ -363,7 +374,7 @@ describe('Filter', () => {
     it('should display not_annotated status when annotation_status is not_annotated', () => {
       const propsWithNotAnnotated = {
         ...defaultProps,
-        queryParams: { ...defaultQueryParams, annotation_status: 'not_annotated' },
+        queryParams: { ...defaultQueryParams, annotation_status: 'not_annotated' as const },
       }
 
       render(<Filter {...propsWithNotAnnotated} />)
@@ -394,7 +405,7 @@ describe('Filter', () => {
       const propsWithSort = {
         ...defaultProps,
         isChatMode: true,
-        queryParams: { ...defaultQueryParams, sort_by: 'created_at' },
+        queryParams: { ...defaultQueryParams, sort_by: 'created_at' as const },
       }
 
       render(<Filter {...propsWithSort} />)
@@ -408,7 +419,7 @@ describe('Filter', () => {
       const propsWithDescSort = {
         ...defaultProps,
         isChatMode: true,
-        queryParams: { ...defaultQueryParams, sort_by: '-created_at' },
+        queryParams: { ...defaultQueryParams, sort_by: '-created_at' as const },
       }
 
       render(<Filter {...propsWithDescSort} />)

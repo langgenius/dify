@@ -557,7 +557,6 @@ describe('useConfiguration utils', () => {
         ids: ['dataset-1'],
         page: 1,
       },
-      url: '/datasets',
     })
     expect(state.collectionList[0]!.icon).toBe('/console/tool.svg')
     expect(state.promptMode).toBe('advanced')
@@ -622,7 +621,6 @@ describe('useConfiguration utils', () => {
     const state = await loadConfigurationState({ appId: 'app-2' })
 
     expect(mockFetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
       params: {
         page: 1,
         ids: ['dataset-from-tool'],

@@ -33,7 +33,7 @@ const createMockPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus =
   labels: {
     en_US: 'Test Plugin',
     zh_Hans: '测试插件',
-  } as Record<string, string>,
+  },
   taskId: 'task-1',
   ...overrides,
 })
@@ -482,7 +482,7 @@ describe('PluginTaskList Component', () => {
     it('should display plugin name from labels', () => {
       const plugin = createMockPlugin({
         status: TaskStatus.running,
-        labels: { en_US: 'My Test Plugin' } as Record<string, string>,
+        labels: { en_US: 'My Test Plugin' },
       })
 
       render(<PluginTaskList {...defaultProps} runningPlugins={[plugin]} />)
@@ -505,11 +505,11 @@ describe('PluginTaskList Component', () => {
       const runningPlugins = [
         createMockPlugin({
           status: TaskStatus.running,
-          labels: { en_US: 'Plugin A' } as Record<string, string>,
+          labels: { en_US: 'Plugin A' },
         }),
         createMockPlugin({
           status: TaskStatus.running,
-          labels: { en_US: 'Plugin B' } as Record<string, string>,
+          labels: { en_US: 'Plugin B' },
         }),
       ]
 
@@ -780,7 +780,7 @@ describe('PluginTasks Component', () => {
     it('should handle plugins with empty labels', () => {
       const plugin = createMockPlugin({
         status: TaskStatus.running,
-        labels: {} as Record<string, string>,
+        labels: { en_US: '' },
       })
       setupMocks([plugin])
 

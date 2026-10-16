@@ -1,11 +1,11 @@
 'use client'
 
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppTrigger } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { AppTrigger } from '@/service/use-tools'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
@@ -16,7 +16,6 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { useAppTriggers, useInvalidateAppTriggers } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
@@ -64,13 +63,18 @@ function TriggerAccessPointItem({
   triggerPlugins: TriggerWithProvider[]
 }) {
   const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
-  const invalidateTriggers = useInvalidateAppTriggers()
+  const queryClient = useQueryClient()
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
       scope: {
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },
-      onSuccess: () => invalidateTriggers(appId),
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+            input: { params: { app_id: appId } },
+          }),
+        }),
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
@@ -145,7 +149,12 @@ export function TriggerAccessPointCard({
 }: TriggerAccessPointCardProps) {
   const { t } = useTranslation(['appOverview', 'deployments', 'navigation'])
   const docLink = useDocLink()
-  const { data: response, isLoading } = useAppTriggers(appInfo.id)
+  const { data: response, isLoading } = useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      input: { params: { app_id: appInfo.id } },
+      enabled: !!appInfo.id,
+    }),
+  )
   const { data: triggerPlugins = [] } = useAllTriggerPlugins()
   const setTriggerStatuses = useTriggerStatusStore((state) => state.setTriggerStatuses)
   const triggers = useMemo(() => response?.data ?? [], [response?.data])

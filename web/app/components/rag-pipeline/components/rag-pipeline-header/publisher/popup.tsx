@@ -14,7 +14,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -42,9 +42,6 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
-import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 import { usePublishWorkflow } from '@/service/use-workflow'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
@@ -109,11 +106,10 @@ export function Popup({
   const showConfirm = onShowConfirm ?? showLocalConfirm
   const hideConfirm = onHideConfirm ?? hideLocalConfirm
   const [publishing, { setFalse: hidePublishing, setTrue: showPublishing }] = useBoolean(false)
-  const invalidPublishedPipelineInfo = useInvalid([
-    ...publishedPipelineInfoQueryKeyPrefix,
-    pipelineId,
-  ])
-  const invalidDatasetList = useInvalidDatasetList()
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
   const handleHideConfirm = useCallback(() => {
     hideConfirm()
     onRequestClose?.()
@@ -166,7 +162,11 @@ export function Popup({
             )
             workflowStore.getState().setPublishedAt(res.created_at)
             mutateDatasetRes?.()
-            invalidPublishedPipelineInfo()
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+                input: { params: { pipeline_id: pipelineId || '' } },
+              }),
+            })
             invalidDatasetList()
           }
         }
@@ -190,7 +190,7 @@ export function Popup({
       t,
       workflowStore,
       mutateDatasetRes,
-      invalidPublishedPipelineInfo,
+      queryClient,
       invalidDatasetList,
       hidePublishing,
       handleHideConfirm,

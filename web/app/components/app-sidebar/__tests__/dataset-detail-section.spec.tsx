@@ -31,10 +31,13 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: () => ({ data: mockDataset, refetch: vi.fn() }),
-  useDatasetRelatedApps: () => ({ data: mockRelatedApps }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.get': () => ({ data: mockDataset, refetch: vi.fn() }),
+    'datasets.byDatasetId.relatedApps.get': () => ({ data: mockRelatedApps }),
+  })
+})
 
 vi.mock('../dataset-info', () => ({
   default: () => <div>dataset info</div>,

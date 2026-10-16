@@ -1,15 +1,29 @@
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { act } from '@testing-library/react'
-import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
+import { updateAnnotationStatus } from '@/service/annotation'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { sleep } from '@/utils'
 import useAnnotationConfig from '../use-annotation-config'
 
 let mockIsAnnotationFull = false
 
+const { queryAnnotationJobStatus } = vi.hoisted(() => ({
+  queryAnnotationJobStatus: vi.fn().mockResolvedValue({ job_status: 'completed' }),
+}))
+
 vi.mock('@/service/annotation', () => ({
   updateAnnotationStatus: vi.fn().mockResolvedValue({ job_id: 'test-job-id' }),
-  queryAnnotationJobStatus: vi.fn().mockResolvedValue({ job_status: 'completed' }),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotationReply: { byAction: { status: { byJobId: { get: queryAnnotationJobStatus } } } },
+      },
+    },
+  },
 }))
 
 vi.mock('@/utils', () => ({
@@ -328,16 +342,12 @@ describe('useAnnotationConfig', () => {
 
   it('should poll job status until completed when enabling annotation', async () => {
     const setAnnotationConfig = vi.fn()
-    const queryJobStatusMock = vi.mocked(queryAnnotationJobStatus)
+    const queryJobStatusMock = queryAnnotationJobStatus
     const sleepMock = vi.mocked(sleep)
 
     queryJobStatusMock
-      .mockResolvedValueOnce({ job_status: 'pending' } as unknown as Awaited<
-        ReturnType<typeof queryAnnotationJobStatus>
-      >)
-      .mockResolvedValueOnce({ job_status: 'completed' } as unknown as Awaited<
-        ReturnType<typeof queryAnnotationJobStatus>
-      >)
+      .mockResolvedValueOnce({ job_status: 'pending' })
+      .mockResolvedValueOnce({ job_status: 'completed' })
 
     const { result } = renderHook(() =>
       useAnnotationConfig({

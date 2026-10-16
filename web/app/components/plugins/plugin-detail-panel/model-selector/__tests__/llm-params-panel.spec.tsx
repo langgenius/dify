@@ -12,10 +12,6 @@ import LLMParamsPanel from '../llm-params-panel'
 
 // Mock useModelParameterRules hook
 const mockUseModelParameterRules = vi.fn()
-vi.mock('@/service/use-common', () => ({
-  useModelParameterRules: (provider: string, modelId: string) =>
-    mockUseModelParameterRules(provider, modelId),
-}))
 
 // Mock config constants with inline data
 vi.mock('@/config', () => ({
@@ -250,6 +246,19 @@ const setupModelParameterRulesMock = (
 }
 
 // ==================== Tests ====================
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (options: {
+      queryKey: [unknown, { input?: { params: { provider: string }; query: { model: string } } }]
+    }) =>
+      mockUseModelParameterRules(
+        options.queryKey[1].input?.params?.provider,
+        options.queryKey[1].input?.query?.model,
+      ),
+  })
+})
 
 describe('LLMParamsPanel', () => {
   beforeEach(() => {

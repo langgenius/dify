@@ -669,16 +669,6 @@ export const zFileUploadPayload = z.object({
 })
 
 /**
- * Github
- */
-export const zGithub = z.object({
-  github_plugin_unique_identifier: z.string(),
-  package: z.string(),
-  repo: z.string(),
-  version: z.string(),
-})
-
-/**
  * HealthResponse
  *
  * Liveness payload for `GET /openapi/v1/_health` — no auth required.
@@ -835,14 +825,6 @@ export const zLlmModelBlock = z.object({
   mode: z.string(),
   name: z.string(),
   provider: z.string(),
-})
-
-/**
- * Marketplace
- */
-export const zMarketplace = z.object({
-  marketplace_plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
 })
 
 /**
@@ -1227,14 +1209,6 @@ export const zOpenApiFormSubmitPayload = z.object({
 })
 
 /**
- * Package
- */
-export const zPackage = z.object({
-  plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
-})
-
-/**
  * PermittedExternalAppsListResponse
  */
 export const zPermittedExternalAppsListResponse = z.object({
@@ -1277,6 +1251,32 @@ export const zPluginDeleteResponse = z.object({
 })
 
 /**
+ * Github
+ */
+export const zPluginDependencyGithub = z.object({
+  github_plugin_unique_identifier: z.string(),
+  package: z.string(),
+  repo: z.string(),
+  version: z.string(),
+})
+
+/**
+ * Marketplace
+ */
+export const zPluginDependencyMarketplace = z.object({
+  marketplace_plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * Package
+ */
+export const zPluginDependencyPackage = z.object({
+  plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
  * PluginDependencyType
  */
 export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
@@ -1287,7 +1287,7 @@ export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package']
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
   type: zPluginDependencyType,
-  value: z.union([zGithub, zMarketplace, zPackage]),
+  value: z.union([zPluginDependencyGithub, zPluginDependencyMarketplace, zPluginDependencyPackage]),
 })
 
 /**

@@ -191,7 +191,7 @@ export type HumanInputFormPreviewResponse = {
   }
 }
 
-export type HumanInputFormSubmitPayload = {
+export type HumanInputFormPreviewSubmitPayload = {
   action: string
   form_inputs: {
     [key: string]: unknown
@@ -211,7 +211,7 @@ export type IterationNodeRunPayload = {
   } | null
 }
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = ShallowJsonValue
 
 export type LoopNodeRunPayload = {
   inputs?: {
@@ -528,7 +528,7 @@ export type ConversationDetail = {
   id: string
   introduction?: string | null
   message_count: number
-  model_config?: ModelConfig | null
+  model_config?: ConversationModelConfig | null
   status: string
   updated_at?: number | null
   user_feedback_stats?: FeedbackStat | null
@@ -568,7 +568,7 @@ export type ConversationMessageDetail = {
   from_source: string
   id: string
   message?: MessageDetail | null
-  model_config?: ModelConfig | null
+  model_config?: ConversationModelConfig | null
   status: string
 }
 
@@ -633,7 +633,7 @@ export type RosterAgentPackageExportFailedError = ErrorResponse & {
   status: 500
 }
 
-export type MessageFeedbackPayload = {
+export type AppMessageFeedbackPayload = {
   content?: string | null
   message_id: string
   rating?: 'dislike' | 'like' | null
@@ -661,12 +661,12 @@ export type MessageDetailResponse = {
   from_source: string
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
-  message: JsonValue
+  message: AnyJsonValue
   message_files: Array<MessageFile>
   message_tokens: number
-  metadata: JsonValue
+  metadata: AnyJsonValue
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
@@ -1318,14 +1318,12 @@ export type WorkflowTriggerRunErrorResponse = {
 }
 
 export type DraftWorkflowRunPayload = {
-  datasource_info_list: Array<{
+  files?: Array<{
     [key: string]: unknown
-  }>
-  datasource_type: string
+  }> | null
   inputs: {
     [key: string]: unknown
   }
-  start_node_id: string
 }
 
 export type WorkflowRunSnapshotView = {
@@ -1391,7 +1389,7 @@ export type WorkflowDraftVariableResponse = {
   name: string
   selector: Array<string>
   type: string
-  value: JsonValue
+  value: RecursiveJsonValue
   value_type: string
   visible: boolean
 }
@@ -1402,9 +1400,6 @@ export type WorkflowDraftVariableUpdatePayload = {
 }
 
 export type PublishWorkflowPayload = {
-  knowledge_base_setting?: {
-    [key: string]: unknown
-  } | null
   marked_comment?: string | null
   marked_name?: string | null
 }
@@ -1602,7 +1597,7 @@ export type DslImportWarning = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
 }
 
 export type RecentAppResponse = {
@@ -1640,7 +1635,7 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type JsonValue =
+export type ShallowJsonValue =
   | string
   | number
   | number
@@ -1764,13 +1759,13 @@ export type FeedbackStat = {
   like: number
 }
 
-export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+export type ConversationModelConfig = {
+  agent_mode?: AnyJsonValue | null
+  model?: AnyJsonValue | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  suggested_questions?: AnyJsonValue | null
+  user_input_form?: AnyJsonValue | null
 }
 
 export type Conversation = {
@@ -1806,12 +1801,12 @@ export type MessageDetail = {
   from_source: string
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
-  message: JsonValue
+  message: AnyJsonValue
   message_files: Array<MessageFile>
   message_tokens: number
-  metadata: JsonValue
+  metadata: AnyJsonValue
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
@@ -1841,7 +1836,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
 
 export type ConversationAnnotation = {
@@ -1873,6 +1868,8 @@ export type Feedback = {
   from_source: string
   rating: string
 }
+
+export type AnyJsonValue = unknown
 
 export type MessageFile = {
   belongs_to?: string | null
@@ -2202,9 +2199,7 @@ export type AccountWithRoleResponse = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -2551,6 +2546,17 @@ export type WorkflowDraftVariableFullContentResponse = {
   value_type: string
 }
 
+export type RecursiveJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValue
+    }
+  | Array<RecursiveJsonValue>
+  | null
+
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -2616,7 +2622,7 @@ export type AppDatasetConfigsResponse = {
 
 export type AppEnabledExternalDataToolResponse = {
   config: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   enabled: true
   icon?: string
@@ -2629,7 +2635,7 @@ export type AppEnabledExternalDataToolResponse = {
 
 export type AppDisabledExternalDataToolResponse = {
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   enabled: false
   icon?: string
@@ -2651,7 +2657,7 @@ export type AppFileUploadResponse = {
 
 export type AppModelSelectionResponse = {
   completion_params?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   mode?: LlmMode | ''
   name?: string
@@ -2667,9 +2673,9 @@ export type PromptType = 'advanced' | 'simple'
 
 export type AppSensitiveWordAvoidanceResponse = {
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
-  configs?: Array<JsonValue2>
+  configs?: Array<JsonValue>
   enabled: boolean
   type?: string
   [key: string]: unknown
@@ -2728,19 +2734,19 @@ export type CustomizeTokenStrategy = 'allow' | 'must' | 'not_allow' | 'uuid'
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
-export type Github = {
+export type PluginDependencyGithub = {
   github_plugin_unique_identifier: string
   package: string
   repo: string
   version: string
 }
 
-export type Marketplace = {
+export type PluginDependencyMarketplace = {
   marketplace_plugin_unique_identifier: string
   version?: string | null
 }
 
-export type Package = {
+export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
 }
@@ -2755,11 +2761,20 @@ export type AgentToolCallResponse = {
   error?: string | null
   status: string
   time_cost: number | number
-  tool_icon?: unknown
+  tool_icon?:
+    | string
+    | {
+        [key: string]: string
+      }
+    | null
   tool_input: {
     [key: string]: unknown
   }
-  tool_label: string
+  tool_label:
+    | string
+    | {
+        [key: string]: string
+      }
   tool_name: string
   tool_output: {
     [key: string]: unknown
@@ -2770,7 +2785,7 @@ export type AgentToolCallResponse = {
 }
 
 export type SimpleModelConfig = {
-  model?: JsonValue | null
+  model?: AnyJsonValue | null
   pre_prompt?: string | null
 }
 
@@ -2781,12 +2796,10 @@ export type StatusCount = {
   success: number
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type SimpleMessageDetail = {
   answer: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   message: string
   query: string
@@ -2820,7 +2833,7 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
@@ -3061,6 +3074,11 @@ export type WorkflowRunForLogResponse = {
   total_tokens?: number | null
   triggered_from?: string | null
   version?: string | null
+}
+
+export type MemberRoleSummaryResponse = {
+  id: string
+  name: string
 }
 
 export type WorkflowFileUploadPayload = {
@@ -3357,7 +3375,7 @@ export type AppProviderAgentToolResponse = {
   tool_label?: string
   tool_name: string
   tool_parameters: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
@@ -3369,28 +3387,28 @@ export type AppLegacyDatasetToolResponse = {
 
 export type AppLegacyGoogleSearchToolResponse = {
   google_search: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyWebReaderToolResponse = {
   web_reader: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyWikipediaToolResponse = {
   wikipedia: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyCurrentDatetimeToolResponse = {
   current_datetime: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
@@ -3444,7 +3462,7 @@ export type AppWeightsResponse = {
   [key: string]: unknown
 }
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type AppImageUploadResponse = {
   detail?: 'high' | 'low' | null
@@ -3453,14 +3471,16 @@ export type AppImageUploadResponse = {
   transfer_methods?: Array<FileTransferMethod>
 }
 
+export type LlmMode = 'chat' | 'completion'
+
 export type AppUserInputFormConfigResponse = {
   allowed_file_extensions?: Array<string>
   allowed_file_types?: Array<FileType>
   allowed_file_upload_methods?: Array<FileTransferMethod>
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
-  default?: JsonValue2
+  default?: JsonValue
   description?: string
   enabled?: boolean
   hide?: boolean
@@ -3469,7 +3489,7 @@ export type AppUserInputFormConfigResponse = {
   json_schema?:
     | string
     | {
-        [key: string]: JsonValue2
+        [key: string]: JsonValue
       }
     | null
   label: string
@@ -4266,7 +4286,7 @@ export type RecentAppListResponseWritable = {
   data: Array<RecentAppResponseWritable>
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type GeneratedAppResponseWritable = ShallowJsonValue
 
 export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
@@ -4388,9 +4408,7 @@ export type AccountWithRoleResponseWritable = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -4413,6 +4431,17 @@ export type WorkflowCommentReplyWritable = {
   created_by_account?: WorkflowCommentAccountWritable | null
   id: string
 }
+
+export type RecursiveJsonValueWritable =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: RecursiveJsonValueWritable
+    }
+  | Array<RecursiveJsonValueWritable>
+  | null
 
 export type AppConfigJsonValueWritable =
   | string
@@ -4801,7 +4830,7 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
-  body: HumanInputFormSubmitPayload
+  body: HumanInputFormPreviewSubmitPayload
   path: {
     app_id: string
     node_id: string
@@ -5454,7 +5483,9 @@ export type DeleteAppsByAppIdAnnotationsData = {
   path: {
     app_id: string
   }
-  query?: never
+  query?: {
+    annotation_id?: Array<string>
+  }
   url: '/apps/{app_id}/annotations'
 }
 
@@ -6186,7 +6217,7 @@ export type GetAppsByAppIdExportResponse =
   GetAppsByAppIdExportResponses[keyof GetAppsByAppIdExportResponses]
 
 export type PostAppsByAppIdFeedbacksData = {
-  body: MessageFeedbackPayload
+  body: AppMessageFeedbackPayload
   path: {
     app_id: string
   }
@@ -7978,7 +8009,7 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewRespo
   PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
-  body: HumanInputFormSubmitPayload
+  body: HumanInputFormPreviewSubmitPayload
   path: {
     app_id: string
     node_id: string

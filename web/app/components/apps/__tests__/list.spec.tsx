@@ -83,6 +83,18 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: (options: { input?: unknown }) => ({
+              ...options,
+              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
+            }),
+          },
+        },
+      },
+    },
     account: {
       profile: {
         get: {
@@ -137,17 +149,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
-      ],
-    },
-  }),
-}))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
   TagFilter: ({
@@ -248,18 +249,36 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    useQuery: (options: { input?: unknown; queryKey?: readonly unknown[] }) =>
-      options.queryKey?.includes('features')
-        ? { data: { dify_builder_enabled: mockAppBuilderEnabled, apps: { size: 0, limit: 0 } } }
-        : options.input
-          ? {
-              data: mockStarredIsLoading ? undefined : mockStarredAppData,
-              error: mockStarredError,
-            }
-          : {
-              data: mockSystemFeatures,
-              error: null,
-            },
+    useQuery: (options: { input?: unknown; queryKey?: readonly unknown[] }) => {
+      if (options.queryKey?.includes('features'))
+        return {
+          data: { dify_builder_enabled: mockAppBuilderEnabled, apps: { size: 0, limit: 0 } },
+        }
+
+      if (
+        Array.isArray(options.queryKey?.[0]) &&
+        options.queryKey[0].join('.') === 'console.workspaces.current.members.get'
+      ) {
+        return {
+          data: {
+            accounts: [
+              { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+              { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+            ],
+          },
+        }
+      }
+
+      return options.input
+        ? {
+            data: mockStarredIsLoading ? undefined : mockStarredAppData,
+            error: mockStarredError,
+          }
+        : {
+            data: mockSystemFeatures,
+            error: null,
+          }
+    },
     useSuspenseQuery: (options: { queryKey: readonly unknown[] }) => ({
       data: JSON.stringify(options.queryKey).includes('account') ? 'creator-1' : mockSystemFeatures,
     }),

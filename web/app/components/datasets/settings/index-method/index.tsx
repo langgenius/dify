@@ -7,7 +7,8 @@ import OptionCard from '../option-card'
 import KeywordNumber from './keyword-number'
 
 type IndexMethodProps = {
-  value: IndexingType
+  // Unset until the knowledge base indexes its first document.
+  value?: IndexingType
   onChange: (id: IndexingType) => void
   disabled?: boolean
   currentValue?: IndexingType

@@ -11,6 +11,7 @@ import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowled
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
@@ -243,9 +244,9 @@ vi.mock('use-context-selector', () => ({
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const defaultDataset: DataSet = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
-    indexing_status: 'completed' as any,
     icon_info: {
       icon: '📘',
       icon_type: 'emoji',
@@ -264,7 +265,6 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     app_count: 0,
     doc_form: 'text' as any,
     document_count: 10,
-    total_document_count: 10,
     total_available_documents: 10,
     word_count: 1000,
     provider: 'dify',
@@ -272,17 +272,6 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     embedding_model_provider: 'openai',
     embedding_available: true,
     retrieval_model_dict: {
-      search_method: 'semantic_search' as any,
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: 4,
-      score_threshold_enabled: false,
-      score_threshold: 0.7,
-    },
-    retrieval_model: {
       search_method: 'semantic_search' as any,
       reranking_enable: false,
       reranking_model: {
@@ -1057,31 +1046,9 @@ describe('DatasetConfig', () => {
       const datasets = [
         createMockDataset({
           id: 'ds1',
-          retrieval_model: {
-            search_method: 'semantic_search' as any,
-            reranking_enable: true,
-            reranking_model: {
-              reranking_provider_name: 'cohere',
-              reranking_model_name: 'rerank-v3.5',
-            },
-            top_k: 5,
-            score_threshold_enabled: true,
-            score_threshold: 0.8,
-          },
         }),
         createMockDataset({
           id: 'ds2',
-          retrieval_model: {
-            search_method: 'full_text_search' as any,
-            reranking_enable: false,
-            reranking_model: {
-              reranking_provider_name: '',
-              reranking_model_name: '',
-            },
-            top_k: 3,
-            score_threshold_enabled: false,
-            score_threshold: 0.5,
-          },
         }),
       ]
 

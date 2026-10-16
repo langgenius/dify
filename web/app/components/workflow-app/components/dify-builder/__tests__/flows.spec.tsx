@@ -5,12 +5,12 @@ import type {
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, SessionView } from '../types'
 import type { MarkdownProps } from '@/app/components/base/markdown'
+import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import DifyBuilderPanel from '../panel'
 import { DifyBuilderProvider } from '../provider'
@@ -290,18 +290,23 @@ const FixEntry = () => {
 const builderModel = { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} }
 const renderFlow = (edgeCount = 0, reactStrictMode = false) => {
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
-    data: {
-      model: 'gpt-4o',
-      model_type: 'llm',
-      provider: {
-        provider: 'openai',
-        label: { en_US: 'OpenAI' },
-        supported_model_types: ['llm'],
-        tenant_id: 'workspace-1',
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+    zDefaultModelDataResponse.parse({
+      data: {
+        model: 'gpt-4o',
+        model_type: 'llm',
+        provider: {
+          provider: 'openai',
+          label: { en_US: 'OpenAI' },
+          supported_model_types: ['llm'],
+          tenant_id: 'workspace-1',
+        },
       },
-    },
-  })
+    }),
+  )
   queryClient.setQueryData(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
       input: { params: { model_type: 'llm' } },

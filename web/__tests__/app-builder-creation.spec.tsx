@@ -1,4 +1,5 @@
 import type { useDifyBuilderSessionController } from '@/app/components/workflow-app/components/dify-builder/session/use-session-controller'
+import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useState } from 'react'
@@ -13,7 +14,7 @@ import {
 } from '@/app/components/workflow-app/components/dify-builder/__tests__/model-fixtures'
 import DifyBuilderComposer from '@/app/components/workflow-app/components/dify-builder/composer'
 import { DifyBuilderProvider } from '@/app/components/workflow-app/components/dify-builder/provider'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
@@ -49,10 +50,6 @@ vi.mock('@/next/navigation', () => ({
 }))
 vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 vi.mock('@/utils/create-app-tracking', () => ({ trackCreateApp: vi.fn() }))
-vi.mock('@/service/common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common')>()),
-  fetchDefaultModal: mocks.fetchDefaultModel,
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   return {
@@ -150,6 +147,8 @@ describe('App Builder creation flow', () => {
     mocks.fetchDefaultModel.mockReset().mockImplementation(() => new Promise(() => {}))
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = input instanceof Request ? input.url : String(input)
+      if (url.endsWith('/default-model?model_type=llm'))
+        return Response.json(await mocks.fetchDefaultModel())
       expect(url).toMatch(/\/workspaces\/current\/models\/model-types\/llm$/)
       return Response.json({ data: builderModelList })
     })
@@ -234,9 +233,12 @@ describe('App Builder creation flow', () => {
     expect(composer).toHaveValue('Build an expense assistant with approval steps')
 
     await act(async () => {
-      queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
-        data: builderDefaultModel,
-      })
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: ModelTypeEnum.textGeneration } },
+        }),
+        zDefaultModelDataResponse.parse({ data: builderDefaultModel }),
+      )
       queryClient.setQueryData(builderModelListQueryKey, { data: builderModelList })
     })
     expect(mocks.startBuild).not.toHaveBeenCalled()
@@ -277,12 +279,18 @@ describe('App Builder creation flow', () => {
   })
 
   it('retains the prompt after a model query fails and allows retry without automatically submitting', async () => {
-    mocks.fetchDefaultModel.mockRejectedValueOnce(new Error('Network unavailable'))
+    mocks.fetchDefaultModel.mockRejectedValue(new Error('Network unavailable'))
     const user = userEvent.setup()
+    const queryClient = createBuilderQueryClient()
+    queryClient.removeQueries({
+      queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: ModelTypeEnum.textGeneration } },
+      }),
+    })
     renderWithConsoleQuery(<CreationFlow />, {
       features: { dify_builder_enabled: true },
       workspacePermissionKeys: ['app.create_and_management'],
-      queryClient: createBuilderQueryClient({ defaultLoading: true }),
+      queryClient,
     })
     await openStarter(user)
     await user.type(
@@ -297,7 +305,7 @@ describe('App Builder creation flow', () => {
     expect(composer).toHaveValue('Build an expense assistant')
     expect(mocks.startBuild).not.toHaveBeenCalled()
 
-    mocks.fetchDefaultModel.mockResolvedValueOnce({ data: builderDefaultModel })
+    mocks.fetchDefaultModel.mockResolvedValue({ data: builderDefaultModel })
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
     expect(mocks.startBuild).not.toHaveBeenCalled()

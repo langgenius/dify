@@ -50,14 +50,15 @@ let mockModelProvidersData: {
   refetch: vi.fn(),
 }
 
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => mockCodeBasedExtensions,
-  useModelProviderDetails: () => mockModelProvidersData,
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  CustomConfigurationStatusEnum: { active: 'active' },
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/declarations',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/header/account-setting/model-provider-page/declarations')
+    >()),
+    CustomConfigurationStatusEnum: { active: 'active' },
+  }),
+)
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
   ApiBasedExtensionSelector: ({ onChange }: { value: string; onChange: (v: string) => void }) => (
@@ -78,6 +79,14 @@ const defaultData: ModerationConfig = {
     outputs_config: { enabled: false, preset_response: '' },
   },
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => mockCodeBasedExtensions,
+    'workspaces.current.modelProviders.get': () => mockModelProvidersData,
+  })
+})
 
 describe('ModerationSettingModal', () => {
   const onSave = vi.fn()

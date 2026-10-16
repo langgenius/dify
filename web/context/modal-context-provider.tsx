@@ -125,9 +125,10 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   }, [showExternalKnowledgeAPIModal])
 
   const handleSaveExternalApiModal = useCallback(
-    async (updatedFormValue: CreateExternalAPIReq) => {
+    // Callers refresh their API list; the created API is not passed back.
+    async () => {
       if (showExternalKnowledgeAPIModal?.onSaveCallback)
-        showExternalKnowledgeAPIModal.onSaveCallback(updatedFormValue)
+        showExternalKnowledgeAPIModal.onSaveCallback()
       setShowExternalKnowledgeAPIModal(null)
     },
     [showExternalKnowledgeAPIModal],

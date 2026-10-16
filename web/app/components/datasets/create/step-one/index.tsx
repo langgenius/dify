@@ -14,6 +14,7 @@ import NotionConnector from '@/app/components/base/notion-connector'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import VectorSpaceUnavailable from '@/app/components/billing/vector-space-unavailable'
+import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DataSourceType } from '@/models/datasets'
@@ -138,7 +139,7 @@ const StepOne = ({
   // Default to FILE type when no type is provided from either source
   const dataSourceType = isInCreatePage
     ? (inCreatePageDataSourceType ?? DataSourceType.FILE)
-    : (dataset?.data_source_type ?? DataSourceType.FILE)
+    : (toCreationDataSourceType(dataset?.data_source_type) ?? DataSourceType.FILE)
 
   const allFileLoaded = files.length > 0 && files.every((file) => file.file.id)
   const hasNotion = notionPages.length > 0

@@ -207,11 +207,14 @@ vi.mock('@/app/components/workflow/run/hooks', () => ({
   useLogs: () => mockLogsState,
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({
-    data: mockBuiltInTools,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({
+      data: mockBuiltInTools,
+    }),
+  })
+})
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({

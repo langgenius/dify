@@ -966,7 +966,7 @@ class HumanInputFormPreviewPayload(BaseModel):
     )
 
 
-class HumanInputFormSubmitPayload(BaseModel):
+class HumanInputFormPreviewSubmitPayload(BaseModel):
     form_inputs: dict[str, Any] = Field(
         ...,
         description="Values the user provides for the form's own fields",
@@ -989,7 +989,7 @@ class HumanInputDeliveryTestPayload(BaseModel):
 register_schema_models(
     console_ns,
     HumanInputFormPreviewPayload,
-    HumanInputFormSubmitPayload,
+    HumanInputFormPreviewSubmitPayload,
     HumanInputDeliveryTestPayload,
 )
 
@@ -1031,7 +1031,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_advanced_chat_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
@@ -1044,8 +1044,8 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """
@@ -1099,7 +1099,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @console_ns.doc("submit_workflow_draft_human_input_form")
     @console_ns.doc(description="Submit human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.expect(console_ns.models[HumanInputFormPreviewSubmitPayload.__name__])
     @console_ns.response(
         200,
         "Human input form submission result",
@@ -1112,8 +1112,8 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    @model_validate(HumanInputFormSubmitPayload)
-    def post(self, args: HumanInputFormSubmitPayload, current_user: Account, app_model: App, node_id: str):
+    @model_validate(HumanInputFormPreviewSubmitPayload)
+    def post(self, args: HumanInputFormPreviewSubmitPayload, current_user: Account, app_model: App, node_id: str):
         """
         Submit human input form preview
         """

@@ -58,13 +58,6 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolServiceState.buildInTools }),
-  useAllCustomTools: () => ({ data: toolServiceState.customTools }),
-  useAllMCPTools: () => ({ data: toolServiceState.mcpTools }),
-  useAllWorkflowTools: () => ({ data: toolServiceState.workflowTools }),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
     data:
@@ -848,7 +841,8 @@ describe('useWorkflowRunValidation', () => {
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const reactQuery = {
     ...actual,
     useQuery: (options: {
       queryKey: OperationKey<
@@ -866,5 +860,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
       return { data: [] }
     },
-  }
+  } as typeof actual
+  return mockConsoleOperationHooks(reactQuery, {
+    'workspaces.current.tools.builtin.get': () => ({ data: toolServiceState.buildInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: toolServiceState.customTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: toolServiceState.mcpTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: toolServiceState.workflowTools }),
+  })
 })

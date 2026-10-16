@@ -1,6 +1,7 @@
 import type { ToolNodeType } from '../types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { InputVar } from '@/app/components/workflow/types'
+import { useQueryClient } from '@tanstack/react-query'
 import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -10,10 +11,10 @@ import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { updateBuiltInToolCredential } from '@/service/tools'
-import { useInvalidToolsByType } from '@/service/use-tools'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { isToolAuthorizationRequired } from '../auth'
 import { normalizeJsonSchemaType } from '../output-schema-utils'
@@ -42,15 +43,16 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const isShowAuthBtn = isToolAuthorizationRequired(provider_type, currCollection)
   const [showSetAuth, setShowSetAuth] = useState(false)
 
-  const invalidToolsByType = useInvalidToolsByType(provider_type)
+  const queryClient = useQueryClient()
   const handleSaveAuth = useCallback(
     async (value: any) => {
       await updateBuiltInToolCredential(currCollection?.name as string, value)
 
-      invalidToolsByType()
+      const toolListQueryKey = getToolListQueryKey(provider_type)
+      if (toolListQueryKey) queryClient.invalidateQueries({ queryKey: toolListQueryKey })
       setShowSetAuth(false)
     },
-    [currCollection?.name, invalidToolsByType],
+    [currCollection?.name, provider_type, queryClient],
   )
 
   const currTool = useMemo(() => {

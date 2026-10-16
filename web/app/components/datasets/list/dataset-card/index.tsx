@@ -132,7 +132,7 @@ const DatasetCard = ({
         )}
         <DatasetCardTags
           datasetId={dataset.id}
-          embeddingAvailable={dataset.embedding_available}
+          embeddingAvailable={!!dataset.embedding_available}
           tags={dataset.tags}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onSuccess}

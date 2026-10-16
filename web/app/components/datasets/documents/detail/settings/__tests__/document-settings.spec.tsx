@@ -1,5 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DocumentSettings from '../document-settings'
 
 const mockPush = vi.fn()
@@ -29,8 +32,6 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: mockUseDocumentTitle,
 }))
 
-const mockInvalidDocumentList = vi.fn()
-const mockInvalidDocumentDetail = vi.fn()
 let mockDocumentDetail: Record<string, unknown> | null = {
   name: 'test-document',
   data_source_type: 'upload_file',
@@ -40,14 +41,26 @@ let mockDocumentDetail: Record<string, unknown> | null = {
 }
 let mockError: Error | null = null
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDetail: () => ({
-    data: mockDocumentDetail,
-    error: mockError,
-  }),
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-  useInvalidDocumentDetail: () => mockInvalidDocumentDetail,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.get': () => ({
+      data: mockDocumentDetail,
+      error: mockError,
+    }),
+  })
+})
+
+const expectDocumentsInvalidated = (datasetId: string) => {
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  })
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+  })
+}
 
 // Mock useDefaultModel
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -119,6 +132,7 @@ vi.mock('nuqs', async (importOriginal) => {
 
 describe('DocumentSettings', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     mockDocumentDetail = {
       name: 'test-document',
@@ -209,8 +223,7 @@ describe('DocumentSettings', () => {
 
       fireEvent.click(screen.getByTestId('save-btn'))
 
-      expect(mockInvalidDocumentList).toHaveBeenCalled()
-      expect(mockInvalidDocumentDetail).toHaveBeenCalled()
+      expectDocumentsInvalidated(defaultProps.datasetId)
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/document-1')
     })
 

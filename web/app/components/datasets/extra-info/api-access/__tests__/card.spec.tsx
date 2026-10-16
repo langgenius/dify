@@ -28,10 +28,15 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useEnableDatasetServiceApi: () => ({ mutateAsync: mockEnableApi }),
-  useDisableDatasetServiceApi: () => ({ mutateAsync: mockDisableApi }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.apiKeys.byStatus.post': () => ({
+      mutateAsync: (input: { params: { status: string } }) =>
+        input.params.status === 'enable' ? mockEnableApi(input) : mockDisableApi(input),
+    }),
+  })
+})
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
@@ -69,7 +74,9 @@ describe('API access card', () => {
 
     await user.click(screen.getByRole('switch'))
 
-    expect(mockEnableApi).toHaveBeenCalledWith('dataset-123')
+    expect(mockEnableApi).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-123', status: 'enable' },
+    })
     expect(mockMutateDatasetRes).toHaveBeenCalledOnce()
   })
 
@@ -80,7 +87,9 @@ describe('API access card', () => {
 
     await user.click(screen.getByRole('switch'))
 
-    expect(mockDisableApi).toHaveBeenCalledWith('dataset-123')
+    expect(mockDisableApi).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-123', status: 'disable' },
+    })
     expect(mockMutateDatasetRes).toHaveBeenCalledOnce()
   })
 

@@ -35,7 +35,6 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import { useInvalidateAppTriggers } from '@/service/use-tools'
 import {
   useInvalidateAppWorkflow,
   usePublishWorkflow,
@@ -153,7 +152,6 @@ const FeaturesTrigger = () => {
   }, [nodes])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const invalidateAppTriggers = useInvalidateAppTriggers()
 
   const handleShowFeatures = useCallback(() => {
     const { showFeaturesPanel, isRestoring, setShowFeaturesPanel } = workflowStore.getState()
@@ -199,7 +197,11 @@ const FeaturesTrigger = () => {
               input: { params: { app_id: appID } },
             }),
           })
-          invalidateAppTriggers(appID)
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+              input: { params: { app_id: appID } },
+            }),
+          })
           if (rosterAgentIds.length > 0) {
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.agent.get.key(),
@@ -234,7 +236,6 @@ const FeaturesTrigger = () => {
       appID,
       t,
       updatePublishedWorkflow,
-      invalidateAppTriggers,
       rosterAgentIds,
       queryClient,
       workflowStore,

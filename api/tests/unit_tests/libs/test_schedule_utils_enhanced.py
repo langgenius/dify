@@ -77,20 +77,20 @@ class TestEnhancedCronSyntax(unittest.TestCase):
         # Both should give the same next Sunday
         result_0 = calculate_next_run_at("0 10 * * 0", "UTC", base_time)
         result_7 = calculate_next_run_at("0 10 * * 7", "UTC", base_time)
-        result_SUN = calculate_next_run_at("0 10 * * SUN", "UTC", base_time)
+        result_sun = calculate_next_run_at("0 10 * * SUN", "UTC", base_time)
 
         assert result_0 is not None
         assert result_7 is not None
-        assert result_SUN is not None
+        assert result_sun is not None
 
         # All should be Sundays
         assert result_0.weekday() == 6  # Sunday = 6 in weekday()
         assert result_7.weekday() == 6
-        assert result_SUN.weekday() == 6
+        assert result_sun.weekday() == 6
 
         # Times should be identical
         assert result_0 == result_7
-        assert result_0 == result_SUN
+        assert result_0 == result_sun
 
     def test_predefined_expressions(self):
         """Test predefined expressions (@daily, @weekly, etc.)."""

@@ -10,6 +10,15 @@ import type {
 } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 
+/** The fields step two reads from a file to index; uploads and stored documents both provide them. */
+export type StepTwoFile = Pick<CustomFile, 'id' | 'name' | 'extension'>
+
+/** The fields step two reads from a Notion page to index. */
+export type StepTwoNotionPage = Pick<
+  NotionPage,
+  'workspace_id' | 'page_id' | 'page_name' | 'page_icon' | 'type'
+>
+
 export type StepTwoProps = {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
@@ -19,8 +28,8 @@ export type StepTwoProps = {
   indexingType?: IndexingType
   retrievalMethod?: string
   dataSourceType: DataSourceType
-  files: CustomFile[]
-  notionPages?: NotionPage[]
+  files: StepTwoFile[]
+  notionPages?: StepTwoNotionPage[]
   notionCredentialId: string
   websitePages?: CrawlResultItem[]
   crawlOptions?: CrawlOptions

@@ -53,7 +53,7 @@ function EditorCapture({
 
 type ReadResult = {
   count: number
-  datasets: Array<{ id: string; name: string; type: string }>
+  datasets: Array<{ id: string; name: string; type: string | null }>
   canNotAddContext: boolean
 }
 

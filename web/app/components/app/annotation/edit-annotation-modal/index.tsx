@@ -26,14 +26,13 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
-import { editAnnotation } from '@/service/annotation'
+import { consoleClient } from '@/service/console'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   appId: string
-  messageId?: string
   annotationId: string
   query: string
   answer: string
@@ -50,7 +49,6 @@ const EditAnnotationModal: FC<Props> = ({
   answer,
   onEdited,
   appId,
-  messageId,
   annotationId,
   createdAt,
   onRemove,
@@ -64,10 +62,9 @@ const EditAnnotationModal: FC<Props> = ({
     if (type === EditItemType.Query) postQuery = editedContent
     else postAnswer = editedContent
     try {
-      await editAnnotation(appId, annotationId, {
-        message_id: messageId,
-        question: postQuery,
-        answer: postAnswer,
+      await consoleClient.apps.byAppId.annotations.byAnnotationId.post({
+        params: { app_id: appId, annotation_id: annotationId },
+        body: { question: postQuery, answer: postAnswer },
       })
       onEdited(postQuery, postAnswer)
 

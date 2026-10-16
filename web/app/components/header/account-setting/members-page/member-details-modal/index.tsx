@@ -5,13 +5,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
-import { useRolesOfMember } from '@/service/access-control/use-member-roles'
+import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
+import { toRole } from '../../workspace-role-list-query'
 import AssignRolesModal from '../assign-roles-modal'
 import PermissionRoleChip from './permission-role-chip'
 
@@ -35,9 +37,11 @@ const MemberDetailsModal = ({
   const [assignOpen, setAssignOpen] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
-  const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useRolesOfMember(
-    member.id,
-    language,
+  const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useQuery(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.queryOptions({
+      input: { params: { member_id: member.id }, query: { language } },
+      select: (data) => ({ ...data, roles: (data.roles ?? []).map(toRole) }),
+    }),
   )
   const [pendingRoles, setPendingRoles] = useState<Role[]>()
 

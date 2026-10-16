@@ -1,5 +1,6 @@
 import type { Node } from '../types'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { createStore as createAtomStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -74,30 +75,10 @@ vi.mock('../nodes/_base/components/variable/use-match-schema-type', async (impor
   >()),
   default: () => ({ schemaTypeDefinitions: [] }),
 }))
-vi.mock('@/service/use-tools', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-tools')>()),
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
 vi.mock('@/service/use-workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useConversationVarValues: () => ({ data: [] }),
   useSysVarValues: () => ({ data: [] }),
-}))
-vi.mock('@/service/common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common')>()),
-  fetchDefaultModal: async () => ({
-    data: {
-      model: 'gpt-4o',
-      model_type: ModelTypeEnum.textGeneration,
-      provider: {
-        provider: 'openai',
-        icon_small: { en_US: '', zh_Hans: '' },
-      },
-    } satisfies DefaultModelResponse,
-  }),
 }))
 vi.mock('../../workflow-app/components/dify-builder/model-selector', () => ({
   default: () => null,
@@ -244,6 +225,31 @@ function Fixture({
         input: { params: { app_id: 'builder-navigation-app' } },
       }),
       createAppDetailFixture({ id: 'builder-navigation-app', mode: 'workflow' }),
+    )
+    for (const toolsQuery of [
+      consoleQuery.workspaces.current.tools.builtin.get,
+      consoleQuery.workspaces.current.tools.api.get,
+      consoleQuery.workspaces.current.tools.workflow.get,
+      consoleQuery.workspaces.current.tools.mcp.get,
+    ])
+      query.setQueryData(toolsQuery.queryKey(), [])
+    query.setQueryData(
+      consoleQuery.workspaces.current.defaultModel.get.queryKey({
+        input: { query: { model_type: ModelTypeEnum.textGeneration } },
+      }),
+      zDefaultModelDataResponse.parse({
+        data: {
+          model: 'gpt-4o',
+          model_type: ModelTypeEnum.textGeneration,
+          provider: {
+            provider: 'openai',
+            icon_small: { en_US: '', zh_Hans: '' },
+            label: { en_US: 'OpenAI' },
+            supported_model_types: [ModelTypeEnum.textGeneration],
+            tenant_id: 'workspace-1',
+          },
+        } satisfies DefaultModelResponse,
+      }),
     )
     return query
   })

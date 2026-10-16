@@ -1322,7 +1322,7 @@ export const zDifyBuilderResourceSelectConversationItemResponse = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = z.object({
+export const zIterationNodeStartStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1338,7 +1338,7 @@ export const zCoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData = 
  * WorkflowStreamEvent[Literal['iteration_started'], IterationNodeStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralIterationStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesIterationNodeStartStreamResponseData,
+  data: zIterationNodeStartStreamResponseData,
   event: z.literal('iteration_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1349,7 +1349,7 @@ export const zWorkflowStreamEventLiteralIterationStartedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = z.object({
+export const zIterationNodeNextStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1363,7 +1363,7 @@ export const zCoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData = z
  * WorkflowStreamEvent[Literal['iteration_next'], IterationNodeNextStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralIterationNextData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesIterationNodeNextStreamResponseData,
+  data: zIterationNodeNextStreamResponseData,
   event: z.literal('iteration_next'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1374,7 +1374,7 @@ export const zWorkflowStreamEventLiteralIterationNextData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = z.object({
+export const zLoopNodeStartStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1390,7 +1390,7 @@ export const zCoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData = z.obj
  * WorkflowStreamEvent[Literal['loop_started'], LoopNodeStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralLoopStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesLoopNodeStartStreamResponseData,
+  data: zLoopNodeStartStreamResponseData,
   event: z.literal('loop_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1401,7 +1401,7 @@ export const zWorkflowStreamEventLiteralLoopStartedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = z.object({
+export const zLoopNodeNextStreamResponseData = z.object({
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
   id: z.string(),
@@ -1416,7 +1416,7 @@ export const zCoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData = z.obje
  * WorkflowStreamEvent[Literal['loop_next'], LoopNodeNextStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralLoopNextData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesLoopNodeNextStreamResponseData,
+  data: zLoopNodeNextStreamResponseData,
   event: z.literal('loop_next'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1427,7 +1427,7 @@ export const zWorkflowStreamEventLiteralLoopNextData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesTextChunkStreamResponseData = z.object({
+export const zTextChunkStreamResponseData = z.object({
   from_variable_selector: z.array(z.string()).nullish(),
   text: z.string(),
 })
@@ -1436,7 +1436,7 @@ export const zCoreAppEntitiesTaskEntitiesTextChunkStreamResponseData = z.object(
  * WorkflowStreamDataEvent[Literal['text_chunk'], TextChunkStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralTextChunkData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesTextChunkStreamResponseData,
+  data: zTextChunkStreamResponseData,
   event: z.literal('text_chunk'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -1447,7 +1447,7 @@ export const zWorkflowStreamDataEventLiteralTextChunkData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData = z.object({
+export const zTextReplaceStreamResponseData = z.object({
   text: z.string(),
 })
 
@@ -1455,7 +1455,7 @@ export const zCoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData = z.objec
  * WorkflowStreamDataEvent[Literal['text_replace'], TextReplaceStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralTextReplaceData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesTextReplaceStreamResponseData,
+  data: zTextReplaceStreamResponseData,
   event: z.literal('text_replace'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -1466,7 +1466,7 @@ export const zWorkflowStreamDataEventLiteralTextReplaceData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData = z.object({
+export const zReasoningChunkStreamResponseData = z.object({
   is_final: z.boolean().optional().default(false),
   message_id: z.string().nullish(),
   node_id: z.string().nullish(),
@@ -1477,7 +1477,7 @@ export const zCoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData = z.ob
  * WorkflowStreamDataEvent[Literal['reasoning_chunk'], ReasoningChunkStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralReasoningChunkData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesReasoningChunkStreamResponseData,
+  data: zReasoningChunkStreamResponseData,
   event: z.literal('reasoning_chunk'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -1488,7 +1488,7 @@ export const zWorkflowStreamDataEventLiteralReasoningChunkData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = z.object({
+export const zAgentLogStreamResponseData = z.object({
   data: z.record(z.string(), z.unknown()),
   error: z.string().nullish(),
   id: z.string(),
@@ -1504,7 +1504,7 @@ export const zCoreAppEntitiesTaskEntitiesAgentLogStreamResponseData = z.object({
  * WorkflowStreamDataEvent[Literal['agent_log'], AgentLogStreamResponse.Data]
  */
 export const zWorkflowStreamDataEventLiteralAgentLogData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesAgentLogStreamResponseData,
+  data: zAgentLogStreamResponseData,
   event: z.literal('agent_log'),
   task_id: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -1515,7 +1515,7 @@ export const zWorkflowStreamDataEventLiteralAgentLogData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = z.object({
+export const zHumanInputFormFilledResponseData = z.object({
   action_id: z.string(),
   action_text: z.string(),
   node_id: z.string(),
@@ -1528,7 +1528,7 @@ export const zCoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData = z.ob
  * WorkflowStreamEvent[Literal['human_input_form_filled'], HumanInputFormFilledResponse.Data]
  */
 export const zWorkflowStreamEventLiteralHumanInputFormFilledData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesHumanInputFormFilledResponseData,
+  data: zHumanInputFormFilledResponseData,
   event: z.literal('human_input_form_filled'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1539,7 +1539,7 @@ export const zWorkflowStreamEventLiteralHumanInputFormFilledData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = z.object({
+export const zHumanInputFormTimeoutResponseData = z.object({
   expiration_time: z.int(),
   node_id: z.string(),
   node_title: z.string(),
@@ -1549,7 +1549,7 @@ export const zCoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData = z.o
  * WorkflowStreamEvent[Literal['human_input_form_timeout'], HumanInputFormTimeoutResponse.Data]
  */
 export const zWorkflowStreamEventLiteralHumanInputFormTimeoutData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesHumanInputFormTimeoutResponseData,
+  data: zHumanInputFormTimeoutResponseData,
   event: z.literal('human_input_form_timeout'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1714,7 +1714,7 @@ export const zWorkflowStartReason = z.enum(['initial', 'resumption'])
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = z.object({
+export const zWorkflowStartStreamResponseData = z.object({
   created_at: z.int(),
   id: z.string(),
   inputs: z.record(z.string(), z.unknown()),
@@ -1726,7 +1726,7 @@ export const zCoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData = z.obj
  * WorkflowStreamEvent[Literal['workflow_started'], WorkflowStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralWorkflowStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesWorkflowStartStreamResponseData,
+  data: zWorkflowStartStreamResponseData,
   event: z.literal('workflow_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1750,7 +1750,7 @@ export const zWorkflowExecutionStatus = z.enum([
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = z.object({
+export const zWorkflowFinishStreamResponseData = z.object({
   created_at: z.int(),
   created_by: z.record(z.string(), z.unknown()).optional(),
   elapsed_time: z.number(),
@@ -1770,7 +1770,7 @@ export const zCoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData = z.ob
  * WorkflowStreamEvent[Literal['workflow_finished'], WorkflowFinishStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralWorkflowFinishedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesWorkflowFinishStreamResponseData,
+  data: zWorkflowFinishStreamResponseData,
   event: z.literal('workflow_finished'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1781,7 +1781,7 @@ export const zWorkflowStreamEventLiteralWorkflowFinishedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = z.object({
+export const zWorkflowPauseStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   outputs: z.record(z.string(), z.unknown()).optional(),
@@ -1797,7 +1797,7 @@ export const zCoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData = z.obj
  * WorkflowStreamEvent[Literal['workflow_paused'], WorkflowPauseStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralWorkflowPausedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesWorkflowPauseStreamResponseData,
+  data: zWorkflowPauseStreamResponseData,
   event: z.literal('workflow_paused'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1816,7 +1816,7 @@ export const zAgentStrategyInfo = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = z.object({
+export const zNodeStartStreamResponseData = z.object({
   agent_strategy: zAgentStrategyInfo.nullish(),
   created_at: z.int(),
   extras: z.record(z.string(), z.unknown()).optional(),
@@ -1836,7 +1836,7 @@ export const zCoreAppEntitiesTaskEntitiesNodeStartStreamResponseData = z.object(
  * WorkflowStreamEvent[Literal['node_started'], NodeStartStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralNodeStartedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesNodeStartStreamResponseData,
+  data: zNodeStartStreamResponseData,
   event: z.literal('node_started'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1893,7 +1893,7 @@ export const zWorkflowNodeExecutionStatus = z.enum([
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = z.object({
+export const zNodeFinishStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -1921,7 +1921,7 @@ export const zCoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData = z.object
  * WorkflowStreamEvent[Literal['node_finished'], NodeFinishStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralNodeFinishedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesNodeFinishStreamResponseData,
+  data: zNodeFinishStreamResponseData,
   event: z.literal('node_finished'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1932,7 +1932,7 @@ export const zWorkflowStreamEventLiteralNodeFinishedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = z.object({
+export const zNodeRetryStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -1961,7 +1961,7 @@ export const zCoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData = z.object(
  * WorkflowStreamEvent[Literal['node_retry'], NodeRetryStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralNodeRetryData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesNodeRetryStreamResponseData,
+  data: zNodeRetryStreamResponseData,
   event: z.literal('node_retry'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -1972,7 +1972,7 @@ export const zWorkflowStreamEventLiteralNodeRetryData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData = z.object({
+export const zIterationNodeCompletedStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -1996,7 +1996,7 @@ export const zCoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseDat
  * WorkflowStreamEvent[Literal['iteration_completed'], IterationNodeCompletedStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralIterationCompletedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesIterationNodeCompletedStreamResponseData,
+  data: zIterationNodeCompletedStreamResponseData,
   event: z.literal('iteration_completed'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2007,7 +2007,7 @@ export const zWorkflowStreamEventLiteralIterationCompletedData = z.object({
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = z.object({
+export const zLoopNodeCompletedStreamResponseData = z.object({
   created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullish(),
@@ -2031,7 +2031,7 @@ export const zCoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData = z
  * WorkflowStreamEvent[Literal['loop_completed'], LoopNodeCompletedStreamResponse.Data]
  */
 export const zWorkflowStreamEventLiteralLoopCompletedData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesLoopNodeCompletedStreamResponseData,
+  data: zLoopNodeCompletedStreamResponseData,
   event: z.literal('loop_completed'),
   task_id: z.string(),
   workflow_run_id: z.string(),
@@ -2156,7 +2156,7 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
  *
  * Data entity
  */
-export const zCoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = z.object({
+export const zHumanInputRequiredResponseData = z.object({
   actions: z.array(zUserActionConfig).optional(),
   approval_channels: z.array(z.string()).optional(),
   display_in_ui: z.boolean().optional().default(false),
@@ -2174,7 +2174,7 @@ export const zCoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData = z.obje
  * WorkflowStreamEvent[Literal['human_input_required'], HumanInputRequiredResponse.Data]
  */
 export const zWorkflowStreamEventLiteralHumanInputRequiredData = z.object({
-  data: zCoreAppEntitiesTaskEntitiesHumanInputRequiredResponseData,
+  data: zHumanInputRequiredResponseData,
   event: z.literal('human_input_required'),
   task_id: z.string(),
   workflow_run_id: z.string(),

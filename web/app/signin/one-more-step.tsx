@@ -15,7 +15,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -26,7 +26,6 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { useOneMoreStep } from '@/service/use-common'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { timezones } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -77,7 +76,9 @@ const OneMoreStep = () => {
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })
-  const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
+  const { mutateAsync: submitOneMoreStep, isPending } = useMutation(
+    consoleQuery.account.init.post.mutationOptions(),
+  )
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === state.interface_language)
   const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === state.timezone)
 
@@ -95,9 +96,11 @@ const OneMoreStep = () => {
     if (isPending) return
     try {
       await submitOneMoreStep({
-        invitation_code: state.invitation_code.trim(),
-        interface_language: state.interface_language,
-        timezone: state.timezone,
+        body: {
+          invitation_code: state.invitation_code.trim(),
+          interface_language: state.interface_language,
+          timezone: state.timezone,
+        },
       })
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
       replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)

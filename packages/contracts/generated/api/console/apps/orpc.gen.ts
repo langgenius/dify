@@ -63,6 +63,7 @@ import {
   zDeleteAppsByAppIdAnnotationsByAnnotationIdPath,
   zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse,
   zDeleteAppsByAppIdAnnotationsPath,
+  zDeleteAppsByAppIdAnnotationsQuery,
   zDeleteAppsByAppIdAnnotationsResponse,
   zDeleteAppsByAppIdChatConversationsByConversationIdPath,
   zDeleteAppsByAppIdChatConversationsByConversationIdResponse,
@@ -1542,7 +1543,12 @@ export const delete4 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteAppsByAppIdAnnotationsPath }))
+  .input(
+    z.object({
+      params: zDeleteAppsByAppIdAnnotationsPath,
+      query: zDeleteAppsByAppIdAnnotationsQuery.optional(),
+    }),
+  )
   .output(zDeleteAppsByAppIdAnnotationsResponse)
 
 /**

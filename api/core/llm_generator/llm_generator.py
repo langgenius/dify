@@ -1098,16 +1098,16 @@ class LLMGenerator:
         node_type: str,
         ideal_output: str | None,
     ):
-        LAST_RUN = "{{#last_run#}}"
-        CURRENT = "{{#current#}}"
-        ERROR_MESSAGE = "{{#error_message#}}"
+        last_run_type = "{{#last_run#}}"
+        current_type = "{{#current#}}"
+        error_message_type = "{{#error_message#}}"
         injected_instruction = instruction
-        if LAST_RUN in injected_instruction:
-            injected_instruction = injected_instruction.replace(LAST_RUN, json.dumps(last_run))
-        if CURRENT in injected_instruction:
-            injected_instruction = injected_instruction.replace(CURRENT, current or "null")
-        if ERROR_MESSAGE in injected_instruction:
-            injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
+        if last_run_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(last_run_type, json.dumps(last_run))
+        if current_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(current_type, current or "null")
+        if error_message_type in injected_instruction:
+            injected_instruction = injected_instruction.replace(error_message_type, error_message or "null")
         model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,

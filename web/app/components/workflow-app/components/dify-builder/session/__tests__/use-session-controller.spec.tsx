@@ -1,11 +1,10 @@
 import type { ConversationItem } from '../../types'
 import { act, waitFor } from '@testing-library/react'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import {
+  builderDefaultModel,
   builderModel,
   builderModelListQueryKey,
   createBuilderQueryClient,
@@ -129,8 +128,11 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionViewAtom)).toBeNull()
     expect(store.get(difyBuilderActiveSessionIdAtom)).toBeNull()
     expect(
-      queryClient.getQueryState(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration))
-        ?.isInvalidated,
+      queryClient.getQueryState(
+        consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: builderDefaultModel.model_type } },
+        }),
+      )?.isInvalidated,
     ).toBe(true)
     expect(queryClient.getQueryState(builderModelListQueryKey)?.isInvalidated).toBe(true)
     expect(clientMocks.get).not.toHaveBeenCalled()

@@ -9,21 +9,16 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { selectPipelineTemplate } from '@/app/components/rag-pipeline/utils/query-select'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
-import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import {
-  useDeleteTemplate,
-  useExportTemplateDSL,
-  useInvalidCustomizedTemplateList,
-  usePipelineTemplateById,
-} from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
@@ -42,16 +37,21 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
 
-  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(
-    {
-      template_id: pipeline.id,
-      type,
-    },
-    false,
+  const queryClient = useQueryClient()
+  const { refetch: getPipelineTemplateInfo } = useQuery(
+    consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
+      input: { params: { template_id: pipeline.id }, query: { type } },
+      enabled: false,
+      select: selectPipelineTemplate,
+    }),
   )
-  const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
+  const { mutateAsync: createDataset } = useMutation(
+    consoleQuery.rag.pipeline.dataset.post.mutationOptions(),
+  )
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const invalidDatasetList = useInvalidDatasetList()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
 
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
@@ -62,23 +62,26 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
     }
-    await createDataset(request, {
-      onSuccess: async (newDataset) => {
-        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
-        invalidDatasetList()
-        if (newDataset.pipeline_id)
-          await handleCheckPluginDependencies(newDataset.pipeline_id, true)
-        trackEvent('create_datasets_with_pipeline', {
-          template_name: pipeline.name,
-          template_id: pipeline.id,
-          template_type: type,
-        })
-        push(`/datasets/${newDataset.dataset_id}/pipeline`)
+    await createDataset(
+      { body: request },
+      {
+        onSuccess: async (newDataset) => {
+          toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+          invalidDatasetList()
+          if (newDataset.pipeline_id)
+            await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+          trackEvent('create_datasets_with_pipeline', {
+            template_name: pipeline.name,
+            template_id: pipeline.id,
+            template_type: type,
+          })
+          push(`/datasets/${newDataset.dataset_id}/pipeline`)
+        },
+        onError: () => {
+          toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
+        },
       },
-      onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
-      },
-    })
+    )
   }, [
     getPipelineTemplateInfo,
     createDataset,
@@ -99,20 +102,25 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowEditModal(false)
   }, [])
 
-  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
+  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useMutation(
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions(),
+  )
 
   const handleExportDSL = useCallback(async () => {
     if (isExporting) return
-    await exportPipelineDSL(pipeline.id, {
-      onSuccess: (res) => {
-        const blob = new Blob([res.data], { type: 'application/yaml' })
-        downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
-        toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
+    await exportPipelineDSL(
+      { params: { template_id: pipeline.id } },
+      {
+        onSuccess: (res) => {
+          const blob = new Blob([res.data], { type: 'application/yaml' })
+          downloadBlob({ data: blob, fileName: `${pipeline.name}.pipeline` })
+          toast.success(t(($) => $['exportDSL.successTip'], { ns: 'datasetPipeline' }))
+        },
+        onError: () => {
+          toast.error(t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }))
+        },
       },
-      onError: () => {
-        toast.error(t(($) => $['exportDSL.errorTip'], { ns: 'datasetPipeline' }))
-      },
-    })
+    )
   }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
 
   const handleDelete = useCallback(() => {
@@ -123,17 +131,25 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowConfirmDelete(false)
   }, [])
 
-  const { mutateAsync: deletePipeline } = useDeleteTemplate()
-  const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
+  const { mutateAsync: deletePipeline } = useMutation(
+    consoleQuery.rag.pipeline.customized.templates.byTemplateId.delete.mutationOptions(),
+  )
 
   const onConfirmDelete = useCallback(async () => {
-    await deletePipeline(pipeline.id, {
-      onSuccess: () => {
-        invalidCustomizedTemplateList()
-        setShowConfirmDelete(false)
+    await deletePipeline(
+      { params: { template_id: pipeline.id } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
+              input: { query: { type: 'customized' } },
+            }),
+          })
+          setShowConfirmDelete(false)
+        },
       },
-    })
-  }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
+    )
+  }, [pipeline.id, deletePipeline, queryClient])
 
   return (
     <div className="group relative flex h-33 cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">

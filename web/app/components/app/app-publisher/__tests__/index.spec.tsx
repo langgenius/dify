@@ -96,10 +96,6 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
 const mockPublishToCreatorsPlatform = vi.fn()
 const mockCreateWorkflowToolProvider = vi.fn()
 
-vi.mock('@/service/apps', () => ({
-  publishToCreatorsPlatform: (...args: unknown[]) => mockPublishToCreatorsPlatform(...args),
-}))
-
 vi.mock('@/service/tools', () => ({
   createWorkflowToolProvider: (...args: unknown[]) => mockCreateWorkflowToolProvider(...args),
   saveWorkflowToolProvider: vi.fn(),
@@ -135,14 +131,15 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useWorkflowToolDetailByAppID: () => ({
-    data: undefined,
-    isLoading: false,
-  }),
-  useInvalidateAllWorkflowTools: () => vi.fn(),
-  useInvalidateWorkflowToolDetailByAppID: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.toolProvider.workflow.get.get': () => ({
+      data: undefined,
+      isLoading: false,
+    }),
+  })
+})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -971,8 +968,13 @@ describe('AppPublisher', () => {
   })
 
   it('should show marketplace button and open redirect URL on success', async () => {
-    mockPublishToCreatorsPlatform.mockResolvedValue({
-      redirect_url: 'https://marketplace.example.com/publish?code=abc',
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = new Request(input, init)
+      if (new URL(request.url).pathname.endsWith('/apps/app-1/publish-to-creators-platform')) {
+        mockPublishToCreatorsPlatform(request.method)
+        return Response.json({ redirect_url: 'https://marketplace.example.com/publish?code=abc' })
+      }
+      throw new Error(`Unexpected request: ${request.method} ${request.url}`)
     })
     const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
 
@@ -993,7 +995,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText(/(?:^|\.)common\.publishToMarketplace(?=$|:)/))
 
     await waitFor(() => {
-      expect(mockPublishToCreatorsPlatform).toHaveBeenCalledWith({ appID: 'app-1' })
+      expect(mockPublishToCreatorsPlatform).toHaveBeenCalledWith('POST')
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'https://marketplace.example.com/publish?code=abc',
         '_blank',
@@ -1004,7 +1006,7 @@ describe('AppPublisher', () => {
   })
 
   it('should show toast error when publish to marketplace fails', async () => {
-    mockPublishToCreatorsPlatform.mockRejectedValue(new Error('network error'))
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network error'))
 
     renderWithConsoleQuery(
       <AppPublisher appId="app-1" publishedAt={Date.now()} onPublish={mockOnPublish} />,

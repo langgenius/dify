@@ -1,4 +1,4 @@
-import type { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 
 export type DataSourceNodeProcessingResponse = {
   event: 'datasource_processing'
@@ -31,11 +31,4 @@ export type DataSourceNodeErrorResponse = {
   error: string
 }
 
-export type DataSourceCredential = {
-  avatar_url?: string
-  credential: Record<string, any>
-  id: string
-  is_default: boolean
-  name: string
-  type: CredentialTypeEnum
-}
+export type DataSourceCredential = DatasourceCredentialResponse

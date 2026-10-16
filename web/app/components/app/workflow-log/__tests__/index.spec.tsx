@@ -1,4 +1,11 @@
-import type { AppDetailWithSite, AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppDetailWithSite,
+  AppMode,
+  GetAppsByAppIdWorkflowAppLogsData,
+  WorkflowAppLogPaginationResponse,
+  WorkflowAppLogPartialResponse,
+  WorkflowRunForLogResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
 /**
  * Logs Container Component Tests
@@ -15,16 +22,13 @@ import type { UseQueryResult } from '@tanstack/react-query'
  * - detail.spec.tsx
  * - trigger-by-display.spec.tsx
  */
-import type { MockedFunction } from 'vite-plus/test'
 import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
-import * as useLogModule from '@/service/use-log'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
@@ -40,7 +44,26 @@ const mockPlanState = vi.hoisted(() => ({
   value: 'unrestricted' as CloudSandboxPlanState,
 }))
 
-vi.mock('@/service/use-log')
+type WorkflowLogsInput = {
+  params: { app_id: string }
+  query?: GetAppsByAppIdWorkflowAppLogsData['query']
+}
+
+const mockedUseWorkflowLogs =
+  vi.fn<(input: WorkflowLogsInput) => UseQueryResult<WorkflowAppLogPaginationResponse, Error>>()
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
+      const [path, meta] = options.queryKey as [string[], { input?: WorkflowLogsInput }?]
+      if (Array.isArray(path) && path.includes('workflowAppLogs') && meta?.input)
+        return mockedUseWorkflowLogs(meta.input)
+      return actual.useQuery(options)
+    },
+  }
+})
 
 vi.mock('../../log/cloud-sandbox-retention', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../log/cloud-sandbox-retention')>()
@@ -104,10 +127,6 @@ vi.mock('@/hooks/use-theme', () => ({
 vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
-
-const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<
-  typeof useLogModule.useWorkflowLogs
->
 
 // ============================================================================
 // Test Utilities
@@ -179,14 +198,14 @@ const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWit
     ...overrides,
   })
 
-const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): WorkflowRunDetail => ({
+const createMockWorkflowRun = (
+  overrides: Partial<WorkflowRunForLogResponse> = {},
+): WorkflowRunForLogResponse => ({
   id: 'run-1',
   version: '1.0.0',
   status: 'succeeded',
   elapsed_time: 1.234,
   total_tokens: 100,
-  total_price: 0.001,
-  currency: 'USD',
   total_steps: 5,
   finished_at: Date.now(),
   triggered_from: WorkflowRunTriggeredFrom.APP_RUN,
@@ -194,8 +213,8 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
 })
 
 const createMockWorkflowLog = (
-  overrides: Partial<WorkflowAppLogDetail> = {},
-): WorkflowAppLogDetail => ({
+  overrides: Partial<WorkflowAppLogPartialResponse> = {},
+): WorkflowAppLogPartialResponse => ({
   id: 'log-1',
   workflow_run: createMockWorkflowRun(),
   created_from: 'web-app',
@@ -210,9 +229,9 @@ const createMockWorkflowLog = (
 })
 
 const createMockLogsResponse = (
-  data: WorkflowAppLogDetail[] = [],
+  data: WorkflowAppLogPartialResponse[] = [],
   total = data.length,
-): WorkflowLogsResponse => ({
+): WorkflowAppLogPaginationResponse => ({
   data,
   has_more: data.length < total,
   limit: APP_PAGE_LIMIT,
@@ -224,14 +243,9 @@ const createMockLogsResponse = (
 // Type-safe Mock Helper
 // ============================================================================
 
-type WorkflowLogsParams = {
-  appId: string
-  params?: Record<string, string | number | boolean | undefined>
-}
-
-const getMockCallParams = (): WorkflowLogsParams | undefined => {
-  const lastCall = mockedUseWorkflowLogs.mock.calls.at(-1)
-  return lastCall?.[0]
+const getMockCallParams = () => {
+  const input = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0]
+  return input && { appId: input.params.app_id, params: input.query }
 }
 
 // ============================================================================
@@ -255,7 +269,7 @@ describe('Logs Container', () => {
     it('should render title and subtitle', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -271,7 +285,7 @@ describe('Logs Container', () => {
     it('should render Filter component', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -292,7 +306,7 @@ describe('Logs Container', () => {
     it('should show loading spinner when data is undefined', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: undefined,
           isLoading: true,
         }),
@@ -308,7 +322,7 @@ describe('Logs Container', () => {
     it('should not show loading spinner when data is available', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([createMockWorkflowLog()], 1),
         }),
       )
@@ -328,7 +342,7 @@ describe('Logs Container', () => {
     it('should render empty element when total is 0', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -349,7 +363,7 @@ describe('Logs Container', () => {
     it('should call useWorkflowLogs with correct appId and default params', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -372,7 +386,7 @@ describe('Logs Container', () => {
     it('should include date filters for non-allTime periods', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -389,7 +403,7 @@ describe('Logs Container', () => {
     it('should not include status param when status is all', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -411,7 +425,7 @@ describe('Logs Container', () => {
       // Arrange
       const user = userEvent.setup()
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -435,7 +449,7 @@ describe('Logs Container', () => {
       // Arrange
       const user = userEvent.setup()
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -458,7 +472,7 @@ describe('Logs Container', () => {
       const user = userEvent.setup()
       mockPlanState.value = 'sandbox'
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -481,7 +495,7 @@ describe('Logs Container', () => {
       // Arrange
       const user = userEvent.setup()
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )
@@ -509,7 +523,7 @@ describe('Logs Container', () => {
     it('should not render pagination when total is less than limit', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([createMockWorkflowLog()], 1),
         }),
       )
@@ -528,7 +542,7 @@ describe('Logs Container', () => {
       )
 
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse(logs, APP_PAGE_LIMIT + 10),
         }),
       )
@@ -548,7 +562,7 @@ describe('Logs Container', () => {
     it('should render List component when data is available', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([createMockWorkflowLog()], 1),
         }),
       )
@@ -563,7 +577,7 @@ describe('Logs Container', () => {
     it('should display log data in table', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse(
             [
               createMockWorkflowLog({
@@ -606,7 +620,7 @@ describe('Logs Container', () => {
     it('should handle different app modes', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([createMockWorkflowLog()], 1),
         }),
       )
@@ -623,7 +637,7 @@ describe('Logs Container', () => {
     it('should handle error state from useWorkflowLogs', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: undefined,
           error: new Error('Failed to fetch'),
         }),
@@ -639,7 +653,7 @@ describe('Logs Container', () => {
     it('should handle app with different ID', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
+        createMockQueryResult<WorkflowAppLogPaginationResponse>({
           data: createMockLogsResponse([], 0),
         }),
       )

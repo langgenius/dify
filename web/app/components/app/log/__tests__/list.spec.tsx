@@ -1,3 +1,4 @@
+import type { MessageDetailResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -34,24 +35,35 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/service/use-log', () => ({
-  useChatConversationDetail: () => ({
-    data: mockChatConversationDetail,
-  }),
-  useCompletionConversationDetail: () => ({
-    data: mockCompletionConversationDetail,
-    refetch: mockCompletionRefetch,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: Parameters<typeof actual.useQuery>[0]) => {
+      const [path] = options.queryKey as [string[]]
+      if (Array.isArray(path) && path.includes('byConversationId')) {
+        if (path.includes('chatConversations')) return { data: mockChatConversationDetail }
+        return { data: mockCompletionConversationDetail, refetch: mockCompletionRefetch }
+      }
+      return actual.useQuery(options)
+    },
+  }
+})
 
-vi.mock('@/service/log', () => ({
-  fetchChatMessages: (...args: unknown[]) => mockFetchChatMessages(...args),
-  updateLogMessageFeedbacks: (...args: unknown[]) => mockUpdateLogMessageFeedbacks(...args),
-  updateLogMessageAnnotations: (...args: unknown[]) => mockUpdateLogMessageAnnotations(...args),
-}))
-
-vi.mock('@/service/annotation', () => ({
-  delAnnotation: (...args: unknown[]) => mockDelAnnotation(...args),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        chatMessages: { get: (...args: unknown[]) => mockFetchChatMessages(...args) },
+        feedbacks: { post: (...args: unknown[]) => mockUpdateLogMessageFeedbacks(...args) },
+        annotations: {
+          post: (...args: unknown[]) => mockUpdateLogMessageAnnotations(...args),
+          byAnnotationId: { delete: (...args: unknown[]) => mockDelAnnotation(...args) },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('@/app/components/base/loading-placeholder', () => ({
@@ -59,7 +71,9 @@ vi.mock('@/app/components/base/loading-placeholder', () => ({
 }))
 
 vi.mock('@/app/components/app/log/model-info', () => ({
-  default: ({ model }: { model: string }) => <div data-testid="model-info">{model}</div>,
+  default: ({ model }: { model: { name: string } }) => (
+    <div data-testid="model-info">{model.name}</div>
+  ),
 }))
 
 vi.mock('@/app/components/app/log/var-panel', () => ({
@@ -285,8 +299,17 @@ const createCompletionLogs = () => ({
   ],
 })
 
-const createChatMessage = (id: string, overrides: Record<string, unknown> = {}) => ({
+const createChatMessage = (
+  id: string,
+  overrides: Partial<MessageDetailResponse> = {},
+): MessageDetailResponse => ({
   id,
+  conversation_id: 'conversation-1',
+  agent_thoughts: [],
+  metadata: {},
+  from_source: 'console',
+  provider_response_latency: 0,
+  status: 'normal',
   answer: `Assistant reply ${id}`,
   query: `Question ${id}`,
   created_at: 1710000000,
@@ -298,7 +321,7 @@ const createChatMessage = (id: string, overrides: Record<string, unknown> = {}) 
   message_files: [],
   answer_tokens: 10,
   message_tokens: 5,
-  parent_message_id: undefined,
+  parent_message_id: null,
   ...overrides,
 })
 
@@ -400,11 +423,9 @@ describe('ConversationList', () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
+      introduction: 'Hello there',
       model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
         user_input_form: [],
       },
       message: {
@@ -442,11 +463,9 @@ describe('ConversationList', () => {
       mockChatConversationDetail = {
         id: 'conversation-1',
         created_at: 1710000000,
+        introduction: 'Hello there',
         model_config: {
-          model: 'gpt-4o',
-          configs: {
-            introduction: 'Hello there',
-          },
+          model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
           user_input_form: [
             {
               query: {
@@ -485,11 +504,8 @@ describe('ConversationList', () => {
 
       await waitFor(() => {
         expect(mockFetchChatMessages).toHaveBeenCalledWith({
-          url: '/apps/app-1/chat-messages',
-          params: {
-            conversation_id: 'conversation-1',
-            limit: 10,
-          },
+          params: { app_id: 'app-1' },
+          query: { conversation_id: 'conversation-1', limit: 10 },
         })
       })
 
@@ -504,7 +520,7 @@ describe('ConversationList', () => {
 
       await waitFor(() => {
         expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
-          url: '/apps/app-1/feedbacks',
+          params: { app_id: 'app-1' },
           body: {
             message_id: 'message-1',
             rating: 'like',
@@ -526,11 +542,9 @@ describe('ConversationList', () => {
       mockChatConversationDetail = {
         id: 'conversation-1',
         created_at: 1710000000,
+        introduction: 'Hello there',
         model_config: {
-          model: 'gpt-4o',
-          configs: {
-            introduction: 'Hello there',
-          },
+          model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
           user_input_form: [],
         },
         message: {
@@ -556,7 +570,7 @@ describe('ConversationList', () => {
       id: 'conversation-1',
       created_at: 1710000000,
       model_config: {
-        model: 'gpt-4o-mini',
+        model: { provider: 'openai', name: 'gpt-4o-mini', mode: 'chat', completion_params: {} },
         user_input_form: [
           {
             query: {
@@ -594,7 +608,7 @@ describe('ConversationList', () => {
 
     await waitFor(() => {
       expect(mockUpdateLogMessageFeedbacks).toHaveBeenCalledWith({
-        url: '/apps/app-1/feedbacks',
+        params: { app_id: 'app-1' },
         body: {
           message_id: 'message-1',
           rating: 'like',
@@ -674,11 +688,9 @@ describe('ConversationList', () => {
     mockChatConversationDetail = {
       id: 'conversation-1',
       created_at: 1710000000,
+      introduction: 'Hello there',
       model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
-        },
+        model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },
         user_input_form: [
           {
             query: {
@@ -700,7 +712,7 @@ describe('ConversationList', () => {
             annotation: {
               id: 'annotation-1',
               content: 'Annotated answer',
-              account: { name: 'Admin' },
+              account: { id: 'account-1', name: 'Admin', email: 'admin@example.com' },
             },
           }),
           createChatMessage('message-2', { parent_message_id: 'message-1' }),
@@ -729,7 +741,9 @@ describe('ConversationList', () => {
     fireEvent.click(screen.getByText('chat-remove-annotation'))
 
     await waitFor(() => {
-      expect(mockDelAnnotation).toHaveBeenCalledWith('app-1', 'annotation-2')
+      expect(mockDelAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', annotation_id: 'annotation-2' },
+      })
     })
 
     const scrollableDiv = document.getElementById('scrollableDiv') as HTMLDivElement

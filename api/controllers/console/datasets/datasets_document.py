@@ -12,13 +12,14 @@ from controllers.common.controller_schemas import DocumentBatchDownloadZipPayloa
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.rbac import DatasetByDocument, DatasetId, RBACCheck, enforce_rbac_checks
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.datasets.datasets import IndexingEstimateResponse
 from controllers.console.datasets.error import (
     ArchivedDocumentImmutableError,
     DatasetAccessDeniedRequestError,
@@ -42,7 +43,9 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentMetadataResponse,
+    DocumentProcessRuleResponse,
     DocumentResponse,
+    DocumentSourceDetailResponse,
     DocumentStatusListResponse,
     DocumentStatusResponse,
     normalize_enum,
@@ -147,7 +150,7 @@ class DatasetResponse(ResponseModel):
 
 
 class DocumentWithSegmentsResponse(DocumentResponse):
-    process_rule_dict: Any = None
+    process_rule_dict: DocumentProcessRuleResponse | None = None
     completed_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
     total_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
@@ -184,18 +187,16 @@ class DocumentDatasetListParam(BaseModel):
     fetch_val: str = Field("false", alias="fetch")
 
 
+class DocumentIdListQuery(BaseModel):
+    document_id: list[str] = Field(default_factory=list, description="Document IDs")
+
+
 class DocumentWithSegmentsListResponse(ResponseModel):
     data: list[DocumentWithSegmentsResponse]
     has_more: bool
     limit: int
     total: int
     page: int
-
-
-class IndexingEstimateResponse(IndexingEstimate):
-    tokens: int
-    total_price: float | int
-    currency: str
 
 
 def _serialize_indexing_estimate(estimate: IndexingEstimate) -> tuple[dict[str, object], int]:
@@ -216,11 +217,11 @@ class DocumentDetailResponse(ResponseModel):
     id: str
     position: int | None = None
     data_source_type: str | None = None
-    data_source_info: Any = None
-    data_source_detail_dict: Any = None
+    data_source_info: dict[str, JsonValue] | None = None
+    data_source_detail_dict: DocumentSourceDetailResponse | None = None
     dataset_process_rule_id: str | None = None
-    dataset_process_rule: Any = None
-    document_process_rule: Any = None
+    dataset_process_rule: DocumentProcessRuleResponse | None = None
+    document_process_rule: DocumentProcessRuleResponse | None = None
     name: str | None = None
     created_from: str | None = None
     created_by: str | None = None
@@ -280,10 +281,14 @@ class DocumentSummaryStatusResponse(ResponseModel):
     summaries: list[SummaryEntryResponse]
 
 
+class ProcessRuleLimitsResponse(ResponseModel):
+    indexing_max_segmentation_tokens_length: int
+
+
 class ProcessRuleResponse(ResponseModel):
     mode: ProcessRuleMode
     rules: Rule | None = None
-    limits: dict[str, Any]
+    limits: ProcessRuleLimitsResponse
 
 
 class DocumentPipelineExecutionLogResponse(ResponseModel):
@@ -352,17 +357,7 @@ class GetProcessRuleApi(Resource):
 class DatasetDocumentListApi(Resource):
     @console_ns.doc("get_dataset_documents")
     @console_ns.doc(description="Get documents in a dataset")
-    @console_ns.doc(
-        params={
-            "dataset_id": "Dataset ID",
-            "page": "Page number (default: 1)",
-            "limit": "Number of items per page (default: 20)",
-            "keyword": "Search keyword",
-            "sort": "Sort order (default: -created_at)",
-            "fetch": "Fetch full details (default: false)",
-            "status": "Filter documents by display status",
-        }
-    )
+    @console_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DocumentDatasetListParam)})
     @console_ns.response(
         200,
         "Documents retrieved successfully",
@@ -406,6 +401,7 @@ class DatasetDocumentListApi(Resource):
             _raise_document_indexing_error(error)
         return dump_response(DatasetAndDocumentResponse, result)
 
+    @console_ns.doc(params=query_params_from_model(DocumentIdListQuery))
     @console_ns.response(204, "Documents deleted successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -750,6 +746,7 @@ class DocumentMetadataApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
 class DocumentStatusApi(Resource):
+    @console_ns.doc(params=query_params_from_model(DocumentIdListQuery))
     @error_responses(InvalidActionError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(

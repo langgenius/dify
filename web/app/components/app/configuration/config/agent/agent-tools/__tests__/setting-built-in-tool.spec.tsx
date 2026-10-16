@@ -5,12 +5,10 @@ import * as React from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import SettingBuiltInTool from '../setting-built-in-tool'
 
-const fetchModelToolList = vi.fn()
 const fetchBuiltInToolList = vi.fn()
 const fetchCustomToolList = vi.fn()
 const fetchWorkflowToolList = vi.fn()
 vi.mock('@/service/tools', () => ({
-  fetchModelToolList: (collectionName: string) => fetchModelToolList(collectionName),
   fetchBuiltInToolList: (collectionName: string) => fetchBuiltInToolList(collectionName),
   fetchCustomToolList: (collectionName: string) => fetchCustomToolList(collectionName),
   fetchWorkflowToolList: (appId: string) => fetchWorkflowToolList(appId),
@@ -133,7 +131,6 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuil
     <SettingBuiltInTool
       collection={baseCollection as any}
       toolName="search"
-      isModel
       setting={{ settingParam: 'value' }}
       onHide={onHide}
       onSave={onSave}
@@ -157,7 +154,7 @@ describe('SettingBuiltInTool', () => {
   })
 
   it('should fetch tool list when collection has no tools', async () => {
-    fetchModelToolList.mockResolvedValueOnce([createTool()])
+    fetchBuiltInToolList.mockResolvedValueOnce([createTool()])
     renderComponent({
       collection: {
         ...baseCollection,
@@ -166,8 +163,8 @@ describe('SettingBuiltInTool', () => {
     })
 
     await waitFor(() => {
-      expect(fetchModelToolList).toHaveBeenCalledTimes(1)
-      expect(fetchModelToolList).toHaveBeenCalledWith('vendor/provider-1')
+      expect(fetchBuiltInToolList).toHaveBeenCalledTimes(1)
+      expect(fetchBuiltInToolList).toHaveBeenCalledWith('vendor/provider-1')
     })
     expect(await screen.findByText('Search Tool')).toBeInTheDocument()
   })
@@ -287,7 +284,6 @@ describe('SettingBuiltInTool', () => {
         id: 'workflow-1',
       } as any,
       isBuiltIn: false,
-      isModel: false,
     })
 
     await waitFor(() => {

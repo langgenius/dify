@@ -28,11 +28,14 @@ type MetadataItemWithEdit = {
 
 // Mock useBatchUpdateDocMetadata
 const mockMutateAsync = vi.fn().mockResolvedValue({})
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useBatchUpdateDocMetadata: () => ({
-    mutateAsync: mockMutateAsync,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.metadata.post': () => ({
+      mutateAsync: mockMutateAsync,
+    }),
+  })
+})
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -315,17 +318,19 @@ describe('useBatchEditDocumentMetadata', () => {
 
       expect(mockMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata_list: expect.arrayContaining([
-            expect.objectContaining({
-              document_id: 'doc-1',
-              metadata_list: expect.arrayContaining([
-                expect.objectContaining({
-                  id: '1',
-                  value: 'New Value',
-                }),
-              ]),
-            }),
-          ]),
+          body: expect.objectContaining({
+            operation_data: expect.arrayContaining([
+              expect.objectContaining({
+                document_id: 'doc-1',
+                metadata_list: expect.arrayContaining([
+                  expect.objectContaining({
+                    id: '1',
+                    value: 'New Value',
+                  }),
+                ]),
+              }),
+            ]),
+          }),
         }),
       )
     })
@@ -400,15 +405,17 @@ describe('useBatchEditDocumentMetadata', () => {
 
       expect(mockMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata_list: expect.arrayContaining([
-            expect.objectContaining({
-              metadata_list: expect.arrayContaining([
-                expect.objectContaining({
-                  name: 'new_field',
-                }),
-              ]),
-            }),
-          ]),
+          body: expect.objectContaining({
+            operation_data: expect.arrayContaining([
+              expect.objectContaining({
+                metadata_list: expect.arrayContaining([
+                  expect.objectContaining({
+                    name: 'new_field',
+                  }),
+                ]),
+              }),
+            ]),
+          }),
         }),
       )
     })
@@ -453,7 +460,7 @@ describe('useBatchEditDocumentMetadata', () => {
       // Both documents should have the field after applying to all
       expect(mockMutateAsync).toHaveBeenCalled()
       const callArgs = mockMutateAsync.mock.calls[0]![0]
-      expect(callArgs.metadata_list.length).toBe(2)
+      expect(callArgs.body.operation_data.length).toBe(2)
     })
 
     it('should not add missing metadata for multiple value items when isApplyToAllSelectDocument is true', async () => {
@@ -545,14 +552,16 @@ describe('useBatchEditDocumentMetadata', () => {
 
       expect(mockMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata_list: expect.arrayContaining([
-            expect.objectContaining({
-              metadata_list: expect.arrayContaining([
-                expect.objectContaining({ id: '1', value: 'New Value 1' }),
-                expect.objectContaining({ id: '2', value: 200 }),
-              ]),
-            }),
-          ]),
+          body: expect.objectContaining({
+            operation_data: expect.arrayContaining([
+              expect.objectContaining({
+                metadata_list: expect.arrayContaining([
+                  expect.objectContaining({ id: '1', value: 'New Value 1' }),
+                  expect.objectContaining({ id: '2', value: 200 }),
+                ]),
+              }),
+            ]),
+          }),
         }),
       )
     })
@@ -574,12 +583,14 @@ describe('useBatchEditDocumentMetadata', () => {
 
       expect(mockMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          dataset_id: 'ds-1',
-          metadata_list: expect.arrayContaining([
-            expect.objectContaining({
-              document_id: 'doc-1',
-            }),
-          ]),
+          params: { dataset_id: 'ds-1' },
+          body: expect.objectContaining({
+            operation_data: expect.arrayContaining([
+              expect.objectContaining({
+                document_id: 'doc-1',
+              }),
+            ]),
+          }),
         }),
       )
     })
@@ -600,12 +611,14 @@ describe('useBatchEditDocumentMetadata', () => {
 
       expect(mockMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata_list: expect.arrayContaining([
-            expect.objectContaining({
-              document_id: 'doc-not-in-list',
-              partial_update: true,
-            }),
-          ]),
+          body: expect.objectContaining({
+            operation_data: expect.arrayContaining([
+              expect.objectContaining({
+                document_id: 'doc-not-in-list',
+                partial_update: true,
+              }),
+            ]),
+          }),
         }),
       )
     })
@@ -646,7 +659,7 @@ describe('useBatchEditDocumentMetadata', () => {
       })
 
       const callArgs = mockMutateAsync.mock.calls[0]![0]
-      const sentItem = callArgs.metadata_list[0].metadata_list[0]
+      const sentItem = callArgs.body.operation_data[0].metadata_list[0]
 
       // Only id, name, type, value should be present
       expect(Object.keys(sentItem).sort()).toEqual(['id', 'name', 'type', 'value'].sort())
@@ -688,7 +701,7 @@ describe('useBatchEditDocumentMetadata', () => {
       })
 
       const callArgs = mockMutateAsync.mock.calls[0]![0]
-      const sentItem = callArgs.metadata_list[0].metadata_list[0]
+      const sentItem = callArgs.body.operation_data[0].metadata_list[0]
 
       // value should be null, not undefined
       expect(sentItem.value).toBeNull()

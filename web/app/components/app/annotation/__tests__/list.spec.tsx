@@ -52,7 +52,7 @@ describe('List', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(item.question))
+    fireEvent.click(screen.getByText(item.question!))
 
     expect(onView).toHaveBeenCalledWith(item)
     expect(mockFormatTime).toHaveBeenCalledWith(item.created_at, 'appLog.dateTimeFormat')
@@ -113,7 +113,7 @@ describe('List', () => {
       />,
     )
 
-    const row = screen.getByText(item.question).closest('tr') as HTMLTableRowElement
+    const row = screen.getByText(item.question!).closest('tr') as HTMLTableRowElement
     const actionButtons = within(row).getAllByRole('button')
     fireEvent.click(actionButtons[1]!)
 
