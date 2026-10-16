@@ -28,7 +28,7 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str]:
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs) -> list[str] | None:
         raise NotImplementedError
 
     @abstractmethod

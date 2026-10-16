@@ -372,7 +372,7 @@ class WeaviateVector(BaseVector):
         metadatas = [d.metadata for d in documents]
 
         col = self._client.collections.use(self._collection_name)
-        objs: list[DataObject] = []
+        objs: list[DataObject[dict[str, Any], None]] = []
         ids_out: list[str] = []
 
         for i, text in enumerate(texts):

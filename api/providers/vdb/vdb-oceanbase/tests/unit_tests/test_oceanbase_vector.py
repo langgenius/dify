@@ -1,3 +1,4 @@
+import enum
 import importlib
 import json
 import sys
@@ -19,6 +20,9 @@ def _build_fake_pyobvector_module():
     class VECTOR:
         def __init__(self, dim):
             self.dim = dim
+
+    class VecIndexType(enum.Enum):
+        HNSW = 0
 
     def l2_distance(*_args, **_kwargs):
         return "l2"
@@ -48,6 +52,7 @@ def _build_fake_pyobvector_module():
 
     pyobvector.VECTOR = VECTOR
     pyobvector.ObVecClient = ObVecClient
+    pyobvector.VecIndexType = VecIndexType
     pyobvector.l2_distance = l2_distance
     pyobvector.cosine_distance = cosine_distance
     pyobvector.inner_product = inner_product
