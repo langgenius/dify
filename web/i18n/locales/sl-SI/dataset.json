@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Iskanje celotnega besedila",
   "retrieval.hybrid_search.description": "Istočasno izvede iskanje celotnega besedila in vektorsko iskanje ter ponovno razvrsti zadetke, da izbere najboljše ujemanje za uporabnikovo poizvedbo. Uporabniki lahko določijo uteži ali konfigurirajo model za ponovno razvrščanje.",
   "retrieval.hybrid_search.title": "Hibridno iskanje",
-  "retrieval.invertedIndex.title": "Inverzni indeks",
   "retrieval.keyword_search.description": "Obrnjeni indeks je struktura, ki se uporablja za učinkovito iskanje. Vsak izraz, organiziran po izrazih, kaže na dokumente ali spletne strani, ki ga vsebujejo.",
   "retrieval.keyword_search.title": "Obrnjeni indeks",
   "retrieval.semantic_search.description": "Ustvari vdelke poizvedbe in poišči odstavke besedila, ki so najbolj podobni njegovi vektorski predstavitvi.",

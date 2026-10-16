@@ -80,7 +80,6 @@ describe('datasets-detail-store provider', () => {
 
     await waitFor(() => {
       expect(mockFetchDatasets).toHaveBeenCalledWith({
-        url: '/datasets',
         params: {
           page: 1,
           ids: ['dataset-1', 'dataset-2'],

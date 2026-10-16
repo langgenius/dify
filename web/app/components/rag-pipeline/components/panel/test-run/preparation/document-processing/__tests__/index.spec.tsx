@@ -1,11 +1,8 @@
 import type { ZodSchema } from 'zod'
+import type { useInputVariables } from '../hooks'
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import type {
-  PipelineProcessingParamsResponse,
-  RAGPipelineVariable,
-  RAGPipelineVariables,
-} from '@/models/pipeline'
+import type { RAGPipelineVariable, RAGPipelineVariables } from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -36,15 +33,20 @@ vi.mock('@/app/components/workflow/store', () => ({
   },
 }))
 
-let mockParamsConfig: PipelineProcessingParamsResponse | undefined
+type ProcessingParams = ReturnType<typeof useInputVariables>['paramsConfig']
+
+let mockParamsConfig: ProcessingParams | undefined
 let mockIsFetchingParams = false
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelineProcessingParams: () => ({
-    data: mockParamsConfig,
-    isFetching: mockIsFetchingParams,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': () => ({
+      data: mockParamsConfig,
+      isFetching: mockIsFetchingParams,
+    }),
+  })
+})
 
 const mockUseInitialData = vi.fn()
 const mockUseConfigurations = vi.fn()
@@ -168,7 +170,7 @@ const createMockSchema = (): ZodSchema =>
 
 const setupMocks = (options?: {
   pipelineId?: string | null
-  paramsConfig?: PipelineProcessingParamsResponse
+  paramsConfig?: ProcessingParams
   isFetchingParams?: boolean
   initialData?: Record<string, unknown>
   configurations?: BaseConfiguration[]

@@ -41,7 +41,6 @@ export async function loadConfigurationState({
 
   if (datasetIds.length) {
     const { data } = await fetchDatasets({
-      url: '/datasets',
       params: {
         page: 1,
         ids: datasetIds,

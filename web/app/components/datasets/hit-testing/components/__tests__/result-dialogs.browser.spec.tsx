@@ -1,37 +1,22 @@
 import type { ExternalKnowledgeBaseHitTesting, HitTesting } from '@/models/datasets'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { ResultItem } from '../result-item'
 import { ResultItemExternal } from '../result-item-external'
 
 function createResult(overrides: Partial<HitTesting> = {}): HitTesting {
-  const segment: HitTesting['segment'] = {
-    id: 'segment-1',
-    document: {
-      id: 'document-1',
-      name: 'handbook.pdf',
-      data_source_type: 'upload_file',
-      doc_type: 'book',
-    },
-    content: 'Retrieval preview content',
-    sign_content: '',
-    position: 1,
-    word_count: 25,
-    tokens: 5,
-    keywords: [],
-    hit_count: 1,
-    index_node_hash: 'hash',
-    answer: '',
-  }
-  return {
-    segment,
-    content: segment,
+  return createHitTestingRecordFixture({
     score: 0.9,
-    tsne_position: { x: 0, y: 0 },
-    child_chunks: [],
-    files: [],
     ...overrides,
-  }
+    segment: {
+      content: 'Retrieval preview content',
+      word_count: 25,
+      tokens: 5,
+      document: { name: 'handbook.pdf' },
+      ...overrides.segment,
+    },
+  })
 }
 
 function createImageUrl() {
@@ -128,7 +113,7 @@ it('keeps external details scrollable and Close reachable on a narrow viewport t
   expect(closeBounds.right).toBeLessThanOrEqual(window.innerWidth)
   expect(closeBounds.top).toBeGreaterThanOrEqual(0)
   expect(closeBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
-  const body = dialog.getByText(payload.content)
+  const body = dialog.getByText(payload.content!)
   const bodyElement = body.element()
   expect(bodyElement.scrollWidth).toBeLessThanOrEqual(bodyElement.clientWidth + 1)
   expect(bodyElement.scrollHeight).toBeGreaterThan(bodyElement.clientHeight)

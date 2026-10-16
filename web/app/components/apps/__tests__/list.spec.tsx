@@ -78,6 +78,18 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: (options: { input?: unknown }) => ({
+              ...options,
+              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
+            }),
+          },
+        },
+      },
+    },
     account: {
       profile: {
         get: {
@@ -123,17 +135,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
-      ],
-    },
-  }),
-}))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
   TagFilter: ({
@@ -233,16 +234,26 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    useQuery: (options: { input?: unknown }) =>
-      options.input
-        ? {
-            data: mockStarredIsLoading ? undefined : mockStarredAppData,
-            error: mockStarredError,
-          }
-        : {
-            data: mockSystemFeatures,
-            error: null,
-          },
+    useQuery: (options: { input?: unknown; queryKey?: unknown[] }) =>
+      Array.isArray(options.queryKey?.[0]) &&
+      options.queryKey[0].join('.') === 'console.workspaces.current.members.get'
+        ? (() => ({
+            data: {
+              accounts: [
+                { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+                { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+              ],
+            },
+          }))()
+        : options.input
+          ? {
+              data: mockStarredIsLoading ? undefined : mockStarredAppData,
+              error: mockStarredError,
+            }
+          : {
+              data: mockSystemFeatures,
+              error: null,
+            },
     useSuspenseQuery: () => ({ data: mockSystemFeatures }),
     useInfiniteQuery: () => ({
       data: mockServiceState.isLoading ? undefined : mockAppData,

@@ -4,24 +4,20 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery,
   seedAppDetail,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),
-}))
-
-vi.mock('@/service/use-common', async () => ({
-  ...(await vi.importActual<typeof import('@/service/use-common')>('@/service/use-common')),
-  useFileUploadConfig: () => ({ data: undefined }),
 }))
 
 vi.mock('@monaco-editor/react', async () => ({
@@ -38,6 +34,11 @@ vi.mock('@monaco-editor/react', async () => ({
 const render = (ui: React.ReactElement) => {
   const queryClient = createConsoleQueryClient()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' as const }))
+  // Upload limits stay pending unless a case seeds them.
+  void queryClient.query({
+    queryKey: consoleQuery.files.upload.get.queryKey(),
+    queryFn: () => new Promise(() => {}),
+  })
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
@@ -393,15 +394,18 @@ describe('ConfigModal', () => {
         onConfirm={onConfirm}
       />,
     )
-    queryClient.setQueryData(commonQueryKeys.fileUploadConfig, {
-      batch_count_limit: 5,
-      image_file_batch_limit: 10,
-      single_chunk_attachment_limit: 10,
-      attachment_image_file_size_limit: 2,
-      file_size_limit: 15,
-      file_upload_limit: 5,
-      workflow_file_upload_limit: 3,
-    })
+    queryClient.setQueryData(
+      consoleQuery.files.upload.get.queryKey(),
+      createFileUploadConfigFixture({
+        batch_count_limit: 5,
+        image_file_batch_limit: 10,
+        single_chunk_attachment_limit: 10,
+        attachment_image_file_size_limit: 2,
+        file_size_limit: 15,
+        file_upload_limit: 5,
+        workflow_file_upload_limit: 3,
+      }),
+    )
 
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 

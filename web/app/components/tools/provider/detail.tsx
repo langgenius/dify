@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -53,7 +54,6 @@ import {
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
-  fetchModelToolList,
   fetchWorkflowToolDetail,
   removeBuiltInToolCredential,
   removeCustomCollection,
@@ -61,8 +61,6 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { modelProviderDetailsQueryOptions } from '@/service/use-common'
-import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -86,7 +84,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
   const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
-  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
@@ -206,7 +203,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     await saveWorkflowToolProvider(data)
-    invalidateAllWorkflowTools()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
     onRefreshData()
     getWorkflowToolProvider()
     setWorkflowToolDrawerOpen(false)
@@ -233,9 +232,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     try {
       if (collection.type === CollectionType.builtIn) {
         const list = await fetchBuiltInToolList(collection.name)
-        setToolList(list)
-      } else if (collection.type === CollectionType.model) {
-        const list = await fetchModelToolList(collection.name)
         setToolList(list)
       } else if (collection.type === CollectionType.workflow) {
         setToolList([])
@@ -470,7 +466,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                               collection={collection}
                               tool={tool}
                               isBuiltIn={isBuiltIn}
-                              isModel={isModel}
                             />
                           ))}
                         {collection.type === CollectionType.workflow &&

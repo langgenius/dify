@@ -8,6 +8,7 @@ import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datase
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
@@ -19,7 +20,6 @@ const { mockToastError } = vi.hoisted(() => ({
 
 // Mock contexts
 const mockMutateDatasets = vi.fn()
-const mockInvalidDatasetList = vi.fn()
 
 const mockUserProfile = {
   id: 'user-1',
@@ -55,6 +55,7 @@ function render(ui: ReactElement) {
 }
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
@@ -66,7 +67,6 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   indexing_technique: IndexingType.QUALIFIED,
-  indexing_status: 'completed',
   data_source_type: DataSourceType.FILE,
   doc_form: ChunkingMode.text,
   embedding_model: 'text-embedding-ada-002',
@@ -74,7 +74,6 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   embedding_available: true,
   app_count: 0,
   document_count: 5,
-  total_document_count: 5,
   word_count: 1000,
   provider: 'vendor',
   tags: [],
@@ -91,17 +90,6 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     score_threshold_enabled: true,
   },
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-  } as RetrievalConfig,
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -141,41 +129,6 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock services
 vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn().mockResolvedValue({}),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          id: 'user-1',
-          name: 'User 1',
-          email: 'user1@example.com',
-          role: 'owner',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-        {
-          id: 'user-2',
-          name: 'User 2',
-          email: 'user2@example.com',
-          role: 'admin',
-          avatar: '',
-          avatar_url: '',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-      ],
-    },
-  }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -549,6 +502,35 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
     }) => {
+      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
+        return (() => ({
+          data: {
+            accounts: [
+              {
+                id: 'user-1',
+                name: 'User 1',
+                email: 'user1@example.com',
+                role: 'owner',
+                avatar: '',
+                avatar_url: '',
+                last_login_at: '',
+                created_at: '',
+                status: 'active',
+              },
+              {
+                id: 'user-2',
+                name: 'User 2',
+                email: 'user2@example.com',
+                role: 'admin',
+                avatar: '',
+                avatar_url: '',
+                last_login_at: '',
+                created_at: '',
+                status: 'active',
+              },
+            ],
+          },
+        }))()
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
       return { data: [], refetch: vi.fn(), isPending: false }
     },

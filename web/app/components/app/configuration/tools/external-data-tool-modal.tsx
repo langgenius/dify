@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +26,7 @@ import {
 } from '@/app/components/base/icon-picker'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink } from '@/context/i18n'
-import { useCodeBasedExtensions } from '@/service/use-common'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 import {
   buildProviders,
   formatExternalDataTool,
@@ -49,7 +50,9 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const docLink = useDocLink()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('external_data_tool')
+  const { data: codeBasedExtensionList } = useQuery(
+    codeBasedExtensionsQueryOptions('external_data_tool'),
+  )
 
   const providers = buildProviders({
     codeBasedExtensionList,

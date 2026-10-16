@@ -33,10 +33,6 @@ vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialSchema: () => ({ data: undefined, isLoading: false }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
-}))
-
 const mockIsCurrentWorkspaceManager = vi.fn()
 const mockUserProfile = {
   id: 'test-user',

@@ -135,6 +135,9 @@ const mockModel: DefaultModelResponse = {
   provider: {
     provider: 'openai',
     icon_small: { en_US: '', zh_Hans: '' },
+    label: { en_US: 'Provider', zh_Hans: 'Provider' },
+    supported_model_types: [],
+    tenant_id: 'tenant-1',
   },
 }
 

@@ -132,25 +132,17 @@
       "count": 1
     }
   },
-  "web/app/components/app/annotation/header-opts/index.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 1
     }
   },
   "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 5
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/app/app-publisher/__tests__/features-wrapper.spec.tsx": {
@@ -313,7 +305,7 @@
   },
   "web/app/components/app/configuration/dataset-config/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 36
+      "count": 32
     }
   },
   "web/app/components/app/configuration/dataset-config/context-var/var-picker.tsx": {
@@ -339,7 +331,7 @@
   },
   "web/app/components/app/configuration/dataset-config/select-dataset/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
@@ -449,11 +441,6 @@
       "count": 5
     }
   },
-  "web/app/components/app/log/__tests__/list-utils.spec.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/log/__tests__/list.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 9
@@ -474,7 +461,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 3
     }
   },
   "web/app/components/app/log/var-panel.tsx": {
@@ -794,11 +781,6 @@
   "web/app/components/base/features/new-feature-panel/annotation-reply/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
@@ -1822,19 +1804,9 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/data-source-page-new/types.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/add-custom-model.tsx": {
@@ -3989,24 +3961,14 @@
       "count": 1
     }
   },
-  "web/models/datasets.ts": {
-    "typescript/no-explicit-any": {
-      "count": 5
-    }
-  },
   "web/models/debug.ts": {
     "typescript/no-explicit-any": {
       "count": 3
     }
   },
-  "web/models/log.ts": {
-    "typescript/no-explicit-any": {
-      "count": 6
-    }
-  },
   "web/models/pipeline.ts": {
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 2
     }
   },
   "web/models/share.ts": {
@@ -4039,11 +4001,6 @@
       "count": 1
     }
   },
-  "web/service/__tests__/use-pipeline.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-app-access-control.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4057,36 +4014,7 @@
       "count": 1
     }
   },
-  "web/service/access-control/use-member-roles.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/use-workspace-roles.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 6
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/annotation.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/annotation.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/service/apps.ts": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -4109,15 +4037,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "web/service/datasets.ts": {
-    "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/service/debug.ts": {
@@ -4125,7 +4045,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 1
     }
   },
   "web/service/fetch.spec.ts": {
@@ -4139,61 +4059,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/service/knowledge/use-create-dataset.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-dataset.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-dataset.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 8
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-document.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 4
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-hit-testing.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-import.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-metadata.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 8
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/knowledge/use-segment.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/log.ts": {
@@ -4224,48 +4089,11 @@
       "count": 1
     }
   },
-  "web/service/tools.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-common.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 9
+      "count": 1
     },
     "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
-  "web/service/use-datasource.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 3
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-log.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 7
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-models.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 3
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-pipeline.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 8
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4303,14 +4131,6 @@
       "count": 1
     }
   },
-  "web/service/use-tools.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 15
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-triggers.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 6
@@ -4325,18 +4145,7 @@
     "@tanstack/query/prefer-query-options": {
       "count": 6
     },
-    "no-restricted-imports": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/service/use-workspace.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4365,7 +4174,7 @@
   },
   "web/types/pipeline.tsx": {
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "web/types/workflow.ts": {

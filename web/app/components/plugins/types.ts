@@ -2,6 +2,9 @@ import type {
   AgentStrategyProviderEntity,
   DatasourceProviderEntity,
   EndpointProviderDeclarationResponse,
+  PluginInstallTask,
+  PluginInstallTaskPluginStatus,
+  PluginInstallTaskStartResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
@@ -350,12 +353,7 @@ export type GitHubRepoReleaseResponse = {
   assets: GitHubAsset[]
 }
 
-export type InstallPackageResponse = {
-  plugin_unique_identifier?: string
-  all_installed: boolean
-  task_id: string
-  task?: PluginTaskStart
-}
+export type InstallPackageResponse = PluginInstallTaskStartResponse
 
 export type InstallStatusResponse = {
   status: TaskStatus
@@ -368,23 +366,6 @@ export type InstallStatus = {
   isFromMarketPlace?: boolean
 }
 
-export type updatePackageResponse = {
-  all_installed: boolean
-  task_id: string
-  task?: PluginTaskStart
-}
-
-export type uploadGitHubResponse = {
-  unique_identifier: string
-  manifest: PluginDeclaration
-}
-
-export type DebugInfo = {
-  key: string
-  host: string
-  port: number
-}
-
 export const TaskStatus = {
   pending: 'pending',
   running: 'running',
@@ -394,34 +375,14 @@ export const TaskStatus = {
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus]
 
-export type PluginStatus = {
-  plugin_unique_identifier: string
-  plugin_id: string
-  source: PluginSource
-  status: TaskStatus
-  message: string
-  icon: string
-  labels: Record<Locale | PluginLanguage, string>
+export type PluginStatus = PluginInstallTaskPluginStatus & {
+  // The task the status belongs to, added when the task list is read.
   taskId: string
 }
 
-export type PluginTask = {
-  id: string
-  created_at: string
-  updated_at: string
-  status: string
-  total_plugins: number
-  completed_plugins: number
-  plugins: PluginStatus[]
-}
+export type PluginTask = Omit<PluginInstallTask, 'plugins'> & { plugins: PluginStatus[] }
 
-export type PluginTaskStart = Omit<PluginTask, 'plugins'> & {
-  plugins: Array<Omit<PluginStatus, 'taskId'> & { taskId?: string }>
-}
-
-export type TaskStatusResponse = {
-  task: PluginTask
-}
+export type PluginTaskStart = PluginInstallTask
 
 export type MetaData = {
   repo: string

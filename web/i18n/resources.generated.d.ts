@@ -2084,7 +2084,6 @@ export default interface Resources {
     'retrieval.full_text_search.title': 'Full-Text Search'
     'retrieval.hybrid_search.description': "Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user's query. Users can choose to set weights or configure to a Rerank model."
     'retrieval.hybrid_search.title': 'Hybrid Search'
-    'retrieval.invertedIndex.title': 'Inverted Index'
     'retrieval.keyword_search.description': 'Inverted Index is a structure used for efficient retrieval. Organized by terms, each term points to documents or web pages containing it.'
     'retrieval.keyword_search.title': 'Inverted Index'
     'retrieval.semantic_search.description': 'Generate query embeddings and search for the text chunk most similar to its vector representation.'
@@ -2969,7 +2968,6 @@ export default interface Resources {
     'error.nameEmpty': 'Name is required'
     'error.passwordEmpty': 'Password is required'
     'error.passwordInvalid': 'Password must contain letters and numbers, and the length must be greater than 8'
-    'error.registrationNotAllowed': 'Account not found. Please contact the system admin to register.'
     'error.ssoFailed': 'SSO login failed. Please try again or contact your administrator.'
     explore: 'Explore Dify'
     forget: 'Forgot your password?'

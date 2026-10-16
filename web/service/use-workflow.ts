@@ -11,7 +11,6 @@ import type {
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type { CommonResponse } from '@/models/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -28,6 +27,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
+// oxlint-disable-next-line no-restricted-imports -- run history, config, version and publish hooks take prebuilt flow URLs
 import { del, get, patch, post } from './base'
 import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
@@ -571,13 +571,10 @@ export const useTestEmailSender = () => {
       inputs: Record<string, any>
     }) => {
       const { appID, nodeID, deliveryID, inputs } = data
-      return post<CommonResponse>(
-        `/apps/${appID}/workflows/draft/human-input/nodes/${nodeID}/delivery-test`,
+      return consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.deliveryTest.post(
         {
-          body: {
-            delivery_method_id: deliveryID,
-            inputs,
-          },
+          params: { app_id: appID, node_id: nodeID },
+          body: { delivery_method_id: deliveryID, inputs },
         },
       )
     },

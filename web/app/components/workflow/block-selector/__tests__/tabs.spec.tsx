@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { BlockSelectorPanels } from '../tabs'
 import { TabType } from '../types'
@@ -8,8 +9,7 @@ import { TabType } from '../types'
 const render = (ui: React.ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
 
-const { mockInvalidateBuiltInTools, mockToolsState } = vi.hoisted(() => ({
-  mockInvalidateBuiltInTools: vi.fn(),
+const { mockToolsState } = vi.hoisted(() => ({
   mockToolsState: {
     buildInTools: [{ icon: '/tool.svg', name: 'tool' }] as
       | Array<{ icon: string | Record<string, string>; name: string }>
@@ -27,13 +27,15 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockToolsState.buildInTools }),
-  useAllCustomTools: () => ({ data: mockToolsState.customTools }),
-  useAllWorkflowTools: () => ({ data: mockToolsState.workflowTools }),
-  useAllMCPTools: () => ({ data: mockToolsState.mcpTools }),
-  useInvalidateAllBuiltInTools: () => mockInvalidateBuiltInTools,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: mockToolsState.buildInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: mockToolsState.customTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: mockToolsState.workflowTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: mockToolsState.mcpTools }),
+  })
+})
 
 vi.mock('@/utils/var', () => ({
   basePath: '/console',
@@ -219,12 +221,16 @@ describe('Tabs', () => {
   it('should force start content to render and invalidate built-in tools after featured installs', async () => {
     const user = userEvent.setup()
 
-    render(<BlockSelectorPanels {...baseProps} defaultTab={TabType.Tools} />)
+    const { queryClient } = render(
+      <BlockSelectorPanels {...baseProps} defaultTab={TabType.Tools} />,
+    )
+    const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+    queryClient.setQueryData(builtInToolsKey, [])
 
     await user.click(screen.getByRole('button', { name: 'Install featured tool' }))
 
     expect(screen.getByText('tools-content'))!.toBeInTheDocument()
-    expect(mockInvalidateBuiltInTools).toHaveBeenCalledTimes(1)
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
   })
 
   it('should compose start content directly without tab semantics in standalone mode', () => {

@@ -45,12 +45,11 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useSearchParams: () => ({ get: () => null }),
 }))
 
-vi.mock('@/service/use-tools', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-tools')>()
-  return {
-    ...actual,
-    useAppTriggers: () => ({}),
-  }
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'apps.byAppId.triggers.get': () => ({}),
+  })
 })
 
 vi.mock('../hooks/use-get-run-and-trace-url', () => ({

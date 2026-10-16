@@ -526,7 +526,6 @@ function Operation({
             onAnnotationEdited?.(editedQuery, editedAnswer, index)
           }
           appId={config?.appId || ''}
-          messageId={id}
           annotationId={annotation.id}
           createdAt={annotation?.created_at}
           onRemove={() => onAnnotationRemoved?.(index)}

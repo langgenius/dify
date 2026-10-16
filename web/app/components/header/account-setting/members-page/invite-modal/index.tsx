@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
 import { EmailRecipientsField } from './email-recipients-field'
@@ -175,7 +174,9 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
       onSuccess: (response) => {
         // The request alone decides success; seat and member refreshes run in the background.
         void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-        void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.members.get.key(),
+        })
         onSend(response.invitation_results)
         actionsRef.current?.close()
       },

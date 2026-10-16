@@ -23,18 +23,8 @@ import { toast } from '@/app/notifications'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import {
-  addAnnotation,
-  delAnnotation,
-  delAnnotations,
-  fetchAnnotationConfig as doFetchAnnotationConfig,
-  editAnnotation,
-  fetchAnnotationList,
-  queryAnnotationJobStatus,
-  updateAnnotationScore,
-  updateAnnotationStatus,
-} from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { updateAnnotationStatus } from '@/service/annotation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
 import PageTitle from '../log-annotation/page-title'
 import EmptyElement from './empty-element'
@@ -86,7 +76,9 @@ const Annotation: FC<Props> = (props) => {
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   const fetchAnnotationConfig = async () => {
-    const res = await doFetchAnnotationConfig(appDetail.id)
+    const res = await consoleClient.apps.byAppId.annotationSetting.get({
+      params: { app_id: appDetail.id },
+    })
     setAnnotationConfig(res as AnnotationReplyConfig)
     return (res as AnnotationReplyConfig).id
   }
@@ -97,7 +89,9 @@ const Annotation: FC<Props> = (props) => {
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     while (true) {
-      const res: any = await queryAnnotationJobStatus(appDetail.id, status, jobId)
+      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get({
+        params: { app_id: appDetail.id, action: status, job_id: jobId },
+      })
       if (res.job_status === JobStatus.completed) break
       await sleep(2000)
     }
@@ -106,12 +100,11 @@ const Annotation: FC<Props> = (props) => {
   const fetchList = async (page = 1) => {
     setIsLoading(true)
     try {
-      const { data, total }: any = await fetchAnnotationList(appDetail.id, {
-        page,
-        limit,
-        keyword: debouncedQueryParams.keyword || '',
+      const { data, total } = await consoleClient.apps.byAppId.annotations.get({
+        params: { app_id: appDetail.id },
+        query: { page, limit, keyword: debouncedQueryParams.keyword || '' },
       })
-      setList(data as AnnotationItem[])
+      setList(data)
       setTotal(total)
     } finally {
       setIsLoading(false)
@@ -123,14 +116,19 @@ const Annotation: FC<Props> = (props) => {
   }, [currPage, limit, debouncedQueryParams])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
-    await addAnnotation(appDetail.id, payload)
+    await consoleClient.apps.byAppId.annotations.post({
+      params: { app_id: appDetail.id },
+      body: payload,
+    })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
-    await delAnnotation(appDetail.id, id)
+    await consoleClient.apps.byAppId.annotations.byAnnotationId.delete({
+      params: { app_id: appDetail.id, annotation_id: id },
+    })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
@@ -138,7 +136,10 @@ const Annotation: FC<Props> = (props) => {
 
   const handleBatchDelete = async () => {
     try {
-      await delAnnotations(appDetail.id, selectedIds)
+      await consoleClient.apps.byAppId.annotations.delete({
+        params: { app_id: appDetail.id },
+        query: { annotation_id: selectedIds },
+      })
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       fetchList()
       setControlUpdateList(Date.now())
@@ -156,7 +157,10 @@ const Annotation: FC<Props> = (props) => {
 
   const handleSave = async (question: string, answer: string) => {
     if (!currItem) return
-    await editAnnotation(appDetail.id, currItem.id, { question, answer })
+    await consoleClient.apps.byAppId.annotations.byAnnotationId.post({
+      params: { app_id: appDetail.id, annotation_id: currItem.id },
+      body: { question, answer },
+    })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
@@ -207,7 +211,7 @@ const Annotation: FC<Props> = (props) => {
                         }
                         setIsShowEdit(true)
                       } else {
-                        const { job_id: jobId }: any = await updateAnnotationStatus(
+                        const { job_id: jobId } = await updateAnnotationStatus(
                           appDetail.id,
                           AnnotationEnableStatus.disable,
                           annotationConfig?.embedding_model,
@@ -319,7 +323,7 @@ const Annotation: FC<Props> = (props) => {
                 embeddingModel.embedding_provider_name !==
                   annotationConfig?.embedding_model?.embedding_provider_name
               ) {
-                const { job_id: jobId }: any = await updateAnnotationStatus(
+                const { job_id: jobId } = await updateAnnotationStatus(
                   appDetail.id,
                   AnnotationEnableStatus.enable,
                   embeddingModel,
@@ -329,7 +333,10 @@ const Annotation: FC<Props> = (props) => {
               }
               const annotationId = await fetchAnnotationConfig()
               if (score !== annotationConfig?.score_threshold)
-                await updateAnnotationScore(appDetail.id, annotationId, score)
+                await consoleClient.apps.byAppId.annotationSettings.byAnnotationSettingId.post({
+                  params: { app_id: appDetail.id, annotation_setting_id: annotationId! },
+                  body: { score_threshold: score },
+                })
 
               await fetchAnnotationConfig()
               toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))

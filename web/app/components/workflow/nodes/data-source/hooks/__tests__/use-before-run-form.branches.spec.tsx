@@ -1,5 +1,6 @@
+import type { WorkflowRunNodeExecutionResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
-import type { NodeRunResult, VarInInspect } from '@/types/workflow'
+import type { VarInInspect } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
 import {
@@ -8,7 +9,6 @@ import {
 } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
-import { useDatasourceSingleRun } from '@/service/use-pipeline'
 import { useInvalidateLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
@@ -39,7 +39,7 @@ type DataSourceStoreState = {
 
 type DatasourceSingleRunOptions = {
   onError?: () => void
-  onSettled?: (data?: NodeRunResult) => void
+  onSettled?: (data?: WorkflowRunNodeExecutionResponse) => void
 }
 
 const mockHandleNodeDataUpdate = vi.hoisted(() => vi.fn())
@@ -76,9 +76,15 @@ vi.mock('../../../../hooks/use-nodes-sync-draft', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDatasourceSingleRun: vi.fn(),
-}))
+const mockUseDatasourceSingleRunHook = vi.hoisted(() => vi.fn())
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post': () =>
+      mockUseDatasourceSingleRunHook(),
+  })
+})
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidateLastRun: vi.fn(),
@@ -96,7 +102,6 @@ vi.mock('@/app/components/datasets/documents/create-from-pipeline/data-source/st
 const mockUseStoreApi = vi.mocked(useStoreApi)
 const mockUseNodeDataUpdateHook = vi.mocked(useNodeDataUpdate)
 const mockUseNodesSyncDraftHook = vi.mocked(useNodesSyncDraft)
-const mockUseDatasourceSingleRunHook = vi.mocked(useDatasourceSingleRun)
 const mockUseInvalidLastRunHook = vi.mocked(useInvalidateLastRun)
 const mockFetchNodeInspectVarsFn = vi.mocked(fetchNodeInspectVars)
 const mockUseDataSourceStoreHook = vi.mocked(useDataSourceStore)
@@ -171,7 +176,7 @@ describe('data-source/hooks/use-before-run-form branches', () => {
     mockUseDatasourceSingleRunHook.mockReturnValue({
       mutateAsync: (...args: unknown[]) => mockMutateAsync(...args),
       isPending: false,
-    } as ReturnType<typeof useDatasourceSingleRun>)
+    })
     mockUseInvalidLastRunHook.mockReturnValue(mockInvalidLastRun)
     mockFetchNodeInspectVarsFn.mockImplementation((...args: unknown[]) =>
       mockFetchNodeInspectVars(...args),
@@ -237,7 +242,7 @@ describe('data-source/hooks/use-before-run-form branches', () => {
     ]
 
     mockMutateAsync.mockImplementation((_payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
+      options.onSettled?.({ id: 'node-run-1', status: NodeRunningStatus.Succeeded })
       return Promise.resolve(undefined)
     })
 
@@ -254,7 +259,9 @@ describe('data-source/hooks/use-before-run-form branches', () => {
       await Promise.resolve()
     })
 
-    expect(props.setRunResult).toHaveBeenCalledWith({ status: NodeRunningStatus.Succeeded })
+    expect(props.setRunResult).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'node-run-1', status: NodeRunningStatus.Succeeded }),
+    )
     expect(mockFetchNodeInspectVars).not.toHaveBeenCalled()
     expect(props.onSuccess).not.toHaveBeenCalled()
   })
@@ -270,7 +277,7 @@ describe('data-source/hooks/use-before-run-form branches', () => {
     ]
 
     mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
-      options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
+      options.onSettled?.({ id: 'node-run-1', status: NodeRunningStatus.Succeeded })
       return Promise.resolve(payload)
     })
 
@@ -289,16 +296,18 @@ describe('data-source/hooks/use-before-run-form branches', () => {
 
     expect(mockMutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        datasource_type: DatasourceType.onlineDocument,
-        datasource_info: {
-          workspace_id: 'workspace-1',
-          page: {
-            id: 'doc-1',
-            title: 'Document',
-            url: 'https://example.com/doc',
+        body: expect.objectContaining({
+          datasource_type: DatasourceType.onlineDocument,
+          datasource_info: {
+            workspace_id: 'workspace-1',
+            page: {
+              id: 'doc-1',
+              title: 'Document',
+              url: 'https://example.com/doc',
+            },
+            credential_id: 'credential-1',
           },
-          credential_id: 'credential-1',
-        },
+        }),
       }),
       expect.any(Object),
     )
@@ -333,12 +342,14 @@ describe('data-source/hooks/use-before-run-form branches', () => {
 
     expect(mockMutateAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        datasource_type: DatasourceType.websiteCrawl,
-        datasource_info: {
-          url: 'https://example.com',
-          title: 'Example',
-          credential_id: 'credential-1',
-        },
+        body: expect.objectContaining({
+          datasource_type: DatasourceType.websiteCrawl,
+          datasource_info: {
+            url: 'https://example.com',
+            title: 'Example',
+            credential_id: 'credential-1',
+          },
+        }),
       }),
       expect.any(Object),
     )

@@ -25,9 +25,10 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 
 type Scope = 'all' | 'specific'
 type SelectedKb = { id: string; name: string }
@@ -77,9 +78,15 @@ function DatasetScopeContent({
   const [selected, setSelected] = useState<SelectedKb[]>([])
   const [keyword, setKeyword] = useState('')
 
-  const { data: datasetsPages, isLoading } = useInfiniteDatasets(
-    { keyword },
-    { enabled: scope === 'specific' },
+  const { data: datasetsPages, isLoading } = useInfiniteQuery(
+    consoleQuery.datasets.get.infiniteOptions({
+      input: (page: number) => ({ query: { page, ...(keyword ? { keyword } : {}) } }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
+      enabled: scope === 'specific',
+      staleTime: 0,
+      refetchOnMount: 'always',
+    }),
   )
   const datasets = useMemo<SelectedKb[]>(
     () =>

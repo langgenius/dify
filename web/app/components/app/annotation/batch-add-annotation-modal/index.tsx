@@ -11,8 +11,8 @@ import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { annotationBatchImport } from '@/service/annotation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
@@ -59,7 +59,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await checkAnnotationBatchImportProgress({ jobID, appId })
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
+        params: { app_id: appId, job_id: jobID },
+      })
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
@@ -81,10 +83,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
     const formData = new FormData()
     formData.append('file', csv)
     try {
-      const res = await annotationBatchImport({
-        url: `/apps/${appId}/annotations/batch-import`,
-        body: formData,
-      })
+      const res = await annotationBatchImport(appId, formData)
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
     } catch (e: any) {
