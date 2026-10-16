@@ -18,11 +18,8 @@ const { request } = vi.hoisted(() => ({
 vi.mock('@/service/base', () => ({ request }))
 
 const expectRequest = async (method: string, body?: unknown) => {
-  const configRequests = request.mock.calls
-    .map((call) => call[2].request)
-    .filter((sent) => new URL(sent.url).pathname.endsWith('/trace-config'))
-  expect(configRequests).toHaveLength(1)
-  const sent = configRequests[0]!
+  expect(request).toHaveBeenCalledOnce()
+  const sent = request.mock.calls[0]![2].request
   expect(sent.method).toBe(method)
   expect(new URL(sent.url).pathname).toMatch(/\/apps\/app-id\/trace-config$/)
   if (body) expect(await sent.clone().json()).toEqual(body)
@@ -267,12 +264,6 @@ const renderProviderConfigModal = ({
           payload={payload}
           firstInputRef={firstInputRef}
           onSaved={callbacks.onSaved}
-          policy={{
-            enabled: false,
-            tracing_provider: null,
-            capture_content: false,
-            capture_agent: true,
-          }}
           onRemoved={callbacks.onRemoved}
         />
       </DialogContent>
@@ -335,15 +326,7 @@ describe('ProviderConfigModal', () => {
       await expectRequest('POST', {
         tracing_provider: 'langfuse',
         tracing_config: validConfigs.langfuse,
-      })
-      expect(request).toHaveBeenCalledTimes(2)
-      const enableRequest = request.mock.calls[1]![2].request
-      expect(new URL(enableRequest.url).pathname).toMatch(/\/apps\/app-id\/trace$/)
-      expect(await enableRequest.json()).toEqual({
-        enabled: true,
-        tracing_provider: 'langfuse',
-        capture_content: false,
-        capture_agent: true,
+        activate: true,
       })
       expect(toast).not.toHaveBeenCalled()
     })
