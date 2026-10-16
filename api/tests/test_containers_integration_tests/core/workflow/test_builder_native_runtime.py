@@ -621,7 +621,9 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
                 assert state.cleanup_complete
                 assert source.state == "claimed"
                 assert (source.tenant_id, source.request_id, source.invocation_id) == (
-                    c.actor.tenant_id, c.request_id, ref.invocation_id
+                    c.actor.tenant_id,
+                    c.request_id,
+                    ref.invocation_id,
                 )
                 native_run_id = checkpoint.native_run_id
                 run = session.get(WorkflowRun, native_run_id)
@@ -629,9 +631,12 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
                 assert run.status == "paused"
                 assert request.context["native_run_id"] == run.id
                 assert scope.spent_calls == scope.spent_dispatches == 0
-                operation_ids = {row.id for row in session.scalars(
-                    select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
-                )}
+                operation_ids = {
+                    row.id
+                    for row in session.scalars(
+                        select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
+                    )
+                }
                 for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
                     assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
             cancelled = api.cancel(
@@ -672,9 +677,14 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
         sources = session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all()
         assert len(sources) == 1
         source = sources[0]
-        assert (source.id, source.tenant_id, source.request_id, source.invocation_id, source.generation, source.state) == (
-            message["dispatch_id"], c.actor.tenant_id, c.request_id, ref.invocation_id, 0, "unknown"
-        )
+        assert (
+            source.id,
+            source.tenant_id,
+            source.request_id,
+            source.invocation_id,
+            source.generation,
+            source.state,
+        ) == (message["dispatch_id"], c.actor.tenant_id, c.request_id, ref.invocation_id, 0, "unknown")
         assert state.state == "cancelled"
         assert state.cleanup_complete
         assert scope.cancelled
@@ -685,9 +695,12 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
         assert run.status == "paused"
         assert run.created_at == created_at
         assert len(session.scalars(select(WorkflowRun).where(WorkflowRun.id == native_run_id)).all()) == 1
-        assert {row.id for row in session.scalars(
-            select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
-        )} == operation_ids
+        assert {
+            row.id
+            for row in session.scalars(
+                select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
+            )
+        } == operation_ids
         for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
             assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
     assert len(c.published) == 1
