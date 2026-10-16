@@ -98,10 +98,10 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
       >
         <AlertDialogContent className="w-108">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg/7">
+            <AlertDialogTitle>
               {t(($) => $['stepTwo.qaSwitchHighQualityTipTitle'], { ns: 'datasetCreation' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-text-secondary">
+            <AlertDialogDescription>
               {t(($) => $['stepTwo.qaSwitchHighQualityTipContent'], { ns: 'datasetCreation' })}
             </AlertDialogDescription>
           </AlertDialogHeader>

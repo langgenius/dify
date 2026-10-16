@@ -44,7 +44,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
               t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
             )}`}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-text-secondary">
+          <AlertDialogDescription>
             {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
         </AlertDialogHeader>

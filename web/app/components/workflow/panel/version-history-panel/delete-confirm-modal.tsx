@@ -44,7 +44,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
               t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
             )}`}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-text-secondary">
+          <AlertDialogDescription>
             {t(($) => $['versionHistory.deletionTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
         </AlertDialogHeader>

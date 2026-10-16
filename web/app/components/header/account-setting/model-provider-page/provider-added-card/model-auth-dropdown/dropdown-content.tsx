@@ -121,7 +121,7 @@ function DropdownContent({
       >
         <AlertDialogContent>
           <AlertDialogHeader className="pb-1">
-            <AlertDialogTitle className="system-xl-semibold!">
+            <AlertDialogTitle>
               {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
           </AlertDialogHeader>

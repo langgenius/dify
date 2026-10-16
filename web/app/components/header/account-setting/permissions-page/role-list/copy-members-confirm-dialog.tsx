@@ -44,7 +44,7 @@ export function CopyMembersConfirmDialog({
           <AlertDialogTitle>
             {t(($) => $['role.copyMembersTitle'], { ns: 'permission' })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-text-secondary">
+          <AlertDialogDescription>
             {isLoadingMemberCount
               ? t(($) => $['role.copyMembersLoading'], { ns: 'permission' })
               : t(($) => $['role.copyMembersDescription'], {

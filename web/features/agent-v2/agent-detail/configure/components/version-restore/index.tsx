@@ -137,7 +137,7 @@ export function AgentVersionRestore({
             <AlertDialogTitle>
               {`${t(($) => $['agentDetail.versionHistory.restore'])} ${versionLabel}`}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-text-secondary">
+            <AlertDialogDescription>
               {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
             </AlertDialogDescription>
           </AlertDialogHeader>

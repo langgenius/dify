@@ -102,7 +102,7 @@ function AlertDialogDescription({ className, ...props }: AlertDialogDescriptionP
     <BaseAlertDialog.Description
       className={(state) =>
         cn(
-          'system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
+          'system-md-regular wrap-break-word whitespace-pre-wrap text-text-secondary',
           resolveClassName(className, state),
         )
       }
@@ -124,9 +124,25 @@ function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
 
 type AlertDialogCancelButtonProps = ButtonProps
 
-function AlertDialogCancelButton({ children, ...buttonProps }: AlertDialogCancelButtonProps) {
+// Action buttons keep an 80px minimum so short labels still read as a pair.
+const actionButtonClassName = 'min-w-20'
+
+function AlertDialogCancelButton({
+  children,
+  className,
+  ...buttonProps
+}: AlertDialogCancelButtonProps) {
   return (
-    <BaseAlertDialog.Close render={<Button {...buttonProps} />}>{children}</BaseAlertDialog.Close>
+    <BaseAlertDialog.Close
+      render={
+        <Button
+          className={(state) => cn(actionButtonClassName, resolveClassName(className, state))}
+          {...buttonProps}
+        />
+      }
+    >
+      {children}
+    </BaseAlertDialog.Close>
   )
 }
 
@@ -135,9 +151,17 @@ type AlertDialogConfirmButtonProps = ButtonProps
 function AlertDialogConfirmButton({
   variant = 'primary',
   tone = 'destructive',
+  className,
   ...props
 }: AlertDialogConfirmButtonProps) {
-  return <Button variant={variant} tone={tone} {...props} />
+  return (
+    <Button
+      variant={variant}
+      tone={tone}
+      className={(state) => cn(actionButtonClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
 
 export {

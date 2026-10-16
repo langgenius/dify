@@ -26,7 +26,7 @@ export function DeleteTokenDialogContent({
         <AlertDialogTitle>
           {t(($) => $['resourceAccessToken.deleteTitle'], { ns: 'accountSettings' })}
         </AlertDialogTitle>
-        <AlertDialogDescription className="system-sm-regular">
+        <AlertDialogDescription>
           {t(($) => $['resourceAccessToken.deleteDescription'], { ns: 'accountSettings' })}
         </AlertDialogDescription>
       </AlertDialogHeader>

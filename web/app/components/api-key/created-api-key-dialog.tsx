@@ -47,7 +47,7 @@ export function CreatedApiKeyDialog({
           <AlertDialogTitle>
             {t(($) => $['apiKeyModal.createdTitle'], { ns: 'appApi' })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="system-sm-regular">
+          <AlertDialogDescription>
             {revealOnce
               ? t(($) => $['apiKeyModal.revealOnceTips'], { ns: 'appApi' })
               : t(($) => $['apiKeyModal.generateTips'], { ns: 'appApi' })}

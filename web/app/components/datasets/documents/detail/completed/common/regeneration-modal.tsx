@@ -27,7 +27,7 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({ onCancel, onConfi
         <AlertDialogTitle>
           {t(($) => $['segment.regenerationConfirmTitle'], { ns: 'datasetDocuments' })}
         </AlertDialogTitle>
-        <AlertDialogDescription className="text-text-secondary">
+        <AlertDialogDescription>
           {t(($) => $['segment.regenerationConfirmMessage'], { ns: 'datasetDocuments' })}
         </AlertDialogDescription>
       </div>

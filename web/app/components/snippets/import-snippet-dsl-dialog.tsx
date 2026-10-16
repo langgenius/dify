@@ -77,7 +77,7 @@ function SnippetDSLConfirmDialog({
           <AlertDialogTitle>
             {t(($) => $.dslVersionMismatchTitle, { ns: 'snippet' })}
           </AlertDialogTitle>
-          <AlertDialogDescription render={<div />} className="flex flex-col text-text-secondary">
+          <AlertDialogDescription render={<div />} className="flex flex-col">
             <div>{t(($) => $.dslVersionMismatchDescription, { ns: 'snippet' })}</div>
             <div>{t(($) => $.dslVersionMismatchQuestion, { ns: 'snippet' })}</div>
             <br />

@@ -42,7 +42,7 @@ function DSLConfirmModal({
           <AlertDialogTitle>
             {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
           </AlertDialogTitle>
-          <AlertDialogDescription render={<div />} className="flex flex-col text-text-secondary">
+          <AlertDialogDescription render={<div />} className="flex flex-col">
             <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
             <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
             <br />

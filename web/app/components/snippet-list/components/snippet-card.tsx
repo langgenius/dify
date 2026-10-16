@@ -252,12 +252,8 @@ const SnippetCard = ({
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-100">
           <AlertDialogHeader className="pb-0">
-            <AlertDialogTitle className="title-md-semi-bold">
-              {t(($) => $.deleteConfirmTitle)}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular">
-              {t(($) => $.deleteConfirmContent)}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t(($) => $.deleteConfirmTitle)}</AlertDialogTitle>
+            <AlertDialogDescription>{t(($) => $.deleteConfirmContent)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteSnippetMutation.isPending}>
