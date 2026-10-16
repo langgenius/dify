@@ -270,7 +270,7 @@ def test_builder_passes_inline_or_preview_context_to_application_tracing(
     bind_application_tracing_hooks(app, hooks)
 
     with app.app_context():
-        result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=CapturingPluginLayerBuilder()).build(context)
+        result = WorkflowAgentRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
     layer = next(item for item in result.request.composition.layers if item.name == DIFY_EXECUTION_CONTEXT_LAYER_ID)
     assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
     assert calls == [(context, None)]
