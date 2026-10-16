@@ -41,7 +41,14 @@ from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine, GraphEngineConfig
 from graphon.graph_engine.command_channels import CommandChannel, InMemoryChannel
 from graphon.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer, GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent, is_node_result_event
+from graphon.graph_events import (
+    GraphEdgeSkippedEvent,
+    GraphEdgeTakenEvent,
+    GraphEngineEvent,
+    GraphNodeEventBase,
+    GraphRunFailedEvent,
+    is_node_result_event,
+)
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
@@ -51,6 +58,35 @@ from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
+
+
+class _SkippedEdgeResponseStreamCompatibilityFilter:
+    """Clear response-stream paths for edges Graphon reports as skipped.
+
+    Graphon 0.7.0's ResponseStreamFilter handles taken edges but ignores
+    skipped edges. A skipped edge can remain in a downstream response's
+    blocking path forever, preventing the answer from being streamed.
+    """
+
+    filter_id = "dify.response_stream.skipped_edge_compatibility.v1"
+
+    def initialize(self, context: GraphEventFilterContext) -> None:
+        pass
+
+    def on_event(self, event: GraphEngineEvent) -> Sequence[GraphEngineEvent]:
+        if isinstance(event, GraphEdgeSkippedEvent):
+            return [
+                GraphEdgeTakenEvent(
+                    edge_id=event.edge_id,
+                    source_node_id=event.source_node_id,
+                    target_node_id=event.target_node_id,
+                    source_handle=event.source_handle,
+                )
+            ]
+        return [event]
+
+    def flush(self) -> Sequence[GraphEngineEvent]:
+        return []
 
 
 def iter_dify_graph_engine_events(
@@ -74,6 +110,7 @@ def iter_dify_graph_engine_events(
         context=GraphEventFilterContext.from_engine(engine),
         filters=[
             HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
+            _SkippedEdgeResponseStreamCompatibilityFilter(),
             response_stream_filter or ResponseStreamFilter(),
         ],
     )
