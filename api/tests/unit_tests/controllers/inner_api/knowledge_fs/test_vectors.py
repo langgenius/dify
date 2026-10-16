@@ -198,13 +198,15 @@ def test_pending_cluster_returns_explicit_retry_after_without_secrets(app: Flask
 
 
 def test_http_pending_response_preserves_retry_after_header(config_overrides: Callable[..., None]) -> None:
-    from flask_restx import Api
-
+    from controllers.inner_api import inner_api_ns
+    from libs.external_api import ExternalApi
     from services.tidb_binding_service import TidbBindingPendingError
 
     config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
     http_app = Flask(__name__)
-    Api(http_app).add_resource(KnowledgeFSVectorApi, "/vectors")
+    api = ExternalApi(http_app)
+    api.models.update(inner_api_ns.models)
+    api.add_resource(KnowledgeFSVectorApi, "/vectors")
     with patch(
         "controllers.inner_api.knowledge_fs.vectors.configured_vector_client",
         side_effect=TidbBindingPendingError("private endpoint"),
