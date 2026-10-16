@@ -337,3 +337,36 @@ describe('completion-params', () => {
     })
   })
 })
+
+describe('completion-params regressions', () => {
+  it('rejects fractional values for int rules', () => {
+    const rules: ModelParameterRule[] = [
+      {
+        name: 'max_tokens',
+        type: 'int',
+        min: 1,
+        max: 100,
+        label: { en_US: 'Max Tokens', zh_Hans: '最大 Token 数' },
+        required: false,
+      },
+    ]
+    const result = mergeValidCompletionParams({ max_tokens: 1.5 }, rules)
+    expect(result.params).toEqual({})
+    expect(result.removedDetails.max_tokens).toBeDefined()
+  })
+
+  it('rejects non-finite numbers', () => {
+    const rules: ModelParameterRule[] = [
+      {
+        name: 'temperature',
+        type: 'float',
+        min: 0,
+        max: 2,
+        label: { en_US: 'Temperature', zh_Hans: '温度' },
+        required: false,
+      },
+    ]
+    const result = mergeValidCompletionParams({ temperature: Number.NaN }, rules)
+    expect(result.params).toEqual({})
+  })
+})
