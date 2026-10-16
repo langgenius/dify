@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "L’app stessa e le chat degli altri utenti non verranno eliminate.",
   "endUser.deleteChatsTitle": "Rimuovere l’app ed eliminare le tue chat?",
   "endUser.deleteKey": "Elimina chiave",
-  "endUser.deleteKeyDescription": "Questa chiave API verrà rimossa da tutte le app collegate. Potrai aggiungere una nuova chiave in seguito.",
-  "endUser.deleteKeyTitle": "Eliminare {{name}}?",
   "endUser.disconnect": "Disconnetti",
   "endUser.disconnectConnectionDescription": "Le app collegate non potranno più utilizzare questa connessione. La cronologia delle chat e i dati di terze parti non verranno eliminati.",
   "endUser.disconnectConnectionTitle": "Disconnettere questa connessione?",

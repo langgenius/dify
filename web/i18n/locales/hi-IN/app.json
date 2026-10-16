@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "ऐप स्वयं और अन्य उपयोगकर्ताओं की चैट नहीं मिटाई जाएँगी।",
   "endUser.deleteChatsTitle": "ऐप हटाएँ और अपनी चैट मिटाएँ?",
   "endUser.deleteKey": "कुंजी मिटाएँ",
-  "endUser.deleteKeyDescription": "यह API कुंजी सभी जुड़े हुए ऐप से हटा दी जाएगी। आप बाद में नई कुंजी जोड़ सकते हैं।",
-  "endUser.deleteKeyTitle": "{{name}} को मिटाएँ?",
   "endUser.disconnect": "कनेक्शन हटाएँ",
   "endUser.disconnectConnectionDescription": "जुड़े हुए ऐप अब इस कनेक्शन का उपयोग नहीं कर पाएँगे। आपका चैट इतिहास और तृतीय-पक्ष डेटा नहीं मिटाया जाएगा।",
   "endUser.disconnectConnectionTitle": "यह कनेक्शन डिस्कनेक्ट करें?",

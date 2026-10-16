@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Die App selbst und die Chats anderer Benutzer werden nicht gelöscht.",
   "endUser.deleteChatsTitle": "App entfernen und deine Chats löschen?",
   "endUser.deleteKey": "Schlüssel löschen",
-  "endUser.deleteKeyDescription": "Dieser API-Schlüssel wird aus allen verknüpften Apps entfernt. Du kannst später einen neuen Schlüssel hinzufügen.",
-  "endUser.deleteKeyTitle": "{{name}} löschen?",
   "endUser.disconnect": "Trennen",
   "endUser.disconnectConnectionDescription": "Verknüpfte Apps können diese Verbindung nicht mehr verwenden. Dein Chatverlauf und Daten von Drittanbietern werden nicht gelöscht.",
   "endUser.disconnectConnectionTitle": "Diese Verbindung trennen?",

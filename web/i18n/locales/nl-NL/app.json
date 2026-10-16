@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "De app zelf en de chats van andere gebruikers worden niet verwijderd.",
   "endUser.deleteChatsTitle": "App verwijderen en je chats wissen?",
   "endUser.deleteKey": "Sleutel verwijderen",
-  "endUser.deleteKeyDescription": "Deze API-sleutel wordt uit alle gekoppelde apps verwijderd. Je kunt later een nieuwe sleutel toevoegen.",
-  "endUser.deleteKeyTitle": "{{name}} verwijderen?",
   "endUser.disconnect": "Verbinding verbreken",
   "endUser.disconnectConnectionDescription": "Gekoppelde apps kunnen deze verbinding niet meer gebruiken. Je chatgeschiedenis en gegevens van derden worden niet verwijderd.",
   "endUser.disconnectConnectionTitle": "Deze verbinding verbreken?",

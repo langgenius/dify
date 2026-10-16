@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Sama aplikacija in klepeti drugih uporabnikov ne bodo izbrisani.",
   "endUser.deleteChatsTitle": "Odstranim aplikacijo in izbrišem vaše klepete?",
   "endUser.deleteKey": "Izbriši ključ",
-  "endUser.deleteKeyDescription": "Ta ključ API bo odstranjen iz vseh povezanih aplikacij. Pozneje lahko dodate nov ključ.",
-  "endUser.deleteKeyTitle": "Izbrišem {{name}}?",
   "endUser.disconnect": "Prekini povezavo",
   "endUser.disconnectConnectionDescription": "Povezane aplikacije ne bodo več mogle uporabljati te povezave. Vaša zgodovina klepetov in podatki tretjih oseb ne bodo izbrisani.",
   "endUser.disconnectConnectionTitle": "Prekinem to povezavo?",

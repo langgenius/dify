@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "L’application elle-même et les discussions des autres utilisateurs ne seront pas supprimées.",
   "endUser.deleteChatsTitle": "Retirer l’application et supprimer vos discussions ?",
   "endUser.deleteKey": "Supprimer la clé",
-  "endUser.deleteKeyDescription": "Cette clé API sera supprimée de toutes les applications liées. Vous pourrez ajouter une nouvelle clé ultérieurement.",
-  "endUser.deleteKeyTitle": "Supprimer {{name}} ?",
   "endUser.disconnect": "Déconnecter",
   "endUser.disconnectConnectionDescription": "Les applications liées ne pourront plus utiliser cette connexion. Votre historique de discussion et les données tierces ne seront pas supprimés.",
   "endUser.disconnectConnectionTitle": "Déconnecter cette connexion ?",

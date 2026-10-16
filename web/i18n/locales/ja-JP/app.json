@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "アプリ自体と他のユーザーのチャット履歴は削除されません。",
   "endUser.deleteChatsTitle": "アプリを削除し、自分のチャット履歴も削除しますか？",
   "endUser.deleteKey": "キーを削除",
-  "endUser.deleteKeyDescription": "この API キーはリンクされたすべてのアプリから削除されます。後から新しいキーを追加できます。",
-  "endUser.deleteKeyTitle": "{{name}} を削除しますか？",
   "endUser.disconnect": "接続を解除",
   "endUser.disconnectConnectionDescription": "リンクされたアプリはこの接続を使用できなくなります。チャット履歴やサードパーティのデータは削除されません。",
   "endUser.disconnectConnectionTitle": "この接続を解除しますか？",

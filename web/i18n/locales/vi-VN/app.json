@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Bản thân ứng dụng và các cuộc trò chuyện của người dùng khác sẽ không bị xóa.",
   "endUser.deleteChatsTitle": "Xóa ứng dụng khỏi danh sách và xóa các cuộc trò chuyện của bạn?",
   "endUser.deleteKey": "Xóa khóa",
-  "endUser.deleteKeyDescription": "Khóa API này sẽ bị xóa khỏi tất cả các ứng dụng được liên kết. Bạn có thể thêm khóa mới sau.",
-  "endUser.deleteKeyTitle": "Xóa {{name}}?",
   "endUser.disconnect": "Ngắt kết nối",
   "endUser.disconnectConnectionDescription": "Các ứng dụng được liên kết sẽ không thể sử dụng kết nối này nữa. Lịch sử trò chuyện và dữ liệu của bên thứ ba sẽ không bị xóa.",
   "endUser.disconnectConnectionTitle": "Ngắt kết nối này?",

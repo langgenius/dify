@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Tətbiqin özü və digər istifadəçilərin söhbətləri silinməyəcək.",
   "endUser.deleteChatsTitle": "Tətbiq çıxarılsın və söhbətləriniz silinsin?",
   "endUser.deleteKey": "Açarı sil",
-  "endUser.deleteKeyDescription": "Bu API açarı bütün əlaqəli tətbiqlərdən çıxarılacaq. Daha sonra yeni açar əlavə edə bilərsiniz.",
-  "endUser.deleteKeyTitle": "{{name}} silinsin?",
   "endUser.disconnect": "Bağlantını kəs",
   "endUser.disconnectConnectionDescription": "Əlaqəli tətbiqlər artıq bu bağlantıdan istifadə edə bilməyəcək. Söhbət tarixçəniz və üçüncü tərəf məlumatları silinməyəcək.",
   "endUser.disconnectConnectionTitle": "Bu bağlantı kəsilsin?",

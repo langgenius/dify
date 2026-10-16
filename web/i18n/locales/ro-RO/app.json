@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Aplicația în sine și conversațiile altor utilizatori nu vor fi șterse.",
   "endUser.deleteChatsTitle": "Elimini aplicația și ștergi conversațiile tale?",
   "endUser.deleteKey": "Șterge cheia",
-  "endUser.deleteKeyDescription": "Această cheie API va fi eliminată din toate aplicațiile asociate. Poți adăuga o cheie nouă ulterior.",
-  "endUser.deleteKeyTitle": "Ștergi {{name}}?",
   "endUser.disconnect": "Deconectează",
   "endUser.disconnectConnectionDescription": "Aplicațiile asociate nu vor mai putea folosi această conexiune. Istoricul conversațiilor și datele terților nu vor fi șterse.",
   "endUser.disconnectConnectionTitle": "Deconectezi această conexiune?",

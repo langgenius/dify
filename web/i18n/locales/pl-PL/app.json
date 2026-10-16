@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Sama aplikacja i czaty innych użytkowników nie zostaną usunięte.",
   "endUser.deleteChatsTitle": "Usunąć aplikację z listy i usunąć Twoje czaty?",
   "endUser.deleteKey": "Usuń klucz",
-  "endUser.deleteKeyDescription": "Ten klucz API zostanie usunięty ze wszystkich powiązanych aplikacji. Możesz dodać nowy klucz później.",
-  "endUser.deleteKeyTitle": "Usunąć {{name}}?",
   "endUser.disconnect": "Rozłącz",
   "endUser.disconnectConnectionDescription": "Powiązane aplikacje nie będą już mogły korzystać z tego połączenia. Historia czatów i dane usług zewnętrznych nie zostaną usunięte.",
   "endUser.disconnectConnectionTitle": "Rozłączyć to połączenie?",

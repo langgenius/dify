@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "应用本身和其他用户的聊天记录不会被删除。",
   "endUser.deleteChatsTitle": "移除应用并删除你的聊天记录？",
   "endUser.deleteKey": "删除密钥",
-  "endUser.deleteKeyDescription": "此 API 密钥将从所有关联应用中移除。你可以稍后添加新密钥。",
-  "endUser.deleteKeyTitle": "删除 {{name}}？",
   "endUser.disconnect": "断开连接",
   "endUser.disconnectConnectionDescription": "关联应用将无法再使用此连接。你的聊天记录和第三方数据不会被删除。",
   "endUser.disconnectConnectionTitle": "断开此连接？",

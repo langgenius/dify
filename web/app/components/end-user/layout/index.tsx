@@ -9,7 +9,7 @@ export default function EndUserLayout({ children }: { children: ReactNode }) {
   const { t } = useTranslation(['common'])
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background-body md:flex-row">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background-body md:flex-row">
       <SkipNav>{t(($) => $['navigation.skipToMain'], { ns: 'common' })}</SkipNav>
       <Sidebar />
       <main

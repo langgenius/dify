@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Aplikasi itu sendiri dan obrolan pengguna lain tidak akan dihapus.",
   "endUser.deleteChatsTitle": "Hapus aplikasi dari daftar dan hapus obrolan Anda?",
   "endUser.deleteKey": "Hapus kunci",
-  "endUser.deleteKeyDescription": "Kunci API ini akan dihapus dari semua aplikasi yang ditautkan. Anda dapat menambahkan kunci baru nanti.",
-  "endUser.deleteKeyTitle": "Hapus {{name}}?",
   "endUser.disconnect": "Putuskan koneksi",
   "endUser.disconnectConnectionDescription": "Aplikasi yang ditautkan tidak akan dapat menggunakan koneksi ini lagi. Riwayat percakapan dan data pihak ketiga Anda tidak akan dihapus.",
   "endUser.disconnectConnectionTitle": "Putuskan koneksi ini?",

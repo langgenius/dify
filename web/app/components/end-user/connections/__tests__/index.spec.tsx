@@ -57,8 +57,6 @@ const apiConnection: EndUserConnection = {
     },
   ],
 }
-const connectionLabel = (key: string, connection: EndUserConnection) =>
-  `app.endUser.${key}:${JSON.stringify({ name: connection.name })}`
 const actionLabel = (connection: EndUserConnection) =>
   connection.type === 'oauth' ? 'app.endUser.disconnect' : 'app.endUser.deleteKey'
 
@@ -96,10 +94,7 @@ const openConfirmation = async (
     within(connectionRow(connection)).getByRole('button', { name: actionLabel(connection) }),
   )
   return screen.findByRole('alertdialog', {
-    name:
-      connection.type === 'oauth'
-        ? 'app.endUser.disconnectConnectionTitle'
-        : connectionLabel('deleteKeyTitle', connection),
+    name: 'app.endUser.disconnectConnectionTitle',
   })
 }
 
@@ -148,20 +143,15 @@ describe('End user Connections', () => {
       const user = userEvent.setup()
       const { onRemove } = setupProvider()
       const canceled = await openConfirmation(user, connection)
-      if (connection.type === 'oauth')
-        expect(within(canceled).getByText(connection.name, { exact: true })).toBeVisible()
-      expect(canceled).toHaveAccessibleDescription(
-        connection.type === 'oauth'
-          ? 'app.endUser.disconnectConnectionDescription'
-          : 'app.endUser.deleteKeyDescription',
-      )
+      expect(within(canceled).getByText(connection.name, { exact: true })).toBeVisible()
+      expect(canceled).toHaveAccessibleDescription('app.endUser.disconnectConnectionDescription')
       await user.click(within(canceled).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(canceled).not.toBeInTheDocument())
       expect(onRemove).not.toHaveBeenCalled()
       expect(connectionRow(connection)).toBeVisible()
 
       const confirmed = await openConfirmation(user, connection)
-      await user.click(within(confirmed).getByRole('button', { name: actionLabel(connection) }))
+      await user.click(within(confirmed).getByRole('button', { name: 'app.endUser.disconnect' }))
       await waitFor(() => expect(confirmed).not.toBeInTheDocument())
 
       expect(onRemove).toHaveBeenCalledExactlyOnceWith(connection)
@@ -185,7 +175,7 @@ describe('End user Connections', () => {
       .mockResolvedValueOnce(undefined)
     setupProvider({ initialConnections: [apiConnection], onRemove })
     const dialog = await openConfirmation(user, apiConnection)
-    const confirm = within(dialog).getByRole('button', { name: actionLabel(apiConnection) })
+    const confirm = within(dialog).getByRole('button', { name: 'app.endUser.disconnect' })
     await user.click(confirm)
     expect(confirm).toHaveAttribute('aria-disabled', 'true')
     expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()

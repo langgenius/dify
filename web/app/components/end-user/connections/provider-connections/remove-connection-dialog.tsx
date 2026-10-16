@@ -11,7 +11,6 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ProviderIcon from '../provider-icon'
@@ -69,33 +68,28 @@ export default function RemoveConnectionDialog({
       }}
     >
       {connection && (
-        <AlertDialogContent
-          finalFocus={finalFocus}
-          className={connection.type === 'oauth' ? 'w-130 rounded-xl border p-6' : undefined}
-        >
-          <div className={connection.type === 'oauth' ? 'space-y-5' : 'space-y-2 px-6 pt-6'}>
+        <AlertDialogContent finalFocus={finalFocus} className="w-130 rounded-xl border p-6">
+          <div className="space-y-5">
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {connection.type === 'oauth'
-                ? t(($) => $['endUser.disconnectConnectionTitle'], { ns: 'app' })
-                : t(($) => $['endUser.deleteKeyTitle'], { ns: 'app', name: connection.name })}
+              {t(($) => $['endUser.disconnectConnectionTitle'], { ns: 'app' })}
             </AlertDialogTitle>
-            {connection.type === 'oauth' && (
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
+              {connection.type === 'oauth' ? (
                 <ProviderIcon provider={provider} size="small" />
-                <span className="min-w-0 system-md-semibold wrap-anywhere text-text-secondary">
-                  {connection.name}
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-default-burn text-text-tertiary"
+                >
+                  <span className="i-ri-key-2-line size-5" />
                 </span>
-              </div>
-            )}
-            <AlertDialogDescription
-              className={cn(
-                'text-text-tertiary',
-                connection.type === 'oauth' ? 'system-xs-regular' : 'system-sm-regular',
               )}
-            >
-              {connection.type === 'oauth'
-                ? t(($) => $['endUser.disconnectConnectionDescription'], { ns: 'app' })
-                : t(($) => $['endUser.deleteKeyDescription'], { ns: 'app' })}
+              <span className="min-w-0 system-md-semibold wrap-anywhere text-text-secondary">
+                {connection.name}
+              </span>
+            </div>
+            <AlertDialogDescription className="system-xs-regular text-text-tertiary">
+              {t(($) => $['endUser.disconnectConnectionDescription'], { ns: 'app' })}
             </AlertDialogDescription>
             {failed && (
               <p role="alert" className="system-sm-regular text-text-destructive">
@@ -103,14 +97,12 @@ export default function RemoveConnectionDialog({
               </p>
             )}
           </div>
-          <AlertDialogFooter className={connection.type === 'oauth' ? 'mt-5 gap-3 p-0' : undefined}>
+          <AlertDialogFooter className="mt-5 gap-3 p-0">
             <AlertDialogCancelButton disabled={pending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={pending} onClick={confirm}>
-              {connection.type === 'oauth'
-                ? t(($) => $['endUser.disconnect'], { ns: 'app' })
-                : t(($) => $['endUser.deleteKey'], { ns: 'app' })}
+              {t(($) => $['endUser.disconnect'], { ns: 'app' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
         </AlertDialogContent>

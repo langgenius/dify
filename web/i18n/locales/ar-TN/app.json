@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "لن يُحذف التطبيق نفسه ولا محادثات المستخدمين الآخرين.",
   "endUser.deleteChatsTitle": "إزالة التطبيق وحذف محادثاتك؟",
   "endUser.deleteKey": "حذف المفتاح",
-  "endUser.deleteKeyDescription": "ستتم إزالة مفتاح API هذا من جميع التطبيقات المرتبطة. يمكنك إضافة مفتاح جديد لاحقًا.",
-  "endUser.deleteKeyTitle": "حذف {{name}}؟",
   "endUser.disconnect": "قطع الاتصال",
   "endUser.disconnectConnectionDescription": "لن تتمكن التطبيقات المرتبطة من استخدام هذا الاتصال بعد الآن. لن يتم حذف سجل محادثاتك وبيانات الجهات الخارجية.",
   "endUser.disconnectConnectionTitle": "قطع هذا الاتصال؟",

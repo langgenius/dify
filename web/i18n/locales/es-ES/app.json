@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "No se eliminarán la aplicación ni los chats de otros usuarios.",
   "endUser.deleteChatsTitle": "¿Quitar la aplicación y eliminar tus chats?",
   "endUser.deleteKey": "Eliminar clave",
-  "endUser.deleteKeyDescription": "Esta clave de API se eliminará de todas las aplicaciones vinculadas. Puedes añadir una nueva clave más adelante.",
-  "endUser.deleteKeyTitle": "¿Eliminar {{name}}?",
   "endUser.disconnect": "Desconectar",
   "endUser.disconnectConnectionDescription": "Las aplicaciones vinculadas ya no podrán usar esta conexión. No se eliminarán tu historial de chats ni los datos de terceros.",
   "endUser.disconnectConnectionTitle": "¿Desconectar esta conexión?",

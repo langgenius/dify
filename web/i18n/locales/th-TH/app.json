@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "ตัวแอปและแชตของผู้ใช้อื่นจะไม่ถูกลบ",
   "endUser.deleteChatsTitle": "นำแอปออกและลบแชตของคุณหรือไม่?",
   "endUser.deleteKey": "ลบคีย์",
-  "endUser.deleteKeyDescription": "คีย์ API นี้จะถูกนำออกจากแอปที่เชื่อมโยงทั้งหมด คุณสามารถเพิ่มคีย์ใหม่ได้ในภายหลัง",
-  "endUser.deleteKeyTitle": "ลบ {{name}} หรือไม่?",
   "endUser.disconnect": "ตัดการเชื่อมต่อ",
   "endUser.disconnectConnectionDescription": "แอปที่เชื่อมโยงจะไม่สามารถใช้การเชื่อมต่อนี้ได้อีก ประวัติการแชทและข้อมูลของบุคคลที่สามจะไม่ถูกลบ",
   "endUser.disconnectConnectionTitle": "ตัดการเชื่อมต่อนี้หรือไม่?",

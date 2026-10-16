@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "The app itself and other users’ chats won’t be deleted.",
   "endUser.deleteChatsTitle": "Remove app and delete your chats?",
   "endUser.deleteKey": "Delete Key",
-  "endUser.deleteKeyDescription": "This API key will be removed from all linked apps. You can add a new key later.",
-  "endUser.deleteKeyTitle": "Delete {{name}}?",
   "endUser.disconnect": "Disconnect",
   "endUser.disconnectConnectionDescription": "Linked apps will no longer be able to use this connection. Your chat history and third-party data won’t be deleted.",
   "endUser.disconnectConnectionTitle": "Disconnect this connection?",

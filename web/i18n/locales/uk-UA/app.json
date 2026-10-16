@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "Сам застосунок і чати інших користувачів не буде видалено.",
   "endUser.deleteChatsTitle": "Вилучити застосунок і видалити ваші чати?",
   "endUser.deleteKey": "Видалити ключ",
-  "endUser.deleteKeyDescription": "Цей ключ API буде видалено з усіх пов’язаних застосунків. Ви зможете додати новий ключ пізніше.",
-  "endUser.deleteKeyTitle": "Видалити {{name}}?",
   "endUser.disconnect": "Відключити",
   "endUser.disconnectConnectionDescription": "Пов’язані застосунки більше не зможуть використовувати це підключення. Вашу історію чатів і дані сторонніх сервісів не буде видалено.",
   "endUser.disconnectConnectionTitle": "Відключити це підключення?",

@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "앱 자체와 다른 사용자의 채팅은 삭제되지 않습니다.",
   "endUser.deleteChatsTitle": "앱을 제거하고 내 채팅을 삭제할까요?",
   "endUser.deleteKey": "키 삭제",
-  "endUser.deleteKeyDescription": "이 API 키는 연결된 모든 앱에서 제거됩니다. 나중에 새 키를 추가할 수 있습니다.",
-  "endUser.deleteKeyTitle": "{{name}}을(를) 삭제할까요?",
   "endUser.disconnect": "연결 해제",
   "endUser.disconnectConnectionDescription": "연결된 앱에서 더 이상 이 연결을 사용할 수 없습니다. 채팅 기록과 타사 데이터는 삭제되지 않습니다.",
   "endUser.disconnectConnectionTitle": "이 연결을 해제할까요?",

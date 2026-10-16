@@ -58,8 +58,6 @@
   "endUser.deleteChatsDisclaimer": "ຕົວແອັບເອງ ແລະການສົນທະນາຂອງຜູ້ໃຊ້ອື່ນຈະບໍ່ຖືກລຶບ.",
   "endUser.deleteChatsTitle": "ເອົາແອັບອອກ ແລະລຶບການສົນທະນາຂອງທ່ານບໍ?",
   "endUser.deleteKey": "ລຶບກະແຈ",
-  "endUser.deleteKeyDescription": "ກະແຈ API ນີ້ຈະຖືກເອົາອອກຈາກແອັບທີ່ເຊື່ອມໂຍງທັງໝົດ. ທ່ານສາມາດເພີ່ມກະແຈໃໝ່ໄດ້ໃນພາຍຫຼັງ.",
-  "endUser.deleteKeyTitle": "ລຶບ {{name}} ບໍ?",
   "endUser.disconnect": "ຕັດການເຊື່ອມຕໍ່",
   "endUser.disconnectConnectionDescription": "ແອັບທີ່ເຊື່ອມໂຍງຈະບໍ່ສາມາດໃຊ້ການເຊື່ອມຕໍ່ນີ້ໄດ້ອີກ. ປະຫວັດການສົນທະນາ ແລະ ຂໍ້ມູນຂອງບຸກຄົນທີສາມຂອງທ່ານຈະບໍ່ຖືກລຶບ.",
   "endUser.disconnectConnectionTitle": "ຕັດການເຊື່ອມຕໍ່ນີ້ບໍ?",
