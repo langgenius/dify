@@ -4,7 +4,6 @@ import type {
   EndpointProviderDeclarationResponse,
   PluginInstallTask,
   PluginInstallTaskPluginStatus,
-  PluginInstallTaskStartResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
@@ -353,8 +352,6 @@ export type GitHubRepoReleaseResponse = {
   assets: GitHubAsset[]
 }
 
-export type InstallPackageResponse = PluginInstallTaskStartResponse
-
 export type InstallStatusResponse = {
   status: TaskStatus
   taskId: string
@@ -381,8 +378,6 @@ export type PluginStatus = PluginInstallTaskPluginStatus & {
 }
 
 export type PluginTask = Omit<PluginInstallTask, 'plugins'> & { plugins: PluginStatus[] }
-
-export type PluginTaskStart = PluginInstallTask
 
 export type MetaData = {
   repo: string

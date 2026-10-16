@@ -1,6 +1,9 @@
+import type {
+  DocumentStatusResponse,
+  ProcessRuleResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
 import type { DocumentContextValue } from '../../context'
-import type { IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -63,8 +66,8 @@ const createWrapper = (
 }
 
 const mockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
+  overrides: Partial<DocumentStatusResponse> = {},
+): DocumentStatusResponse => ({
   id: 'doc1',
   indexing_status: 'indexing',
   completed_segments: 50,

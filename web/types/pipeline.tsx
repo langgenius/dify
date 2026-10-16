@@ -1,5 +1,3 @@
-import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
-
 export type DataSourceNodeProcessingResponse = {
   event: 'datasource_processing'
   total: number
@@ -30,5 +28,3 @@ export type DataSourceNodeErrorResponse = {
   event: 'datasource_error'
   error: string
 }
-
-export type DataSourceCredential = DatasourceCredentialResponse

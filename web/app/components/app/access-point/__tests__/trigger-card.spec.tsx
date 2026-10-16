@@ -1,4 +1,4 @@
-import type { AppTrigger } from '@/app/components/tools/types'
+import type { WorkflowTriggerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,7 +11,7 @@ import { TriggerAccessPointCard } from '../built-in-access-points/trigger-card'
 const mocks = vi.hoisted(() => ({
   setTriggerStatuses: vi.fn(),
   triggerQuery: {
-    data: undefined as { data: AppTrigger[] } | undefined,
+    data: undefined as { data: WorkflowTriggerResponse[] } | undefined,
     isLoading: false,
   },
   updateTriggerStatus: vi.fn(),
@@ -79,7 +79,10 @@ const appInfo = createAppDetailFixture({
   mode: 'workflow' as const,
 })
 
-function createTrigger(id: string, status: AppTrigger['status']): AppTrigger {
+function createTrigger(
+  id: string,
+  status: WorkflowTriggerResponse['status'],
+): WorkflowTriggerResponse {
   return {
     id,
     trigger_type: 'trigger-webhook',

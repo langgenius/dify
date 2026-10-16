@@ -1,6 +1,6 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -27,7 +27,7 @@ import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import AssignRolesModal from './assign-roles-modal'
 
 type MemberMenuProps = {
-  member: Member
+  member: AccountWithRoleResponse
   isCurrentUser: boolean
   canTransferOwnership?: boolean
   allowMultipleRoles?: boolean

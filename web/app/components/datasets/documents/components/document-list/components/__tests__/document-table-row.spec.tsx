@@ -1,5 +1,5 @@
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { SimpleDocumentDetail } from '@/models/datasets'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -49,7 +49,7 @@ const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
   )
 }
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
 const createMockDoc = (overrides: Record<string, unknown> = {}): LocalDoc =>
   ({

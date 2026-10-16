@@ -1,4 +1,4 @@
-import type { FileUploadConfigResponse } from '@/models/common'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -47,7 +47,7 @@ export const usePipelineConfig = () => {
   )
 
   const handleUpdateWorkflowFileUploadConfig = useCallback(
-    (config: FileUploadConfigResponse) => {
+    (config: UploadConfig) => {
       const { setFileUploadConfig } = workflowStore.getState()
       setFileUploadConfig(config)
     },

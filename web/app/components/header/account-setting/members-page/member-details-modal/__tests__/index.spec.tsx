@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
@@ -31,7 +31,7 @@ const createRole = (overrides: Partial<Role>): Role => ({
   ...overrides,
 })
 
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Admin User',
   email: 'admin@example.com',

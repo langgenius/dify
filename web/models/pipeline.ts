@@ -1,7 +1,3 @@
-import type {
-  PipelineDocument,
-  PipelineGenerateResponse,
-} from '@dify/contracts/api/console/rag/types.gen'
 import type { Viewport } from 'reactflow'
 import type { ChunkingMode, IconInfo } from './datasets'
 import type { Edge, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -82,10 +78,6 @@ export type RAGPipelineVariable = {
 
 export type InputVar = Omit<RAGPipelineVariable, 'belong_to_node_id'>
 export type RAGPipelineVariables = RAGPipelineVariable[]
-
-export type PublishedPipelineRunResponse = PipelineGenerateResponse
-
-export type InitialDocumentDetail = PipelineDocument
 
 export type PipelineExecutionLogResponse = {
   datasource_info: Record<string, any>

@@ -1,6 +1,6 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from '../types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import { act, renderHook } from '@testing-library/react'
 import { useFile, useFileSizeLimit } from '../hooks'
 
@@ -84,14 +84,14 @@ describe('useFileSizeLimit', () => {
   })
 
   it('should use config values when provided', () => {
-    const config: FileUploadConfigResponse = {
+    const config: UploadConfig = {
       image_file_size_limit: 20,
       file_size_limit: 30,
       audio_file_size_limit: 100,
       video_file_size_limit: 200,
       skill_file_size_limit: 60,
       workflow_file_upload_limit: 20,
-    } as FileUploadConfigResponse
+    } as UploadConfig
 
     const { result } = renderHook(() => useFileSizeLimit(config))
 
@@ -111,7 +111,7 @@ describe('useFileSizeLimit', () => {
       video_file_size_limit: 0,
       skill_file_size_limit: 0,
       workflow_file_upload_limit: 0,
-    } as FileUploadConfigResponse
+    } as UploadConfig
 
     const { result } = renderHook(() => useFileSizeLimit(config))
 

@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -58,7 +58,7 @@ const roles = [
   createRole({ id: 'role-2', name: 'Second role' }),
 ]
 
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Member User',
   email: 'member@example.com',

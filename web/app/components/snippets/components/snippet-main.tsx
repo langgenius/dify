@@ -2,7 +2,8 @@
 
 import type { WorkflowProps } from '@/app/components/workflow'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
-import type { SnippetCanvasData, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData, SnippetDetailPayload } from '@/models/snippet'
 import type { SnippetDraftSyncPayload } from '@/types/snippet'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
@@ -44,7 +45,7 @@ type SnippetMainProps = {
 
 type SnippetMainContentProps = {
   snippetId: string
-  fields: SnippetInputField[]
+  fields: InputVar[]
   canSave: boolean
   canEdit: boolean
   onBeforePublish: () => Promise<Omit<SnippetDraftSyncPayload, 'hash'> | void>
@@ -246,7 +247,7 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
   }, [canEditSnippet, syncWorkflowDraftWhenPageClose])
 
   const handleFieldsChange = useCallback(
-    (nextFields: SnippetInputField[]) => {
+    (nextFields: InputVar[]) => {
       handleSnippetFieldsChange(nextFields)
     },
     [handleSnippetFieldsChange],
@@ -280,7 +281,7 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
             : { x: 0, y: 0, zoom: 1 },
       }
       const inputFields = Array.isArray(syncedDraftPayload.input_fields)
-        ? (syncedDraftPayload.input_fields as SnippetInputField[])
+        ? (syncedDraftPayload.input_fields as InputVar[])
         : fields
 
       setLocalDraftState({

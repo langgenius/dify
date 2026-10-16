@@ -1,4 +1,4 @@
-import type { WorkflowCommentDetail } from './types'
+import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Suspense, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'

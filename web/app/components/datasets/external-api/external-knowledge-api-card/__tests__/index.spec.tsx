@@ -1,5 +1,4 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import mocked services
@@ -134,7 +133,7 @@ describe('ExternalKnowledgeAPICard', () => {
 
   describe('User Interactions - Edit', () => {
     it('should fetch API details and open modal when edit button is clicked', async () => {
-      const mockResponse: ExternalAPIItem = {
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',
@@ -192,7 +191,7 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should invalidate the generated list query after editing', async () => {
-      const mockResponse: ExternalAPIItem = {
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',
@@ -241,7 +240,7 @@ describe('ExternalKnowledgeAPICard', () => {
     })
 
     it('should not refresh the list query when editing is canceled', async () => {
-      const mockResponse: ExternalAPIItem = {
+      const mockResponse: ExternalKnowledgeApiResponse = {
         id: 'api-123',
         tenant_id: 'tenant-1',
         name: 'Test External API',

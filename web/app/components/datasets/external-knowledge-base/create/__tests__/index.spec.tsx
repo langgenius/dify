@@ -1,4 +1,4 @@
-import type { ExternalAPIItem } from '@/models/datasets'
+import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -38,7 +38,9 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Factory function to create mock ExternalAPIItem (following project conventions)
-const createMockExternalAPIItem = (overrides: Partial<ExternalAPIItem> = {}): ExternalAPIItem => ({
+const createMockExternalAPIItem = (
+  overrides: Partial<ExternalKnowledgeApiResponse> = {},
+): ExternalKnowledgeApiResponse => ({
   id: 'api-default',
   tenant_id: 'tenant-1',
   name: 'Default API',
@@ -54,7 +56,7 @@ const createMockExternalAPIItem = (overrides: Partial<ExternalAPIItem> = {}): Ex
 })
 
 // Default mock API list
-const createDefaultMockApiList = (): ExternalAPIItem[] => [
+const createDefaultMockApiList = (): ExternalKnowledgeApiResponse[] => [
   createMockExternalAPIItem({
     id: 'api-1',
     name: 'Test API 1',
@@ -69,7 +71,7 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
 
 const mockInvalidateQueries = vi.fn()
 const externalKnowledgeApiQueryKey = ['console', 'datasets', 'externalKnowledgeApi', 'get']
-let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
+let mockExternalKnowledgeApiList: ExternalKnowledgeApiResponse[] = createDefaultMockApiList()
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()

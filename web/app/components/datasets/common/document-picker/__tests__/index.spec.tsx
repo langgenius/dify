@@ -1,11 +1,11 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { DocumentPicker } from '../index'
 
-let mockDocumentListData: { data: SimpleDocumentDetail[] } | undefined
+let mockDocumentListData: { data: DocumentWithSegmentsResponse[] } | undefined
 
 const { mockUseDocumentList } = vi.hoisted(() => ({
   mockUseDocumentList: vi.fn(),
@@ -24,7 +24,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   })
 })
 
-const createDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
+const createDocument = (
+  overrides: Partial<DocumentWithSegmentsResponse> = {},
+): DocumentWithSegmentsResponse => ({
   id: 'doc-1',
   position: 1,
   data_source_type: DataSourceType.FILE,

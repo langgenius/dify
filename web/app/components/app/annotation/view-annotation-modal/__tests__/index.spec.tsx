@@ -1,4 +1,4 @@
-import type { AnnotationItem, HitHistoryItem } from '../../type'
+import type { Annotation, AnnotationHitHistory } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -53,7 +53,7 @@ vi.mock('../../edit-annotation-modal/edit-item', () => {
   }
 })
 
-const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
+const createAnnotationItem = (overrides: Partial<Annotation> = {}): Annotation => ({
   id: overrides.id ?? 'annotation-id',
   question: overrides.question ?? 'question',
   answer: overrides.answer ?? 'answer',
@@ -61,7 +61,9 @@ const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): Annotati
   hit_count: overrides.hit_count ?? 0,
 })
 
-const createHitHistoryItem = (overrides: Partial<HitHistoryItem> = {}): HitHistoryItem => ({
+const createHitHistoryItem = (
+  overrides: Partial<AnnotationHitHistory> = {},
+): AnnotationHitHistory => ({
   id: overrides.id ?? 'hit-id',
   question: overrides.question ?? 'query',
   match: overrides.match ?? 'match',

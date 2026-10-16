@@ -1,5 +1,5 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from '../types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   DEFAULT_IMAGE_FILE_BATCH_LIMIT,
@@ -76,13 +76,13 @@ describe('image-uploader utils', () => {
     })
 
     it('should return values from response when valid', () => {
-      const response: Partial<FileUploadConfigResponse> = {
+      const response: Partial<UploadConfig> = {
         image_file_batch_limit: 20,
         single_chunk_attachment_limit: 10,
         attachment_image_file_size_limit: 5,
       }
 
-      const result = getFileUploadConfig(response as FileUploadConfigResponse)
+      const result = getFileUploadConfig(response as UploadConfig)
       expect(result).toEqual({
         imageFileSizeLimit: 5,
         imageFileBatchLimit: 20,
@@ -91,13 +91,13 @@ describe('image-uploader utils', () => {
     })
 
     it('should use default values when response values are 0', () => {
-      const response: Partial<FileUploadConfigResponse> = {
+      const response: Partial<UploadConfig> = {
         image_file_batch_limit: 0,
         single_chunk_attachment_limit: 0,
         attachment_image_file_size_limit: 0,
       }
 
-      const result = getFileUploadConfig(response as FileUploadConfigResponse)
+      const result = getFileUploadConfig(response as UploadConfig)
       expect(result).toEqual({
         imageFileSizeLimit: DEFAULT_IMAGE_FILE_SIZE_LIMIT,
         imageFileBatchLimit: DEFAULT_IMAGE_FILE_BATCH_LIMIT,
@@ -106,13 +106,13 @@ describe('image-uploader utils', () => {
     })
 
     it('should use default values when response values are negative', () => {
-      const response: Partial<FileUploadConfigResponse> = {
+      const response: Partial<UploadConfig> = {
         image_file_batch_limit: -5,
         single_chunk_attachment_limit: -10,
         attachment_image_file_size_limit: -1,
       }
 
-      const result = getFileUploadConfig(response as FileUploadConfigResponse)
+      const result = getFileUploadConfig(response as UploadConfig)
       expect(result).toEqual({
         imageFileSizeLimit: DEFAULT_IMAGE_FILE_SIZE_LIMIT,
         imageFileBatchLimit: DEFAULT_IMAGE_FILE_BATCH_LIMIT,
@@ -125,7 +125,7 @@ describe('image-uploader utils', () => {
         image_file_batch_limit: '15',
         single_chunk_attachment_limit: '8',
         attachment_image_file_size_limit: '3',
-      } as unknown as FileUploadConfigResponse
+      } as unknown as UploadConfig
 
       const result = getFileUploadConfig(response)
       expect(result).toEqual({
@@ -140,7 +140,7 @@ describe('image-uploader utils', () => {
         image_file_batch_limit: null,
         single_chunk_attachment_limit: null,
         attachment_image_file_size_limit: null,
-      } as unknown as FileUploadConfigResponse
+      } as unknown as UploadConfig
 
       const result = getFileUploadConfig(response)
       expect(result).toEqual({
@@ -155,7 +155,7 @@ describe('image-uploader utils', () => {
         image_file_batch_limit: undefined,
         single_chunk_attachment_limit: undefined,
         attachment_image_file_size_limit: undefined,
-      } as unknown as FileUploadConfigResponse
+      } as unknown as UploadConfig
 
       const result = getFileUploadConfig(response)
       expect(result).toEqual({
@@ -166,11 +166,11 @@ describe('image-uploader utils', () => {
     })
 
     it('should handle partial response', () => {
-      const response: Partial<FileUploadConfigResponse> = {
+      const response: Partial<UploadConfig> = {
         image_file_batch_limit: 25,
       }
 
-      const result = getFileUploadConfig(response as FileUploadConfigResponse)
+      const result = getFileUploadConfig(response as UploadConfig)
       expect(result.imageFileBatchLimit).toBe(25)
       expect(result.imageFileSizeLimit).toBe(DEFAULT_IMAGE_FILE_SIZE_LIMIT)
       expect(result.singleChunkAttachmentLimit).toBe(DEFAULT_SINGLE_CHUNK_ATTACHMENT_LIMIT)
@@ -183,7 +183,7 @@ describe('image-uploader utils', () => {
         image_file_batch_limit: { invalid: 'object' }, // Object - not number or string
         single_chunk_attachment_limit: true, // Boolean - not number or string
         attachment_image_file_size_limit: ['array'], // Array - not number or string
-      } as unknown as FileUploadConfigResponse
+      } as unknown as UploadConfig
 
       const result = getFileUploadConfig(response)
       // All should fall back to defaults since getNumberValue returns 0 for these types
@@ -199,7 +199,7 @@ describe('image-uploader utils', () => {
         image_file_batch_limit: 'not-a-number',
         single_chunk_attachment_limit: '',
         attachment_image_file_size_limit: 'abc',
-      } as unknown as FileUploadConfigResponse
+      } as unknown as UploadConfig
 
       const result = getFileUploadConfig(response)
       // NaN values should result in defaults (since NaN > 0 is false)

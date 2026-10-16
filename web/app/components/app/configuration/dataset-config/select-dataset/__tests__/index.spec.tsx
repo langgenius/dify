@@ -1,9 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { DatasetPermission } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from '../index'
@@ -47,7 +47,9 @@ const baseProps = {
   onSelect: vi.fn(),
 }
 
-const makeDataset = (overrides: Partial<DataSet>): DataSet =>
+const makeDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse>,
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-id',
     name: 'Dataset Name',
@@ -61,7 +63,7 @@ const makeDataset = (overrides: Partial<DataSet>): DataSet =>
     embedding_available: true,
     is_multimodal: false,
     description: '',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     indexing_technique: IndexingType.ECONOMICAL,
     retrieval_model_dict: {
       search_method: RETRIEVE_METHOD.fullText,
@@ -75,7 +77,7 @@ const makeDataset = (overrides: Partial<DataSet>): DataSet =>
       score_threshold: 0,
     },
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('SelectDataSet', () => {
   beforeEach(() => {

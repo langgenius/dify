@@ -1,4 +1,4 @@
-import type { Member } from '@/models/common'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import MemberSelector from '../member-selector'
@@ -9,7 +9,7 @@ vi.mock('../member-list', () => ({
   __esModule: true,
   default: (props: {
     searchValue: string
-    list: Member[]
+    list: AccountWithRoleResponse[]
     email: string
     onSearchChange: (value: string) => void
     onSelect: (memberId: string) => void
@@ -30,7 +30,7 @@ vi.mock('../member-list', () => ({
   },
 }))
 
-const members: Member[] = [
+const members: AccountWithRoleResponse[] = [
   {
     id: 'member-1',
     email: 'member-1@example.com',

@@ -1,7 +1,7 @@
 'use client'
+import type { Annotation, AnnotationHitHistory } from '@dify/contracts/api/console/apps/types.gen'
 import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
-import type { AnnotationItem, HitHistoryItem } from '../type'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -38,7 +38,7 @@ type Props = Readonly<{
   appId: string
   isShow: boolean
   onHide: () => void
-  item: AnnotationItem
+  item: Annotation
   onSave: (editedQuery: string, editedAnswer: string) => Promise<void>
   onRemove: () => void
 }>
@@ -61,7 +61,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
   const totalPages = total ? Math.max(Math.ceil(total / APP_PAGE_LIMIT), 1) : 1
-  const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
+  const [hitHistoryList, setHitHistoryList] = useState<AnnotationHitHistory[]>([])
 
   // Update local state when item prop changes (e.g., when modal is reopened with updated data)
   useEffect(() => {

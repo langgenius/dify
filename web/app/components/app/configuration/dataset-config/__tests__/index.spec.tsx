@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DatasetConfigs } from '@/models/debug'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -8,7 +8,8 @@ import {
   LogicalOperator,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { DatasetPermission, DataSourceType } from '@/models/datasets'
+import { DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
@@ -242,8 +243,10 @@ vi.mock('use-context-selector', () => ({
   useContext: vi.fn(() => mockConfigContext),
 }))
 
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
-  const defaultDataset: DataSet = {
+const createMockDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => {
+  const defaultDataset: DatasetDetailWithPartialMembersResponse = {
     ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
@@ -254,7 +257,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
       icon_url: '',
     },
     description: 'Test dataset description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: 'high_quality' as any,
     author_name: 'Test Author',
@@ -468,7 +471,7 @@ describe('DatasetConfig', () => {
 
     it('should disable dataset editing when ACL does not grant edit even if legacy dataset permission allows it', () => {
       const dataset = createMockDataset({
-        permission: DatasetPermission.allTeamMembers,
+        permission: PermissionLevel.allTeamMembers,
         permission_keys: [DatasetACLPermission.Use],
       })
       vi.mocked(getDatasetACLCapabilities).mockReturnValue({
