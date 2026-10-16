@@ -66,7 +66,11 @@ make test
 make test TARGET_TESTS=./api/tests/unit_tests/<path>
 make lint
 make type-check
+PYREFLY_CONFIG=pyrefly.pysa.toml uv run --directory api pyre analyze --verify-dsl
+make test TARGET_TESTS=./api/tests/unit_tests/security/test_pysa_models.py
 ```
+
+See [security/pysa/README.md](security/pysa/README.md) for Pysa models, saved results, traces, and finding triage.
 
 `make test` includes provider unit tests and runs controller tests separately. Integration suites are CI-only and are not expected to run locally. Test environment defaults live in `api/pyproject.toml` under `tool.pytest_env`; see the backend [agent guide](AGENTS.md) for package conventions.
 
