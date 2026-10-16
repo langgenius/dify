@@ -1,8 +1,10 @@
+import type { ComponentProps } from 'react'
 import { EnvironmentStatus, RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { createWorkflowStore } from '@/app/components/workflow/store'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
 import { appWorkflowVersionsInfiniteQueryOptions } from '@/service/workflow-queries'
@@ -15,7 +17,7 @@ import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
 
-let mockAppDetail: Record<string, any> | null = null
+let mockAppDetail: Record<string, unknown> | null = null
 
 const renderWithConsoleQuery = (
   ui: React.ReactElement,
@@ -48,7 +50,7 @@ const mockWindowOpen = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
-let mockPublishedWorkflow: Record<string, any> | null = null
+let mockPublishedWorkflow: Record<string, unknown> | null = null
 let mockPublishedWorkflowQueryState = {
   isError: false,
   isLoading: false,
@@ -56,8 +58,12 @@ let mockPublishedWorkflowQueryState = {
 }
 
 const sectionProps = vi.hoisted(() => ({
-  summary: null as null | Record<string, any>,
-  actions: null as null | Record<string, any>,
+  summary: null as null | ComponentProps<
+    typeof import('../built-in-publisher/summary-section').PublisherSummarySection
+  >,
+  actions: null as null | ComponentProps<
+    typeof import('../built-in-publisher/actions-section').PublisherActionsSection
+  >,
 }))
 const collaborationMocks = vi.hoisted(() => ({
   handler: undefined as
@@ -196,7 +202,11 @@ vi.mock('@/app/components/tools/workflow-tool', () => ({
 }))
 
 vi.mock('../built-in-publisher/summary-section', () => ({
-  PublisherSummarySection: (props: Record<string, any>) => {
+  PublisherSummarySection: (
+    props: ComponentProps<
+      typeof import('../built-in-publisher/summary-section').PublisherSummarySection
+    >,
+  ) => {
     sectionProps.summary = props
     return (
       <div>
@@ -220,12 +230,16 @@ vi.mock('../built-in-publisher/summary-section', () => ({
 }))
 
 vi.mock('../built-in-publisher/actions-section', () => ({
-  PublisherActionsSection: (props: Record<string, any>) => {
+  PublisherActionsSection: (
+    props: ComponentProps<
+      typeof import('../built-in-publisher/actions-section').PublisherActionsSection
+    >,
+  ) => {
     sectionProps.actions = props
     return (
       <div>
         {props.showRunConfig && props.handleOpenRunConfig && (
-          <button type="button" onClick={() => props.handleOpenRunConfig(props.appURL)}>
+          <button type="button" onClick={() => props.handleOpenRunConfig?.(props.appURL)}>
             publisher-run-config
           </button>
         )}
@@ -796,7 +810,7 @@ describe('AppPublisher', () => {
             required: true,
             hide: true,
             default: '',
-          } as any,
+          },
         ]}
       />,
     )
@@ -1098,9 +1112,8 @@ describe('AppPublisher', () => {
   it('should refresh the shared workflow query and store after a collaborator publishes', async () => {
     const setPublishedAt = vi.fn()
     const queryClient = createConsoleQueryClient()
-    const workflowStore = {
-      getState: () => ({ setPublishedAt }),
-    }
+    const workflowStore = createWorkflowStore({})
+    workflowStore.setState({ setPublishedAt })
     mockAppDetail = {
       ...mockAppDetail,
       mode: 'workflow' as const,
@@ -1115,7 +1128,7 @@ describe('AppPublisher', () => {
     })
 
     render(
-      <WorkflowContext value={workflowStore as any}>
+      <WorkflowContext value={workflowStore}>
         <AppPublisher appId="app-1" publishedAt={1_710_000_100_000} />
       </WorkflowContext>,
       queryClient,

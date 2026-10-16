@@ -17,7 +17,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
 const mockUseFeatures = vi.fn()
 const mockUseFeaturesStore = vi.fn()
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: FeatureStoreState) => any) => mockUseFeatures(selector),
+  useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeatures(selector),
   useFeaturesStore: () => mockUseFeaturesStore(),
 }))
 

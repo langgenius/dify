@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { ScheduleTriggerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -10,7 +11,13 @@ vi.mock('../use-config', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children }: any) => (
+  default: ({
+    title,
+    operations,
+    children,
+  }: ComponentProps<
+    typeof import('@/app/components/workflow/nodes/_base/components/field').default
+  >) => (
     <div>
       <div>{title}</div>
       <div>{operations}</div>
@@ -20,7 +27,10 @@ vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
 }))
 
 vi.mock('../components/frequency-selector', () => ({
-  default: ({ frequency, onChange }: any) => (
+  default: ({
+    frequency,
+    onChange,
+  }: ComponentProps<typeof import('../components/frequency-selector').default>) => (
     <button type="button" onClick={() => onChange('weekly')}>
       {frequency}
     </button>
@@ -28,7 +38,10 @@ vi.mock('../components/frequency-selector', () => ({
 }))
 
 vi.mock('../components/mode-toggle', () => ({
-  default: ({ mode, onChange }: any) => (
+  default: ({
+    mode,
+    onChange,
+  }: ComponentProps<typeof import('../components/mode-toggle').default>) => (
     <button type="button" onClick={() => onChange(mode === 'visual' ? 'cron' : 'visual')}>
       {mode}
     </button>
@@ -36,7 +49,9 @@ vi.mock('../components/mode-toggle', () => ({
 }))
 
 vi.mock('../components/monthly-days-selector', () => ({
-  default: ({ onChange }: any) => (
+  default: ({
+    onChange,
+  }: ComponentProps<typeof import('../components/monthly-days-selector').default>) => (
     <button type="button" onClick={() => onChange([1, 'last'])}>
       monthly-days
     </button>
@@ -44,11 +59,17 @@ vi.mock('../components/monthly-days-selector', () => ({
 }))
 
 vi.mock('../components/next-execution-times', () => ({
-  default: ({ data }: any) => <div>next-times-{data.mode}</div>,
+  default: ({
+    data,
+  }: ComponentProps<typeof import('../components/next-execution-times').default>) => (
+    <div>next-times-{data.mode}</div>
+  ),
 }))
 
 vi.mock('../components/on-minute-selector', () => ({
-  default: ({ onChange }: any) => (
+  default: ({
+    onChange,
+  }: ComponentProps<typeof import('../components/on-minute-selector').default>) => (
     <button type="button" onClick={() => onChange(25)}>
       minute-selector
     </button>
@@ -56,7 +77,9 @@ vi.mock('../components/on-minute-selector', () => ({
 }))
 
 vi.mock('../components/weekday-selector', () => ({
-  default: ({ onChange }: any) => (
+  default: ({
+    onChange,
+  }: ComponentProps<typeof import('../components/weekday-selector').default>) => (
     <button type="button" onClick={() => onChange(['mon', 'wed'])}>
       weekday-selector
     </button>
@@ -263,13 +286,11 @@ describe('TriggerSchedulePanel', () => {
       rerender(
         <Panel
           id="node-7"
-          data={
-            createData({
-              mode: 'cron',
-              frequency: undefined,
-              cron_expression: undefined as any,
-            }) as any
-          }
+          data={createData({
+            mode: 'cron',
+            frequency: undefined,
+            cron_expression: undefined as any,
+          })}
           panelProps={panelProps}
         />,
       )

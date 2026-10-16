@@ -11,12 +11,12 @@ const mockSetIterTimes = vi.fn()
 const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
+const mockGetNodes = vi.fn((): { id: string; type: string; data: Record<string, unknown> }[] => [])
 
-let mockWorkflowRunningData: any = null
+let mockWorkflowRunningData: { result: { status: string } } | null = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+  sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -24,7 +24,7 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
+  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -32,7 +32,7 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
   },
 }))
 
@@ -82,7 +82,7 @@ describe('useChat – handleSwitchSibling', () => {
 
   it('should call handleResume when target has workflow_run_id and pending humanInputFormData', async () => {
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
     mockSseGet.mockImplementation(() => {})
@@ -123,7 +123,7 @@ describe('useChat – handleSwitchSibling', () => {
 
   it('should not call handleResume when target has no humanInputFormDataList', async () => {
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
 
@@ -169,7 +169,7 @@ describe('useChat – handleSwitchSibling', () => {
 
   it('should search children recursively in findMessageInTree', async () => {
     let sendCallbacks: any
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
     mockSseGet.mockImplementation(() => {})
@@ -378,7 +378,7 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
   beforeEach(() => {
     resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       capturedCallbacks = callbacks
     })
   })

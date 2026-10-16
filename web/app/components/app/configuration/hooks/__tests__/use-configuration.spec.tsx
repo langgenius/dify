@@ -81,7 +81,7 @@ let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
 vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<any>('ahooks')
+  const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
 
   return {
     ...actual,
@@ -742,7 +742,7 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.isAllowVideoUpload).toBe(true)
 
     await act(async () => {
-      await result.current.contextValue.setPromptMode('advanced' as any)
+      await result.current.contextValue.setPromptMode('advanced')
     })
     expect(mockMigrateToDefaultPrompt).toHaveBeenCalled()
 
@@ -865,7 +865,7 @@ describe('useConfiguration', () => {
         number_limits: 2,
         detail: 'high',
         transfer_methods: ['local_file'],
-      } as any)
+      })
       result.current.contextValue.setCompletionParams({ temperature: 0.2 })
       result.current.onCloseFeaturePanel()
     })

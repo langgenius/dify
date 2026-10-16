@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import Logs from '../index'
 
 vi.mock('@/context/i18n', () => ({
@@ -106,16 +107,7 @@ describe('Logs', () => {
   })
 
   it('should request chat conversations and show a loading state before data arrives', () => {
-    render(
-      <Logs
-        appDetail={
-          {
-            id: 'app-1',
-            mode: 'chat' as const,
-          } as any
-        }
-      />,
-    )
+    render(<Logs appDetail={createAppDetailFixture({ id: 'app-1', mode: 'chat' })} />)
 
     expect(mockUseChatConversations).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -137,16 +129,7 @@ describe('Logs', () => {
       refetch: vi.fn(),
     })
 
-    render(
-      <Logs
-        appDetail={
-          {
-            id: 'app-2',
-            mode: 'completion' as const,
-          } as any
-        }
-      />,
-    )
+    render(<Logs appDetail={createAppDetailFixture({ id: 'app-2', mode: 'completion' })} />)
 
     expect(mockUseCompletionConversations).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -162,16 +145,7 @@ describe('Logs', () => {
       refetch: vi.fn(),
     })
 
-    render(
-      <Logs
-        appDetail={
-          {
-            id: 'app-3',
-            mode: 'chat' as const,
-          } as any
-        }
-      />,
-    )
+    render(<Logs appDetail={createAppDetailFixture({ id: 'app-3', mode: 'chat' })} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }))
 
@@ -188,12 +162,10 @@ describe('Logs', () => {
 
     render(
       <Logs
-        appDetail={
-          {
-            id: 'app-sandbox-last-30-days',
-            mode: 'chat' as const,
-          } as any
-        }
+        appDetail={createAppDetailFixture({
+          id: 'app-sandbox-last-30-days',
+          mode: 'chat' as const,
+        })}
       />,
     )
 
@@ -217,10 +189,10 @@ describe('Logs', () => {
 
   it('should use today when a cached period is unavailable to a Sandbox workspace', async () => {
     const user = userEvent.setup()
-    const appDetail = {
+    const appDetail = createAppDetailFixture({
       id: 'app-period-transition',
       mode: 'chat' as const,
-    } as any
+    })
     mockUseChatConversations.mockReturnValue({
       data: { total: 0 },
       refetch: vi.fn(),
