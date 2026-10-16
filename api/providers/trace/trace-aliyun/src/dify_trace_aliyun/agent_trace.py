@@ -14,7 +14,9 @@ from services.tracing.provider_dispatch import TraceExportResult
 def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace) -> TraceExportResult:
     base = endpoint(required(config, "endpoint"))
     license_key = quote(required(config, "license_key"), safe="")
-    suffix = "api/v1/traces" if "log.aliyuncs.com" in (urlsplit(base).hostname or "") else "api/otlp/traces"
+    hostname = (urlsplit(base).hostname or "").removesuffix(".")
+    is_sls = hostname == "log.aliyuncs.com" or hostname.endswith(".log.aliyuncs.com")
+    suffix = "api/v1/traces" if is_sls else "api/otlp/traces"
     url = f"{base}/adapt_{license_key}/{suffix}"
     payload = build_request(
         trace,
