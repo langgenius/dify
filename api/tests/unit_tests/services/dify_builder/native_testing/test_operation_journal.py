@@ -19,6 +19,9 @@ from services.dify_builder.native_testing.contracts import (
     RecordedResult,
 )
 from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, NodeJournalState
+from tests.unit_tests.services.dify_builder.native_testing.test_claimed_resume_checkpoint import (
+    metadata_case as metadata_case,  # noqa: PLC0414
+)
 
 REF = NativeTestContextRef(request_id="request", invocation_id="invocation", context_digest="a" * 64)
 PATH = ("root", "iteration:items:2", "tool:send")
@@ -471,3 +474,241 @@ def test_resolve_cursor_returns_replacement_identity_for_same_occurrence_only_af
     assert journal.resolve_cursor(ref=REF, key=key) is replacement
     assert replacement is not first
     assert authorization.calls == []
+
+
+@pytest.fixture
+def claimed_case(metadata_case, monkeypatch):
+    """Actual lifecycle selector; synthetic C03/SQL/permission boundary ports only."""
+    from dataclasses import replace
+
+    from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
+
+    c = metadata_case
+    c.state.generation = c.dispatch.generation = 2
+    c.scope.generation = 3
+    authority = replace(c.authority, generation=2)
+
+    def permission(loader, ref):
+        assert loader is c.loader
+        if ref != c.ref:
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
+        return authority
+
+    monkeypatch.setattr("services.dify_builder.native_testing.lifecycle.validate_private_read", permission)
+
+    class ClaimedState(State):
+        def load_context(self, *, ref):
+            if self.failure:
+                raise self.failure
+            if ref != c.ref:
+                raise BuilderExecutionPolicyError("native_owner_mismatch")
+            return deepcopy(self.context)
+
+    state = ClaimedState()
+    state.context = ResolvedNativeTestContext(
+        ref=c.ref,
+        tenant_id="tenant",
+        actor_id="actor",
+        app_id="app",
+        workflow_id="workflow",
+        graph={},
+        inputs=INPUT,
+        graph_revision="c" * 64,
+        input_revision=canonical_digest(INPUT),
+        resource_manifest=(),
+        generation=2,
+        root_native_run_id="run",
+        native_run_id="run",
+        parent_invocation_id=None,
+        call_depth=0,
+        budget_ref="request",
+        cancellation_ref="request",
+        execution_mode="native",
+    )
+    c.service.store = state
+    source, _, authorization = make_journal(state)
+    cursor = source.open(ref=c.ref, occurrence_path=PATH)
+    cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
+    original = intent(cursor.next_key())
+    cursor.before_call(intent=original)
+    state.payload = payload(source.snapshot(ref=c.ref))
+    target, _, _ = make_journal(state, authorization)
+    return SimpleNamespace(
+        owner=c,
+        state=state,
+        lifecycle=c.service,
+        target=target,
+        authorization=authorization,
+        expected=state.payload.model_copy(deep=True),
+        original=original,
+    )
+
+
+@pytest.mark.parametrize("generation", [2, 4])
+def test_claimed_restore_authenticates_older_checkpoint_then_rechecks_c02(claimed_case, monkeypatch, generation):
+    from dataclasses import replace
+
+    c = claimed_case
+    c.owner.state.generation = c.owner.dispatch.generation = generation
+    c.state.context = c.state.context.model_copy(update={"generation": generation})
+    authority = replace(c.owner.authority, generation=generation)
+    monkeypatch.setattr("services.dify_builder.native_testing.lifecycle.validate_private_read", lambda *_: authority)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_generation_conflict"):
+        c.target.restore(ref=c.owner.ref, checkpoint=CP)
+    c.target.restore_claimed(
+        ref=c.owner.ref,
+        generation=generation,
+        dispatch_id="dispatch",
+        lifecycle=c.lifecycle,
+        expected_payload=c.expected,
+    )
+    assert len(c.authorization.calls) == 1  # Restoration does not authorize replay.
+    cursor = c.target.open(ref=c.owner.ref, occurrence_path=PATH)
+    cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
+    current = intent(cursor.next_key())
+    assert current.key == c.original.key
+    assert isinstance(cursor.before_call(intent=current), RecordedResult)
+    assert len(c.authorization.calls) == 2
+    cursor.finish()
+
+
+def _retained_cursor(c):
+    cursor = c.target.open(ref=c.owner.ref, occurrence_path=("retained",))
+    cursor.bind_input(input_result_ref="inputs", inputs=INPUT)
+    cursor.next_key()
+    return cursor, cursor.snapshot()
+
+
+def _assert_retained(c, cursor, saved):
+    assert c.target._open[(c.owner.ref, ("retained",))] is cursor
+    assert cursor.snapshot() == saved
+    assert c.target._saved == {}
+
+
+@pytest.mark.parametrize("owner", ["namespace", "second_state", "subclass"])
+def test_claimed_restore_requires_actual_lifecycle_and_same_state(claimed_case, owner):
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+
+    c = claimed_case
+    cursor, saved = _retained_cursor(c)
+    if owner == "namespace":
+        lifecycle = SimpleNamespace(store=c.state, claimed_resume_checkpoint=lambda **_: CP)
+    elif owner == "second_state":
+        lifecycle = NativeTestLifecycleService(c.owner.loader, state_store=State())
+    else:
+
+        class FakeLifecycle(NativeTestLifecycleService):
+            def claimed_resume_checkpoint(self, **_):
+                return CP
+
+        lifecycle = FakeLifecycle(c.owner.loader, state_store=c.state)
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.target.restore_claimed(
+            ref=c.owner.ref, generation=2, dispatch_id="dispatch", lifecycle=lifecycle, expected_payload=c.expected
+        )
+    _assert_retained(c, cursor, saved)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "generation_zero",
+        "generation_bool",
+        "generation_string",
+        "ref",
+        "foreign_ref",
+        "expected_namespace",
+        "expected_generation_bool",
+        "expected_payload",
+        "actual_run",
+        "context_generation",
+        "context_mode",
+        "context_namespace",
+    ],
+)
+def test_claimed_restore_revalidates_runtime_arguments_and_actual_context(claimed_case, fault):
+    c = claimed_case
+    cursor, saved = _retained_cursor(c)
+    ref, generation, expected = c.owner.ref, 2, c.expected
+    if fault == "generation_zero":
+        generation = 0
+    elif fault == "generation_bool":
+        generation = True
+    elif fault == "generation_string":
+        generation = "2"
+    elif fault == "ref":
+        ref = ref.model_copy(update={"context_digest": "invalid"})
+    elif fault == "foreign_ref":
+        ref = ref.model_copy(update={"context_digest": "f" * 64})
+    elif fault == "expected_namespace":
+        expected = SimpleNamespace(model_dump=lambda **_: c.expected.model_dump())
+    elif fault == "expected_generation_bool":
+        expected = expected.model_copy(update={"generation": False})
+    elif fault == "expected_payload":
+        expected = expected.model_copy(update={"graph_runtime_state_json": '{"forged":true}'})
+    elif fault == "actual_run":
+        c.state.payload = c.state.payload.model_copy(update={"native_run_id": "other-run"})
+    elif fault == "context_generation":
+        c.state.context = c.state.context.model_copy(update={"generation": 3})
+    elif fault == "context_mode":
+        c.state.context = c.state.context.model_copy(update={"execution_mode": "mock"})
+    else:
+        c.state.context = SimpleNamespace(ref=ref, generation=2, native_run_id="run")
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.target.restore_claimed(
+            ref=ref, generation=generation, dispatch_id="dispatch", lifecycle=c.lifecycle, expected_payload=expected
+        )
+    _assert_retained(c, cursor, saved)
+
+
+@pytest.mark.parametrize("fault", ["input", "result", "sequence"])
+def test_claimed_restore_keeps_ordered_private_validation_atomic(claimed_case, fault):
+    c = claimed_case
+    cursor, saved = _retained_cursor(c)
+    if fault == "input":
+        c.state.values["inputs"] = {"changed": True}
+    elif fault == "result":
+        c.state.values.pop("result")
+    else:
+        invalid = c.state.payload.node_journals[0].model_copy(update={"cursor": 2})
+        c.state.payload = c.state.payload.model_copy(update={"node_journals": (invalid,)})
+        c.expected = c.state.payload.model_copy(deep=True)
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.target.restore_claimed(
+            ref=c.owner.ref, generation=2, dispatch_id="dispatch", lifecycle=c.lifecycle, expected_payload=c.expected
+        )
+    _assert_retained(c, cursor, saved)
+    assert len(c.authorization.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "fault", ["unclaimed", "expired", "changed_reference", "context_generation", "context_run", "context_inputs"]
+)
+def test_claimed_restore_rechecks_actual_claim_and_context_after_private_reads(claimed_case, monkeypatch, fault):
+    c = claimed_case
+    cursor, saved = _retained_cursor(c)
+    original = c.state.load_result
+
+    def revoke_during_read(**kwargs):
+        value = original(**kwargs)
+        if fault == "unclaimed":
+            c.owner.dispatch.state = "queued"
+        elif fault == "expired":
+            c.owner.dispatch.claim_expires_at = c.lifecycle.clock()
+        elif fault == "changed_reference":
+            c.owner.obj.payload_digest = c.owner.continuation.payload_digest = "d" * 64
+        elif fault == "context_generation":
+            c.state.context = c.state.context.model_copy(update={"generation": 3})
+        elif fault == "context_run":
+            c.state.context = c.state.context.model_copy(update={"native_run_id": "other-run"})
+        else:
+            c.state.context = c.state.context.model_copy(update={"inputs": {"changed": True}})
+        return value
+
+    monkeypatch.setattr(c.state, "load_result", revoke_during_read)
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.target.restore_claimed(
+            ref=c.owner.ref, generation=2, dispatch_id="dispatch", lifecycle=c.lifecycle, expected_payload=c.expected
+        )
+    _assert_retained(c, cursor, saved)
+    assert len(c.authorization.calls) == 1

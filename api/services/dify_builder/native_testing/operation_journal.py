@@ -25,7 +25,13 @@ from services.dify_builder.native_testing.contracts import (
     RecordedResult,
     operation_digest,
 )
-from services.dify_builder.native_testing.runtime_contracts import NativeStatePort, NodeJournalState
+from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+from services.dify_builder.native_testing.runtime_contracts import (
+    NativeCheckpointPayload,
+    NativeStatePort,
+    NodeJournalState,
+    ResolvedNativeTestContext,
+)
 
 _JSON = TypeAdapter(FiniteJSON)
 
@@ -239,6 +245,86 @@ class NodeOperationJournal:
             raise BuilderExecutionPolicyError("native_journal_owner_mismatch")
         if payload.generation not in (context.generation, context.generation - 1):
             raise BuilderExecutionPolicyError("native_generation_conflict")
+        restored = self._prepare_restore(ref=ref, payload=payload)
+        current = self._state.load_context(ref=ref)
+        if (current.ref, current.generation, current.native_run_id) != (
+            context.ref,
+            context.generation,
+            context.native_run_id,
+        ):
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        self._install_restore(ref=ref, restored=restored)
+
+    def restore_claimed(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        generation: int,
+        dispatch_id: str,
+        lifecycle: NativeTestLifecycleService,
+        expected_payload: NativeCheckpointPayload,
+    ) -> None:
+        """Authenticate an exact already claimed C03 resume before reconstruction.
+
+        A shared-scope generation jump permits an older checkpoint only through
+        this actual same-state lifecycle, never through generic restore.
+        """
+        if type(lifecycle) is not NativeTestLifecycleService or lifecycle.store is not self._state:
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch")
+        if type(generation) is not int or generation <= 0:
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        if not isinstance(ref, NativeTestContextRef) or not isinstance(expected_payload, NativeCheckpointPayload):
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch")
+        try:
+            ref = NativeTestContextRef.model_validate(ref.model_dump(mode="python"), strict=True)
+            expected = NativeCheckpointPayload.model_validate(expected_payload.model_dump(mode="python"), strict=True)
+        except ValueError:
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch") from None
+        checkpoint = lifecycle.claimed_resume_checkpoint(ref=ref, generation=generation, dispatch_id=dispatch_id)
+        context = self._claimed_context(ref=ref, generation=generation)
+        actual = self._state.read_checkpoint(ref=ref, checkpoint=checkpoint)
+        try:
+            payload = NativeCheckpointPayload.model_validate(actual.model_dump(mode="python"), strict=True)
+        except ValueError:
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch") from None
+        if payload.native_run_id != context.native_run_id:
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch")
+        if not 0 <= payload.generation < generation:
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        if canonical_digest(payload.model_dump(mode="json")) != canonical_digest(expected.model_dump(mode="json")):
+            raise BuilderExecutionPolicyError("native_journal_payload_mismatch")
+        restored = self._prepare_restore(ref=ref, payload=payload)
+        current = self._claimed_context(ref=ref, generation=generation)
+        current_checkpoint = lifecycle.claimed_resume_checkpoint(
+            ref=ref, generation=generation, dispatch_id=dispatch_id
+        )
+        if current_checkpoint != checkpoint or canonical_digest(current.model_dump(mode="json")) != canonical_digest(
+            context.model_dump(mode="json")
+        ):
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        self._install_restore(ref=ref, restored=restored)
+
+    def _claimed_context(self, *, ref: NativeTestContextRef, generation: int) -> ResolvedNativeTestContext:
+        actual = self._state.load_context(ref=ref)
+        if not isinstance(actual, ResolvedNativeTestContext):
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch")
+        try:
+            context = ResolvedNativeTestContext.model_validate(actual.model_dump(mode="python"), strict=True)
+        except ValueError:
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch") from None
+        if (
+            context.ref != ref
+            or context.generation != generation
+            or context.execution_mode != "native"
+            or not context.native_run_id
+            or not context.root_native_run_id
+        ):
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch")
+        return context
+
+    def _prepare_restore(
+        self, *, ref: NativeTestContextRef, payload: NativeCheckpointPayload
+    ) -> dict[tuple[NativeTestContextRef, tuple[str, ...]], NodeJournalState]:
         restored = {}
         for original in payload.node_journals:
             saved = NodeJournalState.model_validate(original.model_dump(mode="json"))
@@ -263,15 +349,17 @@ class NodeOperationJournal:
             for result_ref in saved.result_refs:
                 self._state.load_result(ref=ref, result_ref=result_ref)
             restored[identity] = saved.model_copy(deep=True)
-        current = self._state.load_context(ref=ref)
-        if (current.ref, current.generation, current.native_run_id) != (
-            context.ref,
-            context.generation,
-            context.native_run_id,
-        ):
-            raise BuilderExecutionPolicyError("native_generation_conflict")
-        self._saved = {**{key: value for key, value in self._saved.items() if key[0] != ref}, **restored}
-        self._open = {key: value for key, value in self._open.items() if key[0] != ref}
+        return restored
+
+    def _install_restore(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        restored: dict[tuple[NativeTestContextRef, tuple[str, ...]], NodeJournalState],
+    ) -> None:
+        saved = {**{key: value for key, value in self._saved.items() if key[0] != ref}, **restored}
+        opened = {key: value for key, value in self._open.items() if key[0] != ref}
+        self._saved, self._open = saved, opened
 
     def snapshot(self, *, ref: NativeTestContextRef) -> tuple[NodeJournalState, ...]:
         self._state.load_context(ref=ref)
