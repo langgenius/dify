@@ -245,6 +245,7 @@ class NativeHostLifetime:
         self._consumed = False
         self._never_started = False
         self._settled_in_time = False
+        self._closing_reader: Thread | None = None
         self._parent: NativeHostLifetime | None = None
 
     def _invalidate_settlement(self) -> None:
@@ -327,6 +328,36 @@ class NativeHostLifetime:
             ):
                 raise ValueError("native_host_thread_registration_refused")
             self._threads.append(_ThreadOwnership(thread=thread, role=role))
+            self._invalidate_settlement()
+
+    def register_reader(self, *, thread: Thread, stream: object) -> None:
+        """Retain the exact existing host source's sole drain reader after close.
+
+        This does not reopen generic thread/effect admission. A real previously
+        started worker and the concrete source's exact host association are
+        required; no caller role flag or thread name establishes this exception.
+        """
+        from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+        from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
+        with self._condition:
+            self._require_tracking()
+            if (
+                type(stream) is not HostOwnedNativeGeneratorStream
+                or type(stream._host) is not NativeHostLaunch
+                or stream._host.lifetime is not self
+                or not isinstance(thread, Thread)
+                or thread.ident is not None
+                or self._never_started
+                or any(item.role == "reader" or item.thread is thread for item in self._threads)
+                or not any(
+                    item.role == "worker" and item.attempted and not item.startup_failed for item in self._threads
+                )
+            ):
+                raise ValueError("native_host_reader_registration_refused")
+            self._threads.append(_ThreadOwnership(thread=thread, role="reader"))
+            self._closing_reader = thread
+            self._invalidate_settlement()
 
     def _thread(self, thread: Thread) -> _ThreadOwnership:
         for item in self._threads:
@@ -337,8 +368,11 @@ class NativeHostLifetime:
     def start_thread(self, *, thread: Thread) -> None:
         """Only owned start path: refusal never calls Thread.start."""
         with self._condition:
-            self._require_open()
             item = self._thread(thread)
+            if item.thread is self._closing_reader:
+                self._require_tracking()
+            else:
+                self._require_open()
             if item.attempted:
                 raise ValueError("native_host_thread_start_replayed")
             item.attempted = item.starting = True
@@ -439,6 +473,37 @@ class NativeHostLifetime:
             raise ValueError("native_host_close_reason_invalid")
         with self._condition:
             self._arm(deadline)
+
+    def wait_until_closing(self) -> None:
+        """Independent coordinator waits without a pre-control run timeout."""
+        with self._condition:
+            self._require_current()
+            while self._deadline is None and not self._unknown:
+                self._condition.wait()
+                self._require_current()
+
+    def require_settled_root(self) -> None:
+        """Non-consuming, current in-time root snapshot check, never a receipt.
+
+        Recheck around protected serialization/IO. New tracking invalidates the
+        earlier settlement, and even a clean attached child is outside this
+        first root-only checkpoint composition. Storage time is not charged as
+        another physical-settlement allowance once real work settled in time.
+        """
+        with self._condition:
+            self._require_current()
+            registry = self._registry
+            if (
+                self._unknown
+                or not self._settled_in_time
+                or not self._ready()
+                or self._never_started
+                or self._parent_invocation_id is not None
+                or self._expected_children
+                or registry is None
+                or any(item._parent_invocation_id == self.ref.invocation_id for item in registry._current.values())
+            ):
+                raise ValueError("native_host_root_not_settled")
 
     def record_control(self, *, record: NativeControlRecord, deadline: float) -> None:
         """Record before any external admission/fence RPC; no fence acceptance."""
@@ -555,6 +620,8 @@ class NativeHostLifetime:
             if not item.attempted or item.starting:
                 return False
             if item.startup_failed and item.thread.ident is None:
+                if item.thread is self._closing_reader:
+                    return False  # Existing source never reached its owning reader/finalizer.
                 continue
             if not item.joined or item.thread.is_alive() or (item.role != "dispatcher" and not item.finished):
                 return False
@@ -616,6 +683,7 @@ class NativeHostLifetime:
                 ticket._retire()
             self._context = None
             self._threads.clear()
+            self._closing_reader = None
             self._runtimes.clear()
             self._node_scopes.clear()
             self._tickets.clear()

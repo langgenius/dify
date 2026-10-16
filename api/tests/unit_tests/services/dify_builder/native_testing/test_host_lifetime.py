@@ -8,7 +8,6 @@ from time import monotonic, sleep
 from typing import Literal, cast, override
 
 import pytest
-
 from services.dify_builder.native_testing.control import NativeApprovalWait, NativeControlRecord
 from services.dify_builder.native_testing.host_lifetime import (
     NativeHostCallTicket,
@@ -64,6 +63,112 @@ def test_inert_or_missing_ownership_never_establishes_cleanup() -> None:
     assert life.settle() == "unknown"
     with pytest.raises(ValueError):
         consume(life)
+
+
+def test_first_close_wait_has_no_precontrol_deadline_and_unknown_wakes_it() -> None:
+    _, life = opened()
+    entered, returned = Event(), Event()
+
+    def coordinate() -> None:
+        entered.set()
+        life.wait_until_closing()
+        returned.set()
+
+    coordinator = Thread(target=coordinate)
+    coordinator.start()
+    try:
+        assert entered.wait(1)
+        assert not returned.wait(0.08)
+        life.mark_unknown()
+        assert returned.wait(1)
+    finally:
+        life.mark_unknown()
+        coordinator.join(1)
+
+
+def test_only_single_owned_reader_may_start_after_close_for_existing_drain() -> None:
+    from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
+
+    case = LaunchCase()
+    life = case.lifetime
+    worker(life).join(1)
+    close(life)
+    stream = HostOwnedNativeGeneratorStream(source=iter_source(), host=case.host)
+    reader = Thread(target=lambda: life.thread_finished(thread=current_thread()))
+    life.register_reader(thread=reader, stream=stream)
+    life.start_thread(thread=reader)
+    reader.join(1)
+    with pytest.raises(ValueError):
+        life.register_reader(thread=Thread(), stream=stream)
+    with pytest.raises(ValueError):
+        life.register_thread(thread=Thread(), role="dispatcher")
+    life.wait_until_closing()
+    assert life.settle() == "settled"
+    life.require_settled_root()
+    consume(life)
+    with pytest.raises(ValueError):
+        life.require_settled_root()
+
+
+def test_expired_close_reader_can_clean_but_cannot_make_snapshot_ready() -> None:
+    from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
+
+    case = LaunchCase()
+    life = case.lifetime
+    worker(life).join(1)
+    life.request_close(reason="exhausted", deadline=monotonic() - 1)
+    reader = Thread(target=lambda: life.thread_finished(thread=current_thread()))
+    life.register_reader(thread=reader, stream=HostOwnedNativeGeneratorStream(source=iter_source(), host=case.host))
+    life.start_thread(thread=reader)
+    reader.join(1)
+    assert life.settle() == "unknown"
+    with pytest.raises(ValueError):
+        life.require_settled_root()
+    consume(life)
+
+
+def iter_source():
+    yield "data: bounded-test\n\n"
+
+
+def test_closing_reader_requires_started_worker_and_exact_existing_host_stream() -> None:
+    from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
+
+    case, other = LaunchCase(), LaunchCase()
+    stream = HostOwnedNativeGeneratorStream(source=iter_source(), host=case.host)
+    with pytest.raises(ValueError):
+        case.lifetime.register_reader(thread=Thread(), stream=stream)
+    worker(case.lifetime).join(1)
+    case.host.request_close(reason="exhausted")
+    foreign = HostOwnedNativeGeneratorStream(source=iter_source(), host=other.host)
+    with pytest.raises(ValueError):
+        case.lifetime.register_reader(thread=Thread(), stream=foreign)
+
+
+def test_owned_source_reader_start_failure_cannot_certify_source_cleanup() -> None:
+    from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
+
+    case = LaunchCase()
+    worker(case.lifetime).join(1)
+    stream = HostOwnedNativeGeneratorStream(source=iter_source(), host=case.host)
+
+    class FailedReader(Thread):
+        @override
+        def start(self) -> None:
+            raise RuntimeError("reader did not start")
+
+    reader = FailedReader()
+    case.lifetime.register_reader(thread=reader, stream=stream)
+    with pytest.raises(RuntimeError, match="reader did not start"):
+        case.lifetime.start_thread(thread=reader)
+    close(case.lifetime, 0.01)
+    assert case.lifetime.settle() == "unknown"
+    with pytest.raises(ValueError):
+        consume(case.lifetime)
 
 
 def test_registration_refusal_prevents_start_and_unstarted_false_is_not_proof() -> None:
@@ -483,8 +588,6 @@ def test_control_registration_stays_unblocked_while_coordinator_joins() -> None:
 def test_actual_native_boundary_keeps_scope_across_generator_yield_and_real_close(
     phase: Literal["run", "resume_container"],
 ) -> None:
-    from graphon.graph_events.node import NodeRunStartedEvent
-    from graphon.nodes.container_effects import IterationFrameRequest
     from tests.unit_tests.services.dify_builder.native_testing.test_control import (
         Observations,
         bound_guard,
@@ -492,6 +595,9 @@ def test_actual_native_boundary_keeps_scope_across_generator_yield_and_real_clos
         observed_iteration_config,
         permit,
     )
+
+    from graphon.graph_events.node import NodeRunStartedEvent
+    from graphon.nodes.container_effects import IterationFrameRequest
 
     _, life = opened()
     _, factory = make_native(config=observed_iteration_config(), decision=permit(), ownership=cast(Observations, life))

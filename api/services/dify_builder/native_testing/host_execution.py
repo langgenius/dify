@@ -2,7 +2,8 @@
 
 The admitted server owner supplies the actual lifetime and mandatory C03 fence
 and stop sealer. NativeCallAdapter and the existing journal retain all C02/C03
-scalar authority. This module neither creates another ledger nor commits waits.
+scalar authority. Only the physically settled coordinator can delegate a wait
+to the exact retained C03 bridge; native observation callbacks never commit it.
 """
 
 from __future__ import annotations
@@ -20,12 +21,23 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
+
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.command_channels import CommandChannel
 from graphon.graph_engine.entities.commands import GraphEngineCommand
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events.base import GraphEngineEvent, GraphNodeEventBase
+from graphon.graph_events.graph import (
+    GraphRunAbortedEvent,
+    GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+)
 from graphon.nodes.base.node import Node
+from graphon.nodes.iteration.iteration_node import IterationNode
+from graphon.nodes.loop.loop_node import LoopNode
 from graphon.runtime.graph_runtime_state import GraphRuntimeState
 from services.dify_builder.native_testing.call_adapter import NativeCallAdapter, ScalarAuthorizationPort
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
@@ -36,6 +48,7 @@ from services.dify_builder.native_testing.contracts import (
     JsonValue,
     NativeTestContextRef,
     PolicyStop,
+    WaitingReceipt,
     operation_digest,
 )
 from services.dify_builder.native_testing.control import (
@@ -50,7 +63,11 @@ from services.dify_builder.native_testing.host_lifetime import CloseReason, Nati
 from services.dify_builder.native_testing.http_adapter import PreparedHttpBinding, PreparedHttpRequest
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingProducer
 from services.dify_builder.native_testing.operation_journal import JournalAuthorizationPort, NodeOperationJournal
-from services.dify_builder.native_testing.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
+from services.dify_builder.native_testing.runtime_contracts import (
+    NativeCheckpointPayload,
+    NativeStatePort,
+    ResolvedNativeTestContext,
+)
 
 HttpTimeout = tuple[float | int, ...]
 
@@ -118,6 +135,28 @@ class NativeHostEngineBindings:
     commands: CommandChannel
 
 
+RootTerminal = Literal["succeeded", "failed", "partial-succeeded", "stopped", "paused"]
+
+
+@dataclass(frozen=True, slots=True)
+class NativeHostRootObservation:
+    """Bounded native facts only; no exception, output, title or SSE payload."""
+
+    terminal: RootTerminal | None
+    started: bool
+    ended: bool
+    completed: bool
+    paused: bool
+    aborted: bool
+    error: bool
+    graph_end_error: bool
+    contradictory: bool
+    exceptions_count: int
+    exhausted: bool
+    interrupted: bool
+    worker_exit: str | None
+
+
 @dataclass(eq=False, slots=True)
 class _HookScope:
     node: Node
@@ -141,10 +180,14 @@ class _HostObservationLayer(GraphEngineLayer):
 
     @override
     def on_event(self, event: GraphEngineEvent) -> None:
-        pass
+        self._host._observe_root_event(event=event, layer=self)
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:
+        with self._host._registration:
+            if current_thread() is self._host._worker:
+                self._host._graph_ended = True
+                self._host._graph_end_error |= error is not None
         if self._hooks:
             self._host._unknown()
 
@@ -164,11 +207,25 @@ class _HostObservationLayer(GraphEngineLayer):
         self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
     ) -> None:
         with self._host._registration:
+            # Native containers finish their logical occurrence on the resume
+            # thread. Each actual run/resume delegate is independently retained
+            # by the marked boundary's physical node_scope. This exception is
+            # never inferred from a caller node_type string or scalar callback.
+            container_end = (
+                isinstance(node, (IterationNode, LoopNode))
+                and getattr(node, "_native_control_owner", None) is self._host.boundary_owner
+                and getattr(node, "_native_control_sink", None) is self._host.control_sink
+                and any(runtime is node.graph_runtime_state for runtime in self._host._runtimes)
+            )
+            if result_event is not None and result_event.id != node.execution_id:
+                return
             scope = next(
                 (
                     item
                     for item in self._hooks
-                    if item.node is node and item.thread is current_thread() and item.execution_id == node.execution_id
+                    if item.node is node
+                    and (item.thread is current_thread() or container_end)
+                    and item.execution_id == node.execution_id
                 ),
                 None,
             )
@@ -237,11 +294,20 @@ class NativeHostLaunch:
         self._generation_bindings: NativeHostGenerationBindings | None = None
         self._channel: _HostCommandChannel | None = None
         self._exit_kind: str | None = None
+        self._worker: Thread | None = None
         self._engine_bindings: NativeHostEngineBindings | None = None
         self._layer: _HostObservationLayer | None = _HostObservationLayer(self)
         self._producers: list[NativeHttpBindingProducer] = []
         self._release: Callable[[], None] | None = None
         self._retired = False
+        self._root_started = False
+        self._root_terminal: RootTerminal | None = None
+        self._root_contradictory = False
+        self._graph_ended = False
+        self._graph_end_error = False
+        self._stream_exhausted = False
+        self._interrupted = False
+        self._wait_snapshot: NativeCheckpointPayload | None = None
         self._control_sink = DifyNativeControlSink(self)
 
     @property
@@ -305,6 +371,183 @@ class NativeHostLaunch:
                 raise ValueError("native_host_launch_retired")
             return self._layer
 
+    def validate_composition(
+        self,
+        *,
+        state: NativeStatePort,
+        authorization: HostAuthorizationPort,
+        journal: NodeOperationJournal,
+        checkpoints: NativeCheckpointBridge,
+    ) -> None:
+        """Exact Dify owner associations, never a caller qualification flag."""
+        with self._registration:
+            self._require_live()
+            if (
+                journal is not self._journal
+                or checkpoints is not self._checkpoints
+                or authorization is not self._authorization
+                or journal._state is not state
+                or journal._authorization is not authorization
+                or checkpoints._state is not state
+            ):
+                raise ValueError("native_host_composition_mismatch")
+
+    def mark_unknown(self) -> None:
+        """Public failure latch for the coordinator/qualified diagnostic owner."""
+        self._unknown()
+
+    def _observe_root_event(self, *, event: GraphEngineEvent, layer: GraphEngineLayer) -> None:
+        terminals: dict[type[GraphEngineEvent], RootTerminal] = {
+            GraphRunSucceededEvent: "succeeded",
+            GraphRunFailedEvent: "failed",
+            GraphRunPartialSucceededEvent: "partial-succeeded",
+            GraphRunAbortedEvent: "stopped",
+            GraphRunPausedEvent: "paused",
+        }
+        if type(event) is not GraphRunStartedEvent and type(event) not in terminals:
+            return
+        with self._registration:
+            bindings = self._engine_bindings
+            if bindings is None or layer is not self._layer or layer.command_channel is not bindings.commands:
+                self._unknown()
+                return
+            # Root lifecycle is emitted by the owned app worker. Container
+            # subgraphs/pool callbacks cannot attest a root business terminal.
+            if current_thread() is not self._worker:
+                return
+            execution = bindings.runtime_state.graph_execution
+            if type(event) in (GraphRunSucceededEvent, GraphRunPartialSucceededEvent) and not (
+                execution.completed and not execution.paused and not execution.aborted and execution.error is None
+            ):
+                return
+            if type(event) is GraphRunPausedEvent and not execution.paused:
+                return
+            if type(event) is GraphRunAbortedEvent and not execution.aborted:
+                return
+            if type(event) is GraphRunFailedEvent and execution.error is None:
+                return
+            if type(event) is GraphRunStartedEvent:
+                if self._root_started or self._root_terminal is not None:
+                    self._root_contradictory = True
+                self._root_started = True
+            else:
+                if self._root_terminal is not None or not self._root_started:
+                    self._root_contradictory = True
+                self._root_terminal = terminals[type(event)]
+
+    @property
+    def root_observation(self) -> NativeHostRootObservation:
+        """Coherent facts from the actual bound root; settle before authority."""
+        with self._registration:
+            self._require_live()
+            bindings = self.engine_bindings
+            execution = bindings.runtime_state.graph_execution
+            count = execution.exceptions_count
+            if type(count) is not int or count < 0 or count > 2**31 - 1:
+                self._unknown()
+                raise ValueError("native_host_root_observation_invalid")
+            return NativeHostRootObservation(
+                terminal=self._root_terminal,
+                started=self._root_started and execution.started,
+                ended=self._graph_ended,
+                completed=execution.completed,
+                paused=execution.paused,
+                aborted=execution.aborted,
+                error=execution.error is not None,
+                graph_end_error=self._graph_end_error,
+                contradictory=self._root_contradictory,
+                exceptions_count=count,
+                exhausted=self._stream_exhausted,
+                interrupted=self._interrupted,
+                worker_exit=self._exit_kind,
+            )
+
+    def _require_wait(self) -> tuple[str, ...]:
+        self.lifetime.require_settled_root()
+        observed = self.root_observation
+        if (
+            self.boundary_owner.status != "WAIT_RECORDED"
+            or observed.terminal != "paused"
+            or not observed.started
+            or not observed.ended
+            or not observed.paused
+            or observed.aborted
+            or observed.error
+            or observed.graph_end_error
+            or observed.contradictory
+            or not observed.exhausted
+            or observed.interrupted
+            or observed.worker_exit != "returned"
+        ):
+            raise ValueError("native_host_wait_ineligible")
+        records = self.boundary_owner.records
+        tracked = self.lifetime.control_records
+        if len(records) != len(tracked) or any(a is not b for a, b in zip(records, tracked, strict=True)):
+            raise ValueError("native_host_wait_control_mismatch")
+        pending = tuple(
+            dict.fromkeys(
+                record.control.pending_operation_id for record in records if type(record.control) is NativeApprovalWait
+            )
+        )
+        if not pending or len(pending) > 4096 or len(records) != len(self._controls_seen):
+            raise ValueError("native_host_wait_control_mismatch")
+        return pending
+
+    def snapshot_wait(self) -> NativeCheckpointPayload:
+        """Serialize exact retained operational owners only after quiescence."""
+        self._require_wait()
+        with self._registration:
+            self._require_live()
+            journal, producers = self._journal, tuple(self._producers)
+            generation, engine = self.generation_bindings, self.engine_bindings
+        if journal is None:
+            raise ValueError("native_host_launch_retired")
+        context = self.lifetime.context
+        journals = journal.snapshot(ref=context.ref)
+        payload = NativeCheckpointPayload(
+            schema_version="1",
+            native_run_id=context.native_run_id or "",
+            generation=context.generation,
+            generate_entity_json=generation.entity.model_dump_json(),
+            graph_runtime_state_json=engine.runtime_state.dumps(),
+            response_stream_filter_json=engine.response_filter.dumps(),
+            node_journals=journals,
+            child_refs=(),
+            input_result_refs=tuple(dict.fromkeys(item.input_result_ref for item in journals)),
+            approval_proposals=tuple(proposal for producer in producers for proposal in producer.approval_proposals()),
+        )
+        self._require_wait()
+        with self._registration:
+            self.lifetime.require_settled_root()
+            self._wait_snapshot = payload
+        return payload
+
+    def commit_wait(
+        self, *, payload: NativeCheckpointPayload, pending_operation_ids: tuple[str, ...]
+    ) -> WaitingReceipt:
+        """Delegate to the same C03 owner, outside all local/writer locks."""
+        expected = self._require_wait()
+        with self._registration:
+            checkpoints = self._checkpoints
+            if payload is not self._wait_snapshot or checkpoints is None or pending_operation_ids != expected:
+                raise ValueError("native_host_checkpoint_mismatch")
+        receipt = checkpoints.commit_wait(
+            ref=self.lifetime.ref,
+            generation=self.lifetime.generation,
+            payload=payload,
+            pending_operation_ids=expected,
+        )
+        self._require_wait()
+        receipt = WaitingReceipt.model_validate(receipt.model_dump(mode="json"))
+        if (receipt.request_id, receipt.invocation_id, receipt.generation, receipt.pending_operation_ids) != (
+            self.lifetime.ref.request_id,
+            self.lifetime.ref.invocation_id,
+            self.lifetime.generation,
+            expected,
+        ):
+            raise ValueError("native_host_wait_receipt_mismatch")
+        return receipt
+
     @property
     def proposal_producers(self) -> tuple[NativeHttpBindingProducer, ...]:
         with self._registration:
@@ -367,6 +610,8 @@ class NativeHostLaunch:
             self._runtimes.clear()
             self._prepared.clear()
             self._controls_seen.clear()
+            self._wait_snapshot = None
+            self._worker = None
         if release is not None:
             release()  # No writer/registration/admission lock; never retried.
 
@@ -432,6 +677,8 @@ class NativeHostLaunch:
         # No external caller .start gap: lifetime owns the actual start attempt.
         _ = self.generation_bindings
         self.lifetime.register_thread(thread=worker, role="worker")
+        with self._registration:
+            self._worker = worker
         self.lifetime.start_thread(thread=worker)
 
     def worker_finished(
@@ -524,6 +771,18 @@ class NativeHostLaunch:
 
     def request_close(self, *, reason: CloseReason) -> None:
         with self._registration:
+            if self._retired:
+                return  # Existing workflow-owner finally may close again.
+            try:
+                _ = self.lifetime.context
+            except ValueError as error:
+                if str(error) != "native_host_payload_retired":
+                    raise
+                return  # Physical consumption is not a new release/SQL ACK.
+            if reason == "exhausted":
+                self._stream_exhausted = True
+            else:
+                self._interrupted = True
             deadline = self._candidate_deadline()
             self.lifetime.request_close(reason=reason, deadline=deadline)
             self._deadline = deadline

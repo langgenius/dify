@@ -103,6 +103,7 @@ class HostOwnedNativeGeneratorStream:
         self._reader: Thread | None = None
         self._reading = False
         self._close_requested = False
+        self._finish_attempted = False
         self._finished = False
 
     def __iter__(self) -> Iterator[str]:
@@ -114,6 +115,8 @@ class HostOwnedNativeGeneratorStream:
                 raise NativeContextUnavailable("native_stream_reader_mismatch")
             if self._reading:
                 raise NativeContextUnavailable("native_stream_read_in_progress")
+            if self._finish_attempted and not self._finished:
+                raise NativeContextUnavailable("native_stream_close_failed") from None
             if self._finished or self._close_requested:
                 raise StopIteration
             self._reader = current_thread()
@@ -136,11 +139,15 @@ class HostOwnedNativeGeneratorStream:
         self._host.request_close(reason="consumer_closed")
 
     def finish_reader(self) -> None:
-        """Close only at the sole reader's safe finally, never from user close."""
+        """Acknowledge successful owned close once; never retry a failed attempt."""
         with self._lock:
             if self._reading or (self._reader is not None and self._reader is not current_thread()):
                 raise NativeContextUnavailable("native_stream_reader_mismatch")
             if self._finished:
                 return
-            self._finished = True
+            if self._finish_attempted:
+                raise NativeContextUnavailable("native_stream_close_failed") from None
+            self._finish_attempted = True
         self._stream.close()
+        with self._lock:
+            self._finished = True

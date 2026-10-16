@@ -319,6 +319,56 @@ def test_native_stream_close_requests_host_without_concurrent_source_close() -> 
     assert source_closed == readers
 
 
+@pytest.mark.parametrize("automatic", [False, True])
+def test_owned_reader_finalizer_keeps_failed_close_unacknowledged_without_retry(automatic):
+    from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+
+    case = LaunchCase()
+    attempts = []
+
+    def source():
+        try:
+            yield {"unserializable": object()} if automatic else "source-value"
+        finally:
+            attempts.append(current_thread())
+            raise RuntimeError("private-close-canary")
+
+    stream = HostOwnedNativeGeneratorStream(source=source(), host=case.host)
+    if automatic:
+        with pytest.raises(RuntimeError, match="private-close-canary"):
+            next(stream)
+        with pytest.raises(NativeContextUnavailable, match="^native_stream_close_failed$"):
+            stream.finish_reader()
+    else:
+        next(stream)
+        with pytest.raises(RuntimeError, match="private-close-canary"):
+            stream.finish_reader()
+    with pytest.raises(NativeContextUnavailable, match="^native_stream_close_failed$"):
+        stream.finish_reader()
+    with pytest.raises(NativeContextUnavailable, match="^native_stream_close_failed$"):
+        next(stream)
+    assert attempts == [current_thread()]
+
+
+def test_owned_reader_successful_finalization_is_idempotent():
+    from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+
+    case = LaunchCase()
+    closed = []
+
+    def source():
+        try:
+            yield "source-value"
+        finally:
+            closed.append(current_thread())
+
+    stream = HostOwnedNativeGeneratorStream(source=source(), host=case.host)
+    next(stream)
+    stream.finish_reader()
+    stream.finish_reader()
+    assert closed == [current_thread()]
+
+
 @pytest.mark.parametrize("fails", [False, True])
 def test_native_guardrails_bind_actual_release_without_ordinary_early_exit(
     monkeypatch: pytest.MonkeyPatch, fails: bool

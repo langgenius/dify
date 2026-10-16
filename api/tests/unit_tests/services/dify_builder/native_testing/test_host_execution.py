@@ -12,13 +12,9 @@ from dataclasses import dataclass, field
 from threading import Barrier, Event, Thread, current_thread
 from time import monotonic, sleep
 from types import ModuleType
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, Any, cast, override
 
 import pytest
-
-from graphon.graph_engine.command_channels import InMemoryChannel
-from graphon.graph_events.node import NodeRunStartedEvent
-from graphon.nodes.container_effects import IterationFrameRequest
 from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
 from services.dify_builder.native_testing.contracts import (
     ApprovalWait,
@@ -51,6 +47,10 @@ from tests.unit_tests.services.dify_builder.native_testing.test_control import (
     observed_iteration_config,
     permit,
 )
+
+from graphon.graph_engine.command_channels import InMemoryChannel
+from graphon.graph_events.node import NodeRunStartedEvent
+from graphon.nodes.container_effects import IterationFrameRequest
 
 if TYPE_CHECKING:
     from services.dify_builder.native_testing.host_execution import DurableNativeStopSealer, NativeHostLaunch
@@ -334,8 +334,6 @@ def test_registered_callback_releases_admission_mutex_before_real_io() -> None:
 
 
 def generation_objects(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
-    from sqlalchemy.orm import sessionmaker
-
     from core.app.app_config.entities import WorkflowUIBasedAppConfig
     from core.app.apps import base_app_queue_manager
     from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
@@ -344,9 +342,11 @@ def generation_objects(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
     )
-    from graphon.filters import ResponseStreamFilter
     from models.account import Account
     from models.model import AppMode
+    from sqlalchemy.orm import sessionmaker
+
+    from graphon.filters import ResponseStreamFilter
 
     # Only Redis ownership-cache side effect is replaced. Queue, entities and
     # synchronous repositories run their actual constructors; no SQL is invoked.
@@ -496,18 +496,26 @@ def test_command_wrapper_delegates_actual_channel_and_retains_polling_dispatcher
         case.host.wrap_commands(channel=InMemoryChannel())
 
 
-def native_entry(case: LaunchCase, monkeypatch: pytest.MonkeyPatch, *, iteration: bool = False, bind: bool = True):
+def native_entry(
+    case: LaunchCase,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    iteration: bool = False,
+    bind: bool = True,
+    policy: dict[str, object] | None = None,
+):
     from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
     from core.workflow.workflow_entry import WorkflowEntry
+    from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Factory, Sink, basic
+
     from graphon.graph import Graph
     from graphon.graph_engine import GraphEngine
     from graphon.runtime import GraphRuntimeState, VariablePool
-    from tests.unit_tests.services.dify_builder.native_testing.test_control import Effects, Factory, Sink, basic
 
     _, _, response_filter, _, _ = bind_generation(case, monkeypatch)
     runtime = GraphRuntimeState(variable_pool=VariablePool(), start_at=monotonic())
     runtime.variable_pool.add(("start", "items"), ["a", "b"])
-    config = observed_iteration_config() if iteration else basic()
+    config = observed_iteration_config() if iteration else basic(policy=policy)
     factory = Factory(
         config=config,
         runtime=runtime,
@@ -561,6 +569,142 @@ def test_engine_retains_actual_entry_filter_runtime_channel_and_rejects_rebind(m
             response_filter=ResponseStreamFilter(),
             commands=entry.command_channel,
         )
+
+
+def test_root_observation_retains_actual_business_terminal_without_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import FrozenInstanceError
+
+    case = LaunchCase(baseline=(1, 1, 1))
+    entry, _ = native_entry(case, monkeypatch)
+    worker = Thread(target=lambda: _run_observed(case, entry))
+    case.host.start_worker(worker=worker)
+    worker.join(2)
+    case.host.request_close(reason="exhausted")
+    assert case.lifetime.settle() == "settled"
+    observed = case.host.root_observation
+    assert observed.terminal == "succeeded"
+    assert observed.started
+    assert observed.ended
+    assert observed.completed
+    assert not observed.paused
+    assert not observed.aborted
+    assert not observed.error
+    assert not hasattr(observed, "outputs")
+    with pytest.raises(FrozenInstanceError):
+        cast(Any, observed).terminal = "failed"
+
+
+def _run_observed(case: LaunchCase, entry) -> None:
+    try:
+        list(entry.run())
+    finally:
+        case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+
+
+def test_nested_pool_lifecycle_events_do_not_attest_root_terminal(monkeypatch: pytest.MonkeyPatch) -> None:
+    from graphon.graph_engine.layers import GraphEngineLayer
+    from graphon.graph_events.graph import GraphRunFailedEvent, GraphRunStartedEvent
+
+    case = LaunchCase(baseline=(1, 1, 1))
+    entry, _ = native_entry(case, monkeypatch, iteration=True)
+
+    class NestedObserver(GraphEngineLayer):
+        def on_graph_start(self):
+            pass
+
+        def on_graph_end(self, error):
+            pass
+
+        def on_event(self, event):
+            pass
+
+        @override
+        def on_node_run_start(self, node):
+            # Real native pool callback, while the public root is still live.
+            case.host.observation_layer().on_event(GraphRunStartedEvent())
+            case.host.observation_layer().on_event(GraphRunFailedEvent(error="private-nested-canary"))
+
+    entry.graph_engine.layer(NestedObserver())
+    thread = Thread(target=lambda: _run_observed(case, entry))
+    case.host.start_worker(worker=thread)
+    thread.join(2)
+    case.host.request_close(reason="exhausted")
+    assert case.lifetime.settle() == "settled", (
+        case.host.root_observation,
+        case.host.boundary_owner.reason_code,
+        [
+            (item.node.id, item.phase, item.execution_id, item.node.execution_id)
+            for item in case.lifetime.active_node_scopes
+        ],
+        thread.is_alive(),
+    )
+    assert case.host.root_observation.terminal == "succeeded"
+    assert not case.host.root_observation.contradictory
+
+
+def test_snapshot_requires_settlement_and_exact_composed_owners(monkeypatch: pytest.MonkeyPatch) -> None:
+    case = LaunchCase(baseline=(1, 1, 1))
+    native_entry(case, monkeypatch)
+    checkpoints = case.host._checkpoints
+    assert checkpoints is not None
+    with pytest.raises(ValueError):
+        case.host.snapshot_wait()
+    with pytest.raises(ValueError):
+        case.host.validate_composition(
+            state=State([]),
+            authorization=case.authorization,
+            journal=case.journal,
+            checkpoints=checkpoints,
+        )
+
+
+@pytest.mark.parametrize("container", [False, True])
+def test_cross_thread_end_never_closes_active_physical_phase_or_scalar_hook(monkeypatch, container):
+    from datetime import UTC, datetime
+
+    from graphon.graph_events.node import NodeRunSucceededEvent
+
+    case = LaunchCase(baseline=(0.02, 0.02, 0.02))
+    entry, _ = native_entry(case, monkeypatch, iteration=True)
+    node = entry.graph_engine.graph.nodes["container" if container else "guard"]
+    node.bind_execution_id("actual-phase")
+    layer = case.host.observation_layer()
+    entered, release = Event(), Event()
+
+    def run():
+        try:
+            with case.host.node_scope(node=node, phase="resume_container"):
+                layer.on_node_run_start(node)
+                entered.set()
+                release.wait(2)
+                layer.on_node_run_end(node, None)
+        finally:
+            case.host.worker_finished(worker=current_thread(), exit_kind="returned")
+
+    thread = Thread(target=run)
+    case.host.start_worker(worker=thread)
+    try:
+        assert entered.wait(1)
+        layer.on_node_run_end(
+            node,
+            None,
+            NodeRunSucceededEvent(
+                id="foreign-phase",
+                node_id=node.id,
+                node_type=node.node_type,
+                start_at=datetime.now(UTC),
+            ),
+        )
+        assert len(case.lifetime.active_node_scopes) == 2
+        layer.on_node_run_end(node, None)
+        assert len(case.lifetime.active_node_scopes) == (1 if container else 2)
+        case.host.request_close(reason="cancel")
+        assert case.lifetime.settle() == "unknown"
+        assert thread.is_alive()
+    finally:
+        release.set()
+        thread.join(2)
+    assert case.lifetime.active_node_scopes == ()
 
 
 def test_first_real_native_hook_is_owned_before_later_start_hook_blocks(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -144,11 +144,11 @@ class DifyNativeWorkflowOwner:
     def run(
         self, *, context: ResolvedNativeTestContext, on_event: Callable[[Mapping[str, JsonValue]], None]
     ) -> NativeWorkflowOutcome:
-        from sqlalchemy import select
-
         from models.account import Account
         from models.model import App
         from models.workflow import Workflow
+        from sqlalchemy import select
+
         from services.app_generate_service import AppGenerateService
         from services.dify_builder.native_testing.repository import native_workflow_revision
 
@@ -194,6 +194,8 @@ class NativeGeneratorStream:
 
     BaseAppGenerator's conversion does not propagate close to its source. This
     per-launch adapter adds that ownership without changing ordinary streams.
+    A close attempt is separate from its acknowledgement: failure is sticky,
+    never retried or presented to a later owner as successful inert cleanup.
     """
 
     def __init__(self, source: Generator[Mapping[str, Any] | str]):
@@ -205,6 +207,7 @@ class NativeGeneratorStream:
             source.close()
             raise NativeContextUnavailable("native_stream_unavailable")
         self._events = events
+        self._close_attempted = False
         self._closed = False
 
     def __iter__(self) -> Iterator[str]:
@@ -213,6 +216,8 @@ class NativeGeneratorStream:
     def __next__(self) -> str:
         if self._closed:
             raise StopIteration
+        if self._close_attempted:
+            raise NativeContextUnavailable("native_stream_close_failed") from None
         try:
             return next(self._events)
         except BaseException:
@@ -222,10 +227,13 @@ class NativeGeneratorStream:
     def close(self) -> None:
         if self._closed:
             return
-        self._closed = True
+        if self._close_attempted:
+            raise NativeContextUnavailable("native_stream_close_failed") from None
+        self._close_attempted = True
         try:
             self._events.close()
         finally:
             close = getattr(self._source, "close", None)
             if close is not None:
                 close()
+        self._closed = True

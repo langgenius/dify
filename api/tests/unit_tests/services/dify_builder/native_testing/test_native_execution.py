@@ -4,10 +4,67 @@ from typing import cast, override
 from unittest.mock import Mock
 
 import pytest
-
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
 from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome, ResolvedNativeTestContext
 from tests.unit_tests.services.dify_builder.native_testing.test_runtime_contracts import CONTEXT
+
+
+@pytest.mark.parametrize("failed_owner", ["source", "conversion"])
+def test_native_stream_failed_close_never_acknowledges_or_retries(failed_owner, monkeypatch):
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from services.dify_builder.native_testing.native_execution import NativeGeneratorStream
+
+    attempts = []
+
+    def source():
+        try:
+            yield "source-value"
+        finally:
+            attempts.append("source")
+            if failed_owner == "source":
+                raise RuntimeError("private-source-close-canary")
+
+    actual_source = source()
+
+    def conversion(actual):
+        try:
+            yield next(actual)
+        finally:
+            attempts.append("conversion")
+            if failed_owner == "conversion":
+                raise RuntimeError("private-conversion-close-canary")
+
+    monkeypatch.setattr(WorkflowAppGenerator, "convert_to_event_stream", staticmethod(conversion))
+    stream = NativeGeneratorStream(actual_source)
+    assert next(stream) == "source-value"
+    with pytest.raises(RuntimeError, match=f"private-{failed_owner}-close-canary"):
+        stream.close()
+    assert attempts == ["conversion", "source"]
+    with pytest.raises(NativeContextUnavailable, match="^native_stream_close_failed$"):
+        stream.close()
+    with pytest.raises(NativeContextUnavailable, match="^native_stream_close_failed$"):
+        next(stream)
+    assert attempts == ["conversion", "source"]
+
+
+def test_native_stream_successful_close_is_acknowledged_once():
+    from services.dify_builder.native_testing.native_execution import NativeGeneratorStream
+
+    attempts = []
+
+    def source():
+        try:
+            yield "source-value"
+        finally:
+            attempts.append("source")
+
+    stream = NativeGeneratorStream(source())
+    next(stream)
+    stream.close()
+    stream.close()
+    assert attempts == ["source"]
+    with pytest.raises(StopIteration):
+        next(stream)
 
 
 def native_host_fixture(context):
@@ -369,6 +426,7 @@ def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setu
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
     )
+
     from graphon.filters import ResponseStreamFilter
 
     # Actual synchronous repository constructors are retained; this early
