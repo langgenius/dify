@@ -288,8 +288,6 @@ export const TagSelector = ({
           >
             <TagSearchContent
               type={type}
-              inputValue={inputValue}
-              onInputValueChange={setInputValue}
               canBindOrUnbindTags={canBindOrUnbindTags}
               onOpenTagManagement={onOpenTagManagement}
               onClose={() => handleOpenChange(false)}

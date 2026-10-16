@@ -6,21 +6,21 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_errors
+from controllers.console.apikey import API_KEY_DELETE_ROLES, api_key_create_errors, api_key_errors
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import (
     DatasetAccessDeniedRequestError,
-    DatasetInUseError,
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
+from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -29,6 +29,7 @@ from controllers.console.wraps import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.query_type import QueryType
 from extensions.ext_application_services import application_services
 from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
@@ -36,11 +37,14 @@ from fields.dataset_fields import (
     DatasetDetailResponse,
     NotionEstimateWorkspacePayload,
 )
+from fields.document_fields import DocumentStatusListResponse
+from libs.external_api import error_responses
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
+from models.enums import CreatorUserRole, DatasetQuerySource
 from models.enums import PermissionEnum as DatasetPermissionEnum
-from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
+from models.model import AppMode, IconType
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
@@ -66,15 +70,18 @@ _DATASET_EDIT_ROLES = frozenset(
 
 
 def _raise_dataset_error(error: Exception) -> Never:
+    """Translate the scope errors every dataset operation can raise."""
     if isinstance(error, DatasetNotFoundError):
         raise NotFound("Dataset not found.") from error
     if isinstance(error, DatasetAccessDeniedError):
         raise Forbidden(str(error)) from error
+    raise error
+
+
+def _raise_dataset_create_error(error: Exception) -> Never:
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
-    if isinstance(error, DatasetInUseFailure):
-        raise DatasetInUseError() from error
-    raise error
+    _raise_dataset_error(error)
 
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
@@ -244,7 +251,7 @@ class DatasetQueryFileInfoResponse(ResponseModel):
 
 
 class DatasetQueryContentResponse(ResponseModel):
-    content_type: str
+    content_type: QueryType
     content: str
     file_info: DatasetQueryFileInfoResponse | None = None
 
@@ -252,9 +259,9 @@ class DatasetQueryContentResponse(ResponseModel):
 class DatasetQueryDetailResponse(ResponseModel):
     id: str
     queries: list[DatasetQueryContentResponse]
-    source: str
+    source: DatasetQuerySource
     source_app_id: str | None
-    created_by_role: str
+    created_by_role: CreatorUserRole
     created_by: str
     created_at: int
 
@@ -276,8 +283,8 @@ class RelatedAppResponse(ResponseModel):
     id: str
     name: str
     description: str
-    mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon_type: str | None
+    mode: AppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: IconType | None
     icon: str | None
     icon_background: str | None
     icon_url: str | None = None
@@ -291,39 +298,6 @@ class RelatedAppResponse(ResponseModel):
 class RelatedAppListResponse(ResponseModel):
     data: list[RelatedAppResponse]
     total: int
-
-
-class DocumentStatusResponse(ResponseModel):
-    id: str
-    indexing_status: str
-    processing_started_at: int | None
-    parsing_completed_at: int | None
-    cleaning_completed_at: int | None
-    splitting_completed_at: int | None
-    completed_at: int | None
-    paused_at: int | None
-    error: str | None
-    stopped_at: int | None
-    completed_segments: int | None = None
-    total_segments: int | None = None
-
-    @field_validator(
-        "processing_started_at",
-        "parsing_completed_at",
-        "cleaning_completed_at",
-        "splitting_completed_at",
-        "completed_at",
-        "paused_at",
-        "stopped_at",
-        mode="before",
-    )
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class DocumentStatusListResponse(ResponseModel):
-    data: list[DocumentStatusResponse]
 
 
 class ErrorDocsResponse(DocumentStatusListResponse):
@@ -393,6 +367,7 @@ class DatasetListApi(Resource):
         )
         return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
     @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
@@ -412,7 +387,7 @@ class DatasetListApi(Resource):
                 request_context, values=req_data.model_dump()
             )
         except Exception as error:
-            _raise_dataset_error(error)
+            _raise_dataset_create_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 201
 
 
@@ -492,11 +467,16 @@ class DatasetUseCheckApi(Resource):
         return dump_response(UsageCheckResponse, {"is_using": result}), 200
 
 
+class DatasetQueryListQuery(BaseModel):
+    page: int = Field(default=1, description="Page number")
+    limit: int = Field(default=20, description="Number of items per page")
+
+
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
-    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DatasetQueryListQuery)})
     @console_ns.response(
         200,
         "Query history retrieved successfully",
@@ -518,6 +498,7 @@ class DatasetQueryApi(Resource):
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
+    @error_responses(DatasetAccessDeniedRequestError, IndexingEstimateError, ProviderNotInitializeError)
     @console_ns.doc("estimate_dataset_indexing")
     @console_ns.doc(description="Estimate dataset indexing cost")
     @console_ns.response(
@@ -636,6 +617,7 @@ class DatasetApiKeyApi(Resource):
             keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
+    @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -648,8 +630,8 @@ class DatasetApiKeyApi(Resource):
         payload = request.get_json(silent=True) or {}
         dataset_ids = payload.get("dataset_ids") or []
         if not isinstance(dataset_ids, list) or any(not isinstance(item, str) for item in dataset_ids):
-            console_ns.abort(400, message="dataset_ids must be a list of strings.")
-        with api_key_errors():
+            raise BadRequest("dataset_ids must be a list of strings.")
+        with api_key_create_errors():
             key = application_services().dataset_api_keys.create_workspace_key(request_context, tuple(dataset_ids))
         return dump_response(ApiKeyItem, key), 200
 

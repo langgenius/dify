@@ -1,35 +1,39 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { renderHook } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetsDetailContext } from '../provider'
 import { createDatasetsDetailStore, useDatasetsDetailStore } from '../store'
 
-const createDataset = (id: string, name = `dataset-${id}`): DataSet => ({
+const createDataset = (
+  id: string,
+  name = `dataset-${id}`,
+): DatasetDetailWithPartialMembersResponse => ({
+  ...createDatasetFixture(),
   id,
   name,
-  indexing_status: 'completed',
   icon_info: {
     icon: 'book',
-    icon_type: 'emoji' as DataSet['icon_info']['icon_type'],
+    icon_type: 'emoji',
   },
   description: `${name} description`,
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1,
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 0,
-  total_document_count: 0,
   word_count: 0,
   provider: 'provider',
   embedding_model: 'model',
   embedding_model_provider: 'provider',
   embedding_available: true,
-  retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
-  retrieval_model: {} as DataSet['retrieval_model'],
+  retrieval_model_dict: {} as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
   tags: [],
   external_knowledge_info: {
     external_knowledge_id: '',

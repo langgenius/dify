@@ -608,7 +608,7 @@ class TestWorkflowAppGeneratorResume:
             workflow_execution_id="run-id",
             call_depth=0,
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -619,7 +619,7 @@ class TestWorkflowAppGeneratorResume:
         )
         monkeypatch.setattr(
             "core.app.apps.workflow.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
         captured_entity: WorkflowAppGenerateEntity | None = None
 
@@ -643,7 +643,7 @@ class TestWorkflowAppGeneratorResume:
         assert result.ok is True
         assert captured_entity is not None
         trace_manager = captured_entity.trace_manager
-        assert isinstance(trace_manager, DummyTraceQueueManager)
+        assert isinstance(trace_manager, dummy_trace_queue_manager)
         assert trace_manager.app_id == APP_ID
         assert trace_manager.user_id == "session-id"
 

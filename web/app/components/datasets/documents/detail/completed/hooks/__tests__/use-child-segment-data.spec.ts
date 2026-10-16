@@ -1,18 +1,18 @@
-import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type {
-  ChildChunkDetail,
-  ChildSegmentsResponse,
-  ChunkingMode,
-  ParentMode,
-  SegmentDetailModel,
-} from '@/models/datasets'
+  ChildChunkListResponse,
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
+import { consoleQuery } from '@/service/console'
 import { useChildSegmentData } from '../use-child-segment-data'
 
 // Type for mutation callbacks
-type MutationResponse = { data: ChildChunkDetail }
+type MutationResponse = { data: ChildChunkResponse }
 type MutationCallbacks = {
   onSuccess: (res: MutationResponse) => void
   onSettled: () => void
@@ -31,28 +31,36 @@ const {
   mockChildSegmentListData,
   mockDeleteChildSegment,
   mockUpdateChildSegment,
-  mockInvalidChildSegmentList,
 } = vi.hoisted(() => ({
   mockParentMode: { current: 'paragraph' as ParentMode },
   mockDatasetId: { current: 'test-dataset-id' },
   mockDocumentId: { current: 'test-document-id' },
   mockNotify: vi.fn(),
   mockEventEmitter: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
-  mockQueryClient: { setQueryData: vi.fn() },
+  mockQueryClient: { setQueryData: vi.fn(), invalidateQueries: vi.fn() },
   mockChildSegmentListData: {
-    current: { data: [] as ChildChunkDetail[], total: 0, total_pages: 0 } as
-      | ChildSegmentsResponse
+    current: { data: [] as ChildChunkResponse[], total: 0, total_pages: 0 } as
+      | ChildChunkListResponse
       | undefined,
   },
   mockDeleteChildSegment: vi.fn(),
   mockUpdateChildSegment: vi.fn(),
-  mockInvalidChildSegmentList: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual('@tanstack/react-query')
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return {
-    ...actual,
+    ...mockConsoleOperationHooks(await importOriginal(), {
+      'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get':
+        (options: { enabled?: boolean }) => ({
+          isLoading: false,
+          data: options.enabled === false ? undefined : mockChildSegmentListData.current,
+        }),
+      'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.delete':
+        () => ({ mutateAsync: mockDeleteChildSegment }),
+      'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.patch':
+        () => ({ mutateAsync: mockUpdateChildSegment }),
+    }),
     useQueryClient: () => mockQueryClient,
   }
 })
@@ -80,19 +88,15 @@ vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
 
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useChildSegmentList: () => ({
-    isLoading: false,
-    data: mockChildSegmentListData.current,
-  }),
-  useChildSegmentListKey: ['segment', 'childChunkList'],
-  useDeleteChildSegment: () => ({ mutateAsync: mockDeleteChildSegment }),
-  useUpdateChildSegment: () => ({ mutateAsync: mockUpdateChildSegment }),
-}))
+const childChunkListsKey =
+  consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+    {
+      input: { params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' } },
+    },
+  )
 
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidChildSegmentList,
-}))
+const expectChildChunkListsRefetched = () =>
+  expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: childChunkListsKey })
 
 const createQueryClient = () =>
   new QueryClient({
@@ -108,7 +112,7 @@ const createWrapper = () => {
     React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildChunkDetail => ({
+const createMockChildChunk = (overrides: Partial<ChildChunkResponse> = {}): ChildChunkResponse => ({
   id: `child-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   segment_id: 'segment-1',
@@ -120,7 +124,7 @@ const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildC
   ...overrides,
 })
 
-const createMockSegment = (overrides: Partial<SegmentDetailModel> = {}): SegmentDetailModel => ({
+const createMockSegment = (overrides: Partial<SegmentResponse> = {}): SegmentResponse => ({
   id: 'segment-1',
   position: 1,
   document_id: 'doc-1',
@@ -142,6 +146,9 @@ const createMockSegment = (overrides: Partial<SegmentDetailModel> = {}): Segment
   completed_at: 1700000200,
   error: null,
   stopped_at: 0,
+  answer: null,
+  summary: null,
+  updated_by: null,
   updated_at: 1700000000,
   attachments: [],
   child_chunks: [],
@@ -152,7 +159,7 @@ const defaultOptions = {
   searchValue: '',
   currentPage: 1,
   limit: 10,
-  segments: [createMockSegment()] as SegmentDetailModel[],
+  segments: [createMockSegment()] as SegmentResponse[],
   currChunkId: 'segment-1',
   isFullDocMode: true,
   onCloseChildSegmentDetail: vi.fn(),
@@ -192,7 +199,7 @@ describe('useChildSegmentData', () => {
         result.current.resetChildList()
       })
 
-      expect(mockInvalidChildSegmentList).toHaveBeenCalled()
+      expectChildChunkListsRefetched()
     })
   })
 
@@ -247,7 +254,7 @@ describe('useChildSegmentData', () => {
         await result.current.onDeleteChildChunk('seg-1', 'child-1')
       })
 
-      expect(mockInvalidChildSegmentList).toHaveBeenCalled()
+      expectChildChunkListsRefetched()
     })
 
     it('should notify error on failure', async () => {
@@ -327,10 +334,6 @@ describe('useChildSegmentData', () => {
       })
 
       expect(mockUpdateChildSegment).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
       expect(onCloseChildSegmentDetail).toHaveBeenCalled()
       expect(updateSegmentInCache).toHaveBeenCalled()
       expect(refreshChunkListDataWithDetailChanged).toHaveBeenCalled()
@@ -413,7 +416,7 @@ describe('useChildSegmentData', () => {
         result.current.onSaveNewChildChunk(createMockChildChunk())
       })
 
-      expect(mockInvalidChildSegmentList).toHaveBeenCalled()
+      expectChildChunkListsRefetched()
     })
   })
 
@@ -457,12 +460,19 @@ describe('useChildSegmentData', () => {
         result.current.viewNewlyAddedChildChunk()
       })
 
-      expect(mockInvalidChildSegmentList).toHaveBeenCalled()
+      expectChildChunkListsRefetched()
     })
   })
 
   describe('Query disabled states', () => {
     it('should disable query when not in fullDocMode', () => {
+      mockChildSegmentListData.current = {
+        data: [createMockChildChunk()],
+        total: 1,
+        total_pages: 1,
+        page: 1,
+        limit: 20,
+      }
       const { result } = renderHook(
         () =>
           useChildSegmentData({
@@ -479,6 +489,13 @@ describe('useChildSegmentData', () => {
     })
 
     it('should disable query when segments is empty', () => {
+      mockChildSegmentListData.current = {
+        data: [createMockChildChunk()],
+        total: 1,
+        total_pages: 1,
+        page: 1,
+        limit: 20,
+      }
       const { result } = renderHook(
         () =>
           useChildSegmentData({
@@ -647,7 +664,7 @@ describe('useChildSegmentData', () => {
               ],
               total: 2,
               total_pages: 1,
-            }) as ChildSegmentsResponse
+            }) as ChildChunkListResponse
             expect(resultWithData.data[0]!.content).toBe('new content')
             expect(resultWithData.data[1]!.content).toBe('other')
           }

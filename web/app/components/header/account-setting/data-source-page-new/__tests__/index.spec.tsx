@@ -1,5 +1,5 @@
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { DataSourceAuth } from '../types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -9,11 +9,6 @@ import { usePluginAuthAction } from '@/app/components/plugins/plugin-auth'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { consoleQuery } from '@/service/console'
-import {
-  useGetDataSourceListAuth,
-  useGetDataSourceOAuthUrl,
-  useInvalidDataSourceListAuth,
-} from '@/service/use-datasource'
 import {
   useCheckInstalled,
   useInstalledPluginList,
@@ -37,11 +32,17 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: vi.fn(),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceListAuth: vi.fn(),
-  useGetDataSourceOAuthUrl: vi.fn(),
-  useInvalidDataSourceListAuth: vi.fn(),
-}))
+const { mockDataSourceListAuth } = vi.hoisted(() => ({ mockDataSourceListAuth: vi.fn() }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'auth.plugin.datasource.list.get': () => mockDataSourceListAuth(),
+    'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': () => ({
+      mutateAsync: vi.fn(),
+    }),
+  })
+})
 
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: vi.fn(),
@@ -96,7 +97,7 @@ vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => (
 }))
 
 describe('DataSourcePage Component', () => {
-  const mockProviders: DataSourceAuth[] = [
+  const mockProviders: DatasourceProviderAuthResponse[] = [
     {
       author: 'Dify',
       provider: 'dify',
@@ -106,6 +107,8 @@ describe('DataSourcePage Component', () => {
       name: 'Dify Source',
       label: { en_US: 'Dify Source', zh_Hans: 'zh_hans_dify_source' },
       description: { en_US: 'Dify Description', zh_Hans: 'zh_hans_dify_description' },
+      credential_schema: [],
+      oauth_schema: null,
       credentials_list: [],
     },
     {
@@ -117,6 +120,8 @@ describe('DataSourcePage Component', () => {
       name: 'Partner Source',
       label: { en_US: 'Partner Source', zh_Hans: 'zh_hans_partner_source' },
       description: { en_US: 'Partner Description', zh_Hans: 'zh_hans_partner_description' },
+      credential_schema: [],
+      oauth_schema: null,
       credentials_list: [],
     },
   ]
@@ -180,10 +185,6 @@ describe('DataSourcePage Component', () => {
       typeof useTheme
     >)
     vi.mocked(useRenderI18nObject).mockReturnValue((obj) => obj?.en_US || '')
-    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
-      mutateAsync: vi.fn(),
-    } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
-    vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(vi.fn())
     vi.mocked(useInstalledPluginList).mockReturnValue({
       data: { plugins: [], total: 0 },
     } as unknown as ReturnType<typeof useInstalledPluginList>)
@@ -192,9 +193,7 @@ describe('DataSourcePage Component', () => {
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useCheckInstalled>)
-    vi.mocked(usePluginsWithLatestVersion).mockImplementation(
-      (plugins = []) => plugins as PluginDetail[],
-    )
+    vi.mocked(usePluginsWithLatestVersion).mockImplementation((plugins = []) => plugins)
     vi.mocked(useInvalidateInstalledPluginList).mockReturnValue(vi.fn())
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: vi.fn() })
     vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })
@@ -217,10 +216,10 @@ describe('DataSourcePage Component', () => {
   describe('Initial View Rendering', () => {
     it('should render an empty view when no data is available and marketplace is disabled', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: [] },
         isLoading: false,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
@@ -250,10 +249,10 @@ describe('DataSourcePage Component', () => {
 
     it('should show data source placeholders while the list is loading', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: undefined,
         isLoading: true,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
@@ -272,9 +271,9 @@ describe('DataSourcePage Component', () => {
   describe('Data Source List Rendering', () => {
     it('should render Card components for each data source returned from the API', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -289,9 +288,9 @@ describe('DataSourcePage Component', () => {
 
     it('should map installed plugin operations onto the data source card header', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
       vi.mocked(useInstalledPluginList).mockReturnValue({
         data: { plugins: [mockPluginDetail], total: 1 },
       } as unknown as ReturnType<typeof useInstalledPluginList>)
@@ -315,9 +314,9 @@ describe('DataSourcePage Component', () => {
 
     it('should filter installed data sources and pass search text to marketplace', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -334,10 +333,10 @@ describe('DataSourcePage Component', () => {
     })
 
     it('announces the filtered installed data source count while searching', async () => {
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
         isLoading: false,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
       const user = userEvent.setup()
       renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
@@ -359,9 +358,9 @@ describe('DataSourcePage Component', () => {
   describe('Marketplace Integration', () => {
     it('should render the InstallFromMarketplace component when enable_marketplace feature is enabled', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -375,9 +374,9 @@ describe('DataSourcePage Component', () => {
 
     it('should pass an empty array to InstallFromMarketplace if data result is missing but marketplace is enabled', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: undefined,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -390,9 +389,9 @@ describe('DataSourcePage Component', () => {
 
     it('should handle the case where data exists but result is an empty array', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: [] },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -406,9 +405,9 @@ describe('DataSourcePage Component', () => {
 
     it('should handle the case where enable_marketplace is false (edge case for coverage)', () => {
       // Arrange
-      vi.mocked(useGetDataSourceListAuth).mockReturnValue({
+      mockDataSourceListAuth.mockReturnValue({
         data: { result: [] },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {

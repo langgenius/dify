@@ -7,7 +7,7 @@ from core.mcp.error import MCPAuthError
 
 
 class TestForwardIdentityShortCircuit:
-    def test_forward_identity_active_reraises_without_retry(self):
+    def test_forward_identity_active_reraises_without_retry(self) -> None:
         client = MCPClientWithAuthRetry(
             server_url="https://mcp.example.com",
             headers={"Authorization": "Bearer user-jwt"},
@@ -20,7 +20,7 @@ class TestForwardIdentityShortCircuit:
         assert client.headers["Authorization"] == "Bearer user-jwt"
         assert client._has_retried is False
 
-    def test_forward_identity_active_takes_precedence_over_provider_entity(self):
+    def test_forward_identity_active_takes_precedence_over_provider_entity(self) -> None:
         sentinel_entity = object()
         client = MCPClientWithAuthRetry(
             server_url="https://mcp.example.com",
@@ -31,11 +31,11 @@ class TestForwardIdentityShortCircuit:
         with pytest.raises(MCPAuthError, match="forwarded-id-401"):
             client._handle_auth_error(MCPAuthError("forwarded-id-401"))
 
-    def test_default_path_unchanged_without_provider_entity(self):
+    def test_default_path_unchanged_without_provider_entity(self) -> None:
         client = MCPClientWithAuthRetry(server_url="https://mcp.example.com")
         with pytest.raises(MCPAuthError, match="no-provider"):
             client._handle_auth_error(MCPAuthError("no-provider"))
 
-    def test_default_constructor_defaults_forward_identity_to_false(self):
+    def test_default_constructor_defaults_forward_identity_to_false(self) -> None:
         client = MCPClientWithAuthRetry(server_url="https://mcp.example.com")
         assert client.forward_identity_active is False

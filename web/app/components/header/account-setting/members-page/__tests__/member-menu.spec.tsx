@@ -1,20 +1,38 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/notifications'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import { deleteMemberOrCancelInvitation } from '@/service/common'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MemberMenu from '../member-menu'
 
-vi.mock('@/service/access-control/use-member-roles')
-vi.mock('@/service/access-control/use-workspace-roles')
-vi.mock('@/service/common', () => ({
-  deleteMemberOrCancelInvitation: vi.fn(),
+const { mockWorkspaceRoleListHook, mockUpdateRolesOfMemberHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+  mockUpdateRolesOfMemberHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+    'workspaces.current.rbac.members.byMemberId.rbacRoles.put': () => mockUpdateRolesOfMemberHook(),
+  })
+})
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    workspaces: {
+      current: {
+        members: {
+          byMemberId: {
+            delete: vi.fn(),
+          },
+        },
+      },
+    },
+  },
 }))
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -40,7 +58,7 @@ const roles = [
   createRole({ id: 'role-2', name: 'Second role' }),
 ]
 
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Member User',
   email: 'member@example.com',
@@ -48,9 +66,9 @@ const member: Member = {
   avatar_url: '',
   role: 'normal',
   roles: [roles[0]!],
-  last_active_at: '1731000000',
-  last_login_at: '1731000000',
-  created_at: '1731000000',
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
+  created_at: 1731000000,
   status: 'active',
 }
 
@@ -73,11 +91,14 @@ describe('MemberMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUpdateRolesOfMember.mockResolvedValue(undefined)
-    vi.mocked(deleteMemberOrCancelInvitation).mockResolvedValue({ result: 'success' })
-    vi.mocked(useUpdateRolesOfMember).mockReturnValue({
+    vi.mocked(consoleClient.workspaces.current.members.byMemberId.delete).mockResolvedValue({
+      result: 'success',
+      tenant_id: 'tenant-1',
+    })
+    vi.mocked(mockUpdateRolesOfMemberHook).mockReturnValue({
       mutateAsync: mockUpdateRolesOfMember,
-    } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    })
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -97,7 +118,7 @@ describe('MemberMenu', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   it('should show edit role copy when multiple roles are disabled', async () => {
@@ -147,8 +168,8 @@ describe('MemberMenu', () => {
 
     expect(mockUpdateRolesOfMember).toHaveBeenCalledWith(
       {
-        memberId: 'member-1',
-        roleIds: ['role-2'],
+        params: { member_id: 'member-1' },
+        body: { role_ids: ['role-2'] },
       },
       expect.any(Object),
     )
@@ -157,7 +178,9 @@ describe('MemberMenu', () => {
   it('should require confirmation before removing a member', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
-    const membersQueryKey = [...commonQueryKeys.members, 'en-US']
+    const { queryKey: membersQueryKey } = consoleQuery.workspaces.current.members.get.queryOptions({
+      input: { query: { language: 'en' } },
+    })
     queryClient.setQueryData(membersQueryKey, { accounts: [member] })
 
     renderWithConsoleQuery(<MemberMenu member={member} isCurrentUser={false} />, {
@@ -171,16 +194,15 @@ describe('MemberMenu', () => {
       name: /workspaceMembers\.members\.removeFromTeamConfirmTitle:\{"memberName":"Member User"\}/i,
     })
     expect(dialog).toHaveTextContent('workspaceMembers.members.removeFromTeamConfirmDescription')
-    expect(deleteMemberOrCancelInvitation).not.toHaveBeenCalled()
+    expect(consoleClient.workspaces.current.members.byMemberId.delete).not.toHaveBeenCalled()
 
     await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
 
     await waitFor(() => {
-      expect(deleteMemberOrCancelInvitation).toHaveBeenCalledWith({
-        url: '/workspaces/current/members/member-1',
+      expect(consoleClient.workspaces.current.members.byMemberId.delete).toHaveBeenCalledWith({
+        params: { member_id: 'member-1' },
       })
     })
     expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
-    expect(toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
   })
 })

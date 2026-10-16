@@ -1,7 +1,7 @@
 import type { NodeDefault } from '../../types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FlowType } from '@/types/common'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { BlockClassification } from '../../block-selector/types'
@@ -29,7 +29,7 @@ const {
 
 let mockNodesReadOnly = false
 let mockIsChatMode = false
-let mockFlowType: FlowType = FlowType.appFlow
+let mockFlowType: EditorResource['kind'] = 'app'
 
 const answerBlock: NodeDefault = {
   metaData: {
@@ -55,7 +55,6 @@ vi.mock('../../hooks/use-available-blocks', () => ({
 }))
 
 vi.mock('../../hooks/use-workflow', () => ({
-  useIsChatMode: () => mockIsChatMode,
   useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
 }))
 
@@ -74,7 +73,7 @@ vi.mock('../../hooks/use-panel-interactions', () => ({
 vi.mock('../../hooks-store', () => ({
   useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      configsMap: { flowType: mockFlowType },
+      configsMap: { resourceKind: mockFlowType },
       availableNodesMetaData: { nodes: [answerBlock] },
     }),
 }))
@@ -105,13 +104,15 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
@@ -125,7 +126,7 @@ describe('AddBlock', () => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
     mockIsChatMode = false
-    mockFlowType = FlowType.appFlow
+    mockFlowType = 'app'
   })
 
   it('opens the real selector and exposes its open state', async () => {
@@ -197,4 +198,11 @@ describe('AddBlock', () => {
       candidateNode: expect.objectContaining({ id: 'generated-node' }),
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

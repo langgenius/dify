@@ -1,4 +1,4 @@
-import type { IndexingStatusResponse } from '@/models/datasets'
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -19,7 +19,7 @@ describe('IndexingProgressItem', () => {
     vi.clearAllMocks()
   })
 
-  const makeDetail = (overrides: Partial<IndexingStatusResponse> = {}): IndexingStatusResponse => ({
+  const makeDetail = (overrides: Partial<DocumentStatusResponse> = {}): DocumentStatusResponse => ({
     id: 'doc-1',
     indexing_status: 'indexing',
     processing_started_at: 0,

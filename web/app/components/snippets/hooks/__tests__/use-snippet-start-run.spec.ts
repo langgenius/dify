@@ -1,4 +1,4 @@
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -27,7 +27,7 @@ const mockSetShowEnvPanel = vi.fn()
 const mockSetShowGlobalVariablePanel = vi.fn()
 const mockHandleRun = vi.fn()
 
-const inputFields: SnippetInputField[] = [
+const inputFields: InputVar[] = [
   {
     type: PipelineInputVarType.textInput,
     label: 'Query',

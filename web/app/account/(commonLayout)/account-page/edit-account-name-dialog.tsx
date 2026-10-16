@@ -11,6 +11,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { ORPCError } from '@orpc/client'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -68,12 +69,12 @@ export function EditAccountNameDialog({ name }: { name: string }) {
   const handleSave = async (name: string) => {
     try {
       await updateProfile.mutateAsync({ body: { name } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully']))
       actionsRef.current?.close()
     } catch (error) {
-      // The request layer already reports every error the server answered with.
+      // HTTP error notifications are owned by the request layer.
       // Only report a failure that never produced a response.
-      if (error instanceof Error && error.message) toast.error(error.message)
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }
 

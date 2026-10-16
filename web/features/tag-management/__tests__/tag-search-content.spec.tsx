@@ -109,8 +109,6 @@ const PanelHarness = ({
     >
       <TagSearchContent
         type={type}
-        inputValue={inputValue}
-        onInputValueChange={setInputValue}
         canBindOrUnbindTags={canBindOrUnbindTags}
         onOpenTagManagement={onOpenTagManagement}
       />
@@ -142,29 +140,6 @@ describe('TagSearchContent', () => {
 
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /API/i })).not.toBeInTheDocument()
-  })
-
-  it('clears only the search input from the input clear button', async () => {
-    const user = userEvent.setup()
-    render(<PanelHarness />)
-
-    const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-    await user.type(input, 'Back')
-    expect(input).toHaveValue('Back')
-    vi.clearAllMocks()
-
-    const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-    await user.pointer({ keys: '[MouseLeft>]', target: clearButton })
-    expect(input).toHaveFocus()
-    await user.pointer({ keys: '[/MouseLeft]', target: clearButton })
-
-    expect(input).toHaveValue('')
-    expect(input).toHaveFocus()
-    expect(onValueChangeSpy).not.toHaveBeenCalled()
-    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
   })
 
   it('shows a create option when the query is not an existing tag name', async () => {

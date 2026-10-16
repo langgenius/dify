@@ -3,7 +3,6 @@ import { act, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { useAppInfoActions } from '../use-app-info-actions'
 
@@ -140,7 +139,7 @@ describe('useAppInfoActions', () => {
     mockAppDetail = createAppDetailFixture({
       id: 'app-1',
       name: 'Test App',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       icon: '🤖',
       icon_type: 'emoji',
       icon_background: '#FFEAD5',
@@ -214,7 +213,6 @@ describe('useAppInfoActions', () => {
       expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updatedApp)
       for (const queryKey of appListQueryKeys)
         expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
 
     it('should emit app_meta_update after successful edit when collaboration socket exists', async () => {
@@ -371,7 +369,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should open export warning modal for workflow mode', async () => {
-      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: 'workflow' as const })
 
       const { result } = renderActions()
 
@@ -383,7 +381,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should open export warning modal for advanced_chat mode', async () => {
-      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.ADVANCED_CHAT })
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: 'advanced-chat' as const })
 
       const { result } = renderActions()
 
@@ -397,7 +395,7 @@ describe('useAppInfoActions', () => {
 
   describe('handleConfirmExport', () => {
     it('keeps the warning open after failure so the user can retry', async () => {
-      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: 'workflow' as const })
       mockExportWorkflowAppDsl
         .mockResolvedValueOnce({ status: 'failed' })
         .mockResolvedValueOnce({ status: 'downloaded' })
@@ -416,7 +414,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should export directly when no secret env variables', async () => {
-      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: 'workflow' as const })
       const { result } = renderActions()
 
       await act(async () => {
@@ -430,7 +428,7 @@ describe('useAppInfoActions', () => {
     })
 
     it('should set secret env list when secret variables exist', async () => {
-      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: AppModeEnum.WORKFLOW })
+      mockAppDetail = createAppDetailFixture({ ...mockAppDetail, mode: 'workflow' as const })
       const secretVars = [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }]
       mockExportWorkflowAppDsl.mockResolvedValue({
         status: 'confirmation-required',

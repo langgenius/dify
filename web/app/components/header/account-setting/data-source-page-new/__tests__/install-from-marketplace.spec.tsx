@@ -1,4 +1,4 @@
-import type { DataSourceAuth } from '../types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useTheme } from 'next-themes'
@@ -74,7 +74,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
 }))
 
 describe('InstallFromMarketplace Component', () => {
-  const mockProviders: DataSourceAuth[] = [
+  const mockProviders: DatasourceProviderAuthResponse[] = [
     {
       author: 'Author',
       provider: 'provider',
@@ -84,6 +84,8 @@ describe('InstallFromMarketplace Component', () => {
       name: 'name',
       label: { en_US: 'Label', zh_Hans: '标签' },
       description: { en_US: 'Desc', zh_Hans: '描述' },
+      credential_schema: [],
+      oauth_schema: null,
       credentials_list: [],
     },
   ]

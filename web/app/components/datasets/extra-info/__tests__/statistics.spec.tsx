@@ -1,4 +1,4 @@
-import type { RelatedAppResponse } from '@/models/datasets'
+import type { RelatedAppListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Statistics from '../statistics'
@@ -17,7 +17,7 @@ describe('Statistics', () => {
       <Statistics
         expand
         documentCount={12}
-        relatedApps={{ total: 3, data: [] } as RelatedAppResponse}
+        relatedApps={{ total: 3, data: [] } as RelatedAppListResponse}
       />,
     )
 
@@ -31,7 +31,7 @@ describe('Statistics', () => {
       <Statistics
         expand
         documentCount={12}
-        relatedApps={{ total: 1, data: [{ id: 'app-1' }] } as RelatedAppResponse}
+        relatedApps={{ total: 1, data: [{ id: 'app-1' }] } as RelatedAppListResponse}
       />,
     )
 

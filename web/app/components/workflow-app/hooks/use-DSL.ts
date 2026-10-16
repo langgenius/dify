@@ -1,15 +1,16 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
@@ -18,7 +19,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation(['app'])
   const { eventEmitter } = useEventEmitterContextContext()
 
-  const { appId } = useParams<{ appId: string }>()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
       input: { params: { app_id: appId } },
@@ -61,7 +62,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       } catch (error) {
         toast.error(
           t(($) => $.exportAppFailed, { ns: 'app' }),
-          { description: await getAppTransferErrorMessage(error) },
+          { description: getErrorMessage(error) },
         )
         return false
       }
@@ -91,7 +92,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       toast.error(
         t(($) => $.exportAppFailed, { ns: 'app' }),
         {
-          description: await getAppTransferErrorMessage(error),
+          description: getErrorMessage(error),
         },
       )
     }

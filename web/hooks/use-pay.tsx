@@ -6,12 +6,14 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useNotionBinding } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 
 type ConfirmType = {
   type: 'info' | 'warning'
@@ -76,7 +78,14 @@ const useCheckNotion = () => {
   const type = searchParams.get('type')
   const notionCode = searchParams.get('code')
   const notionError = searchParams.get('error')
-  const { data } = useNotionBinding(notionCode, canBinding)
+  const { data } = useQuery(
+    consoleQuery.oauth.dataSource.binding.byProvider.get.queryOptions({
+      input:
+        notionCode && canBinding
+          ? { params: { provider: 'notion' }, query: { code: notionCode } }
+          : skipToken,
+    }),
+  )
 
   useEffect(() => {
     if (data) router.replace('/')
@@ -122,16 +131,10 @@ export const CheckModal = () => {
       onOpenChange={(open) => !open && handleCancelShowPayStatusModal()}
     >
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-            {confirmInfo.title}
-          </AlertDialogTitle>
-          {description && (
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {description}
-            </AlertDialogDescription>
-          )}
-        </div>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{confirmInfo.title}</AlertDialogTitle>
+          {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogConfirmButton
             tone={confirmInfo.type !== 'info' ? 'destructive' : 'default'}

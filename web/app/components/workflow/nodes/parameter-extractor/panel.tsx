@@ -34,7 +34,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
     handleInputVarChange,
     filterVar,
     isChatModel,
-    isChatMode,
+    isChatflow,
     isCompletionModel,
     handleModelChanged,
     handleImportFromTool,
@@ -134,7 +134,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
           onChange={handleInstructionChange}
           readOnly={readOnly}
           isChatModel={isChatModel}
-          isChatApp={isChatMode}
+          isChatApp={isChatflow}
           isShowContext={false}
           hasSetBlockStatus={hasSetBlockStatus}
           nodesOutputVars={availableVars}
@@ -144,7 +144,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
       <FieldCollapse title={t(($) => $[`${i18nPrefix}.advancedSetting`], { ns: 'workflowModels' })}>
         <>
           {/* Memory */}
-          {isChatMode && (
+          {isChatflow && (
             <div className="mt-4">
               <MemoryConfig
                 readonly={readOnly}

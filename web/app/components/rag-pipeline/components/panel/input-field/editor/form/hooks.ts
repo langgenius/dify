@@ -1,13 +1,14 @@
 import type { DeepKeys } from '@tanstack/react-form'
 import type { FormData } from './types'
 import type { InputFieldConfiguration } from '@/app/components/base/form/form-scenarios/input-field/types'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { InputFieldType } from '@/app/components/base/form/form-scenarios/input-field/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { formatFileSize } from '@/utils/format'
 import { TEXT_MAX_LENGTH } from './schema'
 
@@ -217,7 +218,7 @@ export const useHiddenConfigurations = (props: { options: string[] | undefined }
 
   const { options } = props
 
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
     useFileSizeLimit(fileUploadConfigResponse)
 

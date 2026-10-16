@@ -15,14 +15,17 @@ vi.mock('@/next/navigation', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 
-vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({
-    mutateAsync: mockImportDSL,
-  }),
-  useImportPipelineDSLConfirm: () => ({
-    mutateAsync: mockImportDSLConfirm,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.imports.post': () => ({
+      mutateAsync: mockImportDSL,
+    }),
+    'rag.pipelines.imports.byImportId.confirm.post': () => ({
+      mutateAsync: mockImportDSLConfirm,
+    }),
+  })
+})
 
 // Mock plugin dependencies hook
 const mockHandleCheckPluginDependencies = vi.fn()
@@ -311,8 +314,10 @@ describe('CreateFromDSLModal', () => {
 
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalledWith({
-          mode: 'yaml-url',
-          yaml_url: 'https://example.com/test.pipeline',
+          body: {
+            mode: 'yaml-url',
+            yaml_url: 'https://example.com/test.pipeline',
+          },
         })
       })
     })
@@ -538,8 +543,10 @@ describe('CreateFromDSLModal', () => {
 
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalledWith({
-          mode: 'yaml-url',
-          yaml_url: 'https://example.com/test.pipeline',
+          body: {
+            mode: 'yaml-url',
+            yaml_url: 'https://example.com/test.pipeline',
+          },
         })
       })
     })
@@ -865,8 +872,10 @@ describe('CreateFromDSLModal', () => {
       // Verify API was called with file content
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalledWith({
-          mode: 'yaml-content',
-          yaml_content: fileContent,
+          body: {
+            mode: 'yaml-content',
+            yaml_content: fileContent,
+          },
         })
       })
     })
@@ -967,7 +976,7 @@ describe('CreateFromDSLModal', () => {
 
       // Verify confirm was called
       await waitFor(() => {
-        expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-123')
+        expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-123' } })
       })
 
       // Verify success handling

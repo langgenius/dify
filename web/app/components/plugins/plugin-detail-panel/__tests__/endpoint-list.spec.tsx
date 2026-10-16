@@ -163,9 +163,12 @@ describe('Endpoint management', () => {
   it('deletes through the canonical route and refreshes the empty state', async () => {
     const user = userEvent.setup()
     renderEndpoints()
-    await user.click(
-      await screen.findByRole('button', { name: 'common.operation.delete Endpoint 1' }),
-    )
+    const trigger = await screen.findByRole('button', {
+      name: 'common.operation.delete Endpoint 1',
+    })
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog')
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByText('plugin.detailPanel.endpointsEmpty')).toBeInTheDocument()
     expect(mutations).toEqual([

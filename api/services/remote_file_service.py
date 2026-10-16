@@ -118,10 +118,7 @@ class RemoteFileService:
         ):
             raise FileTooLargeError()
 
-        if response.request.method == "GET":
-            content = response.content
-        else:
-            content = self._fetch_content(url=url)
+        content = response.content if response.request.method == "GET" else self._fetch_content(url=url)
 
         upload_file = self._files.upload_file(
             filename=file_info.filename,

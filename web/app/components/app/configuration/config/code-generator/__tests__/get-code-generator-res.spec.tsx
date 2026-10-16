@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AppModeEnum } from '@/types/app'
 import GetCodeGeneratorResModal from '../get-code-generator-res'
 
 const mockGenerateRule = vi.fn()
@@ -52,7 +51,9 @@ vi.mock(
     }) => (
       <div>
         <button
-          onClick={() => setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' })}
+          onClick={() =>
+            setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' as const })
+          }
         >
           change-model
         </button>
@@ -87,20 +88,12 @@ vi.mock('../../automatic/res-placeholder', () => ({
   default: () => <div>code-result-placeholder</div>,
 }))
 
-vi.mock('../../automatic/result', () => ({
-  default: ({
-    current,
-    onApply,
-  }: {
-    current: { modified?: string; code?: string }
-    onApply: () => void
-  }) => (
-    <div data-testid="code-result-panel">
-      <div>{current.modified || current.code}</div>
-      <button onClick={onApply}>apply-code-result</button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor',
+  () => ({
+    default: ({ value }: { value: string }) => <div data-testid="code-result-panel">{value}</div>,
+  }),
+)
 
 describe('GetCodeGeneratorResModal', () => {
   const mockOnClose = vi.fn()
@@ -127,7 +120,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -154,7 +147,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -181,7 +174,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -208,7 +201,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="completion"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -229,6 +222,7 @@ describe('GetCodeGeneratorResModal', () => {
           instruction: 'code instruction',
           ideal_output: 'code output',
           language: 'python',
+          model_config: expect.objectContaining({ mode: 'completion' }),
         }),
       )
     })
@@ -237,7 +231,7 @@ describe('GetCodeGeneratorResModal', () => {
       expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
     })
 
-    fireEvent.click(screen.getByText('apply-code-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.getByText(/(?:^|\.)codegen\.overwriteConfirmTitle(?=$|:)/)).toBeInTheDocument()
@@ -263,7 +257,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -279,7 +273,7 @@ describe('GetCodeGeneratorResModal', () => {
       expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
     })
 
-    fireEvent.click(screen.getByText('apply-code-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
     const dialog = await screen.findByRole('alertdialog')
 
     fireEvent.click(
@@ -303,7 +297,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.javascript}
         onClose={mockOnClose}

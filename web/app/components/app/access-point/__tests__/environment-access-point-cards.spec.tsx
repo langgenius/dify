@@ -1,18 +1,21 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { EnvironmentServiceApiCard } from '../deployed-environment-access-points/environment-service-api-card'
 import { EnvironmentWebAppCard } from '../deployed-environment-access-points/environment-web-app-card'
 
 const mocks = vi.hoisted(() => ({
   getApi: vi.fn(),
+  saveSiteConfig: vi.fn(),
   getSite: vi.fn(),
   getSubjects: vi.fn(),
   resetSite: vi.fn(),
@@ -29,7 +32,7 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
-let mockAppMode: AppModeEnum = AppModeEnum.WORKFLOW
+let mockAppMode: AppMode = 'workflow'
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
@@ -41,13 +44,8 @@ vi.mock('@/app/components/base/app-icon', () => ({
 
 vi.mock('@/app/components/app/access-point/shared/use-access-point-actions', () => ({
   useAccessPointActions: () => ({
-    saveSiteConfig: vi.fn(),
+    saveSiteConfig: mocks.saveSiteConfig,
   }),
-}))
-
-vi.mock('@/app/components/app/overview/settings', () => ({
-  default: ({ isShow }: { isShow: boolean }) =>
-    isShow ? <div role="dialog" aria-label="environment settings" /> : null,
 }))
 
 vi.mock('../deployed-environment-access-points/environment-access-control', () => ({
@@ -62,22 +60,25 @@ vi.mock('../deployed-environment-access-points/environment-access-control', () =
   },
 }))
 
-vi.mock('@/app/components/app/access-point/shared/api-secret-key-button', () => ({
-  ApiSecretKeyButton: (props: {
-    apiKeyCount?: number
-    appId: string
-    canManage: boolean
-    disabled?: boolean
-    environmentId?: string
-  }) => {
-    mocks.apiKeyButtonProps(props)
-    return (
-      <button type="button" disabled={!props.canManage || props.disabled}>
-        environment-api-keys
-      </button>
-    )
-  },
-}))
+vi.mock(
+  '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button',
+  () => ({
+    EnvironmentApiKeyButton: (props: {
+      apiKeyCount?: number
+      appId: string
+      canManage: boolean
+      disabled?: boolean
+      environmentId?: string
+    }) => {
+      mocks.apiKeyButtonProps(props)
+      return (
+        <button type="button" disabled={!props.canManage || props.disabled}>
+          environment-api-keys
+        </button>
+      )
+    },
+  }),
+)
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -105,6 +106,8 @@ const api = {
 }
 
 function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
+  seedFeatures(queryClient)
+  seedSystemFeatures(queryClient)
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     createAppDetailFixture({
@@ -121,7 +124,11 @@ function renderCard(ui: ReactElement, queryClient = createTestQueryClient()) {
     },
   })
 
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <NuqsTestingAdapter>
+      <QueryClientTestProvider queryClient={queryClient}>{ui}</QueryClientTestProvider>
+    </NuqsTestingAdapter>,
+  )
 }
 
 function createDeferredPromise<T>() {
@@ -141,7 +148,8 @@ afterAll(() => vi.unstubAllGlobals())
 describe('environment access point cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppMode = AppModeEnum.WORKFLOW
+    mocks.saveSiteConfig.mockResolvedValue(true)
+    mockAppMode = 'workflow'
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init)
       const path = new URL(request.url).pathname
@@ -239,7 +247,7 @@ describe('environment access point cards', () => {
   )
 
   it('sends a chatflow app to the chat web app shell', async () => {
-    mockAppMode = AppModeEnum.ADVANCED_CHAT
+    mockAppMode = 'advanced-chat'
 
     renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint />)
 
@@ -401,17 +409,33 @@ describe('environment access point cards', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: /settings\.settings/ }))
-    expect(screen.getByRole('dialog', { name: 'environment settings' })).toBeInTheDocument()
+    const settings = await screen.findByRole('dialog', {
+      name: 'appOverview.overview.appInfo.settings.title',
+    })
+    await user.clear(within(settings).getByPlaceholderText('app.appNamePlaceholder'))
+    await user.type(
+      within(settings).getByPlaceholderText('app.appNamePlaceholder'),
+      'Environment portal',
+    )
+    await user.click(within(settings).getByRole('button', { name: 'common.operation.save' }))
+    expect(mocks.saveSiteConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Environment portal' }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('keeps view actions available while disabling deployed Web App management', async () => {
+    const user = userEvent.setup()
     renderCard(
       <EnvironmentWebAppCard appId="app-1" environmentId="staging" canManageAccessPoint={false} />,
     )
 
     expect(await screen.findByRole('switch')).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByRole('link', { name: /studio\.accessPoint\.open/ })).toBeEnabled()
-    expect(screen.getByRole('button', { name: /regenerate/ })).toBeDisabled()
+    const regenerate = screen.getByRole('button', { name: /regenerate/ })
+    expect(regenerate).toHaveAttribute('aria-disabled', 'true')
+    await user.click(regenerate)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /customize\.entry/ })).toBeDisabled()
     expect(
       screen.getByRole('button', { name: /accessControlDialog\.accessItems\.specific/ }),

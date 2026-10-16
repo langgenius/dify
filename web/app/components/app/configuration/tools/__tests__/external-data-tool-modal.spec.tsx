@@ -2,6 +2,39 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import ExternalDataToolModal from '../external-data-tool-modal'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => ({
+      data: {
+        data: [
+          {
+            name: 'code-tool',
+            label: {
+              'en-US': 'Code Provider',
+              'zh-Hans': '代码提供方',
+            },
+            form_schema: [
+              {
+                variable: 'api_key',
+                default: 'default-key',
+                required: true,
+                type: 'text',
+                placeholder: '',
+                options: [],
+                label: {
+                  'en-US': 'API Key',
+                  'zh-Hans': '接口密钥',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  })
+})
+
 const mockToastError = vi.fn()
 
 let mockLocale = 'en-US'
@@ -18,36 +51,6 @@ vi.mock('@/context/i18n', () => ({
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => mockLocale,
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({
-    data: {
-      data: [
-        {
-          name: 'code-tool',
-          label: {
-            'en-US': 'Code Provider',
-            'zh-Hans': '代码提供方',
-          },
-          form_schema: [
-            {
-              variable: 'api_key',
-              default: 'default-key',
-              required: true,
-              type: 'text',
-              placeholder: '',
-              options: [],
-              label: {
-                'en-US': 'API Key',
-                'zh-Hans': '接口密钥',
-              },
-            },
-          ],
-        },
-      ],
-    },
-  }),
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({

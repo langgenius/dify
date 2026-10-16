@@ -1,5 +1,5 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Node } from '../../types'
-import type { DataSet } from '@/models/datasets'
 import { render, screen, waitFor } from '@testing-library/react'
 import { BlockEnum } from '../../types'
 import DatasetsDetailProvider from '../provider'
@@ -29,11 +29,11 @@ const createWorkflowNode = (datasetIds: string[] = []): Node =>
     },
   }) as unknown as Node
 
-const createDataset = (id: string): DataSet =>
+const createDataset = (id: string): DatasetDetailWithPartialMembersResponse =>
   ({
     id,
     name: `Dataset ${id}`,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('datasets-detail-store provider', () => {
   beforeEach(() => {
@@ -80,7 +80,6 @@ describe('datasets-detail-store provider', () => {
 
     await waitFor(() => {
       expect(mockFetchDatasets).toHaveBeenCalledWith({
-        url: '/datasets',
         params: {
           page: 1,
           ids: ['dataset-1', 'dataset-2'],

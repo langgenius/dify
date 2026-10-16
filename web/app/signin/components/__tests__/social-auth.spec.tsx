@@ -25,9 +25,7 @@ const mockGetBrowserTimezone = vi.mocked(getBrowserTimezone)
 describe('SocialAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
-    )
+    mockUseSearchParams.mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
     mockUseLocale.mockReturnValue('zh-Hans')
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
   })
@@ -66,9 +64,7 @@ describe('SocialAuth', () => {
 
     it('should preserve invite token when adding timezone', () => {
       mockUseSearchParams.mockReturnValue(
-        new URLSearchParams('invite_token=invite-123') as unknown as ReturnType<
-          typeof useSearchParams
-        >,
+        new URLSearchParams('invite_token=invite-123') as ReturnType<typeof useSearchParams>,
       )
 
       render(<SocialAuth />)

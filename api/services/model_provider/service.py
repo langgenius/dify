@@ -199,6 +199,11 @@ class ModelProviderService:
 
         return provider_responses
 
+    def get_provider(self, tenant_id: str, provider: str) -> ProviderResponse:
+        """One provider as `get_provider_list` lists it; raises ProviderNotFoundError."""
+        name = self._get_provider_configuration(tenant_id, provider).provider.provider
+        return next(response for response in self.get_provider_list(tenant_id) if response.provider == name)
+
     @staticmethod
     def _load_provider_summary_states(tenant_id: str) -> dict[str, _ProviderSummaryState]:
         """Load only the workspace columns required by the collapsed provider list."""
@@ -442,6 +447,13 @@ class ModelProviderService:
         }
         return provider_summaries, plugin_summaries
 
+    def list_models(
+        self, tenant_id: str, *, provider: str | None = None, model_type: ModelType | None = None
+    ) -> list[ModelWithProviderEntity]:
+        """Models of every provider in the workspace, optionally narrowed to one provider or model type."""
+        provider_configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
+        return provider_configurations.get_models(provider=provider, model_type=model_type)
+
     def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntityResponse]:
         """
         get provider models.
@@ -512,7 +524,7 @@ class ModelProviderService:
 
     def create_provider_credential(
         self, tenant_id: str, provider: str, credentials: dict[str, Any], credential_name: str | None
-    ) -> None:
+    ) -> str:
         """
         Create and save new provider credentials.
 
@@ -523,7 +535,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        provider_configuration.create_provider_credential(credentials, credential_name)
+        return provider_configuration.create_provider_credential(credentials, credential_name)
 
     def update_provider_credential(
         self,
@@ -615,7 +627,7 @@ class ModelProviderService:
         model: str,
         credentials: dict[str, Any],
         credential_name: str | None,
-    ) -> None:
+    ) -> str:
         """
         create and save model credentials.
 
@@ -628,7 +640,7 @@ class ModelProviderService:
         :return:
         """
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        provider_configuration.create_custom_model_credential(
+        return provider_configuration.create_custom_model_credential(
             model_type=ModelType(model_type),
             model=model,
             credentials=credentials,

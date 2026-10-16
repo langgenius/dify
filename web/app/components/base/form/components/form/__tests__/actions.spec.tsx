@@ -42,7 +42,7 @@ const renderWithForm = ({
   }
 
   render(
-    <formContext.Provider value={form as unknown as FormType}>
+    <formContext.Provider value={form as FormType}>
       <Actions CustomActions={CustomActions} />
     </formContext.Provider>,
   )

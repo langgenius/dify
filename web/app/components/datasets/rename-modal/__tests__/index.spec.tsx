@@ -1,9 +1,11 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import RenameDatasetModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -32,18 +34,20 @@ vi.mock('@/service/datasets', () => ({
 
 describe('RenameDatasetModal', () => {
   // Create a base dataset with emoji icon
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  const createMockDataset = (
+    overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+  ): DatasetDetailWithPartialMembersResponse => ({
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    indexing_status: 'completed',
     icon_info: {
       icon: '📊',
       icon_type: 'emoji',
       icon_background: '#FFEAD5',
       icon_url: undefined,
     },
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     created_by: 'user-1',
@@ -52,14 +56,12 @@ describe('RenameDatasetModal', () => {
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'openai',
     embedding_model: 'text-embedding-ada-002',
     embedding_model_provider: 'openai',
     embedding_available: true,
-    retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
-    retrieval_model: {} as DataSet['retrieval_model'],
+    retrieval_model_dict: {} as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
     tags: [],
     external_knowledge_info: {
       external_knowledge_id: '',
@@ -80,7 +82,7 @@ describe('RenameDatasetModal', () => {
   })
 
   // Create a dataset with image icon
-  const createMockDatasetWithImageIcon = (): DataSet =>
+  const createMockDatasetWithImageIcon = (): DatasetDetailWithPartialMembersResponse =>
     createMockDataset({
       icon_info: {
         icon: 'file-id-123',
@@ -91,7 +93,7 @@ describe('RenameDatasetModal', () => {
     })
 
   // Create a dataset with external knowledge info
-  const createMockExternalDataset = (): DataSet =>
+  const createMockExternalDataset = (): DatasetDetailWithPartialMembersResponse =>
     createMockDataset({
       external_knowledge_info: {
         external_knowledge_id: 'ext-knowledge-1',
@@ -322,7 +324,7 @@ describe('RenameDatasetModal', () => {
 
     it('should disable save button while loading', async () => {
       // Create a promise that we can control
-      let resolvePromise: (value: DataSet) => void
+      let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -538,19 +540,6 @@ describe('RenameDatasetModal', () => {
         expect(handleClose).toHaveBeenCalledTimes(1)
       })
     })
-
-    it('should show success toast after successful save', async () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-
-      const saveButton = screen.getByText('common.operation.save')
-      await act(async () => {
-        fireEvent.click(saveButton)
-      })
-
-      await waitFor(() => {
-        expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
-      })
-    })
   })
 
   describe('Error Handling', () => {
@@ -729,7 +718,9 @@ describe('RenameDatasetModal', () => {
       })
 
       // Should not throw error when onSuccess is undefined
-      expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
+      await waitFor(() => {
+        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should maintain callback identity across renders', async () => {
@@ -1074,7 +1065,7 @@ describe('RenameDatasetModal', () => {
 
     it('should handle double click on save button', async () => {
       // Use a promise we can control to ensure the first click is still "loading"
-      let resolvePromise: (value: DataSet) => void
+      let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
@@ -1194,7 +1185,7 @@ describe('RenameDatasetModal', () => {
 
   describe('Loading State', () => {
     it('should show loading state during API call', async () => {
-      let resolvePromise: (value: DataSet) => void
+      let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -1237,7 +1228,9 @@ describe('RenameDatasetModal', () => {
       })
 
       // After success, the modal closes, but if it didn't, button would be re-enabled
-      expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
+      await waitFor(() => {
+        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('should re-enable save button after failed save', async () => {

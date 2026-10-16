@@ -97,7 +97,7 @@ export const useImageFiles = () => {
             filesRef.current = newFiles
             setFiles(newFiles)
           },
-          onErrorCallback: (error?: any) => {
+          onErrorCallback: (error) => {
             const errorMessage = getImageUploadErrorMessage(
               error,
               t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
@@ -182,7 +182,7 @@ export const useLocalFileUploader = ({
               onSuccessCallback: (res) => {
                 onUpload({ ...imageFile, fileId: res.id, progress: 100 })
               },
-              onErrorCallback: (error?: any) => {
+              onErrorCallback: (error) => {
                 const errorMessage = getImageUploadErrorMessage(
                   error,
                   t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),

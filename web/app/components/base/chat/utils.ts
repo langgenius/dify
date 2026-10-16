@@ -31,9 +31,9 @@ async function getRawInputsFromUrlParams(): Promise<Record<string, any>> {
   return inputs
 }
 
-async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
+async function getProcessedInputsFromUrlParams(): Promise<Record<string, string | undefined>> {
   const urlParams = new URLSearchParams(window.location.search)
-  const inputs: Record<string, any> = {}
+  const inputs: Record<string, string | undefined> = {}
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
     entriesArray.map(async ([key, value]) => {
@@ -45,7 +45,9 @@ async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   return inputs
 }
 
-async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string, any>> {
+async function getProcessedSystemVariablesFromUrlParams(): Promise<
+  Record<string, string | undefined>
+> {
   const urlParams = new URLSearchParams(window.location.search)
   const redirectUrl = urlParams.get('redirect_url')
   if (redirectUrl) {
@@ -56,7 +58,7 @@ async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string
       for (const [key, value] of redirectParams.entries()) urlParams.set(key, value)
     }
   }
-  const systemVariables: Record<string, any> = {}
+  const systemVariables: Record<string, string | undefined> = {}
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
     entriesArray.map(async ([key, value]) => {
@@ -67,9 +69,11 @@ async function getProcessedSystemVariablesFromUrlParams(): Promise<Record<string
   return systemVariables
 }
 
-async function getProcessedUserVariablesFromUrlParams(): Promise<Record<string, any>> {
+async function getProcessedUserVariablesFromUrlParams(): Promise<
+  Record<string, string | undefined>
+> {
   const urlParams = new URLSearchParams(window.location.search)
-  const userVariables: Record<string, any> = {}
+  const userVariables: Record<string, string | undefined> = {}
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
     entriesArray.map(async ([key, value]) => {
@@ -80,9 +84,9 @@ async function getProcessedUserVariablesFromUrlParams(): Promise<Record<string, 
   return userVariables
 }
 
-async function getRawUserVariablesFromUrlParams(): Promise<Record<string, any>> {
+async function getRawUserVariablesFromUrlParams(): Promise<Record<string, string>> {
   const urlParams = new URLSearchParams(window.location.search)
-  const userVariables: Record<string, any> = {}
+  const userVariables: Record<string, string> = {}
   const entriesArray = Array.from(urlParams.entries())
   await Promise.all(
     entriesArray.map(async ([key, value]) => {

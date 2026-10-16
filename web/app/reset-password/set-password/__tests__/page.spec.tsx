@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import ChangePasswordForm from '../page'
 
 const countdownState = vi.hoisted(() => ({
@@ -29,8 +29,15 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/service/common', () => ({
-  changePasswordWithToken: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    forgotPassword: {
+      resets: {
+        post: vi.fn(),
+      },
+    },
+  },
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -40,7 +47,7 @@ vi.mock('@/hooks/use-document-title', () => ({
 const mockReplace = vi.fn()
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
-const mockChangePasswordWithToken = vi.mocked(changePasswordWithToken)
+const mockChangePasswordWithToken = vi.mocked(consoleClient.forgotPassword.resets.post)
 const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const redirectUrl = '/apps?template-id=template-1&utm_source=dify_blog'
@@ -49,7 +56,7 @@ const encodedSigninUrl =
 
 const setSearchParams = (params: Record<string, string>) => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(params) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(params) as ReturnType<typeof useSearchParams>,
   )
 }
 
@@ -108,7 +115,6 @@ describe('Reset Password Set Password Page', () => {
 
     await waitFor(() => {
       expect(mockChangePasswordWithToken).toHaveBeenCalledWith({
-        url: '/forgot-password/resets',
         body: {
           token: 'reset-token',
           new_password: 'ValidPass123!',

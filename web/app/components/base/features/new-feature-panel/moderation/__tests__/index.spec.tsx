@@ -13,9 +13,6 @@ vi.mock('@/context/modal-context', () => ({
     setShowModerationSettingModal: mockSetShowModerationSettingModal,
   }),
 }))
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: { data: mockCodeBasedExtensionData } }),
-}))
 
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },
@@ -40,6 +37,13 @@ const renderWithProvider = (
     </FeaturesProvider>,
   )
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => ({ data: { data: mockCodeBasedExtensionData } }),
+  })
+})
 
 describe('Moderation', () => {
   beforeEach(() => {

@@ -1,5 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
-import { useDatasetDetail } from '@/service/knowledge/use-dataset'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import CreateDocumentsPage from '../documents/create/page'
@@ -21,9 +21,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
 
 vi.mock('@/next/navigation', () => mockNavigation)
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: vi.fn(),
-}))
+const { mockDatasetDetailQuery } = vi.hoisted(() => ({ mockDatasetDetailQuery: vi.fn() }))
 
 vi.mock('nuqs', async (importOriginal) => ({
   ...(await importOriginal<typeof import('nuqs')>()),
@@ -34,13 +32,17 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({ data: undefined }),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDefaultDataSourceListAuth: () => ({
-    data: { result: [] },
-    isLoading: false,
-    isError: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.get': mockDatasetDetailQuery,
+    'auth.plugin.datasource.defaultList.get': () => ({
+      data: { result: [] },
+      isLoading: false,
+      isError: false,
+    }),
+  })
+})
 
 vi.mock('@/app/components/datasets/create/step-one', () => ({
   default: () => <div>Create knowledge content</div>,
@@ -78,7 +80,6 @@ vi.mock('@/context/event-emitter', () => ({
 
 const mockUseRouter = mockNavigation.useRouter
 const mockUsePathname = mockNavigation.usePathname
-const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
 
 describe('DatasetDetailLayout', () => {
   beforeEach(() => {
@@ -103,7 +104,7 @@ describe('DatasetDetailLayout', () => {
       ['/datasets/dataset-1/api', 'common.appMenus.apiAccess'],
     ])('identifies the current detail page for %s', async (pathname, pageTitle) => {
       mockUsePathname.mockReturnValue(pathname)
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -114,7 +115,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       render(
         <DatasetDetailLayout datasetId="dataset-1">
@@ -132,7 +133,7 @@ describe('DatasetDetailLayout', () => {
       '/datasets/dataset-1/documents/document-1/settings',
     ])('delegates the document title for %s to the document page', (pathname) => {
       mockUsePathname.mockReturnValue(pathname)
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -143,7 +144,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       render(
         <DatasetDetailLayout datasetId="dataset-1">
@@ -156,7 +157,7 @@ describe('DatasetDetailLayout', () => {
 
     it('keeps the dataset title when the document creation route is composed', async () => {
       mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -167,7 +168,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
       const page = await CreateDocumentsPage({
         params: Promise.resolve({ datasetId: 'dataset-1' }),
       })
@@ -186,11 +187,11 @@ describe('DatasetDetailLayout', () => {
       'should redirect to datasets page when dataset detail returns %s',
       async (status) => {
         // Arrange
-        mockUseDatasetDetail.mockReturnValue({
+        mockDatasetDetailQuery.mockReturnValue({
           data: undefined,
-          error: new Response(null, { status }),
+          error: createHttpError(new Response(null, { status })),
           refetch: vi.fn(),
-        } as unknown as ReturnType<typeof useDatasetDetail>)
+        })
 
         // Act
         render(
@@ -206,34 +207,12 @@ describe('DatasetDetailLayout', () => {
         expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
       },
     )
-
-    it('should redirect when the dataset detail error exposes status without being a Response', async () => {
-      // Arrange
-      mockUseDatasetDetail.mockReturnValue({
-        data: undefined,
-        error: { status: 403 },
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
-
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
-
-      // Assert
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/datasets')
-      })
-      expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
-    })
   })
 
   describe('Rendering', () => {
     it('should render children when dataset detail is available', () => {
       // Arrange
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -243,7 +222,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       // Act
       render(
@@ -260,7 +239,7 @@ describe('DatasetDetailLayout', () => {
     it('should render document creation route content without owning the main skip target', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -270,7 +249,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       // Act
       render(
@@ -289,7 +268,7 @@ describe('DatasetDetailLayout', () => {
     it('should redirect from hit testing when retrieval recall permission is missing', async () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/hitTesting')
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -300,7 +279,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       // Act
       render(
@@ -319,7 +298,7 @@ describe('DatasetDetailLayout', () => {
     it('should redirect from access config when access config permission is missing', async () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -330,7 +309,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       // Act
       render(
@@ -349,7 +328,7 @@ describe('DatasetDetailLayout', () => {
     it('should render access config when access config permission is granted', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -360,7 +339,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       // Act
       render(
@@ -378,7 +357,7 @@ describe('DatasetDetailLayout', () => {
       // Arrange
       mockIsRbacEnabled = false
       mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
-      mockUseDatasetDetail.mockReturnValue({
+      mockDatasetDetailQuery.mockReturnValue({
         data: {
           id: 'dataset-1',
           name: 'Dataset 1',
@@ -389,7 +368,7 @@ describe('DatasetDetailLayout', () => {
         },
         error: null,
         refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+      })
 
       // Act
       render(

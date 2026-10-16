@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel, field_validator
 
@@ -70,7 +70,7 @@ class GeneralStructureChunk(BaseModel):
     """
 
     general_chunks: list[str]
-    data_source_info: Union[FileInfo, OnlineDocumentInfo, WebsiteInfo]
+    data_source_info: FileInfo | OnlineDocumentInfo | WebsiteInfo
 
 
 class ParentChildChunk(BaseModel):
@@ -88,7 +88,7 @@ class ParentChildStructureChunk(BaseModel):
     """
 
     parent_child_chunks: list[ParentChildChunk]
-    data_source_info: Union[FileInfo, OnlineDocumentInfo, WebsiteInfo]
+    data_source_info: FileInfo | OnlineDocumentInfo | WebsiteInfo
 
 
 class KnowledgeIndexNodeData(BaseNodeData):

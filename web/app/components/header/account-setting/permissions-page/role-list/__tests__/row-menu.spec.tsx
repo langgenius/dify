@@ -26,7 +26,7 @@ const membersOfRoleQueryMock = vi.hoisted(() => {
   }
 
   return {
-    useGetMembersOfRole: vi.fn(() => ({
+    getMembersOfRole: vi.fn((_options?: unknown) => ({
       data: response,
       isPending: false,
     })),
@@ -39,18 +39,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
 })
-
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useCopyWorkspaceRole: () => ({
-    mutate: mockCopyRole,
-    isPending: false,
-  }),
-  useDeleteWorkspaceRole: () => ({
-    mutateAsync: mockDeleteRole,
-    isPending: false,
-  }),
-  useGetMembersOfRole: membersOfRoleQueryMock.useGetMembersOfRole,
-}))
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -85,6 +73,22 @@ const openMenu = async () => {
     menu: menus[menus.length - 1]!,
   }
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.byRoleId.copy.post': () => ({
+      mutate: mockCopyRole,
+      isPending: false,
+    }),
+    'workspaces.current.rbac.roles.byRoleId.delete': () => ({
+      mutateAsync: mockDeleteRole,
+      isPending: false,
+    }),
+    'workspaces.current.rbac.roles.byRoleId.members.get': (options: unknown) =>
+      membersOfRoleQueryMock.getMembersOfRole(options),
+  })
+})
 
 describe('RowMenu', () => {
   beforeEach(() => {
@@ -227,20 +231,22 @@ describe('RowMenu', () => {
       expect(dialog).toHaveTextContent(
         'permission.role.copyMembersDescription:{"name":"Editor","count":3}',
       )
-      expect(membersOfRoleQueryMock.useGetMembersOfRole).toHaveBeenCalledWith({
-        roleId: role.id,
-        page: 1,
-        limit: 9999,
-      })
+      expect(membersOfRoleQueryMock.getMembersOfRole).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey: [
+            expect.any(Array),
+            expect.objectContaining({
+              input: { params: { role_id: role.id }, query: { page: 1, limit: 9999 } },
+            }),
+          ],
+        }),
+      )
 
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.skip' }))
 
       expect(mockCopyRole).toHaveBeenCalledTimes(1)
       expect(mockCopyRole).toHaveBeenCalledWith(
-        {
-          roleId: role.id,
-          copy_member: false,
-        },
+        { params: { role_id: role.id }, body: { copy_member: false } },
         expect.objectContaining({
           onSuccess: expect.any(Function),
         }),
@@ -266,10 +272,7 @@ describe('RowMenu', () => {
 
       expect(mockCopyRole).toHaveBeenCalledTimes(1)
       expect(mockCopyRole).toHaveBeenCalledWith(
-        {
-          roleId: role.id,
-          copy_member: true,
-        },
+        { params: { role_id: role.id }, body: { copy_member: true } },
         expect.objectContaining({
           onSuccess: expect.any(Function),
         }),

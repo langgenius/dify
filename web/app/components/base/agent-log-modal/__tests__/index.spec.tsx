@@ -1,7 +1,6 @@
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useClickAway } from 'ahooks'
-import { fetchAgentLogDetail } from '@/service/log'
 import AgentLogModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -17,8 +16,12 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/service/log', () => ({
+const { fetchAgentLogDetail } = vi.hoisted(() => ({
   fetchAgentLogDetail: vi.fn(),
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleClient: { apps: { byAppId: { agent: { logs: { get: fetchAgentLogDetail } } } } },
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -86,7 +89,7 @@ const mockProps = {
 describe('AgentLogModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(fetchAgentLogDetail).mockResolvedValue({
+    fetchAgentLogDetail.mockResolvedValue({
       meta: {
         status: 'succeeded',
         executor: 'User',
@@ -146,18 +149,18 @@ describe('AgentLogModal', () => {
   })
 
   it('should render the floating modal through a dialog portal', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
     const { container } = render(<AgentLogModal appId="app-id" {...mockProps} floating />)
 
     const modal = screen.getByRole('dialog')
     expect(container).not.toContainElement(modal)
     expect(document.body).toContainElement(modal)
-    expect(modal).toHaveClass('fixed', 'z-50', 'w-120!', 'left-[max(8px,calc(100vw-1136px))]!')
+    expect(modal).toHaveClass('fixed', 'w-120!', 'left-[max(8px,calc(100vw-1136px))]!')
   })
 
   it('should call onCancel when close button is clicked', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
     render(<AgentLogModal appId="app-id" {...mockProps} />)
 
@@ -168,7 +171,7 @@ describe('AgentLogModal', () => {
   })
 
   it('should call onCancel when clicking away', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
     let clickAwayHandler!: (event: Event) => void
     vi.mocked(useClickAway).mockImplementation((callback) => {
@@ -182,7 +185,7 @@ describe('AgentLogModal', () => {
   })
 
   it('should ignore click-away before mounted state is set', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
     let invoked = false
     vi.mocked(useClickAway).mockImplementation((callback) => {
       if (!invoked) {
@@ -197,7 +200,7 @@ describe('AgentLogModal', () => {
   })
 
   it('should not use click-away to close the floating dialog', () => {
-    vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+    fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
     let clickAwayHandler!: (event: Event) => void
     vi.mocked(useClickAway).mockImplementation((callback) => {
@@ -228,15 +231,13 @@ describe('AgentLogModal', () => {
     const pending = new Promise<Awaited<ReturnType<typeof fetchAgentLogDetail>>>((resolve) => {
       resolveOldResponse = resolve
     })
-    vi.mocked(fetchAgentLogDetail)
-      .mockResolvedValue(response)
-      .mockImplementationOnce(() => pending)
+    fetchAgentLogDetail.mockResolvedValue(response).mockImplementationOnce(() => pending)
     const { rerender } = render(<AgentLogModal appId="old-app" {...mockProps} />)
     rerender(<AgentLogModal appId="new-app" {...mockProps} />)
     await screen.findByText('New executor')
     expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      appID: 'new-app',
-      params: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
+      params: { app_id: 'new-app' },
+      query: { conversation_id: mockLog.conversationId, message_id: mockLog.id },
     })
     await act(async () => {
       resolveOldResponse({ ...response, meta: { ...response.meta, executor: 'Old executor' } })
@@ -263,8 +264,8 @@ describe('AgentLogModal', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument())
     expect(fetchAgentLogDetail).toHaveBeenLastCalledWith({
-      appID: 'app-id',
-      params: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
+      params: { app_id: 'app-id' },
+      query: { conversation_id: mockLog.conversationId, message_id: 'next-message' },
     })
   })
 
@@ -273,7 +274,7 @@ describe('AgentLogModal', () => {
     const pending = new Promise<Awaited<ReturnType<typeof fetchAgentLogDetail>>>((_, reject) => {
       rejectOldResponse = reject
     })
-    vi.mocked(fetchAgentLogDetail).mockReturnValueOnce(pending)
+    fetchAgentLogDetail.mockReturnValueOnce(pending)
     const { rerender } = render(<AgentLogModal appId="old-app" {...mockProps} />)
     rerender(<AgentLogModal appId="new-app" {...mockProps} />)
     await screen.findByText('User')

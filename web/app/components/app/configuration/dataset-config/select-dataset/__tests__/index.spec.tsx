@@ -1,9 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { DatasetPermission } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { render } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from '../index'
@@ -17,10 +17,13 @@ vi.mock('ahooks', async (importOriginal) => {
   }
 })
 
-const mockUseInfiniteDatasets = vi.fn()
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInfiniteDatasets: (...args: any[]) => mockUseInfiniteDatasets(...args),
-}))
+const { mockDatasetsInfiniteQuery } = vi.hoisted(() => ({ mockDatasetsInfiniteQuery: vi.fn() }))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.get': mockDatasetsInfiniteQuery,
+  })
+})
 
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 
@@ -44,7 +47,9 @@ const baseProps = {
   onSelect: vi.fn(),
 }
 
-const makeDataset = (overrides: Partial<DataSet>): DataSet =>
+const makeDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse>,
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-id',
     name: 'Dataset Name',
@@ -58,7 +63,7 @@ const makeDataset = (overrides: Partial<DataSet>): DataSet =>
     embedding_available: true,
     is_multimodal: false,
     description: '',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     indexing_technique: IndexingType.ECONOMICAL,
     retrieval_model_dict: {
       search_method: RETRIEVE_METHOD.fullText,
@@ -72,7 +77,7 @@ const makeDataset = (overrides: Partial<DataSet>): DataSet =>
       score_threshold: 0,
     },
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('SelectDataSet', () => {
   beforeEach(() => {
@@ -93,7 +98,7 @@ describe('SelectDataSet', () => {
       embedding_available: false,
       provider: 'external',
     })
-    mockUseInfiniteDatasets.mockReturnValue({
+    mockDatasetsInfiniteQuery.mockReturnValue({
       data: { pages: [{ data: [datasetOne, datasetTwo] }] },
       isLoading: false,
       isFetchingNextPage: false,
@@ -122,7 +127,7 @@ describe('SelectDataSet', () => {
   })
 
   it('shows empty state when no datasets are available and disables add', async () => {
-    mockUseInfiniteDatasets.mockReturnValue({
+    mockDatasetsInfiniteQuery.mockReturnValue({
       data: { pages: [{ data: [] }] },
       isLoading: false,
       isFetchingNextPage: false,
@@ -144,7 +149,7 @@ describe('SelectDataSet', () => {
 
   it('should hide the create dataset link when dataset.create_and_management is unavailable', async () => {
     mockWorkspacePermissionKeys = []
-    mockUseInfiniteDatasets.mockReturnValue({
+    mockDatasetsInfiniteQuery.mockReturnValue({
       data: { pages: [{ data: [] }] },
       isLoading: false,
       isFetchingNextPage: false,
@@ -168,7 +173,7 @@ describe('SelectDataSet', () => {
       id: 'set-1',
       name: 'Dataset One',
     })
-    mockUseInfiniteDatasets.mockReturnValue({
+    mockDatasetsInfiniteQuery.mockReturnValue({
       data: { pages: [{ data: [datasetOne] }] },
       isLoading: false,
       isFetchingNextPage: false,
@@ -201,7 +206,7 @@ describe('SelectDataSet', () => {
       embedding_available: false,
     })
     const onSelect = vi.fn()
-    mockUseInfiniteDatasets.mockReturnValue({
+    mockDatasetsInfiniteQuery.mockReturnValue({
       data: { pages: [{ data: [datasetOne, datasetTwo] }] },
       isLoading: false,
       isFetchingNextPage: false,
@@ -233,7 +238,7 @@ describe('SelectDataSet', () => {
 
   it('should fetch the next page when infinite scroll can continue', async () => {
     const fetchNextPage = vi.fn()
-    mockUseInfiniteDatasets.mockReturnValue({
+    mockDatasetsInfiniteQuery.mockReturnValue({
       data: { pages: [{ data: [makeDataset({ id: 'set-1' })] }] },
       isLoading: false,
       isFetchingNextPage: false,
@@ -257,7 +262,7 @@ describe('SelectDataSet', () => {
 
   it('should skip infinite scroll fetches when a next page is unavailable or already loading', async () => {
     const fetchNextPage = vi.fn()
-    mockUseInfiniteDatasets.mockReturnValue({
+    mockDatasetsInfiniteQuery.mockReturnValue({
       data: { pages: [{ data: [makeDataset({ id: 'set-1' })] }] },
       isLoading: false,
       isFetchingNextPage: true,

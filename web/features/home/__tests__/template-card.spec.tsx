@@ -8,7 +8,6 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import { TemplateCard } from '../template-card'
 
 vi.mock('@/app/components/app/type-selector', () => ({
@@ -37,7 +36,7 @@ const createApp = (overrides: TemplateFixtureOverrides = {}): TemplateFixture =>
   ...overrides,
   app: {
     id: 'id-1',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: null,
     icon: '🤖',
     icon_background: '#fff',
@@ -80,13 +79,13 @@ describe('TemplateCard', () => {
     })
 
     it.each([
-      [AppModeEnum.CHAT, 'APP.TYPES.CHATBOT'],
-      [AppModeEnum.ADVANCED_CHAT, 'APP.TYPES.ADVANCED'],
-      [AppModeEnum.AGENT_CHAT, 'APP.TYPES.AGENT'],
-      [AppModeEnum.AGENT, 'APP.TYPES.AGENT'],
-      [AppModeEnum.WORKFLOW, 'APP.TYPES.WORKFLOW'],
-      [AppModeEnum.COMPLETION, 'APP.TYPES.COMPLETION'],
-    ])('should render correct mode label for %s mode', (mode, label) => {
+      ['chat', 'APP.TYPES.CHATBOT'],
+      ['advanced-chat', 'APP.TYPES.ADVANCED'],
+      ['agent-chat', 'APP.TYPES.AGENT'],
+      ['agent', 'APP.TYPES.AGENT'],
+      ['workflow', 'APP.TYPES.WORKFLOW'],
+      ['completion', 'APP.TYPES.COMPLETION'],
+    ] as const)('should render correct mode label for %s mode', (mode, label) => {
       renderComponent({ app: createApp({ app: { ...createApp().app, mode } }) })
 
       expect(screen.getByText(label)).toBeInTheDocument()
@@ -120,7 +119,7 @@ describe('TemplateCard', () => {
         deploymentEdition = edition
         const templateName = 'An Agent template with a full descriptive name'
         const app = createApp({
-          app: { mode: AppModeEnum.AGENT, name: templateName },
+          app: { mode: 'agent' as const, name: templateName },
           description:
             'A full template description that remains available when visually truncated.',
         })
@@ -144,7 +143,7 @@ describe('TemplateCard', () => {
 
     it('should make the app card clickable on cloud edition', () => {
       renderComponent({
-        app: createApp({ app: { ...createApp().app, mode: AppModeEnum.WORKFLOW } }),
+        app: createApp({ app: { ...createApp().app, mode: 'workflow' as const } }),
         canCreate: true,
       })
 
@@ -192,7 +191,7 @@ describe('TemplateCard', () => {
       (edition, action) => {
         deploymentEdition = edition
         renderComponent({
-          app: createApp({ app: { mode: AppModeEnum.AGENT }, description: '' }),
+          app: createApp({ app: { mode: 'agent' as const }, description: '' }),
           canCreate: true,
         })
 
@@ -242,7 +241,7 @@ describe('TemplateCard', () => {
 
     it.each(['{Enter}', ' '])('opens an Agent template with %s from the keyboard', async (key) => {
       const user = userEvent.setup()
-      const app = createApp({ app: { mode: AppModeEnum.AGENT } })
+      const app = createApp({ app: { mode: 'agent' as const } })
 
       renderComponent({ app, canCreate: true })
 

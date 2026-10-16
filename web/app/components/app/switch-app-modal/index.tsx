@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -30,7 +31,6 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
 type SwitchAppModalProps = {
@@ -98,7 +98,6 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
         },
       })
       onClose()
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       if (removeOriginal)
         await deleteOriginalApp({
           params: { app_id: sourceApp.id },
@@ -106,10 +105,7 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
       getRedirection(
         {
           id: newAppID,
-          mode:
-            sourceApp.mode === AppModeEnum.COMPLETION
-              ? AppModeEnum.WORKFLOW
-              : AppModeEnum.ADVANCED_CHAT,
+          mode: sourceApp.mode === 'completion' ? 'workflow' : 'advanced-chat',
           permission_keys,
         },
         removeOriginal ? replace : push,
@@ -222,14 +218,12 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
       </Dialog>
       <AlertDialog open={showConfirmDelete} onOpenChange={handleConfirmDeleteOpenChange}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

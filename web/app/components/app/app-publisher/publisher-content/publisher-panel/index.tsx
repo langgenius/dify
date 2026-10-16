@@ -1,4 +1,4 @@
-import type { PopoverProps } from '@langgenius/dify-ui/popover'
+import type { PopoverChangeEventDetails } from '@langgenius/dify-ui/popover'
 import type { ComponentProps } from 'react'
 import type { AppPublisherProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -36,7 +36,7 @@ export function PublisherPanel({
   const popupRef = useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['workflow'])
   const [deploymentConfigurationOpen, setDeploymentConfigurationOpen] = useState(false)
-  const handleOpenChange: NonNullable<PopoverProps['onOpenChange']> = (nextOpen, eventDetails) => {
+  const handleOpenChange = (nextOpen: boolean, eventDetails: PopoverChangeEventDetails) => {
     const isOutsideDismiss =
       eventDetails.reason === 'outside-press' || eventDetails.reason === 'focus-out'
     if (!nextOpen && deploymentConfigurationOpen && isOutsideDismiss) {

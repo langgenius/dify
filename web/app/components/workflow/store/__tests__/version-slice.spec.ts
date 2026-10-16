@@ -1,4 +1,4 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
 
 function createStore() {
@@ -42,7 +42,11 @@ describe('Version Slice', () => {
 
     it('should update current version', () => {
       const store = createStore()
-      const version = { hash: 'abc', updated_at: 1000, version: '1.0' } as VersionHistory
+      const version = {
+        hash: 'abc',
+        updated_at: 1000,
+        version: '1.0',
+      } as FetchWorkflowDraftResponse
       store.getState().setCurrentVersion(version)
       expect(store.getState().currentVersion).toEqual(version)
     })

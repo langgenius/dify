@@ -112,7 +112,8 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
 
   const handleError = (e: any, isInstall: boolean) => {
     const message =
-      e?.response?.message || t(($) => $['installModal.installFailedDesc'], { ns: 'plugin' })
+      (e instanceof Error ? e.message : undefined) ||
+      t(($) => $['installModal.installFailedDesc'], { ns: 'plugin' })
     setErrorMsg(message)
     setState((prevState) => ({
       ...prevState,

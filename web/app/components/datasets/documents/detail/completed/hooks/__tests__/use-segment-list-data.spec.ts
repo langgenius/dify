@@ -1,21 +1,21 @@
+import type {
+  ConsoleSegmentListResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
-import type {
-  ChunkingMode,
-  ParentMode,
-  SegmentDetailModel,
-  SegmentsResponse,
-} from '@/models/datasets'
+import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { ChunkingMode as ChunkingModeEnum } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import { segmentImportStatus } from '@/types/dataset'
 import { useSegmentListData } from '../use-segment-list-data'
 
 // Type for mutation callbacks
-type SegmentMutationResponse = { data: SegmentDetailModel }
+type SegmentMutationResponse = { data: SegmentResponse }
 type SegmentMutationCallbacks = {
   onSuccess: (res: SegmentMutationResponse) => void
   onSettled: () => void
@@ -49,10 +49,6 @@ const {
   mockDisableSegment,
   mockDeleteSegment,
   mockUpdateSegment,
-  mockInvalidSegmentList,
-  mockInvalidChunkListAll,
-  mockInvalidChunkListEnabled,
-  mockInvalidChunkListDisabled,
   mockPathname,
 } = vi.hoisted(() => ({
   mockDocForm: { current: 'text' as ChunkingMode },
@@ -61,25 +57,20 @@ const {
   mockDocumentId: { current: 'test-document-id' },
   mockNotify: vi.fn(),
   mockEventEmitter: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
-  mockQueryClient: { setQueryData: vi.fn() },
+  mockQueryClient: { setQueryData: vi.fn(), invalidateQueries: vi.fn() },
   mockSegmentListData: {
     current: {
-      data: [] as SegmentDetailModel[],
+      data: [] as SegmentResponse[],
       total: 0,
       total_pages: 0,
-      has_more: false,
       limit: 20,
       page: 1,
-    } as SegmentsResponse | undefined,
+    } as ConsoleSegmentListResponse | undefined,
   },
   mockEnableSegment: vi.fn(),
   mockDisableSegment: vi.fn(),
   mockDeleteSegment: vi.fn(),
   mockUpdateSegment: vi.fn(),
-  mockInvalidSegmentList: vi.fn(),
-  mockInvalidChunkListAll: vi.fn(),
-  mockInvalidChunkListEnabled: vi.fn(),
-  mockInvalidChunkListDisabled: vi.fn(),
   mockPathname: { current: '/datasets/test/documents/test' },
 }))
 
@@ -87,10 +78,27 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname.current,
 }))
 
-vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual('@tanstack/react-query')
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return {
-    ...actual,
+    ...mockConsoleOperationHooks(await importOriginal(), {
+      'datasets.byDatasetId.documents.byDocumentId.segments.get': () => ({
+        isLoading: false,
+        data: mockSegmentListData.current,
+      }),
+      'datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch': () => ({
+        mutateAsync: (input: { params: { action: string } }, callbacks: unknown) =>
+          input.params.action === 'enable'
+            ? mockEnableSegment(input, callbacks)
+            : mockDisableSegment(input, callbacks),
+      }),
+      'datasets.byDatasetId.documents.byDocumentId.segments.delete': () => ({
+        mutateAsync: mockDeleteSegment,
+      }),
+      'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.patch': () => ({
+        mutateAsync: mockUpdateSegment,
+      }),
+    }),
     useQueryClient: () => mockQueryClient,
   }
 })
@@ -118,30 +126,18 @@ vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
 
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useSegmentList: () => ({
-    isLoading: false,
-    data: mockSegmentListData.current,
-  }),
-  useSegmentListKey: ['segment', 'chunkList'],
-  useChunkListAllKey: ['segment', 'chunkList', { enabled: 'all' }],
-  useChunkListEnabledKey: ['segment', 'chunkList', { enabled: true }],
-  useChunkListDisabledKey: ['segment', 'chunkList', { enabled: false }],
-  useEnableSegment: () => ({ mutateAsync: mockEnableSegment }),
-  useDisableSegment: () => ({ mutateAsync: mockDisableSegment }),
-  useDeleteSegment: () => ({ mutateAsync: mockDeleteSegment }),
-  useUpdateSegment: () => ({ mutateAsync: mockUpdateSegment }),
-}))
+const segmentListsKey = consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+  input: { params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' } },
+})
 
-vi.mock('@/service/use-base', () => ({
-  useInvalid: (key: unknown[]) => {
-    const keyObj = key[2] as { enabled?: boolean | 'all' } | undefined
-    if (keyObj?.enabled === 'all') return mockInvalidChunkListAll
-    if (keyObj?.enabled === true) return mockInvalidChunkListEnabled
-    if (keyObj?.enabled === false) return mockInvalidChunkListDisabled
-    return mockInvalidSegmentList
-  },
-}))
+const expectSegmentListsRefetched = () =>
+  expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: segmentListsKey })
+
+const expectOtherStatusListsMarkedStale = () =>
+  expect(mockQueryClient.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: segmentListsKey,
+    refetchType: 'none',
+  })
 
 const createQueryClient = () =>
   new QueryClient({
@@ -157,7 +153,7 @@ const createWrapper = () => {
     React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const createMockSegment = (overrides: Partial<SegmentDetailModel> = {}): SegmentDetailModel => ({
+const createMockSegment = (overrides: Partial<SegmentResponse> = {}): SegmentResponse => ({
   id: `segment-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   document_id: 'doc-1',
@@ -179,6 +175,9 @@ const createMockSegment = (overrides: Partial<SegmentDetailModel> = {}): Segment
   completed_at: 1700000200,
   error: null,
   stopped_at: 0,
+  answer: null,
+  summary: null,
+  updated_by: null,
   updated_at: 1700000000,
   attachments: [],
   child_chunks: [],
@@ -209,7 +208,6 @@ describe('useSegmentListData', () => {
       data: [],
       total: 0,
       total_pages: 0,
-      has_more: false,
       limit: 20,
       page: 1,
     }
@@ -254,7 +252,6 @@ describe('useSegmentListData', () => {
         data: [],
         total: 10,
         total_pages: 1,
-        has_more: false,
         limit: 20,
         page: 1,
       }
@@ -272,7 +269,6 @@ describe('useSegmentListData', () => {
         data: [],
         total: 5,
         total_pages: 1,
-        has_more: false,
         limit: 20,
         page: 1,
       }
@@ -297,7 +293,6 @@ describe('useSegmentListData', () => {
         data: [],
         total: 3,
         total_pages: 1,
-        has_more: false,
         limit: 20,
         page: 1,
       }
@@ -323,7 +318,6 @@ describe('useSegmentListData', () => {
         data: [],
         total: 7,
         total_pages: 1,
-        has_more: false,
         limit: 20,
         page: 1,
       }
@@ -366,12 +360,12 @@ describe('useSegmentListData', () => {
       })
 
       expect(clearSelection).toHaveBeenCalled()
-      expect(mockInvalidSegmentList).toHaveBeenCalled()
+      expectSegmentListsRefetched()
     })
   })
 
   describe('refreshChunkListWithStatusChanged', () => {
-    it('should invalidate disabled and enabled when status is all', async () => {
+    it('should mark the other status lists stale when status is all', async () => {
       mockEnableSegment.mockImplementation(
         async (_params, { onSuccess }: { onSuccess: () => void }) => {
           onSuccess()
@@ -389,12 +383,15 @@ describe('useSegmentListData', () => {
         },
       )
 
+      mockQueryClient.invalidateQueries.mockClear()
       await act(async () => {
         await result.current.onChangeSwitch(true, 'seg-1')
       })
 
-      expect(mockInvalidChunkListDisabled).toHaveBeenCalled()
-      expect(mockInvalidChunkListEnabled).toHaveBeenCalled()
+      expectOtherStatusListsMarkedStale()
+      expect(mockQueryClient.invalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: segmentListsKey,
+      })
     })
 
     it('should invalidate segment list when status is not all', async () => {
@@ -415,11 +412,12 @@ describe('useSegmentListData', () => {
         },
       )
 
+      mockQueryClient.invalidateQueries.mockClear()
       await act(async () => {
         await result.current.onChangeSwitch(true, 'seg-1')
       })
 
-      expect(mockInvalidSegmentList).toHaveBeenCalled()
+      expectSegmentListsRefetched()
     })
   })
 
@@ -440,10 +438,7 @@ describe('useSegmentListData', () => {
       })
 
       expect(mockEnableSegment).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
+      expect(mockNotify).not.toHaveBeenCalled()
     })
 
     it('should call disableSegment when enable is false', async () => {
@@ -487,9 +482,13 @@ describe('useSegmentListData', () => {
       })
 
       expect(mockEnableSegment).toHaveBeenCalledWith(
-        expect.objectContaining({ segmentIds: ['seg-1', 'seg-2'] }),
+        expect.objectContaining({ query: { segment_id: ['seg-1', 'seg-2'] } }),
         expect.any(Object),
       )
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.actionMsg.modifiedSuccessfully',
+      })
     })
 
     it('should notify error on failure', async () => {
@@ -766,7 +765,6 @@ describe('useSegmentListData', () => {
         data: [],
         total: 10,
         total_pages: 1,
-        has_more: false,
         limit: 20,
         page: 1,
       }
@@ -794,7 +792,6 @@ describe('useSegmentListData', () => {
         data: [],
         total: 5,
         total_pages: 1,
-        has_more: false,
         limit: 20,
         page: 1,
       }
@@ -852,7 +849,7 @@ describe('useSegmentListData', () => {
 
       // Initial call from effect
       expect(clearSelection).toHaveBeenCalled()
-      expect(mockInvalidSegmentList).toHaveBeenCalled()
+      expectSegmentListsRefetched()
     })
   })
 
@@ -900,8 +897,7 @@ describe('useSegmentListData', () => {
         await result.current.handleUpdateSegment('seg-1', 'content', '', [], [])
       })
 
-      expect(mockInvalidChunkListDisabled).toHaveBeenCalled()
-      expect(mockInvalidChunkListEnabled).toHaveBeenCalled()
+      expectOtherStatusListsMarkedStale()
     })
 
     it('should call correct invalidation for status true', async () => {
@@ -927,8 +923,7 @@ describe('useSegmentListData', () => {
         await result.current.handleUpdateSegment('seg-1', 'content', '', [], [])
       })
 
-      expect(mockInvalidChunkListAll).toHaveBeenCalled()
-      expect(mockInvalidChunkListDisabled).toHaveBeenCalled()
+      expectOtherStatusListsMarkedStale()
     })
 
     it('should call correct invalidation for status false', async () => {
@@ -954,8 +949,7 @@ describe('useSegmentListData', () => {
         await result.current.handleUpdateSegment('seg-1', 'content', '', [], [])
       })
 
-      expect(mockInvalidChunkListAll).toHaveBeenCalled()
-      expect(mockInvalidChunkListEnabled).toHaveBeenCalled()
+      expectOtherStatusListsMarkedStale()
     })
   })
 

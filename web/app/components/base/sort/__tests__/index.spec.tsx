@@ -22,7 +22,7 @@ describe('Sort component — real portal integration', () => {
     const getTriggerWrapper = (): HTMLElement => {
       const wrapper = screen.getByRole('button', { name: /appLog\.filter\.sortBy/i })
       if (!wrapper) throw new Error('Trigger wrapper element not found for "Sort by" label')
-      return wrapper as HTMLElement
+      return wrapper
     }
 
     // helper: returns right-side sort button element

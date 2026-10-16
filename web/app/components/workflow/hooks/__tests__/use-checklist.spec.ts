@@ -1,4 +1,7 @@
-import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AgentSoulDifyToolConfig,
+  AppDetailWithSite,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { CommonNodeType, Node } from '../../types'
@@ -10,7 +13,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -54,13 +57,6 @@ vi.mock('reactflow', async () => {
     }),
   }
 })
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolServiceState.buildInTools }),
-  useAllCustomTools: () => ({ data: toolServiceState.customTools }),
-  useAllMCPTools: () => ({ data: toolServiceState.mcpTools }),
-  useAllWorkflowTools: () => ({ data: toolServiceState.workflowTools }),
-}))
 
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
@@ -128,14 +124,10 @@ vi.mock('../../nodes/_base/components/variable/utils', () => ({
   isSpecialVar: () => false,
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const state = { appDetail: { mode: 'workflow' } }
-  return {
-    useStore: {
-      getState: () => state,
-    },
-  }
-})
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 vi.mock('../../datasets-detail-store/store', () => ({
   useDatasetsDetailStore: () => ({}),
@@ -322,12 +314,9 @@ function buildInlineAgentGraph({
     nodes: [startNode, agentNode],
     options: {
       queryClient,
+      resource: { kind: 'app' as const, appId, mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: appId,
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     },
   }
@@ -554,14 +543,14 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    renderWorkflowHook(() =>
-      useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
-    )
+    renderWorkflowHook(() => useChecklist([startNode, llmNode], edges), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     expect(checkValid).toHaveBeenCalledWith(
       expect.objectContaining({ type: BlockEnum.LLM }),
       expect.any(Function),
-      expect.objectContaining({ flowType: FlowType.snippet }),
+      expect.objectContaining({ resourceKind: 'snippet' }),
     )
   })
 
@@ -810,7 +799,7 @@ describe('useChecklist', () => {
 describe('useChecklistBeforePublish', () => {
   it('should reject an invalid legacy Agent instead of throwing when its metadata is hidden', async () => {
     const { nodes, edges } = buildLegacyAgentGraph()
-    rfState.nodes = nodes as unknown as typeof rfState.nodes
+    rfState.nodes = nodes
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
@@ -828,7 +817,7 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      initialStoreState: { nodes },
       hooksStoreProps: {},
     })
 
@@ -841,7 +830,7 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      initialStoreState: { nodes },
       hooksStoreProps: {},
     })
 
@@ -852,18 +841,30 @@ describe('useWorkflowRunValidation', () => {
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const reactQuery = {
     ...actual,
     useQuery: (options: {
       queryKey: OperationKey<
         'query',
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
+      select?: (data: AppDetailWithSite) => unknown
     }) => {
+      if (options.queryKey[0].join('.') === 'console.apps.byAppId.get') {
+        const appDetail = createAppDetailFixture({ mode: 'workflow' as const })
+        return { data: options.select ? options.select(appDetail) : appDetail }
+      }
       if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
         return { data: mockModelProviders }
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
       return { data: [] }
     },
-  }
+  } as typeof actual
+  return mockConsoleOperationHooks(reactQuery, {
+    'workspaces.current.tools.builtin.get': () => ({ data: toolServiceState.buildInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: toolServiceState.customTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: toolServiceState.mcpTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: toolServiceState.workflowTools }),
+  })
 })

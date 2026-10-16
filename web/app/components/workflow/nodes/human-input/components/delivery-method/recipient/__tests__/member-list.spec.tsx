@@ -1,10 +1,10 @@
-import type { Member } from '@/models/common'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import MemberList from '../member-list'
 
-const createMember = (overrides: Partial<Member>): Member => ({
+const createMember = (overrides: Partial<AccountWithRoleResponse>): AccountWithRoleResponse => ({
   id: 'member-1',
   email: 'owner@example.com',
   name: 'Owner',
@@ -13,13 +13,13 @@ const createMember = (overrides: Partial<Member>): Member => ({
   status: 'active',
   role: 'normal',
   roles: [],
-  created_at: '2026-01-01T00:00:00Z',
-  last_active_at: '2026-01-02T00:00:00Z',
-  last_login_at: '2026-01-03T00:00:00Z',
+  created_at: 1767225600,
+  last_active_at: 1767312000,
+  last_login_at: 1767398400,
   ...overrides,
 })
 
-const members: Member[] = [
+const members: AccountWithRoleResponse[] = [
   createMember({}),
   createMember({
     id: 'member-2',
