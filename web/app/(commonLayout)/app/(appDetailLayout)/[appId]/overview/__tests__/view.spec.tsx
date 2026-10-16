@@ -35,8 +35,8 @@ vi.mock('../chart-view', () => ({
   ),
 }))
 
-vi.mock('../tracing/panel', () => ({
-  default: () => <button type="button">tracing</button>,
+vi.mock('@/features/tracing/configuration', () => ({
+  TracingConfiguration: () => <button type="button">tracing</button>,
 }))
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
