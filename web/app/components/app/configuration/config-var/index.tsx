@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
@@ -27,7 +28,6 @@ import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useModalContext } from '@/context/modal-context'
-import { AppModeEnum } from '@/types/app'
 import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -244,7 +244,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     (index: number) => {
       const removeVar = promptVariables[index]
 
-      if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar!.is_context_var) {
+      if (mode === 'completion' && dataSets.length > 0 && removeVar!.is_context_var) {
         showDeleteContextVarModal()
         setRemoveIndex(index)
         return

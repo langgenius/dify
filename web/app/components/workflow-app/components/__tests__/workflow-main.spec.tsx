@@ -1,12 +1,32 @@
-import type { ReactNode } from 'react'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement, ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { renderEditor as renderWithQueryClient } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
+
+let appDetail: AppDetailWithSite
+
+const render = (ui: ReactElement) => {
+  const queryClient = createAccountProfileQueryClient()
+  seedAppDetail(queryClient, appDetail)
+  return renderWithQueryClient(ui, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    wrapper: createQueryClientWrapper(queryClient),
+  })
+}
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
@@ -106,6 +126,8 @@ vi.mock('@/context/workspace-state', async () => {
 })
 
 vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: (selector: (state: { features: { file: { enabled: boolean } } }) => unknown) =>
+    selector({ features: { file: { enabled: true } } }),
   useFeaturesStore: () => ({
     getState: () => ({
       setFeatures: mockSetFeatures,
@@ -279,15 +301,11 @@ vi.mock('@/app/components/workflow', () => ({
   },
 }))
 
-vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: () => ({
     nodes: [{ id: 'start' }],
     nodesMap: { start: { id: 'start' } },
   }),
-}))
-
-vi.mock('../../hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
 }))
 
 vi.mock('../../hooks/use-DSL', () => ({
@@ -302,8 +320,8 @@ vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
   useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
 }))
 
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  useInspectVarsCrud: () => ({
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: () => ({
     hasNodeInspectVars: hookFns.hasNodeInspectVars,
     hasSetInspectVar: hookFns.hasSetInspectVar,
     fetchInspectVarValue: hookFns.fetchInspectVarValue,
@@ -449,7 +467,7 @@ describe('WorkflowMain', () => {
     mockReplaceGraphFromReactFlow.mockReturnValue(true)
     hookFns.doSyncWorkflowDraft.mockResolvedValue({ hash: 'saved-hash', updatedAt: 2 })
     hookFns.handleRefreshWorkflowDraft.mockResolvedValue(true)
-    useAppStore.setState({ appDetail: undefined })
+    appDetail = createAppDetailFixture({ id: 'app-1', mode: 'workflow' as const })
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {
@@ -544,7 +562,7 @@ describe('WorkflowMain', () => {
       exportCheck: hookFns.exportCheck,
       handleExportDSL: hookFns.handleExportDSL,
       fetchInspectVars: hookFns.fetchInspectVars,
-      configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
+      fileSettings: { enabled: true },
     })
   })
 
@@ -591,8 +609,10 @@ describe('WorkflowMain', () => {
   })
 
   it('disables collaboration for view-only apps', () => {
-    useAppStore.setState({
-      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      mode: 'workflow' as const,
+      permission_keys: [AppACLPermission.ViewLayout],
     })
 
     render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)

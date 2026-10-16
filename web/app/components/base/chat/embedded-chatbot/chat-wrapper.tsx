@@ -372,13 +372,7 @@ const ChatWrapper = () => {
           )}
         >
           <div className="flex max-w-180 grow gap-4">
-            <AppIcon
-              size="xl"
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
+            <AppIcon size="xl" icon={appData?.site} />
             <div className="grow rounded-2xl bg-chat-bubble-bg px-4 py-3 body-lg-regular text-text-primary">
               <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
@@ -394,13 +388,7 @@ const ChatWrapper = () => {
           isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
         )}
       >
-        <AppIcon
-          size="xl"
-          iconType={appData?.site.icon_type}
-          icon={appData?.site.icon}
-          background={appData?.site.icon_background}
-          imageUrl={appData?.site.icon_url}
-        />
+        <AppIcon size="xl" icon={appData?.site} />
         <div className="max-w-3xl px-4">
           <Markdown
             className="body-2xl-regular! text-text-tertiary!"

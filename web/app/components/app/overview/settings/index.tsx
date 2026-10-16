@@ -63,7 +63,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 
 type SettingsDialogProps = {
   isChat: boolean
@@ -110,10 +109,10 @@ export type SettingsAppInfo = {
 
 const INPUT_PLACEHOLDER_MAX_LENGTH = 64
 const INPUT_PLACEHOLDER_SUPPORTED_MODES: ReadonlyArray<AppDetailWithSite['mode']> = [
-  AppModeEnum.CHAT,
-  AppModeEnum.AGENT_CHAT,
-  AppModeEnum.ADVANCED_CHAT,
-]
+  'chat',
+  'agent-chat',
+  'advanced-chat',
+] as const
 
 const prefixSettings = 'overview.appInfo.settings'
 type SelectOption = {
@@ -484,12 +483,7 @@ function SettingsForm({
                 </FieldLabel>
                 <Switch
                   readOnly={pending}
-                  disabled={
-                    !(
-                      appInfo.mode === AppModeEnum.WORKFLOW ||
-                      appInfo.mode === AppModeEnum.ADVANCED_CHAT
-                    )
-                  }
+                  disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
                   checked={inputInfo.show_workflow_steps}
                   onCheckedChange={(v) =>
                     setInputInfo((item) => ({ ...item, show_workflow_steps: v }))

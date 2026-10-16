@@ -5,10 +5,6 @@ import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datase
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetCardHeader from '../dataset-card-header'
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
-}))
-
 vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: () => 'High Quality',

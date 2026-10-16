@@ -4,9 +4,7 @@ import RunningTitle from '../running-title'
 let mockIsChatMode = false
 const mockFormatWorkflowRunIdentifier = vi.fn()
 
-vi.mock('../../hooks/use-workflow', () => ({
-  useIsChatMode: () => mockIsChatMode,
-}))
+vi.mock('../../hooks/use-workflow', () => ({}))
 
 vi.mock('../../utils', () => ({
   formatWorkflowRunIdentifier: (finishedAt?: number) => mockFormatWorkflowRunIdentifier(finishedAt),
@@ -58,4 +56,11 @@ describe('RunningTitle', () => {
     expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(undefined)
     expect(container).toHaveTextContent('Test Run (14:30:25)')
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

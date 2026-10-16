@@ -75,22 +75,19 @@ export function IconPicker({ value, onValueChange, children }: IconPickerProps) 
 /** Opens the picker. The caller owns its appearance. */
 export const IconPickerTrigger = DialogTrigger
 
-type IconPickerIconProps = Pick<
-  ComponentProps<typeof AppIcon>,
-  'size' | 'rounded' | 'showEditIcon' | 'innerIcon' | 'className'
->
+type IconPickerIconProps = Pick<ComponentProps<typeof AppIcon>, 'size' | 'shape' | 'className'>
 
 /** Shows the committed icon, usually inside `IconPickerTrigger`. */
 export function IconPickerIcon(props: IconPickerIconProps) {
   const { value } = useIconPicker('IconPickerIcon')
   return (
     <AppIcon
-      decorative
       {...props}
-      iconType={value?.type === 'emoji' ? 'emoji' : 'image'}
-      icon={value?.type === 'emoji' ? value.icon : undefined}
-      background={value?.type === 'emoji' ? value.background : undefined}
-      imageUrl={value && value.type !== 'emoji' ? value.url : undefined}
+      icon={
+        value?.type === 'emoji'
+          ? { icon_type: 'emoji', icon: value.icon, icon_background: value.background }
+          : { icon_type: 'image', icon_url: value?.url }
+      }
     />
   )
 }

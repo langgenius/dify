@@ -1,3 +1,4 @@
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   ChatPromptConfig,
@@ -17,10 +18,10 @@ import {
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { fetchPromptTemplate } from '@/service/debug'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 
 type Param = {
-  appMode?: AppModeEnum
+  appMode?: ConfigurationAppMode
   modelModeType: ModelModeType
   modelName: string
   promptMode: PromptMode
@@ -175,9 +176,7 @@ const useAdvancedPromptConfig = ({
             )
 
           if (
-            [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(
-              appMode,
-            ) &&
+            (appMode === 'agent-chat' || appMode === 'chat') &&
             completionPromptConfig.conversation_histories_role.assistant_prefix &&
             completionPromptConfig.conversation_histories_role.user_prefix
           )

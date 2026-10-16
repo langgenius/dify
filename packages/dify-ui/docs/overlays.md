@@ -33,7 +33,7 @@ The host must establish an isolated stacking context at its application root:
 
 ```tsx
 <body>
-  <div className="isolate h-full">{children}</div>
+  <div className="isolate">{children}</div>
 </body>
 ```
 

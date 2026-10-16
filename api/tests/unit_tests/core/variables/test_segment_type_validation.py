@@ -758,7 +758,7 @@ class TestSegmentTypeValidationIntegration:
             result_first = segment_type.is_valid(valid_value, ArrayValidation.FIRST)
             result_all = segment_type.is_valid(valid_value, ArrayValidation.ALL)
 
-            assert result_none == result_first == result_all == True, (
+            assert result_none == result_first == result_all is True, (
                 f"{segment_type} should ignore array_validation parameter"
             )
 

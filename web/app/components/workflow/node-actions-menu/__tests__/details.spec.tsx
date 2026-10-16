@@ -6,12 +6,11 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useAllWorkflowTools } from '@/service/use-tools'
-import { FlowType } from '@/types/common'
 import { BlockClassification } from '../../block-selector/types'
 import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { NodeActionsDropdown } from '../index'
 
 vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
@@ -46,7 +45,7 @@ vi.mock('../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: vi.fn(),
+
     useNodesReadOnly: vi.fn(),
   }
 })
@@ -80,7 +79,7 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
@@ -151,7 +150,7 @@ describe('node actions menu details', () => {
     >)
     mockUseHooksStore.mockImplementation((selector: any) =>
       selector({
-        configsMap: { flowType: FlowType.appFlow },
+        configsMap: { resourceKind: 'app' },
         accessControl: { canRun: true },
         availableNodesMetaData: {
           nodes: [
@@ -340,4 +339,11 @@ describe('node actions menu details', () => {
     expect(screen.queryByText('workflow.common.copy')).not.toBeInTheDocument()
     expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

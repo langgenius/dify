@@ -1,11 +1,14 @@
-import type { WorkflowFeaturesConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  DraftWorkflowNodeRunPayload,
+  WorkflowFeaturesConfigPayload,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   BlockEnum,
   ConversationVariable,
   EnvironmentVariable,
 } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
-import type { FlowType } from '@/types/common'
 import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
@@ -15,7 +18,6 @@ import type {
 } from '@/types/workflow'
 import { consoleClient } from '@/service/console'
 import { get, post } from './base'
-import { getFlowPrefix } from './utils'
 
 export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
 
@@ -56,32 +58,27 @@ export const fetchNodesDefaultConfigs = (url: string) => {
 }
 
 export const singleNodeRun = (
-  flowType: FlowType,
-  flowId: string,
+  resource: EditorResource,
   nodeId: string,
-  params: object,
+  body: DraftWorkflowNodeRunPayload,
 ) => {
-  return post(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/run`, {
-    body: params,
-  })
-}
-
-export const getIterationSingleNodeRunUrl = (
-  flowType: FlowType,
-  isChatFlow: boolean,
-  flowId: string,
-  nodeId: string,
-) => {
-  return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/iteration/nodes/${nodeId}/run`
-}
-
-export const getLoopSingleNodeRunUrl = (
-  flowType: FlowType,
-  isChatFlow: boolean,
-  flowId: string,
-  nodeId: string,
-) => {
-  return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
+  switch (resource.kind) {
+    case 'app':
+      return consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.run.post({
+        params: { app_id: resource.appId, node_id: nodeId },
+        body,
+      })
+    case 'knowledge-pipeline':
+      return consoleClient.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.run.post({
+        params: { pipeline_id: resource.pipelineId, node_id: nodeId },
+        body,
+      })
+    case 'snippet':
+      return consoleClient.snippets.bySnippetId.workflows.draft.nodes.byNodeId.run.post({
+        params: { snippet_id: resource.snippetId, node_id: nodeId },
+        body,
+      })
+  }
 }
 
 export const stopWorkflowRun = (url: string) => {
@@ -110,27 +107,33 @@ export const fetchCurrentValueOfConversationVariable = ({
   return get<ConversationVariableResponse>(url, { params })
 }
 
-const fetchAllInspectVarsOnePage = async (
-  flowType: FlowType,
-  flowId: string,
-  page: number,
-): Promise<{ total: number; items: VarInInspect[] }> => {
-  return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`, {
-    params: { page, limit: 100 },
-  })
+const fetchAllInspectVarsOnePage = (resource: EditorResource, page: number) => {
+  switch (resource.kind) {
+    case 'app':
+      return consoleClient.apps.byAppId.workflows.draft.variables.get({
+        params: { app_id: resource.appId },
+        query: { page, limit: 100 },
+      })
+    case 'knowledge-pipeline':
+      return consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.get({
+        params: { pipeline_id: resource.pipelineId },
+        query: { page, limit: 100 },
+      })
+    case 'snippet':
+      return consoleClient.snippets.bySnippetId.workflows.draft.variables.get({
+        params: { snippet_id: resource.snippetId },
+        query: { page, limit: 100 },
+      })
+  }
 }
-export const fetchAllInspectVars = async (
-  flowType: FlowType,
-  flowId: string,
-): Promise<VarInInspect[]> => {
-  const res = await fetchAllInspectVarsOnePage(flowType, flowId, 1)
+export const fetchAllInspectVars = async (resource: EditorResource): Promise<VarInInspect[]> => {
+  const res = await fetchAllInspectVarsOnePage(resource, 1)
   const { items, total } = res
-  if (total <= 100) return items
+  if ((total ?? 0) <= 100) return items
 
-  const pageCount = Math.ceil(total / 100)
+  const pageCount = Math.ceil((total ?? 0) / 100)
   const promises = []
-  for (let i = 2; i <= pageCount; i++)
-    promises.push(fetchAllInspectVarsOnePage(flowType, flowId, i))
+  for (let i = 2; i <= pageCount; i++) promises.push(fetchAllInspectVarsOnePage(resource, i))
 
   const restData = await Promise.all(promises)
   restData.forEach(({ items: item }) => {
@@ -139,15 +142,30 @@ export const fetchAllInspectVars = async (
   return items
 }
 
-export const fetchNodeInspectVars = async (
-  flowType: FlowType,
-  flowId: string,
-  nodeId: string,
-): Promise<VarInInspect[]> => {
-  const { items } = (await get(
-    `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`,
-  )) as { items: VarInInspect[] }
-  return items
+export const fetchNodeInspectVars = async (resource: EditorResource, nodeId: string) => {
+  switch (resource.kind) {
+    case 'app': {
+      const { items } =
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.variables.get({
+          params: { app_id: resource.appId, node_id: nodeId },
+        })
+      return items
+    }
+    case 'knowledge-pipeline': {
+      const { items } =
+        await consoleClient.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.variables.get(
+          { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
+        )
+      return items
+    }
+    case 'snippet': {
+      const { items } =
+        await consoleClient.snippets.bySnippetId.workflows.draft.nodes.byNodeId.variables.get({
+          params: { snippet_id: resource.snippetId, node_id: nodeId },
+        })
+      return items
+    }
+  }
 }
 
 export const updateEnvironmentVariables = ({
@@ -157,7 +175,8 @@ export const updateEnvironmentVariables = ({
 }: {
   appId: string
 } & EnvironmentVariablePatch) => {
-  return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
+  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
+    params: { app_id: appId },
     body: {
       environment_variables: environmentVariables,
       patch: true,

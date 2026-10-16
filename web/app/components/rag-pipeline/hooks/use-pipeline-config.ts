@@ -1,13 +1,15 @@
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect } from 'react'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import { useWorkflowConfig } from '@/service/use-workflow'
 
 export const usePipelineConfig = () => {
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const workflowStore = useWorkflowStore()
 
   const handleUpdateNodesDefaultConfigs = useCallback(

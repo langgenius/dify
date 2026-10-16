@@ -38,13 +38,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
         )}
       >
         <div className="flex shrink-0 items-center">
-          <AppIcon
-            size="medium"
-            iconType={iconInfo.icon_type}
-            icon={iconInfo.icon}
-            background={iconInfo.icon_background}
-            imageUrl={iconInfo.icon_url}
-          />
+          <AppIcon size="medium" icon={iconInfo} />
         </div>
         {!expand && <span className="sr-only">{dataset.name}</span>}
         {expand && (

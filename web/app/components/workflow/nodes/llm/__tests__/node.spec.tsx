@@ -2,7 +2,6 @@ import type { LLMNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import Node from '../node'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -24,7 +23,7 @@ const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as LLMNodeType['model'],
   prompt_template: [],
@@ -60,7 +59,7 @@ describe('llm/node', () => {
           model: {
             provider: '',
             name: '',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           } as LLMNodeType['model'],
         })}
@@ -75,7 +74,7 @@ describe('llm/node', () => {
       model: {
         provider: 'anthropic',
         name: 'claude-sonnet',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: {},
       },
       model_selector: ['env', 'for_summarize'],

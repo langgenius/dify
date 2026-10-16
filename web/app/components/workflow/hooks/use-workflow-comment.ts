@@ -4,12 +4,13 @@ import type {
   WorkflowCommentList,
 } from '@/app/components/workflow/comment/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
@@ -34,8 +35,7 @@ const toCommentDetailPreview = (comment: WorkflowCommentList): WorkflowCommentDe
 })
 
 export const useWorkflowComment = () => {
-  const params = useParams()
-  const appId = params.appId as string
+  const appId = useAtomValue(editorAppIdAtom)
   const reactflow = useReactFlow()
   const controlMode = useStore((s) => s.controlMode)
   const pendingComment = useStore((s) => s.pendingComment)
