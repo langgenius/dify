@@ -377,3 +377,122 @@ def test_workflow_recovery_requires_committed_terminal_state(
         assert stored.outer_trace["spans"][0]["outputs"] == {"result": "persisted workflow output"}
     else:
         assert stored.outer_trace is None
+
+
+@pytest.mark.parametrize("formatted", [None, "", " \n\t", "{}", "[]", "null", " { } ", "[\n]", {}, []])
+@pytest.mark.parametrize("capture_content", [False, True])
+def test_early_error_root_preserves_known_query_only_when_content_is_enabled(
+    case: RecoveryCase, formatted: object, capture_content: bool
+) -> None:
+    from sqlalchemy import update
+
+    from models.application_trace import ApplicationTraceRun
+
+    query = "KNOWN_USER_QUERY_BEFORE_FORMATTED_MESSAGE"
+    with case.collection.sessions.begin() as session:
+        # Historical rows can contain JSON strings/lists despite the ORM's dict annotation.
+        session.execute(
+            update(Message.metadata.tables["messages"])
+            .where(Message.id == case.collection.run.source_id)
+            .values(message=formatted, query=query, answer="")
+        )
+        run = session.get(ApplicationTraceRun, case.collection.run.id)
+        assert run is not None
+        run.capture_content = capture_content
+    case.service.capture_agent_app_terminal(
+        tenant_id=case.collection.run.tenant_id,
+        app_id=case.collection.run.app_id,
+        message_id=case.collection.run.source_id,
+        outcome="failed",
+        output=None,
+    )
+    stored = case.collection.repository.get(case.collection.run.id)
+    assert stored is not None
+    trace = CanonicalTrace.model_validate(stored.outer_trace)
+    root = trace.spans[0]
+    assert root.status.value == "error"
+    assert root.metadata["message_execution_state"] == "failed"
+    assert root.inputs == ({"query": query} if capture_content else None)
+    assert root.outputs == ("" if capture_content else None)
+    assembled = case.service.assemble(stored)
+    assert (query in assembled.model_dump_json()) is capture_content
+    assert all(span.inputs is None for span in assembled.spans if span.id != assembled.root_span_id)
+    with case.collection.sessions() as session:
+        message = session.get(Message, case.collection.run.source_id)
+        assert message is not None
+        assert message.message == formatted
+        assert message.query == query
+        assert message.answer == ""
+
+
+@pytest.mark.parametrize(
+    ("formatted", "expected"),
+    [
+        (
+            {"messages": [{"role": "user", "content": "actual formatted input"}]},
+            {"messages": [{"role": "user", "content": "actual formatted input"}]},
+        ),
+        (
+            '{"messages":[{"role":"user","content":"actual formatted input"}]}',
+            {"messages": [{"role": "user", "content": "actual formatted input"}]},
+        ),
+        (
+            [{"role": "user", "content": "actual formatted input"}],
+            [{"role": "user", "content": "actual formatted input"}],
+        ),
+        (
+            '[{"role":"user","content":"actual formatted input"}]',
+            [{"role": "user", "content": "actual formatted input"}],
+        ),
+        ("opaque non-JSON formatted input", "opaque non-JSON formatted input"),
+        ("0", "0"),
+        ("false", "false"),
+    ],
+)
+def test_worker_handoff_never_replaces_existing_formatted_inputs(
+    case: RecoveryCase, formatted: object, expected: object
+) -> None:
+    from sqlalchemy import update
+
+    query = "QUERY_MUST_NOT_REPLACE_FORMATTED_INPUTS"
+    with case.collection.sessions.begin() as session:
+        session.execute(
+            update(Message.metadata.tables["messages"])
+            .where(Message.id == case.collection.run.source_id)
+            .values(message=formatted, query=query, answer="")
+        )
+    case.service.capture_agent_app_terminal(
+        tenant_id=case.collection.run.tenant_id,
+        app_id=case.collection.run.app_id,
+        message_id=case.collection.run.source_id,
+        outcome="failed",
+        output=None,
+    )
+    stored = case.collection.repository.get(case.collection.run.id)
+    assert stored is not None
+    trace = CanonicalTrace.model_validate(stored.outer_trace)
+    assert trace.spans[0].inputs == expected
+    assert query not in trace.model_dump_json()
+    with case.collection.sessions() as session:
+        message = session.get(Message, case.collection.run.source_id)
+        assert message is not None
+        assert message.message == formatted
+
+
+def test_worker_handoff_does_not_invent_input_when_query_is_empty(case: RecoveryCase) -> None:
+    with case.collection.sessions.begin() as session:
+        message = session.get(Message, case.collection.run.source_id)
+        assert message is not None
+        message.message = {}
+        message.query = ""
+        message.answer = ""
+    case.service.capture_agent_app_terminal(
+        tenant_id=case.collection.run.tenant_id,
+        app_id=case.collection.run.app_id,
+        message_id=case.collection.run.source_id,
+        outcome="failed",
+        output=None,
+    )
+    stored = case.collection.repository.get(case.collection.run.id)
+    assert stored is not None
+    assert CanonicalTrace.model_validate(stored.outer_trace).spans[0].inputs == {}
