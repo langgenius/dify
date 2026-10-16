@@ -14,8 +14,10 @@ import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useIsMutating } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
 import { AgentTracePolicy } from './agent-trace-policy'
 import { ProviderConfigModal } from './provider-config-modal'
 import { ProviderPanel } from './provider-panel'
@@ -57,12 +59,26 @@ export function ConfigPopup({
   const chooseProvider = (provider: ConfigurableTracingProvider) =>
     onPolicyChange({ tracing_provider: provider, enabled: true })
   const closeConfig = () => dialogActionsRef.current?.close()
+  const isConfigMutating =
+    useIsMutating({
+      mutationKey:
+        resource.kind === 'agent'
+          ? consoleQuery.agent.byAgentId.traceConfig.key({ type: 'mutation' })
+          : consoleQuery.apps.byAppId.traceConfig.key({ type: 'mutation' }),
+    }) > 0
   const groups = [
     configurableProviders.filter((provider) => !!configs[provider]),
     configurableProviders.filter((provider) => !configs[provider]),
   ]
   return (
-    <Dialog<ConfigurableTracingProvider> actionsRef={dialogActionsRef} disablePointerDismissal>
+    <Dialog<ConfigurableTracingProvider>
+      actionsRef={dialogActionsRef}
+      disablePointerDismissal
+      onOpenChange={(open, details) => {
+        // A closed dialog could not show a failed save or removal; success closes it imperatively.
+        if (!open && isConfigMutating && details.reason !== 'imperative-action') details.cancel()
+      }}
+    >
       {({ payload: provider }) => (
         <>
           <div className="max-h-[min(32rem,calc(100dvh-8rem))] w-105 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
