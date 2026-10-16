@@ -12,13 +12,11 @@ export function AgentTracePolicy({
   agentId,
   policy,
   readOnly,
-  pending,
   onChange,
 }: {
   agentId: string
   policy?: AppTraceResponse
   readOnly: boolean
-  pending: boolean
   onChange: (changes: Partial<AppTracePayload>) => Promise<void>
 }) {
   const { t } = useTranslation(['app', 'common'])
@@ -47,7 +45,6 @@ export function AgentTracePolicy({
         </div>
         <Switch
           readOnly={readOnly}
-          loading={pending}
           checked={policy?.capture_content ?? false}
           onCheckedChange={(capture_content) => {
             void onChange({ capture_content }).catch(() => {})
@@ -71,7 +68,6 @@ export function AgentTracePolicy({
         </div>
         <Switch
           readOnly={readOnly}
-          loading={pending}
           checked={policy?.capture_agent ?? true}
           onCheckedChange={(capture_agent) => {
             void onChange({ capture_agent }).catch(() => {})
