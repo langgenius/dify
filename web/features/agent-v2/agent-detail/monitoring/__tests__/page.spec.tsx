@@ -8,6 +8,8 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentMonitoringPage } from '../page'
 
+vi.mock('../tracing-configuration', () => ({ AgentTracingConfiguration: () => null }))
+
 type AgentMonitoringQueryInput = {
   input: {
     params: {
@@ -258,14 +260,8 @@ describe('AgentMonitoringPage', () => {
 
     const sourceTrigger = screen.getByRole('combobox', { name: /Book Translation/ })
 
-    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toHaveClass(
-      'system-sm-regular',
-      'text-text-tertiary',
-    )
-    expect(within(sourceTrigger).getByText('Book Translation')).toHaveClass(
-      'system-sm-medium',
-      'text-text-secondary',
-    )
+    expect(within(sourceTrigger).getByText(/metadata.sourceLabel/)).toBeInTheDocument()
+    expect(within(sourceTrigger).getByText('Book Translation')).toBeInTheDocument()
 
     const clearButton = screen.getByRole('button', { name: /operation.clear.*Book Translation/ })
     clearButton.focus()

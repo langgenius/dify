@@ -5,10 +5,10 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { TracingConfiguration } from '@/features/tracing/configuration'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import ChartView from './chart-view'
-import TracingPanel from './tracing/panel'
 
 type OverviewViewProps = {
   appId: string
@@ -43,7 +43,7 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
       appMode={appDetail.mode}
       headerRight={
         appACLCapabilities.canConfigureTracing ? (
-          <TracingPanel appId={appId} readOnly={false} />
+          <TracingConfiguration resource={{ kind: 'app', appId }} readOnly={false} />
         ) : null
       }
     />

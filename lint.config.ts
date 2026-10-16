@@ -903,6 +903,17 @@ export const lintConfig = {
             ],
             patterns: [
               {
+                group: [
+                  '@/features/tracing/**',
+                  '**/features/tracing/**',
+                  '../**/tracing/**',
+                  './tracing/**',
+                  '!**/tracing/configuration',
+                ],
+                message:
+                  'Consume tracing through @/features/tracing/configuration; provider forms and metadata are private to the feature.',
+              },
+              {
                 group: ['next/image'],
                 message: 'Do not import next/image. Use native img tags instead.',
               },
@@ -977,6 +988,17 @@ export const lintConfig = {
               },
             ],
             patterns: [
+              {
+                group: [
+                  '@/features/tracing/**',
+                  '**/features/tracing/**',
+                  '../**/tracing/**',
+                  './tracing/**',
+                  '!**/tracing/configuration',
+                ],
+                message:
+                  'Consume tracing through @/features/tracing/configuration; provider forms and metadata are private to the feature.',
+              },
               {
                 group: ['next/image'],
                 message: 'Do not import next/image. Use native img tags instead.',

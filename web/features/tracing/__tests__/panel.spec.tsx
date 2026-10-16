@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
-import Panel from '../panel'
+import { TracingConfiguration as Panel } from '../configuration'
 
 const { request } = vi.hoisted(() => ({
   request:
@@ -51,7 +51,7 @@ function mockServer(configured = true) {
 
 function renderPanel(readOnly = false) {
   const client = createTestQueryClient()
-  const view = render(<Panel appId="app-1" readOnly={readOnly} />, {
+  const view = render(<Panel resource={{ kind: 'app', appId: 'app-1' }} readOnly={readOnly} />, {
     wrapper: createQueryClientWrapper(client),
   })
   return { ...view, client }
@@ -146,13 +146,26 @@ describe('Tracing overview panel', () => {
     await user.click(screen.getByRole('switch'))
     await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
     expect(writes).toEqual([
-      { method: 'POST', body: { enabled: false, tracing_provider: 'langfuse' } },
+      {
+        method: 'POST',
+        body: {
+          capture_agent: true,
+          capture_content: false,
+          enabled: false,
+          tracing_provider: 'langfuse',
+        },
+      },
     ])
     await user.click(screen.getByRole('button', { name: 'app.tracing.langsmith.title' }))
     await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
     expect(writes[1]).toEqual({
       method: 'POST',
-      body: { enabled: true, tracing_provider: 'langsmith' },
+      body: {
+        capture_agent: true,
+        capture_content: false,
+        enabled: true,
+        tracing_provider: 'langsmith',
+      },
     })
 
     request.mockClear()
@@ -188,7 +201,15 @@ describe('Tracing overview panel', () => {
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
     await user.click(screen.getByRole('switch'))
     expect(writes).toEqual([
-      { method: 'POST', body: { enabled: false, tracing_provider: 'langfuse' } },
+      {
+        method: 'POST',
+        body: {
+          capture_agent: true,
+          capture_content: false,
+          enabled: false,
+          tracing_provider: 'langfuse',
+        },
+      },
     ])
   })
 
@@ -208,7 +229,15 @@ describe('Tracing overview panel', () => {
     await user.click(screen.getByRole('button', { name: 'app.tracing.langfuse.title' }))
     await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
     expect(writes).toEqual([
-      { method: 'POST', body: { enabled: true, tracing_provider: 'langfuse' } },
+      {
+        method: 'POST',
+        body: {
+          capture_agent: true,
+          capture_content: false,
+          enabled: true,
+          tracing_provider: 'langfuse',
+        },
+      },
     ])
   })
 
@@ -223,8 +252,8 @@ describe('Tracing overview panel', () => {
     mockServer()
     renderPanel(true)
     await openConfiguredPanel()
-    expect(screen.getByText('app.tracing.langfuse.description')).toBeInTheDocument()
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.getByText('app.tracing.langfuse.title')).toBeInTheDocument()
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
     expect(screen.queryByText('app.tracing.config')).not.toBeInTheDocument()
   })
 
@@ -235,7 +264,15 @@ describe('Tracing overview panel', () => {
     await user.click(screen.getByRole('switch'))
     await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
     expect(writes).toEqual([
-      { method: 'POST', body: { enabled: false, tracing_provider: 'langfuse' } },
+      {
+        method: 'POST',
+        body: {
+          capture_agent: true,
+          capture_content: false,
+          enabled: false,
+          tracing_provider: 'langfuse',
+        },
+      },
     ])
   })
 
@@ -268,7 +305,15 @@ describe('Tracing overview panel', () => {
     await user.keyboard('{Enter}')
     await waitFor(() =>
       expect(writes).toEqual([
-        { method: 'POST', body: { enabled: true, tracing_provider: 'langfuse' } },
+        {
+          method: 'POST',
+          body: {
+            capture_agent: true,
+            capture_content: false,
+            enabled: true,
+            tracing_provider: 'langfuse',
+          },
+        },
       ]),
     )
   })
@@ -298,7 +343,15 @@ describe('Tracing overview panel', () => {
             tracing_config: { ...langfuseConfig, secret_key: 'secret-key' },
           },
         },
-        { method: 'POST', body: { enabled: true, tracing_provider: 'langfuse' } },
+        {
+          method: 'POST',
+          body: {
+            capture_agent: true,
+            capture_content: false,
+            enabled: true,
+            tracing_provider: 'langfuse',
+          },
+        },
       ]),
     )
     await waitFor(() =>
@@ -339,7 +392,7 @@ describe('Tracing overview panel', () => {
     ])
   })
 
-  it('disables tracing after deleting the last selected provider', async () => {
+  it('disables tracing before deleting the last selected provider', async () => {
     const writes = mockServer()
     renderPanel()
     const user = await openConfiguredPanel()
@@ -348,8 +401,16 @@ describe('Tracing overview panel', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await waitFor(() =>
       expect(writes).toEqual([
+        {
+          method: 'POST',
+          body: {
+            capture_agent: true,
+            capture_content: false,
+            enabled: false,
+            tracing_provider: null,
+          },
+        },
         { method: 'DELETE', body: null },
-        { method: 'POST', body: { enabled: false, tracing_provider: null } },
       ]),
     )
     expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
@@ -372,7 +433,7 @@ describe('Tracing overview panel', () => {
       ),
     )
     expect(host).toHaveValue('https://draft.langfuse.com')
-    rerender(<Panel appId="app-2" readOnly={false} />)
+    rerender(<Panel resource={{ kind: 'app', appId: 'app-2' }} readOnly={false} />)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await openConfiguredPanel()
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
