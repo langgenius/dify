@@ -33,8 +33,10 @@ def init_app(app: DifyApp):
 
     # Apply filters to all handlers
     from core.logging.filters import IdentityContextFilter, TraceContextFilter
+    from libs.sensitive_http_telemetry import SensitiveHttpLogFilter
 
     for handler in log_handlers:
+        handler.addFilter(SensitiveHttpLogFilter())
         handler.addFilter(TraceContextFilter())
         handler.addFilter(IdentityContextFilter())
 
