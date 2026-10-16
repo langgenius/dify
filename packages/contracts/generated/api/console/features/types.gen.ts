@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type FeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
   annotation_quota_limit: LimitationModel
   api_rate_limit: Quota
   apps: LimitationModel
