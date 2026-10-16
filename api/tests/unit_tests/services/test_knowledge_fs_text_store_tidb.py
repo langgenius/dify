@@ -1,3 +1,4 @@
+import ssl
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from unittest.mock import patch
@@ -180,10 +181,111 @@ def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(config_over
         assert kwargs["database"] == "ai"
         assert kwargs["autocommit"] is True
         assert kwargs["ssl"].check_hostname
+        assert kwargs["ssl"].verify_mode == ssl.CERT_REQUIRED
+        connect.return_value.cursor.assert_not_called()
         assert _sql_endpoint("cluster-test") == ("tenant.example.test", 4000)
         metadata.assert_called_once()
         connect.return_value.close.assert_called_once()
     _sql_endpoint.cache_clear()
+
+
+@pytest.fixture
+def tenant_binding() -> TidbAuthBinding:
+    return TidbAuthBinding(
+        tenant_id=A,
+        cluster_id="cluster-test",
+        cluster_name="cluster",
+        active=True,
+        status=TidbAuthBindingStatus.ACTIVE,
+        account="test-account",
+        password="test-password",
+    )
+
+
+@pytest.mark.parametrize("database_exists", [False, True])
+def test_first_text_write_initializes_database_without_a_vector_write(
+    tenant_binding: TidbAuthBinding, database_exists: bool
+) -> None:
+    with (
+        patch("services.tidb_binding_service.resolve_tidb_auth_binding", return_value=tenant_binding) as resolver,
+        patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.example.test", 4000)),
+        patch("pymysql.connect") as connect,
+    ):
+        connection = connect.return_value
+
+        def open_connection(**kwargs: object) -> object:
+            if kwargs.get("database") == "ai" and not database_exists:
+                raise pymysql.err.OperationalError(1049, "Unknown database 'ai'")
+            return connection
+
+        def execute(sql: str) -> None:
+            nonlocal database_exists
+            assert sql == "CREATE DATABASE IF NOT EXISTS `ai`"
+            database_exists = True
+
+        def select_database(name: str) -> None:
+            if name != "ai" or not database_exists:
+                raise pymysql.err.OperationalError(1049, "Unknown database")
+
+        connect.side_effect = open_connection
+        connection.cursor.return_value.__enter__.return_value.execute.side_effect = execute
+        connection.select_db.side_effect = select_database
+        store = TidbTextStore.from_tenant(A, allow_create=True)
+
+        assert database_exists
+        assert store.connection is connection
+        resolver.assert_called_once_with(A, allow_create=True)
+        connection.select_db.assert_called_once_with("ai")
+        kwargs = connect.call_args.kwargs
+        assert kwargs["host"] == "tenant.example.test"
+        assert kwargs["user"] == tenant_binding.account
+        assert kwargs["password"] == tenant_binding.password
+        assert kwargs["ssl"].check_hostname
+        assert kwargs["ssl"].verify_mode == ssl.CERT_REQUIRED
+        connection.close.assert_not_called()
+
+
+@pytest.mark.parametrize("stage", ["create", "select"])
+@pytest.mark.parametrize("close_fails", [False, True])
+def test_database_initialization_failure_closes_connection_and_preserves_error(
+    tenant_binding: TidbAuthBinding, stage: str, close_fails: bool
+) -> None:
+    error = pymysql.err.OperationalError(1142, "database permission denied")
+    with (
+        patch("services.tidb_binding_service.resolve_tidb_auth_binding", return_value=tenant_binding),
+        patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.example.test", 4000)),
+        patch("pymysql.connect") as connect,
+    ):
+        connection = connect.return_value
+        if close_fails:
+            connection.close.side_effect = OSError("connection already lost")
+        if stage == "create":
+            connection.cursor.return_value.__enter__.return_value.execute.side_effect = error
+        else:
+            connection.select_db.side_effect = error
+
+        with pytest.raises(pymysql.err.OperationalError) as raised:
+            TidbTextStore.from_tenant(A, allow_create=True)
+
+        assert raised.value is error
+        connection.close.assert_called_once()
+
+
+@pytest.mark.parametrize("allow_create", [False, True])
+def test_database_connection_errors_are_not_retried_or_hidden(
+    tenant_binding: TidbAuthBinding, allow_create: bool
+) -> None:
+    error = pymysql.err.OperationalError(1045, "access denied")
+    with (
+        patch("services.tidb_binding_service.resolve_tidb_auth_binding", return_value=tenant_binding),
+        patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.example.test", 4000)),
+        patch("pymysql.connect", side_effect=error) as connect,
+    ):
+        with pytest.raises(pymysql.err.OperationalError) as raised:
+            TidbTextStore.from_tenant(A, allow_create=allow_create)
+
+        assert raised.value is error
+        connect.assert_called_once()
 
 
 def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(config_overrides: Callable[..., None]) -> None:

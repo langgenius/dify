@@ -7,6 +7,7 @@ credentials are introduced. Original PostgreSQL remains business metadata only.
 """
 
 import ssl
+from contextlib import suppress
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
@@ -54,7 +55,7 @@ class TidbTextStore:
             port=port,
             user=binding.account,
             password=binding.password,
-            database="ai",
+            database=None if allow_create else "ai",
             ssl=ssl.create_default_context(),
             connect_timeout=10,
             read_timeout=120,
@@ -62,6 +63,16 @@ class TidbTextStore:
             autocommit=True,
             charset="utf8mb4",
         )
+        if allow_create:
+            try:
+                # Full-text ingestion must initialize its database independently of vector writes.
+                with connection.cursor() as cursor:
+                    cursor.execute("CREATE DATABASE IF NOT EXISTS `ai`")
+                connection.select_db("ai")
+            except Exception:
+                with suppress(Exception):
+                    connection.close()
+                raise
         return cls(connection)
 
     def close(self) -> None:
