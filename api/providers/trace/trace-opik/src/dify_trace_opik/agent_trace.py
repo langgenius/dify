@@ -7,7 +7,7 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from core.ops.exceptions import RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
-from services.tracing.provider_common import endpoint, finished_at, token_usage, usd_cost, utc
+from services.tracing.provider_common import endpoint, finished_at, json_value, token_usage, usd_cost, utc
 from services.tracing.provider_dispatch import TraceExportRejectedError, TraceExportResult, TraceExportUncertainError
 from services.tracing.sdk_transport import SSRFTransport
 
@@ -17,6 +17,15 @@ def _provider_id(trace_id: str, span_id: str, started_at: datetime) -> str:
 
     seeded = UUID(str(uuid5(NAMESPACE_URL, f"dify:{trace_id}:{span_id}")), version=4)
     return str(uuid4_to_uuid7(utc(started_at), str(seeded)))
+
+
+def _content(value: Any) -> dict[str, Any] | list[dict[str, Any]] | str | None:
+    """Opik accepts objects, object lists and strings, but not every JSON value."""
+    if value is None or isinstance(value, (dict, str)):
+        return value
+    if isinstance(value, list) and all(isinstance(item, dict) for item in value):
+        return value
+    return json_value(value)
 
 
 def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace) -> TraceExportResult:
@@ -60,8 +69,8 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
                     else "general",
                     start_time=utc(span.start_time),
                     end_time=finished_at(span),
-                    input=span.inputs,
-                    output=span.outputs,
+                    input=_content(span.inputs),
+                    output=_content(span.outputs),
                     metadata={
                         **span.metadata,
                         "dify.span.kind": span.kind.value,
@@ -96,8 +105,8 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
                 name=root.name,
                 start_time=utc(root.start_time),
                 end_time=finished_at(root),
-                input=root.inputs,
-                output=root.outputs,
+                input=_content(root.inputs),
+                output=_content(root.outputs),
                 metadata={**root.metadata, "dify.trace_id": trace.trace_id},
                 thread_id=trace.session_id,
                 request_options={"max_retries": 0},
