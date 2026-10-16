@@ -7,12 +7,12 @@ export function SummaryDisclosureTrigger({
   summary,
 }: {
   label: ReactNode
-  summary?: ReactNode
+  summary?: string
 }) {
   return (
     <CollapsibleTrigger className="group flex w-full items-center gap-2 rounded-md py-0.5 text-left system-xs-medium text-text-tertiary hover:text-text-secondary">
       <span className="min-w-0 flex-1">{label}</span>
-      {summary && <span className="shrink-0 system-xs-regular">{summary}</span>}
+      {summary ? <span className="shrink-0 system-xs-regular">{summary}</span> : null}
       <span
         aria-hidden
         className="i-ri-arrow-down-s-line size-4 shrink-0 transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none"
