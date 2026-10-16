@@ -52,8 +52,10 @@ def init_app(app: DifyApp):
         force=True,
     )
 
-    # Disable propagation for noisy loggers to avoid duplicate logs
-    logging.getLogger("sqlalchemy.engine").propagate = False
+    # Keep SQL chatter quiet while routing warnings/errors through protected sinks.
+    sql_logger = logging.getLogger("sqlalchemy.engine")
+    sql_logger.setLevel(logging.WARNING)
+    sql_logger.propagate = True
 
     # Apply timezone if specified (only for text format)
     if dify_config.LOG_OUTPUT_FORMAT == "text":

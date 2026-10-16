@@ -293,18 +293,46 @@ def storage_chunks(content):
 
 @pytest.fixture(autouse=True)
 def telemetry():
-    """Real application telemetry filter on test-owned logging handlers, restored after test."""
+    """Initialize/restore real test-owned sinks and routes, never mock readiness."""
     import logging
 
-    from libs.sensitive_http_telemetry import SensitiveHttpLogFilter
+    from libs.sensitive_http_telemetry import _HTTP_LOGGERS, SensitiveHttpLogFilter
+    from services.dify_builder.native_testing.observation_repository import _EMITTERS
 
-    handlers = list(logging.getLogger().handlers)
+    root = logging.getLogger()
+    original_handlers = root.handlers
+    emitters = _HTTP_LOGGERS + _EMITTERS
+    routes = [
+        logger
+        for name, logger in logging.Logger.manager.loggerDict.copy().items()
+        if isinstance(logger, logging.Logger)
+        and any(
+            name == emitter or name.startswith(emitter + ".") or emitter.startswith(name + ".") for emitter in emitters
+        )
+    ]
+    propagation = {logger: logger.propagate for logger in routes}
+    handlers = {handler for logger in [root, *routes] for handler in logger.handlers}
+    filters = {handler: handler.filters[:] for handler in handlers}
+    owned_handler = None
+    if not original_handlers:
+        owned_handler = logging.NullHandler()
+        root.handlers = [owned_handler]
+        handlers.add(owned_handler)
     filtering = SensitiveHttpLogFilter()
     for handler in handlers:
         handler.addFilter(filtering)
-    yield
-    for handler in handlers:
-        handler.removeFilter(filtering)
+    for logger in routes:
+        logger.propagate = True
+    try:
+        yield
+    finally:
+        for logger, original in propagation.items():
+            logger.propagate = original
+        for handler, original in filters.items():
+            handler.filters = original
+        root.handlers = original_handlers
+        if owned_handler is not None:
+            owned_handler.close()
 
 
 def offloaded(c, row, *, value=None):
@@ -660,3 +688,37 @@ def test_public_native_run_read_wrong_id_refuses_before_sql(case, monkeypatch):
         c.runs.get_native_observation_run(workflow_run_id="foreign-run")
     read.assert_not_called()
     assert c.runs._execution_cache == {}
+
+
+@pytest.mark.parametrize("configuration", ["empty-root", "unfiltered-named-route", "nonpropagating-named-route"])
+def test_test_owned_telemetry_initializes_and_restores_actual_logging_routes(case, monkeypatch, configuration):
+    import logging
+
+    from libs.sensitive_http_telemetry import SensitiveHttpLogFilter
+
+    root = logging.getLogger()
+    route = logging.getLogger("sqlalchemy.engine")
+    if configuration == "empty-root":
+        monkeypatch.setattr(root, "handlers", [])
+    else:
+        handler = logging.NullHandler()
+        if configuration == "nonpropagating-named-route":
+            handler.addFilter(SensitiveHttpLogFilter())
+        monkeypatch.setattr(route, "handlers", [handler])
+        monkeypatch.setattr(route, "propagate", configuration != "nonpropagating-named-route")
+    original_handlers = root.handlers
+    original_route_handlers = route.handlers
+    original_propagation = route.propagate
+    filters = {handler: handler.filters[:] for handler in [*root.handlers, *route.handlers]}
+    setup = telemetry.__wrapped__()
+    next(setup)
+    try:
+        bind(case)
+        assert root.handlers
+        assert not case.guard.failed
+    finally:
+        next(setup, None)
+    assert root.handlers is original_handlers
+    assert route.handlers is original_route_handlers
+    assert route.propagate is original_propagation
+    assert all(handler.filters == expected for handler, expected in filters.items())
