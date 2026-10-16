@@ -300,6 +300,64 @@ def test_execute_evaluation_starts_running_lease_before_work(
     assert execute_running.call_args.args[-1] == lease
 
 
+def test_execute_evaluation_rejects_disabled_knowledge_retrieval_v2_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000053"
+    workflow_version_id = "30000000-0000-0000-0000-000000000004"
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type="apps",
+                target_id="30000000-0000-0000-0000-000000000003",
+                target_workflow_version_id=workflow_version_id,
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.PENDING,
+                total_items=0,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+
+    monkeypatch.setattr(
+        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
+        False,
+    )
+    get_instance = MagicMock()
+    execute_running = MagicMock()
+    monkeypatch.setattr("tasks.evaluation_task.EvaluationManager.get_evaluation_instance", get_instance)
+    monkeypatch.setattr("tasks.evaluation_task._execute_running_evaluation", execute_running)
+    run_data = EvaluationRunData(
+        evaluation_run_id=run_id,
+        tenant_id="30000000-0000-0000-0000-000000000002",
+        target_type="apps",
+        target_id="30000000-0000-0000-0000-000000000003",
+        target_workflow_version_id=workflow_version_id,
+        evaluation_model_provider="",
+        evaluation_model="",
+        default_metrics=[
+            DefaultMetric(
+                metric="context_precision",
+                node_info_list=[
+                    NodeInfo(node_id="retrieval-v2", type="knowledge-retrieval-v2", title="Knowledge Retrieval V2")
+                ],
+            )
+        ],
+        input_list=[],
+    )
+
+    with sqlite_session_factory() as session:
+        with pytest.raises(ValueError, match="knowledge-retrieval-v2.*disabled"):
+            _execute_evaluation(session, run_data, _lease(run_id))
+
+    get_instance.assert_not_called()
+    execute_running.assert_not_called()
+
+
 def test_execute_evaluation_does_not_run_duplicate_delivery(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],

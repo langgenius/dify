@@ -1712,6 +1712,10 @@ class EvaluationConfig(BaseSettings):
         description="Evaluation framework to use.",
         default="none",
     )
+    EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED: bool = Field(
+        description="Whether Knowledge Retrieval v2 workflow nodes can be selected for evaluation.",
+        default=False,
+    )
     EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
         description="Maximum active evaluation runs per tenant.",
         default=3,
