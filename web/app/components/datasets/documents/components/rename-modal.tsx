@@ -53,7 +53,7 @@ const RenameModal: FC<Props> = ({ documentId, datasetId, name, onClose, onSaved 
         if (!open) onClose()
       }}
     >
-      <DialogContent className="overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="overflow-hidden border-none p-6">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
         </DialogTitle>

@@ -97,7 +97,7 @@ const EmailConfigureModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-64px)]! w-180!">
+      <DialogContent className="max-h-[calc(100dvh-64px)] w-180 p-6">
         <DialogClose
           render={
             <IconButton

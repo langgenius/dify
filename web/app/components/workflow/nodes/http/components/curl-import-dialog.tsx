@@ -78,7 +78,7 @@ export function CurlImportDialog({ readOnly, onImport }: CurlImportDialogProps) 
         />
         {label}
       </DialogTrigger>
-      <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
+      <DialogContent className="w-100 max-w-100 overflow-hidden border-none p-4">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['nodes.http.curl.title'], { ns: 'workflowIntegrations' })}
         </DialogTitle>

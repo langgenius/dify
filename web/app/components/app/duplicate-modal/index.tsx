@@ -105,7 +105,7 @@ const DuplicateAppModal = ({
           if (!open) onHide()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! border-none px-8 text-left align-middle">
+        <DialogContent className="w-full max-w-120 overflow-hidden border-none px-8 py-6">
           <IconButton
             size="lg"
             className="absolute top-4 right-4"

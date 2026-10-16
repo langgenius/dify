@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 
@@ -16,7 +15,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
 
   return (
     <Dialog open={show} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} className={cn('w-150! max-w-150! p-8!')}>
+      <DialogContent backdropProps={{ forceRender: true }} className="w-150 max-w-150 p-8">
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}

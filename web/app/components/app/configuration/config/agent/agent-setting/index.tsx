@@ -44,7 +44,7 @@ export function AgentSettingDialog({ disabled, onSave, ...props }: Props) {
         <span aria-hidden className="i-ri-settings-2-line size-4 text-text-tertiary" />
         {t(($) => $['agent.setting.name'])}
       </DialogTrigger>
-      <DialogContent className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-160 max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl p-0">
+      <DialogContent className="top-2 right-2 bottom-2 left-auto flex h-auto max-h-none w-160 max-w-[calc(100vw-1rem)] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-xl">
         <AgentSettingsForm
           {...props}
           onSave={(payload) => {

@@ -37,7 +37,7 @@ const OAuthVisibilityDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={loading}>
-      <DialogContent className="w-120! max-w-[calc(100vw-2rem)]! p-0!">
+      <DialogContent>
         <div className="flex flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">

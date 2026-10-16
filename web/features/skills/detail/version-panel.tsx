@@ -344,7 +344,7 @@ function VersionRow({
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
+        <DialogContent className="w-full max-w-120 overflow-hidden border-none">
           <DialogClose
             render={
               <IconButton

@@ -148,7 +148,7 @@ const UpdatePluginModal = ({
     <Dialog open onOpenChange={() => onCancel()}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('min-w-140', doShowDowngradeWarningModal && 'min-w-160')}
+        className={cn('min-w-140 p-6', doShowDowngradeWarningModal && 'min-w-160')}
       >
         <DialogClose
           render={

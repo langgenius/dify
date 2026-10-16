@@ -79,7 +79,7 @@ export function UpdateSettingDialog({ category }: Props) {
           </Button>
         }
       />
-      <DialogContent className="flex w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+      <DialogContent className="flex max-w-[calc(100vw-32px)] flex-col overflow-hidden">
         <div className="relative flex w-full items-start gap-2 px-6 pt-6 pr-14 pb-3">
           <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
             {t(($) => $['autoUpdate.autoUpdateSettings'], { ns: 'plugin' })}

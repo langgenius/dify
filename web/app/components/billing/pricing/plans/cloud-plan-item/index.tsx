@@ -230,7 +230,7 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
       </div>
       <CloudPlanFeatures plan={plan} />
       <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
-        <DialogContent backdropProps={{ forceRender: true }} className="w-130">
+        <DialogContent backdropProps={{ forceRender: true }} className="w-130 p-6">
           <DialogClose
             render={
               <IconButton

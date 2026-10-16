@@ -65,7 +65,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
       }}
     >
       <DialogContent
-        className="flex h-[85vh] w-140 flex-col overflow-hidden p-0"
+        className="flex h-[85vh] w-140 flex-col overflow-hidden"
         backdropProps={{ forceRender: true }}
       >
         <div className="relative shrink-0 px-6 pt-6 pb-4">

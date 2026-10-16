@@ -57,7 +57,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
         if (!open) onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }}>
+      <DialogContent className="p-6" backdropProps={{ forceRender: true }}>
         <DialogClose
           render={
             <IconButton

@@ -231,7 +231,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+        <DialogContent className="w-full max-w-120 overflow-hidden">
           <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $.importDialogTitle, { ns: 'snippet' })}

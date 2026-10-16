@@ -77,7 +77,7 @@ export function ParameterDialog(props: Props) {
           </IconButton>
         }
       />
-      <DialogContent className="w-100! max-w-100! overflow-hidden! border-none p-4! text-left align-middle">
+      <DialogContent className="w-100 max-w-100 overflow-hidden border-none p-4">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">{triggerLabel}</DialogTitle>
         <ParameterForm {...props} onSaved={() => actionsRef.current?.close()} />
       </DialogContent>

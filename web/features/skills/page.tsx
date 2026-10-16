@@ -1238,7 +1238,7 @@ export default function SkillsPage() {
           if (!importMutation.isPending) setImportOpen(open)
         }}
       >
-        <DialogContent className="p-0">
+        <DialogContent>
           <ImportSkillDialogForm importing={importMutation.isPending} onImport={handleImport} />
         </DialogContent>
       </Dialog>

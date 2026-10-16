@@ -189,7 +189,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-105! p-6!">
+      <DialogContent className="w-105 p-6">
         <form
           onSubmit={(event) => {
             event.preventDefault()

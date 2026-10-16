@@ -190,7 +190,7 @@ export function ChangePasswordDialog({ isPasswordSet }: { isPasswordSet: boolean
           ? t(($) => $['account.resetPassword'], { ns: 'accountSettings' })
           : t(($) => $['account.setPassword'], { ns: 'accountSettings' })}
       </DialogTrigger>
-      <DialogContent className="w-105! p-6!">
+      <DialogContent className="w-105 p-6">
         <ChangePasswordForm
           isPasswordSet={isPasswordSet}
           isPending={updatePassword.isPending}

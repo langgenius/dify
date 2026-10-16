@@ -31,7 +31,7 @@ const BatchModalContent: FC<BatchModalContentProps> = ({ docForm, onCancel, onCo
   }
 
   return (
-    <DialogContent className="w-130! overflow-hidden! rounded-xl! border-0! px-8 py-6">
+    <DialogContent className="w-130 overflow-hidden rounded-xl border-0 px-8 py-6">
       <DialogTitle className="relative pb-1 text-xl leading-7.5 font-medium text-text-primary">
         {t(($) => $['list.batchModal.title'], { ns: 'datasetDocuments' })}
       </DialogTitle>

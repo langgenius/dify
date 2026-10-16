@@ -37,7 +37,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           if (!open) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
+        <DialogContent className="w-full max-w-120 overflow-hidden border-none p-6">
           <div className="mb-3 flex items-center justify-between">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['common.importDSL'], { ns: 'workflow' })}

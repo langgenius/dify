@@ -43,7 +43,7 @@ const PluginMutationModal: FC<Props> = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-full min-w-140 overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full min-w-140 overflow-hidden border-none p-6">
         <DialogClose
           render={
             <IconButton

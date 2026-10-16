@@ -28,7 +28,7 @@ export function ApiKeyDialogContent({
 }: ApiKeyDialogContentProps) {
   const { t } = useTranslation(['appApi', 'common'])
   return (
-    <DialogContent finalFocus={finalFocus} className="flex w-200 flex-col overflow-hidden p-0">
+    <DialogContent finalFocus={finalFocus} className="flex w-200 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pr-14 pb-4">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['apiKeyModal.apiSecretKey'])}

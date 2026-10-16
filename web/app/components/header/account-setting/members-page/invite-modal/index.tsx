@@ -195,7 +195,7 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
       }}
     >
       <DialogTrigger render={<InviteButton />} />
-      <DialogContent backdropProps={{ forceRender: true }}>
+      <DialogContent className="p-6" backdropProps={{ forceRender: true }}>
         <div className="grid gap-1 pr-8">
           <DialogTitle className="text-xl font-semibold text-text-primary">
             {t(($) => $['members.inviteTeamMember'], { ns: 'workspaceMembers' })}

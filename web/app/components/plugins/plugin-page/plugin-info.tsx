@@ -25,7 +25,7 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-120 overflow-hidden border-none p-6">
         <DialogClose
           render={
             <IconButton

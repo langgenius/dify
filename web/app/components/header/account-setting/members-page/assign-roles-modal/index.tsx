@@ -58,7 +58,7 @@ const AssignRolesModalBody = ({
 
   return (
     <DialogContent
-      className="flex h-121 w-120 flex-col overflow-hidden p-0"
+      className="flex h-121 flex-col overflow-hidden"
       backdropProps={{ forceRender: true }}
     >
       <div className="relative shrink-0 px-6 pt-6 pb-4">

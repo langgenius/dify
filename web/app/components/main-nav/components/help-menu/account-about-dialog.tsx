@@ -28,7 +28,7 @@ export default function AccountAboutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 text-left">
+      <DialogContent className="overflow-hidden">
         <DialogTitle className="sr-only">
           {t(($) => $['userProfile.about'], { ns: 'common' })}
         </DialogTitle>

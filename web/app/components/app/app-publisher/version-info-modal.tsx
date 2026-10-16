@@ -73,7 +73,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-120 overflow-hidden! border-none p-0 text-left align-middle">
+      <DialogContent className="w-full max-w-120 overflow-hidden border-none">
         <div className="relative w-full p-6 pr-14 pb-4">
           <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
             {versionInfo?.marked_name

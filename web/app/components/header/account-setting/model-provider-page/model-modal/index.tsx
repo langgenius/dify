@@ -312,7 +312,7 @@ const ModelModal: FC<ModelModalProps> = ({
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="flex w-160 max-w-160 flex-col overflow-hidden p-0"
+        className="flex w-160 max-w-160 flex-col overflow-hidden"
       >
         <DialogClose
           render={

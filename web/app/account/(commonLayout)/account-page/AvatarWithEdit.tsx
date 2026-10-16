@@ -130,7 +130,7 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
         open={isShowAvatarPicker}
         onOpenChange={(open) => !open && setIsShowAvatarPicker(false)}
       >
-        <DialogContent className="w-90.5! p-0!">
+        <DialogContent className="w-90.5">
           <DialogTitle className="sr-only">
             {t(($) => $['avatar.editAction'], { ns: 'common' })}
           </DialogTitle>
@@ -164,7 +164,7 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
         open={isShowDeleteConfirm}
         onOpenChange={(open) => !open && setIsShowDeleteConfirm(false)}
       >
-        <DialogContent className="w-90.5! p-6!">
+        <DialogContent className="w-90.5 p-6">
           <DialogTitle className="mb-3 title-2xl-semi-bold text-text-primary">
             {t(($) => $['avatar.deleteTitle'], { ns: 'common' })}
           </DialogTitle>

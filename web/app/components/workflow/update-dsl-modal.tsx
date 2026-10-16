@@ -193,7 +193,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           if (!open && !isImporting) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
+        <DialogContent className="w-full max-w-120 overflow-hidden border-none p-6">
           <div className="mb-3 flex items-center justify-between">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $.importApp, { ns: 'app' })}
@@ -269,7 +269,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           if (!open && !isImporting) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
+        <DialogContent className="w-full max-w-120 overflow-hidden border-none p-6">
           <div className="flex flex-col items-start gap-2 self-stretch pb-4">
             <div className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}

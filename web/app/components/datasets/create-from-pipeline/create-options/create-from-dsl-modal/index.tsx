@@ -53,7 +53,7 @@ const CreateFromDSLModal = ({
   return (
     <>
       <Dialog open={show} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+        <DialogContent className="w-full max-w-120 overflow-hidden">
           <div className="relative flex items-center justify-between pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $.importFromDSL, { ns: 'app' })}

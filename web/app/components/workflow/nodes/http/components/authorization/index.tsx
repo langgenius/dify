@@ -278,7 +278,7 @@ export function AuthorizationDialog({
         />
         {label}
       </DialogTrigger>
-      <DialogContent className="border-none text-left align-middle">
+      <DialogContent className="border-none p-6">
         <AuthorizationForm
           nodeId={nodeId}
           payload={payload}

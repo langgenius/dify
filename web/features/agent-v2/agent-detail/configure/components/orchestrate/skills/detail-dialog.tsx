@@ -353,7 +353,7 @@ export function AgentSkillDetailDialog({
   return (
     <DialogContent
       backdropProps={{ forceRender: true, className: 'fixed' }}
-      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0"
+      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden"
     >
       <div
         className={cn(

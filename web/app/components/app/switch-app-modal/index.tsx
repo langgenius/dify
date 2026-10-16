@@ -13,7 +13,6 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -125,12 +124,7 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
   return (
     <>
       <Dialog open={show}>
-        <DialogContent
-          className={cn(
-            'w-full overflow-hidden! border-none text-left align-middle',
-            cn('w-150 max-w-150 p-8'),
-          )}
-        >
+        <DialogContent className="w-150 max-w-150 overflow-hidden border-none p-8">
           <button
             type="button"
             className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"

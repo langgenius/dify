@@ -494,7 +494,7 @@ const EmailSenderContent = ({
 const EmailSenderModal = ({ open, onOpenChange, ...props }: EmailSenderModalProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
-      <DialogContent>
+      <DialogContent className="p-6">
         <EmailSenderContent {...props} onOpenChange={onOpenChange} />
       </DialogContent>
     </Dialog>

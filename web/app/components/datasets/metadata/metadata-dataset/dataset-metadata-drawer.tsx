@@ -306,7 +306,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                       if (!open) setIsShowRenameModal(false)
                     }}
                   >
-                    <DialogContent className="overflow-hidden! border-none text-left align-middle">
+                    <DialogContent className="overflow-hidden border-none p-6">
                       <DialogTitle className="title-2xl-semi-bold text-text-primary">
                         {t(($) => $[`${i18nPrefix}.rename`], { ns: 'dataset' })}
                       </DialogTitle>

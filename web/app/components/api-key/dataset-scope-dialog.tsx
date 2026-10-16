@@ -59,7 +59,7 @@ export function DatasetScopeDialog({
       <DialogContent
         finalFocus={finalFocus}
         backdropProps={{ forceRender: true }}
-        className="flex w-140 flex-col overflow-hidden p-0"
+        className="flex w-140 flex-col overflow-hidden"
       >
         <DatasetScopeContent {...props} />
       </DialogContent>

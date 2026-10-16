@@ -73,7 +73,7 @@ export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDi
       <DialogContent
         finalFocus={triggerRef}
         className={cn(
-          'max-h-[calc(100dvh-2rem)] min-w-0 overflow-y-auto! border-none p-6 text-left align-middle',
+          'max-h-[calc(100dvh-2rem)] min-w-0 border-none p-6',
           isParentChildRetrieval ? 'w-300' : 'w-200',
         )}
       >

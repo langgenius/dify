@@ -49,7 +49,7 @@ export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExter
         </span>
         <ResultItemFooter docType={FileAppearanceTypeEnum.custom} docTitle={title} />
       </DialogTrigger>
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-0 flex-col overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-full min-w-0 flex-col overflow-hidden border-none p-6">
         <DialogClose
           render={
             <IconButton

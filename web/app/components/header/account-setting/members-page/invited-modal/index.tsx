@@ -51,7 +51,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
         if (!open) onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
+      <DialogContent backdropProps={{ forceRender: true }} className="p-8">
         <DialogClose
           render={
             <IconButton

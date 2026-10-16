@@ -97,7 +97,7 @@ export const Default: Story = {
             </IconButton>
           }
         />
-        <div className="flex flex-col gap-2 pr-8">
+        <div className="flex flex-col gap-2 ps-6 pe-14 pt-6">
           <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
             Invite collaborators
           </DialogTitle>
@@ -105,13 +105,13 @@ export const Default: Story = {
             Add teammates by email to share this workspace. They will receive an invitation link.
           </DialogDescription>
         </div>
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="flex flex-col gap-2 px-6 pt-5">
           <label className="text-xs font-medium text-text-tertiary" htmlFor="invite-email">
             Email address
           </label>
           <Input id="invite-email" type="email" placeholder="teammate@example.com" />
         </div>
-        <div className="mt-6 flex items-center justify-end">
+        <div className="flex items-center justify-end p-6">
           <Button variant="primary">Send invite</Button>
         </div>
       </DialogContent>
@@ -142,7 +142,7 @@ export const WithoutCloseButton: Story = {
     <Dialog>
       <DialogTrigger render={<Button />}>Start onboarding</DialogTrigger>
       <DialogContent>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 px-6 pt-6">
           <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
             Welcome to Dify
           </DialogTitle>
@@ -151,7 +151,7 @@ export const WithoutCloseButton: Story = {
             models, datasets, and API keys.
           </DialogDescription>
         </div>
-        <div className="mt-6 flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 p-6">
           <Button variant="secondary">Skip for now</Button>
           <Button variant="primary">Start setup</Button>
         </div>
@@ -178,7 +178,7 @@ function ControlledDemo() {
               </IconButton>
             }
           />
-          <div className="flex flex-col gap-2 pr-8">
+          <div className="flex flex-col gap-2 ps-6 pe-14 pt-6">
             <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
               Rename workspace
             </DialogTitle>
@@ -186,8 +186,10 @@ function ControlledDemo() {
               The workspace URL will stay the same, but the display name updates everywhere.
             </DialogDescription>
           </div>
-          <Input type="text" defaultValue="Acme Workspace" className="mt-4" />
-          <div className="mt-6 flex items-center justify-end gap-2">
+          <div className="px-6 pt-4">
+            <Input type="text" defaultValue="Acme Workspace" />
+          </div>
+          <div className="flex items-center justify-end gap-2 p-6">
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
@@ -247,7 +249,7 @@ function DetachedTriggersDemo() {
                 </IconButton>
               }
             />
-            <div className="grid gap-2 pr-8">
+            <div className="grid gap-2 p-6 pe-14">
               <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
                 {payload ? `Edit ${payload.name}` : 'Edit workspace'}
               </DialogTitle>

@@ -72,7 +72,7 @@ export function StructureOutput({ className, value, onChange, readOnly }: Props)
       {!readOnly && (
         <Dialog handle={dialogHandle}>
           <DialogContent
-            className="h-[calc(100dvh-32px)] max-h-200 w-full max-w-240 overflow-hidden! border-none p-0 text-left align-middle"
+            className="h-[calc(100dvh-32px)] max-h-200 w-full max-w-240 overflow-hidden border-none"
             finalFocus={hasSchema ? configureButtonRef : undefined}
           >
             <JsonSchemaConfig defaultSchema={value?.schema} onSave={handleChange} />

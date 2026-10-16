@@ -623,7 +623,7 @@ describe('ConfigModal', () => {
     const dialog = screen.getByRole('dialog')
     const scrollArea = screen.getByTestId('config-modal-scroll-area')
 
-    expect(dialog).toHaveClass('overflow-hidden!')
+    expect(dialog).toHaveClass('overflow-hidden')
     expect(scrollArea).toHaveClass('overflow-y-auto')
     expect(scrollArea).toHaveClass('overflow-x-hidden')
   })

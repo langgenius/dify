@@ -134,7 +134,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-160! overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-160 overflow-hidden border-none p-6">
         <DialogClose
           render={
             <IconButton

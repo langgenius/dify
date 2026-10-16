@@ -112,7 +112,7 @@ const MemberDetailsModal = ({
           if (!next) onClose()
         }}
       >
-        <DialogContent className="w-110 overflow-visible p-0" backdropProps={{ forceRender: true }}>
+        <DialogContent className="w-110 overflow-visible" backdropProps={{ forceRender: true }}>
           <div className="relative px-6 pt-6 pb-5">
             <DialogClose
               render={

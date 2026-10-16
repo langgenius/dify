@@ -79,7 +79,7 @@ const PermissionSetModalBody = ({
 
   return (
     <DialogContent
-      className="flex h-[85vh] w-140 flex-col overflow-hidden p-0"
+      className="flex h-[85vh] w-140 flex-col overflow-hidden"
       backdropProps={{ forceRender: true }}
     >
       <form

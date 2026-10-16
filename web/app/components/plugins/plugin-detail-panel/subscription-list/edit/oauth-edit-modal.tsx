@@ -167,7 +167,7 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
         if (!open) onClose()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="p-0">
+      <DialogContent backdropProps={{ forceRender: true }}>
         <div
           data-testid="modal"
           data-title={title}

@@ -103,7 +103,7 @@ function TryApp({
     >
       <DialogContent
         initialFocus={detailTabRef}
-        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] overflow-hidden border-none p-2 text-left align-middle"
+        className="h-[calc(100dvh-16px)] max-h-[calc(100dvh-16px)] w-full max-w-[calc(100vw-16px)] overflow-hidden border-none p-2"
       >
         <DialogTitle className="sr-only">
           {templateName ?? appDetail?.name ?? t(($) => $['apps.title'], { ns: 'explore' })}

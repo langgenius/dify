@@ -152,7 +152,7 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
         <DialogContent
           initialFocus={nameInputRef}
-          className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!"
+          className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden"
         >
           <DialogClose
             disabled={duplicateAgentMutation.isPending}

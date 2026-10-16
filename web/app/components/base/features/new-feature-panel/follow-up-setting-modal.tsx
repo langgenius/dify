@@ -85,7 +85,7 @@ export function FollowUpSettingsDialog({ data, onSave, disabled }: FollowUpSetti
           {t(($) => $['operation.settings'], { ns: 'common' })}
         </DialogTrigger>
       </div>
-      <DialogContent className="w-160! max-w-none! p-8! pb-6!">
+      <DialogContent className="w-160 max-w-none p-8 pb-6">
         <FollowUpSettingsForm
           data={data}
           onSave={(value) => {

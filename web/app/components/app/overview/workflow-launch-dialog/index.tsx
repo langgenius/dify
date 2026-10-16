@@ -93,7 +93,7 @@ export function WorkflowLaunchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-140! max-w-[calc(100vw-2rem)]! p-0!">
+      <DialogContent className="w-140">
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['overview.appInfo.workflowLaunchHiddenInputs.title'], {

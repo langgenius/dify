@@ -266,7 +266,7 @@ const OpeningSettingModal = ({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()} disablePointerDismissal>
-      <DialogContent className="mt-14 w-160 max-w-none rounded-2xl bg-components-panel-bg-blur p-6">
+      <DialogContent className="mt-14 w-160 max-w-none bg-components-panel-bg-blur p-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['feature.conversationOpener.title'], { ns: 'appDebug' })}

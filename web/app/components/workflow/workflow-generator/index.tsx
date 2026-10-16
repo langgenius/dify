@@ -591,7 +591,7 @@ function WorkflowGeneratorModal() {
     >
       <DialogContent
         initialFocus={instructionRef}
-        className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-285! min-w-0 overflow-hidden! border-none p-0! text-left align-middle"
+        className="h-[min(680px,calc(100dvh-2rem))] max-h-none w-[calc(100vw-2rem)] max-w-285 min-w-0 overflow-hidden border-none"
       >
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}

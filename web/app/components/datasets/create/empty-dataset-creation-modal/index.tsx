@@ -63,7 +63,7 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-130! overflow-hidden! border-none px-8 text-left align-middle">
+      <DialogContent className="w-full max-w-130 overflow-hidden border-none px-8 py-6">
         <div className={s.modalHeader}>
           <DialogTitle className={s.title}>
             {t(($) => $['stepOne.modal.title'], { ns: 'datasetCreation' })}

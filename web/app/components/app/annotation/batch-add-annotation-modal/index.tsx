@@ -100,7 +100,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
 
   return (
     <Dialog open={isShow}>
-      <DialogContent className="w-full max-w-130! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
+      <DialogContent className="w-full max-w-130 overflow-hidden rounded-xl border-none px-8 py-6">
         <div className="relative pb-1 system-xl-medium text-text-primary">
           {t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}
         </div>

@@ -169,7 +169,7 @@ export function SkillUploadReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
+      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden">
         <DialogClose
           render={
             <IconButton
@@ -249,7 +249,7 @@ export function SkillUploadFailuresDialog({
   const retryableItems = failedItems.filter((item) => item.failureKind !== 'conflict')
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onDismiss()}>
-      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
+      <DialogContent className="w-150 max-w-[calc(100vw-32px)] overflow-hidden">
         <DialogClose
           render={
             <IconButton

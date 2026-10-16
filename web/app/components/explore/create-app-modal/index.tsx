@@ -200,7 +200,7 @@ const CreateAppModal = ({
             handleSubmit()
           }}
           backdropProps={{ forceRender: true }}
-          className="px-8"
+          className="px-8 py-6"
         >
           <DialogClose
             render={

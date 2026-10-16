@@ -469,7 +469,7 @@ function Operation({
           <DialogContent
             finalFocus={feedbackRef}
             backdropProps={{ forceRender: true }}
-            className="p-0"
+           
           >
             <FeedbackForm isSubmitting={isSubmittingFeedback} onSubmit={handleFeedbackSubmit} />
           </DialogContent>

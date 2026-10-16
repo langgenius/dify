@@ -98,7 +98,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-130 overflow-hidden! rounded-xl border-none px-8 py-6 text-left align-middle">
+      <DialogContent className="w-full max-w-130 overflow-hidden rounded-xl border-none px-8 py-6">
         <form
           onSubmit={(event) => {
             event.preventDefault()
