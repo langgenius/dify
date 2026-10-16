@@ -1,8 +1,8 @@
-import type { StartNodeType } from '../nodes/start/types'
+import type { Node } from '../types'
 import type { RunAndHistoryProps } from './run-and-history'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback } from 'react'
-import { useNodes } from 'reactflow'
+import { useStoreApi } from 'reactflow'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
 import { useHooksStore } from '../hooks-store'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
@@ -35,6 +35,7 @@ export type HeaderInNormalProps = {
 }
 const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
+  const canvasStore = useStoreApi()
   const { nodesReadOnly } = useNodesReadOnly()
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
@@ -46,8 +47,6 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
   const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
-  const nodes = useNodes<StartNodeType>()
-  const selectedNode = nodes.find((node) => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
   const showEnvButton = controls?.showEnvButton !== false
@@ -59,6 +58,9 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     !!components?.chatVariableTrigger || showEnvButton || showGlobalVariableButton
 
   const onStartRestoring = useCallback(() => {
+    const selectedNode = (canvasStore.getState().getNodes() as Node[]).find(
+      (node) => node.data.selected,
+    )
     workflowStore.setState({ isRestoring: true })
     handleBackupDraft()
     // clear right panel
@@ -73,8 +75,8 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     closeAllInputFieldPanels()
   }, [
     workflowStore,
+    canvasStore,
     handleBackupDraft,
-    selectedNode,
     handleNodeSelect,
     setShowWorkflowVersionHistoryPanel,
     setShowEnvPanel,

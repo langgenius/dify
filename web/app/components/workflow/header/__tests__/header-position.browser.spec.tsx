@@ -12,7 +12,11 @@ import 'reactflow/dist/style.css'
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: workflow } = await import('@/i18n/locales/en-US/workflow.json')
-  return createReactI18nextMock(workflow)
+  const { default: difyBuilder } = await import('@/i18n/locales/en-US/dify-builder.json')
+  return createReactI18nextMock({
+    ...workflow,
+    'difyBuilder.buttonTooltip': difyBuilder.buttonTooltip,
+  })
 })
 
 vi.mock('../../hooks/use-workflow', () => ({
@@ -101,7 +105,7 @@ describe('Workflow header positioning', () => {
 
       store.getState().setPublishedAt(Date.UTC(2026, 8, 11, 2, 19, 12) / 1000)
       store.getState().setIsSyncingWorkflowDraft(true)
-      await expect.element(status).toHaveTextContent('Syncing data')
+      await expect.element(status).toMatchTextContent(/Syncing data/)
       const statusText = document.createRange()
       statusText.selectNodeContents(status.element())
       expect(navigation.element().getBoundingClientRect().x).toBe(initial.x)
@@ -111,7 +115,7 @@ describe('Workflow header positioning', () => {
 
       store.getState().setDraftUpdatedAt(Date.UTC(2026, 8, 11, 3, 2, 58) / 1000)
       store.getState().setIsSyncingWorkflowDraft(false)
-      await expect.element(status).toHaveTextContent('03:02:58')
+      await expect.element(status).toMatchTextContent(/03:02:58/)
       expect(navigation.element().getBoundingClientRect().x).toBe(initial.x)
       expect(navigation.element().getBoundingClientRect().y).toBe(initial.y)
 

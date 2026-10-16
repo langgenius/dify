@@ -29,17 +29,13 @@ export class CRDTProvider {
   }
 
   private setupEventListeners(): void {
-    const unsubscribe = this.doc.subscribe((event: { by?: string }) => {
-      if (event.by === 'local') {
-        if (!this.socket.connected) return
+    this.unsubscribeDoc = this.doc.subscribeLocalUpdates((update) => {
+      if (!this.socket.connected) return
 
-        const update = this.doc.export({ mode: 'update' })
-        emitWithAuthGuard(this.socket, 'graph_event', update, {
-          onUnauthorized: this.onUnauthorized,
-        })
-      }
+      emitWithAuthGuard(this.socket, 'graph_event', update, {
+        onUnauthorized: this.onUnauthorized,
+      })
     })
-    if (typeof unsubscribe === 'function') this.unsubscribeDoc = unsubscribe
 
     this.socket.on('graph_update', this.handleGraphUpdate)
   }
