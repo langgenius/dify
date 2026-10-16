@@ -1,8 +1,9 @@
+import type { TracingResource } from './resource'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +12,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
+import { traceCapabilitiesQueryOptions } from './capabilities'
 import { hasProviderForm } from './providers'
 import { tracingQueryParamName } from './query-params'
 
@@ -32,7 +34,12 @@ function useAppTracingAccess(appId: string) {
 }
 
 /** Read-only summary for Agents that run under the tracing settings of the calling Workflow. */
-export function InheritedTracingSummary({ appId }: { appId: string }) {
+export function InheritedTracingSummary({
+  resource,
+}: {
+  resource: Extract<TracingResource, { kind: 'app' }>
+}) {
+  const { appId } = resource
   const { t } = useTranslation(['app', 'common'])
   const titleId = useId()
   const settingsHintId = useId()
@@ -48,12 +55,7 @@ export function InheritedTracingSummary({ appId }: { appId: string }) {
   const provider = hasProviderForm(policy?.tracing_provider) ? policy.tracing_provider : null
   const enabled = !!policy?.enabled && !!provider
   const capabilitiesQuery = useQuery(
-    consoleQuery.apps.byAppId.traceCapabilities.get.queryOptions({
-      input:
-        enabled && canMonitor
-          ? { params: { app_id: appId }, query: { tracing_provider: provider } }
-          : skipToken,
-    }),
+    traceCapabilitiesQueryOptions(resource, enabled && canMonitor ? provider : null),
   )
   const capabilities = capabilitiesQuery.data
   const providerName = provider ? t(($) => $[`tracing.${provider}.title`], { ns: 'app' }) : ''
@@ -86,7 +88,8 @@ export function InheritedTracingSummary({ appId }: { appId: string }) {
             <InfotipTrigger aria-labelledby={titleId} />
             <InfotipContent className="max-w-72">
               <p>{t(($) => $['tracing.inherited.description'], { ns: 'app' })}</p>
-              {enabled && (
+              {/* The capture policy has no effect where Agent tracing is unavailable. */}
+              {enabled && capabilities?.api_collection_enabled !== false && (
                 <dl className="mt-2 space-y-0.5">
                   <div className="flex justify-between gap-3">
                     <dt>{t(($) => $['tracing.captureContent'], { ns: 'app' })}</dt>
@@ -145,12 +148,12 @@ export function InheritedTracingSummary({ appId }: { appId: string }) {
       {capabilities && !capabilities.api_collection_enabled ? (
         <p className="flex gap-1 system-xs-regular text-text-warning">
           <span aria-hidden className="mt-px i-ri-error-warning-line size-3.5 shrink-0" />
-          {t(($) => $['tracing.apiCollectionDisabled'], { ns: 'app' })}
+          {t(($) => $['tracing.agentTracingUnavailable'], { ns: 'app' })}
         </p>
       ) : capabilities && !capabilities.agent_spans ? (
         <p className="flex gap-1 system-xs-regular text-text-warning">
           <span aria-hidden className="mt-px i-ri-error-warning-line size-3.5 shrink-0" />
-          {t(($) => $['tracing.inherited.agentSpansUnsupported'], {
+          {t(($) => $['tracing.agentSpansUnsupported'], {
             ns: 'app',
             provider: providerName,
           })}
