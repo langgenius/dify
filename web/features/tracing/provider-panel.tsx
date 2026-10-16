@@ -1,12 +1,13 @@
 'use client'
 import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
+import type { ConfigurableTracingProvider } from './providers'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { TracingProvider } from './type'
+import { tracingProviders } from './providers'
 
 const I18N_PREFIX = 'tracing'
 
@@ -16,32 +17,26 @@ export type ProviderConfigError = {
 }
 
 type Props = Readonly<{
-  type: TracingProvider
+  type: ConfigurableTracingProvider
   readOnly: boolean
+  pending: boolean
   isChosen: boolean
   config: TraceAppConfigResponse['tracing_config']
   configError?: ProviderConfigError
   onChoose: () => void
 }>
 
-const getIconClassName = (type: TracingProvider) => {
-  return {
-    [TracingProvider.arize]: 'i-custom-public-tracing-arize-icon-big w-27.75',
-    [TracingProvider.phoenix]: 'i-custom-public-tracing-phoenix-icon-big w-27.75',
-    [TracingProvider.langSmith]: 'i-custom-public-tracing-langsmith-icon-big w-31',
-    [TracingProvider.langfuse]: 'i-custom-public-tracing-langfuse-icon-big w-27.75',
-    [TracingProvider.opik]: 'i-custom-public-tracing-opik-icon-big w-[70.700851px]',
-    [TracingProvider.weave]: 'i-custom-public-tracing-weave-icon-big w-31',
-    [TracingProvider.aliyun]: 'i-custom-public-tracing-aliyun-icon-big w-24',
-    [TracingProvider.mlflow]: 'i-custom-public-tracing-mlflow-icon-big w-16.25',
-    [TracingProvider.databricks]: 'i-custom-public-tracing-databricks-icon-big w-37.5',
-    [TracingProvider.tencent]: 'i-custom-public-tracing-tencent-icon-big w-30',
-  }[type]
-}
-
-const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configError, onChoose }) => {
+const ProviderPanel: FC<Props> = ({
+  type,
+  readOnly,
+  pending,
+  isChosen,
+  config,
+  configError,
+  onChoose,
+}) => {
   const { t } = useTranslation(['app', 'common'])
-  const iconClassName = getIconClassName(type)
+  const iconClassName = tracingProviders[type].panelIcon
   const hasConfigured = !!config
 
   return (
@@ -58,6 +53,7 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configErro
       {hasConfigured && !configError && !readOnly && (
         <button
           type="button"
+          disabled={pending}
           aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
           aria-pressed={isChosen}
           className="absolute inset-0 cursor-pointer rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
@@ -95,7 +91,7 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configErro
                   {t(($) => $[`${I18N_PREFIX}.view`], { ns: 'app' })}
                 </a>
               )}
-              <DialogTrigger payload={type} render={<Button size="small" />}>
+              <DialogTrigger payload={type} render={<Button size="small" disabled={pending} />}>
                 <span aria-hidden className="i-ri-equalizer-2-line size-3" />
                 {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
               </DialogTrigger>
