@@ -74,12 +74,17 @@ def task_grant_allowed(binding: NativeBinding, *, task_approved: bool) -> bool:
 
 
 def _scope_digest(intent: EffectIntent, binding: NativeBinding) -> str:
-    # Logical occurrence is excluded so an explicitly approved count can cover
-    # repeated identical calls. All account/target/typed parameter/version scope remains.
+    # Legacy batches exclude logical occurrence and the new default field so
+    # their immutable grant digests stay byte-for-byte compatible. Operation
+    # approval includes the actual key and explicit server-selected mode.
+    batch = binding.approval_scope == "batch"
+    binding_exclusions = {"intent_digest", "execution_id", "invocation_digest"}
+    if batch:
+        binding_exclusions.add("approval_scope")
     return canonical_digest(
         {
-            "intent": intent.model_dump(mode="json", exclude={"key"}),
-            "binding": binding.model_dump(mode="json", exclude={"intent_digest", "execution_id", "invocation_digest"}),
+            "intent": intent.model_dump(mode="json", exclude={"key"} if batch else set()),
+            "binding": binding.model_dump(mode="json", exclude=binding_exclusions),
         }
     )
 

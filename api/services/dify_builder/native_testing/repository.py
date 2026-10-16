@@ -34,6 +34,8 @@ class NativeBinding(FrozenDTO):
     ``intent_digest`` binds typed parameters and target at the real call site.
     resource/credential versions are opaque metadata versions, never ciphertext
     or secret values. No account binding is created for a configuration wait.
+    ``approval_scope`` is server classification: operation binds confirmation to
+    the actual cursor; batch preserves legacy reuse of explicitly approved counts.
     """
 
     intent_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
@@ -48,6 +50,7 @@ class NativeBinding(FrozenDTO):
     egress: StrictBool
     new_data: StrictBool
     destructive: StrictBool
+    approval_scope: Literal["operation", "batch"] = "batch"
     cost_units: Counter
     budget: Limits
     execution_id: ID

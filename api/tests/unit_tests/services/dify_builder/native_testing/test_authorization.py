@@ -153,3 +153,104 @@ def test_reservation_profile_is_immutable_after_creation():
     assert reservation.limits["cpu_ms"] == 10
     with pytest.raises(TypeError):
         reservation.profile["cpu_ms"] = 999
+
+
+@pytest.mark.parametrize(
+    ("parameters", "golden"),
+    [
+        ({"limit": 1}, "612d212385dde1043ae8206d65b1ebc8c692cc53d8da9e5be0f8c3b06ed796db"),
+        ({"limit": True}, "4d6f9f32e931369db2613ba4746f348cf99e5a98a1e6e2f8187e80738db8634c"),
+    ],
+)
+def test_legacy_batch_scope_keeps_captured_digest_and_ignores_occurrence(parameters, golden):
+    from services.dify_builder.native_testing.authorization import _scope_digest
+    from services.dify_builder.native_testing.repository import NativeBinding
+
+    effect = intent().model_copy(update={"parameters": parameters})
+    legacy = binding(effect).model_dump(mode="json", exclude={"approval_scope"})
+    trusted = NativeBinding.model_validate(legacy)
+    assert trusted.approval_scope == "batch"
+    assert _scope_digest(effect, trusted) == golden
+    repeated = effect.model_copy(update={"key": effect.key.model_copy(update={"cursor": 1})})
+    assert _scope_digest(repeated, binding(repeated)) == golden
+    assert _scope_digest(effect, trusted.model_copy(update={"approval_scope": "batch"})) == golden
+
+
+@pytest.mark.parametrize(
+    "key_change",
+    [{"invocation_id": "another-inv"}, {"occurrence_path": ("node", "iteration-1")}, {"cursor": 1}],
+)
+def test_operation_scope_binds_each_actual_key_component(key_change):
+    from services.dify_builder.native_testing.authorization import _scope_digest
+    from services.dify_builder.native_testing.repository import NativeBinding
+
+    effect = intent()
+    trusted = NativeBinding.model_validate({**binding(effect).model_dump(mode="json"), "approval_scope": "operation"})
+    repeated = effect.model_copy(update={"key": effect.key.model_copy(update=key_change)})
+    current = NativeBinding.model_validate({**binding(repeated).model_dump(mode="json"), "approval_scope": "operation"})
+    assert _scope_digest(effect, trusted) != _scope_digest(repeated, current)
+    assert _scope_digest(effect, trusted) == _scope_digest(effect, trusted.model_copy())
+    assert _scope_digest(effect, trusted) != _scope_digest(effect, binding(effect))
+
+
+def test_operation_scope_preserves_typed_parameters_and_excludes_transport_correlations():
+    from services.dify_builder.native_testing.authorization import _scope_digest
+    from services.dify_builder.native_testing.repository import NativeBinding
+
+    effect = intent()
+    trusted = NativeBinding.model_validate({**binding(effect).model_dump(mode="json"), "approval_scope": "operation"})
+    boolean = effect.model_copy(update={"parameters": {"limit": True}})
+    typed = NativeBinding.model_validate({**binding(boolean).model_dump(mode="json"), "approval_scope": "operation"})
+    assert _scope_digest(effect, trusted) != _scope_digest(boolean, typed)
+    correlated = trusted.model_copy(update={"execution_id": "new-worker", "invocation_digest": "d" * 64})
+    assert _scope_digest(effect, trusted) == _scope_digest(effect, correlated)
+
+
+def _binding_boundary(*, frozen, current):
+    from types import SimpleNamespace
+
+    from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+    from services.dify_builder.native_testing.contracts import operation_digest
+
+    effect = intent()
+    loader = SimpleNamespace(resolver=SimpleNamespace(resolve_binding=lambda **_kwargs: current))
+    owned = SimpleNamespace(ref=SimpleNamespace(invocation_id="inv"), bindings={operation_digest(effect.key): frozen})
+    return EffectAuthorizationService(loader)._binding(None, owned, effect)
+
+
+@pytest.mark.parametrize("invalid", [None, True, 1, "", "OPERATION", "other", ["operation"]])
+@pytest.mark.parametrize("source", ["frozen", "current"])
+def test_malformed_server_scope_is_rejected_at_c02_binding_boundary(invalid, source):
+    effect = intent()
+    trusted = binding(effect)
+    raw = trusted.model_dump(mode="json")
+    current = trusted
+    if source == "frozen":
+        raw["approval_scope"] = invalid
+    else:
+        current = trusted.model_copy(update={"approval_scope": invalid})
+    with pytest.raises(BuilderExecutionPolicyError, match="native_binding_mismatch"):
+        _binding_boundary(frozen=raw, current=current)
+
+
+@pytest.mark.parametrize(("frozen_mode", "current_mode"), [("batch", "operation"), ("operation", "batch")])
+def test_current_server_scope_classification_drift_is_rejected(frozen_mode, current_mode):
+    trusted = binding(intent())
+    frozen = {**trusted.model_dump(mode="json"), "approval_scope": frozen_mode}
+    current = trusted.model_copy(update={"approval_scope": current_mode})
+    with pytest.raises(BuilderExecutionPolicyError, match="native_binding_drift"):
+        _binding_boundary(frozen=frozen, current=current)
+
+
+@pytest.mark.parametrize("mode", ["batch", "operation"])
+def test_known_destructive_classification_remains_forbidden_in_each_scope(mode):
+    trusted = binding(intent()).model_copy(update={"approval_scope": mode, "destructive": True})
+    with pytest.raises(BuilderExecutionPolicyError, match="destructive_effect_forbidden"):
+        _binding_boundary(frozen=trusted.model_dump(mode="json"), current=trusted)
+
+
+def test_client_effect_cannot_select_approval_scope():
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        EffectIntent.model_validate({**intent().model_dump(mode="json"), "approval_scope": "operation"})
