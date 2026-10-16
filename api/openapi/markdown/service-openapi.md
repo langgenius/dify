@@ -3345,7 +3345,7 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict | object |  | Yes |
+| data_source_detail_dict | [DocumentSourceDetailResponse](#documentsourcedetailresponse) |  | Yes |
 | data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
@@ -3365,6 +3365,14 @@ Request payload for bulk downloading documents as a zip archive.
 | summary_index_status | string |  | No |
 | tokens | integer |  | No |
 | word_count | integer |  | No |
+
+#### DocumentSourceDetailResponse
+
+The uploaded file for file documents; Notion and website documents repeat their source info.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file | [DocumentUploadFileDetailResponse](#documentuploadfiledetailresponse) |  | No |
 
 #### DocumentStatusListResponse
 
@@ -3423,6 +3431,18 @@ Request payload for bulk downloading documents as a zip archive.
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Controls how chunks are searched and ranked when querying this knowledge base. | No |
 | text | string | Document text content. | No |
+
+#### DocumentUploadFileDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | number |  | Yes |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | Yes |
 
 #### EndUserDetail
 

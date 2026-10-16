@@ -20748,10 +20748,10 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict |  |  | No |
-| data_source_info |  |  | No |
+| data_source_detail_dict | [DocumentSourceDetailResponse](#documentsourcedetailresponse) |  | No |
+| data_source_info | object |  | No |
 | data_source_type | string |  | No |
-| dataset_process_rule |  |  | No |
+| dataset_process_rule | [DocumentProcessRuleResponse](#documentprocessruleresponse) |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
 | disabled_by | string |  | No |
@@ -20760,7 +20760,7 @@ Request payload for bulk downloading documents as a zip archive.
 | doc_language | string |  | No |
 | doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
 | doc_type | string |  | No |
-| document_process_rule |  |  | No |
+| document_process_rule | [DocumentProcessRuleResponse](#documentprocessruleresponse) |  | No |
 | enabled | boolean |  | No |
 | error | string |  | No |
 | hit_count | integer |  | No |
@@ -20815,6 +20815,29 @@ The document is being processed and cannot be edited.
 | datasource_type | string |  | No |
 | input_data | [JsonValue](#jsonvalue) |  | No |
 
+#### DocumentPreProcessingRuleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| id | string |  | Yes |
+
+#### DocumentProcessRuleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | string |  | Yes |
+| rules | [DocumentProcessRulesResponse](#documentprocessrulesresponse) |  | No |
+
+#### DocumentProcessRulesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| parent_mode | string, <br>**Available values:** "full-doc", "paragraph" |  | No |
+| pre_processing_rules | [ [DocumentPreProcessingRuleResponse](#documentpreprocessingruleresponse) ] |  | No |
+| segmentation | [DocumentSegmentationResponse](#documentsegmentationresponse) |  | No |
+| subchunk_segmentation | [DocumentSegmentationResponse](#documentsegmentationresponse) |  | No |
+
 #### DocumentRenamePayload
 
 | Name | Type | Description | Required |
@@ -20829,7 +20852,7 @@ The document is being processed and cannot be edited.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict | object |  | Yes |
+| data_source_detail_dict | [DocumentSourceDetailResponse](#documentsourcedetailresponse) |  | Yes |
 | data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
@@ -20855,6 +20878,23 @@ The document is being processed and cannot be edited.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | document_ids | [ string ] |  | Yes |
+
+#### DocumentSegmentationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chunk_overlap | integer |  | No |
+| max_tokens | integer |  | Yes |
+| separator | string, <br>**Default:**
+ |  | No |
+
+#### DocumentSourceDetailResponse
+
+The uploaded file for file documents; Notion and website documents repeat their source info.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file | [DocumentUploadFileDetailResponse](#documentuploadfiledetailresponse) |  | No |
 
 #### DocumentStatusListResponse
 
@@ -20887,6 +20927,18 @@ The document is being processed and cannot be edited.
 | summary_status | [SummaryStatusResponse](#summarystatusresponse) |  | Yes |
 | total_segments | integer |  | Yes |
 
+#### DocumentUploadFileDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | number |  | Yes |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+
 #### DocumentWithSegmentsListResponse
 
 | Name | Type | Description | Required |
@@ -20906,7 +20958,7 @@ The document is being processed and cannot be edited.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict | object |  | Yes |
+| data_source_detail_dict | [DocumentSourceDetailResponse](#documentsourcedetailresponse) |  | Yes |
 | data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
@@ -20923,7 +20975,7 @@ The document is being processed and cannot be edited.
 | name | string |  | Yes |
 | need_summary | boolean |  | No |
 | position | integer |  | No |
-| process_rule_dict |  |  | No |
+| process_rule_dict | [DocumentProcessRuleResponse](#documentprocessruleresponse) |  | No |
 | summary_index_status | string |  | No |
 | tokens | integer |  | No |
 | total_segments | integer |  | No |
@@ -24822,6 +24874,12 @@ Serialized pricing info with codegen-safe decimal string patterns.
 | mode | [ProcessRuleMode](#processrulemode) | `automatic` uses built-in rules, `custom` allows manual configuration, `hierarchical` enables parent-child chunk structure (use with `doc_form: hierarchical_model`). | Yes |
 | rules | [Rule](#rule) | Custom processing rules. | No |
 
+#### ProcessRuleLimitsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| indexing_max_segmentation_tokens_length | integer |  | Yes |
+
 #### ProcessRuleMode
 
 Dataset Process Rule Mode
@@ -24834,7 +24892,7 @@ Dataset Process Rule Mode
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limits | object |  | Yes |
+| limits | [ProcessRuleLimitsResponse](#processrulelimitsresponse) |  | Yes |
 | mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
 

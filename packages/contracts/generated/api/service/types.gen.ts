@@ -941,11 +941,9 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict: {
-    [key: string]: unknown
-  }
+  data_source_detail_dict: DocumentSourceDetailResponse
   data_source_info?: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
@@ -965,6 +963,11 @@ export type DocumentResponse = {
   summary_index_status?: string | null
   tokens?: number | null
   word_count?: number | null
+}
+
+export type DocumentSourceDetailResponse = {
+  upload_file?: DocumentUploadFileDetailResponse | null
+  [key: string]: unknown
 }
 
 export type DocumentStatusListResponse = {
@@ -1030,6 +1033,16 @@ export type DocumentTextUpdate = (
   process_rule?: ProcessRule | null
   retrieval_model?: RetrievalModel | null
   text?: string | null
+}
+
+export type DocumentUploadFileDetailResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
 }
 
 export type EndUserDetail = {

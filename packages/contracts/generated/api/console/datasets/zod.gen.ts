@@ -690,141 +690,18 @@ export const zDatasetMetadataBuiltInFieldsResponse = z.object({
 })
 
 /**
+ * ProcessRuleLimitsResponse
+ */
+export const zProcessRuleLimitsResponse = z.object({
+  indexing_max_segmentation_tokens_length: z.int(),
+})
+
+/**
  * ProcessRuleMode
  *
  * Dataset Process Rule Mode
  */
 export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
-
-/**
- * DocumentMetadataResponse
- */
-export const zDocumentMetadataResponse = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.string(),
-  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
-})
-
-/**
- * DocumentDetailResponse
- */
-export const zDocumentDetailResponse = z.object({
-  archived: z.boolean().nullish(),
-  average_segment_length: z.number().nullish(),
-  completed_at: z.int().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule: z.unknown().optional(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
-  doc_language: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).nullish(),
-  doc_type: z.string().nullish(),
-  document_process_rule: z.unknown().optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string(),
-  indexing_latency: z.number().nullish(),
-  indexing_status: z.string().nullish(),
-  name: z.string().nullish(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  segment_count: z.int().nullish(),
-  tokens: z.int().nullish(),
-  updated_at: z.int().nullish(),
-})
-
-/**
- * DocumentResponse
- */
-export const zDocumentResponse = z.object({
-  archived: z.boolean().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.record(z.string(), z.unknown()),
-  data_source_info: z.record(z.string(), z.unknown()).nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string(),
-  indexing_status: z.string().nullish(),
-  name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  word_count: z.int().nullish(),
-})
-
-/**
- * DatasetAndDocumentResponse
- */
-export const zDatasetAndDocumentResponse = z.object({
-  batch: z.string(),
-  dataset: zDatasetResponse,
-  documents: z.array(zDocumentResponse),
-})
-
-/**
- * DocumentWithSegmentsResponse
- */
-export const zDocumentWithSegmentsResponse = z.object({
-  archived: z.boolean().nullish(),
-  completed_segments: z.int().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.record(z.string(), z.unknown()),
-  data_source_info: z.record(z.string(), z.unknown()).nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string(),
-  indexing_status: z.string().nullish(),
-  name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  process_rule_dict: z.unknown().optional(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  total_segments: z.int().nullish(),
-  word_count: z.int().nullish(),
-})
-
-/**
- * DocumentWithSegmentsListResponse
- */
-export const zDocumentWithSegmentsListResponse = z.object({
-  data: z.array(zDocumentWithSegmentsResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
 
 export const zJsonValue = z.unknown()
 
@@ -836,6 +713,16 @@ export const zDocumentPipelineExecutionLogResponse = z.object({
   datasource_node_id: z.string().nullish(),
   datasource_type: z.string().nullish(),
   input_data: zJsonValue.nullish(),
+})
+
+/**
+ * DocumentMetadataResponse
+ */
+export const zDocumentMetadataResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
 })
 
 /**
@@ -1057,6 +944,67 @@ export const zDocumentMetadataOperation = z.object({
  */
 export const zMetadataOperationData = z.object({
   operation_data: z.array(zDocumentMetadataOperation),
+})
+
+/**
+ * DocumentUploadFileDetailResponse
+ */
+export const zDocumentUploadFileDetailResponse = z.object({
+  created_at: z.number(),
+  created_by: z.string(),
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  size: z.int(),
+})
+
+/**
+ * DocumentSourceDetailResponse
+ *
+ * The uploaded file for file documents; Notion and website documents repeat their source info.
+ */
+export const zDocumentSourceDetailResponse = z.object({
+  upload_file: zDocumentUploadFileDetailResponse.nullish(),
+})
+
+/**
+ * DocumentResponse
+ */
+export const zDocumentResponse = z.object({
+  archived: z.boolean().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  created_from: z.string().nullish(),
+  data_source_detail_dict: zDocumentSourceDetailResponse,
+  data_source_info: z.record(z.string(), zJsonValue).nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_process_rule_id: z.string().nullish(),
+  disabled_at: z.int().nullish(),
+  disabled_by: z.string().nullish(),
+  display_status: z.string().nullish(),
+  doc_form: z.string().nullish(),
+  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
+  enabled: z.boolean().nullish(),
+  error: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.string(),
+  indexing_status: z.string().nullish(),
+  name: z.string(),
+  need_summary: z.boolean().nullish(),
+  position: z.int().nullish(),
+  summary_index_status: z.string().nullish(),
+  tokens: z.int().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
+ * DatasetAndDocumentResponse
+ */
+export const zDatasetAndDocumentResponse = z.object({
+  batch: z.string(),
+  dataset: zDatasetResponse,
+  documents: z.array(zDocumentResponse),
 })
 
 /**
@@ -1499,7 +1447,7 @@ export const zRule = z.object({
  * ProcessRuleResponse
  */
 export const zProcessRuleResponse = z.object({
-  limits: z.record(z.string(), z.unknown()),
+  limits: zProcessRuleLimitsResponse,
   mode: zProcessRuleMode,
   rules: zRule.nullish(),
 })
@@ -1510,6 +1458,122 @@ export const zProcessRuleResponse = z.object({
 export const zProcessRule = z.object({
   mode: zProcessRuleMode,
   rules: zRule.nullish(),
+})
+
+/**
+ * DocumentPreProcessingRuleResponse
+ */
+export const zDocumentPreProcessingRuleResponse = z.object({
+  enabled: z.boolean(),
+  id: z.string(),
+})
+
+/**
+ * DocumentSegmentationResponse
+ */
+export const zDocumentSegmentationResponse = z.object({
+  chunk_overlap: z.int().optional().default(0),
+  max_tokens: z.int(),
+  separator: z.string().optional().default('\n'),
+})
+
+/**
+ * DocumentProcessRulesResponse
+ */
+export const zDocumentProcessRulesResponse = z.object({
+  parent_mode: z.enum(['full-doc', 'paragraph']).nullish(),
+  pre_processing_rules: z.array(zDocumentPreProcessingRuleResponse).nullish(),
+  segmentation: zDocumentSegmentationResponse.nullish(),
+  subchunk_segmentation: zDocumentSegmentationResponse.nullish(),
+})
+
+/**
+ * DocumentProcessRuleResponse
+ */
+export const zDocumentProcessRuleResponse = z.object({
+  mode: z.string(),
+  rules: zDocumentProcessRulesResponse.nullish(),
+})
+
+/**
+ * DocumentDetailResponse
+ */
+export const zDocumentDetailResponse = z.object({
+  archived: z.boolean().nullish(),
+  average_segment_length: z.number().nullish(),
+  completed_at: z.int().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  created_from: z.string().nullish(),
+  data_source_detail_dict: zDocumentSourceDetailResponse.nullish(),
+  data_source_info: z.record(z.string(), zJsonValue).nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_process_rule: zDocumentProcessRuleResponse.nullish(),
+  dataset_process_rule_id: z.string().nullish(),
+  disabled_at: z.int().nullish(),
+  disabled_by: z.string().nullish(),
+  display_status: z.string().nullish(),
+  doc_form: z.string().nullish(),
+  doc_language: z.string().nullish(),
+  doc_metadata: z.array(zDocumentMetadataResponse).nullish(),
+  doc_type: z.string().nullish(),
+  document_process_rule: zDocumentProcessRuleResponse.nullish(),
+  enabled: z.boolean().nullish(),
+  error: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.string(),
+  indexing_latency: z.number().nullish(),
+  indexing_status: z.string().nullish(),
+  name: z.string().nullish(),
+  need_summary: z.boolean().nullish(),
+  position: z.int().nullish(),
+  segment_count: z.int().nullish(),
+  tokens: z.int().nullish(),
+  updated_at: z.int().nullish(),
+})
+
+/**
+ * DocumentWithSegmentsResponse
+ */
+export const zDocumentWithSegmentsResponse = z.object({
+  archived: z.boolean().nullish(),
+  completed_segments: z.int().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  created_from: z.string().nullish(),
+  data_source_detail_dict: zDocumentSourceDetailResponse,
+  data_source_info: z.record(z.string(), zJsonValue).nullish(),
+  data_source_type: z.string().nullish(),
+  dataset_process_rule_id: z.string().nullish(),
+  disabled_at: z.int().nullish(),
+  disabled_by: z.string().nullish(),
+  display_status: z.string().nullish(),
+  doc_form: z.string().nullish(),
+  doc_metadata: z.array(zDocumentMetadataResponse).optional(),
+  enabled: z.boolean().nullish(),
+  error: z.string().nullish(),
+  hit_count: z.int().nullish(),
+  id: z.string(),
+  indexing_status: z.string().nullish(),
+  name: z.string(),
+  need_summary: z.boolean().nullish(),
+  position: z.int().nullish(),
+  process_rule_dict: zDocumentProcessRuleResponse.nullish(),
+  summary_index_status: z.string().nullish(),
+  tokens: z.int().nullish(),
+  total_segments: z.int().nullish(),
+  word_count: z.int().nullish(),
+})
+
+/**
+ * DocumentWithSegmentsListResponse
+ */
+export const zDocumentWithSegmentsListResponse = z.object({
+  data: z.array(zDocumentWithSegmentsResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**

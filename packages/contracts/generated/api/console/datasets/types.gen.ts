@@ -286,9 +286,7 @@ export type IndexingEstimate = {
 }
 
 export type ProcessRuleResponse = {
-  limits: {
-    [key: string]: unknown
-  }
+  limits: ProcessRuleLimitsResponse
   mode: ProcessRuleMode
   rules?: Rule | null
 }
@@ -374,10 +372,12 @@ export type DocumentDetailResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict?: DocumentSourceDetailResponse | null
+  data_source_info?: {
+    [key: string]: JsonValue
+  } | null
   data_source_type?: string | null
-  dataset_process_rule?: unknown
+  dataset_process_rule?: DocumentProcessRuleResponse | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
   disabled_by?: string | null
@@ -386,7 +386,7 @@ export type DocumentDetailResponse = {
   doc_language?: string | null
   doc_metadata?: Array<DocumentMetadataResponse> | null
   doc_type?: string | null
-  document_process_rule?: unknown
+  document_process_rule?: DocumentProcessRuleResponse | null
   enabled?: boolean | null
   error?: string | null
   hit_count?: number | null
@@ -461,11 +461,9 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict: {
-    [key: string]: unknown
-  }
+  data_source_detail_dict: DocumentSourceDetailResponse
   data_source_info?: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
@@ -806,6 +804,10 @@ export type NotionEstimateWorkspacePayload = {
   workspace_id: string
 }
 
+export type ProcessRuleLimitsResponse = {
+  indexing_max_segmentation_tokens_length: number
+}
+
 export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
 export type Rule = {
@@ -821,11 +823,9 @@ export type DocumentWithSegmentsResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict: {
-    [key: string]: unknown
-  }
+  data_source_detail_dict: DocumentSourceDetailResponse
   data_source_info?: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
@@ -842,7 +842,7 @@ export type DocumentWithSegmentsResponse = {
   name: string
   need_summary?: boolean | null
   position?: number | null
-  process_rule_dict?: unknown
+  process_rule_dict?: DocumentProcessRuleResponse | null
   summary_index_status?: string | null
   tokens?: number | null
   total_segments?: number | null
@@ -855,14 +855,24 @@ export type DocumentMetadataOperation = {
   partial_update?: boolean
 }
 
+export type DocumentSourceDetailResponse = {
+  upload_file?: DocumentUploadFileDetailResponse | null
+  [key: string]: unknown
+}
+
+export type JsonValue = unknown
+
+export type DocumentProcessRuleResponse = {
+  mode: string
+  rules?: DocumentProcessRulesResponse | null
+}
+
 export type DocumentMetadataResponse = {
   id: string
   name: string
   type: string
   value?: string | number | number | boolean | null
 }
-
-export type JsonValue = unknown
 
 export type SegmentResponse = {
   answer: string | null
@@ -1044,6 +1054,23 @@ export type MetadataDetail = {
   value?: string | number | number | null
 }
 
+export type DocumentUploadFileDetailResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
+}
+
+export type DocumentProcessRulesResponse = {
+  parent_mode?: 'full-doc' | 'paragraph' | null
+  pre_processing_rules?: Array<DocumentPreProcessingRuleResponse> | null
+  segmentation?: DocumentSegmentationResponse | null
+  subchunk_segmentation?: DocumentSegmentationResponse | null
+}
+
 export type SegmentAttachmentResponse = {
   extension: string
   id: string
@@ -1165,6 +1192,17 @@ export type WeightVectorSetting = {
 export type NotionPageType = 'database' | 'page'
 
 export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+
+export type DocumentPreProcessingRuleResponse = {
+  enabled: boolean
+  id: string
+}
+
+export type DocumentSegmentationResponse = {
+  chunk_overlap?: number
+  max_tokens: number
+  separator?: string
+}
 
 export type HitTestingDocument = {
   data_source_type: string

@@ -43,7 +43,9 @@ from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentMetadataResponse,
+    DocumentProcessRuleResponse,
     DocumentResponse,
+    DocumentSourceDetailResponse,
     DocumentStatusListResponse,
     DocumentStatusResponse,
     normalize_enum,
@@ -148,7 +150,7 @@ class DatasetResponse(ResponseModel):
 
 
 class DocumentWithSegmentsResponse(DocumentResponse):
-    process_rule_dict: Any = None
+    process_rule_dict: DocumentProcessRuleResponse | None = None
     completed_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
     total_segments: int | None = Field(default=None, exclude_if=lambda value: value is None)
 
@@ -215,11 +217,11 @@ class DocumentDetailResponse(ResponseModel):
     id: str
     position: int | None = None
     data_source_type: str | None = None
-    data_source_info: Any = None
-    data_source_detail_dict: Any = None
+    data_source_info: dict[str, JsonValue] | None = None
+    data_source_detail_dict: DocumentSourceDetailResponse | None = None
     dataset_process_rule_id: str | None = None
-    dataset_process_rule: Any = None
-    document_process_rule: Any = None
+    dataset_process_rule: DocumentProcessRuleResponse | None = None
+    document_process_rule: DocumentProcessRuleResponse | None = None
     name: str | None = None
     created_from: str | None = None
     created_by: str | None = None
@@ -279,10 +281,14 @@ class DocumentSummaryStatusResponse(ResponseModel):
     summaries: list[SummaryEntryResponse]
 
 
+class ProcessRuleLimitsResponse(ResponseModel):
+    indexing_max_segmentation_tokens_length: int
+
+
 class ProcessRuleResponse(ResponseModel):
     mode: ProcessRuleMode
     rules: Rule | None = None
-    limits: dict[str, Any]
+    limits: ProcessRuleLimitsResponse
 
 
 class DocumentPipelineExecutionLogResponse(ResponseModel):
