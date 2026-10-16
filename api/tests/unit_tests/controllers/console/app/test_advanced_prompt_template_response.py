@@ -18,7 +18,7 @@ from core.prompt.prompt_templates.advanced_prompt_templates import (
         COMPLETION_APP_COMPLETION_PROMPT_CONFIG,
     ],
 )
-def test_prompt_templates_keep_their_shape(template: dict) -> None:
+def test_prompt_templates_keep_their_shape(template: dict[str, object]) -> None:
     dumped = AdvancedPromptTemplateResponse.model_validate(template).model_dump(mode="json", exclude_unset=True)
 
     assert dumped == template
