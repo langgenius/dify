@@ -835,3 +835,225 @@ def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_nati
     assert lifecycle.runtime.host.lifetime._consumed
     assert len(c.published) == 1
     assert c.sends == []
+
+
+@pytest.mark.parametrize("stop_path", ["initial-preparation-fault", "resumed-approved-redirect"])
+def test_actual_known_stop_settles_sql_cleanup_and_finalizes_exact_source(runtime_case, monkeypatch, stop_path):
+    """CI-only SQL/native STOP composition; never import/collect/run locally.
+
+    The initial witness injects only a preparation ValueError to exercise the
+    genuine typed policy conversion before any intent/send. It does not claim
+    a naturally invalid literal is admitted. Redirect uses a real API
+    approval decision; no operation is pregranted or lifecycle ACK fabricated.
+    """
+    from models.dify_builder_native_tests import (
+        NativeEffectDispatchClaim,
+        NativeEffectOutcome,
+        NativeTestInvocation,
+    )
+    from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime
+    from services.dify_builder.native_testing.http_adapter import NativeHttpClient
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+
+    c = runtime_case
+    first = c.published[0]
+    initial = delivery(c, first)
+    cleanup_proofs, finalizations = [], []
+    actual_cleanup = NativeHostLifetime.consume_cleanup
+    actual_finalize = NativeTestLifecycleService.finalize_dispatch_locked
+
+    def consume(lifetime, *, ref, generation, dispatch_id):
+        # The real capacity owner calls this OUTSIDE its SQL writer, after the
+        # actual reader/source, worker and dispatcher have all settled.
+        if ref.request_id == c.request_id:
+            lifetime.require_settled_root()
+            with c.factory() as session:
+                local = session.scalar(
+                    select(NativeInvocationState).where(
+                        NativeInvocationState.request_id == c.request_id,
+                        NativeInvocationState.invocation_id == ref.invocation_id,
+                    )
+                )
+                assert local is not None
+                assert not local.cleanup_complete
+                assert session.get(NativeDispatch, dispatch_id).state == "claimed"
+            threads = tuple(item.thread for item in lifetime._threads)
+            assert threads
+            assert all(not thread.is_alive() for thread in threads)
+        result = actual_cleanup(lifetime, ref=ref, generation=generation, dispatch_id=dispatch_id)
+        if ref.request_id == c.request_id:
+            assert result is None
+            assert lifetime._consumed
+            cleanup_proofs.append((generation, dispatch_id))
+        return result
+
+    def finalize(lifecycle, *, session, owned, scope, dispatch_id, generation, outcome):
+        if owned.ref.request_id == c.request_id and outcome.status == "stopped":
+            local = session.scalar(
+                select(NativeInvocationState).where(
+                    NativeInvocationState.request_id == c.request_id,
+                    NativeInvocationState.invocation_id == owned.ref.invocation_id,
+                )
+            )
+            assert local.cleanup_complete
+            assert (generation, dispatch_id) in cleanup_proofs
+            assert session.get(NativeDispatch, dispatch_id).state == "claimed"
+            finalizations.append((generation, dispatch_id))
+        return actual_finalize(
+            lifecycle,
+            session=session,
+            owned=owned,
+            scope=scope,
+            dispatch_id=dispatch_id,
+            generation=generation,
+            outcome=outcome,
+        )
+
+    monkeypatch.setattr(NativeHostLifetime, "consume_cleanup", consume)
+    monkeypatch.setattr(NativeTestLifecycleService, "finalize_dispatch_locked", finalize)
+    if stop_path == "initial-preparation-fault":
+
+        def preparation_fault(_client, *_args, **_kwargs):
+            raise ValueError("fixture_native_http_preparation_failure")
+
+        monkeypatch.setattr(NativeHttpClient, "_prepare", preparation_fault)
+        source, lifecycle = first, initial
+        result = execute(c, lifecycle, source)
+        expected_reason, expected_sends, expected_generation = "native_http_preparation_failed", 0, 0
+    else:
+        waiting = execute(c, initial, first)
+        assert waiting.status == "waiting"
+        assert c.sends == []
+        with c.factory() as session:
+            original_started = session.get(WorkflowRun, waiting.native_run_id).created_at
+        receipt = c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id)
+        assert receipt.status == "waiting"
+        assert len(receipt.pending) == 1
+        pending = receipt.pending[0]
+        c.api.decide(
+            actor=c.actor,
+            session_id=c.session_id,
+            request_id=c.request_id,
+            pending_operation_id=pending.pending_operation_id,
+            decision="confirm",
+            scope_digest=pending.scope_digest,
+            expected_version=receipt.version,
+            idempotency_key="known-stop-decision",
+        )
+        c.api.resume(
+            actor=c.actor,
+            session_id=c.session_id,
+            request_id=c.request_id,
+            expected_generation=receipt.generation,
+            idempotency_key="known-stop-resume",
+        )
+        c.api.lifecycle.publish_pending(publish=lambda **message: c.published.append(message))
+        source = c.published[-1]
+        lifecycle = delivery(c, source)
+        assert source["generation"] == 1
+        if stop_path == "resumed-approved-redirect":
+
+            def redirect(_client, request, **kwargs):
+                c.sends.append(request)
+                assert kwargs.get("follow_redirects") is False
+                return httpx.Response(
+                    302,
+                    headers={"Location": "https://example.com/never-followed"},
+                    content=b"redirect-response-canary",
+                    request=request,
+                )
+
+            monkeypatch.setattr(httpx.Client, "send", redirect)
+        result = execute(c, lifecycle, source)
+        assert result.native_run_id == waiting.native_run_id
+        with c.factory() as session:
+            assert session.get(WorkflowRun, result.native_run_id).created_at == original_started
+        expected_reason = "native_http_redirect_limit"
+        expected_sends, expected_generation = 1, 1
+    assert result.status == "stopped"
+    assert result.reason_code == expected_reason
+    assert len(c.sends) == expected_sends
+    assert source["generation"] == expected_generation
+    assert lifecycle.runtime.host.lifetime._consumed
+    assert not lifecycle.runtime.host.lifetime.unknown
+    assert finalizations == [(expected_generation, source["dispatch_id"])]
+    assert (expected_generation, source["dispatch_id"]) in cleanup_proofs
+    with c.factory() as session:
+        request = session.get(DifyBuilderExecutionRequest, c.request_id)
+        local = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
+        invocation = session.scalar(select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.request_id))
+        run = session.get(WorkflowRun, result.native_run_id)
+        assert request.state == "sealed"
+        assert not session.get(NativeTestScope, c.request_id).cancelled
+        assert not invocation.active
+        assert local.state == "stopped"
+        assert local.outcome["status"] == "stopped"
+        assert local.generation == expected_generation
+        assert local.cleanup_complete
+        assert local.outcome["native_run_id"] == result.native_run_id
+        assert session.get(NativeDispatch, source["dispatch_id"]).state == "completed"
+        assert run.status == "stopped"
+        claims = session.scalars(
+            select(NativeEffectDispatchClaim).where(NativeEffectDispatchClaim.request_id == c.request_id)
+        ).all()
+        outcomes = session.scalars(
+            select(NativeEffectOutcome).where(NativeEffectOutcome.request_id == c.request_id)
+        ).all()
+        assert len(claims) == len(outcomes) == expected_sends
+        assert all(outcome.outcome == "completed" and outcome.result_ref for outcome in outcomes)
+    # Both retained duplicate execution and a distinct consumer's claim refuse
+    # replay. Neither creates a new physical lifetime or another HTTP request.
+    assert delivery(c, source) is lifecycle
+    assert execute(c, lifecycle, source) is None
+    foreign = DifyNativeRuntimeOwner().delivery(
+        sessions=c.factory,
+        delivery=NativeDispatchRef(decode_native_ref(source["ref"]), source["generation"], source["dispatch_id"]),
+        actor_hint=c.actor,
+    )
+    assert not foreign.claim_dispatch(
+        ref=decode_native_ref(source["ref"]), generation=source["generation"], dispatch_id=source["dispatch_id"]
+    )
+    assert len(c.sends) == expected_sends
+    assert finalizations == [(expected_generation, source["dispatch_id"])]
+
+
+def test_actual_denied_pending_cannot_borrow_stop_settlement_for_resume(runtime_case):
+    """A real denial remains unresolved; evidence settlement cannot admit it."""
+    c = runtime_case
+    source = c.published[0]
+    lifecycle = delivery(c, source)
+    waiting = execute(c, lifecycle, source)
+    assert waiting.status == "waiting"
+    assert c.sends == []
+    receipt = c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id)
+    pending = receipt.pending[0]
+    c.api.decide(
+        actor=c.actor,
+        session_id=c.session_id,
+        request_id=c.request_id,
+        pending_operation_id=pending.pending_operation_id,
+        decision="deny",
+        scope_digest=pending.scope_digest,
+        expected_version=receipt.version,
+        idempotency_key="known-stop-denial-admission-negative",
+    )
+    with pytest.raises(BuilderExecutionPolicyError, match="native_pending_unresolved"):
+        c.api.resume(
+            actor=c.actor,
+            session_id=c.session_id,
+            request_id=c.request_id,
+            expected_generation=receipt.generation,
+            idempotency_key="known-stop-denied-resume",
+        )
+    assert c.sends == []
+    assert len(c.published) == 1
+    with c.factory() as session:
+        local = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))
+        assert local.state == "waiting"
+        assert local.generation == 0
+        assert local.cleanup_complete
+        assert local.outcome is None
+        assert session.get(WorkflowRun, waiting.native_run_id).status == "paused"
+        assert session.get(NativeDispatch, source["dispatch_id"]).state == "completed"
+        assert len(session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all()) == 1
+    assert execute(c, lifecycle, source) is None

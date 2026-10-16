@@ -681,7 +681,7 @@ def validate_projection_host(*, host, guard, entity=None, queue=None, task_id=No
             raise BuilderExecutionPolicyError("native_resume_identity_mismatch")
     if context.generation > 0:
         restored = host.resume_bindings
-        host.require_resume_bindings(
+        host.require_resume_projection_bindings(
             entity=restored.entity, runtime_state=restored.runtime_state, response_filter=restored.response_filter
         )
         if task_id is not None and task_id != restored.entity.task_id:

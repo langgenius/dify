@@ -158,7 +158,7 @@ class DifyNativeStreamOwner:
     def _outcome(self, context: ResolvedNativeTestContext) -> NativeWorkflowOutcome:
         host = self._host
         host.lifetime.require_settled_root()
-        if self._state.load_context(ref=context.ref) != context:
+        if host.require_evidence_context() != context:
             raise ValueError("native_stream_context_changed")
         host.lifetime.require_settled_root()
         observed = host.root_observation

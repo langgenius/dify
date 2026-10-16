@@ -71,6 +71,8 @@ from services.dify_builder.native_testing.runtime_contracts import (
     ResolvedNativeTestContext,
 )
 
+from services.dify_builder.native_testing.stop_settlement import NativeEvidenceReadGate, NativeStopSettlement
+
 HttpTimeout = tuple[float | int, ...]
 
 
@@ -334,6 +336,8 @@ class NativeHostLaunch:
         self._observation_attempted = False
         self._observation_state: NativeStatePort | None = None
         self._dispatcher_log_leases: list[SensitiveThreadLogLease] = []
+        self._stop_settlement: NativeStopSettlement | None = None
+        self._evidence_reads = NativeEvidenceReadGate(self)
         self._control_sink = DifyNativeControlSink(self)
 
     @property
@@ -488,7 +492,7 @@ class NativeHostLaunch:
             ):
                 raise NativeObservationError()
             with native_observation_scope(guard=guard):
-                if journal._state.load_context(ref=context.ref) != context:
+                if self.require_evidence_context() != context:
                     raise NativeObservationError()
             with self._registration:
                 self._require_live()
@@ -505,6 +509,17 @@ class NativeHostLaunch:
         except BaseException:
             self.mark_unknown()
             raise NativeObservationError() from None
+
+    def require_evidence_context(self) -> ResolvedNativeTestContext:
+        """Current execution context, or exact accepted STOP evidence only."""
+        with self._evidence_reads.read():
+            if self.boundary_owner.status == "STOP_RECORDED":
+                if self._stop_settlement is None:
+                    raise ValueError("native_stop_settlement_unavailable")
+                return self._stop_settlement.require_context()
+            if self._journal is None:
+                raise ValueError("native_host_launch_retired")
+            return self._journal._state.load_context(ref=self.lifetime.ref)
 
     @contextmanager
     def observation_scope(self) -> Generator[None]:
@@ -783,6 +798,7 @@ class NativeHostLaunch:
             else:
                 raise ValueError("native_host_cleanup_unconsumed")
             self._retired = True
+            self._stop_settlement = None
             release, self._release = self._release, None
             self._cancellation_fence = None
             self._resume_bindings = self._resume_lifecycle = self._resume_history = None
@@ -918,6 +934,24 @@ class NativeHostLaunch:
         self._require_live()
         return bindings
 
+    def require_resume_projection_bindings(self, *, entity, runtime_state, response_filter):
+        """Diagnostic projection only; never used by resumed execution dispatch."""
+        with self._evidence_reads.read():
+            if self.boundary_owner.status != "STOP_RECORDED":
+                return self.require_resume_bindings(
+                    entity=entity, runtime_state=runtime_state, response_filter=response_filter
+                )
+            bindings = self.resume_bindings
+            if (
+                entity is not bindings.entity
+                or runtime_state is not bindings.runtime_state
+                or response_filter is not bindings.response_filter
+                or self._stop_settlement is None
+            ):
+                raise ValueError("native_resume_identity_mismatch")
+            self._stop_settlement.require_resume(bindings=bindings)
+            return bindings
+
     def bind_resume_history(self, *, workflow_repository, node_repository):
         from services.dify_builder.native_testing.runtime import load_resume_history
 
@@ -1000,7 +1034,7 @@ class NativeHostLaunch:
 
     def require_resume_projection(self, *, guard, queue, entity=None, workflow_run_id=None):
         restored = self.resume_bindings
-        self.require_resume_bindings(
+        self.require_resume_projection_bindings(
             entity=restored.entity, runtime_state=restored.runtime_state, response_filter=restored.response_filter
         )
         generation = self.generation_bindings
@@ -1292,6 +1326,10 @@ class DifyNativeControlSink:
             host._unknown()
             return NativeControlRefused()
         try:
+            if type(control) is NativePolicyStop:
+                if host._deadline is None:
+                    raise ValueError("native_host_control_late")
+                host._evidence_reads.begin_stop(record=record, deadline=host._deadline)
             with host._admission:
                 if host.lifetime.unknown or host._deadline is None or monotonic() > host._deadline:
                     raise ValueError("native_host_control_late")
@@ -1316,9 +1354,19 @@ class DifyNativeControlSink:
                     raise ValueError("native_host_control_ack_invalid")
                 if host.lifetime.unknown or host._deadline is None or monotonic() > host._deadline:
                     raise ValueError("native_host_control_late")
+            if type(control) is NativePolicyStop:
+                # No SQL/private reads or callbacks under registration locks.
+                settlement = NativeStopSettlement(host=host, record=record)
+                with host._registration:
+                    if host._stop_settlement is not None or host.lifetime.unknown:
+                        raise ValueError("native_stop_settlement_replayed")
+                    host._stop_settlement = settlement
+                host._evidence_reads.finish_stop(record=record, acknowledged=True)
             return NativeControlAccepted(record=record)
         except BaseException:
             host._unknown()
+            if type(control) is NativePolicyStop:
+                host._evidence_reads.finish_stop(record=record, acknowledged=False)
             return NativeControlRefused()
 
 

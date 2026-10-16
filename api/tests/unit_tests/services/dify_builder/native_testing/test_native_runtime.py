@@ -356,6 +356,22 @@ def test_resume_history_refuses_fake_host_before_any_repository_cache_or_io():
         ("iteration", None),
         ("root", "missing"),
         ("root", "foreign"),
+        ("root", "redirect"),
+        ("root", "initial-stop"),
+        *[
+            ("root", "redirect-" + fault)
+            for fault in (
+                "owner",
+                "generation",
+                "dispatch",
+                "cancelled",
+                "ambiguous",
+                "unacknowledged",
+                "checkpoint",
+                "run",
+                "transition",
+            )
+        ],
         ("loop", "price-nonzero"),
         ("loop", "price-nan"),
         ("iteration", "price-inf"),
@@ -372,6 +388,9 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     from unittest.mock import Mock
 
     import httpx
+    from flask import Flask
+    from sqlalchemy.orm import sessionmaker
+
     from core.app.apps.workflow import app_generator as generator_module
     from core.app.features.rate_limiting import RateLimit
     from core.repositories.factory import DifyCoreRepositoryFactory
@@ -379,7 +398,6 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
     )
-    from flask import Flask
     from models.account import Account, AccountStatus
     from models.model import App
     from models.workflow import Workflow, WorkflowRun
@@ -389,7 +407,6 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     from services.dify_builder.native_testing.http_binding import NativeHttpBindingProducer
     from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
     from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement, DifyNativeRuntime
-    from sqlalchemy.orm import sessionmaker
     from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
     from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
 
@@ -600,6 +617,21 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
             sql_depth.value -= 1
 
     case.loader.session_factory = cast(Any, concurrent_sessions)
+    if history_fault is not None and (history_fault.startswith("redirect") or history_fault == "initial-stop"):
+        concurrent_sessions.begin = concurrent_sessions
+
+        @contextmanager
+        def stop_writer(*, ref, settlement):
+            assert settlement is True
+            owned = case.loader.load(ref=ref)
+            with concurrent_sessions() as session:
+                from models.dify_builder_native_tests import NativeTestScope
+
+                yield session, owned, case.rows[NativeTestScope][0]
+
+        monkeypatch.setattr(case.loader, "locked", stop_writer)
+        case.local.state = "running"
+        case.local.cleanup_complete = False
 
     def permission(actor, app_id, sessions):
         assert getattr(sql_depth, "value", 0) == 0
@@ -677,6 +709,10 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
             assert ref == context.ref
             key = operation_digest(intent.key)
             with self.lock:
+                if history_fault == "initial-stop":
+                    from services.dify_builder.native_testing.contracts import PolicyStop
+
+                    return PolicyStop(reason_code="effect_denied")
                 if self.decisions:
                     return ApprovalWait(pending_operation_id="pending-" + key, wait_reason="approval")
                 if key in self.outcomes:
@@ -710,6 +746,8 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     auth = ComponentAuthorization()
     monkeypatch.setattr(authorization_module, "EffectAuthorizationService", lambda loader: auth)
     private, checkpoints, sends = {}, {}, []
+    seal_errors = []
+    transition_threads, transition_errors = [], []
 
     def store_inputs(**kw):
         key = "input-" + kw["native_execution_id"]
@@ -738,9 +776,19 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     def transport(method, url, **kw):
         sends.append((method, url))
         return httpx.Response(
-            200,
+            302
+            if history_fault is not None and (history_fault.startswith("redirect") or history_fault == "initial-stop")
+            else 200,
             content=b'{"ok":true}',
-            headers={"content-type": "application/json"},
+            headers={
+                "content-type": "application/json",
+                **(
+                    {"Location": "https://example.com/redirect"}
+                    if history_fault is not None
+                    and (history_fault.startswith("redirect") or history_fault == "initial-stop")
+                    else {}
+                ),
+            },
             request=httpx.Request(method, url),
         )
 
@@ -748,12 +796,83 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     registry = NativeHostLifetimeRegistry()
 
     def prepare(generation):
-        from models.dify_builder_native_tests import NativeDispatch
+        from models.dify_builder_native_tests import NativeContinuation, NativeDispatch
 
         lifecycle = NativeTestLifecycleService(
             case.loader, state_store=case.store, resume_settlement=DifyNativeResumeSettlement()
         )
         monkeypatch.setattr(lifecycle, "fence_pending", lambda **kw: None)
+        if history_fault is not None and (history_fault.startswith("redirect") or history_fault == "initial-stop"):
+            actual_seal = lifecycle.seal_stop
+
+            def checked_seal(**kw):
+                try:
+                    result = actual_seal(**kw)
+                    if generation:
+                        restored = runtime.host.resume_bindings
+                        from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+
+                        with pytest.raises(BuilderExecutionPolicyError):
+                            runtime.host.require_resume_bindings(
+                                entity=restored.entity,
+                                runtime_state=restored.runtime_state,
+                                response_filter=restored.response_filter,
+                            )
+                        with pytest.raises(BuilderExecutionPolicyError):
+                            NativeTestLifecycleService.claimed_resume_checkpoint(
+                                lifecycle, ref=context.ref, generation=generation, dispatch_id=f"delivery-{generation}"
+                            )
+                    from models.dify_builder_native_tests import NativeTestScope
+
+                    if history_fault == "redirect-transition":
+                        from threading import Event, Thread
+
+                        attempted, finished = Event(), Event()
+
+                        def observe_after_commit():
+                            attempted.set()
+                            try:
+                                _ = runtime.host.native_observation
+                                restored = runtime.host.resume_bindings
+                                runtime.host.require_resume_projection_bindings(
+                                    entity=restored.entity,
+                                    runtime_state=restored.runtime_state,
+                                    response_filter=restored.response_filter,
+                                )
+                            except BaseException as error:
+                                transition_errors.append(error)
+                            finally:
+                                finished.set()
+
+                        thread = Thread(target=observe_after_commit)
+                        transition_threads.append(thread)
+                        thread.start()
+                        assert attempted.wait(1)
+                        # Hold the known committed seal before its ACK, while
+                        # an actual concurrent projection tries to read.
+                        finished.wait(0.05)
+                    if history_fault == "redirect-owner":
+                        case.local.app_id = "foreign-app"
+                    elif history_fault == "redirect-generation":
+                        case.local.generation += 1
+                    elif history_fault == "redirect-dispatch":
+                        case.rows[NativeDispatch][0].state = "unknown"
+                    elif history_fault == "redirect-cancelled":
+                        case.rows[NativeTestScope][0].cancelled = True
+                    elif history_fault == "redirect-ambiguous":
+                        raise RuntimeError("seal_commit_ack_lost")
+                    elif history_fault == "redirect-unacknowledged":
+                        return object()
+                    elif history_fault == "redirect-checkpoint":
+                        case.rows[NativeContinuation][0].payload_digest = "d" * 64
+                    elif history_fault == "redirect-run":
+                        runtime.host.lifetime.context.__dict__["native_run_id"] = "foreign-run"
+                    return result
+                except BaseException as error:
+                    seal_errors.append(error)
+                    raise
+
+            monkeypatch.setattr(lifecycle, "seal_stop", checked_seal)
 
         def pause(**kw):
             return WaitingReceipt(
@@ -779,8 +898,37 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
                 tenant_id=context.tenant_id,
                 generation=generation,
                 state="claimed",
+                checkpoint_id=checkpoint_ref.checkpoint_id if generation else None,
             )
         ]
+        if history_fault is not None and (history_fault.startswith("redirect") or history_fault == "initial-stop"):
+            from models.dify_builder_native_tests import NativeContinuation, NativePayloadObject
+
+            case.local.checkpoint_id = checkpoint_ref.checkpoint_id if generation else None
+            if generation:
+                case.rows[NativeContinuation] = [
+                    SimpleNamespace(
+                        request_id=context.ref.request_id,
+                        invocation_id=context.ref.invocation_id,
+                        tenant_id=context.tenant_id,
+                        checkpoint_id=checkpoint_ref.checkpoint_id,
+                        payload_digest=checkpoint_ref.payload_digest,
+                        generation=0,
+                        payload_ref="checkpoint-object",
+                    )
+                ]
+                case.rows[NativePayloadObject].append(
+                    SimpleNamespace(
+                        id=checkpoint_ref.checkpoint_id,
+                        request_id=context.ref.request_id,
+                        invocation_id=context.ref.invocation_id,
+                        tenant_id=context.tenant_id,
+                        kind="checkpoint",
+                        logical_key="0",
+                        payload_digest=checkpoint_ref.payload_digest,
+                        storage_key="checkpoint-object",
+                    )
+                )
 
         def cleanup(**kw):
             runtime.host.lifetime.consume_cleanup(**kw)
@@ -795,6 +943,18 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
     with application.app_context():
         initial = prepare(0)
         waiting = initial.run_initial(context=context)
+        if history_fault == "initial-stop":
+            from models.dify_builder_native_tests import NativeTestInvocation
+
+            assert waiting.status == "stopped"
+            assert waiting.reason_code == "effect_denied"
+            assert case.request.state == "sealed"
+            assert not case.rows[NativeTestInvocation][0].active
+            assert initial.host.lifetime._consumed
+            assert case.rows[WorkflowRun][0].status == "stopped"
+            assert sends == []
+            assert thread_errors == []
+            return
         assert waiting.status == "waiting"
         assert sends == []
         payload = checkpoints["payload"]
@@ -832,6 +992,39 @@ def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monk
                 assert not tracked.thread.is_alive()
             assert all(type(error) is NativeObservationError for error in thread_errors)
             resumed.host.release_dead_dispatcher_logs()
+            return
+        if history_fault is not None and (history_fault.startswith("redirect") or history_fault == "initial-stop"):
+            from models.dify_builder_native_tests import NativeTestInvocation
+            from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+
+            for thread in transition_threads:
+                thread.join(2)
+                assert not thread.is_alive()
+            if history_fault not in ("redirect", "redirect-transition"):
+                assert result.status == "unknown"
+                assert resumed.host.lifetime.unknown
+                assert not resumed.host.lifetime._consumed
+                assert len(sends) == 1
+                for tracked in resumed.host.lifetime._threads:
+                    tracked.thread.join(2)
+                    assert not tracked.thread.is_alive()
+                resumed.host.release_dead_dispatcher_logs()
+                return
+            assert not seal_errors, seal_errors
+            assert not transition_errors, transition_errors
+            assert len(sends) == 1, (result, resumed.host.boundary_owner.status)
+            assert case.request.state == "sealed", (result, resumed.host.boundary_owner.records)
+            assert not case.rows[NativeTestInvocation][0].active
+            with pytest.raises(BuilderExecutionPolicyError, match="native_invocation_mismatch"):
+                case.store.load_context(ref=context.ref)
+            assert result.status == "stopped"
+            assert result.reason_code == "native_http_redirect_limit"
+
+            assert not resumed.host.lifetime.unknown
+            assert resumed.host.lifetime._consumed
+            assert len(sends) == 1
+            assert case.rows[WorkflowRun][0].status == "stopped"
+            assert thread_errors == []
             return
         assert result.status == "completed"
         assert result.native_status == "succeeded"

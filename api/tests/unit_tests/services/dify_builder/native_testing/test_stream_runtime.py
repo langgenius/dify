@@ -66,6 +66,9 @@ class StreamCase:
         if failed:
             factory.effects.foreign = RuntimeError("private-business-canary")
         if stopped:
+            # Labeled SQL evidence boundary for this historical component
+            # fixture; real seal/store semantics are in test_native_runtime.
+            monkeypatch.setattr(case.host, "require_evidence_context", lambda: case.state.context)
             factory.effects.decision = PolicyStop(reason_code="effect_denied")
         context = case.state.context
         self.row: WorkflowRun | None = WorkflowRun(
