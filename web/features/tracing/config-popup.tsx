@@ -15,44 +15,38 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentTracePolicy } from './agent-trace-policy'
-import ProviderConfigModal from './provider-config-modal'
-import ProviderPanel from './provider-panel'
-import { configurableProviders } from './providers'
+import { ProviderConfigModal } from './provider-config-modal'
+import { ProviderPanel } from './provider-panel'
+import { configurableProviders, hasProviderForm } from './providers'
 
-export type PopupProps = {
+type ConfigPopupProps = {
   resource: TracingResource
   configErrors?: Partial<Record<ConfigurableTracingProvider, ProviderConfigError>>
-  onBeforeRemove: (provider: ConfigurableTracingProvider) => Promise<void>
   readOnly: boolean
-  enabled: boolean
   pending: boolean
   policyError?: string
   policy?: AppTraceResponse
   onPolicyChange: (changes: Partial<AppTracePayload>) => Promise<void>
-  onStatusChange: (enabled: boolean) => void
-  chosenProvider: ConfigurableTracingProvider | null
-  onChooseProvider: (provider: ConfigurableTracingProvider) => Promise<void>
   configs: Partial<Record<ConfigurableTracingProvider, TraceAppConfigResponse['tracing_config']>>
 }
 
-export default function ConfigPopup({
+export function ConfigPopup({
   resource,
   configErrors,
-  onBeforeRemove,
   readOnly,
-  enabled,
   pending,
   policyError,
   policy,
   onPolicyChange,
-  onStatusChange,
-  chosenProvider,
-  onChooseProvider,
   configs,
-}: PopupProps) {
+}: ConfigPopupProps) {
   const { t } = useTranslation(['app'])
   const dialogActionsRef = useRef<DialogActions>(null)
   const firstInputRef = useRef<HTMLInputElement>(null)
+  const enabled = policy?.enabled ?? false
+  const chosenProvider = hasProviderForm(policy?.tracing_provider) ? policy.tracing_provider : null
+  const chooseProvider = (provider: ConfigurableTracingProvider) =>
+    onPolicyChange({ tracing_provider: provider, enabled: true })
   const closeConfig = () => dialogActionsRef.current?.close()
   const groups = [
     configurableProviders.filter((provider) => !!configs[provider]),
@@ -70,7 +64,9 @@ export default function ConfigPopup({
               <Switch
                 aria-label={t(($) => $['tracing.tracing'])}
                 checked={enabled}
-                onCheckedChange={onStatusChange}
+                onCheckedChange={(enabled) => {
+                  void onPolicyChange({ enabled }).catch(() => {})
+                }}
                 disabled={
                   readOnly || pending || (!enabled && (!chosenProvider || !configs[chosenProvider]))
                 }
@@ -126,7 +122,7 @@ export default function ConfigPopup({
                             configError={configErrors?.[item]}
                             isChosen={chosenProvider === item}
                             onChoose={() => {
-                              void onChooseProvider(item).catch(() => {})
+                              void chooseProvider(item).catch(() => {})
                             }}
                           />
                         )),
@@ -148,8 +144,11 @@ export default function ConfigPopup({
                   payload={configs[provider]}
                   firstInputRef={firstInputRef}
                   onSaved={closeConfig}
-                  onChosen={onChooseProvider}
-                  onBeforeRemove={() => onBeforeRemove(provider)}
+                  onChosen={chooseProvider}
+                  onBeforeRemove={async () => {
+                    if (provider === policy?.tracing_provider)
+                      await onPolicyChange({ enabled: false, tracing_provider: null })
+                  }}
                   onRemoved={closeConfig}
                 />
               )}
