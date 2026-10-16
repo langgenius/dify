@@ -1,10 +1,10 @@
 # Agent tracing 前端接入说明
 
-更新日期：2026-10-15。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
+更新日期：2026-10-16。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
-后端应用级 Agent tracing、Console API 与生成契约已实现，并已部署到 agent dev 完成本文记录的真实 Langfuse 验收。生产代码提交为 `5da59a08959823bd46296ff86e21bb019fa2d472`，测试类型补充提交为 `dba2ff735a62b30e52afef4b6b1e05aded29c2d4`；已合并 `origin/main` 的 `8428ced558c8c6a9f3ed8bb81f5d62c9402ca17d`，原功能基线为 `69629bd7b719ab958be2b8a83d6cf13a1dcdbc0c`。Web 本次未改，本文用于后续前端接入，不代表新配置和运行状态 UI 已完成。
+后端应用级 Agent tracing、Console API 与生成契约已实现。2026-10-15 的 Langfuse 验收与 2026-10-16 的 LangSmith 账号级验收分别记录于第 12 节；LangSmith 的配置深链和早期错误输入两处修复均已完成真实平台复验。Web 本次未改，本文用于后续前端接入，不代表新配置和运行状态 UI 已完成。
 
-独立 Agent 内容策略、成功/失败/取消终态、运行中配置冻结、mixed inline/reference Workflow、单节点 preview 与普通 Workflow legacy 兼容均有实际 API / Langfuse 证据。十家 provider 的适配实现与真实平台验收分开记录：其余九家没有账号级端到端证据，跨 Workflow 内部节点不保证同树。部署差异、故障注入的模拟边界与未验证范围见第 12 节。
+Langfuse 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。LangSmith 的已通过范围单独列明；其余八家仍没有账号级收数和查询证据。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
 
 ## 1. 接入位置与配置归属
 
@@ -502,25 +502,27 @@ await consoleClient.agent.byAgentId.traceRuns.byMessageId.retry.post({
 
 ## 12. 部署与分级验收记录
 
-以下是 2026-10-15 已收集的证据汇总。真实供应商查询、部署内故障注入和代码测试分别记载；未验证项目不计入通过。仓库文档不包含 workspace/account UUID、私人项目链接或凭据。
+以下分别记录 2026-10-15 的 Langfuse 验收和 2026-10-16 的 LangSmith 验收。真实供应商查询、部署内故障注入和代码测试分别记载；未验证项目不计入通过。仓库文档不包含 workspace/account UUID、私人项目链接或凭据。
 
 ### 12.1 实现版本与 dev 差异
 
 | 项目 | 当前记录 |
 | --- | --- |
-| main 基线 | 原功能基线 `69629bd7b719ab958be2b8a83d6cf13a1dcdbc0c`；已无冲突合并 `origin/main` 的 `8428ced558` |
-| 生产代码提交 | `5da59a08959823bd46296ff86e21bb019fa2d472` |
-| 测试类型补充提交 | `dba2ff735a62b30e52afef4b6b1e05aded29c2d4` |
-| 最终 dev API 镜像 ID | `50b6dbbc82f135d4937714111e8e8616eda154095580535537856a449df239d1` |
-| 最终 dev Agent 镜像 ID | `f0c70c043f71bf58f112eaf2a65f8dab1e2bc39072da8bc942a9e8815e111087` |
-| 验收期间的部署更新 | 早期 mixed Workflow / Agent 策略使用 API `ca15a0a0…`；终态 handoff 验收使用中间 API `9205…`；最终 API 已包含 preview 两项修复及 app-scoped tracing port 注册；在最终镜像上又完成 Agent 与 inline Workflow 回归，Agent runtime 未变更 |
+| main 基线 | 原功能基线 `69629bd7b719ab958be2b8a83d6cf13a1dcdbc0c`；已无冲突合并 `origin/main` 的 `36f9bb69e6c2ff629586d93ab463bd4da3d89af6` |
+| 10/15 生产代码提交 | `5da59a08959823bd46296ff86e21bb019fa2d472` |
+| 10/15 测试类型补充提交 | `dba2ff735a62b30e52afef4b6b1e05aded29c2d4` |
+| 10/15 dev API 镜像 ID | `50b6dbbc82f135d4937714111e8e8616eda154095580535537856a449df239d1` |
+| Agent runtime 镜像 ID | `f0c70c043f71bf58f112eaf2a65f8dab1e2bc39072da8bc942a9e8815e111087` |
+| 10/15 验收期间的部署更新 | 早期 mixed Workflow / Agent 策略使用 API `ca15a0a0…`；终态 handoff 验收使用中间 API `9205…`；最终 API 已包含 preview 两项修复及 app-scoped tracing port 注册；在最终镜像上又完成 Agent 与 inline Workflow 回归，Agent runtime 未变更 |
+| 10/16 LangSmith 修复提交 | 配置 PATCH 深链：`d85211e60179b0887fb4ba75de6f0654fe24138b`；早期 Agent 错误输入：`1c5303486eafc284b5ff1235f340b4cb2f654238` |
+| 10/16 dev r2 API 镜像 ID | `3d0569c5d2c07aa85cc78d6f4d4f378d295603caff7cc0374704e024fe533050`；Agent runtime 沿用上表镜像 |
 | 数据库迁移链 | main：`a17c2980f3e6`；dev：`a17c2980d3e6`。两条链不同，不把 revision 字符串不同误判为缺少本功能 |
 | dev 保留修改 | 保留 Tokener / node ID 补丁；没有以 main 覆盖 dev |
 | OpenAPI 适配差异 | dev 的 `libs.external_api` 缺少 `error_responses`，仅移除两个新 Console controller 的该纯文档注解；业务运行逻辑相同，前端类型以 main 生成契约为准 |
 | Web | 未修改；新增配置与运行状态 UI 仍由前端接入 |
 | 运行条件 | dev 验收时 API / Agent 双 gate 与恢复任务开关均开启，beat 正常投递恢复任务；实际运行由 worker 接受上报。发布其他环境时仍需核对其独立开关 |
 
-### 12.2 已通过的真实 API / Langfuse 验收
+### 12.2 Langfuse 真实 API / 平台验收（2026-10-15）
 
 | 场景 | API / 业务结果 | 第三方证据 |
 | --- | --- | --- |
@@ -546,7 +548,7 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 | 运行中取消并关闭 SSE | invocation 尚未 finalized 时真实 POST stop，随后立即关闭 SSE；worker 持久化终态，accepted；canonical root 为 error、`message_execution_state=cancelled`；底层已完成 span 可仍为 ok | HTTP 200，6 observations / 1 root / 2 generations；root level=ERROR，所有 parent 存在 |
 | 模型执行失败 | Console 返回 HTTP 400 / `completion_request_error`，Message 已创建；tracing 最终 accepted；canonical root 与 LLM span 为 error、`message_execution_state=failed` | HTTP 200，4 observations / 1 root / 1 generation；root 与 generation 为 ERROR，所有 parent 存在 |
 
-最终 API 镜像部署后重新执行独立 Agent 与 mixed inline Workflow：Agent 业务成功并 accepted；inline 业务成功并 accepted，独立 Langfuse 查询得到 10 observations / 1 root，包含 3 GENERATION、1 TOOL、3 AGENT 和 3 CHAIN，native tokens 与 canonical 均为 4768，ID、父关系和节点深链匹配，graph / tracing 配置未变。上述 Agent 最终镜像回归单独确认业务与投递 ACK，未新增该条 trace 的独立平台查询声明。
+10/15 最终 API 镜像部署后重新执行独立 Agent 与 mixed inline Workflow：Agent 业务成功并 accepted；inline 业务成功并 accepted，独立 Langfuse 查询得到 10 observations / 1 root，包含 3 GENERATION、1 TOOL、3 AGENT 和 3 CHAIN，native tokens 与 canonical 均为 4768，ID、父关系和节点深链匹配，graph / tracing 配置未变。上述 Agent 最终镜像回归单独确认业务与投递 ACK，未新增该条 trace 的独立平台查询声明。
 
 ### 12.3 部署内故障注入：真实数据库，模拟导出传输
 
@@ -560,23 +562,73 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 
 这 5 类检查执行的是隔离进程中的实际 Celery task body，使用真实 PostgreSQL 与 gevent 调度，但不是共享 broker consumer 的完整故障演练；`platform_verified=false`，不能写成真实供应商失败/恢复已验收。
 
-### 12.4 代码回归检查
+### 12.4 本地检查与 CI 的时间边界
 
 | 检查范围 | 结果 |
 | --- | --- |
-| API 定向及关联回归测试 | 963 passed（包含完整 Agent App / core ops 回归） |
-| Agent 完整本地测试集 | 932 passed / 5 skipped（平台相关跳过项以 CI 为准） |
-| preview scope 修复相关回归 | 143 passed；随后真实部署复验通过，见上表 |
-| 完整类型检查 | `make type-check` 通过；新增 strict unit tests 为 0 diagnostics |
-| 架构导入规则 | 68 contracts kept / 0 broken |
-| 后端完整 lint | `make lint` 通过；响应契约、禁止 spec mock、新模型基类及 dotenv 检查通过 |
+| 10/15 API 基线回归 | 963 passed（包含完整 Agent App / core ops 回归） |
+| 10/16 当前 API 组合回归 | 在 `1c5303486e` 上 1052 passed；本地完整 `make lint`、`make type-check` 通过，formatter 未修改文件 |
+| 10/15 Agent 完整本地测试集 | 932 passed / 5 skipped；本轮 runtime 代码未改，未声称 10/16 重跑该完整测试集 |
+| 10/15 preview scope 修复相关回归 | 143 passed；随后真实部署复验通过，见上表 |
+| 10/15 完整类型检查 | `make type-check` 通过；新增 strict unit tests 为 0 diagnostics |
+| 10/15 架构导入规则 | 68 contracts kept / 0 broken |
+| 10/15 后端完整 lint | `make lint` 通过；响应契约、禁止 spec mock、新模型基类及 dotenv 检查通过 |
+
+10/15 head `7c08debe42d55c6b3fe305e7105cd7fd97225049` 的 CI 为 61 项成功、5 项跳过、0 失败，Codecov patch 90.90%（目标 88.98%）。这是该历史 head 的结果；10/16 新增修复的最终 CI 结果尚待发布负责人确认，不能沿用上轮全绿结论。
 
 首次测试进程继承用户 SOCKS 代理环境时因缺少 `socksio` 失败；隔离测试进程的代理环境后上述测试全部通过，未修改用户代理配置。完整类型检查在本地虚拟环境中补充了实际 VDB 源码的搜索路径，没有添加 stub、ignore 或 suppression。测试通过不替代真实部署和供应商查询验收。
 
-### 12.5 未验证范围与后续前端验收
+### 12.5 LangSmith 账号级验收（2026-10-16）
 
-- 普通无 Agent Workflow legacy 已在指定测试应用通过；普通 Chatflow 未补独立真实平台证据。
-- 非 Langfuse 的其他九家：已实现适配并有 SDK/协议边界测试，没有账号级真实收数 / 查询验收。
+本轮使用已配置的独立测试项目，通过真实 Console API、持久化数据、LangSmith SDK 独立查询及部分实际浏览器操作核对。capability 中 `agent_spans/session/native_usage/native_cost/trace_url/span_url` 为支持声明；不因本次账号验证通过而推断其他账号、区域或部署已经收数。运行接口仍返回 `queryable=null`，`accepted` 仍只是 ingestion ACK。
+
+#### ID、会话与平台类型
+
+| 项目 | LangSmith 语义 | 接入要求 |
+| --- | --- | --- |
+| Run ID | `uuid5(NAMESPACE_URL, f"dify:{canonical_trace_id}:{span_id}")` | 第三方 UUID 不直接等于 Dify 的 OTel hex span ID；Console accepted 状态可返回该 provider ID |
+| Trace ID / parent | 全树 `trace_id` 为映射后的 root run ID；父子通过 `parent_run_id` 和 `dotted_order` 表达 | 比较完整 ID、parent 和层级，不只数节点；跳转使用后端保存 URL |
+| 会话 | Dify 会话写入每个 run 的 `extra.metadata.session_id` | LangSmith 顶层 `Run.session_id` 是项目 ID，不能误当聊天会话 |
+| Agent 类型 | `run_type=chain`，原类型仍在 metadata 的 `dify.span.kind` | mixed Workflow 的 10 runs 为 6 chain、3 llm、1 tool；不能要求平台原生类型叫 agent |
+| 原生指标 | LLM runs 的 prompt/completion/total tokens 与 USD total_cost | 只按 LLM 比较和累加，避免把祖先汇总再加一次；缺失值不等于零成本 |
+
+#### 已通过范围
+
+除 disabled 外，下表运行均达到 accepted 并通过独立平台查询；所有有树的场景核对 mapped IDs、parents、dotted_order、session metadata、project ID、类型和错误状态。usage/cost 只比较实际存在的 LLM 指标；“深链校验通过”表示 URL 与 SDK 路径匹配且对应 run 存在，实际浏览器验证另列。
+
+| 场景 | 平台结构与指标 | 策略 / 体验证据 |
+| --- | --- | --- |
+| 独立 Agent UI 第一轮 | 6 runs / 1 root；3 chain、2 llm、1 tool；4671 tokens / USD 0.0009752 | 实际打开 root 深链并展开完整树，进入 Thread 页面 |
+| 同会话第二轮 | 6 runs / 1 root；4859 tokens / USD 0.0010128 | 浏览器 Thread 页面显示两轮 root；所有子 run 的会话 metadata 一致 |
+| mixed inline Workflow | 10 runs / 1 root；3 次 LLM、1 次工具；4768 tokens / USD 0.0009929 | 继承调用方冻结配置，包含普通 LLM 与两次 Agent LLM；浏览器实际打开节点深链并选中对应 attempt，展示 10 节点树 |
+| mixed reference Workflow | 10 runs / 1 root；3 次 LLM、1 次工具；4766 tokens / USD 0.0009925 | 使用调用方配置，节点深链校验通过 |
+| 单节点 preview | 6 runs / 1 root；4742 tokens / USD 0.0009854 | `source_kind=node`；节点深链有效，graph、policy 与 provider config 未变 |
+| `capture_content=false` | 6 runs / 1 root；4689 tokens / USD 0.0009788 | 没有实际 input/output payload，也没有 synthetic canary；结构和原生 usage/cost 保留 |
+| `enabled=false` | `not_collected`；45 秒观察窗口内 0 runs | 业务仍完成，不将未采集误显示为投递失败 |
+| `capture_agent=false` | 仅 1 个外层 chain run | 内部 Agent / LLM / tool 未导出；不代表业务没有消耗 tokens 或费用 |
+| 运行中冻结策略 | 6 runs / 1 root；4670 tokens / USD 0.0009760 | 动作发生于 invocation 未 finalized 时；关闭策略后旧 run 保持原 revision 与内容策略继续完成 |
+| 运行中取消后关闭 SSE | 6 runs / 1 root；4667 tokens / USD 0.0009744 | 外层 root 为 error / cancelled；已完成底层 spans 保留实际状态，终态交接不依赖继续消费 SSE |
+| PATCH 修复后新 run | 6 runs / 1 root；4671 tokens / USD 0.0009752 | 新冻结配置含 project_url，trace 与 span 深链均对应平台实际 runs |
+| 模型错误 r2，内容开启 | 4 runs / 1 root；3 chain、1 llm，错误状态与 canonical 一致 | root 保留真实已知 query、canary 存在，未制造 output；浏览器实际显示 query 与 Agent message failed |
+| 模型错误 r2，内容关闭 | 4 runs / 1 root；错误状态与结构保留 | input/output payload 与 canary 均不存在，错误输入回退没有绕过内容开关 |
+| accepted 重投保护 | Console 返回 409 / `tracing_already_accepted` | attempts 未增加；验收结束后三个测试 owner 的策略均恢复 |
+
+内容关闭时，inputs/outputs 仍可能包含 null 包装或 usage_metadata；检查实际业务 payload 和 canary，不能仅因对象非空就认定泄漏。表中的 token/cost 是这几次运行的事实，不要求未来运行固定返回相同数值。
+
+#### 两处真实缺陷与修复状态
+
+| 问题 | 修复前证据 | 修复与验收 |
+| --- | --- | --- |
+| PATCH 后深链丢失 | 已有配置执行 PATCH 后，持久化 project_url 消失；后续 run accepted，但冻结项目 URL 和 trace_url 为空 | `d85211e601` 在验证更新配置后重新解析并持久化当前目的地 URL。真实 PATCH 后新 run 和独立平台深链验证已通过；不回填或改写历史 run 目的地 |
+| 早期模型错误没有 root 输入 | 格式化 Message.message 尚为空，但真实 Message.query 已存在；4 runs 的树和 error 状态正确，capture_content=true 却全部 I/O 为空，因此旧 run 整项未通过 | `1c5303486e` 仅在 Agent worker 终态交接、格式化输入确为空时，将已知 query 保留为 root inputs；不伪造 LLM prompt、不写回 Message、不改 legacy TraceTask。真实 SQLite red→green 验证包括空字符串/JSON空对象或数组/null、非空输入保留、空query不造数据和content-off剥离。r2 已在内容开启/关闭两种策略下完成真实平台查询；开启时有已知query且不伪造output，关闭时仍无payload/canary；浏览器另确认开启场景的query与failed状态 |
+
+最初 probe 的读取失败来自验收脚本使用了不适合该查询 API 的 limit=10000；将小型 fixture 查询上限改为 100 后，复用同一条运行完成核对。该脚本问题不计为产品采集失败，也不替代上表两项实际产品缺陷。
+
+### 12.6 未验证范围与后续前端验收
+
+- 普通无 Agent Workflow legacy 的既有通过证据属于 Langfuse；LangSmith 普通 Workflow legacy 和同 tenant 两应用不同项目并发隔离正在补充，不计为本节核心矩阵已通过范围。普通 Chatflow 未补独立真实平台证据。
+- 除已列明证据的 Langfuse、LangSmith 外，Opik、Weave、Arize、Phoenix、MLflow、Databricks、阿里云和腾讯云八家仍没有账号级真实收数 / 查询验收；实现或协议测试不等于账号已验证。
+- 跨 tenant 隔离、真实供应商 429 和凭据撤销没有在本轮 LangSmith 账号上执行；公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
 - Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
 - 本次未实现 Web 配置和运行状态 UI；新增前端页面的权限展示、交互、状态轮询及深链跳转需在前端接入后验收。
 
