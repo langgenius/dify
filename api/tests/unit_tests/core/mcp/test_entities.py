@@ -7,10 +7,22 @@ from core.mcp.entities import (
     RequestContext,
 )
 from core.mcp.session.base_session import BaseSession
-from core.mcp.types import LATEST_PROTOCOL_VERSION, RequestParams, ServerNotification, ServerRequest
+from core.mcp.types import (
+    LATEST_PROTOCOL_VERSION,
+    ClientNotification,
+    ClientRequest,
+    ClientResult,
+    RequestParams,
+    ServerNotification,
+    ServerRequest,
+)
+
+type _ClientSideSession = BaseSession[
+    ClientRequest, ClientNotification, ClientResult, ServerRequest, ServerNotification
+]
 
 
-def _session() -> BaseSession:
+def _session() -> _ClientSideSession:
     return BaseSession(
         read_stream=Queue(),
         write_stream=Queue(),
@@ -22,7 +34,7 @@ def _session() -> BaseSession:
 class TestProtocolVersions:
     """Test protocol version constants."""
 
-    def test_supported_protocol_versions(self):
+    def test_supported_protocol_versions(self) -> None:
         """Test supported protocol versions list."""
         assert isinstance(SUPPORTED_PROTOCOL_VERSIONS, list)
         assert len(SUPPORTED_PROTOCOL_VERSIONS) >= 3
@@ -30,7 +42,7 @@ class TestProtocolVersions:
         assert "2025-03-26" in SUPPORTED_PROTOCOL_VERSIONS
         assert LATEST_PROTOCOL_VERSION in SUPPORTED_PROTOCOL_VERSIONS
 
-    def test_latest_protocol_version_is_supported(self):
+    def test_latest_protocol_version_is_supported(self) -> None:
         """Test that latest protocol version is in supported versions."""
         assert LATEST_PROTOCOL_VERSION in SUPPORTED_PROTOCOL_VERSIONS
 
@@ -38,7 +50,7 @@ class TestProtocolVersions:
 class TestRequestContext:
     """Test RequestContext dataclass."""
 
-    def test_request_context_creation(self):
+    def test_request_context_creation(self) -> None:
         """Test creating a RequestContext instance."""
         session = _session()
         lifespan = {"key": "value"}
@@ -56,7 +68,7 @@ class TestRequestContext:
         assert context.session == session
         assert context.lifespan_context == lifespan
 
-    def test_request_context_with_none_meta(self):
+    def test_request_context_with_none_meta(self) -> None:
         """Test creating RequestContext with None meta."""
         session = _session()
 
@@ -72,7 +84,7 @@ class TestRequestContext:
         assert context.session == session
         assert context.lifespan_context is None
 
-    def test_request_context_attributes(self):
+    def test_request_context_attributes(self) -> None:
         """Test RequestContext attributes are accessible."""
         session = _session()
 
@@ -95,13 +107,13 @@ class TestRequestContext:
         assert context.session == session
         assert context.lifespan_context is None
 
-    def test_request_context_generic_typing(self):
+    def test_request_context_generic_typing(self) -> None:
         """Test RequestContext with different generic types."""
         # Create a real session without starting its receive loop.
         session = _session()
 
         # Create context with string lifespan context
-        context_str = RequestContext[BaseSession, str](
+        context_str = RequestContext[_ClientSideSession, str](
             request_id="test-1",
             meta=None,
             session=session,
@@ -110,7 +122,7 @@ class TestRequestContext:
         assert isinstance(context_str.lifespan_context, str)
 
         # Create context with dict lifespan context
-        context_dict = RequestContext[BaseSession, dict](
+        context_dict = RequestContext[_ClientSideSession, dict[str, str]](
             request_id="test-2",
             meta=None,
             session=session,
@@ -120,11 +132,11 @@ class TestRequestContext:
 
         # Create context with custom object lifespan context
         class CustomLifespan:
-            def __init__(self, data):
+            def __init__(self, data: str) -> None:
                 self.data = data
 
         custom_lifespan = CustomLifespan("test-data")
-        context_custom = RequestContext[BaseSession, CustomLifespan](
+        context_custom = RequestContext[_ClientSideSession, CustomLifespan](
             request_id="test-3",
             meta=None,
             session=session,
@@ -133,7 +145,7 @@ class TestRequestContext:
         assert isinstance(context_custom.lifespan_context, CustomLifespan)
         assert context_custom.lifespan_context.data == "test-data"
 
-    def test_request_context_with_progress_meta(self):
+    def test_request_context_with_progress_meta(self) -> None:
         """Test RequestContext with progress metadata."""
         session = _session()
         progress_meta = RequestParams.Meta(progressToken="progress-123")
@@ -148,7 +160,7 @@ class TestRequestContext:
         assert context.meta is not None
         assert context.meta.progressToken == "progress-123"
 
-    def test_request_context_equality(self):
+    def test_request_context_equality(self) -> None:
         """Test RequestContext equality comparison."""
         session1 = _session()
         session2 = _session()
@@ -189,7 +201,7 @@ class TestRequestContext:
         )
         assert context1 != context4
 
-    def test_request_context_repr(self):
+    def test_request_context_repr(self) -> None:
         """Test RequestContext string representation."""
         session = _session()
 

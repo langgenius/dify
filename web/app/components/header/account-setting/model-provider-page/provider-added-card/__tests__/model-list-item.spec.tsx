@@ -1,7 +1,7 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ModelItem, ModelProvider } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { disableModel, enableModel } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { ModelStatusEnum } from '../../declarations'
@@ -28,9 +28,26 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/common', () => ({
-  enableModel: vi.fn(),
-  disableModel: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              enable: {
+                patch: vi.fn(),
+              },
+              disable: {
+                patch: vi.fn(),
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../../hooks', () => ({
@@ -119,7 +136,9 @@ describe('ModelListItem', () => {
 
     await waitFor(
       () => {
-        expect(disableModel).toHaveBeenCalled()
+        expect(
+          consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch,
+        ).toHaveBeenCalled()
         expect(onChange).toHaveBeenCalledWith('test-provider')
       },
       { timeout: 2000 },
@@ -142,7 +161,9 @@ describe('ModelListItem', () => {
 
     await waitFor(
       () => {
-        expect(enableModel).toHaveBeenCalled()
+        expect(
+          consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch,
+        ).toHaveBeenCalled()
         expect(onChange).toHaveBeenCalledWith('test-provider')
       },
       { timeout: 2000 },
@@ -292,8 +313,12 @@ describe('ModelListItem', () => {
     expect(statusSwitch).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(statusSwitch)
     expect(statusSwitch).toHaveAttribute('aria-checked', 'false')
-    expect(enableModel).not.toHaveBeenCalled()
-    expect(disableModel).not.toHaveBeenCalled()
+    expect(
+      consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch,
+    ).not.toHaveBeenCalled()
+    expect(
+      consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch,
+    ).not.toHaveBeenCalled()
   })
 
   // isConfigurable=true: hover class on row

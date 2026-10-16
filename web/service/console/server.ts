@@ -7,7 +7,9 @@ import { cache } from 'react'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
 import { cookies, headers } from '@/next/headers'
+import { httpErrorFromResponse, isHttpErrorStatus } from '@/service/http-error'
 import { createConsoleContractLink } from './contract-loader'
+import { validateDefinedErrors } from './defined-errors'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 import 'server-only'
 
@@ -65,19 +67,22 @@ function createServerConsoleOpenAPILink(
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getServerConsoleApiPrefix,
     headers: getServerConsoleRequestHeaders,
-    fetch: (request, init) => {
+    fetch: async (request, init) => {
       if (request.body && !request.headers.has('content-type'))
         request.headers.set('Content-Type', 'application/json')
 
       const normalizedURL = normalizeConsoleOpenAPIURL(request.url)
       const normalizedRequest =
         normalizedURL === request.url ? request : new Request(normalizedURL, request)
-      return globalThis.fetch(normalizedRequest, {
+      const response = await globalThis.fetch(normalizedRequest, {
         ...init,
         cache: 'no-store',
       })
+      if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
+      return response
     },
     interceptors: [
+      validateDefinedErrors(contract),
       onError((error) => {
         console.error(error)
       }),

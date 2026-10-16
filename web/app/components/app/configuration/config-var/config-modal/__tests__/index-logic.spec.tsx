@@ -2,13 +2,20 @@ import type { InputVar } from '@/app/components/workflow/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore } from '@/app/components/app/store'
 import { InputVarType } from '@/app/components/workflow/types'
 import DebugConfigurationContext from '@/context/debug-configuration'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import ConfigModal from '../index'
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 let latestFormProps: Record<string, any> | null = null
@@ -106,12 +113,14 @@ const createPayload = (overrides: Partial<InputVar> = {}): InputVar => ({
   ...overrides,
 })
 
-const renderConfigModal = (payload: InputVar = createPayload()) =>
-  render(
+const renderConfigModal = (payload: InputVar = createPayload()) => {
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' as const }))
+  return renderWithConsoleQuery(
     <DebugConfigurationContext.Provider
       value={
         {
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           dataSets: [],
           modelConfig: { model_id: 'model-1' },
         } as any
@@ -119,15 +128,14 @@ const renderConfigModal = (payload: InputVar = createPayload()) =>
     >
       <ConfigModal isCreate isShow payload={payload} onClose={vi.fn()} onConfirm={vi.fn()} />
     </DebugConfigurationContext.Provider>,
+    { queryClient },
   )
+}
 
 describe('ConfigModal logic', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     latestFormProps = null
-    useStore.setState({
-      appDetail: createAppDetailFixture({ mode: AppModeEnum.CHAT }),
-    })
   })
 
   it('should surface validation errors from invalid variable name callbacks', async () => {

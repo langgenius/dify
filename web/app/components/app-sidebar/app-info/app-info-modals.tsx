@@ -12,6 +12,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -136,22 +137,21 @@ const AppInfoModals = ({
       >
         <AlertDialogContent>
           <form
-            className="flex flex-col"
             onSubmit={(e) => {
               e.preventDefault()
               if (isDeleteConfirmDisabled) return
               onConfirmDelete()
             }}
           >
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <Field name="confirm-app-name" className="mt-2 gap-0">
-                <FieldLabel className="system-sm-regular">
+              <Field name="confirm-app-name">
+                <FieldLabel>
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -172,19 +172,18 @@ const AppInfoModals = ({
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
                   />
-                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                  <InputGroupAddon align="inline-end">
                     <Button
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(appDetail.name)}
-                      className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </Button>
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton type="button">
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -215,14 +214,14 @@ const AppInfoModals = ({
         ) : (
           exportDialogMode === 'warning' && (
             <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
                   {t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
                 </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                <AlertDialogDescription>
                   {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
                 </AlertDialogDescription>
-              </div>
+              </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}

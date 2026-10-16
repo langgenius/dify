@@ -2,7 +2,7 @@ import type { ParameterExtractorNodeType } from '../types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { AppModeEnum, Resolution } from '@/types/app'
+import { Resolution } from '@/types/app'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
@@ -37,7 +37,7 @@ const createData = (
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as ParameterExtractorNodeType['model'],
   query: ['node-1', 'query'],

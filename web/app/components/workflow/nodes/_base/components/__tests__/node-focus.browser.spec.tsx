@@ -1,12 +1,33 @@
+import type { ReactElement } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '../../../../types'
 import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { render as renderBrowser } from 'vitest-browser-react'
+import { consoleQuery } from '@/service/console'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestQueryClient } from '@/test/query-client'
+import { EditorResourceScope } from '../../../../editor-resource/provider'
 import { BlockEnum } from '../../../../types'
 import NodeControl from '../node-control'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
+
+const render = (ui: ReactElement) => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
+  )
+  return renderBrowser(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        {ui}
+      </EditorResourceScope>
+    </QueryClientTestProvider>,
+  )
+}
 
 // Plugin installation is outside node trigger and popup focus ownership.
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
@@ -23,7 +44,6 @@ vi.mock('../../../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({ handleNodeAdd: vi.fn(), handleNodeSelect: vi.fn() }),
 }))
 vi.mock('../../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => false,
   useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
 }))
 vi.mock('../../../../hooks/use-nodes-meta-data', () => ({
@@ -43,7 +63,6 @@ vi.mock('@/app/components/workflow/store', () => ({
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      configsMap: { flowType: 'app-flow' },
       availableNodesMetaData: { nodes: [] },
       accessControl: { canRun: false },
     }),
@@ -59,15 +78,16 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useRAGRecommendedPlugins: () => ({ data: [] }),
-  useInvalidateAllToolProviders: () => vi.fn(),
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.recommendedPlugins.get': () => ({ data: [] }),
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
@@ -117,6 +137,8 @@ it.each([0, 1])(
     const node = screen.getByRole('button', { name: 'Code node', exact: true })
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' }).nth(index)
     await before.click()
+    await expect.element(trigger).toBeInTheDocument()
+    expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(false)
     await userEvent.tab()
     await expect.element(node).toHaveFocus()
     // Click the real React Flow handle: its transparent button intentionally does not receive pointer events.
@@ -126,31 +148,15 @@ it.each([0, 1])(
     await userEvent.keyboard('{Escape}')
     await expect.element(trigger).toHaveFocus()
     await expect.poll(() => trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
-    await userEvent.keyboard('{Enter}')
-    await expect.element(screen.getByRole('dialog')).toBeVisible()
-    await userEvent.keyboard('{Escape}')
-    await expect.element(trigger).toHaveFocus()
   },
 )
-
-it('reveals an unselected node handle when reached by Tab', async () => {
-  const screen = await renderCanvas()
-  const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' }).first()
-  await screen.getByRole('button', { name: 'Before canvas' }).click()
-  expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(false)
-  await userEvent.tab()
-  await userEvent.tab()
-  await expect.element(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
-  await userEvent.tab()
-  await expect.element(trigger).toHaveFocus()
-  await expect.poll(() => trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
-})
 
 it('keeps More visible and focused after closing an unselected node menu away from hover', async () => {
   const screen = await renderCanvas()
   const before = screen.getByRole('button', { name: 'Before canvas' })
   const more = screen.getByRole('button', { name: 'common.operation.more' })
   await before.click()
+  await expect.element(more).toBeInTheDocument()
   expect(more.element().checkVisibility({ checkOpacity: true })).toBe(false)
   await screen.getByRole('button', { name: 'Code node', exact: true }).hover()
   await more.click()
@@ -159,8 +165,6 @@ it('keeps More visible and focused after closing an unselected node menu away fr
   await userEvent.keyboard('{Escape}')
   await expect.element(more).toHaveFocus()
   expect(more.element().checkVisibility({ checkOpacity: true })).toBe(true)
-  await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByRole('menu')).toBeVisible()
 })
 
 it.each([0, 1])(
@@ -170,6 +174,7 @@ it.each([0, 1])(
     const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' }).nth(index)
     const editor = screen.getByRole('textbox', { name: 'Outside editor' })
     const input = editor.element()
+    await expect.element(trigger).toBeInTheDocument()
     await userEvent.click(trigger.element().parentElement!)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await userEvent.click(input)

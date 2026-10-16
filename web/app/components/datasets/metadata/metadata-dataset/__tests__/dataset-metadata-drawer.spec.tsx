@@ -6,13 +6,16 @@ import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
 // Mock service/API calls
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
+      },
+    }),
+  })
+})
 
 // Mock check name hook
 vi.mock('../../hooks/use-check-metadata-name', () => ({
@@ -198,7 +201,7 @@ describe('DatasetMetadataDrawer', () => {
       )!.toBeInTheDocument()
     })
 
-    it('should call onAdd and show success toast when metadata is added', async () => {
+    it('should call onAdd when metadata is added', async () => {
       const onAdd = vi.fn().mockResolvedValue({})
       render(<DatasetMetadataDrawer {...defaultProps} onAdd={onAdd} />)
 
@@ -214,14 +217,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onAdd).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 
@@ -287,14 +282,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 

@@ -11,9 +11,7 @@ import {
   ComboboxList,
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
-import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
@@ -22,8 +20,6 @@ import { isCreateTagOption } from './tag-combobox-item'
 
 type TagSearchContentProps = {
   type: TagType
-  inputValue: string
-  onInputValueChange: (value: string) => void
   onOpenTagManagement?: () => void
   onClose?: () => void
   canBindOrUnbindTags?: boolean
@@ -36,8 +32,6 @@ type TagSearchContentViewProps = TagSearchContentProps & {
 
 export const TagSearchContentView = ({
   type,
-  inputValue,
-  onInputValueChange,
   onOpenTagManagement,
   onClose,
   canBindOrUnbindTags = false,
@@ -45,48 +39,24 @@ export const TagSearchContentView = ({
   canManageTags,
 }: TagSearchContentViewProps) => {
   const { t } = useTranslation(['common'])
-  const inputRef = useRef<HTMLInputElement>(null)
   const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' }) || ''
-
-  const handleClearInput = () => {
-    onInputValueChange('')
-    inputRef.current?.focus()
-  }
 
   return (
     <>
-      <div className="p-2 pb-1">
-        <ComboboxInputGroup className="border-divider-subtle bg-components-input-bg-normal">
-          <span
-            aria-hidden="true"
-            className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
-          />
-          <ComboboxInput
-            ref={inputRef}
-            aria-label={placeholder}
-            name={`tag-search-${type}`}
-            placeholder={placeholder}
-            className="pl-2"
-          />
-          {inputValue && (
-            <IconButton
-              size="sm"
-              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              className="mr-1.5 shrink-0 hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover"
-              onClick={handleClearInput}
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              <span className="i-ri-close-line size-4" aria-hidden="true" />
-            </IconButton>
-          )}
-        </ComboboxInputGroup>
-      </div>
+      <ComboboxInputGroup>
+        <span aria-hidden="true" className="i-ri-search-line size-4 shrink-0 text-text-tertiary" />
+        <ComboboxInput
+          aria-label={placeholder}
+          name={`tag-search-${type}`}
+          placeholder={placeholder}
+        />
+      </ComboboxInputGroup>
       <ComboboxList<TagComboboxItem> className="max-h-58">
         {(tag) => {
           if (isCreateTagOption(tag) && canManageTags) {
             return (
               <ComboboxItem<string> key={tag.id} value={tag.id}>
-                <ComboboxItemText className="flex items-center gap-x-1 px-0">
+                <ComboboxItemText className="flex items-center gap-x-1">
                   <span
                     aria-hidden="true"
                     className="i-ri-add-line size-4 shrink-0 text-text-tertiary"

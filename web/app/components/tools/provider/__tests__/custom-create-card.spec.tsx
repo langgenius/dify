@@ -73,7 +73,6 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
               schema: '{}',
               privacy_policy: '',
               custom_disclaimer: '',
-              id: 'test-id',
               labels: [],
             })
           }}
@@ -233,21 +232,6 @@ describe('CustomCreateCard', () => {
 
       await waitFor(() => {
         expect(mockCreateCustomCollection).toHaveBeenCalledTimes(1)
-      })
-    })
-
-    it('should show success toast after successful creation', async () => {
-      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
-
-      // Open modal
-      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
-      fireEvent.click(cardClickArea!)
-
-      // Submit form
-      fireEvent.click(screen.getByTestId('submit-modal'))
-
-      await waitFor(() => {
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
 

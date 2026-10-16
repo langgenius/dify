@@ -1,11 +1,11 @@
 'use client'
 
 import { DeploymentOperationStatus } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { shouldPollEnvironmentDeployment } from '@/app/components/app/deploy/utils/environment-deployment'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { consoleQuery } from '@/service/console'
 import {
   appPublisherOpenAtom,

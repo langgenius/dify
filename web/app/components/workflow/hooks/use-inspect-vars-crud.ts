@@ -1,19 +1,18 @@
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useConversationVarValues, useSysVarValues } from '@/service/use-workflow'
-import { FlowType } from '@/types/common'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
 
 const varsAppendStartNodeKeys = ['query', 'files']
 const useInspectVarsCrud = () => {
   const partOfNodesWithInspectVars = useStore((s) => s.nodesWithInspectVars)
-  const configsMap = useHooksStore((s) => s.configsMap)
-  const shouldSkipSharedVariableQueries =
-    configsMap?.flowType === FlowType.ragPipeline || configsMap?.flowType === FlowType.snippet
-  const variableFlowId = shouldSkipSharedVariableQueries ? '' : configsMap?.flowId
-  const { data: conversationVars } = useConversationVarValues(configsMap?.flowType, variableFlowId)
-  const { data: allSystemVars } = useSysVarValues(configsMap?.flowType, variableFlowId)
+  const resource = useAtomValue(editorResourceAtom)
+  const appResource = resource.kind === 'app' ? resource : undefined
+  const { data: conversationVars } = useConversationVarValues(appResource)
+  const { data: allSystemVars } = useSysVarValues(appResource)
   const { varsAppendStartNode, systemVars } = (() => {
     if (allSystemVars?.length === 0) return { varsAppendStartNode: [], systemVars: [] }
     const varsAppendStartNode =

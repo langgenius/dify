@@ -528,7 +528,6 @@
   "singleRun.testRun": "테스트 실행",
   "snippet.confirm": "확인",
   "snippet.createDialogTitle": "스니펫 생성",
-  "snippet.createSuccess": "스니펫이 생성되었습니다.",
   "snippet.descriptionLabel": "설명 (옵션)",
   "snippet.descriptionPlaceholder": "스니펫을 간략하게 설명하세요.",
   "snippet.nameLabel": "스니펫 이름",

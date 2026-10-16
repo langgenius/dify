@@ -12,7 +12,7 @@ class MockResizeObserver {
 }
 
 beforeAll(() => {
-  globalThis.ResizeObserver = MockResizeObserver as typeof ResizeObserver
+  globalThis.ResizeObserver = MockResizeObserver
 })
 
 afterAll(() => {

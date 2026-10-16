@@ -26,6 +26,120 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
    - Copy `envs/core-services/shared.env.example` to `envs/core-services/shared.env`.
    - Set `ENABLE_OTEL=true` and configure `OTLP_BASE_ENDPOINT`. Tune the other `OTEL_*` knobs in the same file if needed.
 
+## Client IP and trusted proxies
+
+Dify uses the request's resolved client IP for rate limits and audit records. The
+bundled Nginx overwrites `X-Forwarded-For` with `$remote_addr`, and Compose enables
+`RESPECT_XFORWARD_HEADERS_ENABLED` for the API and WebSocket API services. Dify's
+proxy middleware trusts one forwarded value, so different visitors keep separate
+IP buckets while caller-supplied IP headers cannot override Nginx's address.
+
+The middleware does not authenticate the proxy. Keep the API port private and
+restrict direct API connections to trusted callers. Compose does not publish that
+port, but services on its shared Docker networks can still connect directly,
+including the code sandbox on `ssrf_proxy_network`. Those connections bypass
+Nginx's header replacement. If those workloads are untrusted, enforce network or
+firewall isolation and route their API calls through a sanitizing gateway before
+enabling forwarded-header trust. Merely setting a Docker network to `internal`
+does not isolate containers from each other.
+
+For a directly exposed API, leave `RESPECT_XFORWARD_HEADERS_ENABLED=false`.
+The Python configuration and `api/.env.example` retain that default. To override
+the Compose default, set the variable in `docker/.env`, the shell used by Compose,
+or a Compose override. The API services' explicit `environment` entry takes
+precedence over `envs/core-services/shared.env`.
+Existing `false` overrides in `docker/.env`, the invoking shell, or a Compose
+override remain in effect during upgrades. Move settings previously supplied only
+by `shared.env` to one of those override locations if you need to preserve them.
+After establishing the trusted ingress boundary, enable the setting to retain
+visitor IPs.
+
+### Cloudflare or another load balancer before Nginx
+
+With an upstream proxy, configure Nginx to resolve the visitor address before
+forwarding it. Otherwise `$remote_addr` is the upstream proxy's address, and its
+visitors share a rate-limit bucket. Add an operator-managed
+`docker/nginx/conf.d/real-ip.conf`; the existing mount and Nginx include load this
+file without changes to the entrypoint.
+
+For a load balancer that supplies a correctly maintained `X-Forwarded-For` chain:
+
+```nginx
+# Replace this documentation address with the actual trusted proxy address/CIDR.
+set_real_ip_from 192.0.2.10/32;
+real_ip_header X-Forwarded-For;
+real_ip_recursive on;
+```
+
+For Cloudflare connecting directly to Nginx, use `real_ip_header CF-Connecting-IP`
+and `set_real_ip_from` entries for Cloudflare's current published IPv4 and IPv6
+ranges. Restrict origin access to the intended Cloudflare path; a Tunnel or
+Authenticated Origin Pulls with your own certificate can authenticate your zone.
+Cloudflare IP ranges alone identify its network, not your zone. If another load
+balancer sits between Cloudflare and Nginx, validate the source and sanitize
+headers at that load balancer too. Do not trust an arbitrary Cloudflare header
+merely because an internal load balancer forwarded it.
+
+Never use `0.0.0.0/0`, `::/0`, or an entire untrusted workload network as the trusted
+proxy range. Reload Nginx after updating its configuration. See the
+[Nginx real-IP module](https://nginx.org/en/docs/http/ngx_http_realip_module.html),
+[Cloudflare IP ranges](https://www.cloudflare.com/ips/), and
+[Cloudflare origin protection](https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/).
+
+### Kubernetes
+
+Use stable workload selectors to restrict API access; individual ingress pod IPs
+do not need to be configured in Dify. The ingress must resolve and overwrite the
+forwarded client IP as above. Keep the API Service as `ClusterIP`, set
+`RESPECT_XFORWARD_HEADERS_ENABLED=true` on its Deployment, and enforce a
+NetworkPolicy on the API pods. `ClusterIP` alone does not restrict other pods.
+
+This example must be adapted to your namespaces, pod labels, and API port:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-from-ingress
+  namespace: dify
+spec:
+  podSelector:
+    matchLabels:
+      app: dify-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-system
+          podSelector:
+            matchLabels:
+              app: ingress-controller
+      ports:
+        - protocol: TCP
+          port: 5001
+```
+
+Both selectors belong to the same `from` entry, so the namespace **and** pod labels
+must match. Keep that namespace restricted to trusted workloads. Confirm that
+your CNI enforces NetworkPolicy, no other policy broadly allows API access, and
+any `hostNetwork` ingress is covered by your CNI's policy behavior. Allow rules
+from multiple policies are additive. See the
+[Kubernetes NetworkPolicy documentation](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
+
+Inventory internal API callers before applying the policy. Route untrusted
+callers through the same sanitizing ingress; directly allowed callers can supply
+forwarded headers too. Internal requests without a verified visitor address are
+attributed to the calling service, not an end user. Preserve required internal
+service connectivity while enforcing this boundary.
+
+Before rollout, verify that two distinct visitor IPs use different limit buckets,
+changing client-supplied IP headers does not change the resolved address, and an
+untrusted pod cannot connect directly to the API. IP limits still need independent
+account/email limits because NAT can share public addresses and attackers can
+use multiple real addresses.
+
 ## How to Deploy Middleware for Developing Dify
 
 1. **Middleware Setup**:

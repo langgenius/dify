@@ -1,16 +1,18 @@
+import type { PopoverChangeEventDetails } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
-import type { BlockSelectorProps } from '../../../block-selector'
 import type { BlockDefaultValue } from '../../../block-selector/types'
 import type { Node } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, Position } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import BlockSelector from '../../../block-selector'
 import { useAvailableBlocks } from '../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
-import { useIsChatMode, useNodesReadOnly } from '../../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { useStore, useWorkflowStore } from '../../../store'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import { getNodeCatalogType } from '../../../utils'
@@ -26,8 +28,8 @@ type NodeHandleProps = {
 // React Flow measures the 16px handle box. Enlarge its hit area with ::before
 // and scale the button independently so zoom compensation cannot move edge endpoints.
 
-const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatMode: boolean) => {
-  if (isChatMode) return false
+const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatflow: boolean) => {
+  if (isChatflow) return false
 
   return (
     nodeType === BlockEnum.Start ||
@@ -51,14 +53,11 @@ export const NodeTargetHandle = memo(
     )
     const isConnectable = !!availablePrevBlocks.length
 
-    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
-      (v, details) => {
-        preserveOutsideFocusRef.current =
-          details?.reason === 'outside-press' || details?.reason === 'focus-out'
-        setOpen(v)
-      },
-      [],
-    )
+    const handleOpenChange = useCallback((v: boolean, details?: PopoverChangeEventDetails) => {
+      preserveOutsideFocusRef.current =
+        details?.reason === 'outside-press' || details?.reason === 'focus-out'
+      setOpen(v)
+    }, [])
     const handleHandleClick = useCallback(
       (e: MouseEvent) => {
         e.stopPropagation()
@@ -150,7 +149,7 @@ export const NodeSourceHandle = memo(
     nodeSelectorClassName,
     showExceptionStatus,
   }: NodeHandleProps) => {
-    const { t } = useTranslation(['workflow'])
+    const { t } = useTranslation(['workflow'] as const)
     const shouldAutoOpenStartNodeSelector = useStore((s) => s.shouldAutoOpenStartNodeSelector)
     const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
     const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
@@ -162,9 +161,9 @@ export const NodeSourceHandle = memo(
       data.isInIteration || data.isInLoop,
     )
     const isConnectable = !!availableNextBlocks.length
-    const isChatMode = useIsChatMode()
+    const isChatflow = useAtomValue(isChatflowAtom)
     const shouldAutoOpen =
-      shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatMode)
+      shouldAutoOpenStartNodeSelector && canAutoOpenStartNodeSelector(data.type, isChatflow)
     const [open, setOpen] = useState(() => shouldAutoOpen)
     const triggerRef = useRef<HTMLButtonElement>(null)
     const preserveOutsideFocusRef = useRef(false)
@@ -181,14 +180,11 @@ export const NodeSourceHandle = memo(
       hasAgentV2OutputRoutes(data) ||
       data.type === BlockEnum.HumanInput ||
       data.error_strategy === ErrorHandleTypeEnum.failBranch
-    const handleOpenChange = useCallback<NonNullable<BlockSelectorProps['onOpenChange']>>(
-      (v, details) => {
-        preserveOutsideFocusRef.current =
-          details?.reason === 'outside-press' || details?.reason === 'focus-out'
-        setOpen(v)
-      },
-      [],
-    )
+    const handleOpenChange = useCallback((v: boolean, details?: PopoverChangeEventDetails) => {
+      preserveOutsideFocusRef.current =
+        details?.reason === 'outside-press' || details?.reason === 'focus-out'
+      setOpen(v)
+    }, [])
     const handleHandleClick = useCallback((e: MouseEvent) => {
       e.stopPropagation()
       preserveOutsideFocusRef.current = false
@@ -214,7 +210,7 @@ export const NodeSourceHandle = memo(
     useEffect(() => {
       if (!shouldAutoOpenStartNodeSelector) return
 
-      if (isChatMode) {
+      if (isChatflow) {
         setShouldAutoOpenStartNodeSelector?.(false)
         return
       }
@@ -229,7 +225,7 @@ export const NodeSourceHandle = memo(
     }, [
       shouldAutoOpenStartNodeSelector,
       data.type,
-      isChatMode,
+      isChatflow,
       setShouldAutoOpenStartNodeSelector,
       setHasSelectedStartNode,
       workflowStoreApi,

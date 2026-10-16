@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
@@ -21,7 +22,7 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -90,7 +91,9 @@ describe('useChat – handleSend', () => {
   })
 
   it('should call handleRun with processed params', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'hello', inputs: {} }, {})
@@ -103,7 +106,9 @@ describe('useChat – handleSend', () => {
 
   it('should return false and skip handleRun when test/run permission is missing', () => {
     mockHooksStoreState.canRun = false
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     let returned: unknown
     act(() => {
@@ -118,7 +123,9 @@ describe('useChat – handleSend', () => {
   it('should show notification and return false when already responding', () => {
     mockHandleRun.mockImplementation(() => {})
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'first' }, {})
@@ -133,7 +140,9 @@ describe('useChat – handleSend', () => {
   })
 
   it('should set isResponding to true after sending', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     act(() => {
       result.current.handleSend({ query: 'hello' }, {})
     })
@@ -141,7 +150,9 @@ describe('useChat – handleSend', () => {
   })
 
   it('should add placeholder question and answer to chatList', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test question' }, {})
@@ -158,7 +169,9 @@ describe('useChat – handleSend', () => {
   })
 
   it('should strip url from local_file transfer method files', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend(
@@ -208,7 +221,9 @@ describe('useChat – handleSend', () => {
       callbacks.onCompleted(false)
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'first' }, {})

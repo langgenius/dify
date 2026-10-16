@@ -388,6 +388,14 @@ def test_build_runtime_backend_profile_returns_local_drivers_when_configured() -
     assert profile.home_snapshots.snapshot_root == "/tmp/dify/snapshots"
 
 
+@pytest.mark.parametrize("token", [None, "", " \t\n"])
+def test_build_runtime_backend_profile_rejects_blank_local_token(token: str | None) -> None:
+    settings = ServerSettings(local_sandbox_endpoint="http://shellctl.example", local_sandbox_auth_token=token)
+
+    with pytest.raises(ValidationError, match="local_sandbox_auth_token is required"):
+        _ = settings.build_runtime_backend_profile()
+
+
 def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected() -> None:
     settings = ServerSettings(
         runtime_backend="enterprise",

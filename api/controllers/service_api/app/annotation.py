@@ -64,8 +64,6 @@ register_schema_models(
     AnnotationCreatePayload,
     AnnotationReplyActionPayload,
     AnnotationListQuery,
-    Annotation,
-    AnnotationList,
 )
 register_response_schema_models(
     service_api_ns,

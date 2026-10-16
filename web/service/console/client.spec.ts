@@ -1,7 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppDetail, AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
@@ -408,74 +407,6 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('ids[0]')).toBe(false)
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
-
-  it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
-    const request = vi.fn().mockResolvedValue(
-      new Response(
-        [
-          'id: task-1:1',
-          'event: message',
-          'data: {"event":"progress","data":{"progressPercent":25,"stage":"parsed","state":"running","updatedAt":"2026-07-22T10:00:00.000Z"}}',
-          '',
-          'id: task-1:terminal',
-          'event: message',
-          'data: {"event":"terminal","data":{"state":"succeeded"}}',
-          '',
-          '',
-        ].join('\n'),
-        {
-          status: 200,
-          headers: {
-            'content-type': 'text/event-stream',
-          },
-        },
-      ),
-    )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
-    const queryOptions =
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents.experimental_streamedOptions(
-        {
-          input: {
-            headers: {
-              'last-event-id': 'task-1:0',
-            },
-            params: {
-              documentId: 'document-1',
-              id: 'space-1',
-              taskId: 'task-1',
-            },
-          },
-        },
-      )
-
-    const events = await queryOptions.queryFn({
-      client: new QueryClient(),
-      signal: new AbortController().signal,
-    } as QueryFunctionContext)
-
-    expectTypeOf(events[0]!).toMatchTypeOf<DocumentProcessingTaskEvent>()
-    expect(events).toEqual([
-      {
-        data: {
-          progressPercent: 25,
-          stage: 'parsed',
-          state: 'running',
-          updatedAt: '2026-07-22T10:00:00.000Z',
-        },
-        event: 'progress',
-      },
-      { data: { state: 'succeeded' }, event: 'terminal' },
-    ])
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining(
-        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
-      ),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-      }),
-    )
-  })
 })
 
 // Scenario: console OpenAPI query arrays follow backend parser expectations.
@@ -526,6 +457,17 @@ describe('normalizeConsoleOpenAPIURL', () => {
     expect(searchParams.getAll('tags')).toEqual(['search', 'rag'])
     expect(searchParams.has('tags[0]')).toBe(false)
   })
+
+  // Without repeated keys the API sees no IDs and clears every annotation of the app.
+  it('should serialize annotation batch delete IDs as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/apps/app-1/annotations?annotation_id%5B0%5D=a-1&annotation_id%5B1%5D=a-2',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('annotation_id')).toEqual(['a-1', 'a-2'])
+    expect(searchParams.has('annotation_id[0]')).toBe(false)
+  })
 })
 
 // Scenario: oRPC query defaults own shared Agent detail fetch behavior.
@@ -545,7 +487,8 @@ describe('consoleQuery agent query defaults', () => {
     })
     const retry = getRetryFn(queryOptions)
 
-    expect(retry(0, new Response(null, { status: 404 }))).toBe(false)
+    const { createHttpError } = await import('@/service/http-error')
+    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
   })
 
   it('should retry other agent detail errors fewer than three times', async () => {
@@ -1060,6 +1003,45 @@ describe('consoleQuery agent mutation defaults', () => {
   afterEach(() => {
     vi.restoreAllMocks()
   })
+
+  it.each(['creation', 'deletion'])(
+    'invalidates agent keys and access status after key %s',
+    async (operation) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = new QueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+      const context = createMutationContext(queryClient)
+      if (operation === 'creation') {
+        await consoleQuery.agent.byAgentId.apiKeys.post
+          .mutationOptions()
+          .onSuccess?.(
+            { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
+            { params: { agent_id: 'agent-1' } },
+            undefined,
+            context,
+          )
+      } else {
+        await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
+          .mutationOptions()
+          .onSuccess?.(
+            undefined,
+            { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
+            undefined,
+            context,
+          )
+      }
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+          input: { params: { agent_id: 'agent-1' } },
+        }),
+      })
+    },
+  )
 
   it('should invalidate roster and invite option lists after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
@@ -2252,5 +2234,67 @@ describe('workspace skill deletion cache', () => {
     } finally {
       client.clear()
     }
+  })
+})
+
+describe('consoleQuery resourceAccessTokens mutation defaults', () => {
+  const createdToken = { data: [], token: 'token' }
+  const tokenList = { data: [], has_more: false, limit: 20, page: 1, total: 0 }
+
+  it('should refresh the token list after a token is created, updated, or deleted', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const context = createMutationContext(queryClient)
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const tokens = consoleQuery.resourceAccessTokens
+
+    await tokens.post
+      .mutationOptions()
+      .onSettled?.(
+        createdToken,
+        null,
+        { body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.patch
+      .mutationOptions()
+      .onSettled?.(
+        tokenList,
+        null,
+        { params: { token_id: 'token-1' }, body: { name: 'Token', resources: [] } },
+        undefined,
+        context,
+      )
+    await tokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        null,
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        context,
+      )
+
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: tokens.get.key() })
+  })
+
+  it('should leave the token list alone when the mutation fails', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+
+    await consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete
+      .mutationOptions()
+      .onSettled?.(
+        undefined,
+        new Error('failed'),
+        { params: { token_id: 'token-1', relation_id: 'relation-1' } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 })

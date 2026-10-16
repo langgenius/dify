@@ -7,7 +7,6 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import AppInfoHeader from './app-info-header'
 import { getAppModeLabel } from './app-mode-labels'
@@ -74,7 +73,7 @@ const AppInfoTrigger = ({
         ]
       : []),
     ...(appACLCapabilities.canImportExportDSL &&
-    (appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
+    (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
       ? [
           {
             id: 'import',
@@ -99,8 +98,7 @@ const AppInfoTrigger = ({
     : []
 
   const workflowConversionOperations: Operation[] =
-    appACLCapabilities.canEdit &&
-    (appDetail.mode === AppModeEnum.COMPLETION || appDetail.mode === AppModeEnum.CHAT)
+    appACLCapabilities.canEdit && (appDetail.mode === 'completion' || appDetail.mode === 'chat')
       ? [
           {
             id: 'switch',
@@ -116,11 +114,8 @@ const AppInfoTrigger = ({
       expand={expand}
       appName={appDetail.name}
       modeLabel={modeLabel}
-      iconType={appDetail.icon_type}
-      icon={appDetail.icon ?? undefined}
-      background={appDetail.icon_background}
-      imageUrl={appDetail.icon_url}
       operationGroups={[mainOperations, destructiveOperations, workflowConversionOperations]}
+      icon={appDetail}
     />
   )
 }

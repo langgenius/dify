@@ -1,6 +1,5 @@
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { HumanInputFieldValue } from './field-renderer'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Locale } from '@/i18n'
 import type { HumanInputResolvedValue } from '@/types/workflow'
@@ -81,12 +80,7 @@ export const initializeInputs = (
 }
 
 const isHumanInputFileUploaded = (value: HumanInputFieldValue | undefined) => {
-  return (
-    !!value &&
-    !Array.isArray(value) &&
-    typeof value !== 'string' &&
-    !!fileIsUploaded(value as FileEntity)
-  )
+  return !!value && !Array.isArray(value) && typeof value !== 'string' && !!fileIsUploaded(value)
 }
 
 const hasUploadedHumanInputFiles = (value: HumanInputFieldValue | undefined) => {
@@ -164,7 +158,7 @@ export const getProcessedHumanInputFormInputs = (
       }
 
       processedInputs[input.output_variable_name] =
-        value && typeof value !== 'string' ? getProcessedFiles([value as FileEntity])[0] : undefined
+        value && typeof value !== 'string' ? getProcessedFiles([value])[0] : undefined
     }
   })
 

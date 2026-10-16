@@ -84,7 +84,9 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig & {
   prompt?: string
 }
 
-export type SpeechToTextConfig = MoreLikeThisConfig
+export type SpeechToTextConfig = {
+  enabled: boolean
+}
 
 export type TextToSpeechConfig = {
   enabled: boolean
@@ -93,7 +95,9 @@ export type TextToSpeechConfig = {
   autoPlay?: TtsAutoPlay
 }
 
-export type CitationConfig = MoreLikeThisConfig
+export type CitationConfig = {
+  enabled: boolean
+}
 
 export type AnnotationReplyConfig = {
   id: string
@@ -119,7 +123,9 @@ export type ModerationConfig = MoreLikeThisConfig & {
   } & Partial<Record<string, unknown>>
 }
 
-type RetrieverResourceConfig = MoreLikeThisConfig
+type RetrieverResourceConfig = {
+  enabled: boolean
+}
 export type AgentConfig = {
   enabled: boolean
   strategy: AgentStrategy

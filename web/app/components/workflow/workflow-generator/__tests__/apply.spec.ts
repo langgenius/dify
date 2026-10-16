@@ -1,7 +1,7 @@
 import type { GeneratedGraph } from '../types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import {
   applyToCurrentApp,
   applyToNewApp,
@@ -68,7 +68,7 @@ describe('applyToNewApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockCreateApp.mockResolvedValue(
-      createAppDetailFixture({ id: 'new-app-1', mode: AppModeEnum.WORKFLOW }),
+      createAppDetailFixture({ id: 'new-app-1', mode: 'workflow' as const }),
     )
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
@@ -77,11 +77,15 @@ describe('applyToNewApp', () => {
   // its draft and return the routing context the caller uses to navigate.
   it('should create the app, sync the draft and return the new app id and mode', async () => {
     const graph = makeGraph()
-    const result = await applyToNewApp({ mode: 'workflow', graph, instruction: 'Summarize a URL' })
+    const result = await applyToNewApp({
+      mode: 'workflow',
+      graph,
+      instruction: 'Summarize a URL',
+    })
 
     expect(mockCreateApp).toHaveBeenCalledWith(
       expect.objectContaining({
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow',
         icon_type: 'emoji',
       }),
     )
@@ -95,16 +99,16 @@ describe('applyToNewApp', () => {
     })
     expect(result).toEqual({
       appId: 'new-app-1',
-      appMode: AppModeEnum.WORKFLOW,
+      appMode: 'workflow' as const,
       permissionKeys: [],
     })
   })
 
-  // Mode → AppModeEnum must round-trip for chatflow; the type-level guarantee
+  // Mode → AppMode must round-trip for chatflow; the type-level guarantee
   // is verified at runtime so a regression here is caught before users hit it.
-  it('should map advanced-chat mode to AppModeEnum.ADVANCED_CHAT', async () => {
+  it('should map advanced-chat mode to Chatflow', async () => {
     mockCreateApp.mockResolvedValueOnce(
-      createAppDetailFixture({ id: 'cf-1', mode: AppModeEnum.ADVANCED_CHAT }),
+      createAppDetailFixture({ id: 'cf-1', mode: 'advanced-chat' as const }),
     )
 
     const result = await applyToNewApp({
@@ -114,9 +118,9 @@ describe('applyToNewApp', () => {
     })
 
     expect(mockCreateApp).toHaveBeenCalledWith(
-      expect.objectContaining({ mode: AppModeEnum.ADVANCED_CHAT }),
+      expect.objectContaining({ mode: 'advanced-chat' as const }),
     )
-    expect(result.appMode).toBe(AppModeEnum.ADVANCED_CHAT)
+    expect(result.appMode).toBe('advanced-chat')
   })
 
   it('should remove LLM memory before saving a generated Workflow draft', async () => {
@@ -213,7 +217,7 @@ describe('applyToNewApp', () => {
   // and the original sync error is re-thrown so the caller can toast it.
   it('should delete the new app when syncWorkflowDraft fails', async () => {
     mockCreateApp.mockResolvedValueOnce(
-      createAppDetailFixture({ id: 'doomed', mode: AppModeEnum.WORKFLOW }),
+      createAppDetailFixture({ id: 'doomed', mode: 'workflow' as const }),
     )
     const syncErr = new Error('sync exploded')
     mockSyncWorkflowDraft.mockRejectedValueOnce(syncErr)
@@ -236,7 +240,7 @@ describe('applyToNewApp', () => {
   // carries the orphan app id so the toast can name it.
   it('should throw WorkflowApplyOrphanError when both sync and rollback fail', async () => {
     mockCreateApp.mockResolvedValueOnce(
-      createAppDetailFixture({ id: 'orphan-7', mode: AppModeEnum.WORKFLOW }),
+      createAppDetailFixture({ id: 'orphan-7', mode: 'workflow' as const }),
     )
     mockSyncWorkflowDraft.mockRejectedValueOnce(new Error('sync exploded'))
     mockDeleteApp.mockRejectedValueOnce(new Error('delete also exploded'))
@@ -261,7 +265,7 @@ describe('applyToCurrentApp', () => {
   it('should remove LLM memory before replacing the current Workflow draft', async () => {
     await applyToCurrentApp({
       appId: 'app-42',
-      appMode: AppModeEnum.WORKFLOW,
+      appMode: 'workflow' as const,
       graph: makeGraphWithMemory(),
     })
 
@@ -269,7 +273,7 @@ describe('applyToCurrentApp', () => {
     expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
   })
 
-  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+  it.each(['advanced-chat', undefined] as const)(
     'should preserve LLM memory when the current app mode is %s',
     async (appMode) => {
       const graph = makeGraphWithMemory()
@@ -342,7 +346,7 @@ describe('applyToCurrentApp', () => {
 
   // A 409 from syncWorkflowDraft is the backend's signal that another tab
   // edited the draft between our fetch and sync. The apply layer translates
-  // that Response into a typed error so the caller can show a Reload
+  // that HTTP error into a domain error so the caller can show a Reload
   // affordance instead of a generic "apply failed" toast.
   it('should translate a 409 sync rejection into WorkflowApplyHashCollisionError', async () => {
     mockFetchWorkflowDraft.mockResolvedValue({
@@ -351,9 +355,9 @@ describe('applyToCurrentApp', () => {
       environment_variables: [],
       conversation_variables: [],
     })
-    // ``base.ts`` rejects with the raw Response on non-401 — fake just the
-    // ``status`` field, which is what ``isHashCollisionResponse`` consults.
-    mockSyncWorkflowDraft.mockRejectedValueOnce({ status: 409, code: 'draft_workflow_not_sync' })
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
+    )
 
     await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBeInstanceOf(
       WorkflowApplyHashCollisionError,
@@ -370,13 +374,15 @@ describe('applyToCurrentApp', () => {
       environment_variables: [],
       conversation_variables: [],
     })
-    const original = { status: 500, code: 'internal_server_error' }
+    const original = createHttpError(new Response(null, { status: 500 }), {
+      code: 'internal_server_error',
+    })
     mockSyncWorkflowDraft.mockRejectedValueOnce(original)
 
     await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(original)
   })
 
-  it('should NOT translate string or null sync rejections', async () => {
+  it('should preserve network failures without treating them as hash collisions', async () => {
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'h1',
       features: {},
@@ -384,13 +390,8 @@ describe('applyToCurrentApp', () => {
       conversation_variables: [],
     })
 
-    // String error
-    const strError = 'some string error'
-    mockSyncWorkflowDraft.mockRejectedValueOnce(strError)
-    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(strError)
-
-    // Null error
-    mockSyncWorkflowDraft.mockRejectedValueOnce(null)
-    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBeNull()
+    const error = new TypeError('Failed to fetch')
+    mockSyncWorkflowDraft.mockRejectedValueOnce(error)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(error)
   })
 })

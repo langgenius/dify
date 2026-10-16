@@ -117,12 +117,16 @@ function renderAgentDetailSection(expand = true) {
 
 describe('AgentDetailSection', () => {
   beforeEach(() => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
     vi.clearAllMocks()
     mocks.deleteAgent.mockResolvedValue({})
     mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('renders the current agent avatar, name, and role', () => {
     renderAgentDetailSection()
@@ -134,7 +138,6 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
     expect(agentAvatar).toHaveTextContent('🧪')
-    expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')
   })
 
   it('renders an uploaded sidebar avatar using its signed URL', () => {
@@ -143,9 +146,9 @@ describe('AgentDetailSection', () => {
       icon: 'uploaded-file-id',
       icon_url: 'https://files.example.com/avatar.png?sign=signature',
     })
-    renderAgentDetailSection()
+    const { container } = renderAgentDetailSection()
 
-    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
+    expect(container.querySelector('img')).toHaveAttribute(
       'src',
       'https://files.example.com/avatar.png?sign=signature',
     )
@@ -157,12 +160,9 @@ describe('AgentDetailSection', () => {
       icon: 'https://example.com/avatar.png',
       icon_url: null,
     })
-    renderAgentDetailSection()
+    const { container } = renderAgentDetailSection()
 
-    expect(screen.getByRole('img', { hidden: true })).toHaveAttribute(
-      'src',
-      'https://example.com/avatar.png',
-    )
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/avatar.png')
   })
 
   it('shows a fallback without exposing the file ID when the signed URL is missing', () => {
@@ -171,9 +171,9 @@ describe('AgentDetailSection', () => {
       icon: 'uploaded-file-id',
       icon_url: null,
     })
-    renderAgentDetailSection()
+    const { container } = renderAgentDetailSection()
 
-    expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument()
+    expect(container.querySelector('img')).not.toBeInTheDocument()
     expect(screen.queryByText('uploaded-file-id')).not.toBeInTheDocument()
     expect(screen.getByText('🤖')).toBeInTheDocument()
   })

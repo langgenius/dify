@@ -1,8 +1,10 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import DatasetCardModals from '../dataset-card-modals'
 
 // Mock RenameDatasetModal since it's from a different feature folder
@@ -25,19 +27,18 @@ vi.mock('../../../../rename-modal', () => ({
 }))
 
 describe('DatasetCardModals', () => {
-  const mockDataset: DataSet = {
+  const mockDataset: DatasetDetailWithPartialMembersResponse = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    indexing_status: 'completed',
     provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     embedding_available: true,
     app_count: 5,
     document_count: 10,
-    total_document_count: 10,
     word_count: 1000,
     updated_at: 1609545600,
     updated_by: 'user-1',
@@ -56,8 +57,7 @@ describe('DatasetCardModals', () => {
       icon_background: '#FFF4ED',
       icon_url: '',
     },
-    retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
-    retrieval_model: {} as DataSet['retrieval_model'],
+    retrieval_model_dict: {} as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
     external_knowledge_info: {
       external_knowledge_id: '',
       external_knowledge_api_id: '',

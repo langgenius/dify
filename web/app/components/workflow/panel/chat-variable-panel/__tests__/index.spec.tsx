@@ -1,6 +1,7 @@
 import type { ConversationVariable, Node } from '@/app/components/workflow/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import ChatVariablePanel from '../index'
 import { ChatVarType } from '../type'
 
@@ -197,7 +198,7 @@ describe('ChatVariablePanel', () => {
 
   it('should toggle the tips area and close the panel', async () => {
     const user = userEvent.setup()
-    render(<ChatVariablePanel />)
+    render(<ChatVariablePanel />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     expect(screen.getByText('workflow.chatVariable.panelDescription')).toBeInTheDocument()
 
@@ -222,7 +223,7 @@ describe('ChatVariablePanel', () => {
   it('should prepend newly added variables and sync the workflow draft', async () => {
     const user = userEvent.setup()
 
-    render(<ChatVariablePanel />)
+    render(<ChatVariablePanel />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(screen.getByRole('button', { name: 'save-add' }))
 
@@ -250,7 +251,7 @@ describe('ChatVariablePanel', () => {
     mockFindUsedVarNodes.mockReturnValue([effectedNode])
     mockUpdateNodeVars.mockReturnValue(updatedNode)
 
-    render(<ChatVariablePanel />)
+    render(<ChatVariablePanel />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(screen.getByRole('button', { name: 'edit-conversation_var' }))
     await user.click(screen.getByRole('button', { name: 'save-edit' }))
@@ -275,7 +276,7 @@ describe('ChatVariablePanel', () => {
     mockFindUsedVarNodes.mockReturnValue([effectedNode])
     mockUpdateNodeVars.mockReturnValue(prunedNode)
 
-    render(<ChatVariablePanel />)
+    render(<ChatVariablePanel />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(screen.getByRole('button', { name: 'delete-conversation_var' }))
     expect(screen.getByTestId('remove-effect-var-confirm')).toBeInTheDocument()

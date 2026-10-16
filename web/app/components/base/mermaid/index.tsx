@@ -159,7 +159,7 @@ const Flowchart = (props: FlowchartProps) => {
   /**
    * Handle rendering errors
    */
-  const handleRenderError = (error: any) => {
+  const handleRenderError = (error: unknown) => {
     console.error('Mermaid rendering error:', error)
 
     // On any render error, assume the mermaid state is corrupted and force a re-initialization.
@@ -272,8 +272,8 @@ const Flowchart = (props: FlowchartProps) => {
         // Step 4: Clean up SVG code
         const cleanedSvg = cleanUpSvgCode(processedSvg)
 
-        diagramCache.set(cacheKey, cleanedSvg as string)
-        setSvgString(cleanedSvg as string)
+        diagramCache.set(cacheKey, cleanedSvg)
+        setSvgString(cleanedSvg)
 
         setIsLoading(false)
       } catch (error) {
@@ -328,7 +328,7 @@ const Flowchart = (props: FlowchartProps) => {
               curve: 'linear',
               ranker: 'tight-tree',
             }
-            config.flowchart = flowchartConfig as unknown as MermaidConfig['flowchart']
+            config.flowchart = flowchartConfig as MermaidConfig['flowchart']
           }
 
           if (currentTheme === 'dark') {

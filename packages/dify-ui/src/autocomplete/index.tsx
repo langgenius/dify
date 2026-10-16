@@ -2,25 +2,30 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { insetFocusRingClassName } from '../internal/focus'
+import { textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type AutocompleteActions = BaseAutocomplete.Root.Actions
 
 type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
+type AutocompleteChangeEventReason = BaseAutocomplete.Root.ChangeEventReason
 type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
 type AutocompleteOpenChangeEventDetails = BaseAutocomplete.Root.OpenChangeEventDetails
+type AutocompleteHighlightEventReason = BaseAutocomplete.Root.HighlightEventReason
+type AutocompleteHighlightEventDetails = BaseAutocomplete.Root.HighlightEventDetails
 type AutocompleteGroupedProps<Items extends readonly { items: readonly unknown[] }[]> = Omit<
   AutocompleteProps<Items[number]['items'][number]>,
   'items'
@@ -69,29 +74,33 @@ function AutocompleteCollection<Value = unknown>(props: AutocompleteCollectionPr
 
 // The popup is limited to the available height and lays its parts out in a column, so a status or input
 // sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
+// Same layout as `ComboboxPopup`; keep the two local definitions aligned.
 const autocompletePopupClassName = [
   'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
+// Same layout as `ComboboxList`; keep the two local definitions aligned.
 const autocompleteListClassName = [
   'max-h-[min(20rem,var(--available-height))] overflow-y-auto overflow-x-hidden overscroll-contain p-1 outline-hidden scroll-py-1',
   'data-empty:max-h-none data-empty:p-0',
 ]
 
 const autocompleteItemClassName = [
-  'mx-1 flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
+  'flex min-h-8 select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30',
 ]
 
+// Same layout as `ComboboxInputGroup`: the group owns the horizontal padding and the gap, the input
+// keeps a narrow inset, and the controls have no margins of their own.
 const autocompleteInputGroupVariants = cva(
-  [textControlGroupClassName, 'group/autocomplete items-center'],
+  [textControlGroupClassName, 'group/autocomplete items-center gap-0.5'],
   {
     variants: {
       size: {
-        small: 'h-6 rounded-md',
-        medium: 'h-8 rounded-lg',
-        large: 'h-9 rounded-[10px]',
+        small: 'min-h-6 rounded-md px-1',
+        medium: 'min-h-8 rounded-lg px-2',
+        large: 'min-h-9 rounded-[10px] px-3',
       },
     },
     defaultVariants: {
@@ -120,17 +129,18 @@ function AutocompleteInputGroup({
 
 const autocompleteInputVariants = cva(
   [
-    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
+    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent px-1 text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
     'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
+      // Vertical padding fills the group's min height exactly, so the group never grows past it.
       size: {
-        small: 'px-2 py-1 system-xs-regular',
-        medium: 'px-3 py-1.75 system-sm-regular',
-        large: 'px-4 py-2 system-md-regular',
+        small: 'py-0.75 system-xs-regular',
+        medium: 'py-1.75 system-sm-regular',
+        large: 'py-1.75 system-md-regular',
       },
     },
     defaultVariants: {
@@ -161,20 +171,19 @@ function AutocompleteInput({
 
 const autocompleteControlVariants = cva(
   [
-    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
+    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
-    'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent group-data-disabled/autocomplete:focus-visible:ring-0',
+    insetFocusRingClassName,
+    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent',
+    'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent',
     'group-data-readonly/autocomplete:hidden',
-    'motion-reduce:transition-none',
   ],
   {
     variants: {
       size: {
-        small: 'me-1 size-4',
-        medium: 'me-1.5 size-5',
-        large: 'me-2 size-5',
+        small: 'size-4',
+        medium: 'size-5',
+        large: 'size-5',
       },
     },
     defaultVariants: {
@@ -275,7 +284,7 @@ function AutocompletePositioner({
       side={side}
       align={align}
       sideOffset={sideOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -327,17 +336,19 @@ function AutocompleteItem<Value = unknown>({ className, ...props }: Autocomplete
 type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
 function AutocompleteItemText({ className, ...props }: AutocompleteItemTextProps) {
-  return (
-    <span className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)} {...props} />
-  )
+  return <span className={cn('min-w-0 grow truncate system-sm-medium', className)} {...props} />
 }
 
 type AutocompleteGroupLabelProps = BaseAutocomplete.GroupLabel.Props
 
+// The list's own padding supplies the rest of the inset, so the label text lines up with the
+// item text.
 function AutocompleteGroupLabel({ className, ...props }: AutocompleteGroupLabelProps) {
   return (
     <BaseAutocomplete.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-2', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -376,7 +387,10 @@ function AutocompleteStatus({ className, ...props }: AutocompleteStatusProps) {
   return (
     <BaseAutocomplete.Status
       className={(state) =>
-        cn('px-3 py-2 system-sm-regular text-text-tertiary', resolveClassName(className, state))
+        cn(
+          'px-3 py-2 system-sm-regular text-text-tertiary empty:p-0',
+          resolveClassName(className, state),
+        )
       }
       {...props}
     />
@@ -390,7 +404,12 @@ function AutocompleteItemIndicator({
 }: AutocompleteItemIndicatorProps) {
   return (
     <span className={cn(floatingItemIndicatorClassName, className)} {...props}>
-      {children ?? <span className="i-ri-arrow-right-line size-4" aria-hidden="true" />}
+      {children ?? (
+        <span
+          className="i-ri-arrow-right-line size-4 [&:dir(rtl)]:-scale-x-100"
+          aria-hidden="true"
+        />
+      )}
     </span>
   )
 }
@@ -426,6 +445,7 @@ export {
 export type {
   AutocompleteActions,
   AutocompleteChangeEventDetails,
+  AutocompleteChangeEventReason,
   AutocompleteClearProps,
   AutocompleteCollectionProps,
   AutocompleteEmptyProps,
@@ -433,6 +453,8 @@ export type {
   AutocompleteGroupedProps,
   AutocompleteGroupLabelProps,
   AutocompleteGroupProps,
+  AutocompleteHighlightEventDetails,
+  AutocompleteHighlightEventReason,
   AutocompleteIconProps,
   AutocompleteInputGroupProps,
   AutocompleteInputProps,

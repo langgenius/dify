@@ -1,6 +1,7 @@
 'use client'
 
 import type { Hotkey } from '@tanstack/react-hotkeys'
+import type { AppType } from '@/app/components/apps/app-type'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { zPostAppsBody } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
@@ -29,7 +30,6 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
@@ -39,17 +39,13 @@ import { CreateAppDialogShell } from '../create-app-dialog-shell'
 type CreateAppProps = {
   onClose: () => void
   onCreateFromTemplate?: () => void
-  defaultAppMode?: AppModeEnum
+  defaultAppMode?: AppType
 }
 
 const CREATE_APP_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
-const shouldExpandBeginnerAppTypes = (appMode?: AppModeEnum) => {
-  return (
-    appMode === AppModeEnum.CHAT ||
-    appMode === AppModeEnum.AGENT_CHAT ||
-    appMode === AppModeEnum.COMPLETION
-  )
+const shouldExpandBeginnerAppTypes = (appMode?: AppType) => {
+  return appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
 }
 
 function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppProps) {
@@ -58,7 +54,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const nameInputId = useId()
   const contentRef = useRef<HTMLDivElement>(null)
 
-  const [appMode, setAppMode] = useState<AppModeEnum>(defaultAppMode || AppModeEnum.ADVANCED_CHAT)
+  const [appMode, setAppMode] = useState<AppType>(defaultAppMode || 'advanced-chat')
   const [appIcon, setAppIcon] = useState<IconPickerValue>({
     type: 'emoji',
     icon: '🤖',
@@ -133,7 +129,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
         // Analytics should not turn a successful app creation into a failed flow.
       }
 
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       onClose()
       getRedirection(app, push, {
         currentUserId,
@@ -210,7 +205,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
               <div>
                 <div className="flex flex-row gap-2">
                   <AppTypeCard
-                    active={appMode === AppModeEnum.WORKFLOW}
+                    active={appMode === 'workflow'}
                     title={t(($) => $['types.workflow'], { ns: 'app' })}
                     description={t(($) => $['newApp.workflowShortDescription'], { ns: 'app' })}
                     icon={
@@ -222,11 +217,11 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                       </div>
                     }
                     onClick={() => {
-                      setAppMode(AppModeEnum.WORKFLOW)
+                      setAppMode('workflow')
                     }}
                   />
                   <AppTypeCard
-                    active={appMode === AppModeEnum.ADVANCED_CHAT}
+                    active={appMode === 'advanced-chat'}
                     title={t(($) => $['types.advanced'], { ns: 'app' })}
                     description={t(($) => $['newApp.advancedShortDescription'], { ns: 'app' })}
                     icon={
@@ -238,7 +233,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                       </div>
                     }
                     onClick={() => {
-                      setAppMode(AppModeEnum.ADVANCED_CHAT)
+                      setAppMode('advanced-chat')
                     }}
                   />
                 </div>
@@ -262,7 +257,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                 {isAppTypeExpanded && (
                   <div className="flex flex-row gap-2">
                     <AppTypeCard
-                      active={appMode === AppModeEnum.CHAT}
+                      active={appMode === 'chat'}
                       title={t(($) => $['types.chatbot'], { ns: 'app' })}
                       description={t(($) => $['newApp.chatbotShortDescription'], { ns: 'app' })}
                       icon={
@@ -274,11 +269,11 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                         </div>
                       }
                       onClick={() => {
-                        setAppMode(AppModeEnum.CHAT)
+                        setAppMode('chat')
                       }}
                     />
                     <AppTypeCard
-                      active={appMode === AppModeEnum.AGENT_CHAT}
+                      active={appMode === 'agent-chat'}
                       title={t(($) => $['types.agent'], { ns: 'app' })}
                       description={t(($) => $['newApp.agentShortDescription'], { ns: 'app' })}
                       icon={
@@ -290,11 +285,11 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                         </div>
                       }
                       onClick={() => {
-                        setAppMode(AppModeEnum.AGENT_CHAT)
+                        setAppMode('agent-chat')
                       }}
                     />
                     <AppTypeCard
-                      active={appMode === AppModeEnum.COMPLETION}
+                      active={appMode === 'completion'}
                       title={t(($) => $['newApp.completeApp'], { ns: 'app' })}
                       description={t(($) => $['newApp.completionShortDescription'], { ns: 'app' })}
                       icon={
@@ -306,7 +301,7 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                         </div>
                       }
                       onClick={() => {
-                        setAppMode(AppModeEnum.COMPLETION)
+                        setAppMode('completion')
                       }}
                     />
                   </div>
@@ -401,20 +396,11 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
                   'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)',
               }}
             >
-              <AppScreenShot show={appMode === AppModeEnum.CHAT} mode={AppModeEnum.CHAT} />
-              <AppScreenShot
-                show={appMode === AppModeEnum.ADVANCED_CHAT}
-                mode={AppModeEnum.ADVANCED_CHAT}
-              />
-              <AppScreenShot
-                show={appMode === AppModeEnum.AGENT_CHAT}
-                mode={AppModeEnum.AGENT_CHAT}
-              />
-              <AppScreenShot
-                show={appMode === AppModeEnum.COMPLETION}
-                mode={AppModeEnum.COMPLETION}
-              />
-              <AppScreenShot show={appMode === AppModeEnum.WORKFLOW} mode={AppModeEnum.WORKFLOW} />
+              <AppScreenShot show={appMode === 'chat'} mode={'chat'} />
+              <AppScreenShot show={appMode === 'advanced-chat'} mode={'advanced-chat'} />
+              <AppScreenShot show={appMode === 'agent-chat'} mode={'agent-chat'} />
+              <AppScreenShot show={appMode === 'completion'} mode={'completion'} />
+              <AppScreenShot show={appMode === 'workflow'} mode={'workflow'} />
             </div>
             <div className="absolute inset-x-0 border-b border-b-divider-subtle"></div>
           </div>
@@ -480,31 +466,31 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
   )
 }
 
-function AppPreview({ mode }: { mode: AppModeEnum }) {
+function AppPreview({ mode }: { mode: AppType }) {
   const { t } = useTranslation(['app'])
   const previewInfo = (() => {
     switch (mode) {
-      case AppModeEnum.CHAT:
+      case 'chat':
         return {
           title: t(($) => $['types.chatbot'], { ns: 'app' }),
           description: t(($) => $['newApp.chatbotUserDescription'], { ns: 'app' }),
         }
-      case AppModeEnum.ADVANCED_CHAT:
+      case 'advanced-chat':
         return {
           title: t(($) => $['types.advanced'], { ns: 'app' }),
           description: t(($) => $['newApp.advancedUserDescription'], { ns: 'app' }),
         }
-      case AppModeEnum.AGENT_CHAT:
+      case 'agent-chat':
         return {
           title: t(($) => $['types.agent'], { ns: 'app' }),
           description: t(($) => $['newApp.agentUserDescription'], { ns: 'app' }),
         }
-      case AppModeEnum.COMPLETION:
+      case 'completion':
         return {
           title: t(($) => $['newApp.completeApp'], { ns: 'app' }),
           description: t(($) => $['newApp.completionUserDescription'], { ns: 'app' }),
         }
-      case AppModeEnum.WORKFLOW:
+      case 'workflow':
         return {
           title: t(($) => $['types.workflow'], { ns: 'app' }),
           description: t(($) => $['newApp.workflowUserDescription'], { ns: 'app' }),
@@ -526,14 +512,14 @@ function AppPreview({ mode }: { mode: AppModeEnum }) {
   )
 }
 
-function AppScreenShot({ mode, show }: { mode: AppModeEnum; show: boolean }) {
+function AppScreenShot({ mode, show }: { mode: AppType; show: boolean }) {
   const { theme } = useTheme()
   const modeToImageMap = {
-    [AppModeEnum.CHAT]: 'Chatbot',
-    [AppModeEnum.ADVANCED_CHAT]: 'Chatflow',
-    [AppModeEnum.AGENT_CHAT]: 'Agent',
-    [AppModeEnum.COMPLETION]: 'TextGenerator',
-    [AppModeEnum.WORKFLOW]: 'Workflow',
+    chat: 'Chatbot',
+    'advanced-chat': 'Chatflow',
+    'agent-chat': 'Agent',
+    completion: 'TextGenerator',
+    workflow: 'Workflow',
   }
   return (
     <picture>

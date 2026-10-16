@@ -8,7 +8,6 @@ import { useRouter } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
@@ -97,7 +96,7 @@ const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
-const { mockToastSuccess, mockToastError } = toastMocks
+const { mockToastError } = toastMocks
 
 let appQuota = { size: 0, limit: 1 }
 
@@ -109,7 +108,7 @@ const renderModal = () => {
       show
       onClose={onClose}
       onCreateFromTemplate={onCreateFromTemplate}
-      defaultAppMode={AppModeEnum.ADVANCED_CHAT}
+      defaultAppMode={'advanced-chat'}
     />,
   )
   return { onClose, onCreateFromTemplate }
@@ -136,9 +135,9 @@ describe('CreateAppModal', () => {
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
 
-  it('creates an app, notifies success, and fires callbacks', async () => {
+  it('creates an app and fires callbacks', async () => {
     const mockApp = createAppDetailFixture({
-      mode: AppModeEnum.ADVANCED_CHAT,
+      mode: 'advanced-chat' as const,
       maintainer: 'user-1',
     })
     mockCreateApp.mockResolvedValue(mockApp)
@@ -155,15 +154,14 @@ describe('CreateAppModal', () => {
         icon_type: 'emoji',
         icon: '🤖',
         icon_background: '#FFEAD5',
-        mode: AppModeEnum.ADVANCED_CHAT,
+        mode: 'advanced-chat' as const,
       }),
     )
 
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
       source: 'studio_blank',
-      appMode: AppModeEnum.ADVANCED_CHAT,
+      appMode: 'advanced-chat' as const,
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
@@ -177,7 +175,7 @@ describe('CreateAppModal', () => {
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
     const mockApp = createAppDetailFixture({
-      mode: AppModeEnum.ADVANCED_CHAT,
+      mode: 'advanced-chat' as const,
       maintainer: 'user-1',
     })
     let resolveTracking: (() => void) | undefined
@@ -197,7 +195,7 @@ describe('CreateAppModal', () => {
     await waitFor(() => {
       expect(mockTrackCreateApp).toHaveBeenCalledWith({
         source: 'studio_blank',
-        appMode: AppModeEnum.ADVANCED_CHAT,
+        appMode: 'advanced-chat' as const,
       })
     })
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
@@ -252,7 +250,7 @@ describe('CreateAppModal', () => {
     async ({ platform, modifier }) => {
       vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
       mockCreateApp.mockResolvedValue(
-        createAppDetailFixture({ id: 'chat-app', mode: AppModeEnum.CHAT }),
+        createAppDetailFixture({ id: 'chat-app', mode: 'chat' as const }),
       )
       renderModal()
 
@@ -289,7 +287,7 @@ describe('CreateAppModal', () => {
           icon_type: 'emoji',
           icon: '🤖',
           icon_background: '#F3FEE7',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
         })
       })
     },
@@ -303,7 +301,7 @@ describe('CreateAppModal', () => {
     async ({ platform, modifier }) => {
       vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
       mockCreateApp.mockResolvedValue(
-        createAppDetailFixture({ id: 'reopened-app', mode: AppModeEnum.ADVANCED_CHAT }),
+        createAppDetailFixture({ id: 'reopened-app', mode: 'advanced-chat' as const }),
       )
       const onClose = vi.fn()
       const modal = (show: boolean) => (
@@ -311,7 +309,7 @@ describe('CreateAppModal', () => {
           show={show}
           onClose={onClose}
           onCreateFromTemplate={vi.fn()}
-          defaultAppMode={AppModeEnum.ADVANCED_CHAT}
+          defaultAppMode={'advanced-chat'}
         />
       )
       const { rerender } = render(modal(true))
@@ -367,7 +365,7 @@ describe('CreateAppModal', () => {
 
   it('should switch between app types before creating a completion app', async () => {
     mockCreateApp.mockResolvedValue(
-      createAppDetailFixture({ id: 'completion-app', mode: AppModeEnum.COMPLETION }),
+      createAppDetailFixture({ id: 'completion-app', mode: 'completion' as const }),
     )
     renderModal()
 
@@ -386,7 +384,7 @@ describe('CreateAppModal', () => {
       expect(mockCreateApp).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Completion App',
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         }),
       )
     })
@@ -417,9 +415,9 @@ describe('CreateAppModal', () => {
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
 
-    resolveCreate?.(createAppDetailFixture({ id: 'slow-app', mode: AppModeEnum.ADVANCED_CHAT }))
+    resolveCreate?.(createAppDetailFixture({ id: 'slow-app', mode: 'advanced-chat' as const }))
     await waitFor(() => {
-      expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
+      expect(mockGetRedirection).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -8,7 +8,6 @@ import { useRef } from 'react'
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
 import { usePublishController } from '../publisher-content/use-publish-controller'
@@ -27,7 +26,9 @@ vi.mock('../publish-with-multiple-model', () => ({
   ),
 }))
 
-const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'workflow-version-1',
   graph: {
     nodes: [],
@@ -82,7 +83,7 @@ function PublisherPopup({
 
 function PublishingPopup({ onPublish }: { onPublish: () => Promise<void> }) {
   const publish = usePublishController({
-    appMode: AppModeEnum.CHAT,
+    appMode: 'chat' as const,
     supportsMultiEnvironment: false,
     onClose: () => {},
     onPublish,
@@ -535,7 +536,7 @@ describe('app-publisher sections', () => {
     render(
       <PublisherActionsSection
         appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
@@ -595,7 +596,7 @@ describe('app-publisher sections', () => {
     render(
       <PublisherActionsSection
         appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
@@ -626,7 +627,7 @@ describe('app-publisher sections', () => {
   it('should show the disabled reason below setup and configured workflow tool actions', () => {
     const commonProps = {
       appId: 'workflow-app',
-      appMode: AppModeEnum.WORKFLOW,
+      appMode: 'workflow' as const,
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
@@ -666,7 +667,7 @@ describe('app-publisher sections', () => {
     const onConfigureWorkflowTool = vi.fn()
     const commonProps = {
       appId: 'workflow-app',
-      appMode: AppModeEnum.WORKFLOW,
+      appMode: 'workflow' as const,
       appURL: 'https://example.com/app',
       canViewAccessPoint: true,
       disabledFunctionButton: false,
@@ -710,7 +711,7 @@ describe('app-publisher sections', () => {
     render(
       <PublisherActionsSection
         appId={'trigger-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton={false}
@@ -740,7 +741,7 @@ describe('app-publisher sections', () => {
     render(
       <PublisherActionsSection
         appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint={false}
         disabledFunctionButton={false}
@@ -765,7 +766,7 @@ describe('app-publisher sections', () => {
     render(
       <PublisherActionsSection
         appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
@@ -795,7 +796,7 @@ describe('app-publisher sections', () => {
     render(
       <PublisherActionsSection
         appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton
@@ -822,7 +823,7 @@ describe('app-publisher sections', () => {
     render(
       <PublisherActionsSection
         appId={'workflow-app'}
-        appMode={AppModeEnum.WORKFLOW}
+        appMode={'workflow'}
         appURL="https://example.com/app"
         canViewAccessPoint
         disabledFunctionButton

@@ -1,9 +1,11 @@
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import { ORPCError } from '@orpc/client'
 import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useSnippetDraftStore } from '../../draft-store'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
+const mockRefreshDraft = vi.fn()
 const mockGetNodes = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
 const mockUseNodesReadOnlyByCanEdit = vi.fn()
@@ -58,19 +60,20 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
-          },
-        },
-      },
-    },
-  },
-}))
+// Rejections pass through the console link's contract error validation, as in production.
+vi.mock('@/service/console', async () => {
+  const { snippets } = await import('@dify/contracts/api/console/snippets/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ snippets })
+  const post = (...args: unknown[]) =>
+    validate({
+      context: {},
+      input: args[0],
+      path: ['snippets', 'bySnippetId', 'workflows', 'draft', 'post'],
+      next: () => mockSyncDraftWorkflow(...args),
+    })
+  return { consoleClient: { snippets: { bySnippetId: { workflows: { draft: { post } } } } } }
+})
 
 vi.mock('@/service/fetch', () => ({
   postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
@@ -80,11 +83,11 @@ vi.mock('@/config', () => ({ API_PREFIX: '/api' }))
 
 vi.mock('../use-snippet-refresh-draft', () => ({
   useSnippetRefreshDraft: () => ({
-    handleRefreshWorkflowDraft: vi.fn(),
+    handleRefreshWorkflowDraft: mockRefreshDraft,
   }),
 }))
 
-const createInputField = (variable: string): SnippetInputField => ({
+const createInputField = (variable: string): InputVar => ({
   type: PipelineInputVarType.textInput,
   label: variable,
   variable,
@@ -120,6 +123,48 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
     useSnippetDraftStore.getState().setInputFields([createInputField('topic')])
   })
+
+  it.each([
+    { code: 'draft_workflow_not_sync', skipRefresh: false, refreshes: 1 },
+    { code: 'draft_workflow_not_sync', skipRefresh: true, refreshes: 0 },
+    { code: 'forbidden', skipRefresh: false, refreshes: 0 },
+  ])(
+    'recovers from $code with skipRefresh=$skipRefresh and allows retry',
+    async ({ code, skipRefresh, refreshes }) => {
+      mockSyncDraftWorkflow.mockRejectedValueOnce(
+        new ORPCError(code, {
+          status: code === 'forbidden' ? 403 : 409,
+          message: 'Draft could not be saved',
+          data: {
+            code,
+            message: 'Draft could not be saved',
+            status: code === 'forbidden' ? 403 : 409,
+          },
+        }),
+      )
+      const callback = { onError: vi.fn(), onSuccess: vi.fn(), onSettled: vi.fn() }
+      const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))
+
+      await act(async () => {
+        expect(await result.current.doSyncWorkflowDraft(skipRefresh, callback)).toBeUndefined()
+      })
+
+      expect(mockRefreshDraft).toHaveBeenCalledTimes(refreshes)
+      expect(callback.onError).toHaveBeenCalledOnce()
+      expect(callback.onSuccess).not.toHaveBeenCalled()
+      expect(callback.onSettled).toHaveBeenCalledOnce()
+      expect(mockSetSyncWorkflowDraftHash).not.toHaveBeenCalled()
+      expect(useSnippetDraftStore.getState().inputFields).toEqual([createInputField('topic')])
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft(false, callback)
+      })
+
+      expect(callback.onSuccess).toHaveBeenCalledOnce()
+      expect(callback.onSettled).toHaveBeenCalledTimes(2)
+      expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('next-hash')
+    },
+  )
 
   it('should include current input_fields when syncing the draft graph', async () => {
     const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))

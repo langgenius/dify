@@ -30,13 +30,16 @@ vi.mock('../../hooks/use-metadata-document', () => ({
 }))
 
 // Mock service calls
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [],
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        doc_metadata: [],
+      },
+    }),
+  })
+})
 
 // Mock check name hook
 vi.mock('../../hooks/use-check-metadata-name', () => ({

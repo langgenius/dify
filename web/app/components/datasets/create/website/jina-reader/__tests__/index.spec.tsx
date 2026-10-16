@@ -3,6 +3,7 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
+import { createHttpError } from '@/service/http-error'
 import { sleep } from '@/utils'
 import JinaReader from '../index'
 
@@ -692,9 +693,9 @@ describe('JinaReader', () => {
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'error-job' })
-      mockCheckStatus.mockRejectedValueOnce({
-        json: () => Promise.resolve({ message: 'API Error occurred' }),
-      })
+      mockCheckStatus.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 502 }), { message: 'API Error occurred' }),
+      )
 
       const props = createDefaultProps()
 
@@ -708,6 +709,7 @@ describe('JinaReader', () => {
           screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
         )!.toBeInTheDocument()
       })
+      expect(screen.getByText('API Error occurred')).toBeInTheDocument()
     })
 
     it('should limit total to crawlOptions.limit', async () => {

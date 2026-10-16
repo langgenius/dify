@@ -16,7 +16,6 @@ const { request, setInputs, marketplaceRefetch, marketplaceQuery } = vi.hoisted(
 vi.mock('@/service/base', () => ({ request }))
 vi.mock('../../../hooks/use-workflow', () => ({
   useNodesReadOnly: () => ({ nodesReadOnly: false }),
-  useIsChatMode: () => true,
 }))
 vi.mock('../../_base/hooks/use-node-crud', () => ({
   default: (_id: string, inputs: AgentNodeType) => ({ inputs, setInputs }),
@@ -196,4 +195,11 @@ describe('agent strategy query and configuration', () => {
     renderHook(() => useConfig('agent', inputs))
     await waitFor(() => expect(setInputs).toHaveBeenCalledWith(inputs))
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => true) }
 })

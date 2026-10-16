@@ -1,8 +1,10 @@
 import base64
 import binascii
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from Crypto.PublicKey import RSA
+from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 import models.engine as model_engine
@@ -13,6 +15,7 @@ from core.helper.encrypter import (
     get_decrypt_decoding,
     obfuscated_token,
 )
+from libs import gmpy2_pkcs10aep_cipher, rsa
 from libs.rsa import PrivkeyNotFoundError
 from models.account import Tenant
 
@@ -22,18 +25,14 @@ pytestmark = [
 ]
 
 
-class _DatabaseBinding:
-    """Expose the real SQLite session used by the legacy encryption lookup."""
-
-    session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
-
-
 @pytest.fixture(autouse=True)
 def bind_sqlite_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(model_engine, "db", _DatabaseBinding(sqlite_session))
+    monkeypatch.setattr(model_engine.db, "session", sqlite_session)
+
+
+@pytest.fixture(scope="module")
+def rsa_key() -> RSA.RsaKey:
+    return RSA.generate(2048)
 
 
 def _persist_tenant(session: Session, *, public_key: str = "mock_public_key") -> Tenant:
@@ -107,24 +106,14 @@ class TestDecryptToken:
 
 class TestBatchDecryptToken:
     @patch("libs.rsa.get_decrypt_decoding")
-    @patch("libs.rsa.decrypt_token_with_decoding")
-    def test_batch_decryption(self, mock_decrypt_with_decoding, mock_get_decoding):
-        """Test batch decryption functionality"""
-        mock_rsa_key = MagicMock()
-        mock_cipher_rsa = MagicMock()
-        mock_get_decoding.return_value = (mock_rsa_key, mock_cipher_rsa)
+    def test_batch_decryption(self, mock_get_decoding, sqlite_session: Session, rsa_key: RSA.RsaKey):
+        """Decrypt actual tenant ciphertext while loading the key only once."""
+        _persist_tenant(sqlite_session, public_key=rsa_key.publickey().export_key().decode())
+        mock_get_decoding.return_value = (rsa_key, gmpy2_pkcs10aep_cipher.new(rsa_key))
+        plaintexts = ["token1", "token2", "token3"]
+        tokens = [encrypt_token("tenant-123", token) for token in plaintexts]
 
-        # Test multiple tokens
-        mock_decrypt_with_decoding.side_effect = ["token1", "token2", "token3"]
-        tokens = [
-            base64.b64encode(b"encrypted1").decode(),
-            base64.b64encode(b"encrypted2").decode(),
-            base64.b64encode(b"encrypted3").decode(),
-        ]
-        result = batch_decrypt_token("tenant-123", tokens)
-
-        assert result == ["token1", "token2", "token3"]
-        # Key should only be loaded once
+        assert batch_decrypt_token("tenant-123", tokens) == plaintexts
         mock_get_decoding.assert_called_once_with("tenant-123")
 
 
@@ -266,20 +255,19 @@ class TestEdgeCases:
             encrypt_token("tenant-123", long_token)
 
     @patch("libs.rsa.get_decrypt_decoding")
-    @patch("libs.rsa.decrypt_token_with_decoding")
-    def test_batch_decrypt_loads_key_only_once(self, mock_decrypt_with_decoding, mock_get_decoding):
-        """Verify batch decryption optimization - loads key only once"""
-        mock_rsa_key = MagicMock()
-        mock_cipher_rsa = MagicMock()
-        mock_get_decoding.return_value = (mock_rsa_key, mock_cipher_rsa)
+    def test_batch_decrypt_loads_key_only_once(
+        self, mock_get_decoding, sqlite_session: Session, rsa_key: RSA.RsaKey, mocker: MockerFixture
+    ):
+        """Reuse one decoding context across every actual ciphertext in the batch."""
+        _persist_tenant(sqlite_session, public_key=rsa_key.publickey().export_key().decode())
+        cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
+        mock_get_decoding.return_value = (rsa_key, cipher_rsa)
+        decrypt = mocker.spy(rsa, "decrypt_token_with_decoding")
+        plaintexts = [f"token{i}" for i in range(1, 6)]
+        tokens = [encrypt_token("tenant-123", token) for token in plaintexts]
 
-        # Test with multiple tokens
-        mock_decrypt_with_decoding.side_effect = ["token1", "token2", "token3", "token4", "token5"]
-        tokens = [base64.b64encode(f"encrypted{i}".encode()).decode() for i in range(5)]
-
-        result = batch_decrypt_token("tenant-123", tokens)
-
-        assert result == ["token1", "token2", "token3", "token4", "token5"]
-        # Key should only be loaded once regardless of token count
+        assert batch_decrypt_token("tenant-123", tokens) == plaintexts
         mock_get_decoding.assert_called_once_with("tenant-123")
-        assert mock_decrypt_with_decoding.call_count == 5
+        assert decrypt.call_count == len(tokens)
+        for invocation, token in zip(decrypt.call_args_list, tokens, strict=True):
+            assert invocation.args == (base64.b64decode(token), rsa_key, cipher_rsa)

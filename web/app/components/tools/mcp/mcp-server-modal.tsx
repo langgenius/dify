@@ -5,14 +5,11 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { RiCloseLine } from '@remixicon/react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
-import {
-  useCreateMCPServer,
-  useInvalidateMCPServerDetail,
-  useUpdateMCPServer,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 
 type ModalProps = {
   appID: string
@@ -33,9 +30,19 @@ type MCPServerParam = {
 
 const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
   const { t } = useTranslation(['common', 'tools'])
-  const { mutateAsync: createMCPServer, isPending: creating } = useCreateMCPServer()
-  const { mutateAsync: updateMCPServer, isPending: updating } = useUpdateMCPServer()
-  const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
+  const queryClient = useQueryClient()
+  const { mutateAsync: createMCPServer, isPending: creating } = useMutation(
+    consoleQuery.apps.byAppId.server.post.mutationOptions(),
+  )
+  const { mutateAsync: updateMCPServer, isPending: updating } = useMutation(
+    consoleQuery.apps.byAppId.server.put.mutationOptions(),
+  )
+  const invalidateMCPServerDetail = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+        input: { params: { app_id: appID } },
+      }),
+    })
 
   const defaultDescription = data?.description || appInfo?.description || ''
   const [description, setDescription] = React.useState(defaultDescription)
@@ -61,35 +68,28 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
 
   const submit = async () => {
     if (!data) {
-      const payload: {
-        appID: string
+      const body: {
         description?: string
         parameters: Record<string, string>
       } = {
-        appID,
         parameters: getParamValue(),
       }
 
-      if (description.trim()) payload.description = description
+      if (description.trim()) body.description = description
 
-      await createMCPServer(payload)
-      invalidateMCPServerDetail(appID)
+      await createMCPServer({ params: { app_id: appID }, body })
+      invalidateMCPServerDetail()
       onHide()
     } else {
-      const payload: {
-        appID: string
-        id: string
-        description: string
-        parameters: Record<string, string>
-      } = {
-        appID,
-        id: data.id,
-        parameters: getParamValue(),
-        description,
-      }
-
-      await updateMCPServer(payload)
-      invalidateMCPServerDetail(appID)
+      await updateMCPServer({
+        params: { app_id: appID },
+        body: {
+          id: data.id,
+          parameters: getParamValue(),
+          description,
+        },
+      })
+      invalidateMCPServerDetail()
       onHide()
     }
   }

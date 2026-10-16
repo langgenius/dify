@@ -1,4 +1,4 @@
-import type { WorkflowGenPlan } from '@/service/workflow-generator'
+import type { WorkflowGeneratePlanEventResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import { render, screen } from '@testing-library/react'
 import GenerationPlan from '../generation-plan'
 
@@ -15,7 +15,7 @@ describe('GenerationPlan', () => {
   // Once the plan streams in, the outline (node purposes + identity) renders and
   // the footer flips to "Building…" while the builder fills in the graph.
   it('renders the plan outline and the building state once the plan lands', () => {
-    const plan: WorkflowGenPlan = {
+    const plan: WorkflowGeneratePlanEventResponse = {
       app_name: 'URL Summarizer',
       description: 'Summarize any URL',
       icon: '📰',
@@ -37,11 +37,11 @@ describe('GenerationPlan', () => {
   })
 
   it('renders correctly when plan has no icon, app_name, or title', () => {
-    const plan: WorkflowGenPlan = {
+    const plan: WorkflowGeneratePlanEventResponse = {
       mode: 'workflow',
       nodes: [{ label: 'Start', node_type: 'start' }],
       start_inputs: [],
-    } as unknown as WorkflowGenPlan
+    } as unknown as WorkflowGeneratePlanEventResponse
     render(<GenerationPlan plan={plan} />)
 
     expect(screen.getByText('Start')).toBeInTheDocument()
@@ -49,13 +49,13 @@ describe('GenerationPlan', () => {
   })
 
   it('falls back to plan.title when plan.app_name is empty', () => {
-    const plan: WorkflowGenPlan = {
+    const plan: WorkflowGeneratePlanEventResponse = {
       app_name: '',
       title: 'Fallback Title',
       mode: 'workflow',
       nodes: [],
       start_inputs: [],
-    } as unknown as WorkflowGenPlan
+    } as unknown as WorkflowGeneratePlanEventResponse
     render(<GenerationPlan plan={plan} />)
 
     expect(screen.getByText('Fallback Title')).toBeInTheDocument()

@@ -1,14 +1,22 @@
 import type { Role } from '@/models/access-control'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/notifications'
-import {
-  useCreateWorkspaceRole,
-  useUpdateWorkspaceRole,
-} from '@/service/access-control/use-workspace-roles'
 import { render } from '@/test/console/render'
 import { useRoleGroups } from '../hooks'
 import PermissionsPage from '../index'
+
+const { mockCreateWorkspaceRoleHook, mockUpdateWorkspaceRoleHook } = vi.hoisted(() => ({
+  mockCreateWorkspaceRoleHook: vi.fn(),
+  mockUpdateWorkspaceRoleHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.post': () => mockCreateWorkspaceRoleHook(),
+    'workspaces.current.rbac.roles.byRoleId.put': () => mockUpdateWorkspaceRoleHook(),
+  })
+})
 
 const mocks = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
@@ -28,11 +36,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mocks.workspacePermissionKeys,
   }))
 })
-
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useCreateWorkspaceRole: vi.fn(),
-  useUpdateWorkspaceRole: vi.fn(),
-}))
 
 vi.mock('../hooks', () => ({
   useRoleGroups: vi.fn(),
@@ -155,15 +158,11 @@ describe('PermissionsPage', () => {
       hasNextPage: false,
       error: null,
     } as ReturnType<typeof useRoleGroups>)
-    vi.mocked(useCreateWorkspaceRole).mockReturnValue(
-      mockMutation(mocks.createWorkspaceRole) as unknown as ReturnType<
-        typeof useCreateWorkspaceRole
-      >,
+    vi.mocked(mockCreateWorkspaceRoleHook).mockReturnValue(
+      mockMutation(mocks.createWorkspaceRole) as ReturnType<typeof mockCreateWorkspaceRoleHook>,
     )
-    vi.mocked(useUpdateWorkspaceRole).mockReturnValue(
-      mockMutation(mocks.updateWorkspaceRole) as unknown as ReturnType<
-        typeof useUpdateWorkspaceRole
-      >,
+    vi.mocked(mockUpdateWorkspaceRoleHook).mockReturnValue(
+      mockMutation(mocks.updateWorkspaceRole) as ReturnType<typeof mockUpdateWorkspaceRoleHook>,
     )
   })
 
@@ -203,13 +202,14 @@ describe('PermissionsPage', () => {
 
     expect(mocks.createWorkspaceRole).toHaveBeenCalledWith(
       {
-        name: 'create name',
-        description: 'create description',
-        permission_keys: ['workspace.member.manage'],
+        body: {
+          name: 'create name',
+          description: 'create description',
+          permission_keys: ['workspace.member.manage'],
+        },
       },
       expect.any(Object),
     )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.created')
   })
 
   it('updates the selected workspace role from the edit modal', async () => {
@@ -223,13 +223,14 @@ describe('PermissionsPage', () => {
 
     expect(mocks.updateWorkspaceRole).toHaveBeenCalledWith(
       {
-        id: 'role-1',
-        name: 'edit name',
-        description: 'edit description',
-        permission_keys: ['workspace.member.manage'],
+        params: { role_id: 'role-1' },
+        body: {
+          name: 'edit name',
+          description: 'edit description',
+          permission_keys: ['workspace.member.manage'],
+        },
       },
       expect.any(Object),
     )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.updated')
   })
 })

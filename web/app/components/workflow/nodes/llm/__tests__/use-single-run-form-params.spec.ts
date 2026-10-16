@@ -1,6 +1,7 @@
 import type { LLMNodeType } from '../types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import {
   BlockEnum,
   EditionType,
@@ -8,8 +9,6 @@ import {
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
@@ -35,19 +34,20 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => true,
   }
 })
 
 const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
+  value: undefined as EditorResource['kind'] | undefined,
 }))
 
 vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
+  useHooksStore: (
+    selector: (state: { configsMap?: { resourceKind?: EditorResource['kind'] } }) => unknown,
+  ) =>
     selector({
       configsMap: {
-        flowType: mockFlowType.value,
+        resourceKind: mockFlowType.value,
       },
     }),
 }))
@@ -63,7 +63,7 @@ const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as LLMNodeType['model'],
   prompt_template: [
@@ -117,7 +117,6 @@ describe('llm/use-single-run-form-params', () => {
   })
 
   it('filters system variables from single-run inputs in snippet flows', () => {
-    mockFlowType.value = FlowType.snippet
     const getInputVars = vi.fn(() => [
       createInputVar('#start.query#'),
       createInputVar('#sys.query#'),
@@ -128,33 +127,35 @@ describe('llm/use-single-run-form-params', () => {
       createInputVar('#start.extra#'),
     ])
 
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'llm-node',
-        payload: createData({
-          prompt_template: [
-            {
-              edition_type: EditionType.jinja2,
-              role: PromptRole.user,
-              text: '{{ query }}',
-            },
-          ],
-          prompt_config: {
-            jinja2_variables: [
+    const { result } = renderHook(
+      () =>
+        useSingleRunFormParams({
+          id: 'llm-node',
+          payload: createData({
+            prompt_template: [
               {
-                variable: 'extra',
-                value_selector: ['start', 'extra'],
-                value_type: VarType.string,
+                edition_type: EditionType.jinja2,
+                role: PromptRole.user,
+                text: '{{ query }}',
               },
             ],
-          },
+            prompt_config: {
+              jinja2_variables: [
+                {
+                  variable: 'extra',
+                  value_selector: ['start', 'extra'],
+                  value_type: VarType.string,
+                },
+              ],
+            },
+          }),
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          getInputVars,
+          setRunInputData: vi.fn(),
+          toVarInputs,
         }),
-        runInputData: {},
-        runInputDataRef: { current: {} },
-        getInputVars,
-        setRunInputData: vi.fn(),
-        toVarInputs,
-      }),
+      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
     )
 
     expect(result.current.forms[0]!.inputs).toEqual([
@@ -166,4 +167,11 @@ describe('llm/use-single-run-form-params', () => {
       }),
     ])
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => true) }
 })

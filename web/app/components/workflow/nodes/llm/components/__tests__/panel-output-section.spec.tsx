@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { LLMNodeType, StructuredOutput } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppModeEnum } from '@/types/app'
 import { Type } from '../../types'
 import PanelOutputSection from '../panel-output-section'
 
@@ -51,7 +50,7 @@ const createInputs = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as LLMNodeType['model'],
   prompt_template: [],

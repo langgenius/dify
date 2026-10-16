@@ -1,5 +1,5 @@
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -56,7 +56,7 @@ vi.mock('./comment-preview', () => ({
   ),
 }))
 
-const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCommentList => ({
+const createComment = (overrides: Partial<WorkflowCommentBasic> = {}): WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 0,
   position_y: 0,

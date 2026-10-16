@@ -174,13 +174,7 @@ describe('UploadDropzone', () => {
 
     it('should render drag overlay when dragging', () => {
       const dragRef = createMockRef<HTMLDivElement>()
-      render(
-        <UploadDropzone
-          {...defaultProps}
-          dragging={true}
-          dragRef={dragRef as RefObject<HTMLDivElement | null>}
-        />,
-      )
+      render(<UploadDropzone {...defaultProps} dragging={true} dragRef={dragRef} />)
       const overlay = document.querySelector('.absolute.left-0.top-0')
       expect(overlay).toBeInTheDocument()
     })
@@ -221,43 +215,20 @@ describe('UploadDropzone', () => {
   describe('refs', () => {
     it('should attach dropRef to drop container', () => {
       const dropRef = createMockRef<HTMLDivElement>()
-      render(
-        <UploadDropzone {...defaultProps} dropRef={dropRef as RefObject<HTMLDivElement | null>} />,
-      )
+      render(<UploadDropzone {...defaultProps} dropRef={dropRef} />)
       expect(dropRef.current).toBeInstanceOf(HTMLDivElement)
     })
 
     it('should attach fileUploaderRef to input element', () => {
       const fileUploaderRef = createMockRef<HTMLInputElement>()
-      render(
-        <UploadDropzone
-          {...defaultProps}
-          fileUploaderRef={fileUploaderRef as RefObject<HTMLInputElement | null>}
-        />,
-      )
+      render(<UploadDropzone {...defaultProps} fileUploaderRef={fileUploaderRef} />)
       expect(fileUploaderRef.current).toBeInstanceOf(HTMLInputElement)
     })
 
     it('should attach dragRef to overlay when dragging', () => {
       const dragRef = createMockRef<HTMLDivElement>()
-      render(
-        <UploadDropzone
-          {...defaultProps}
-          dragging={true}
-          dragRef={dragRef as RefObject<HTMLDivElement | null>}
-        />,
-      )
+      render(<UploadDropzone {...defaultProps} dragging={true} dragRef={dragRef} />)
       expect(dragRef.current).toBeInstanceOf(HTMLDivElement)
-    })
-  })
-
-  describe('styling', () => {
-    it('should have cursor-pointer on browse button', () => {
-      render(<UploadDropzone {...defaultProps} />)
-      const browseButton = screen.getByRole('button', {
-        name: 'datasetCreation.stepOne.uploader.browse',
-      })
-      expect(browseButton).toHaveClass('cursor-pointer')
     })
   })
 

@@ -229,9 +229,7 @@ class TencentVector(BaseVector):
         docs = self._client.query(
             database_name=self._client_config.database, collection_name=self.collection_name, document_ids=[id]
         )
-        if docs and len(docs) > 0:
-            return True
-        return False
+        return bool(docs and len(docs) > 0)
 
     @override
     def delete_by_ids(self, ids: list[str]):

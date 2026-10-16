@@ -15,11 +15,12 @@ import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
+import { selectToolCollections } from '@/app/components/tools/utils/query-select'
 import { API_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
-import { useAllToolProviders } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { getMarketplaceUrl } from '@/utils/var'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
@@ -134,7 +135,13 @@ const DetailHeader = ({
   const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
-  const { data: collectionList = [] } = useAllToolProviders(isTool)
+  const { data: collectionList = [] } = useQuery(
+    consoleQuery.workspaces.current.toolProviders.get.queryOptions({
+      input: { query: {} },
+      enabled: isTool,
+      select: selectToolCollections,
+    }),
+  )
   const provider = useMemo(() => {
     return collectionList.find((collection) => collection.name === providerKey)
   }, [collectionList, providerKey])

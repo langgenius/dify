@@ -39,6 +39,7 @@ from controllers.console.datasets.datasets_document import (
     WebsiteDocumentSyncApi,
 )
 from controllers.console.datasets.error import (
+    ArchivedDocumentImmutableError,
     DatasetAccessDeniedRequestError,
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
@@ -50,6 +51,7 @@ from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.documents.application import (
     DatasetDocumentApplicationService,
+    DocumentArchivedError,
     DocumentIndexingStateError,
     DocumentInvalidActionError,
     DocumentListFilter,
@@ -102,7 +104,11 @@ def test_process_rule_authorizes_document_dataset_before_read(app, documents):
 
 
 def test_default_process_rule_does_not_require_dataset_permission(app, documents):
-    documents.get_process_rule.return_value = {"mode": "automatic", "rules": {}, "limits": {}}
+    documents.get_process_rule.return_value = {
+        "mode": "automatic",
+        "rules": {},
+        "limits": {"indexing_max_segmentation_tokens_length": 4000},
+    }
     with app.test_request_context("/"), patch.object(controller, "enforce_rbac_checks") as enforce_checks:
         unwrap(GetProcessRuleApi.get)(GetProcessRuleApi(), CONTEXT)
     enforce_checks.assert_not_called()
@@ -408,19 +414,36 @@ def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents
 
 
 @pytest.mark.parametrize(
-    ("error", "http_error"),
+    ("translate", "error", "http_error"),
     [
-        (DatasetNotFoundError(), NotFound),
-        (DocumentNotFoundError("missing"), NotFound),
-        (DatasetAccessDeniedError(), Forbidden),
-        (DocumentIndexingStateError("indexing"), DocumentIndexingError),
-        (DocumentInvalidActionError("invalid"), InvalidActionError),
-        (DocumentProviderError("provider", kind="uninitialized"), ProviderNotInitializeError),
+        (controller._raise_document_error, DatasetNotFoundError(), NotFound),
+        (controller._raise_document_error, DocumentNotFoundError("missing"), NotFound),
+        (controller._raise_document_error, DatasetAccessDeniedError(), Forbidden),
+        (controller._raise_document_indexing_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
+        (
+            controller._raise_document_indexing_error,
+            DocumentProviderError("provider", kind="uninitialized"),
+            ProviderNotInitializeError,
+        ),
+        (controller._raise_document_action_error, DocumentInvalidActionError("invalid"), InvalidActionError),
+        (controller._raise_document_status_error, DocumentInvalidActionError("invalid"), InvalidActionError),
+        (controller._raise_document_status_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
+        (controller._raise_document_archive_error, DocumentArchivedError(), ArchivedDocumentImmutableError),
+        (controller._raise_document_archive_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
+        # Every narrow translator falls back to the shared scope mapping.
+        (controller._raise_document_archive_error, DatasetNotFoundError(), NotFound),
     ],
 )
-def test_document_errors_are_mapped_at_transport_boundary(error, http_error):
+def test_document_errors_are_mapped_at_transport_boundary(translate, error, http_error):
     with pytest.raises(http_error):
+        translate(error)
+
+
+def test_scope_translator_does_not_map_other_operations_errors():
+    error = DocumentInvalidActionError("invalid")
+    with pytest.raises(DocumentInvalidActionError) as raised:
         controller._raise_document_error(error)
+    assert raised.value is error
 
 
 def test_unexpected_error_is_not_hidden():

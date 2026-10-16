@@ -2,7 +2,6 @@ import type { ChatConfig, ChatItem } from '../../../types'
 import type { ChatContextValue } from '../../context'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import copy from 'copy-to-clipboard'
 import { ChatContextProvider } from '../../context-provider'
 import Operation from '../operation'
 
@@ -14,7 +13,14 @@ const { mockSetShowAnnotationFullModal, mockT, mockAddAnnotation } = vi.hoisted(
   }
 })
 
-vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
+const mockCopy = vi.fn()
+
+vi.mock('foxact/use-clipboard', () => ({
+  useClipboard: () => ({
+    copy: mockCopy,
+    copied: false,
+  }),
+}))
 
 vi.mock('@/app/notifications', () => ({
   toast: { success: vi.fn() },
@@ -26,8 +32,9 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  addAnnotation: mockAddAnnotation,
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: { apps: { byAppId: { annotations: { post: mockAddAnnotation } } } },
 }))
 
 vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
@@ -236,7 +243,7 @@ describe('Operation', () => {
     mockContextValue.showRegenerate = false
     mockContextValue.onOpenLog = undefined
 
-    mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
+    mockAddAnnotation.mockResolvedValue({ id: 'ann-new' })
   })
 
   describe('feedback submission sessions', () => {
@@ -292,6 +299,7 @@ describe('Operation', () => {
       await user.keyboard('{Escape}')
       await user.click(screen.getByRole('button', { name: 'operation.cancel' }))
       await user.click(screen.getByRole('button', { name: 'operation.close' }))
+      await user.click(document.body)
       await user.click(submit)
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(onFeedback).toHaveBeenCalledTimes(1)
@@ -432,7 +440,7 @@ describe('Operation', () => {
       const user = userEvent.setup()
       renderOperation()
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Hello world')
+      expect(mockCopy).toHaveBeenCalledWith('Hello world')
     })
 
     it('should copy the visible answer instead of agent thought summaries', async () => {
@@ -465,7 +473,7 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Final answer')
+      expect(mockCopy).toHaveBeenCalledWith('Final answer')
     })
 
     it('should copy public response parts after an interrupted response', async () => {
@@ -473,7 +481,7 @@ describe('Operation', () => {
       const item = createInterruptedItem(['First public update', 'Second public update'])
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('First public update\n\nSecond public update')
+      expect(mockCopy).toHaveBeenCalledWith('First public update\n\nSecond public update')
     })
 
     it('should copy public thought answers for legacy messages without content', async () => {
@@ -497,7 +505,7 @@ describe('Operation', () => {
       }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Public legacy answer')
+      expect(mockCopy).toHaveBeenCalledWith('Public legacy answer')
     })
   })
 
@@ -1212,7 +1220,7 @@ describe('Operation', () => {
       const item: ChatItem = { ...baseItem, agent_thoughts: [] }
       renderOperation({ ...baseProps, item })
       await user.click(screen.getByRole('button', { name: 'operation.copy' }))
-      expect(copy).toHaveBeenCalledWith('Hello world')
+      expect(mockCopy).toHaveBeenCalledWith('Hello world')
     })
 
     it('should hide cached annotation edit controls when chat is readonly', () => {

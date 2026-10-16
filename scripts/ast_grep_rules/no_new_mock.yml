@@ -1,0 +1,57 @@
+id: no-new-mock
+language: python
+severity: error
+message: Use a real instance instead of adding a Mock, MagicMock, or SimpleNamespace constructor.
+rule:
+  all:
+    - pattern: $CALLEE($$$ARGS)
+    - any:
+        - has:
+            field: function
+            stopBy: end
+            regex: '(^|\.)(Mock|MagicMock|SimpleNamespace)$'
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              stopBy: end
+              all:
+                - pattern:
+                    context: from package import $ORIGINAL as $CALLEE
+                    selector: aliased_import
+                - any:
+                    - all:
+                        - has:
+                            field: name
+                            stopBy: end
+                            regex: '^(Mock|MagicMock)$'
+                        - inside:
+                            kind: import_from_statement
+                            stopBy: end
+                            has:
+                              field: module_name
+                              stopBy: end
+                              regex: '^unittest\.mock$'
+                    - all:
+                        - has:
+                            field: name
+                            stopBy: end
+                            regex: '^SimpleNamespace$'
+                        - inside:
+                            kind: import_from_statement
+                            stopBy: end
+                            has:
+                              field: module_name
+                              stopBy: end
+                              regex: '^types$'
+        - inside:
+            kind: module
+            stopBy: end
+            has:
+              stopBy: end
+              all:
+                - pattern: $CALLEE = $ORIGINAL
+                - has:
+                    field: right
+                    stopBy: end
+                    regex: '(^|\.)(Mock|MagicMock|SimpleNamespace)$'
