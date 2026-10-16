@@ -22767,6 +22767,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | status | string |  | Yes |
+| workflow_run_elapsed_time | number |  | No |
 | workflow_run_id | string |  | No |
 
 #### MessageDetailResponse
@@ -22796,6 +22797,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | status | string |  | Yes |
+| workflow_run_elapsed_time | number |  | No |
 | workflow_run_id | string |  | No |
 
 #### MessageFeedbackPayload

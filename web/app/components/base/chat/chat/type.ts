@@ -9,6 +9,7 @@ type MessageMore = {
   tokens: number
   latency: number | string
   tokens_per_second?: number | string
+  latencyIsWorkflowTime?: boolean
 }
 
 export type FeedbackType = {

@@ -3030,6 +3030,7 @@ export const zMessageDetail = z.object({
   provider_response_latency: z.number(),
   query: z.string(),
   status: z.string(),
+  workflow_run_elapsed_time: z.number().nullish(),
   workflow_run_id: z.string().nullish(),
 })
 
@@ -5555,6 +5556,7 @@ export const zMessageDetailResponse = z.object({
   provider_response_latency: z.number(),
   query: z.string(),
   status: z.string(),
+  workflow_run_elapsed_time: z.number().nullish(),
   workflow_run_id: z.string().nullish(),
 })
 
