@@ -2,9 +2,9 @@
 
 更新日期：2026-10-16。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
-后端应用级 Agent tracing、Console API 与生成契约已实现。Langfuse、LangSmith 与 Weave 的账号级证据分别记录于第 12 节；其中 Weave 的平台 API 核心场景已通过，供应商网页仍受账号试用状态限制，不能记为平台 UI 验收通过。本文定义后端契约；dev 新增前端页面的具体联调范围单独记录。
+后端应用级 Agent tracing、Console API 与生成契约已实现。Langfuse、LangSmith、Weave 与 Databricks 的账号级证据分别记录于第 12 节；其中 Weave 的平台 API 核心场景已通过，供应商网页仍受账号试用状态限制，不能记为平台 UI 验收通过。Databricks 本轮通过 Dify UI 配置并发起业务，再独立读取平台完整 trace。本文定义后端契约；dev 前端的具体联调范围单独记录。
 
-Langfuse、LangSmith 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。Weave 的 API 与局部 Dify UI 已通过范围单独列明；其余七家仍没有账号级收数和查询证据。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
+Langfuse、LangSmith 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。Weave、Databricks 的已通过范围与限制分别列明；其余六家仍没有账号级收数和查询证据。Databricks 的 PAT / experiment storage 结果不代表 OAuth M2M、Unity Catalog 或 OSS MLflow 已通过。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
 
 ## 1. 接入位置与配置归属
 
@@ -194,7 +194,7 @@ main/生产配置的默认 false 保持不变。dev 的显式启用应写入常�
 
 原 `{owner}/trace-capabilities` 的 `api_collection_enabled` 保留兼容，但新前端不应依赖选中 provider、应用 enabled 或 app Monitor 权限来探测全局 gate，也不要填默认 provider 发起能力查询。provider 能力、应用持久化策略和部署状态分别展示；部署关闭不自动改写应用策略或关闭普通 App legacy tracing。
 
-dev 已复现：没有 provider、未运行模型的新 Agent 仅显示“已禁用 / 请先配置提供商”，仍可展开采集策略，但没有部署关闭提示；已配置 provider 的面板才显示不可用提示。前端接入与空配置/权限/切换场景由 [DIFY-2995](https://linear.app/dify/issue/DIFY-2995) 跟踪，当前待开发；后端提供全局字段不等于这个 UI 缺口已修复。
+dev 曾复现：没有 provider、未运行模型的新 Agent 没有部署关闭提示，已配置 provider 的面板才显示不可用提示。最新 dev 前端已改为读取全局 features；空配置、关闭策略、加载/错误、权限和 provider 切换的完整验收仍由 [DIFY-2995](https://linear.app/dify/issue/DIFY-2995) 跟踪，不以成功配置某个 provider 代替该矩阵。
 
 前端不能用 `agent_spans=true` 推断部署已经开启，也不能仅凭 `not_collected` 区分应用关闭、旧历史记录或未进入采集。部署联调需确认 runtime 配置，并通过运行状态验证投递。运行记录内的 `capabilities` 是 provider 支持声明，不含当前 API gate；不要把当前 gate 的变化反推为历史运行状态。
 
@@ -312,6 +312,8 @@ Weave Cloud 的 `host` 为 `https://api.wandb.ai`，`endpoint` 为 `https://trac
 
 Weave 的 POST/PATCH 只读校验账户、项目可写权限和 trace 查询端点，不隐式创建项目、不调用全局 SDK login/init。GET 不访问供应商。保存成功后持久化规范化的 entity/project 与项目链接；PATCH 保留未编辑密钥的实际脱敏回显值。校验通过不等于后续 ingestion 一定成功，继续按运行状态判断。
 
+Databricks 的 `host` 必须是 HTTPS workspace origin，`experiment_id` 是已存在的数字 ID。POST/PATCH 使用请求级 PAT 或 OAuth M2M 认证，只读核对 exact experiment ID 与 active 状态；它证明认证和实验可读，不证明写权限、trace API 可用或 artifact 投递成功。GET 在本地生成项目链接，不构造 legacy MLflow exporter，也不修改进程级认证环境、tracking URI 或当前 experiment。可空凭据保留 null / 清空语义，masked-key 原样保存保留原密钥；M2M 与 PAT 的双向切换有真实 RSA/持久化测试，账号级验收目前只有 PAT。
+
 ## 7. Capability 声明及版本边界
 
 ```http
@@ -371,7 +373,7 @@ SDK 依赖版本与第三方服务最低版本是不同概念：
 | W&B Weave | `weave==0.52.36` | typed call start/end API；保留 endpoint/host 配置 |
 | Arize / Phoenix | `arize-phoenix-otel==0.15.0` | Arize 使用 OTLP gRPC，Phoenix 使用 OTLP HTTP；不假设两个 endpoint 可互换 |
 | MLflow | `mlflow-skinny >=3.11.1,<4` | 新 Agent 导出要求 **MLflow server ≥3.4** 的 `/v1/traces`；现有普通 App 旧路径未被替换 |
-| Databricks | 同 MLflow SDK | 使用 experiment V3 metadata + signed artifact 上传，保留 `experiment_id` 与 PAT/OAuth；不会把 experiment ID 当成 UC table 传给 UC-only OTLP |
+| Databricks | 同 MLflow SDK；本轮 dev 为 3.11.1 | experiment V3 metadata + SDK V2 上传凭据兼容接口 + signed artifact；本轮 PAT / experiment storage 已实际收数和完整回读。不会把 experiment ID 当成 UC table；未实现自动 UC 目标发现，不声明 UC 存储已通过 |
 | 阿里云 / 腾讯云 | 仓库 OpenTelemetry 依赖 | 按 provider 的 OTLP 端点/认证协议；没有验证的服务版本不列最低版本保证 |
 
 Weave 将业务会话映射到原生 `thread_id`，没有写入 `turn_id`，不能据此承诺平台 Threads 页的完整 turn 展示。LLM 原生 usage 映射为 prompt/completion/total tokens；`native_cost=false`，供应商按自己的定价计算出的成本不是 Dify 原生成本导出。cache token 细分与首 token 时间也不因 `native_usage=true` 自动获得支持。
@@ -390,11 +392,17 @@ Workflow 中定位某次 Agent 节点执行：
 GET /apps/{app_id}/trace-runs/workflow/{workflow_run_id}?node_execution_id={node_execution_id}
 ```
 
-单节点调试：
+仅持有节点执行 ID 时（单节点调试或 Workflow 中的 Agent 执行）：
 
 ```http
 GET /apps/{app_id}/trace-runs/node/{node_execution_id}
 ```
+
+reference Agent 日志的 `conversation_id` / `message_id` 是节点执行 ID 投影；使用日志 `source.app_id` 指向的调用方 Workflow app 和上述 `node` 路由，不能把该 ID 当作独立 Agent message ID 或 workflow run ID。后端先使用该节点自己的独立运行记录；没有独立记录时，才解析并校验同 tenant / app / workflow 的父运行。独立 preview 和已有 `not_collected` 记录优先，不会被父 trace 覆盖。
+
+父运行别名仍返回请求的 `source_kind=node` / `source_id`，状态、内容策略和目的地来自父运行的冻结快照，`span_url` 自动选择该节点最新 invocation。没有对应 invocation 或 provider 不支持节点链接时，返回 null 并回退父 `trace_url`，不拼造节点 URL。不要额外传入另一个节点的过滤器。该路由要求调用方 Workflow 的日志权限；只有被引用 Agent 的日志权限不保证有权读取父 Workflow trace。
+
+同一 `node` 路由的 `/retry` 重投所属的完整冻结 trace，不重新运行业务节点；preview 重投自己的独立 trace。`accepted` 禁止重投、`uncertain` 需要明确重复风险确认等规则不变。
 
 已接受的示例响应；示例值不是平台验收证据：
 
@@ -696,16 +704,44 @@ r3 项目链接验证只读取现有运行，没有重新执行业务或补发 t
 
 dev 的 Agent 监控页已实际显示 Weave 使用中、内容/Agent 开关开启、原生费用不支持及正确项目链接；配置表单回显脱敏 Key、entity/project 和两个端点，实际保存成功。Weave 的项目页和 trace 页仍需账号方案/访问权限处理；平台 UI 的树展示、Threads turns 和网页跳转未通过验收。跨 tenant、真实 ingestion 429/5xx、凭据撤销、普通 legacy 应用仍为后续专项。
 
-### 12.7 未验证范围与后续前端验收
+### 12.7 Databricks UI 与平台验收（2026-10-16）
+
+配置和业务执行均通过真实 Dify UI 发起，使用隔离的 Agent、inline Workflow 和 reference Workflow；没有修改原始用户 Workflow。三个 owner 的 PAT 创建、保存并启用、masked GET 与原样 PATCH 均通过，密钥保持加密存储，项目链接正确。独立校验只读查询 Dify 状态、frozen config 与平台 metadata / 完整 artifact，不以 `accepted` 代替平台数据验证。
+
+| 场景 | 平台核对 |
+| --- | --- |
+| Agent 同会话两轮 | 各 6 spans、2 LLM / 1 tool；tokens 分别 4701、4911，原生 Session 分组实际显示两条 trace、合计 9612 tokens |
+| mixed inline Workflow | 10 spans、3 LLM / 1 tool，4768 tokens；包含普通 LLM 与 Agent 内部过程 |
+| mixed reference Workflow | 10 spans、3 LLM / 1 tool，4766 tokens；冻结调用方 Workflow 的采集策略，不继承被引用 Agent 当时关闭的内容采集策略 |
+| Agent 内容关闭 | 6 spans、4703 tokens；所有输入输出和合成标记均不存在，用量仍保留 |
+| inline Agent 单节点预览 | 6 spans、2 LLM / 1 tool，4742 tokens；独立 node source 与调用方快照一致 |
+| Agent 内部采集关闭 | 仅 1 个外层 CHAIN，无内部 LLM / tool |
+| tracing 总开关关闭 | Dify 返回 `not_collected`；限定 experiment / session / 时间范围连续 45 秒、4 次查询均无 trace |
+| 真实模型错误，内容开启 / 关闭 | 各 4 spans，root 与 LLM 均 ERROR；开启时保留真实 query，关闭时无 I/O / 合成标记，缺失 usage / cost 不补造 |
+| 运行中改变内容策略 | 受控长请求的策略更新时间早于终态约 17.5 秒；仍按开始时冻结的 `capture_content=true` 导出 14 spans、14972 tokens，保留合成标记 |
+
+平台逐项核对 canonical span ID、parent、单 root、OTel trace context、返回的 provider trace ID、experiment/session、时间、模型、内容与终态；LLM 原生 input/output/total tokens 和有效 USD 成本及 trace 聚合均匹配。未补造缺失值，不将 cache token 细分、首 token 时延或非 USD 成本算作本轮原生验收。
+
+在 Databricks UI 中明确选择 **In the Experiment**。SDK 3.11.1 的 V3 metadata、V2 上传凭据兼容路径和 signed artifact 上传实际贯通；独立回读使用 V3 metadata、V2 下载凭据和完整 artifact。此证据只覆盖该 workspace 的 experiment storage，不外推到 UC 绑定、UC OTLP、私有网络或所有部署版本。配置可读校验不是存储模式兼容证明。
+
+本轮 UI 发现 `selectedTraceId` 只打开 Databricks trace 列表，已将新导出的 `trace_url` 修为 `traces?selectedEvaluationId=<returned_trace_id>`，并实际验证直接打开详情。`span_url=false` 保持，不伪造节点深链；OSS MLflow 仍使用其原有参数。历史已冻结的运行链接不追溯改写。
+
+前端缺陷单独跟踪：[DIFY-2996](https://linear.app/dify/issue/DIFY-2996) 记录真实模型错误后预览只保留空助手占位；[DIFY-2997](https://linear.app/dify/issue/DIFY-2997) 记录工具执行阶段点击停止仅结束 UI、没有发出 stop 请求。两次停止尝试的后端业务实际成功，平台状态与 canonical 一致，但不计为取消语义通过。短冻结尝试的配置提交晚于终态也不计在途变更通过；上表使用单独长请求的服务端时间证据。
+
+已知的 core tool 调用异常现在会标记对应的原生工具 span 为 ERROR，同时保留 Agent 收到错误后继续处理的行为。真实 UI 工具超时复验中，工具 ERROR、业务 root OK；内容开启与关闭分别为 6 spans / 4755、4758 tokens。关闭内容时仍有错误状态，但无 I/O / 合成标记，诊断会被隐私策略概括，不承诺保留原始错误类型或正文。成功返回文本即使包含“error / timeout”也不会据此误判为工具错误。
+
+配置隔离 / 可空密钥、深链与节点父运行解析修复通过 2023 项相关 API 测试，其中新增 40 项节点解析 SQL / LogStore 边界用例；工具错误修复通过完整 Agent runtime 950 项测试 / 5 项跳过。对应 lint / 类型检查及新增代码门禁通过。真实账号中的 OAuth M2M、UC、不同目的地并发、凭据撤销、ingestion 429/5xx、普通 legacy Chat/Workflow 仍未验收；Databricks 通过范围不能替代 OSS MLflow 验收。
+
+### 12.8 未验证范围与后续前端验收
 
 - 普通无 Agent Workflow legacy 已分别取得 Langfuse 与 LangSmith 平台证据；普通 Chatflow 未补独立真实平台证据。同 tenant 两应用不同项目并发、双向零串数和恢复配置后的历史深链已验证。
-- 除已列明证据的 Langfuse、LangSmith 和 Weave 外，Opik、Arize、Phoenix、MLflow、Databricks、阿里云和腾讯云七家仍没有账号级真实收数 / 查询验收。Weave 平台 UI 与上一节专项仍待完成；实现或协议测试不等于账号已验证。
+- 除已列明证据的 Langfuse、LangSmith、Weave 与 Databricks 外，Opik、Arize、Phoenix、MLflow、阿里云和腾讯云六家仍没有账号级真实收数 / 查询验收。Weave 平台 UI 与各供应商列明的专项仍待完成；实现或协议测试不等于账号已验证。
 - LangSmith 的原生 cache token breakdown 和 first-token-time 专项未验证，当前相关值仅在存在时保留 metadata；`native_usage=true` 不代表所有 usage 细项全支持。
 - 跨 tenant 隔离、ingestion 写入 429 和凭据撤销没有在本轮 LangSmith 账号上执行；本次遇到的查询 429 不替代投递限流验收。公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
 - Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
 - dev 新增 Web 页面中已核对上一节列出的 Agent 配置展示和保存；其他权限、状态轮询、Workflow 继承展示及供应商网页跳转需继续按前端任务验收，不将局部页面操作视为全部前端功能通过。
 - 全局 feature 已通过真实 Console HTTPS 回读：不传 app/provider 参数，在隔离 Agent 未选 provider 的情况下分别返回 false、true，dev 的 `model_billing_source` / `model_billing_migration_status` 字段保持。常规 base + override 两文件配置已核对 9 个相关开关持久为 true，无需临时 gate overlay；main 默认 false 未改。此轮结果不替代后续 CI 部署完成后的版本核对。
-- UI 验收中，原已配置 Agent 的不可用提示在开启后消失；通过页面发起的一次真实工具调用成功，Weave 独立查询得到 6 calls、2 LLM / 1 tool、4691 tokens，canonical ID、parent、session、内容及深链检查通过。首次无 provider 时的部署提示缺口仍由 DIFY-2995 跟踪，状态 Backlog、尚未修复；不能把后端字段和已配置页面通过写成该空配置 UI 已完成。
+- UI 验收中，原已配置 Agent 的不可用提示在开启后消失；通过页面发起的一次真实工具调用成功，Weave 独立查询得到 6 calls、2 LLM / 1 tool、4691 tokens，canonical ID、parent、session、内容及深链检查通过。DIFY-2995 对应的全局字段消费已出现在最新 dev 前端代码中；任务完整验收和状态另行跟踪，不能以 Databricks 成功主流程替代全部空配置 / 权限场景。
 
 ## 13. 定稿检查与代码定位
 
@@ -720,4 +756,4 @@ dev 的 Agent 监控页已实际显示 Weave 使用中、内容/Agent 开关开�
 - 全局部署 gate：`api/controllers/console/feature.py`、`api/services/feature_service.py`
 - 生成契约：`packages/contracts/generated/api/console/{agent,apps,features}/`
 
-运行服务已提供 `retry` 和 `status.capture_agent`，登录后的 features 已提供不依赖 app/provider 的 API gate，原能力接口字段保留兼容；DIFY-2995 的前端接入仍待完成。已完成的实测、部署标识与未验证范围按第 12 节分别记录。runtime gate 目前仍无远程探测，不能把 API gate=true 写成完整链路已启用。
+运行服务已提供 `retry` 和 `status.capture_agent`，登录后的 features 已提供不依赖 app/provider 的 API gate，原能力接口字段保留兼容；最新 dev 前端已消费全局字段，DIFY-2995 的完整矩阵另行验收。已完成的实测、部署标识与未验证范围按第 12 节分别记录。runtime gate 目前仍无远程探测，不能把 API gate=true 写成完整链路已启用。
