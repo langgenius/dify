@@ -38,13 +38,18 @@ def _protected(handler: logging.Handler) -> bool:
     return any(type(item) is SensitiveHttpLogFilter for item in tuple(handler.filters))
 
 
-def assert_sensitive_http_telemetry_ready() -> None:
+def assert_sensitive_http_telemetry_ready(*, additional_emitters: tuple[str, ...] = ()) -> None:
     """Fail closed before authorization if existing HTTP logging can bypass filters.
 
     This read-only snapshot checks the current configuration; application owners
     must keep logging configuration stable during dispatch. New custom handlers
-    and SDK exporters require their own admission review.
+    and SDK exporters require their own admission review. A trusted caller may
+    additionally qualify its surrounding logger routes; HTTP routes are always
+    retained. The empty default preserves ordinary HTTP admission.
     """
+    if type(additional_emitters) is not tuple or any(type(name) is not str or not name for name in additional_emitters):
+        raise SensitiveHttpTelemetryUnavailable()
+    emitters = _HTTP_LOGGERS + additional_emitters
     handlers = tuple(logging.getLogger().handlers)
     if not handlers or not all(_protected(handler) for handler in handlers):
         raise SensitiveHttpTelemetryUnavailable()
@@ -55,8 +60,7 @@ def assert_sensitive_http_telemetry_ready() -> None:
         if not isinstance(logger, logging.Logger):
             continue
         if not any(
-            name == emitter or name.startswith(emitter + ".") or emitter.startswith(name + ".")
-            for emitter in _HTTP_LOGGERS
+            name == emitter or name.startswith(emitter + ".") or emitter.startswith(name + ".") for emitter in emitters
         ):
             continue
         if not logger.propagate or not all(_protected(handler) for handler in tuple(logger.handlers)):
@@ -64,15 +68,17 @@ def assert_sensitive_http_telemetry_ready() -> None:
 
 
 @contextmanager
-def sensitive_http_telemetry() -> Generator[None]:
+def sensitive_http_telemetry(*, additional_emitters: tuple[str, ...] = ()) -> Generator[None]:
     """Guard only sensitive dispatch/read/close; recheck readiness at the IO edge.
 
     Use assert_sensitive_http_telemetry_ready before spending dispatch authority.
     Catch and translate raw transport exceptions inside this scope when an outer
     tracing owner might otherwise record them after exit. Nesting and all exit
     paths restore the prior context, including BaseException interruptions.
+    Additional surrounding logger routes are rechecked at context entry too;
+    supplying them neither installs filters nor changes logger configuration.
     """
-    assert_sensitive_http_telemetry_ready()
+    assert_sensitive_http_telemetry_ready(additional_emitters=additional_emitters)
     token = _sensitive_http.set(True)
     try:
         with suppress_instrumentation():

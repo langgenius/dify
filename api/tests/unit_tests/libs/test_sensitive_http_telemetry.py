@@ -219,6 +219,78 @@ def test_guard_never_changes_logger_configuration(application_logs):
     assert level == logging.getLogger().level
 
 
+@pytest.mark.parametrize("name", ["graphon.graph_engine.worker", "graphon.graph_engine.worker.child", "graphon"])
+@pytest.mark.parametrize("configuration", ["direct-handler", "no-propagation"])
+def test_additional_native_logger_bypass_refuses_without_changing_http_default(
+    application_logs, monkeypatch, name, configuration
+):
+    application_logs()
+    module = telemetry()
+    logger = logging.getLogger(name)
+    if configuration == "direct-handler":
+        monkeypatch.setattr(logger, "handlers", [logging.StreamHandler(io.StringIO())])
+    else:
+        monkeypatch.setattr(logger, "propagate", False)
+    # Ordinary HTTP admission retains its existing routes and behavior.
+    module.assert_sensitive_http_telemetry_ready()
+    routes = ("graphon.graph_engine.worker",)
+    with pytest.raises(module.SensitiveHttpTelemetryUnavailable):
+        module.assert_sensitive_http_telemetry_ready(additional_emitters=routes)
+    entered = False
+    with (
+        pytest.raises(module.SensitiveHttpTelemetryUnavailable),
+        module.sensitive_http_telemetry(additional_emitters=routes),
+    ):
+        entered = True
+    assert not entered
+
+
+def test_additional_protected_routes_drop_scoped_exception_and_restore_ordinary_logs(application_logs, monkeypatch):
+    logs = application_logs()
+    module = telemetry()
+    output = io.StringIO()
+    handler = logging.StreamHandler(output)
+    handler.addFilter(module.SensitiveHttpLogFilter())
+    logger = logging.getLogger("core.app.apps.workflow.app_generator")
+    monkeypatch.setattr(logger, "handlers", [handler])
+    routes = (logger.name, "graphon.graph_engine.worker")
+
+    def emit_and_fail():
+        with module.sensitive_http_telemetry(additional_emitters=routes):
+            try:
+                raise ValueError(CANARY)
+            except ValueError:
+                logger.exception("native worker failed %s", CANARY)
+            raise ValueError("synthetic interruption")
+
+    try:
+        with pytest.raises(ValueError, match="synthetic interruption"):
+            emit_and_fail()
+        logger.info("ordinary-native-route-after")
+        text = persisted(logs) + output.getvalue()
+        assert CANARY not in text
+        assert "ordinary-native-route-after" in text
+        assert is_instrumentation_enabled()
+    finally:
+        handler.close()
+
+
+def test_additional_route_is_rechecked_at_context_entry(application_logs, monkeypatch):
+    application_logs()
+    module = telemetry()
+    logger = logging.getLogger("graphon.graph_engine.worker")
+    routes = (logger.name,)
+    module.assert_sensitive_http_telemetry_ready(additional_emitters=routes)
+    monkeypatch.setattr(logger, "handlers", [logging.StreamHandler(io.StringIO())])
+    entered = False
+    with (
+        pytest.raises(module.SensitiveHttpTelemetryUnavailable),
+        module.sensitive_http_telemetry(additional_emitters=routes),
+    ):
+        entered = True
+    assert not entered
+
+
 def test_actual_enabled_httpx_global_instrumentation_preserves_only_ordinary_spans(application_logs):
     application_logs = application_logs()
     module = telemetry()
