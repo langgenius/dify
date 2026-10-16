@@ -37,6 +37,7 @@ import {
   emptyGoldenQuestionDraft,
   formatQualityUpdatedAt,
   goldenQuestionPayload,
+  goldenQuestionQueriesKey,
   qualityPageSize,
   visibleQualityTags,
 } from './quality-model'
@@ -100,7 +101,7 @@ function GoldenAnnotation({ annotation }: { annotation: string }) {
         render={
           <button
             type="button"
-            className="block w-fit max-w-full min-w-0 truncate text-left system-xs-regular text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="block w-fit max-w-full min-w-0 truncate text-left system-xs-regular text-text-secondary"
           >
             {annotation}
           </button>
@@ -158,10 +159,7 @@ function GoldenQuestionEditorDialog({
         toast.success(t(($) => $['qualityPage.createdToast'], { ns: 'knowledgeQuality' }))
       }
       await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
+        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
       close()
     } catch {
@@ -222,7 +220,8 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
   const allSelected = items.length > 0 && selected.size === items.length
   const partiallySelected = selected.size > 0 && !allSelected
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: queryOptions.queryKey })
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: goldenQuestionQueriesKey(knowledgeSpaceId) })
   const openCreate = () => {
     setDialog({
       mode: 'create',
@@ -335,85 +334,128 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
         </div>
       ) : items.length ? (
         <div className="mt-2.5 w-full overflow-x-auto pt-3">
-          <div className="grid min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 py-2.5 text-[11px] leading-4 font-medium text-text-tertiary">
-            <Checkbox
-              aria-label={t(($) => $['qualityPage.selectAll'], { ns: 'knowledgeQuality' })}
-              checked={allSelected}
-              disabled={!canEdit}
-              indeterminate={partiallySelected}
-              onCheckedChange={toggleAll}
-            />
-            <span>{t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}</span>
-            <span>{t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}</span>
-            <span>{t(($) => $['qualityPage.tags'], { ns: 'knowledgeQuality' })}</span>
-            <span>{t(($) => $['qualityPage.annotation'], { ns: 'knowledgeQuality' })}</span>
-            <span>{t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}</span>
-            <span />
-          </div>
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="grid h-12 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 border-t border-divider-subtle"
-            >
-              <Checkbox
-                aria-label={t(($) => $['qualityPage.selectQuestion'], {
-                  ns: 'knowledgeQuality',
-                  question: item.question,
-                })}
-                checked={selected.has(item.id)}
-                disabled={!canEdit}
-                onCheckedChange={() => toggleOne(item.id)}
-              />
-              <span className="truncate system-sm-medium text-text-primary">
-                {item.question ?? ''}
-              </span>
-              <GoldenStatus
-                reason={item.status_reason}
-                status={
-                  item.status ??
-                  ((item.expected_evidence_ids?.length ?? 0) > 0 ? 'active' : 'draft')
-                }
-              />
-              <div className="flex min-w-0 gap-1 overflow-hidden">
-                {visibleQualityTags(item.tags).map((tag) => (
-                  <Badge key={tag} size="xs" variant="dimm" className="max-w-full min-w-0">
-                    <span className="min-w-0 truncate system-2xs-medium normal-case">{tag}</span>
-                  </Badge>
-                ))}
-              </div>
-              <GoldenAnnotation annotation={item.annotation} />
-              <span className="system-xs-regular text-text-secondary">
-                {formatQualityUpdatedAt(item.updated_at, i18n.language)}
-              </span>
-              {canEdit ? (
-                <DropdownMenu modal={false}>
-                  <QualityRowMenuTrigger
-                    label={t(($) => $['qualityPage.questionActions'], {
-                      ns: 'knowledgeQuality',
-                      question: item.question,
-                    })}
+          <table
+            aria-label={t(($) => $['qualityPage.goldenTab'], { ns: 'knowledgeQuality' })}
+            className="w-full min-w-195 table-fixed border-collapse text-left"
+          >
+            <colgroup>
+              <col className="w-7" />
+              <col className="w-[30%]" />
+              <col className="w-25.5" />
+              <col />
+              <col className="w-[22%]" />
+              <col className="w-[13%]" />
+              <col className="w-8" />
+            </colgroup>
+            <thead>
+              <tr className="h-9 text-[11px] leading-4 font-medium text-text-tertiary">
+                <td className="pr-3 align-middle">
+                  <Checkbox
+                    aria-label={t(($) => $['qualityPage.selectAll'], { ns: 'knowledgeQuality' })}
+                    checked={allSelected}
+                    disabled={!canEdit}
+                    indeterminate={partiallySelected}
+                    onCheckedChange={toggleAll}
                   />
-                  <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
-                    <DropdownMenuItem className="gap-2 px-3" onClick={() => void openEdit(item)}>
-                      <span aria-hidden className="i-ri-edit-line size-4" />
-                      {t(($) => $['qualityPage.edit'], { ns: 'knowledgeQuality' })}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      className="gap-2 px-3"
-                      onClick={() => setDeleteIds(new Set([item.id]))}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                      {t(($) => $['qualityPage.delete'], { ns: 'knowledgeQuality' })}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <span />
-              )}
-            </div>
-          ))}
+                </td>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.tags'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.annotation'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}
+                </th>
+                <td />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="h-12 border-t border-divider-subtle">
+                  <td className="pr-3 align-middle">
+                    <Checkbox
+                      aria-label={t(($) => $['qualityPage.selectQuestion'], {
+                        ns: 'knowledgeQuality',
+                        question: item.question,
+                      })}
+                      checked={selected.has(item.id)}
+                      disabled={!canEdit}
+                      onCheckedChange={() => toggleOne(item.id)}
+                    />
+                  </td>
+                  <th
+                    scope="row"
+                    className="truncate pr-3 text-left system-sm-medium text-text-primary"
+                  >
+                    {item.question ?? ''}
+                  </th>
+                  <td className="pr-3">
+                    <GoldenStatus
+                      reason={item.status_reason}
+                      status={
+                        item.status ??
+                        ((item.expected_evidence_ids?.length ?? 0) > 0 ? 'active' : 'draft')
+                      }
+                    />
+                  </td>
+                  <td className="pr-3">
+                    <div className="flex min-w-0 gap-1 overflow-hidden">
+                      {visibleQualityTags(item.tags).map((tag) => (
+                        <Badge key={tag} size="xs" variant="dimm" className="max-w-full min-w-0">
+                          <span className="min-w-0 truncate system-2xs-medium normal-case">
+                            {tag}
+                          </span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="pr-3">
+                    <GoldenAnnotation annotation={item.annotation} />
+                  </td>
+                  <td className="pr-3 system-xs-regular text-text-secondary">
+                    {formatQualityUpdatedAt(item.updated_at, i18n.language)}
+                  </td>
+                  <td>
+                    {canEdit && (
+                      <DropdownMenu modal={false}>
+                        <QualityRowMenuTrigger
+                          label={t(($) => $['qualityPage.questionActions'], {
+                            ns: 'knowledgeQuality',
+                            question: item.question,
+                          })}
+                        />
+                        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+                          <DropdownMenuItem
+                            className="gap-2 px-3"
+                            onClick={() => void openEdit(item)}
+                          >
+                            <span aria-hidden className="i-ri-edit-line size-4" />
+                            {t(($) => $['qualityPage.edit'], { ns: 'knowledgeQuality' })}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            className="gap-2 px-3"
+                            onClick={() => setDeleteIds(new Set([item.id]))}
+                          >
+                            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                            {t(($) => $['qualityPage.delete'], { ns: 'knowledgeQuality' })}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           {query.hasNextPage && (
             <div className="flex min-w-195 justify-center border-t border-divider-subtle py-4">
               <Button loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
