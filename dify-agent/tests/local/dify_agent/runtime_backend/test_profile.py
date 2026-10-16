@@ -302,6 +302,11 @@ def test_native_scope_configuration_preserves_ordinary_driver() -> None:
 
 
 def test_native_scope_endpoint_never_defaults_to_ordinary() -> None:
-    profile = create_runtime_backend_profile(RuntimeBackendSettings(local_sandbox_endpoint="http://ordinary.example"))
+    profile = create_runtime_backend_profile(
+        RuntimeBackendSettings(
+            local_sandbox_endpoint="http://ordinary.example",
+            local_sandbox_auth_token="ordinary-token",
+        )
+    )
     assert isinstance(profile.execution_bindings, LocalExecutionBindingBackend)
     assert profile.execution_bindings.native_scope_client is None
