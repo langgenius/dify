@@ -68,7 +68,8 @@ def test_agent_operations_resolve_tenant_owner_before_app_services(
         return "backing-app"
 
     def recorder(name: str) -> Callable[..., None]:
-        def record(*args: object) -> None:
+        def record(*args: object, **kwargs: object) -> None:
+            assert kwargs == ({"activate": False} if name in ("create", "update") else {})
             calls.append((name, args))
 
         return record
