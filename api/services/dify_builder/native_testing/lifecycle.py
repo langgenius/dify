@@ -8,6 +8,7 @@ Qualified native adapters must supply actual execution/termination evidence.
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from re import fullmatch
 from typing import TYPE_CHECKING, Literal, Protocol, Self
 
 from pydantic import StrictBool, model_validator
@@ -242,6 +243,80 @@ class NativeTestLifecycleService:
             )
             state.pending_ids, state.wait_reason = list(combined), pending_reason(validated)
         # The writer context has committed before returning plain completion.
+
+    def seal_stop(
+        self, *, ref: NativeTestContextRef, expected_generation: int, dispatch_id: str, reason_code: str
+    ) -> None:
+        """Permanently close this request's authority, not its physical evidence.
+
+        Called by the exact currently owned native control sink. Settlement
+        ownership permits safe shutdown after permission revocation or expiry;
+        this SQL-only operation grants no I/O, checkpoint, cleanup or terminal
+        Run receipt. Acquisition evidence stays intact for actual settlement.
+        A repeated or ambiguously acknowledged seal cannot confer acceptance.
+        """
+        if (
+            type(expected_generation) is not int
+            or type(dispatch_id) is not str
+            or not dispatch_id
+            or type(reason_code) is not str
+            or fullmatch(r"[a-z][a-z0-9_]{0,127}", reason_code) is None
+        ):
+            raise BuilderExecutionPolicyError("native_stop_fence_invalid")
+        with self.loader.locked(ref=ref, settlement=True) as (session, owned, scope):
+            request = session.get(DifyBuilderExecutionRequest, ref.request_id)
+            states = session.scalars(
+                select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
+            ).all()
+            invocations = session.scalars(
+                select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
+            ).all()
+            dispatches = session.scalars(
+                select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id)
+            ).all()
+            owner = (ref.request_id, owned.tenant_id)
+            if any((row.request_id, row.tenant_id) != owner for row in (*states, *invocations, *dispatches)):
+                raise BuilderExecutionPolicyError("native_owner_mismatch")
+            by_id = {row.invocation_id: row for row in states}
+            active = {row.invocation_id: row for row in invocations}
+            roots = [row for row in states if row.parent_invocation_id is None]
+            current = next((row for row in dispatches if row.id == dispatch_id), None)
+            state = by_id.get(ref.invocation_id)
+            if (
+                request is None
+                or request.state not in {"running", "waiting"}
+                or scope.cancelled
+                or len(roots) != 1
+                or len(by_id) != len(states)
+                or len(active) != len(invocations)
+                or set(by_id) != set(active)
+                or state is None
+                or not active[ref.invocation_id].active
+                or state.state not in {"running", "waiting"}
+                or state.generation != expected_generation
+                or current is None
+                or (current.invocation_id, current.generation, current.state)
+                != (ref.invocation_id, expected_generation, "claimed")
+            ):
+                raise BuilderExecutionPolicyError("native_stop_fence_conflict")
+            root = roots[0]
+            if (root.app_id, root.workflow_id) != (owned.app_id, owned.workflow_id):
+                raise BuilderExecutionPolicyError("native_owner_mismatch")
+            connected = {root.invocation_id}
+            while True:
+                expanded = connected | {row.invocation_id for row in states if row.parent_invocation_id in connected}
+                if expanded == connected:
+                    break
+                connected = expanded
+            if connected != set(by_id) or any(row.invocation_id not in connected for row in dispatches):
+                raise BuilderExecutionPolicyError("native_owner_mismatch")
+            request.state = "sealed"
+            for invocation in invocations:
+                invocation.active = False
+            for dispatch in dispatches:
+                if dispatch.state in {"queued", "published"}:
+                    dispatch.state = "cancelled"
+        # None is returned only after the actual request writer acknowledges commit.
 
     def pause(
         self,
@@ -998,6 +1073,8 @@ class NativeTestLifecycleService:
         ref = owned.ref
         if outcome.ref != ref:
             raise BuilderExecutionPolicyError("native_outcome_mismatch")
+        if owned.state == "sealed" and outcome.status not in {"stopped", "unknown"}:
+            raise BuilderExecutionPolicyError("native_request_sealed")
         state = invocation_state(session, ref, owned.tenant_id)
         dispatch = session.scalar(
             owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)

@@ -225,6 +225,7 @@ def case():
         workflow_id="workflow",
         test_input_id="input",
         expires_at=scope.expires_at,
+        state="running",
     )
 
     @contextmanager
