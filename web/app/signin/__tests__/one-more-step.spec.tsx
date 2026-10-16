@@ -25,8 +25,8 @@ vi.mock('@/next/navigation', () => ({
 const mockReplace = vi.fn()
 const mockSubmitOneMoreStep = vi.fn()
 
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 const mockUseOneMoreStep = mockOneMoreStepHook
 
 describe('OneMoreStep', () => {
@@ -38,7 +38,7 @@ describe('OneMoreStep', () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams(
         'invitation_code=invite-code&redirect_url=%2Fapps%3Ftag%3Dworkflow',
-      ) as unknown as ReturnType<typeof useSearchParams>,
+      ) as ReturnType<typeof useSearchParams>,
     )
     mockUseOneMoreStep.mockReturnValue({
       mutateAsync: mockSubmitOneMoreStep,

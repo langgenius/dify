@@ -1,9 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 
 type DescriptionProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
 }
 
 const Description = ({ dataset }: DescriptionProps) => (

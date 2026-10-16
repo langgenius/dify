@@ -1,5 +1,5 @@
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen } from '@testing-library/react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -19,7 +19,7 @@ const render = (ui: ReactElement) =>
     wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
   })
 
-const commentFixtures: WorkflowCommentList[] = [
+const commentFixtures: WorkflowCommentBasic[] = [
   {
     id: 'c-1',
     position_x: 10,

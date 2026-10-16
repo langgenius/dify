@@ -1,9 +1,11 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RestoreConfirmModal from '../restore-confirm-modal'
 
-const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'version-1',
   graph: {
     nodes: [],

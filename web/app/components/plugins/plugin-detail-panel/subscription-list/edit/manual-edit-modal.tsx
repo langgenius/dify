@@ -128,7 +128,7 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       ...propertiesSchema.map((schema: ParametersSchema) => ({
         ...schema,
-        type: normalizeFormType(schema.type as string),
+        type: normalizeFormType(schema.type),
         tooltip: schema.description,
         default: subscription.properties?.[schema.name] || schema.default,
       })),

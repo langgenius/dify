@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -47,7 +48,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector(
+    (state) => state.dataset,
+  ) as DatasetDetailWithPartialMembersResponse
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -215,14 +218,12 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
         onOpenChange={(open) => !open && setShowConfirmDelete(false)}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {confirmMessage}
-            </AlertDialogDescription>
-          </div>
+            <AlertDialogDescription>{confirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

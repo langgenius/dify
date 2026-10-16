@@ -1,5 +1,5 @@
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { DataSourceAuth } from '../types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -97,7 +97,7 @@ vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => (
 }))
 
 describe('DataSourcePage Component', () => {
-  const mockProviders: DataSourceAuth[] = [
+  const mockProviders: DatasourceProviderAuthResponse[] = [
     {
       author: 'Dify',
       provider: 'dify',
@@ -193,9 +193,7 @@ describe('DataSourcePage Component', () => {
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useCheckInstalled>)
-    vi.mocked(usePluginsWithLatestVersion).mockImplementation(
-      (plugins = []) => plugins as PluginDetail[],
-    )
+    vi.mocked(usePluginsWithLatestVersion).mockImplementation((plugins = []) => plugins)
     vi.mocked(useInvalidateInstalledPluginList).mockReturnValue(vi.fn())
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: vi.fn() })
     vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })
@@ -221,7 +219,7 @@ describe('DataSourcePage Component', () => {
       mockDataSourceListAuth.mockReturnValue({
         data: { result: [] },
         isLoading: false,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
@@ -254,7 +252,7 @@ describe('DataSourcePage Component', () => {
       mockDataSourceListAuth.mockReturnValue({
         data: undefined,
         isLoading: true,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage stickyToolbar />, {
@@ -275,7 +273,7 @@ describe('DataSourcePage Component', () => {
       // Arrange
       mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -292,7 +290,7 @@ describe('DataSourcePage Component', () => {
       // Arrange
       mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
       vi.mocked(useInstalledPluginList).mockReturnValue({
         data: { plugins: [mockPluginDetail], total: 1 },
       } as unknown as ReturnType<typeof useInstalledPluginList>)
@@ -318,7 +316,7 @@ describe('DataSourcePage Component', () => {
       // Arrange
       mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -338,7 +336,7 @@ describe('DataSourcePage Component', () => {
       mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
         isLoading: false,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
       const user = userEvent.setup()
       renderWithConsoleQuery(<DataSourcePage />, {
         systemFeatures: { enable_marketplace: false },
@@ -362,7 +360,7 @@ describe('DataSourcePage Component', () => {
       // Arrange
       mockDataSourceListAuth.mockReturnValue({
         data: { result: mockProviders },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -378,7 +376,7 @@ describe('DataSourcePage Component', () => {
       // Arrange
       mockDataSourceListAuth.mockReturnValue({
         data: undefined,
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -393,7 +391,7 @@ describe('DataSourcePage Component', () => {
       // Arrange
       mockDataSourceListAuth.mockReturnValue({
         data: { result: [] },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {
@@ -409,7 +407,7 @@ describe('DataSourcePage Component', () => {
       // Arrange
       mockDataSourceListAuth.mockReturnValue({
         data: { result: [] },
-      } as unknown as UseQueryResult<{ result: DataSourceAuth[] }, Error>)
+      } as unknown as UseQueryResult<{ result: DatasourceProviderAuthResponse[] }, Error>)
 
       // Act
       renderWithConsoleQuery(<DataSourcePage />, {

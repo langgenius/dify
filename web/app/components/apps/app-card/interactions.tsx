@@ -15,6 +15,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -676,16 +677,16 @@ export function AppCardInteractions({
       )}
       <AlertDialog open={activeDialog === 'delete'} onOpenChange={onDeleteDialogOpenChange}>
         <AlertDialogContent>
-          <form className="flex flex-col" onSubmit={onDeleteDialogSubmit}>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <form onSubmit={onDeleteDialogSubmit}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <Field name="confirm-app-name" className="mt-2">
-                <FieldLabel className="system-sm-regular">
+              <Field name="confirm-app-name">
+                <FieldLabel>
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -697,7 +698,7 @@ export function AppCardInteractions({
                     }}
                   />
                 </FieldLabel>
-                <InputGroup className="border-components-input-border-hover">
+                <InputGroup>
                   <InputGroupInput
                     type="text"
                     autoComplete="off"
@@ -706,19 +707,18 @@ export function AppCardInteractions({
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
                   />
-                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                  <InputGroupAddon align="inline-end">
                     <Button
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(app.name)}
-                      className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </Button>
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton type="button" disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

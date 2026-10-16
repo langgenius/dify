@@ -40,12 +40,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
         if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
           setIsShowRemoveVarConfirm(true)
           setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
-          setRemoveIndex(moreInfo?.index as number)
+          setRemoveIndex(moreInfo?.index)
           return
         }
       }
 
-      const newInputs = produce(inputs, (draft: any) => {
+      const newInputs = produce(inputs, (draft) => {
         draft.variables = newList
       })
       setInputs(newInputs)

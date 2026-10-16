@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { ResourceVarInputs } from '../_base/types'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
-import type { NodeRunResult, VarInInspect } from '@/types/workflow'
+import type { NodeTracing, VarInInspect } from '@/types/workflow'
 
 export const DataSourceClassification = {
   localFile: 'local_file',
@@ -25,7 +25,7 @@ export type CustomRunFormProps = {
   nodeId: string
   resource: EditorResource
   payload: CommonNodeType
-  setRunResult: Dispatch<SetStateAction<NodeRunResult | null>>
+  setRunResult: Dispatch<SetStateAction<NodeTracing | null>>
   setIsRunAfterSingleRun: Dispatch<SetStateAction<boolean>>
   isPaused: boolean
   isRunAfterSingleRun: boolean

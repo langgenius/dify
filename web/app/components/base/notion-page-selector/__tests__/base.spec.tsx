@@ -1,4 +1,4 @@
-import type { DataSourceCredential } from '../../../header/account-setting/data-source-page-new/types'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { DataSourceNotionWorkspace } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -30,7 +30,7 @@ const buildCredential = (
   id: string,
   name: string,
   workspaceName: string,
-): DataSourceCredential => ({
+): DatasourceCredentialResponse => ({
   id,
   name,
   type: CredentialTypeEnum.OAUTH2,
@@ -42,7 +42,7 @@ const buildCredential = (
   },
 })
 
-const mockCredentialList: DataSourceCredential[] = [
+const mockCredentialList: DatasourceCredentialResponse[] = [
   buildCredential('c1', 'Cred 1', 'Workspace 1'),
   buildCredential('c2', 'Cred 2', 'Workspace 2'),
 ]

@@ -1,6 +1,6 @@
 'use client'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -25,7 +25,7 @@ import AssignRolesModal from '../assign-roles-modal'
 import PermissionRoleChip from './permission-role-chip'
 
 type MemberDetailsModalProps = {
-  member: Member
+  member: AccountWithRoleResponse
   canAssignRoles?: boolean
   allowMultipleRoles?: boolean
   onClose: () => void

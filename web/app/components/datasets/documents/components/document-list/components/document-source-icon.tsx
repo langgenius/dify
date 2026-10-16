@@ -1,5 +1,5 @@
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { SimpleDocumentDetail } from '@/models/datasets'
 import { RiGlobalLine } from '@remixicon/react'
 import * as React from 'react'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
@@ -15,7 +15,7 @@ import {
 } from '../../../document-source'
 
 type DocumentSourceIconProps = {
-  doc: SimpleDocumentDetail
+  doc: DocumentWithSegmentsResponse
   fileType?: string
 }
 

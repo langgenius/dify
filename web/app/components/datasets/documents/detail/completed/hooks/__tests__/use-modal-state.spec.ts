@@ -1,4 +1,7 @@
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import type {
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as modalStateHooks from '../use-modal-state'
@@ -27,7 +30,7 @@ describe('useModalState', () => {
 
   it('should open segment detail on card click', () => {
     const { result } = renderModalState()
-    const detail = { id: 'seg-1', content: 'test' } as unknown as SegmentDetailModel
+    const detail = { id: 'seg-1', content: 'test' } as unknown as SegmentResponse
 
     act(() => {
       result.current.onClickCard(detail, true)
@@ -40,8 +43,8 @@ describe('useModalState', () => {
 
   it('should close child detail when opening segment detail', () => {
     const { result } = renderModalState()
-    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
-    const segmentDetail = { id: 'seg-1' } as unknown as SegmentDetailModel
+    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkResponse
+    const segmentDetail = { id: 'seg-1' } as unknown as SegmentResponse
 
     act(() => {
       result.current.onClickSlice(childDetail)
@@ -59,7 +62,7 @@ describe('useModalState', () => {
     const { result } = renderModalState()
 
     act(() => {
-      result.current.onClickCard({ id: 'seg-1' } as unknown as SegmentDetailModel)
+      result.current.onClickCard({ id: 'seg-1' } as unknown as SegmentResponse)
     })
     act(() => {
       result.current.setFullScreen(true)
@@ -74,7 +77,7 @@ describe('useModalState', () => {
 
   it('should open child segment detail on slice click', () => {
     const { result } = renderModalState()
-    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
+    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkResponse
 
     act(() => {
       result.current.onClickSlice(childDetail)
@@ -87,8 +90,8 @@ describe('useModalState', () => {
 
   it('should close segment detail when opening child detail', () => {
     const { result } = renderModalState()
-    const segmentDetail = { id: 'seg-1' } as unknown as SegmentDetailModel
-    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
+    const segmentDetail = { id: 'seg-1' } as unknown as SegmentResponse
+    const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkResponse
 
     act(() => {
       result.current.onClickCard(segmentDetail)
@@ -106,7 +109,7 @@ describe('useModalState', () => {
     const { result } = renderModalState()
 
     act(() => {
-      result.current.onClickSlice({ id: 'c1', segment_id: 's1' } as unknown as ChildChunkDetail)
+      result.current.onClickSlice({ id: 'c1', segment_id: 's1' } as unknown as ChildChunkResponse)
     })
     act(() => {
       result.current.onCloseChildSegmentDetail()

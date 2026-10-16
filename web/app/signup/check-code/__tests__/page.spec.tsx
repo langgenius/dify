@@ -46,9 +46,9 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 const mockUseMailValidity = mockMailValidityHook
 const mockUseSendMail = mockSendMailHook
 
@@ -65,7 +65,7 @@ describe('Signup Check Code Page', () => {
       new URLSearchParams({
         email: 'user@example.com',
         token: 'signup-token',
-      }) as unknown as ReturnType<typeof useSearchParams>,
+      }) as ReturnType<typeof useSearchParams>,
     )
     mockUseMailValidity.mockReturnValue({
       mutateAsync: mockVerifyCode,

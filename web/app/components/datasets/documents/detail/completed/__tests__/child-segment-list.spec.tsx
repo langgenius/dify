@@ -1,4 +1,4 @@
-import type { ChildChunkDetail } from '@/models/datasets'
+import type { ChildChunkResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChildSegmentList from '../child-segment-list'
@@ -85,7 +85,11 @@ describe('ChildSegmentList', () => {
     mockCurrChildChunk = null
   })
 
-  const createMockChildChunk = (id: string, content: string, edited = false): ChildChunkDetail => ({
+  const createMockChildChunk = (
+    id: string,
+    content: string,
+    edited = false,
+  ): ChildChunkResponse => ({
     id,
     content,
     position: 1,

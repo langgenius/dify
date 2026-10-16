@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -415,22 +416,18 @@ function VersionRow({
           setDeleteOpen(open)
         }}
       >
-        <AlertDialogContent className="p-6">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-            {versionTitle}
-          </AlertDialogDescription>
-          <AlertDialogFooter className="p-0 pt-6">
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription>{versionTitle}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="destructive"
-              loading={deleteMutation.isPending}
-              onClick={handleDelete}
-            >
+            <AlertDialogConfirmButton loading={deleteMutation.isPending} onClick={handleDelete}>
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

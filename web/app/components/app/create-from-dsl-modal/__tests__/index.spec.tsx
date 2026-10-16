@@ -735,7 +735,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSL.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          resolveImport = resolve as typeof resolveImport
+          resolveImport = resolve
         }),
     )
     const handleClose = vi.fn()
@@ -792,7 +792,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSLConfirm.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          resolveConfirm = resolve as typeof resolveConfirm
+          resolveConfirm = resolve
         }),
     )
 

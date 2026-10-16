@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -360,17 +361,14 @@ export function Popup({
       </div>
       <AlertDialog open={confirmVisible} onOpenChange={(open) => !open && handleHideConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              title={t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-            >
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['common.confirmPublishContent'], { ns: 'pipeline' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

@@ -262,7 +262,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const credentialsFormSchemas: FormSchema[] = useMemo(() => {
     return apiKeyCredentialsSchema.map((schema) => ({
       ...schema,
-      type: normalizeFormType(schema.type as string),
+      type: normalizeFormType(schema.type),
       tooltip: schema.help,
       default: subscription.credentials?.[schema.name] || schema.default,
     }))
@@ -270,7 +270,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   const parametersFormSchemas: FormSchema[] = useMemo(() => {
     return parametersSchema.map((schema: ParametersSchema) => {
-      const normalizedType = normalizeFormType(schema.type as string)
+      const normalizedType = normalizeFormType(schema.type)
       return {
         ...schema,
         type: normalizedType,

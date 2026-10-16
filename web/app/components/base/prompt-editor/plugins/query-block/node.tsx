@@ -2,8 +2,6 @@ import type { LexicalNode, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import QueryBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode
-
 export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
   static override getType(): string {
     return 'query-block'
@@ -37,7 +35,7 @@ export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  override exportJSON(): SerializedLexicalNode {
     return {
       type: 'query-block',
       version: 1,

@@ -1,6 +1,6 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -34,7 +34,7 @@ type ISelectDataSetProps = {
   modal?: boolean
   onClose: () => void
   selectedIds: string[]
-  onSelect: (dataSet: DataSet[]) => void
+  onSelect: (dataSet: DatasetDetailWithPartialMembersResponse[]) => void
 }
 
 const SelectDataSet: FC<ISelectDataSetProps> = ({
@@ -68,7 +68,9 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   }, [data])
   const datasetMap = useMemo(() => new Map(datasets.map((item) => [item.id, item])), [datasets])
   const selected = useMemo(() => {
-    return selectedIdsInModal.map((id) => datasetMap.get(id) || ({ id } as DataSet))
+    return selectedIdsInModal.map(
+      (id) => datasetMap.get(id) || ({ id } as DatasetDetailWithPartialMembersResponse),
+    )
   }, [datasetMap, selectedIdsInModal])
   const hasNoData = !isLoading && datasets.length === 0
 
@@ -88,7 +90,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
     },
   )
 
-  const toggleSelect = (dataSet: DataSet) => {
+  const toggleSelect = (dataSet: DatasetDetailWithPartialMembersResponse) => {
     setSelectedIdsInModal((prev) => {
       const isSelected = prev.includes(dataSet.id)
       if (isSelected) return prev.filter((id) => id !== dataSet.id)

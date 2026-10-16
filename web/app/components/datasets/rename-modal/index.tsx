@@ -1,7 +1,9 @@
 'use client'
-import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetUpdatePayload,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
-import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -28,7 +30,7 @@ import { updateDatasetSetting } from '@/service/datasets'
 
 type RenameDatasetModalProps = {
   show: boolean
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   onSuccess?: () => void
   onClose: () => void
 }

@@ -1,4 +1,4 @@
-import type { IndexingStatusResponse } from '@/models/datasets'
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
@@ -48,7 +48,7 @@ export const useEmbeddingStatus = ({
     [datasetId, documentId],
   )
 
-  const query = useQuery<IndexingStatusResponse>({
+  const query = useQuery<DocumentStatusResponse>({
     queryKey,
     queryFn: () => fetchIndexingStatus({ datasetId: datasetId!, documentId: documentId! }),
     enabled: enabled && !!datasetId && !!documentId,

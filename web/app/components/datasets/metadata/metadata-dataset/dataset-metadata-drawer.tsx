@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -133,17 +134,17 @@ const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }
                 }
               />
               <AlertDialogContent>
-                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                  <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
                     {t(($) => $['metadata.datasetMetadata.deleteTitle'], { ns: 'dataset' })}
                   </AlertDialogTitle>
-                  <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  <AlertDialogDescription>
                     {t(($) => $['metadata.datasetMetadata.deleteContent'], {
                       ns: 'dataset',
                       name: payload.name,
                     })}
                   </AlertDialogDescription>
-                </div>
+                </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancelButton>
                     {t(($) => $['operation.cancel'], { ns: 'common' })}

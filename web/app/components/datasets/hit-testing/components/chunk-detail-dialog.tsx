@@ -1,7 +1,7 @@
 'use client'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DialogProps } from '@langgenius/dify-ui/dialog'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
-import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
@@ -30,7 +30,7 @@ import { Score } from './score'
 const i18nPrefix = ''
 
 type ChunkDetailDialogProps = Required<Pick<DialogProps, 'open' | 'onOpenChange'>> & {
-  payload: HitTesting
+  payload: HitTestingRecord
 }
 
 export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDialogProps) {

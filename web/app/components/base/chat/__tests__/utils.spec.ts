@@ -541,7 +541,7 @@ describe('chat utils - url params and answer helpers', () => {
 
     it('getThreadMessages node without children', () => {
       const tree = [{ id: 'q1', isAnswer: false }]
-      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'q1')
+      const thread = getThreadMessages(tree as ChatItemInTree[], 'q1')
       expect(thread.length).toBe(1)
       expect(thread[0]!.id).toBe('q1')
     })
@@ -554,7 +554,7 @@ describe('chat utils - url params and answer helpers', () => {
 
     it('getThreadMessages target not found with undefined children', () => {
       const tree = [{ id: 'q1', isAnswer: false }]
-      const thread = getThreadMessages(tree as unknown as ChatItemInTree[], 'missing')
+      const thread = getThreadMessages(tree as ChatItemInTree[], 'missing')
       expect(thread.length).toBe(0)
     })
 

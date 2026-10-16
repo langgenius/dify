@@ -1,8 +1,8 @@
 'use client'
 
+import type { DatasetListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import type { DataSetListResponse } from '@/models/datasets'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +11,7 @@ import { consoleQuery } from '@/service/console'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
 
-type DatasetListQuery = UseInfiniteQueryResult<InfiniteData<DataSetListResponse, number>>
+type DatasetListQuery = UseInfiniteQueryResult<InfiniteData<DatasetListResponse, number>>
 
 type Props = Readonly<{
   datasetList: DatasetListQuery['data'] | null
