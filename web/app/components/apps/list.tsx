@@ -39,7 +39,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const { category, keywords, sort_by: sortBy } = urlQuery
+  const { category, keywords, sort_by: sortBy, availability } = urlQuery
   const [creatorIDs, setCreatorIDs] = useState<string[]>([])
   const [tagIDs, setTagIDs] = useState<string[]>([])
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
@@ -51,6 +51,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const hasActiveFilters =
     category !== 'all' ||
+    availability !== 'all' ||
     tagIDs.length > 0 ||
     keywords.trim().length > 0 ||
     debouncedKeywords.trim().length > 0 ||
@@ -77,11 +78,12 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
       limit: 30,
       name: debouncedKeywords,
       sort_by: sortBy,
+      ...(availability !== 'all' ? { availability } : {}),
       ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
       ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
       ...(category !== 'all' ? { mode: category } : {}),
     }),
-    [category, creatorIDs, debouncedKeywords, sortBy, tagIDs],
+    [availability, category, creatorIDs, debouncedKeywords, sortBy, tagIDs],
   )
 
   const resetCatalogScroll = () => {
@@ -106,6 +108,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const changeSortBy = (nextSortBy: AppListSortBy) => {
     resetCatalogScroll()
     void setUrlQuery({ sort_by: nextSortBy })
+  }
+  const changeAvailability = (nextAvailability: AppListUrlQuery['availability']) => {
+    resetCatalogScroll()
+    void setUrlQuery({ availability: nextAvailability })
   }
 
   const openCreateBlankModal = useCallback(() => {
@@ -136,11 +142,13 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
           keywords={keywords}
           creatorIDs={creatorIDs}
           sortBy={sortBy}
+          availability={availability}
           onCategoryChange={changeCategory}
           onTagIDsChange={changeTagIDs}
           onKeywordsChange={changeKeywords}
           onCreatorIDsChange={changeCreatorIDs}
           onSortByChange={changeSortBy}
+          onAvailabilityChange={changeAvailability}
           onCreateBlank={openCreateBlankModal}
           onCreateTemplate={openCreateTemplateDialog}
           onImportDSL={openCreateFromDSLModal}

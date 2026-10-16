@@ -486,6 +486,15 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       apps: {
+        // Availability is derived from mutable dependencies, not only app edits.
+        // Recheck when returning to Studio or refocusing after a repair.
+        get: {
+          queryOptions: { staleTime: 0 },
+          infiniteOptions: { staleTime: 0 },
+        },
+        starred: {
+          get: { queryOptions: { staleTime: 0 } },
+        },
         post: {
           mutationOptions: {
             onSuccess: (_data, _variables, _onMutateResult, context) => {

@@ -28,6 +28,10 @@ from services.app.console_service import (
     InvalidAppExportError,
 )
 from services.entities.app_entities import (
+    AppAvailabilityIssue,
+    AppAvailabilityIssueType,
+    AppAvailabilityPlan,
+    AppAvailabilityStatus,
     AppExportOptions,
     AppListParams,
     AppPage,
@@ -81,7 +85,7 @@ class AppBoundary:
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
         self.calls.append(("list", context, params))
-        return AppPage(params.page, params.limit, 1, False, [RECORD])
+        return AppPage(params.page, params.limit, 1, False, [self.record])
 
     def create(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
         self.calls.append(("create", context, params))
@@ -141,7 +145,7 @@ def invoke(resource: type[Resource], method: Callable[..., object], **kwargs: ob
 
 def test_list_parses_repeated_filters_and_serializes_materialized_page(app: Flask, boundary: AppBoundary) -> None:
     tag = str(APP_ID)
-    with app.test_request_context(f"/?page=2&limit=5&tag_ids={tag}&is_created_by_me=true"):
+    with app.test_request_context(f"/?page=2&limit=5&tag_ids={tag}&is_created_by_me=true&availability=unavailable"):
         data, status = cast(tuple[dict[str, object], int], invoke(controller.AppListApi, controller.AppListApi.get))
     assert status == 200
     assert data["page"] == 2
@@ -151,6 +155,34 @@ def test_list_parses_repeated_filters_and_serializes_materialized_page(app: Flas
     assert isinstance(params, AppListParams)
     assert params.tag_ids == [tag]
     assert params.is_created_by_me is True
+    assert params.availability == "unavailable"
+
+
+def test_list_serializes_dependency_reasons_but_not_internal_evaluation_plans(
+    app: Flask, boundary: AppBoundary
+) -> None:
+    boundary.record = replace(
+        RECORD,
+        availability=AppAvailabilityStatus.UNAVAILABLE,
+        availability_source="published",
+        availability_reasons=(
+            AppAvailabilityIssue(AppAvailabilityIssueType.MODEL, "disabled", "llm-node", "provider", "model"),
+        ),
+        availability_plan=AppAvailabilityPlan("published", (), ()),
+    )
+    with app.test_request_context("/"):
+        response, status = cast(tuple[dict[str, object], int], invoke(controller.AppListApi, controller.AppListApi.get))
+    assert status == 200
+    records = response["data"]
+    assert isinstance(records, list)
+    record = records[0]
+    assert isinstance(record, dict)
+    assert record["availability"] == "unavailable"
+    assert record["availability_source"] == "published"
+    assert record["availability_reasons"] == [
+        {"type": "model", "reason": "disabled", "resource_id": "llm-node", "provider": "provider", "model": "model"}
+    ]
+    assert "availability_plan" not in record
 
 
 @pytest.mark.parametrize("configured", [True, False])

@@ -28,6 +28,10 @@ vi.mock('react-i18next', async () => {
     'app.studio.sort.recentlyCreated': 'Recently created',
     'app.studio.sort.sortBy': 'Sort by',
     'app.studio.starred': 'Starred',
+    'app.studio.availability.all': 'All',
+    'app.studio.availability.available': 'Available',
+    'app.studio.availability.unavailable': 'Unavailable',
+    'app.studio.availability.status': 'Status',
   })
 })
 
@@ -1112,6 +1116,54 @@ describe('List', () => {
       fireEvent.click(screen.getByText('common.tag.placeholder'))
 
       expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+    })
+
+    it('should filter availability in both lists, preserve URL filters, and reset scrolling', async () => {
+      const user = userEvent.setup()
+      const { onUrlUpdate } = renderList('?category=workflow&keywords=sales')
+      const viewport = screen.getByRole('region', { name: 'navigation.menus.apps' })
+      const scrollTo = vi.fn()
+      viewport.scrollTo = scrollTo
+      await user.click(screen.getByRole('combobox', { name: 'Status' }))
+      await user.click(screen.getByRole('option', { name: 'Unavailable' }))
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+      expect(options.input(2).query).toMatchObject({
+        page: 2,
+        availability: 'unavailable',
+        mode: 'workflow',
+        name: 'sales',
+      })
+      const starred = mockAppStarredListQueryOptions.mock.calls.at(
+        -1,
+      )?.[0] as AppStarredListQueryOptions
+      expect(starred.input.query).toMatchObject({
+        availability: 'unavailable',
+        mode: 'workflow',
+        name: 'sales',
+      })
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+      await waitFor(() => {
+        const params = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams
+        expect(params?.get('availability')).toBe('unavailable')
+        expect(params?.get('category')).toBe('workflow')
+        expect(params?.get('keywords')).toBe('sales')
+      })
+      await user.click(screen.getByRole('combobox', { name: 'Status' }))
+      await user.click(screen.getByRole('option', { name: 'All' }))
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('availability')).toBe(false),
+      )
+    })
+
+    it.each([
+      ['available', 'Available', 'available'],
+      ['unavailable', 'Unavailable', 'unavailable'],
+      ['invalid', 'All', undefined],
+    ])('should restore and validate availability from the URL: %s', (query, label, expected) => {
+      renderList(`?availability=${query}`)
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveTextContent(label)
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+      expect(options.input(1).query.availability).toBe(expected)
     })
 
     it('should build paged query input from active filters', async () => {

@@ -11,6 +11,7 @@ from machinery.context import RequestContext
 from models.model import AppMode
 from services.agent.errors import InvalidRosterAgentPackageError
 from services.agent.roster_package_entities import RosterAgentPackageExport
+from services.app.availability_service import AppAvailabilityService
 from services.entities.app_entities import (
     AppChange,
     AppCreationSettings,
@@ -316,7 +317,34 @@ class ConsoleAppService:
         permissions = self._access.permissions(context)
         if isinstance(params, AppListParams):
             params = permissions.filter_list(params)
-        page = self._apps.list_apps(context, params)
+        evaluation = AppAvailabilityService.for_tenant(context.active_workspace_id)
+        if params.availability == "all":
+            page = self._apps.list_apps(context, params)
+            page = replace(page, data=evaluation.evaluate_many(page.data))
+        else:
+            # Dependency availability cannot be expressed by an apps-table SQL
+            # predicate. Scan already-authorized candidates in bounded batches,
+            # then paginate matching apps, including an exact matching total.
+            # Never filter an already-paginated UI page.
+            offset = (params.page - 1) * params.limit
+            total = 0
+            selected: list[AppRecord] = []
+            candidate_page = 1
+            while True:
+                candidates = self._apps.list_apps(
+                    context,
+                    params.model_copy(update={"page": candidate_page, "limit": 100, "availability": "all"}),
+                )
+                for app in evaluation.evaluate_many(candidates.data):
+                    if app.availability != params.availability:
+                        continue
+                    if offset <= total < offset + params.limit:
+                        selected.append(app)
+                    total += 1
+                if not candidates.has_more or not candidates.data:
+                    break
+                candidate_page += 1
+            page = AppPage(params.page, params.limit, total, total > offset + params.limit, selected)
         if not page.data:
             return page
         app_ids = [app.id for app in page.data]

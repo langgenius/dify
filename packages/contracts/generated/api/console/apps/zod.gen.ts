@@ -2676,6 +2676,11 @@ export const zWorkflowDraftVariableListResponse = z.object({
 })
 
 /**
+ * AppAvailabilityStatus
+ */
+export const zAppAvailabilityStatus = z.enum(['available', 'unavailable'])
+
+/**
  * AppAnnotationReplyDisabledResponse
  */
 export const zAppAnnotationReplyDisabledResponse = z.object({
@@ -3613,6 +3618,29 @@ export const zWorkflowRunSnapshotView = z.object({
 })
 
 /**
+ * AppAvailabilityIssueType
+ */
+export const zAppAvailabilityIssueType = z.enum([
+  'agent',
+  'configuration',
+  'knowledge',
+  'model',
+  'tool',
+  'workflow',
+])
+
+/**
+ * AppAvailabilityIssueResponse
+ */
+export const zAppAvailabilityIssueResponse = z.object({
+  model: z.string().nullish(),
+  provider: z.string().nullish(),
+  reason: z.string(),
+  resource_id: z.string().nullish(),
+  type: zAppAvailabilityIssueType,
+})
+
+/**
  * AppAgentPromptResponse
  */
 export const zAppAgentPromptResponse = z.object({
@@ -3820,6 +3848,9 @@ export const zAppPartial = z.object({
   access_mode: zWebAppAccessMode.nullish(),
   app_id: z.string().nullish(),
   author_name: z.string().nullish(),
+  availability: zAppAvailabilityStatus.nullish(),
+  availability_reasons: z.array(zAppAvailabilityIssueResponse).optional(),
+  availability_source: z.enum(['configuration', 'draft', 'published']).nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
   created_at: z.int().nullish(),
@@ -5766,6 +5797,9 @@ export const zAppPartialWritable = z.object({
   access_mode: zWebAppAccessMode.nullish(),
   app_id: z.string().nullish(),
   author_name: z.string().nullish(),
+  availability: zAppAvailabilityStatus.nullish(),
+  availability_reasons: z.array(zAppAvailabilityIssueResponse).optional(),
+  availability_source: z.enum(['configuration', 'draft', 'published']).nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
   created_at: z.int().nullish(),
@@ -6009,6 +6043,7 @@ export const zAppConfigJsonValueWritable = z.json().nullable()
 export const zAppEmptyDatasetCollectionPayloadWritable = z.record(z.string(), z.never())
 
 export const zGetAppsQuery = z.object({
+  availability: z.enum(['all', 'available', 'unavailable']).optional().default('all'),
   creator_ids: z.array(z.string()).optional(),
   is_created_by_me: z.boolean().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
@@ -6093,6 +6128,7 @@ export const zGetAppsRecentQuery = z.object({
 export const zGetAppsRecentResponse = zRecentAppListResponse
 
 export const zGetAppsStarredQuery = z.object({
+  availability: z.enum(['all', 'available', 'unavailable']).optional().default('all'),
   creator_ids: z.array(z.string()).optional(),
   is_created_by_me: z.boolean().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),

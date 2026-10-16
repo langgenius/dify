@@ -10,7 +10,12 @@ from fields.base import ResponseModel
 from libs.helper import build_icon_url, to_timestamp
 from models.enums import CustomizeTokenStrategy
 from models.model import AppMode, IconType
-from services.entities.app_entities import RecentAppMode
+from services.entities.app_entities import (
+    AppAvailabilityIssueType,
+    AppAvailabilitySource,
+    AppAvailabilityStatus,
+    RecentAppMode,
+)
 from services.entities.dsl_entities import DslImportWarning, ImportStatus
 
 
@@ -102,6 +107,14 @@ class DeletedTool(ResponseModel):
     provider_id: str
 
 
+class AppAvailabilityIssueResponse(ResponseModel):
+    type: AppAvailabilityIssueType
+    reason: str
+    resource_id: str | None = None
+    provider: str | None = None
+    model: str | None = None
+
+
 class AppPartial(ResponseModel):
     id: str
     name: str
@@ -134,6 +147,15 @@ class AppPartial(ResponseModel):
     app_id: str | None = None
     is_starred: bool = False
     maintainer: str | None = None
+    availability: AppAvailabilityStatus | None = Field(
+        default=None,
+        description="Dependency configuration availability, not a live execution probe. Null when not evaluated.",
+    )
+    availability_source: AppAvailabilitySource | None = Field(
+        default=None,
+        description="Published definition when present, otherwise draft; configuration for legacy apps.",
+    )
+    availability_reasons: list[AppAvailabilityIssueResponse] = Field(default_factory=list)
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
