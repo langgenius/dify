@@ -441,8 +441,13 @@ async def test_invalid_output_schema_fails_before_resource_and_model_io(monkeypa
 @pytest.mark.parametrize("user", ["hello", ""])
 async def test_knowledge_user_context_is_captured_in_history_and_restored_cache(monkeypatch, user):
     calls = []
+    inner_key = "synthetic-ordinary-inner-key"
 
     def handler(request):
+        assert str(request.url) == "http://ordinary-api.invalid/inner/api/knowledge/retrieve"
+        assert request.headers["X-Inner-Api-Key"] == inner_key
+        assert "Authorization" not in request.headers
+        assert "X-Dify-Agent-Run" not in request.headers
         calls.append(request)
         return httpx.Response(200, json={"results": [], "usage": {}})
 
@@ -468,8 +473,12 @@ async def test_knowledge_user_context_is_captured_in_history_and_restored_cache(
         },
     )
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        services = Services(client, client)
+        # This direct runner fixture uses the explicit legacy ordinary API composition.
+        services = Services(
+            client, client, inner_api_url="http://ordinary-api.invalid", inner_api_key=inner_key
+        )
         first, _ = run_runner(request(knowledge, user=user), services, monkeypatch, stream)
+        assert first.request.execution_mode == "ordinary"
         await first.run()
         snapshot = first.terminal_session_snapshot
         saved = history.State.model_validate(snapshot.layers["history"])
@@ -483,6 +492,7 @@ async def test_knowledge_user_context_is_captured_in_history_and_restored_cache(
         second, _ = run_runner(
             request(knowledge, snapshot=snapshot, user=user), services, monkeypatch, stream, run_id="second"
         )
+        assert second.request.execution_mode == "ordinary"
         await second.run()
         assert len(calls) == 1
 
