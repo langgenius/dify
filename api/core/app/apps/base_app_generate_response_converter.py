@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
@@ -23,7 +23,7 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
 
     @classmethod
     def convert(
-        cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any]], invoke_from: InvokeFrom
+        cls, response: AppBlockingResponse | Generator[AppStreamResponse, Any], invoke_from: InvokeFrom
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}:
             if isinstance(response, AppBlockingResponse):
