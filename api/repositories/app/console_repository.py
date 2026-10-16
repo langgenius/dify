@@ -7,10 +7,9 @@ existing use cases that still need attached models.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Sequence
-from dataclasses import asdict, replace
+from dataclasses import replace
 from datetime import datetime
 from typing import Any, cast, override
 
@@ -325,12 +324,6 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
             return _app_trace_settings_adapter.validate_json(app.tracing) if app.tracing else AppTraceSettings()
-
-    @override
-    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
-        with self._session_factory.begin() as session:
-            app = require_console_app(session, context, app_id)
-            app.tracing = json.dumps(asdict(settings))
 
     @staticmethod
     def _draft_trigger_app_ids(session: Session, workspace_id: str, apps: list[App]) -> set[str]:

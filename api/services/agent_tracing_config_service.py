@@ -43,14 +43,30 @@ class AgentTracingConfigService:
         return self._configs.get(context, self.resolve_app_id(context, agent_id), tracing_provider)
 
     def create(
-        self, context: RequestContext, agent_id: str, tracing_provider: str, tracing_config: dict[str, Any]
+        self,
+        context: RequestContext,
+        agent_id: str,
+        tracing_provider: str,
+        tracing_config: dict[str, Any],
+        *,
+        activate: bool = False,
     ) -> None:
-        self._configs.create(context, self.resolve_app_id(context, agent_id), tracing_provider, tracing_config)
+        self._configs.create(
+            context, self.resolve_app_id(context, agent_id), tracing_provider, tracing_config, activate=activate
+        )
 
     def update(
-        self, context: RequestContext, agent_id: str, tracing_provider: str, tracing_config: dict[str, Any]
+        self,
+        context: RequestContext,
+        agent_id: str,
+        tracing_provider: str,
+        tracing_config: dict[str, Any],
+        *,
+        activate: bool = False,
     ) -> None:
-        self._configs.update(context, self.resolve_app_id(context, agent_id), tracing_provider, tracing_config)
+        self._configs.update(
+            context, self.resolve_app_id(context, agent_id), tracing_provider, tracing_config, activate=activate
+        )
 
     def delete(self, context: RequestContext, agent_id: str, tracing_provider: str) -> None:
         self._configs.delete(context, self.resolve_app_id(context, agent_id), tracing_provider)
