@@ -3663,11 +3663,6 @@
       "count": 1
     }
   },
-  "web/hooks/use-pay.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 4
-    }
-  },
   "web/i18n/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
