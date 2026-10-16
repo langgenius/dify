@@ -202,10 +202,7 @@ class MockLLMNode(MockNodeMixin, LLMNode):
             words = text.split(" ")
             for i, word in enumerate(words):
                 # Add space before word (except for first word) to reconstruct text properly
-                if i > 0:
-                    chunk = " " + word
-                else:
-                    chunk = word
+                chunk = " " + word if i > 0 else word
 
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],

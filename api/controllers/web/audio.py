@@ -7,6 +7,7 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
@@ -38,8 +39,6 @@ from services.errors.audio import (
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-from ..common.schema import register_response_schema_models, register_schema_models
 
 
 class AudioToTextResponse(ResponseModel):

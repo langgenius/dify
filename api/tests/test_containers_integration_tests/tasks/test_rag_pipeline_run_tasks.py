@@ -251,7 +251,7 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["workflow_id"] == workflow.id
             assert call_kwargs["user"].id == account.id
             assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
-            assert call_kwargs["streaming"] == False
+            assert call_kwargs["streaming"] is False
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_rag_pipeline_run_task_success(
@@ -296,7 +296,7 @@ class TestRagPipelineRunTasks:
             assert call_kwargs["workflow_id"] == workflow.id
             assert call_kwargs["user"].id == account.id
             assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
-            assert call_kwargs["streaming"] == False
+            assert call_kwargs["streaming"] is False
             assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_priority_rag_pipeline_run_task_with_waiting_tasks(
@@ -757,7 +757,7 @@ class TestRagPipelineRunTasks:
         assert call_kwargs["workflow_id"] == workflow.id
         assert call_kwargs["user"].id == account.id
         assert call_kwargs["invoke_from"] == InvokeFrom.PUBLISHED_PIPELINE
-        assert call_kwargs["streaming"] == False
+        assert call_kwargs["streaming"] is False
         assert isinstance(call_kwargs["application_generate_entity"], RagPipelineGenerateEntity)
 
     def test_run_single_rag_pipeline_task_entity_validation_error(

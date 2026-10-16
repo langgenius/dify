@@ -1,5 +1,4 @@
 import type { VarInInspect } from '@/types/workflow'
-import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '../../types'
 import useInspectVarsCrud from '../use-inspect-vars-crud'
@@ -65,17 +64,22 @@ describe('useInspectVarsCrud', () => {
 
   it('should pass the flow id to shared variable queries for app flows', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
-    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.appFlow, 'app-1')
-    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.appFlow, 'app-1')
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith({
+      kind: 'app',
+      appId: 'app-1',
+      mode: 'workflow',
+    })
+    expect(mockUseSysVarValues).toHaveBeenCalledWith({
+      kind: 'app',
+      appId: 'app-1',
+      mode: 'workflow',
+    })
   })
 
   it('should append query and files vars to the start node and keep other system vars separate', () => {
@@ -104,12 +108,9 @@ describe('useInspectVarsCrud', () => {
           },
         ],
       },
+      resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'flow-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
         hasNodeInspectVars,
         fetchInspectVarValue,
         editInspectVarValue: vi.fn(),
@@ -139,33 +140,27 @@ describe('useInspectVarsCrud', () => {
     expect(result.current.deleteAllInspectorVars).toBe(deleteAllInspectorVars)
   })
 
-  it('should use an empty flow id for shared variable queries in rag pipelines', () => {
+  it('should disable app-only variable queries in rag pipelines', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
+      resource: { kind: 'knowledge-pipeline' as const, pipelineId: 'pipeline-1' },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'pipeline-1',
-          flowType: FlowType.ragPipeline,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
-    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.ragPipeline, '')
-    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.ragPipeline, '')
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith(undefined)
+    expect(mockUseSysVarValues).toHaveBeenCalledWith(undefined)
   })
 
-  it('should use an empty flow id for shared variable queries in snippets', () => {
+  it('should disable app-only variable queries in snippets', () => {
     renderWorkflowHook(() => useInspectVarsCrud(), {
+      resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'snippet-1',
-          flowType: FlowType.snippet,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
-    expect(mockUseConversationVarValues).toHaveBeenCalledWith(FlowType.snippet, '')
-    expect(mockUseSysVarValues).toHaveBeenCalledWith(FlowType.snippet, '')
+    expect(mockUseConversationVarValues).toHaveBeenCalledWith(undefined)
+    expect(mockUseSysVarValues).toHaveBeenCalledWith(undefined)
   })
 })

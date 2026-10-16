@@ -1,14 +1,14 @@
 import type { QuestionClassifierNodeType } from '../types'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import { act, waitFor } from '@testing-library/react'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import useConfigVision from '../../../hooks/use-config-vision'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import useConfig from '../use-config'
 
 vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
@@ -17,7 +17,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
+
     useWorkflow: vi.fn(),
   }
 })
@@ -40,14 +40,16 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 const mockFlowType = vi.hoisted(() => ({
-  value: undefined as FlowType | undefined,
+  value: undefined as EditorResource['kind'] | undefined,
 }))
 
 vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
+  useHooksStore: (
+    selector: (state: { configsMap?: { resourceKind?: EditorResource['kind'] } }) => unknown,
+  ) =>
     selector({
       configsMap: {
-        flowType: mockFlowType.value,
+        resourceKind: mockFlowType.value,
       },
     }),
 }))
@@ -63,7 +65,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
 }))
 
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
 const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
@@ -82,7 +84,7 @@ const createPayload = (
   model: {
     provider: '',
     name: '',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   classes: [{ id: 'topic-1', name: 'Billing questions', label: 'CLASS 1' }],
@@ -141,13 +143,15 @@ describe('question-classifier/use-config', () => {
   })
 
   it('preserves the selected model when the vision follow-up updates after model selection', async () => {
-    const { result } = renderHook(() => useConfig('question-classifier-node', createPayload()))
+    const { result } = renderHook(() => useConfig('question-classifier-node', createPayload()), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleModelChanged({
         provider: 'openai',
         modelId: 'gpt-4o',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
     })
 
@@ -157,7 +161,7 @@ describe('question-classifier/use-config', () => {
           model: expect.objectContaining({
             provider: 'openai',
             name: 'gpt-4o',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           }),
           vision: {
             enabled: false,
@@ -168,7 +172,6 @@ describe('question-classifier/use-config', () => {
   })
 
   it('does not default the query selector to sys.query in snippet flows', async () => {
-    mockFlowType.value = FlowType.snippet
     mockUseWorkflow.mockReturnValue({
       getBeforeNodesInSameBranch: vi.fn(() => [
         {
@@ -198,17 +201,26 @@ describe('question-classifier/use-config', () => {
       setInputs,
     })
 
-    renderHook(() =>
-      useConfig(
-        'question-classifier-node',
-        createPayload({
-          query_variable_selector: [],
-        }),
-      ),
+    renderHook(
+      () =>
+        useConfig(
+          'question-classifier-node',
+          createPayload({
+            query_variable_selector: [],
+          }),
+        ),
+      { resource: { kind: 'snippet', snippetId: 'snippet-1' } },
     )
 
     await waitFor(() => {
       expect(setInputs).not.toHaveBeenCalled()
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

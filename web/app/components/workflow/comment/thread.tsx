@@ -34,13 +34,14 @@ import {
   RiMoreFill,
 } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { useParams } from '@/next/navigation'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useStore } from '../store'
 import { MentionInput } from './mention-input'
@@ -197,8 +198,7 @@ function CommentThreadComponent({
   onReplyDelete,
   onReplyDeleteDirect,
 }: CommentThreadProps) {
-  const params = useParams()
-  const appId = params.appId as string
+  const appId = useAtomValue(editorAppIdAtom)
   const { flowToScreenPosition } = useReactFlow()
   const viewport = useViewport()
   const { data: userProfile } = useSuspenseQuery({

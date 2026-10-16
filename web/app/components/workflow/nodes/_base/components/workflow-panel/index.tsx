@@ -8,11 +8,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { cloneElement, memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -32,6 +32,10 @@ import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import {
+  editorAppIdAtom,
+  editorResourceAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -50,7 +54,6 @@ import {
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { FlowType } from '@/types/common'
 import { useAvailableBlocks } from '../../../../hooks/use-available-blocks'
 import useInspectVarsCrud from '../../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
@@ -96,13 +99,13 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const { t } = useTranslation(['common', 'workflow', 'workflowDebug'])
   const panelId = useId()
   const language = useLanguage()
-  const appId = useStore((s) => s.appId)
+  const appId = useAtomValue(editorAppIdAtom)
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
-  const { isConnected, nodePanelPresence } = useCollaboration(appId as string, canEdit)
+  const { isConnected, nodePanelPresence } = useCollaboration(appId, canEdit)
   const messageLogItem = useStore((state) => state.messageLogItem)
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
 
@@ -260,7 +263,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const isChildNode = !!(data.isInIteration || data.isInLoop)
   const nodeMetaType = getNodeCatalogType(data)
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
-  const appDetail = useAppStore((state) => state.appDetail)
 
   const hasClickRunning = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -294,7 +296,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
   const { nodesMap } = useNodesMetaData()
 
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
   const {
     isShowSingleRun,
@@ -321,8 +323,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     getFilteredExistVarForms,
   } = useLastRun<typeof data>({
     id,
-    flowId: configsMap?.flowId || '',
-    flowType: configsMap?.flowType || FlowType.appFlow,
+    resource,
     data,
     defaultRunInputData: nodesMap?.[nodeMetaType]?.defaultRunInputData || {},
     isPaused,
@@ -504,8 +505,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     const customRunForm = isCustomRunFormNode
       ? getCustomRunForm({
           nodeId: id,
-          flowId: configsMap?.flowId || '',
-          flowType: configsMap?.flowType || FlowType.appFlow,
+          resource,
           payload: data,
           setRunResult,
           setIsRunAfterSingleRun,
@@ -778,7 +778,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
         {!isStartPlaceholderPanel && (
           <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col overflow-y-auto">
             <LastRun
-              appId={appDetail?.id || ''}
               nodeId={id}
               canSingleRun={isSupportSingleRun}
               runningStatus={runningStatus}

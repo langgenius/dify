@@ -298,7 +298,7 @@ class TestIsSystemVariableEditable:
         for name, editable in cases:
             assert editable == is_system_variable_editable(name)
 
-        assert is_system_variable_editable("invalid_or_new_system_variable") == False
+        assert is_system_variable_editable("invalid_or_new_system_variable") is False
 
 
 class TestWorkflowDraftVariableGetValue:

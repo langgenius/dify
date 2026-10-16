@@ -1,10 +1,11 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { useWorkflowRun } from './use-workflow-run'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
-import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks/use-workflow-panel-interactions'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -21,7 +22,7 @@ const useWorkflowStartRunBase = (
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
@@ -279,9 +280,9 @@ const useWorkflowStartRunBase = (
   }, [workflowStore, handleCancelDebugAndPreviewPanel])
 
   const handleStartWorkflowRun = useCallback(() => {
-    if (!isChatMode) handleWorkflowStartRunInWorkflow()
+    if (!isChatflow) handleWorkflowStartRunInWorkflow()
     else handleWorkflowStartRunInChatflow()
-  }, [isChatMode, handleWorkflowStartRunInWorkflow, handleWorkflowStartRunInChatflow])
+  }, [isChatflow, handleWorkflowStartRunInWorkflow, handleWorkflowStartRunInChatflow])
 
   return {
     handleStartWorkflowRun,

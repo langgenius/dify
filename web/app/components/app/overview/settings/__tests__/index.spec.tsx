@@ -10,7 +10,6 @@ import {
   renderWithConsoleQuery as renderWithoutPricing,
 } from '@/test/console/query-data'
 import { createAppSiteFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { SettingsDialog } from '../index'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
@@ -68,7 +67,7 @@ const mockAppInfo = {
     show_workflow_steps: true,
     use_icon_as_answer_icon: true,
   },
-  mode: AppModeEnum.ADVANCED_CHAT,
+  mode: 'advanced-chat' as const,
 } satisfies SettingsAppInfo
 
 const triggerName = 'navigation.settings.settings'

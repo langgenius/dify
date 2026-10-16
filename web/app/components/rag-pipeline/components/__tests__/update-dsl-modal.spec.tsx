@@ -1,5 +1,6 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { DSLImportStatus } from '@/models/app'
 import UpdateDSLModal from '../update-dsl-modal'
 
@@ -133,43 +134,57 @@ describe('UpdateDSLModal', () => {
 
   describe('rendering', () => {
     it('should render title', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(screen.getByText('workflow.common.importDSL')).toBeInTheDocument()
     })
 
     it('should render warning tip', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(screen.getByText('workflow.common.importDSLTip')).toBeInTheDocument()
     })
 
     it('should render uploader', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(screen.getByTestId('uploader')).toBeInTheDocument()
     })
 
     it('should render backup button', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(screen.getByText('workflow.common.backupCurrentDraft')).toBeInTheDocument()
     })
 
     it('should render cancel button', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(screen.getByText('app.newApp.Cancel')).toBeInTheDocument()
     })
 
     it('should render import button', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(screen.getByText('workflow.common.overwriteAndImport')).toBeInTheDocument()
     })
 
     it('should render choose DSL section', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(screen.getByText('workflow.common.chooseDSL')).toBeInTheDocument()
     })
@@ -177,7 +192,9 @@ describe('UpdateDSLModal', () => {
 
   describe('user interactions', () => {
     it('should call onCancel when cancel button is clicked', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const cancelButton = screen.getByText('app.newApp.Cancel')
       fireEvent.click(cancelButton)
@@ -186,7 +203,9 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should call onBackup when backup button is clicked', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const backupButton = screen.getByText('workflow.common.backupCurrentDraft')
       fireEvent.click(backupButton)
@@ -195,7 +214,9 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should handle file upload', async () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -208,7 +229,9 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should clear file when clear button is clicked', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const clearButton = screen.getByTestId('clear-file')
       fireEvent.click(clearButton)
@@ -219,14 +242,18 @@ describe('UpdateDSLModal', () => {
 
   describe('import functionality', () => {
     it('should show import button disabled when no file is selected', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const importButton = screen.getByText('workflow.common.overwriteAndImport')
       expect(importButton).toBeDisabled()
     })
 
     it('should enable import button when file is selected', async () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -240,7 +267,9 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should disable import button after file is cleared', async () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -263,7 +292,9 @@ describe('UpdateDSLModal', () => {
 
   describe('import flow', () => {
     it('should call importDSL when import button is clicked with file content', async () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -289,7 +320,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -319,7 +352,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -345,7 +380,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -377,7 +414,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -407,7 +446,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -437,7 +478,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: undefined,
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -463,7 +506,9 @@ describe('UpdateDSLModal', () => {
     it('should show error notification when import throws exception', async () => {
       mockImportDSL.mockRejectedValue(new Error('Import failed'))
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -493,7 +538,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -523,7 +570,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -553,7 +602,9 @@ describe('UpdateDSLModal', () => {
         current_dsl_version: '2.0.0',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -588,7 +639,9 @@ describe('UpdateDSLModal', () => {
         current_dsl_version: '2.0.0',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -620,7 +673,9 @@ describe('UpdateDSLModal', () => {
         current_dsl_version: '2.0.0',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -665,7 +720,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -715,7 +772,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -762,7 +821,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -806,7 +867,9 @@ describe('UpdateDSLModal', () => {
 
       mockImportDSLConfirm.mockRejectedValue(new Error('Confirm failed'))
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -853,7 +916,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: undefined,
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -900,7 +965,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -945,7 +1012,9 @@ describe('UpdateDSLModal', () => {
         pipeline_id: 'test-pipeline-id',
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -990,7 +1059,9 @@ describe('UpdateDSLModal', () => {
         current_dsl_version: undefined,
       })
 
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       const fileInput = screen.getByTestId('file-input')
       const file = new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
@@ -1013,7 +1084,9 @@ describe('UpdateDSLModal', () => {
     })
 
     it('should not call importDSLConfirm when importId is not set', async () => {
-      render(<UpdateDSLModal {...defaultProps} />)
+      render(<UpdateDSLModal {...defaultProps} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(mockImportDSLConfirm).not.toHaveBeenCalled()
     })

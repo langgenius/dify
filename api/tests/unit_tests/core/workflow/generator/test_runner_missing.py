@@ -28,39 +28,39 @@ def test_declares_variable():
     # BuiltinNodeTypes is not imported directly, we need to mock or just use the generator method
 
     # LLM node
-    assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") is True
     llm_so = {"data": {"type": "llm", "structured_output": {"schema": {"properties": {"json_var": {}}}}}}
-    assert WorkflowGenerator._declares_variable(llm_so, "json_var") == True
-    assert WorkflowGenerator._declares_variable(llm_so, "other_var") == False
+    assert WorkflowGenerator._declares_variable(llm_so, "json_var") is True
+    assert WorkflowGenerator._declares_variable(llm_so, "other_var") is False
 
     # Code node
     assert (
         WorkflowGenerator._declares_variable({"data": {"type": "code", "outputs": {"code_var": "str"}}}, "code_var")
-        == True
+        is True
     )
 
     # Knowledge retrieval
-    assert WorkflowGenerator._declares_variable({"data": {"type": "knowledge-retrieval"}}, "result") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "knowledge-retrieval"}}, "result") is True
 
     # Parameter extractor
     assert (
         WorkflowGenerator._declares_variable(
             {"data": {"type": "parameter-extractor", "parameters": [{"name": "param1"}]}}, "param1"
         )
-        == True
+        is True
     )
 
     # HTTP request
-    assert WorkflowGenerator._declares_variable({"data": {"type": "http-request"}}, "body") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "http-request"}}, "body") is True
 
     # Template transform
-    assert WorkflowGenerator._declares_variable({"data": {"type": "template-transform"}}, "output") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "template-transform"}}, "output") is True
 
     # Tool
-    assert WorkflowGenerator._declares_variable({"data": {"type": "tool"}}, "anything") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "tool"}}, "anything") is True
 
     # Other node (default false)
-    assert WorkflowGenerator._declares_variable({"data": {"type": "unknown"}}, "anything") == False
+    assert WorkflowGenerator._declares_variable({"data": {"type": "unknown"}}, "anything") is False
 
 
 def test_collect_container_errors():

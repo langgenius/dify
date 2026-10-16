@@ -28,7 +28,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: () => mockUseNodesReadOnly(),
-    useIsChatMode: () => mockUseIsChatMode(),
+
     useWorkflow: () => mockUseWorkflow(),
   }
 })
@@ -263,4 +263,11 @@ describe('iteration/use-config', () => {
     )
     expect(mockDeleteNodeInspectorVars).toHaveBeenCalledWith('iteration-node')
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })
