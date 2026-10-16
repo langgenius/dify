@@ -21,6 +21,7 @@ export const namespaces = [
   'workspaceMembers',
   'navigation',
   'accountSettings',
+  'apiError',
   'app',
   'appAnnotation',
   'appApi',

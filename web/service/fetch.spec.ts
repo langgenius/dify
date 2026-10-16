@@ -165,6 +165,37 @@ describe('base', () => {
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
     })
 
+    it('should toast the viewer translation and keep the served message on the error', async () => {
+      const { createInstance } = await import('i18next')
+      const { getInitOptions } = await import('@/i18n/settings')
+      const i18n = createInstance()
+      await i18n.init({
+        ...getInitOptions(['apiError']),
+        lng: 'zh-Hans',
+        resources: { 'zh-Hans': { apiError: { max_keys_exceeded: '最多 {{max_keys}} 个' } } },
+      })
+      const { setClientI18n } = await import('@/i18n/client-instance')
+      setClientI18n(i18n)
+      const body = {
+        code: 'max_keys_exceeded',
+        message: 'Cannot create more than 10 API keys for this resource type.',
+        status: 400,
+        details: { max_keys: 10 },
+      }
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(body), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+
+      await expect(base('/apps/1/api-keys', { method: 'POST' })).rejects.toMatchObject({
+        message: body.message,
+        data: body,
+      })
+      expect(toast.error).toHaveBeenCalledWith('最多 10 个')
+    })
+
     it('should not display an empty error toast when message and error are absent', async () => {
       const errorResponse = new Response(
         JSON.stringify({

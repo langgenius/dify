@@ -13,6 +13,7 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { translateRequestError } from './api-error-message'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
@@ -60,7 +61,8 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
       const errorMessage = [errorData?.message, errorData?.error].find(
         (value): value is string => typeof value === 'string' && !!value.trim(),
       )
-      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
+      if (shouldNotifyError && errorMessage)
+        notifyRequestError(request, (await translateRequestError(errorData)) ?? errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`

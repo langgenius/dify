@@ -55,7 +55,7 @@ def api_key_create_errors() -> Generator[None]:
         with api_key_errors():
             yield
     except ApiKeyLimitExceededError as error:
-        raise ApiKeyLimitExceededHTTPError(str(error)) from error
+        raise ApiKeyLimitExceededHTTPError(error.max_keys) from error
 
 
 @contextmanager

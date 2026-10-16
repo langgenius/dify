@@ -141,6 +141,7 @@ export type ApiKeyItem = {
 
 export type MaxKeysExceededError = ErrorResponse & {
   code: 'max_keys_exceeded'
+  details: ApiKeyLimitDetails
   status: 400
 }
 
@@ -773,6 +774,10 @@ export type AgentInviteOptionResponse = {
   updated_by?: string | null
   workflow_id?: string | null
   workflow_node_id?: string | null
+}
+
+export type ApiKeyLimitDetails = {
+  max_keys: number
 }
 
 export type AgentSoulConfig = {

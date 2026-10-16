@@ -261,12 +261,16 @@ class _ErrorComponent:
             "code": {"const": self.code, "type": "string"},
             "status": {"const": self.status, "type": "integer"},
         }
+        required = ["code", "status"]
         if self.details_model is not None:
             properties["details"] = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=self.details_model.__name__)}
+            # ``BaseHTTPException`` refuses to raise a class with a details model without its details.
+            # Sorted, as the spec exporter writes it, so the live document and the export agree.
+            required = ["code", "details", "status"]
         schema: dict[str, object] = {
             "allOf": [
                 dict(error_body_ref),
-                {"properties": properties, "required": ["code", "status"], "type": "object"},
+                {"properties": properties, "required": required, "type": "object"},
             ],
             "title": name,
         }

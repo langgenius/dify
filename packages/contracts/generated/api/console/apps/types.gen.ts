@@ -1449,6 +1449,7 @@ export type ApiKeyItem = {
 
 export type MaxKeysExceededError = ErrorResponse & {
   code: 'max_keys_exceeded'
+  details: ApiKeyLimitDetails
   status: 400
 }
 
@@ -2548,6 +2549,10 @@ export type WorkflowDraftVariableFullContentResponse = {
   length: number | null
   size_bytes: number | null
   value_type: string
+}
+
+export type ApiKeyLimitDetails = {
+  max_keys: number
 }
 
 export type ModelConfigPartial = {

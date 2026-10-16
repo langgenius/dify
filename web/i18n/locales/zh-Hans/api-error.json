@@ -1,0 +1,3 @@
+{
+  "max_keys_exceeded": "此处最多只能创建 {{max_keys}} 个 API 密钥。"
+}

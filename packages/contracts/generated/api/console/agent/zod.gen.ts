@@ -102,18 +102,6 @@ export const zApiKeyList = z.object({
 })
 
 /**
- * MaxKeysExceededError
- *
- * The API key limit has been reached.
- */
-export const zMaxKeysExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('max_keys_exceeded'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * AudioTranscriptResponse
  */
 export const zAudioTranscriptResponse = z.object({
@@ -677,6 +665,26 @@ export const zWorkflowPartial = z.object({
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
 })
+
+/**
+ * ApiKeyLimitDetails
+ */
+export const zApiKeyLimitDetails = z.object({
+  max_keys: z.int(),
+})
+
+/**
+ * MaxKeysExceededError
+ *
+ * Cannot create more than {max_keys} API keys for this resource type.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    details: zApiKeyLimitDetails,
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ComposerBindingPayload

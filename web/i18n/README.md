@@ -102,6 +102,19 @@ removed so there is only one definition of unused translations.
 Development, Storybook, and test startup do not run this check. Next.js builds do
 not load Vite plugins.
 
+## Backend error messages
+
+The `apiError` namespace translates errors the backend serves, keyed by the error `code`. The
+copy is ours: write what the user should read rather than the backend's English `message`, and
+interpolate the error's `details` fields (for example `{{max_keys}}`); the generated contract
+types show each code's `details` model. `error.message` stays the served English; the global
+request-error toast in `service/fetch.ts` shows `translateRequestError(body)` instead, falling
+back to the served message for unlisted codes. The request layer is also loaded on the
+server, where react-i18next cannot be imported, so it reaches the browser's i18n instance through
+`getClientI18n()` (`i18n/client-instance.ts`), which the client provider registers. Only list codes whose raise sites send values the user
+needs through `details` rather than inside `message`. A unit test checks that every key is a code
+the Console or Web contracts document.
+
 ## Automated translation
 
 Changes to `web/i18n/locales/en-US/*.json` on `main` trigger the scoped translation workflow. The workflow derives target locales from `languages.ts`, translates only the changed namespaces and keys, verifies them with `i18n:check`, and opens a pull request when translations change.

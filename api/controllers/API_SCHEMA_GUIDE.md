@@ -283,6 +283,24 @@ Signal errors by raising, not by returning `(body, status)`:
   `@ns.response(status, ..., Model)` so the contract describes what the client receives.
 - Renaming an `error_code` changes the wire contract: clients branch on it, and the Service API list is published.
   Treat it as a breaking change.
+- Values a client needs to show the error go in `details`, not only in `message`: the web app translates errors by
+  `code` and interpolates `details` (`web/i18n/README.md`, "Backend error messages"). Declare a `details_model` and
+  write `description` as a `str.format` template over its fields; raise with `details=` only. `BaseHTTPException`
+  renders the English message, refuses a message override, and the document marks `details` required:
+
+  ```python
+  class ApiKeyLimitDetails(BaseModel):
+      max_keys: int
+
+
+  class ApiKeyLimitExceededHTTPError(BaseHTTPException):
+      error_code = "max_keys_exceeded"
+      description = "Cannot create more than {max_keys} API keys for this resource type."
+      code = 400
+      details_model = ApiKeyLimitDetails
+  ```
+
+  Adding `details` to a code is additive; renaming or removing a field breaks clients that interpolate it.
 
 ## Legacy Flask-RESTX Patterns
 

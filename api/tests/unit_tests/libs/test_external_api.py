@@ -515,6 +515,7 @@ def test_error_components_are_shared_across_operations_and_carry_details():
     assert schemas["DocumentedConflictError"]["allOf"][1]["properties"]["details"] == {
         "$ref": "#/components/schemas/_ConflictDetails"
     }
+    assert schemas["DocumentedConflictError"]["allOf"][1]["required"] == ["code", "details", "status"]
     assert schemas["_ConflictDetails"]["required"] == ["server_hash"]
 
 
