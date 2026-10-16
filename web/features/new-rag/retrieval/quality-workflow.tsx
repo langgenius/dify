@@ -83,13 +83,10 @@ export function RetrievalQualityWorkflow() {
   }
 
   const saveBadCase = async (reason: BadCaseReason) => {
-    if (!resultKey || !selectedQuery) return
+    // A bad case is keyed by its trace; image-only traces have no query text but are still valid.
+    if (!resultKey || !selectedTraceId) return
     setQualityPendingKey(resultKey)
     try {
-      if (!selectedTraceId) {
-        toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
-        return
-      }
       try {
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.post({
           body: {

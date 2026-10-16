@@ -576,13 +576,22 @@ export function RetrievalRuntimeController() {
       linkedTraceId !== linkedRetestTraceId ||
       selected?.kind !== 'trace' ||
       selected.id !== linkedRetestTraceId ||
-      !query.trim() ||
+      // An image-only trace is ready once its images are restored, even with an empty query.
+      (!query.trim() && selectedQueryImages.length === 0) ||
       consumedRetestTraceIdRef.current === linkedRetestTraceId
     )
       return
     consumedRetestTraceIdRef.current = linkedRetestTraceId
     runRetest({ mode, query })
-  }, [linkedSelection.retest, linkedSelection.trace, mode, query, selected?.id, selected?.kind])
+  }, [
+    linkedSelection.retest,
+    linkedSelection.trace,
+    mode,
+    query,
+    selected?.id,
+    selected?.kind,
+    selectedQueryImages.length,
+  ])
 
   return (
     <KnowledgeModelSetupDialog
