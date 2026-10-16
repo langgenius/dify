@@ -2,13 +2,19 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.helper import encrypter
+from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.plugin_daemon import CredentialType
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderIdentity
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from repositories.credentials.query_repository import CredentialQueryRepository
 from services.tools import builtin_tools_manage_service as service_module
@@ -452,6 +458,104 @@ class TestGetBuiltinToolProviderCredentials:
         stored = repository_session.get(BuiltinToolProvider, "cred-1")
         assert stored is not None
         assert stored.is_default is False
+
+
+class TestGetBuiltinToolProviderRuntimeCredentials:
+    @staticmethod
+    def _provider(*, needs_credentials: bool) -> PluginToolProviderController:
+        return PluginToolProviderController(
+            entity=ToolProviderEntityWithPlugin(
+                identity=ToolProviderIdentity(
+                    author="test",
+                    name="google",
+                    description=I18nObject(en_US="Google"),
+                    icon="google.svg",
+                    label=I18nObject(en_US="Google"),
+                ),
+                credentials_schema=[ProviderConfig(name="key", type=ProviderConfigType.SECRET_INPUT)]
+                if needs_credentials
+                else [],
+            ),
+            plugin_id="google",
+            plugin_unique_identifier="google:test",
+            tenant_id="tenant-1",
+        )
+
+    @pytest.fixture
+    def runtime_provider(self, monkeypatch: pytest.MonkeyPatch) -> PluginToolProviderController:
+        controller = self._provider(needs_credentials=True)
+        monkeypatch.setattr(
+            service_module.ToolManager, "get_builtin_provider", lambda _provider, _tenant_id: controller
+        )
+        # Keep the real credential schema and encrypter while isolating Redis and token encryption.
+        monkeypatch.setattr(ToolProviderCredentialsCache, "get", lambda _self: None)
+        monkeypatch.setattr(ToolProviderCredentialsCache, "set", lambda _self, _config: None)
+        monkeypatch.setattr(encrypter, "decrypt_token", lambda _tenant_id, token: token)
+        return controller
+
+    def test_returns_unauthorized_when_provider_does_not_need_credentials(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        controller = self._provider(needs_credentials=False)
+        monkeypatch.setattr(
+            service_module.ToolManager, "get_builtin_provider", lambda _provider, _tenant_id: controller
+        )
+
+        credentials, credential_type = BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials(
+            "tenant-1", "google", None
+        )
+
+        assert credentials == {}
+        assert credential_type == CredentialType.UNAUTHORIZED.value
+
+    def test_decrypts_the_credential_selected_by_id(
+        self,
+        repository_session: Session,
+        runtime_provider: PluginToolProviderController,
+    ) -> None:
+        _persist_provider(repository_session, credential_id="cred-1", name="First", credentials={"key": "first"})
+        _persist_provider(repository_session, credential_id="cred-2", name="Second", credentials={"key": "second"})
+        with patch.object(encrypter, "decrypt_token", return_value="decrypted-second") as decrypt_token:
+            credentials, credential_type = BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials(
+                "tenant-1", "google", "cred-2"
+            )
+
+        assert credentials == {"key": "decrypted-second"}
+        assert credential_type == CredentialType.API_KEY
+        decrypt_token.assert_called_once_with("tenant-1", "second")
+
+    def test_falls_back_to_the_default_credential(
+        self,
+        repository_session: Session,
+        runtime_provider: PluginToolProviderController,
+    ) -> None:
+        _persist_provider(
+            repository_session,
+            credential_id="older",
+            name="Older",
+            is_default=False,
+            credentials={"key": "older"},
+        )
+        _persist_provider(
+            repository_session,
+            credential_id="default",
+            name="Default",
+            is_default=True,
+            credentials={"key": "default"},
+        )
+        credentials, _credential_type = BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials(
+            "tenant-1", "google", None
+        )
+
+        assert credentials == {"key": "default"}
+
+    def test_raises_when_no_credential_exists(
+        self,
+        repository_session: Session,
+        runtime_provider: PluginToolProviderController,
+    ) -> None:
+        with pytest.raises(ValueError, match="Builtin provider google not found"):
+            BuiltinToolManageService.get_builtin_tool_provider_runtime_credentials("tenant-1", "google", "missing")
 
 
 class TestGetBuiltinProvider:
