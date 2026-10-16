@@ -5,7 +5,14 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
-from services.entities.app_entities import AppTraceSettings
+
+
+@dataclass(frozen=True, slots=True)
+class AppTraceSettings:
+    enabled: bool = False
+    tracing_provider: str | None = None
+    capture_content: bool = False
+    capture_agent: bool = True
 
 
 @dataclass(frozen=True, slots=True)
