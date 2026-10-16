@@ -17,7 +17,14 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -281,38 +288,34 @@ const ModelLoadBalancingModal = ({
           if (!open) onClose?.()
         }}
       >
-        <DialogContent className="w-160 max-w-none border-none px-8 pt-8 pb-6">
-          <DialogTitle>
-            <div className="pb-3 font-semibold">
-              <div className="h-7.5">
-                {draftConfig?.enabled
-                  ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })
-                  : t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
+        <DialogContent className="w-160 max-w-none">
+          <DialogHeader>
+            <DialogTitle>
+              {draftConfig?.enabled
+                ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })
+                : t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
+            </DialogTitle>
+            {Boolean(model) && (
+              <div className="flex h-5 items-center">
+                <ModelIcon className="mr-2 shrink-0" provider={provider} modelName={model!.model} />
+                <ModelName
+                  className="grow system-md-regular text-text-secondary"
+                  modelItem={model!}
+                  showModelType
+                  showMode
+                  showContextSize
+                />
               </div>
-              {Boolean(model) && (
-                <div className="flex h-5 items-center">
-                  <ModelIcon
-                    className="mr-2 shrink-0"
-                    provider={provider}
-                    modelName={model!.model}
-                  />
-                  <ModelName
-                    className="grow system-md-regular text-text-secondary"
-                    modelItem={model!}
-                    showModelType
-                    showMode
-                    showContextSize
-                  />
-                </div>
-              )}
-            </div>
-          </DialogTitle>
+            )}
+          </DialogHeader>
 
           {!draftConfig ? (
-            <LoadingPlaceholder />
+            <DialogBody>
+              <LoadingPlaceholder />
+            </DialogBody>
           ) : (
             <>
-              <div className="py-2">
+              <DialogBody>
                 <div
                   className={cn(
                     'relative min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
@@ -398,43 +401,38 @@ const ModelLoadBalancingModal = ({
                     }}
                   />
                 )}
-              </div>
+              </DialogBody>
 
-              <div className="mt-6 flex items-center justify-between gap-2">
-                <div>
-                  {!providerFormSchemaPredefined && (
-                    <Button
-                      onClick={() =>
-                        openConfirmDelete(undefined, {
-                          model: model.model,
-                          model_type: model.model_type,
-                        })
-                      }
-                      className="text-components-button-destructive-secondary-text"
-                    >
-                      {t(($) => $['modelProvider.auth.removeModel'], { ns: 'modelProvider' })}
-                    </Button>
-                  )}
-                </div>
-                <div className="space-x-2">
-                  <Button onClick={onClose}>
-                    {t(($) => $['operation.cancel'], { ns: 'common' })}
-                  </Button>
+              <DialogFooter>
+                {!providerFormSchemaPredefined && (
                   <Button
-                    variant="primary"
-                    onClick={handleSave}
-                    disabled={
-                      loading ||
-                      (draftConfig?.enabled &&
-                        (draftConfig?.configs.filter((config) => config.enabled).length ?? 0) <
-                          2) ||
-                      isLoading
+                    onClick={() =>
+                      openConfirmDelete(undefined, {
+                        model: model.model,
+                        model_type: model.model_type,
+                      })
                     }
+                    className="me-auto text-components-button-destructive-secondary-text"
                   >
-                    {t(($) => $['operation.save'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.auth.removeModel'], { ns: 'modelProvider' })}
                   </Button>
-                </div>
-              </div>
+                )}
+                <Button onClick={onClose}>
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSave}
+                  disabled={
+                    loading ||
+                    (draftConfig?.enabled &&
+                      (draftConfig?.configs.filter((config) => config.enabled).length ?? 0) < 2) ||
+                    isLoading
+                  }
+                >
+                  {t(($) => $['operation.save'], { ns: 'common' })}
+                </Button>
+              </DialogFooter>
             </>
           )}
           <AlertDialog open={!!deleteModel} onOpenChange={(open) => !open && closeConfirmDelete()}>

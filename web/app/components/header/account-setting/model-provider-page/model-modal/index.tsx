@@ -17,12 +17,14 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -218,7 +220,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <DialogDescription className="mt-1">
+        <DialogDescription>
           {t(($) => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'modelProvider' })}
         </DialogDescription>
       )
@@ -310,27 +312,14 @@ const ModelModal: FC<ModelModalProps> = ({
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="flex w-160 max-w-160 flex-col overflow-hidden"
-      >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="shrink-0 p-6 pb-3">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160 max-w-160">
+        <DialogHeader>
           {modalTitle}
           {modalDesc}
           {modalModel}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
           {mode === ModelModalModeEnum.configCustomModel && (
             <AuthForm
               formSchemas={
@@ -390,14 +379,14 @@ const ModelModal: FC<ModelModalProps> = ({
               ref={formRef2}
             />
           )}
-        </div>
-        <div className="flex shrink-0 justify-between p-6 pt-5">
-          {provider.help && (provider.help.title || provider.help.url) ? (
+        </DialogBody>
+        <DialogFooter>
+          {provider.help && (provider.help.title || provider.help.url) && (
             <a
               href={provider.help?.url[language] || provider.help?.url.en_US}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-block align-middle system-xs-regular text-text-accent"
+              className="me-auto inline-block align-middle system-xs-regular text-text-accent"
               onClick={(e) => !provider.help?.url && e.preventDefault()}
             >
               {provider.help.title?.[language] ||
@@ -409,32 +398,28 @@ const ModelModal: FC<ModelModalProps> = ({
                 className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
               />
             </a>
-          ) : (
-            <div />
           )}
-          <div className="ml-2 flex items-center justify-end space-x-2">
-            {isEditMode && (
-              <Button
-                variant="primary"
-                tone="destructive"
-                onClick={() => openConfirmDelete(credential, model)}
-              >
-                {t(($) => $['operation.remove'], { ns: 'common' })}
-              </Button>
-            )}
-            <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          {isEditMode && (
             <Button
               variant="primary"
-              onClick={handleSave}
-              disabled={isLoading || doingAction || !canSaveCredentialChange}
+              tone="destructive"
+              onClick={() => openConfirmDelete(credential, model)}
             >
-              {saveButtonText}
+              {t(($) => $['operation.remove'], { ns: 'common' })}
             </Button>
-          </div>
-        </div>
+          )}
+          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={isLoading || doingAction || !canSaveCredentialChange}
+          >
+            {saveButtonText}
+          </Button>
+        </DialogFooter>
         {(mode === ModelModalModeEnum.configCustomModel ||
           mode === ModelModalModeEnum.configProviderCredential) && (
-          <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
+          <div className="border-t-[0.5px] border-t-divider-regular">
             <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
               <span
                 aria-hidden

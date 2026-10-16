@@ -3,10 +3,17 @@ import type {
   ApiBasedExtensionResponse,
 } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -86,99 +93,92 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
-      <DialogContent backdropProps={{ forceRender: true }} className="w-160 border-none p-8 pb-6">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === 'edit'
+              ? t(($) => $['apiBasedExtension.modal.editTitle'], { ns: 'common' })
+              : t(($) => $['apiBasedExtension.modal.title'], { ns: 'common' })}
+          </DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <Form<ApiBasedExtensionPayload> onFormSubmit={handleSubmit}>
+          <DialogBody className="grid gap-4">
+            <Field name="name">
+              <FieldLabel>{nameLabel}</FieldLabel>
+              <Input
+                required
+                defaultValue={editingApiBasedExtension?.name || ''}
+                placeholder={
+                  t(($) => $['apiBasedExtension.modal.name.placeholder'], { ns: 'common' }) || ''
+                }
+              />
+              <FieldError match="valueMissing">
+                {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}
+              </FieldError>
+            </Field>
+
+            <Field name="api_endpoint">
+              <FieldLabel>{apiEndpointLabel}</FieldLabel>
+              <Input
+                required
+                defaultValue={editingApiBasedExtension?.api_endpoint || ''}
+                placeholder={
+                  t(($) => $['apiBasedExtension.modal.apiEndpoint.placeholder'], {
+                    ns: 'common',
+                  }) || ''
+                }
+              />
+              <FieldDescription>
+                <a
+                  href={docLink('/use-dify/workspace/api-extension/api-extension')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                >
+                  <span
+                    className="mr-1 i-custom-vender-line-education-book-open-01 size-3"
+                    aria-hidden="true"
+                  />
+                  {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}
+                </a>
+              </FieldDescription>
+              <FieldError match="valueMissing">
+                {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: apiEndpointLabel })}
+              </FieldError>
+            </Field>
+
+            <Field
+              name="api_key"
+              validate={(value) => {
+                if (typeof value === 'string' && value.length > 0 && value.length < 5)
+                  return t(($) => $['apiBasedExtension.modal.apiKey.lengthError'], { ns: 'common' })
+
+                return null
+              }}
             >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-
-        <DialogTitle className="mb-2 pr-8">
-          {mode === 'edit'
-            ? t(($) => $['apiBasedExtension.modal.editTitle'], { ns: 'common' })
-            : t(($) => $['apiBasedExtension.modal.title'], { ns: 'common' })}
-        </DialogTitle>
-        <Form<ApiBasedExtensionPayload> className="grid gap-4 pt-2" onFormSubmit={handleSubmit}>
-          <Field name="name">
-            <FieldLabel>{nameLabel}</FieldLabel>
-            <Input
-              required
-              defaultValue={editingApiBasedExtension?.name || ''}
-              placeholder={
-                t(($) => $['apiBasedExtension.modal.name.placeholder'], { ns: 'common' }) || ''
-              }
-            />
-            <FieldError match="valueMissing">
-              {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: nameLabel })}
-            </FieldError>
-          </Field>
-
-          <Field name="api_endpoint">
-            <FieldLabel>{apiEndpointLabel}</FieldLabel>
-            <Input
-              required
-              defaultValue={editingApiBasedExtension?.api_endpoint || ''}
-              placeholder={
-                t(($) => $['apiBasedExtension.modal.apiEndpoint.placeholder'], { ns: 'common' }) ||
-                ''
-              }
-            />
-            <FieldDescription>
-              <a
-                href={docLink('/use-dify/workspace/api-extension/api-extension')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              >
-                <span
-                  className="mr-1 i-custom-vender-line-education-book-open-01 size-3"
-                  aria-hidden="true"
-                />
-                {t(($) => $['apiBasedExtension.link'], { ns: 'common' })}
-              </a>
-            </FieldDescription>
-            <FieldError match="valueMissing">
-              {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: apiEndpointLabel })}
-            </FieldError>
-          </Field>
-
-          <Field
-            name="api_key"
-            validate={(value) => {
-              if (typeof value === 'string' && value.length > 0 && value.length < 5)
-                return t(($) => $['apiBasedExtension.modal.apiKey.lengthError'], { ns: 'common' })
-
-              return null
-            }}
-          >
-            <FieldLabel>{apiKeyLabel}</FieldLabel>
-            <Input
-              required
-              defaultValue={editingApiBasedExtension?.api_key || ''}
-              placeholder={
-                t(($) => $['apiBasedExtension.modal.apiKey.placeholder'], { ns: 'common' }) || ''
-              }
-            />
-            <FieldError match="valueMissing">
-              {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: apiKeyLabel })}
-            </FieldError>
-            <FieldError match="customError" />
-          </Field>
-
-          <div className="mt-2 flex items-center justify-end gap-2">
+              <FieldLabel>{apiKeyLabel}</FieldLabel>
+              <Input
+                required
+                defaultValue={editingApiBasedExtension?.api_key || ''}
+                placeholder={
+                  t(($) => $['apiBasedExtension.modal.apiKey.placeholder'], { ns: 'common' }) || ''
+                }
+              />
+              <FieldError match="valueMissing">
+                {t(($) => $['errorMsg.fieldRequired'], { ns: 'common', field: apiKeyLabel })}
+              </FieldError>
+              <FieldError match="customError" />
+            </Field>
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" onClick={() => onOpenChange(false)}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button type="submit" variant="primary" disabled={isSaving}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </Form>
       </DialogContent>
     </Dialog>

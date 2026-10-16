@@ -1,7 +1,13 @@
 'use client'
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -73,22 +79,12 @@ export const TagManagementModal = ({
 
   return (
     <Dialog open={show} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="w-150 rounded-xl p-8">
-        <DialogTitle className="relative pb-2">
-          {t(($) => $['tag.manageTags'], { ns: 'common' })}
-        </DialogTitle>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-4 right-4"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="mt-3 flex flex-wrap gap-2">
+      <DialogContent className="w-150">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="flex flex-wrap gap-2">
           <input
             aria-label={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
             className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
@@ -101,7 +97,7 @@ export const TagManagementModal = ({
           {tagList.map((tag) => (
             <TagItemEditor key={tag.id} tag={tag} onTagsChange={onTagsChange} />
           ))}
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

@@ -16,9 +16,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -879,18 +883,11 @@ function ImportSkillDialogForm({
         if (file && !importing) onImport(file)
       }}
     >
-      <div className="flex items-center justify-between border-b border-divider-subtle px-5 py-4">
+      <DialogHeader>
         <DialogTitle>{t(($) => $['skillManagement.importDialog.title'])}</DialogTitle>
-        <DialogClose
-          disabled={importing}
-          render={
-            <IconButton aria-label={tCommon(($) => $['operation.close'])}>
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-      </div>
-      <div className="p-5">
+        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={importing} />
+      </DialogHeader>
+      <DialogBody>
         <div
           role="group"
           aria-label={t(($) => $['skillManagement.importDialog.title'])}
@@ -985,15 +982,15 @@ function ImportSkillDialogForm({
             {t(($) => $['skillManagement.importDialog.invalidFile'])}
           </p>
         )}
-      </div>
-      <div className="flex justify-end gap-2 border-t border-divider-subtle px-5 py-4">
+      </DialogBody>
+      <DialogFooter>
         <DialogClose disabled={importing} render={<Button />}>
           {tCommon(($) => $['operation.cancel'])}
         </DialogClose>
         <Button type="submit" variant="primary" disabled={!file} loading={importing}>
           {t(($) => $['skillManagement.import'])}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }

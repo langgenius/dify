@@ -9,9 +9,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -139,7 +142,6 @@ function AgentSkillPackageUploader({
 
   return (
     <div
-      className="mt-6"
       role="group"
       aria-label={t(($) => $['agentDetail.configure.skills.upload.title'])}
       onDragEnter={handleDragEnter}
@@ -326,28 +328,22 @@ export function AgentSkillUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent className="p-6" backdropProps={{ forceRender: true, className: 'fixed' }}>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle>{t(($) => $['agentDetail.configure.skills.upload.title'])}</DialogTitle>
-        <DialogDescription className="mt-1">
-          {t(($) => $['agentDetail.configure.skills.upload.description'])}
-        </DialogDescription>
-        <AgentSkillPackageUploader
-          file={file}
-          onChange={setFile}
-          showWarning={uploadSkillMutation.isError}
-        />
-        <div className="flex justify-end gap-2 pt-6">
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['agentDetail.configure.skills.upload.title'])}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $['agentDetail.configure.skills.upload.description'])}
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <AgentSkillPackageUploader
+            file={file}
+            onChange={setFile}
+            showWarning={uploadSkillMutation.isError}
+          />
+        </DialogBody>
+        <DialogFooter>
           <Button
             type="button"
             onClick={() => handleOpenChange(false)}
@@ -364,7 +360,7 @@ export function AgentSkillUploadDialog({
           >
             {t(($) => $['agentDetail.configure.skills.upload.action'])}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

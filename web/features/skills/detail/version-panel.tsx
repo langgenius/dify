@@ -15,9 +15,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -28,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -344,25 +347,15 @@ function VersionRow({
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-120 overflow-hidden border-none">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={tCommon(($) => $['operation.close'])}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="px-6 pt-6 pr-14 pb-4">
+        <DialogContent className="w-full max-w-120">
+          <DialogHeader>
             <DialogTitle>{versionInfoLabel}</DialogTitle>
             <DialogDescription className="sr-only">
               {t(($) => $['skillManagement.detail.renameVersionPrompt'])}
             </DialogDescription>
-          </div>
-          <div className="flex flex-col gap-y-4 px-6 py-3">
+            <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} />
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-y-4">
             <Field name="versionTitle">
               <FieldLabel className="system-sm-semibold">
                 {t(($) => $['skillManagement.detail.versionTitle'])}
@@ -383,17 +376,15 @@ function VersionRow({
                 onValueChange={setPublishNote}
               />
             </Field>
-          </div>
-          <div className="flex justify-end p-6 pt-5">
-            <div className="flex items-center gap-x-3">
-              <DialogClose render={<Button disabled={renameMutation.isPending} />}>
-                {tCommon(($) => $['operation.cancel'])}
-              </DialogClose>
-              <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
-                {t(($) => $['skillManagement.detail.publish'])}
-              </Button>
-            </div>
-          </div>
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose render={<Button disabled={renameMutation.isPending} />}>
+              {tCommon(($) => $['operation.cancel'])}
+            </DialogClose>
+            <Button variant="primary" loading={renameMutation.isPending} onClick={handleRename}>
+              {t(($) => $['skillManagement.detail.publish'])}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <AlertDialog

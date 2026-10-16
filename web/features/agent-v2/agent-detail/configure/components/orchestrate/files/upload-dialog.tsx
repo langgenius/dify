@@ -12,9 +12,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
@@ -141,7 +144,6 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
 
   return (
     <div
-      className="mt-6"
       role="group"
       aria-label={t(($) => $['agentDetail.configure.files.upload.title'])}
       onDragEnter={handleDragEnter}
@@ -322,24 +324,18 @@ export function AgentFileUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent className="p-6" backdropProps={{ forceRender: true, className: 'fixed' }}>
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle>{t(($) => $['agentDetail.configure.files.upload.title'])}</DialogTitle>
-        <DialogDescription className="mt-1">
-          {t(($) => $['agentDetail.configure.files.upload.description'])}
-        </DialogDescription>
-        <AgentFileUploader file={file} onChange={setFile} />
-        <div className="flex justify-end gap-2 pt-6">
+      <DialogContent backdropProps={{ forceRender: true, className: 'fixed' }}>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['agentDetail.configure.files.upload.title'])}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $['agentDetail.configure.files.upload.description'])}
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <AgentFileUploader file={file} onChange={setFile} />
+        </DialogBody>
+        <DialogFooter>
           <Button type="button" onClick={() => handleOpenChange(false)} disabled={isUploading}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
@@ -352,7 +348,7 @@ export function AgentFileUploadDialog({
           >
             {t(($) => $['agentDetail.configure.files.upload.action'])}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

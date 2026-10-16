@@ -3,12 +3,14 @@ import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
@@ -64,33 +66,16 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
         if (!nextOpen) onClose()
       }}
     >
-      <DialogContent
-        className="flex h-[85vh] w-140 flex-col overflow-hidden"
-        backdropProps={{ forceRender: true }}
-      >
-        <div className="relative shrink-0 px-6 pt-6 pb-4">
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          <div className="pr-8">
-            <DialogTitle>
-              {t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}
-            </DialogTitle>
-            <DialogDescription className="mt-1">
-              {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
-            </DialogDescription>
-          </div>
-        </div>
+      <DialogContent className="flex h-[85vh] w-140 flex-col" backdropProps={{ forceRender: true }}>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
         <div className="border-t border-divider-subtle" />
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden px-6 py-5">
+        <DialogBody className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-hidden">
           <div className="flex shrink-0 flex-col gap-1">
             <label htmlFor="role-name" className="system-sm-medium text-text-secondary">
               {t(($) => $['role.modal.nameLabel'], { ns: 'permission' })}
@@ -121,30 +106,28 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
             onChange={setPermissionKeys}
             readonly={readonly}
           />
-        </div>
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
+        </DialogBody>
+        <DialogFooter className="border-t border-divider-subtle">
           <a
             href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
+            className="me-auto inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
           >
             <span>{t(($) => $['permissionSet.learnMore'], { ns: 'permission' })}</span>
             <span aria-hidden className="i-ri-external-link-line h-3.5 w-3.5" />
           </a>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={onClose}>
-              {readonly
-                ? t(($) => $['operation.close'], { ns: 'common' })
-                : t(($) => $['operation.cancel'], { ns: 'common' })}
+          <Button variant="secondary" onClick={onClose}>
+            {readonly
+              ? t(($) => $['operation.close'], { ns: 'common' })
+              : t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          {!readonly && (
+            <Button variant="primary" disabled={!name.trim()} onClick={handleSubmit}>
+              {t(($) => $['operation.confirm'], { ns: 'common' })}
             </Button>
-            {!readonly && (
-              <Button variant="primary" disabled={!name.trim()} onClick={handleSubmit}>
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </Button>
-            )}
-          </div>
-        </div>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

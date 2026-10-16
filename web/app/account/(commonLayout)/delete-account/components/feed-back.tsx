@@ -1,6 +1,13 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -62,36 +69,40 @@ export default function FeedBack(props: DeleteAccountProps) {
       }}
     >
       <DialogContent
-        className="max-w-120 overflow-hidden p-6"
+        className="max-w-120"
         backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
-        <DialogTitle className="pr-8 pb-3">
-          {t(($) => $['account.feedbackTitle'], { ns: 'accountSettings' })}
-        </DialogTitle>
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['account.feedbackTitle'], { ns: 'accountSettings' })}
+          </DialogTitle>
+        </DialogHeader>
         <Form<FeedbackFormValues>
           onFormSubmit={({ feedback }) => {
             void handleSubmit(feedback)
           }}
         >
-          <Field name="feedback" className="mt-3 gap-0">
-            <FieldLabel className="system-sm-semibold">
-              {t(($) => $['account.feedbackLabel'], { ns: 'accountSettings' })}
-            </FieldLabel>
-            <Textarea
-              rows={6}
-              placeholder={
-                t(($) => $['account.feedbackPlaceholder'], { ns: 'accountSettings' }) as string
-              }
-            />
-          </Field>
-          <div className="mt-3 flex w-full flex-col gap-2">
+          <DialogBody>
+            <Field name="feedback" className="gap-0">
+              <FieldLabel className="system-sm-semibold">
+                {t(($) => $['account.feedbackLabel'], { ns: 'accountSettings' })}
+              </FieldLabel>
+              <Textarea
+                rows={6}
+                placeholder={
+                  t(($) => $['account.feedbackPlaceholder'], { ns: 'accountSettings' }) as string
+                }
+              />
+            </Field>
+          </DialogBody>
+          <DialogFooter className="flex-col items-stretch">
             <Button type="submit" className="w-full" loading={isPending} variant="primary">
               {t(($) => $['operation.submit'], { ns: 'common' })}
             </Button>
             <Button type="button" className="w-full" onClick={handleSkip}>
               {t(($) => $['operation.skip'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </Form>
       </DialogContent>
     </Dialog>
