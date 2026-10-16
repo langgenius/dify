@@ -1516,7 +1516,9 @@ export function ConnectedSourceWorkflow(props: ConnectedSourceWorkflowProps) {
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
   )
-  const datasourceAuthQuery = useQuery(consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }))
+  const datasourceAuthQuery = useQuery(
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }),
+  )
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, draft.sourceType],
@@ -1582,7 +1584,9 @@ function ConnectedSourceWorkflowSession({
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
   )
-  const datasourceAuthQuery = useQuery(consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }))
+  const datasourceAuthQuery = useQuery(
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }),
+  )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       context: { silent: true },

@@ -78,7 +78,9 @@ export function useSourceSetupInputs(draft: NewKnowledgeSourceDraft, enabled = t
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({ enabled }),
   )
-  const datasourceAuthQuery = useQuery(consoleQuery.auth.plugin.datasource.list.get.queryOptions({ enabled, retry: 0 }))
+  const datasourceAuthQuery = useQuery(
+    consoleQuery.auth.plugin.datasource.list.get.queryOptions({ enabled, retry: 0 }),
+  )
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, draft.sourceType],

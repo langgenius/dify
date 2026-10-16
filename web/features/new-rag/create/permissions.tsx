@@ -36,7 +36,10 @@ export function KnowledgeCreationPermissions({
     select: (data) => data.profile.id,
   })
   const membersQuery = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions({ input: {}, enabled: canConfigureAccess }),
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: {},
+      enabled: canConfigureAccess,
+    }),
   )
   const membersInvalid = visibility === 'partial_members' && selectedMemberIds.length === 0
 
