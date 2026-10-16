@@ -391,7 +391,11 @@ class OpsTraceManager:
         # Encrypt necessary keys
         for key in secret_keys:
             if key in tracing_config:
-                if "*" in tracing_config[key]:
+                if tracing_config[key] is None:
+                    # Preserve explicit clearing for optional credentials; the
+                    # provider model still rejects null on a required secret.
+                    new_config[key] = None
+                elif "*" in tracing_config[key]:
                     # If the key contains '*', retain the original value from the current config
                     if current_trace_config:
                         new_config[key] = current_trace_config.get(key, tracing_config[key])
@@ -440,8 +444,10 @@ class OpsTraceManager:
                 provider_config_map[tracing_provider]["secret_keys"],
                 provider_config_map[tracing_provider]["other_keys"],
             )
-            new_config: dict[str, Any] = {}
-            keys_to_decrypt = [key for key in secret_keys if key in tracing_config]
+            new_config: dict[str, Any] = {
+                key: None for key in secret_keys if key in tracing_config and tracing_config[key] is None
+            }
+            keys_to_decrypt = [key for key in secret_keys if tracing_config.get(key) is not None]
             if keys_to_decrypt:
                 decrypted_values = batch_decrypt_token(tenant_id, [tracing_config[key] for key in keys_to_decrypt])
                 new_config.update(zip(keys_to_decrypt, decrypted_values, strict=False))

@@ -110,6 +110,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             # verified non-secret destination alongside that unchanged ciphertext.
             encrypted_config["entity"] = decrypted_config["entity"]
             encrypted_config["project"] = decrypted_config["project"]
+        elif tracing_provider == "databricks":
+            encrypted_config["host"] = decrypted_config["host"]
+            encrypted_config["experiment_id"] = decrypted_config["experiment_id"]
         # Re-resolve after destination changes; never retain a previous project's link.
         project_url = self._get_project_url(decrypted_config, tracing_provider)
         if project_url:
@@ -139,7 +142,15 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         except Exception as error:
             raise AppTracingConfigProcessingError from error
 
-        if tracing_provider == "weave":
+        if tracing_provider == "databricks":
+            from dify_trace_mlflow.config import DatabricksConfig
+            from dify_trace_mlflow.configuration import project_url
+
+            try:
+                presented_config["project_url"] = project_url(DatabricksConfig.model_validate(decrypted_config))
+            except ValueError:
+                presented_config["project_url"] = _PROJECT_URL_FALLBACKS["databricks"]
+        elif tracing_provider == "weave":
             from dify_trace_weave.config import WeaveConfig
             from dify_trace_weave.configuration import console_url, project_url
 
@@ -201,6 +212,18 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "databricks":
+            from dify_trace_mlflow.config import DatabricksConfig
+            from dify_trace_mlflow.configuration import DatabricksConfigurationError, verify_configuration
+
+            try:
+                resolved = verify_configuration(DatabricksConfig.model_validate(tracing_config))
+            except DatabricksConfigurationError as error:
+                logger.warning("Databricks configuration verification failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from error
+            tracing_config["host"] = resolved.host
+            tracing_config["experiment_id"] = resolved.experiment_id
+            return
         if tracing_provider == "weave":
             from dify_trace_weave.config import WeaveConfig
             from dify_trace_weave.configuration import WeaveConfigurationError, verify_configuration
@@ -224,6 +247,11 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
     @staticmethod
     def _get_project_url(tracing_config: dict[str, Any], tracing_provider: str) -> str | None:
         try:
+            if tracing_provider == "databricks":
+                from dify_trace_mlflow.config import DatabricksConfig
+                from dify_trace_mlflow.configuration import project_url
+
+                return project_url(DatabricksConfig.model_validate(tracing_config))
             if tracing_provider == "weave":
                 from dify_trace_weave.config import WeaveConfig
                 from dify_trace_weave.configuration import project_url
@@ -234,7 +262,7 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             if tracing_provider == "langfuse":
                 project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
                 return f"{tracing_config.get('host')}/project/{project_key}"
-            if tracing_provider in ("langsmith", "opik", "mlflow", "databricks", "tencent"):
+            if tracing_provider in ("langsmith", "opik", "mlflow", "tencent"):
                 return OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         except Exception:
             return None
