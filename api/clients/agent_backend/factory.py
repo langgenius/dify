@@ -40,7 +40,13 @@ def create_agent_backend_run_client(
     if use_fake:
         return FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario(fake_scenario))
     if base_url is None:
-        raise ValueError("base_url is required when creating a real Agent backend client")
+        raise ValueError(
+            "AGENT_BACKEND_BASE_URL is not configured. The Chatflow/Workflow Agent node "
+            "requires a separately deployed Agent backend service. Set the "
+            "AGENT_BACKEND_BASE_URL environment variable to the service's URL, "
+            "or use the classic Agent-type app (mode: agent-chat) which runs "
+            "in-process and does not require this service."
+        )
     return DifyAgentBackendRunClient(
         create_agent_backend_client(
             base_url=base_url,
