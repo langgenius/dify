@@ -80,6 +80,13 @@ from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account, EndUser
 from models.human_input import HumanInputForm
 from models.workflow import WorkflowRun
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
+from services.dify_builder.native_testing.observation_stream import (
+    observed_runtime_outputs,
+    observed_values,
+    project_native_queue_event,
+    require_native_observation,
+)
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
 # Maps the entry surface a workflow was invoked from to the HITL surface that
@@ -130,14 +137,29 @@ class WorkflowResponseConverter:
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         user: Union[Account, EndUser],
         system_variables: Sequence[Variable],
+        native_observation: NativeObservationGuard | None = None,
     ):
+        require_native_observation(guard=native_observation, entity=application_generate_entity)
+        self._native_observation = native_observation
+        if native_observation is not None:
+            with native_observation.persistence_scope():
+                if not isinstance(user, Account) or application_generate_entity.files:
+                    native_observation.fail()
         self._application_generate_entity = application_generate_entity
         self._user = user
-        self._system_variables = system_variables_to_mapping(system_variables)
-        self._workflow_inputs = self._prepare_workflow_inputs()
+        if native_observation is None:
+            self._system_variables = system_variables_to_mapping(system_variables)
+            self._workflow_inputs = self._prepare_workflow_inputs()
+        else:
+            with native_observation.persistence_scope():
+                self._workflow_inputs = native_observation.workflow_inputs(
+                    inputs=application_generate_entity.inputs,
+                    system_variables=system_variables_to_mapping(system_variables),
+                )
+            self._system_variables = {}
 
         # Disable truncation for SERVICE_API calls to keep backward compatibility.
-        if application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
+        if native_observation is not None or application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             self._truncator = DummyVariableTruncator()
         else:
             self._truncator = VariableTruncator.default()
@@ -215,6 +237,8 @@ class WorkflowResponseConverter:
         self,
         mapping: Mapping[str, Any] | None,
     ) -> tuple[Mapping[str, Any] | None, bool]:
+        if self._native_observation is not None:
+            return observed_values(guard=self._native_observation, values=mapping), False
         if mapping is None:
             return None, False
         if not mapping:
@@ -227,8 +251,9 @@ class WorkflowResponseConverter:
         truncated, is_truncated = self._truncator.truncate_variable_mapping(dict(normalized))
         return truncated, is_truncated
 
-    @staticmethod
-    def _encode_outputs(outputs: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    def _encode_outputs(self, outputs: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+        if self._native_observation is not None:
+            return observed_values(guard=self._native_observation, values=outputs)
         if outputs is None:
             return None
         converter = WorkflowRuntimeTypeConverter()
@@ -242,6 +267,10 @@ class WorkflowResponseConverter:
         workflow_id: str,
         reason: WorkflowStartReason,
     ) -> WorkflowStartStreamResponse:
+        if self._native_observation is not None:
+            self._native_observation.require_healthy()
+            if reason is not WorkflowStartReason.INITIAL:
+                self._native_observation.fail()
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
         self._workflow_started_at = started_at
@@ -278,12 +307,20 @@ class WorkflowResponseConverter:
         finished_at = naive_utc_now()
         elapsed_time = (finished_at - started_at).total_seconds()
 
-        outputs_mapping = graph_runtime_state.outputs or {}
-        encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(outputs_mapping)
+        outputs_mapping = (
+            observed_runtime_outputs(guard=self._native_observation, state=graph_runtime_state)
+            if self._native_observation is not None
+            else graph_runtime_state.outputs or {}
+        )
+        encoded_outputs = self._encode_outputs(outputs_mapping)
+        if self._native_observation is not None:
+            error = self._native_observation.error(error)
 
         created_by: CreatedByDict | dict[str, object] = {}
         user = self._user
         match user:
+            case Account() if self._native_observation is not None:
+                created_by = {"id": user.id}
             case Account():
                 created_by = AccountCreatedByDict(
                     id=user.id,
@@ -311,7 +348,9 @@ class WorkflowResponseConverter:
                 created_by=created_by,
                 created_at=int(started_at.timestamp()),
                 finished_at=int(finished_at.timestamp()),
-                files=self.fetch_files_from_node_outputs(outputs_mapping),
+                files=[]
+                if self._native_observation is not None
+                else self.fetch_files_from_node_outputs(outputs_mapping),
                 exceptions_count=exceptions_count,
             ),
         )
@@ -331,6 +370,29 @@ class WorkflowResponseConverter:
             )
         paused_at = naive_utc_now()
         elapsed_time = (paused_at - started_at).total_seconds()
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
+            outputs = observed_runtime_outputs(guard=self._native_observation, state=graph_runtime_state)
+            event_outputs = observed_values(guard=self._native_observation, values=event.outputs)
+            if event_outputs is not None and event_outputs["shape"]["fields"] > 0:
+                outputs = event_outputs
+            return [
+                WorkflowPauseStreamResponse(
+                    task_id=task_id,
+                    workflow_run_id=run_id,
+                    data=WorkflowPauseStreamResponse.Data(
+                        workflow_run_id=run_id,
+                        paused_nodes=list(event.paused_nodes),
+                        outputs=outputs or {},
+                        reasons=[reason.model_dump(mode="json") for reason in event.reasons],
+                        status=WorkflowExecutionStatus.PAUSED,
+                        created_at=int(started_at.timestamp()),
+                        elapsed_time=elapsed_time,
+                        total_tokens=graph_runtime_state.total_tokens,
+                        total_steps=graph_runtime_state.node_run_steps,
+                    ),
+                )
+            ]
         encoded_outputs = self._encode_outputs(event.outputs) or {}
         if self._application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             encoded_outputs = {}
@@ -427,6 +489,8 @@ class WorkflowResponseConverter:
     def human_input_form_filled_to_stream_response(
         self, *, event: QueueHumanInputFormFilledEvent, task_id: str
     ) -> HumanInputFormFilledResponse:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         run_id = self._ensure_workflow_run_id()
         data = HumanInputFormFilledResponse.Data(
             node_id=event.node_id,
@@ -445,6 +509,8 @@ class WorkflowResponseConverter:
     def human_input_form_timeout_to_stream_response(
         self, *, event: QueueHumanInputFormTimeoutEvent, task_id: str
     ) -> HumanInputFormTimeoutResponse:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         run_id = self._ensure_workflow_run_id()
         return HumanInputFormTimeoutResponse(
             task_id=task_id,
@@ -512,6 +578,8 @@ class WorkflowResponseConverter:
         event: QueueNodeStartedEvent,
         task_id: str,
     ) -> NodeStartStreamResponse | None:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
@@ -566,6 +634,8 @@ class WorkflowResponseConverter:
         event: QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeExceptionEvent,
         task_id: str,
     ) -> NodeFinishStreamResponse | None:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
@@ -613,7 +683,9 @@ class WorkflowResponseConverter:
                 execution_metadata=metadata,
                 created_at=int(start_at.timestamp()),
                 finished_at=int(finished_at.timestamp()),
-                files=self.fetch_files_from_node_outputs(event.outputs or {}),
+                files=[]
+                if self._native_observation is not None
+                else self.fetch_files_from_node_outputs(event.outputs or {}),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
             ),
@@ -625,6 +697,8 @@ class WorkflowResponseConverter:
         event: QueueNodeRetryEvent,
         task_id: str,
     ) -> NodeRetryStreamResponse | None:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
@@ -662,7 +736,9 @@ class WorkflowResponseConverter:
                 execution_metadata=metadata,
                 created_at=int(snapshot.start_at.timestamp()),
                 finished_at=int(finished_at.timestamp()),
-                files=self.fetch_files_from_node_outputs(event.outputs or {}),
+                files=[]
+                if self._native_observation is not None
+                else self.fetch_files_from_node_outputs(event.outputs or {}),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
                 retry_index=event.retry_index,
@@ -676,7 +752,13 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueIterationStartEvent,
     ) -> IterationNodeStartStreamResponse:
-        new_inputs, truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
+        new_inputs, truncated = (
+            self._truncate_mapping(event.inputs or {})
+            if self._native_observation is not None
+            else self._truncator.truncate_variable_mapping(event.inputs or {})
+        )
         return IterationNodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -687,7 +769,7 @@ class WorkflowResponseConverter:
                 title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
-                inputs=new_inputs,
+                inputs=new_inputs or {},
                 inputs_truncated=truncated,
                 metadata=event.metadata or {},
             ),
@@ -700,6 +782,8 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueIterationNextEvent,
     ) -> IterationNodeNextStreamResponse:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         return IterationNodeNextStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -721,11 +805,20 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueIterationCompletedEvent,
     ) -> IterationNodeCompletedStreamResponse:
-        json_converter = WorkflowRuntimeTypeConverter()
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
 
-        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
-        new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
-            json_converter.to_json_encodable(event.outputs) or {}
+        new_inputs, inputs_truncated = (
+            self._truncate_mapping(event.inputs or {})
+            if self._native_observation is not None
+            else self._truncator.truncate_variable_mapping(event.inputs or {})
+        )
+        new_outputs, outputs_truncated = (
+            self._truncate_mapping(self._encode_outputs(event.outputs) or {})
+            if self._native_observation is not None
+            else self._truncator.truncate_variable_mapping(
+                WorkflowRuntimeTypeConverter().to_json_encodable(event.outputs) or {}
+            )
         )
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
@@ -739,7 +832,7 @@ class WorkflowResponseConverter:
                 outputs_truncated=outputs_truncated,
                 created_at=int(time.time()),
                 extras={},
-                inputs=new_inputs,
+                inputs=new_inputs or {},
                 inputs_truncated=inputs_truncated,
                 status=WorkflowNodeExecutionStatus.SUCCEEDED
                 if event.error is None
@@ -756,7 +849,13 @@ class WorkflowResponseConverter:
     def workflow_loop_start_to_stream_response(
         self, *, task_id: str, workflow_execution_id: str, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
-        new_inputs, truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
+        new_inputs, truncated = (
+            self._truncate_mapping(event.inputs or {})
+            if self._native_observation is not None
+            else self._truncator.truncate_variable_mapping(event.inputs or {})
+        )
         return LoopNodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -767,7 +866,7 @@ class WorkflowResponseConverter:
                 title=event.node_title,
                 created_at=int(time.time()),
                 extras={},
-                inputs=new_inputs,
+                inputs=new_inputs or {},
                 inputs_truncated=truncated,
                 metadata=event.metadata or {},
             ),
@@ -780,6 +879,8 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueLoopNextEvent,
     ) -> LoopNodeNextStreamResponse:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         return LoopNodeNextStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -804,10 +905,19 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueLoopCompletedEvent,
     ) -> LoopNodeCompletedStreamResponse:
-        json_converter = WorkflowRuntimeTypeConverter()
-        new_inputs, inputs_truncated = self._truncator.truncate_variable_mapping(event.inputs or {})
-        new_outputs, outputs_truncated = self._truncator.truncate_variable_mapping(
-            json_converter.to_json_encodable(event.outputs) or {}
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
+        new_inputs, inputs_truncated = (
+            self._truncate_mapping(event.inputs or {})
+            if self._native_observation is not None
+            else self._truncator.truncate_variable_mapping(event.inputs or {})
+        )
+        new_outputs, outputs_truncated = (
+            self._truncate_mapping(self._encode_outputs(event.outputs) or {})
+            if self._native_observation is not None
+            else self._truncator.truncate_variable_mapping(
+                WorkflowRuntimeTypeConverter().to_json_encodable(event.outputs) or {}
+            )
         )
         return LoopNodeCompletedStreamResponse(
             task_id=task_id,
@@ -821,7 +931,7 @@ class WorkflowResponseConverter:
                 outputs_truncated=outputs_truncated,
                 created_at=int(time.time()),
                 extras={},
-                inputs=new_inputs,
+                inputs=new_inputs or {},
                 inputs_truncated=inputs_truncated,
                 status=WorkflowNodeExecutionStatus.SUCCEEDED
                 if event.error is None
@@ -908,6 +1018,8 @@ class WorkflowResponseConverter:
         return None
 
     def handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         """
         Handle agent log
         :param task_id: task id

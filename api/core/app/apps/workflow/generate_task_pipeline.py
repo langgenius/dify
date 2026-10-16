@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+from core.app.apps.draft_variable_saver import DraftVariableSaverFactory, NoopDraftVariableSaver
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity, get_credit_usage_app_type
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -69,6 +69,11 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
 from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
+from services.dify_builder.native_testing.observation_stream import (
+    project_native_queue_event,
+    require_native_observation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +91,21 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         user: Union[Account, EndUser],
         stream: bool,
         draft_var_saver_factory: DraftVariableSaverFactory,
+        *,
+        native_observation: NativeObservationGuard | None = None,
     ):
+        require_native_observation(guard=native_observation, entity=application_generate_entity)
+        self._native_observation = native_observation
+        if native_observation is not None:
+            with native_observation.persistence_scope():
+                if (
+                    getattr(queue_manager, "native_observation", None) is not native_observation
+                    or not isinstance(user, Account)
+                    or application_generate_entity.files
+                    or application_generate_entity.trace_manager is not None
+                    or application_generate_entity.app_config.sensitive_word_avoidance
+                ):
+                    native_observation.fail()
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -119,6 +138,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             application_generate_entity=application_generate_entity,
             user=user,
             system_variables=self._workflow_system_variables,
+            native_observation=native_observation,
         )
         self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
@@ -252,6 +272,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _wrapper_process_stream_response(
         self, trace_manager: TraceQueueManager | None = None
     ) -> Generator[StreamResponse]:
+        if self._native_observation is not None:
+            self._native_observation.require_healthy()
+            if trace_manager is not None or self._workflow_features_dict.get("text_to_speech", {}).get("enabled"):
+                self._native_observation.fail()
         tts_publisher = None
         task_id = self._application_generate_entity.task_id
         tenant_id = self._application_generate_entity.app_config.tenant_id
@@ -323,6 +347,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
         """Handle error events."""
+        if self._native_observation is not None:
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         err = self._base_task_pipeline.handle_error(event=event)
         yield self._base_task_pipeline.error_to_stream_response(err)
 
@@ -333,7 +359,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         run_id = self._extract_workflow_run_id(runtime_state)
         self._workflow_execution_id = run_id
 
-        if event.reason == WorkflowStartReason.INITIAL:
+        if event.reason == WorkflowStartReason.INITIAL and self._native_observation is None:
             with self._database_session() as session:
                 self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
@@ -560,6 +586,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle text chunk events."""
+        if self._native_observation is not None:
+            if tts_publisher is not None:
+                self._native_observation.fail()
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         delta_text = event.text
         if delta_text is None:
             return
@@ -646,6 +676,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
     ) -> Generator[StreamResponse]:
         """Dispatch events using elegant pattern matching."""
+        if self._native_observation is not None:
+            if tts_publisher is not None or trace_manager is not None:
+                self._native_observation.fail()
+            event = project_native_queue_event(guard=self._native_observation, event=event)
         handlers = self._get_event_handlers()
         event_type = type(event)
 
@@ -697,8 +731,12 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         Process stream response using elegant Fluent Python patterns.
         Maintains exact same functionality as original 44-if-statement version.
         """
+        if self._native_observation is not None and (tts_publisher is not None or trace_manager is not None):
+            self._native_observation.fail()
         for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
+            if self._native_observation is not None:
+                event = project_native_queue_event(guard=self._native_observation, event=event)
 
             match event:
                 case QueueWorkflowStartedEvent():
@@ -783,6 +821,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return response
 
     def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
+        if self._native_observation is not None:
+            self._native_observation.require_healthy()
+            NoopDraftVariableSaver().save(None, None)
+            return
         saver = self._draft_var_saver_factory(
             app_id=self._application_generate_entity.app_config.app_id,
             node_id=event.node_id,
