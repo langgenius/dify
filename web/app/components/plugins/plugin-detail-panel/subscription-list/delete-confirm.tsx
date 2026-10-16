@@ -83,7 +83,7 @@ export const DeleteConfirm = (props: Props) => {
                 : t(($) => $[`${tPrefix}.content`], { ns: 'pluginTrigger' })}
             </AlertDialogDescription>
             {workflowsInUse > 0 && (
-              <Field className="mt-6" name="confirmation">
+              <Field name="confirmation">
                 <FieldLabel>
                   {t(($) => $[`${tPrefix}.confirmInputTip`], {
                     ns: 'pluginTrigger',

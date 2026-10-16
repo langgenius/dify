@@ -3,13 +3,13 @@
 import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
+  AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
@@ -55,21 +55,22 @@ export function CopyMembersConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <Button
+          <AlertDialogConfirmButton
             variant="secondary"
+            tone="default"
             disabled={isActionDisabled}
             onClick={() => onDuplicate(false)}
           >
             {t(($) => $['operation.skip'], { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
+          </AlertDialogConfirmButton>
+          <AlertDialogConfirmButton
+            tone="default"
             disabled={isLoadingMemberCount}
             loading={isCopyingRole}
             onClick={() => onDuplicate(true)}
           >
             {t(($) => $['operation.copy'], { ns: 'common' })}
-          </Button>
+          </AlertDialogConfirmButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

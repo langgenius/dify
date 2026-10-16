@@ -137,7 +137,6 @@ const AppInfoModals = ({
       >
         <AlertDialogContent>
           <form
-            className="flex flex-col"
             onSubmit={(e) => {
               e.preventDefault()
               if (isDeleteConfirmDisabled) return
@@ -151,8 +150,8 @@ const AppInfoModals = ({
               <AlertDialogDescription>
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <Field name="confirm-app-name" className="mt-2 gap-0">
-                <FieldLabel className="system-sm-regular">
+              <Field name="confirm-app-name">
+                <FieldLabel>
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -173,12 +172,11 @@ const AppInfoModals = ({
                     value={confirmDeleteInput}
                     onValueChange={setConfirmDeleteInput}
                   />
-                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                  <InputGroupAddon align="inline-end">
                     <Button
                       variant="tertiary"
                       size="small"
                       onClick={() => setConfirmDeleteInput(appDetail.name)}
-                      className="rounded-full px-2.5"
                     >
                       {t(($) => $['operation.fill'], { ns: 'common' })}
                     </Button>

@@ -6,6 +6,7 @@ import {
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -122,12 +123,12 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                   <AlertDialogTitle>
                     {t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
                   </AlertDialogTitle>
-                  <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  <AlertDialogDescription>
                     {t(($) => $['detailPanel.endpointDeleteContent'], {
                       ns: 'plugin',
                       name: data.name,
                     })}
-                  </div>
+                  </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancelButton>
@@ -212,9 +213,9 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             <AlertDialogTitle>
               {t(($) => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
-            </div>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
