@@ -207,7 +207,7 @@ def reset_webapp(ctx: Context) -> WebAppToken:
 
 def webapp_access(ctx: Context) -> WebAppAccess:
     try:
-        access_mode = application_services().webapp_access.get_access_mode(app_id=ctx.app.id, app_code=None)
+        access_mode = application_services().webapp_access.get_configured_access_mode(ctx.app.id)
     except WebAppAccessUnavailableError as error:
         raise WebAppAccessUnavailable() from error
     return WebAppAccess(access_mode=access_mode)
