@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -18,16 +19,19 @@ class NotionEstimateWorkspacePayload(BaseModel):
     pages: list[NotionEstimatePagePayload] = Field(min_length=1)
 
 
+MetadataValueType = Literal["string", "number", "time"]
+
+
 class DatasetMetadataResponse(ResponseModel):
     id: str
-    type: str
+    type: MetadataValueType
     name: str
 
 
 class DatasetMetadataListItemResponse(ResponseModel):
     id: str
     name: str
-    type: str
+    type: MetadataValueType
     count: int = 0
 
 
@@ -38,7 +42,7 @@ class DatasetMetadataListResponse(ResponseModel):
 
 class DatasetMetadataBuiltInFieldResponse(ResponseModel):
     name: str
-    type: str
+    type: MetadataValueType
 
 
 class DatasetMetadataBuiltInFieldsResponse(ResponseModel):

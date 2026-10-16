@@ -717,7 +717,7 @@ export type DatasetMetadataActionResponse = {
 
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetMetadataBuiltInFieldsResponse = {
@@ -728,7 +728,7 @@ export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetMetadataListResponse = {
@@ -739,7 +739,7 @@ export type DatasetMetadataListResponse = {
 export type DatasetMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetNameDuplicateError = ErrorResponse & {

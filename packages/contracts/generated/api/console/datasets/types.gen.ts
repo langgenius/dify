@@ -622,7 +622,7 @@ export type MetadataArgs = {
 export type DatasetMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type MetadataUpdatePayload = {
@@ -797,7 +797,7 @@ export type DatasetResponse = {
 
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type NotionEstimateWorkspacePayload = {
@@ -958,7 +958,7 @@ export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetQueryDetailResponse = {
