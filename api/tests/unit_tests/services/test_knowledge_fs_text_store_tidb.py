@@ -53,12 +53,16 @@ class _FakeCursor:
 class _FakeConnection:
     cursor_double: _FakeCursor = field(default_factory=_FakeCursor)
     close_count: int = 0
+    selected_databases: list[str] = field(default_factory=list)
 
     def cursor(self) -> _FakeCursor:
         return self.cursor_double
 
     def close(self) -> None:
         self.close_count += 1
+
+    def select_db(self, name: str) -> None:
+        self.selected_databases.append(name)
 
 
 @pytest.fixture
@@ -177,13 +181,71 @@ def test_uses_existing_dify_tenant_binding_and_tls_metadata_endpoint(config_over
         kwargs = connect.call_args.kwargs
         assert kwargs["host"] == "tenant.example.test"
         assert kwargs["user"] == binding.account
-        assert kwargs["database"] == "ai"
+        assert kwargs["database"] is None
         assert kwargs["autocommit"] is True
         assert kwargs["ssl"].check_hostname
         assert _sql_endpoint("cluster-test") == ("tenant.example.test", 4000)
         metadata.assert_called_once()
         connect.return_value.close.assert_called_once()
     _sql_endpoint.cache_clear()
+
+
+@pytest.mark.parametrize("operation", ["get", "delete", "search"])
+@pytest.mark.parametrize("database_exists", [False, True])
+def test_non_creating_operations_check_index_before_selecting_database(
+    config_overrides: Callable[..., None], connection: _FakeConnection, operation: str, database_exists: bool
+) -> None:
+    config_overrides(VECTOR_STORE="tidb_on_qdrant")
+    connection.cursor_double.fetchone_value = (1,) if database_exists else None
+    payload = request(operation, ids=[A], **({"query": "refund"} if operation == "search" else {}))
+
+    def connect(**kwargs: object) -> _FakeConnection:
+        if kwargs.get("database") == "ai" and not database_exists:
+            raise pymysql.err.OperationalError(1049, "Unknown database 'ai'")
+        return connection
+
+    with (
+        patch("services.tidb_binding_service.resolve_tidb_auth_binding") as resolver,
+        patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.example.test", 4000)),
+        patch("pymysql.connect", side_effect=connect) as open_connection,
+    ):
+        if operation == "search" and not database_exists:
+            with pytest.raises(VectorStoreUnavailableError, match="index is missing"):
+                with configured_text_client(A) as client:
+                    execute_text_request(client, payload)
+        else:
+            with configured_text_client(A) as client:
+                assert execute_text_request(client, payload) == {"points": [], "matches": []}
+
+        resolver.assert_called_once_with(A, allow_create=False)
+        assert open_connection.call_args.kwargs["database"] is None
+    assert connection.selected_databases == (["ai"] if database_exists else [])
+    assert connection.close_count == 1
+    assert not any(sql.startswith(("CREATE", "ALTER")) for sql, *_ in connection.cursor_double.executed)
+
+
+@pytest.mark.parametrize(
+    ("stage", "code"), [("connect", 1045), ("connect", 2003), ("lookup", 1044), ("lookup", 2013), ("select", 1049)]
+)
+def test_non_creating_operations_preserve_database_errors(
+    config_overrides: Callable[..., None], connection: _FakeConnection, stage: str, code: int
+) -> None:
+    config_overrides(VECTOR_STORE="tidb_on_qdrant")
+    error = pymysql.err.OperationalError(code, "provider failure")
+    if stage == "lookup":
+        connection.cursor_double.execute_error = error
+    with (
+        patch("services.tidb_binding_service.resolve_tidb_auth_binding"),
+        patch("services.knowledge_fs.text_store_tidb._sql_endpoint", return_value=("tenant.example.test", 4000)),
+        patch("pymysql.connect", side_effect=error if stage == "connect" else None, return_value=connection),
+        patch.object(connection, "select_db", side_effect=error if stage == "select" else None),
+    ):
+        with pytest.raises(pymysql.err.OperationalError) as raised:
+            with configured_text_client(A) as client:
+                execute_text_request(client, request("delete", ids=[A]))
+
+    assert raised.value is error
+    assert connection.close_count == (0 if stage == "connect" else 1)
 
 
 def test_missing_cloud_endpoint_config_and_missing_cluster_fail_closed(config_overrides: Callable[..., None]) -> None:
