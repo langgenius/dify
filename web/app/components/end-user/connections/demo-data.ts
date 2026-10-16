@@ -68,7 +68,17 @@ export const demoConnections: Readonly<Record<string, readonly EndUserConnection
       id: 'gmail-alex',
       name: 'alex@northstar.io',
       type: 'oauth',
-      apps: [salesApp, researchApp, leadApp],
+      apps: [
+        salesApp,
+        researchApp,
+        leadApp,
+        ...Array.from({ length: 7 }, (_, index): LinkedApp => ({
+          ...researchApp,
+          id: `gmail-demo-app-${index + 4}`,
+          name: `Demo App ${index + 4}`,
+          description: `Sample linked app ${index + 4} for the scrolling preview.`,
+        })),
+      ],
     },
     { id: 'gmail-research', name: 'research@northstar.io', type: 'oauth', apps: [researchApp] },
     { id: 'gmail-archived', name: 'Archived key', type: 'api-key', apps: [salesApp] },

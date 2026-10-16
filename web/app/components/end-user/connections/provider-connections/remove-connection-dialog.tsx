@@ -1,7 +1,7 @@
 'use client'
 
 import type { AlertDialogContentProps } from '@langgenius/dify-ui/alert-dialog'
-import type { EndUserConnection } from '../model'
+import type { ConnectionProvider, EndUserConnection } from '../model'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -11,10 +11,13 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ProviderIcon from '../provider-icon'
 
 type Props = {
+  provider: ConnectionProvider
   connection: EndUserConnection | null
   open: boolean
   finalFocus: AlertDialogContentProps['finalFocus']
@@ -24,6 +27,7 @@ type Props = {
 }
 
 export default function RemoveConnectionDialog({
+  provider,
   connection,
   open,
   finalFocus,
@@ -65,17 +69,30 @@ export default function RemoveConnectionDialog({
       }}
     >
       {connection && (
-        <AlertDialogContent finalFocus={finalFocus}>
-          <div className="space-y-2 px-6 pt-6">
+        <AlertDialogContent
+          finalFocus={finalFocus}
+          className={connection.type === 'oauth' ? 'w-130 rounded-xl border p-6' : undefined}
+        >
+          <div className={connection.type === 'oauth' ? 'space-y-5' : 'space-y-2 px-6 pt-6'}>
             <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
               {connection.type === 'oauth'
-                ? t(($) => $['endUser.disconnectConnectionTitle'], {
-                    ns: 'app',
-                    name: connection.name,
-                  })
+                ? t(($) => $['endUser.disconnectConnectionTitle'], { ns: 'app' })
                 : t(($) => $['endUser.deleteKeyTitle'], { ns: 'app', name: connection.name })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+            {connection.type === 'oauth' && (
+              <div className="flex items-center gap-3">
+                <ProviderIcon provider={provider} size="small" />
+                <span className="min-w-0 system-md-semibold wrap-anywhere text-text-secondary">
+                  {connection.name}
+                </span>
+              </div>
+            )}
+            <AlertDialogDescription
+              className={cn(
+                'text-text-tertiary',
+                connection.type === 'oauth' ? 'system-xs-regular' : 'system-sm-regular',
+              )}
+            >
               {connection.type === 'oauth'
                 ? t(($) => $['endUser.disconnectConnectionDescription'], { ns: 'app' })
                 : t(($) => $['endUser.deleteKeyDescription'], { ns: 'app' })}
@@ -86,7 +103,7 @@ export default function RemoveConnectionDialog({
               </p>
             )}
           </div>
-          <AlertDialogFooter>
+          <AlertDialogFooter className={connection.type === 'oauth' ? 'mt-5 gap-3 p-0' : undefined}>
             <AlertDialogCancelButton disabled={pending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>

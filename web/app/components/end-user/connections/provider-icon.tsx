@@ -4,13 +4,13 @@ import AppIcon from '@/app/components/base/app-icon'
 
 type Props = {
   provider: ConnectionProvider
-  size?: 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large'
 }
 
 export default function ProviderIcon({ provider, size = 'medium' }: Props) {
   return (
     <AppIcon
-      size={size === 'large' ? 'xl' : 'large'}
+      size={size === 'small' ? 'small' : size === 'large' ? 'xl' : 'large'}
       background="var(--color-background-default-dodge)"
       className="rounded-lg"
       decorative

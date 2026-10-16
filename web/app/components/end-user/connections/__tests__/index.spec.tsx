@@ -96,10 +96,10 @@ const openConfirmation = async (
     within(connectionRow(connection)).getByRole('button', { name: actionLabel(connection) }),
   )
   return screen.findByRole('alertdialog', {
-    name: connectionLabel(
-      connection.type === 'oauth' ? 'disconnectConnectionTitle' : 'deleteKeyTitle',
-      connection,
-    ),
+    name:
+      connection.type === 'oauth'
+        ? 'app.endUser.disconnectConnectionTitle'
+        : connectionLabel('deleteKeyTitle', connection),
   })
 }
 
@@ -148,6 +148,13 @@ describe('End user Connections', () => {
       const user = userEvent.setup()
       const { onRemove } = setupProvider()
       const canceled = await openConfirmation(user, connection)
+      if (connection.type === 'oauth')
+        expect(within(canceled).getByText(connection.name, { exact: true })).toBeVisible()
+      expect(canceled).toHaveAccessibleDescription(
+        connection.type === 'oauth'
+          ? 'app.endUser.disconnectConnectionDescription'
+          : 'app.endUser.deleteKeyDescription',
+      )
       await user.click(within(canceled).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(canceled).not.toBeInTheDocument())
       expect(onRemove).not.toHaveBeenCalled()

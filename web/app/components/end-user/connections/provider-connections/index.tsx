@@ -133,6 +133,7 @@ export default function ProviderConnections({ provider, connections, onRemove }:
         </table>
       </div>
       <RemoveConnectionDialog
+        provider={provider}
         connection={removal}
         open={removalOpen}
         finalFocus={() => {
