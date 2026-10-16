@@ -1,12 +1,12 @@
 'use client'
 
 import type { FC } from 'react'
-import type { DocumentDisplayStatus, FileItem, FullDocumentDetail } from '@/models/datasets'
+import type { FileItem, FullDocumentDetail } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -20,13 +20,9 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
+import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import {
-  useDocumentDetail,
-  useDocumentMetadata,
-  useInvalidDocumentList,
-} from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import {
   useCheckSegmentBatchImportProgress,
   useChildSegmentListKey,
@@ -140,26 +136,33 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     data: documentDetail,
     error,
     refetch: detailMutate,
-  } = useDocumentDetail({
-    datasetId,
-    documentId,
-    params: { metadata: 'without' },
-    refetchInterval: (query) => {
-      const status = query.state.data?.display_status
-      if (!status || NON_TERMINAL_DISPLAY_STATUSES.has(status)) return 2500
-      return false
-    },
-  })
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId, document_id: documentId },
+        query: { metadata: 'without' },
+      },
+      refetchInterval: (query) => {
+        const status = query.state.data?.display_status
+        if (!isDocumentDisplayStatus(status) || NON_TERMINAL_DISPLAY_STATUSES.has(status))
+          return 2500
+        return false
+      },
+    }),
+  )
   const documentTitle =
     documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
   const datasetTitle = dataset?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })
   useDocumentTitle(`${documentTitle} · ${datasetTitle}`)
 
-  const { data: documentMetadata } = useDocumentMetadata({
-    datasetId,
-    documentId,
-    params: { metadata: 'only' },
-  })
+  const { data: documentMetadata } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId, document_id: documentId },
+        query: { metadata: 'only' },
+      },
+    }),
+  )
 
   const backToPrev = useCallback(() => {
     const queryString = searchParams.toString()
@@ -169,13 +172,23 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const isDetailLoading = !documentDetail && !error
 
-  const embedding = NON_TERMINAL_DISPLAY_STATUSES.has(
-    documentDetail?.display_status as DocumentDisplayStatus,
-  )
+  const displayStatus = isDocumentDisplayStatus(documentDetail?.display_status)
+    ? documentDetail.display_status
+    : undefined
+  const embedding = !!displayStatus && NON_TERMINAL_DISPLAY_STATUSES.has(displayStatus)
 
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
+  const queryClient = useQueryClient()
+  const invalidDocumentList = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: datasetId } },
+        }),
+      }),
+    [datasetId, queryClient],
+  )
 
   const handleOperate = useCallback(
     (operateName?: string) => {
@@ -251,15 +264,14 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     ],
   )
 
-  const docDetail = useMemo(
-    () =>
-      ({
-        ...documentDetail,
-        ...documentMetadata,
-        doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type,
-      }) as FullDocumentDetail,
-    [documentDetail, documentMetadata],
-  )
+  const docDetail = useMemo((): FullDocumentDetail | undefined => {
+    if (!documentDetail) return undefined
+    return {
+      ...documentDetail,
+      ...documentMetadata,
+      doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type,
+    }
+  }, [documentDetail, documentMetadata])
 
   const backButtonLabel = t(($) => $['operation.back'], { ns: 'common' })
   const metadataToggleLabel = `${
@@ -310,7 +322,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               )}
             {documentDetail && (
               <StatusItem
-                status={documentDetail.display_status || 'available'}
+                status={displayStatus ?? 'available'}
                 scene="detail"
                 errorMessage={documentDetail.error || ''}
                 textCls="font-semibold text-xs uppercase"
@@ -378,7 +390,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                   showNewSegmentModal={newSegmentModalVisible}
                   onNewSegmentModalChange={setNewSegmentModalVisible}
                   importStatus={importStatus}
-                  archived={documentDetail?.archived}
+                  archived={documentDetail?.archived ?? undefined}
                 />
               )}
             </div>
@@ -390,13 +402,15 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             isMobile={isMobile}
             panelClassName="justify-start!"
           >
-            <Metadata
-              className="mt-3 mr-2"
-              datasetId={datasetId}
-              documentId={documentId}
-              docDetail={docDetail}
-              canEdit={canEditDocument}
-            />
+            {docDetail && (
+              <Metadata
+                className="mt-3 mr-2"
+                datasetId={datasetId}
+                documentId={documentId}
+                docDetail={docDetail}
+                canEdit={canEditDocument}
+              />
+            )}
           </FloatRightContainer>
         </div>
         <BatchModal

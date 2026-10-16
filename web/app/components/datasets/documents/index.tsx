@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -10,11 +10,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
-import {
-  useDocumentList,
-  useInvalidDocumentDetail,
-  useInvalidDocumentList,
-} from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -23,6 +19,7 @@ import DocumentsHeader from './components/documents-header'
 import EmptyElement from './components/empty-element'
 import List from './components/list'
 import { useDocumentsPageState } from './hooks/use-documents-page-state'
+import { toDocumentListQuery } from './status-filter'
 
 type IDocumentsProps = {
   datasetId: string
@@ -68,31 +65,45 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   } = useDocumentsPageState()
 
   // Fetch document list
-  const { data: documentsRes, isLoading: isListLoading } = useDocumentList({
-    datasetId,
-    query: {
-      page: currPage + 1,
-      limit,
-      keyword: debouncedSearchValue,
-      status: normalizedStatusFilterValue,
-      sort: sortValue,
-    },
-    refetchInterval: (query) => {
-      const shouldForcePolling =
-        normalizedStatusFilterValue !== 'all' &&
-        FORCED_POLLING_STATUSES.has(normalizedStatusFilterValue)
-      const documents = query.state.data?.data
-      if (!documents) return POLLING_INTERVAL
-      const hasIncompleteDocuments = documents.some(
-        ({ indexing_status }) => !TERMINAL_INDEXING_STATUSES.has(indexing_status),
-      )
-      return shouldForcePolling || hasIncompleteDocuments ? POLLING_INTERVAL : false
-    },
-  })
+  const { data: documentsRes, isLoading: isListLoading } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId },
+        query: toDocumentListQuery({
+          page: currPage + 1,
+          limit,
+          keyword: debouncedSearchValue,
+          status: normalizedStatusFilterValue,
+          sort: sortValue,
+        }),
+      },
+      placeholderData: keepPreviousData,
+      refetchInterval: (query) => {
+        const shouldForcePolling =
+          normalizedStatusFilterValue !== 'all' &&
+          FORCED_POLLING_STATUSES.has(normalizedStatusFilterValue)
+        const documents = query.state.data?.data
+        if (!documents) return POLLING_INTERVAL
+        const hasIncompleteDocuments = documents.some(
+          ({ indexing_status }) => !TERMINAL_INDEXING_STATUSES.has(indexing_status ?? ''),
+        )
+        return shouldForcePolling || hasIncompleteDocuments ? POLLING_INTERVAL : false
+      },
+    }),
+  )
 
   // Invalidation hooks
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
-  const invalidDocumentDetail = useInvalidDocumentDetail()
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: datasetId } },
+      }),
+    })
+  const invalidDocumentDetail = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+    })
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
 

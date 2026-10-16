@@ -8,12 +8,18 @@ import { useDocumentActions } from '../use-document-actions'
 
 vi.mock('@/service/knowledge/use-document')
 
-const mockUseDocumentArchive = vi.mocked(useDocument.useDocumentArchive)
-const mockUseDocumentSummary = vi.mocked(useDocument.useDocumentSummary)
-const mockUseDocumentEnable = vi.mocked(useDocument.useDocumentEnable)
-const mockUseDocumentDisable = vi.mocked(useDocument.useDocumentDisable)
-const mockUseDocumentDelete = vi.mocked(useDocument.useDocumentDelete)
-const mockUseDocumentBatchRetryIndex = vi.mocked(useDocument.useDocumentBatchRetryIndex)
+const { mockMutateAsync } = vi.hoisted(() => ({ mockMutateAsync: vi.fn() }))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const mutation = () => ({ mutateAsync: mockMutateAsync, isPending: false })
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.status.byAction.batch.patch': mutation,
+    'datasets.byDatasetId.documents.generateSummary.post': mutation,
+    'datasets.byDatasetId.documents.delete': mutation,
+    'datasets.byDatasetId.retry.post': mutation,
+  })
+})
+
 const mockUseDocumentDownloadZip = vi.mocked(useDocument.useDocumentDownloadZip)
 
 const createConsoleQueryClient = () =>
@@ -32,8 +38,6 @@ const createWrapper = () => {
 }
 
 describe('useDocumentActions', () => {
-  const mockMutateAsync = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
 
@@ -55,24 +59,6 @@ describe('useDocumentActions', () => {
       submittedAt: 0,
     })
 
-    mockUseDocumentArchive.mockReturnValue(
-      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentArchive>,
-    )
-    mockUseDocumentSummary.mockReturnValue(
-      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentSummary>,
-    )
-    mockUseDocumentEnable.mockReturnValue(
-      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentEnable>,
-    )
-    mockUseDocumentDisable.mockReturnValue(
-      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentDisable>,
-    )
-    mockUseDocumentDelete.mockReturnValue(
-      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentDelete>,
-    )
-    mockUseDocumentBatchRetryIndex.mockReturnValue(
-      createMockMutation() as unknown as ReturnType<typeof useDocument.useDocumentBatchRetryIndex>,
-    )
     mockUseDocumentDownloadZip.mockReturnValue({
       ...createMockMutation(),
       isPending: false,
@@ -102,8 +88,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        datasetId: 'ds1',
-        documentIds: ['doc1'],
+        params: { dataset_id: 'ds1', action: 'archive' },
+        query: { document_id: ['doc1'] },
       })
     })
 
@@ -183,8 +169,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockMutateAsync).toHaveBeenCalledWith({
-        datasetId: 'ds1',
-        documentIds: ['doc1', 'doc2'],
+        params: { dataset_id: 'ds1' },
+        body: { document_ids: ['doc1', 'doc2'] },
       })
     })
 

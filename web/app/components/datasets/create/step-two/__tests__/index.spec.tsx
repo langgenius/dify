@@ -324,9 +324,6 @@ const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): Full
     id: 'doc-1',
     doc_form: ChunkingMode.text,
     doc_language: 'English',
-    file: { id: 'file-1', name: 'test.pdf', extension: 'pdf' },
-    notion_page: createMockNotionPage(),
-    website_page: createMockWebsitePage(),
     dataset_process_rule: {
       mode: ProcessMode.general,
       rules: {
@@ -1025,7 +1022,7 @@ describe('usePreviewState', () => {
       expect(result.current.previewNotionPage).toEqual(defaultOptions.notionPages[0])
     })
 
-    it('should initialize with document detail when provided', () => {
+    it('should start without a preview file when editing an existing document', () => {
       const documentDetail = createMockDocumentDetail()
       const { result } = renderHook(() =>
         usePreviewState({
@@ -1035,7 +1032,7 @@ describe('usePreviewState', () => {
         }),
       )
 
-      expect(result.current.previewFile).toEqual(documentDetail.file)
+      expect(result.current.previewFile).toBeUndefined()
     })
   })
 

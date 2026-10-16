@@ -6,6 +6,7 @@ from typing import Any, Literal
 from pydantic import AliasChoices, ConfigDict, Field, JsonValue, field_validator
 
 from fields.base import ResponseModel
+from fields.dataset_fields import MetadataValueType
 from libs.helper import to_timestamp
 
 
@@ -60,8 +61,8 @@ class DocumentSourceDetailResponse(ResponseModel):
 class DocumentMetadataResponse(ResponseModel):
     id: str
     name: str
-    type: str
-    value: str | int | float | bool | None = None
+    type: MetadataValueType
+    value: str | int | float | None
 
 
 class DocumentResponse(ResponseModel):

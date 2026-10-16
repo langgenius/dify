@@ -932,8 +932,8 @@ export type DocumentMetadataOperation = {
 export type DocumentMetadataResponse = {
   id: string
   name: string
-  type: string
-  value?: string | number | number | boolean | null
+  type: 'number' | 'string' | 'time'
+  value: string | number | number | null
 }
 
 export type DocumentResponse = {

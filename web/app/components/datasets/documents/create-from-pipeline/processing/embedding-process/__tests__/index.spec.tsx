@@ -3,11 +3,13 @@ import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -64,12 +66,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
       rules: { parent_mode: 'paragraph' },
     },
   }),
-}))
-
-// Mock useInvalidDocumentList hook
-const mockInvalidDocumentList = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
 }))
 
 // Mock useDatasetApiAccessUrl hook
@@ -155,6 +151,7 @@ function render(ui: ReactElement) {
 
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
 
@@ -662,7 +659,9 @@ describe('EmbeddingProcess', () => {
       expect(link).toHaveAttribute('href', '/datasets/my-dataset-123/documents')
       fireEvent.click(link)
 
-      expect(mockInvalidDocumentList).toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+      })
     })
   })
 

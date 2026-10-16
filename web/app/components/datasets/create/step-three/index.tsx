@@ -1,5 +1,5 @@
 'use client'
-import type { createDocumentResponse, FullDocumentDetail } from '@/models/datasets'
+import type { createDocumentResponse } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine } from '@remixicon/react'
@@ -73,7 +73,7 @@ const StepThree = ({
           <EmbeddingProcess
             datasetId={datasetId || creationCache?.dataset?.id || ''}
             batchId={creationCache?.batch || ''}
-            documents={creationCache?.documents as FullDocumentDetail[]}
+            documents={creationCache?.documents}
             indexingType={creationCache?.dataset?.indexing_technique || indexingType}
             retrievalMethod={
               creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod

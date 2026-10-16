@@ -2,6 +2,7 @@ import type { PipelineExecutionLogResponse } from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DatasourceType } from '@/models/pipeline'
+import { consoleQuery } from '@/service/console'
 import PipelineSettings from '../index'
 
 // Mock Next.js router
@@ -41,13 +42,16 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   })
 })
 
-// Mock document invalidation hooks
-const mockInvalidDocumentList = vi.fn()
-const mockInvalidDocumentDetail = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-  useInvalidDocumentDetail: () => mockInvalidDocumentDetail,
-}))
+const expectDocumentsInvalidated = (datasetId: string) => {
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  })
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+  })
+}
 
 // Mock Form component in ProcessDocuments - internal dependencies are too complex
 vi.mock('../../../../create-from-pipeline/process-documents/form', () => ({
@@ -168,8 +172,7 @@ describe('PipelineSettings', () => {
     mockPush.mockClear()
     mockBack.mockClear()
     mockMutateAsync.mockClear()
-    mockInvalidDocumentList.mockClear()
-    mockInvalidDocumentDetail.mockClear()
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
 
     // Default: successful data fetch
     mockUsePipelineExecutionLog.mockReturnValue({
@@ -422,8 +425,7 @@ describe('PipelineSettings', () => {
       )
 
       await waitFor(() => {
-        expect(mockInvalidDocumentList).toHaveBeenCalled()
-        expect(mockInvalidDocumentDetail).toHaveBeenCalled()
+        expectDocumentsInvalidated('dataset-123')
       })
     })
   })

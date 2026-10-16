@@ -15,7 +15,7 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -31,7 +31,6 @@ import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
-import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import RuleDetail from './rule-detail'
 
 const isNotionPageIcon = (value: unknown): value is DataSourceNotionPage['page_icon'] =>
@@ -96,7 +95,11 @@ const EmbeddingProcess = ({
   const firstDocument = documents[0]
   const { data: ruleDetail } = useProcessRule(firstDocument!.id)
 
-  const invalidDocumentList = useInvalidDocumentList()
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+    })
   const documentsHref = `/datasets/${datasetId}/documents`
   const apiReferenceUrl = useDatasetApiAccessUrl()
 

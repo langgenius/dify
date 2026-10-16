@@ -1,4 +1,7 @@
 import type {
+  DocumentDetailResponse as ContractDocumentDetailResponse,
+  DocumentWithSegmentsListResponse,
+  DocumentWithSegmentsResponse,
   ExternalHitTestingRecordResponse,
   ExternalHitTestingResponse,
   HitTestingChildChunk as GeneratedHitTestingChildChunk,
@@ -11,7 +14,6 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { SegmentImportStatus } from '@/types/dataset'
@@ -285,8 +287,8 @@ export type ProcessRuleResponse = {
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
-  parent_mode: ParentMode
-  subchunk_segmentation: Segmentation
+  parent_mode?: ParentMode
+  subchunk_segmentation?: Segmentation
 }
 
 type Limits = {
@@ -323,6 +325,9 @@ export const DisplayStatusList = [
 ] as const
 
 export type DocumentDisplayStatus = (typeof DisplayStatusList)[number]
+
+export const isDocumentDisplayStatus = (value: unknown): value is DocumentDisplayStatus =>
+  DisplayStatusList.some((status) => status === value)
 
 export type LegacyDataSourceInfo = {
   upload_file: {
@@ -376,14 +381,6 @@ export type OnlineDocumentInfo = {
   }
 }
 
-export type OnlineDriveInfo = {
-  bucket: string
-  credential_id: string
-  id: string
-  name: string
-  type: 'file' | 'folder'
-}
-
 export type UploadFileIdInfo = {
   upload_file_id: string
 }
@@ -395,7 +392,7 @@ export type DataSourceInfo =
   | WebsiteCrawlInfo
   | UploadFileIdInfo
 
-type InitialDocumentDetail = {
+export type InitialDocumentDetail = {
   id: string
   batch: string
   position: number
@@ -416,30 +413,10 @@ type InitialDocumentDetail = {
   summary_index_status?: string
 }
 
-export type SimpleDocumentDetail = InitialDocumentDetail & {
-  enabled: boolean
-  word_count: number
-  error?: string | null
-  archived: boolean
-  updated_at: number
-  hit_count: number
-  dataset_process_rule_id?: string
-  data_source_detail_dict?: {
-    upload_file: {
-      name: string
-      extension: string
-    }
-  }
-  doc_metadata?: MetadataItemWithValue[]
-}
+// A document in the dataset document list.
+export type SimpleDocumentDetail = DocumentWithSegmentsResponse
 
-export type DocumentListResponse = {
-  data: SimpleDocumentDetail[]
-  has_more: boolean
-  total: number
-  page: number
-  limit: number
-}
+export type DocumentListResponse = DocumentWithSegmentsListResponse
 
 type DocumentReq = {
   original_document_id?: string
@@ -488,43 +465,8 @@ export type createDocumentResponse = {
   documents: InitialDocumentDetail[]
 }
 
-export type FullDocumentDetail = SimpleDocumentDetail & {
-  batch: string
-  created_api_request_id: string
-  processing_started_at: number
-  parsing_completed_at: number
-  cleaning_completed_at: number
-  splitting_completed_at: number
-  tokens: number
-  indexing_latency: number
-  completed_at: number
-  paused_by: string
-  paused_at: number
-  stopped_at: number
-  indexing_status: string
-  disabled_at: number
-  disabled_by: string
-  archived_reason: 'rule_modified' | 're_upload'
-  archived_by: string
-  archived_at: number
-  doc_type?: DocType | null | 'others'
-  doc_metadata?: DocMetadata | null
-  segment_count: number
-  dataset_process_rule: ProcessRule
-  document_process_rule: ProcessRule
-  [key: string]: any
-}
-
-type DocMetadata = {
-  title: string
-  language: string
-  author: string
-  publisher: string
-  publicationDate: string
-  ISBN: string
-  category: string
-  [key: string]: string
-}
+// A dataset document as the document detail query returns it.
+export type FullDocumentDetail = ContractDocumentDetailResponse
 
 type CustomizableDocType =
   | 'book'
@@ -715,12 +657,6 @@ export const DocumentActionType = {
 } as const
 
 export type DocumentActionType = (typeof DocumentActionType)[keyof typeof DocumentActionType]
-
-export type UpdateDocumentBatchParams = {
-  datasetId: string
-  documentId?: string
-  documentIds?: string[] | string
-}
 
 export type BatchImportResponse = {
   job_id: string

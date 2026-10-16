@@ -1,8 +1,8 @@
 import type {
   DataSourceInfo,
   DataSourceType,
-  FullDocumentDetail,
   IndexingStatusResponse,
+  InitialDocumentDetail,
   LegacyDataSourceInfo,
 } from '@/models/datasets'
 
@@ -42,7 +42,7 @@ export const getFileType = (name?: string): string => name?.split('.').pop() || 
 /**
  * Document lookup utilities - provides document info by ID from a list
  */
-export const createDocumentLookup = (documents: FullDocumentDetail[]) => {
+export const createDocumentLookup = (documents: InitialDocumentDetail[]) => {
   const documentMap = new Map(documents.map((doc) => [doc.id, doc]))
 
   return {

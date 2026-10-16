@@ -31,6 +31,7 @@ import {
   usePreviewState,
   useSegmentationState,
 } from './hooks'
+import { isProcessMode, toSegmentationRules } from './process-rule'
 
 // oxlint-disable-next-line no-barrel-files/no-barrel-files
 export { IndexingType }
@@ -84,7 +85,7 @@ const StepTwo: FC<StepTwoProps> = ({
     datasetId && documentDetail ? (documentDetail.doc_form as ChunkingMode) : ChunkingMode.text,
   )
   const [docLanguage, setDocLanguage] = useState<string>(() =>
-    datasetId && documentDetail
+    datasetId && documentDetail?.doc_language
       ? documentDetail.doc_language
       : locale !== LanguagesSupported[1]
         ? 'English'
@@ -253,13 +254,16 @@ const StepTwo: FC<StepTwoProps> = ({
   useEffect(() => {
     if (!isSetting) {
       fetchDefaultProcessRuleMutation.mutate()
-    } else if (documentDetail) {
-      const rules = documentDetail.dataset_process_rule.rules
-      const isHierarchical =
-        documentDetail.doc_form === ChunkingMode.parentChild ||
-        Boolean(rules.parent_mode && rules.subchunk_segmentation)
-      segmentation.applyConfigFromRules(rules, isHierarchical)
-      segmentation.setSegmentationType(documentDetail.dataset_process_rule.mode)
+    } else if (documentDetail?.dataset_process_rule) {
+      const { mode, rules } = documentDetail.dataset_process_rule
+      const segmentationRules = rules ? toSegmentationRules(rules) : undefined
+      if (segmentationRules) {
+        const isHierarchical =
+          documentDetail.doc_form === ChunkingMode.parentChild ||
+          Boolean(segmentationRules.parent_mode && segmentationRules.subchunk_segmentation)
+        segmentation.applyConfigFromRules(segmentationRules, isHierarchical)
+      }
+      if (isProcessMode(mode)) segmentation.setSegmentationType(mode)
     }
     // oxlint-disable-next-line react/exhaustive-deps
   }, [])

@@ -91,7 +91,8 @@ const useMetadataDocument = ({ datasetId, documentId, docDetail }: Props) => {
       return {} as any
     }
     const getTargetValue = (field: string) => {
-      const val = get(sourceData, field, '')
+      const val: unknown = get(sourceData, field, '')
+      if (typeof val !== 'string' && typeof val !== 'number') return '-'
       if (!val && val !== 0) return '-'
       if (fieldMap[field]?.inputType === 'select') return getTargetMap(field)[val]
       if (fieldMap[field]?.render)

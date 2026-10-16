@@ -32,10 +32,6 @@ type CommonDocReq = {
   documentId: string
 }
 
-export type DocumentDownloadResponse = {
-  url: string
-}
-
 export type DocumentDownloadZipRequest = {
   datasetId: string
   documentIds: string[]
@@ -47,8 +43,6 @@ type BatchReq = {
 }
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
-
-export type MetadataType = 'all' | 'only' | 'without'
 
 export const updateDatasetSetting = ({
   datasetId,
@@ -207,15 +201,6 @@ export const pauseDocIndexing = ({ datasetId, documentId }: CommonDocReq) => {
 
 export const resumeDocIndexing = ({ datasetId, documentId }: CommonDocReq) => {
   return consoleClient.datasets.byDatasetId.documents.byDocumentId.processing.resume.patch({
-    params: { dataset_id: datasetId, document_id: documentId },
-  })
-}
-
-export const fetchDocumentDownloadUrl = ({
-  datasetId,
-  documentId,
-}: CommonDocReq): Promise<DocumentDownloadResponse> => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.download.get({
     params: { dataset_id: datasetId, document_id: documentId },
   })
 }

@@ -1,5 +1,7 @@
+import { QueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { DatasetACLPermission } from '@/utils/permission'
 
@@ -22,7 +24,6 @@ const mocks = vi.hoisted(() => {
     detailRefetch: vi.fn(),
     checkProgress: vi.fn(),
     batchImport: vi.fn(),
-    invalidDocumentList: vi.fn(),
     invalidSegmentList: vi.fn(),
     invalidChildSegmentList: vi.fn(),
     useDocumentTitle: vi.fn(),
@@ -57,17 +58,21 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: mocks.state.dataset }),
 }))
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDetail: () => ({
-    data: mocks.state.documentDetail,
-    error: mocks.state.documentError,
-    refetch: mocks.detailRefetch,
-  }),
-  useDocumentMetadata: () => ({
-    data: mocks.state.documentMetadata,
-  }),
-  useInvalidDocumentList: () => mocks.invalidDocumentList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.get': (options: {
+      input: { query: { metadata: string } }
+    }) =>
+      options.input.query.metadata === 'only'
+        ? { data: mocks.state.documentMetadata }
+        : {
+            data: mocks.state.documentDetail,
+            error: mocks.state.documentError,
+            refetch: mocks.detailRefetch,
+          },
+  })
+})
 
 vi.mock('@/service/knowledge/use-segment', () => ({
   useCheckSegmentBatchImportProgress: () => ({
@@ -255,6 +260,13 @@ vi.mock('@/app/components/base/float-right-container', () => ({
     ) : null,
 }))
 
+const expectDocumentListInvalidated = () =>
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+      input: { params: { dataset_id: 'ds-1' } },
+    }),
+  })
+
 // --- Lazy import (after all vi.mock calls) ---
 const { default: DocumentDetail } = await import('../index')
 
@@ -284,6 +296,7 @@ vi.mock('@/context/permission-state', async () => {
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.useFakeTimers()
     mocks.state.dataset = {
       embedding_available: true,
@@ -468,13 +481,13 @@ describe('DocumentDetail', () => {
     it('should invalidate document list on any operation', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('op-rename'))
-      expect(mocks.invalidDocumentList).toHaveBeenCalled()
+      expectDocumentListInvalidated()
     })
 
     it('should navigate back on delete operation', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       fireEvent.click(screen.getByTestId('op-delete'))
-      expect(mocks.invalidDocumentList).toHaveBeenCalled()
+      expectDocumentListInvalidated()
       expect(mocks.push).toHaveBeenCalled()
     })
 

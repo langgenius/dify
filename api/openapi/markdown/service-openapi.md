@@ -3334,8 +3334,8 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
-| value | string<br>integer<br>number<br>boolean |  | No |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| value | string<br>integer<br>number |  | Yes |
 
 #### DocumentResponse
 

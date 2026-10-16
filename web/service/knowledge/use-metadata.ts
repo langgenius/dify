@@ -5,10 +5,9 @@ import type {
 } from '@/app/components/datasets/metadata/types'
 import type { DocumentDetailResponse } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { consoleClient } from '../console'
+import { consoleClient, consoleQuery } from '../console'
 import { narrowResponse } from '../console/narrow-response'
 import { useInvalid } from '../use-base'
-import { useDocumentListKey, useInvalidDocumentList } from './use-document'
 
 const NAME_SPACE = 'dataset-metadata'
 
@@ -54,7 +53,13 @@ const useInvalidAllDocumentMetaData = (datasetId: string) => {
 
 const useInvalidAllMetaData = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: datasetId } },
+      }),
+    })
   const invalidateAllDocumentMetaData = useInvalidAllDocumentMetaData(datasetId)
 
   return async () => {
@@ -147,7 +152,9 @@ export const useBatchUpdateDocMetadata = () => {
         queryKey: [NAME_SPACE, 'document', payload.dataset_id],
       })
       await queryClient.invalidateQueries({
-        queryKey: [...useDocumentListKey, payload.dataset_id],
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: payload.dataset_id } },
+        }),
       })
 
       // meta data in single document

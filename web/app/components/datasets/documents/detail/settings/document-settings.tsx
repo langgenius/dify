@@ -2,7 +2,6 @@ import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
   CustomFile,
-  DataSourceInfo,
   DataSourceType,
   LegacyDataSourceInfo,
   LocalFileInfo,
@@ -10,6 +9,7 @@ import type {
   UploadFileIdInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,11 +26,10 @@ import {
 import DatasetDetailContext from '@/context/dataset-detail'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import {
-  useDocumentDetail,
-  useInvalidDocumentDetail,
-  useInvalidDocumentList,
-} from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
+
+// data_source_info is written by the data source that imported the document.
+type DocumentSourceInfo = Record<string, unknown> | null | undefined
 
 type DocumentSettingsProps = {
   datasetId: string
@@ -47,8 +46,17 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     setSettingsDestination('provider')
   }, [setSettingsDestination])
 
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
-  const invalidDocumentDetail = useInvalidDocumentDetail()
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: datasetId } },
+      }),
+    })
+  const invalidDocumentDetail = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+    })
   const saveHandler = () => {
     invalidDocumentList()
     invalidDocumentDetail()
@@ -57,11 +65,14 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
 
   const cancelHandler = () => router.back()
 
-  const { data: documentDetail, error } = useDocumentDetail({
-    datasetId,
-    documentId,
-    params: { metadata: 'without' },
-  })
+  const { data: documentDetail, error } = useQuery(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId, document_id: documentId },
+        query: { metadata: 'without' },
+      },
+    }),
+  )
   const settingsTitle = t(($) => $['documentSettings.title'], { ns: 'datasetPipeline' })
   const documentTitle =
     documentDetail?.name || t(($) => $['datasetMenus.documents'], { ns: 'common' })
@@ -70,22 +81,20 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
 
   const dataSourceInfo = documentDetail?.data_source_info
 
-  // Type guards for DataSourceInfo union
-  const isLegacyDataSourceInfo = (
-    info: DataSourceInfo | undefined,
-  ): info is LegacyDataSourceInfo => {
+  // Type guards for the data source info shapes
+  const isLegacyDataSourceInfo = (info: DocumentSourceInfo): info is LegacyDataSourceInfo => {
     return !!info && 'upload_file' in info
   }
-  const isWebsiteCrawlInfo = (info: DataSourceInfo | undefined): info is WebsiteCrawlInfo => {
+  const isWebsiteCrawlInfo = (info: DocumentSourceInfo): info is WebsiteCrawlInfo => {
     return !!info && 'source_url' in info && 'title' in info
   }
-  const isOnlineDocumentInfo = (info: DataSourceInfo | undefined): info is OnlineDocumentInfo => {
+  const isOnlineDocumentInfo = (info: DocumentSourceInfo): info is OnlineDocumentInfo => {
     return !!info && 'page' in info
   }
-  const isLocalFileInfo = (info: DataSourceInfo | undefined): info is LocalFileInfo => {
+  const isLocalFileInfo = (info: DocumentSourceInfo): info is LocalFileInfo => {
     return !!info && 'related_id' in info && 'transfer_method' in info
   }
-  const isUploadFileIdInfo = (info: DataSourceInfo | undefined): info is UploadFileIdInfo => {
+  const isUploadFileIdInfo = (info: DocumentSourceInfo): info is UploadFileIdInfo => {
     return !!info && 'upload_file_id' in info
   }
 

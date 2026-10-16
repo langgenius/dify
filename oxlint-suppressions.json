@@ -3968,7 +3968,7 @@
   },
   "web/models/datasets.ts": {
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "web/models/debug.ts": {
@@ -4076,14 +4076,9 @@
       "count": 8
     }
   },
-  "web/service/knowledge/use-document.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 4
-    }
-  },
   "web/service/knowledge/use-metadata.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 8
+      "count": 7
     }
   },
   "web/service/knowledge/use-segment.ts": {

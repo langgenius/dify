@@ -1,4 +1,8 @@
-import type { DataSourceInfo, FullDocumentDetail, IndexingStatusResponse } from '@/models/datasets'
+import type {
+  DataSourceInfo,
+  IndexingStatusResponse,
+  InitialDocumentDetail,
+} from '@/models/datasets'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   createDocumentLookup,
@@ -110,7 +114,7 @@ describe('createDocumentLookup', () => {
         notion_page_icon: 'https://icon.url',
       },
     },
-  ] as unknown as FullDocumentDetail[]
+  ] as unknown as InitialDocumentDetail[]
 
   it('should get document by id', () => {
     const lookup = createDocumentLookup(documents)
@@ -143,7 +147,7 @@ describe('createDocumentLookup', () => {
         id: 'doc-3',
         data_source_info: { some_other: 'field' },
       },
-    ] as unknown as FullDocumentDetail[]
+    ] as unknown as InitialDocumentDetail[]
     const lookup = createDocumentLookup(docs)
     expect(lookup.getNotionIcon('doc-3')).toBeUndefined()
   })

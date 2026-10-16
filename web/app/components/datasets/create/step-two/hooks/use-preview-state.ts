@@ -21,18 +21,20 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   const { dataSourceType, files, notionPages, websitePages, documentDetail, datasetId } = options
 
   // File preview state
-  const [previewFile, setPreviewFile] = useState<DocumentItem>(
-    datasetId && documentDetail ? documentDetail.file : files[0],
+  // Editing an existing document has no preview item until one is picked.
+  const isEditing = !!datasetId && !!documentDetail
+  const [previewFile, setPreviewFile] = useState<CustomFile | DocumentItem | undefined>(
+    isEditing ? undefined : files[0],
   )
 
   // Notion page preview state
-  const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage>(
-    datasetId && documentDetail ? documentDetail.notion_page : notionPages[0],
+  const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage | undefined>(
+    isEditing ? undefined : notionPages[0],
   )
 
   // Website page preview state
-  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(
-    datasetId && documentDetail ? documentDetail.website_page : websitePages[0],
+  const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem | undefined>(
+    isEditing ? undefined : websitePages[0],
   )
 
   // Get preview items for document picker based on data source type

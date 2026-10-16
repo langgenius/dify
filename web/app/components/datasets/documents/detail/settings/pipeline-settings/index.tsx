@@ -1,7 +1,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +16,6 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
 import LeftHeader from './left-header'
 import ProcessDocuments from './process-documents'
@@ -137,8 +136,17 @@ const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
     [lastRunData, pipelineId, runPublishedPipeline],
   )
 
-  const invalidDocumentList = useInvalidDocumentList(datasetId)
-  const invalidDocumentDetail = useInvalidDocumentDetail()
+  const queryClient = useQueryClient()
+  const invalidDocumentList = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: datasetId } },
+      }),
+    })
+  const invalidDocumentDetail = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+    })
   const handleProcess = useCallback(
     async (data: Record<string, any>) => {
       if (!lastRunData) return

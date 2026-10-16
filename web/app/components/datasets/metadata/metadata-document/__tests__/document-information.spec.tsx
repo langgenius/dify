@@ -33,7 +33,15 @@ vi.mock('react-i18next', async () => {
 
 type DocumentDetail = Parameters<typeof MetadataDocument>[0]['docDetail']
 
-const uploadFile = { name: 'handbook.txt', extension: 'txt', size: 497 }
+const uploadFile = {
+  id: 'upload-1',
+  name: 'handbook.txt',
+  extension: 'txt',
+  size: 497,
+  mime_type: 'text/plain',
+  created_by: 'user-1',
+  created_at: Date.parse('2026-09-23T10:30:00Z') / 1000,
+}
 
 // The Console detail endpoint separates the upload reference from its details.
 const documentDetail: Partial<DocumentDetail> = {

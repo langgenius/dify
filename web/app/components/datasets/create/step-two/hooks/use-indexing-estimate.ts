@@ -26,10 +26,10 @@ type UseIndexingEstimateOptions = {
   files: CustomFile[]
   previewFileName?: string
   // Notion data source
-  previewNotionPage: NotionPage
+  previewNotionPage?: NotionPage
   notionCredentialId: string
   // Website data source
-  previewWebsitePage: CrawlResultItem
+  previewWebsitePage?: CrawlResultItem
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
   websiteCrawlJobId?: string
@@ -72,7 +72,7 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     docForm: currentDocForm,
     docLanguage,
     dataSourceType: DataSourceType.NOTION,
-    notionPages: [previewNotionPage],
+    notionPages: previewNotionPage ? [previewNotionPage] : [],
     indexingTechnique,
     processRule,
     dataset_id: datasetId || '',
@@ -84,7 +84,7 @@ export const useIndexingEstimate = (options: UseIndexingEstimateOptions) => {
     docForm: currentDocForm,
     docLanguage,
     dataSourceType: DataSourceType.WEB,
-    websitePages: [previewWebsitePage],
+    websitePages: previewWebsitePage ? [previewWebsitePage] : [],
     crawlOptions,
     websiteCrawlProvider: websiteCrawlProvider ?? DataSourceProvider.jinaReader,
     websiteCrawlJobId: websiteCrawlJobId ?? '',
