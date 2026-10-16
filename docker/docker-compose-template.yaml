@@ -131,6 +131,8 @@ x-shared-worker-config: &shared-worker-config
     - default
   restart: always
 
+# KNOWLEDGE_FS_WORKER_IMAGE must bundle the KnowledgeFS engine at KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH;
+# standard Dify API images do not, and the worker entrypoint exits without it.
 x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
   image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.17.0}
   profiles:
@@ -727,13 +729,13 @@ services:
         condition: service_healthy
         required: false
 
-  # KnowledgeFS integration service. It starts with the default deployment, has no public port or
-  # nginx route, and remains fail-closed until its production dependencies are configured.
+  # KnowledgeFS integration service. It is opt-in: add `knowledge-fs` to COMPOSE_PROFILES only after
+  # configuring envs/core-services/knowledge-fs.env (durable DATABASE_URL, migrations, verifier).
+  # It has no public port or nginx route. The published image is linux/amd64 only.
   knowledge_fs:
-    build:
-      context: ../knowledge-fs
-      dockerfile: apps/api/Dockerfile
     image: ${KNOWLEDGE_FS_API_IMAGE:-langgenius/dify-knowledge-fs-api:deploy-konwledge}
+    profiles:
+      - knowledge-fs
     restart: always
     env_file:
       - path: ./envs/core-services/knowledge-fs.env
@@ -777,8 +779,9 @@ services:
     networks:
       - default
 
-  # All five worker roles use the standard Dify API image and Celery broker. Only the optional
-  # cutover profile starts them; set KNOWLEDGE_BACKGROUND_EXECUTION=celery in the root env first.
+  # All five worker roles share the Dify Celery broker and need a worker image with the bundled
+  # KnowledgeFS engine. Only the optional knowledge-fs-celery profile starts them; set
+  # KNOWLEDGE_BACKGROUND_EXECUTION=celery in the root env first.
   knowledge_fs_document_worker:
     <<: *knowledge-fs-celery-worker
     environment:

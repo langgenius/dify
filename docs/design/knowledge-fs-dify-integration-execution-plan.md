@@ -560,15 +560,17 @@ flowchart LR
 
 ### P0：Monorepo、契约与运行基线
 
-目标：让迁入 Dify 仓库的 KnowledgeFS 可以被稳定构建、检查和部署，但不扩大产品流量。
+目标：让 Dify 针对独立 KnowledgeFS 仓库的精确版本稳定地检查契约并完成部署，但不扩大产品流量。
+
+> 当前流程：KnowledgeFS 引擎源码位于独立的私有仓库，Dify 仓库中没有 `knowledge-fs/` 目录。Dify 只保存 `api/knowledge-fs-contract/` 下从该仓库精确 commit 导出的契约产物，以及 schema 6 的 `api/knowledge-fs-contract.lock.json`。以下 P0 条目已按此流程更新；早期“迁入 monorepo subtree”的方案已被取代。
 
 任务：
 
-- [x] `P0-01` 修改 `api/dev/generate_knowledge_fs_contract.py`，默认读取仓库内 `knowledge-fs/`。
-- [x] `P0-02` 版本 pin 只记录 `knowledge-fs/` subtree tree ID、OpenAPI SHA 和 auth manifest SHA，不把包含 lock 自身的 Dify commit 写入 lock，避免自引用。更新工具从 staged index 计算 subtree tree；发现 `knowledge-fs/` 有未暂存改动时拒绝生成。Dify commit 只作为 CI artifact 元数据。
+- [x] `P0-01` `api/dev/generate_knowledge_fs_contract.py --check` 只读取已提交的 `api/knowledge-fs-contract/` 产物，不需要私有源码、Node 运行时或网络；有意更新时使用 `--update-lock --knowledge-fs-root <干净的独立仓库 checkout>` 从该 checkout 导出产物。
+- [x] `P0-02` Lock（schema 6）记录独立仓库的完整 source commit/tree、source provenance，以及 OpenAPI、capability policy、auth manifest/test vector 和 Dify operation manifest 的 SHA。更新工具要求 `--knowledge-fs-root` 是干净的 checkout，否则拒绝生成。
 - [x] `P0-03` 增加 KnowledgeFS upstream provenance manifest，记录迁入源码对应的 upstream commit/release，并让 `api/knowledge-fs-contract.lock.json` 与当前 subtree 实现对齐。
 - [x] `P0-04` 更新 contract lock 并记录 auth profile manifest。
-- [x] `P0-05` 在仓库根 `.github/workflows/` 增加 KnowledgeFS install、lint、typecheck、test、coverage、build 和 OpenAPI drift job，显式设置 `working-directory: knowledge-fs`，cache key 使用 `knowledge-fs/pnpm-lock.yaml`，保留其独立 `pnpm-workspace.yaml`；不能假定根 `pnpm install` 会构建子项目。最终 `pnpm check`、33/33 build/type/test tasks 和 999-file Biome gate 均通过；`@knowledge/api` 达到 93.87% lines/statements、96.26% functions、90.08% branches，`@knowledge/adapters` 达到 98.21% lines/statements、98.59% functions、97.19% branches。
+- [x] `P0-05` KnowledgeFS 引擎的 install、lint、typecheck、test、coverage 和 build 在其独立仓库的 CI 中运行。Dify 的 `.github/workflows/knowledge-fs-ci.yml` 在仓库根运行契约 `--check`、Dify 侧 KnowledgeFS 测试与覆盖率门禁，不构建引擎。
 - [x] `P0-06` Contract checker 扩展到 method/path/operationId、path/query/body schema、response schema/status、stream kind、byte limit、security profile 和 deprecation。
 - [x] `P0-07` 增加“产品所需 operation manifest completeness”检查，不能继续忽略所有未声明 operation。
 - [x] `P0-08` 增加 Dify→KFS auth test vector，覆盖 issuer/audience/subject/namespace/action/resource/caller kind/TTL，并同时断言未装配 verifier 时的 401 与正式装配后的成功向量。
@@ -579,7 +581,7 @@ flowchart LR
 
 验收：
 
-- 从全新 checkout 可独立构建 Dify 和 `knowledge-fs/`。
+- 从全新 checkout 可构建 Dify，并在不访问私有仓库的情况下通过契约 `--check`；KnowledgeFS 引擎由其独立仓库构建并以镜像形式发布。
 - 修改 KFS request schema、auth manifest 或已登记 operation 会使 CI 明确失败。
 - 未配置生产 verifier 时 readiness 失败，而不是运行后所有请求才返回 401。
 
