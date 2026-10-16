@@ -153,7 +153,7 @@ const OpeningSettingModal = ({
               {t(($) => $['openingStatement.openingQuestion'], { ns: 'appDebug' })}
             </div>
             <Infotip>
-              <InfotipTrigger aria-labelledby={questionsLabelId} className="size-3.5" />
+              <InfotipTrigger aria-labelledby={questionsLabelId} />
               <InfotipContent aria-labelledby={questionsLabelId} className="max-w-55">
                 {t(($) => $['openingStatement.openingQuestionDescription'], { ns: 'appDebug' })}
               </InfotipContent>

@@ -41,7 +41,7 @@ const FeatureCard = ({
           <span id={titleId}>{title}</span>
           {!!tooltip && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={titleId} className="ml-0.5 size-3.5" />
+              <InfotipTrigger aria-labelledby={titleId} className="ml-0.5" />
               <InfotipContent aria-labelledby={titleId}>{tooltip}</InfotipContent>
             </Infotip>
           )}

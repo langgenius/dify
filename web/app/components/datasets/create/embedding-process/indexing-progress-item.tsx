@@ -34,7 +34,7 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
           aria-label={t(($) => $.error, { ns: 'common' })}
           iconVariant="warning"
           iconSize="large"
-          className="text-text-destructive"
+          tone="error"
         />
         <InfotipContent
           aria-label={t(($) => $.error, { ns: 'common' })}

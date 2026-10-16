@@ -253,7 +253,7 @@ const ConfigContent: FC<Props> = ({
                   <Infotip>
                     <InfotipTrigger
                       aria-labelledby={`${rerankOptionLabelId}-${option.value}`}
-                      className="ml-0.5 size-3.5"
+                      className="ml-0.5"
                     />
                     <InfotipContent
                       aria-labelledby={`${rerankOptionLabelId}-${option.value}`}

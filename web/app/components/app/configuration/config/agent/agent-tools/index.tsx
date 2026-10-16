@@ -260,10 +260,9 @@ const AgentTools: FC = () => {
                   <span className="text-text-tertiary">{item.tool_label}</span>
                   {!item.isDeleted && !readonly && (
                     <Infotip>
-                      <InfotipTrigger
-                        aria-label={item.tool_name}
-                        className="ml-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                      />
+                      <span className="ml-0.5 inline-flex opacity-0 group-hover:opacity-100 has-focus-visible:opacity-100 has-data-popup-open:opacity-100">
+                        <InfotipTrigger aria-label={item.tool_name} />
+                      </span>
                       <InfotipContent
                         aria-labelledby={`${toolNameLabelId}-${index}`}
                         className="w-55"

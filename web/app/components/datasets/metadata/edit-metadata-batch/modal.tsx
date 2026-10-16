@@ -213,10 +213,7 @@ const EditMetadataBatchModal: FC<Props> = ({
               </span>
             </label>
             <Infotip>
-              <InfotipTrigger
-                aria-labelledby={applyToAllLabelId}
-                className="p-px text-text-tertiary"
-              />
+              <InfotipTrigger aria-labelledby={applyToAllLabelId} />
               <InfotipContent aria-labelledby={applyToAllLabelId} className="max-w-60">
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
               </InfotipContent>

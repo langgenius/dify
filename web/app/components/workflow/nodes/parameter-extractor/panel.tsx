@@ -123,7 +123,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => 
                 {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
               </span>
               <Infotip>
-                <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
+                <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5" />
                 <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
                   {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
                 </InfotipContent>

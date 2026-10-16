@@ -36,7 +36,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
               {t(($) => $['subscription.listNum'], { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
             <Infotip>
-              <InfotipTrigger aria-labelledby={titleId} className="size-3.5" />
+              <InfotipTrigger aria-labelledby={titleId} />
               <InfotipContent aria-labelledby={titleId}>
                 {t(($) => $['subscription.list.tip'], { ns: 'pluginTrigger' })}
               </InfotipContent>
