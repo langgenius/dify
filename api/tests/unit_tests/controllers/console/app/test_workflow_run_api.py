@@ -11,9 +11,11 @@ import pytest
 from flask import Flask
 from flask_restx import marshal
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
+from controllers.console.wraps import validate_request
 from extensions.ext_database import db
 from fields.workflow_run_fields import node_execution_response_source
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
@@ -225,6 +227,15 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(
         args={"limit": 1},
         triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
     )
+
+
+@pytest.mark.parametrize("time_range", ["1000000000d", "1000000d"])
+def test_workflow_run_count_rejects_unrepresentable_time_range(app: Flask, time_range: str) -> None:
+    with app.test_request_context("/apps/app-1/workflow-runs/count", query_string={"time_range": time_range}):
+        with pytest.raises(UnprocessableEntity, match="Time duration is out of supported range") as exc_info:
+            validate_request(workflow_run_module.WorkflowRunCountQuery)
+
+    assert exc_info.value.code == 422
 
 
 def test_workflow_run_count_passes_filters_to_application_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
