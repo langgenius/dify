@@ -7,6 +7,7 @@ cannot qualify a production binding/input producer or native execution factory.
 """
 
 from dataclasses import replace
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import event, select
@@ -153,9 +154,11 @@ def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, mon
 
     c = continuation_case
     pending = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
+    fault_hits = []
     if fault == "storage":
 
         def fail_save(*_args, **_kwargs):
+            fault_hits.append(fault)
             raise OSError("synthetic storage failure")
 
         monkeypatch.setattr(storage, "save", fail_save)
@@ -168,22 +171,35 @@ def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, mon
             new_keys.add(key)
 
         def load(key, *args, **kwargs):
-            return b"corrupt encrypted payload" if key in new_keys else original_load(key, *args, **kwargs)
+            if key in new_keys:
+                fault_hits.append(fault)
+                return b"corrupt encrypted payload"
+            return original_load(key, *args, **kwargs)
 
         monkeypatch.setattr(storage, "save", save)
         monkeypatch.setattr(storage, "load", load)
 
     def fail_commit(session):
         if fault == "checkpoint_sql" and any(isinstance(row, NativeContinuation) for row in session.new):
+            fault_hits.append(fault)
             raise RuntimeError("synthetic checkpoint commit failure")
+        # pause() may autoflush the waiting state before commit; it stays owned
+        # by the session identity map even after it leaves session.dirty.
         if fault == "lifecycle_sql" and any(
-            isinstance(row, NativeInvocationState) and row.state == "waiting" for row in session.dirty
+            isinstance(row, NativeInvocationState)
+            and row.request_id == c.ref.request_id
+            and row.invocation_id == c.ref.invocation_id
+            and row.state == "waiting"
+            for row in session.identity_map.values()
         ):
+            fault_hits.append(fault)
             raise RuntimeError("synthetic lifecycle commit failure")
 
+    expected_error = RuntimeError if fault == "lifecycle_sql" else BuilderExecutionPolicyError
+    expected_message = "synthetic lifecycle commit failure" if fault == "lifecycle_sql" else "checkpoint_unavailable"
     event.listen(Session, "before_commit", fail_commit)
     try:
-        with pytest.raises((BuilderExecutionPolicyError, RuntimeError)):
+        with pytest.raises(expected_error, match=expected_message):
             NativeCheckpointBridge(state=c.store, lifecycle=c.lifecycle).commit_wait(
                 ref=c.ref,
                 generation=0,
@@ -192,6 +208,7 @@ def test_host_barrier_owner_failure_never_returns_waiting(continuation_case, mon
             )
     finally:
         event.remove(Session, "before_commit", fail_commit)
+    assert fault_hits == [fault]
     with c.factory() as session:
         state = session.scalar(
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
@@ -262,8 +279,10 @@ def test_host_journal_real_unknown_result_never_becomes_replayable(continuation_
 def test_host_journal_refuses_foreign_private_input_before_effect(continuation_case, owner):
     c = continuation_case
     input_ref = _input_fixture(c)
+    foreign_request_id = str(uuid4())
+    assert foreign_request_id != c.ref.request_id
     updates = {
-        "request": {"request_id": "foreign"},
+        "request": {"request_id": foreign_request_id},
         "invocation": {"invocation_id": "foreign-child"},
         "context": {"context_digest": "d" * 64},
     }
