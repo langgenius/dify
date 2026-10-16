@@ -5,7 +5,7 @@ from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
@@ -49,7 +49,7 @@ class ToolEngine:
     def agent_invoke(
         session: Session,
         tool: Tool,
-        tool_parameters: Union[str, dict[str, Any]],
+        tool_parameters: str | dict[str, Any],
         user_id: str,
         tenant_id: str,
         message: Message,

@@ -1026,7 +1026,7 @@ class TestMimeTypeHandling:
         fallback_mime = "application/octet-stream"
 
         # Act & Assert - All unknown types should use fallback
-        for ext in unknown_extensions:
+        for _ext in unknown_extensions:
             # In real implementation, unknown types would use fallback
             assert fallback_mime == "application/octet-stream"
 

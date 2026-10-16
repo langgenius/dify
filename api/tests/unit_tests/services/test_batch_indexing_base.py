@@ -35,14 +35,14 @@ def make_proxy(
     *, tenant_id: str = TENANT_ID, dataset_id: str = DATASET_ID, document_ids: list[str] | None = None
 ) -> ConcreteBatchProxy:
     """Factory: returns a ConcreteBatchProxy with TenantIsolatedTaskQueue mocked out."""
-    with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as MockQueue:
+    with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as mock_queue:
         proxy = ConcreteBatchProxy(
             tenant_id=tenant_id,
             dataset_id=dataset_id,
             document_ids=document_ids if document_ids is not None else DOC_IDS,
         )
         # Expose the mock queue on the proxy so tests can assert on it
-        proxy._tenant_isolated_task_queue = MockQueue.return_value
+        proxy._tenant_isolated_task_queue = mock_queue.return_value
     return proxy
 
 
@@ -79,11 +79,11 @@ class TestBatchDocumentIndexingProxyInit:
     def test_should_create_tenant_isolated_queue_with_correct_args_when_initialized(self) -> None:
         """Verify that TenantIsolatedTaskQueue is constructed with (tenant_id, QUEUE_NAME)."""
         # Arrange / Act
-        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as MockQueue:
+        with patch("services.document_indexing_proxy.batch_indexing_base.TenantIsolatedTaskQueue") as mock_queue:
             ConcreteBatchProxy(TENANT_ID, DATASET_ID, DOC_IDS)
 
         # Assert
-        MockQueue.assert_called_once_with(TENANT_ID, ConcreteBatchProxy.QUEUE_NAME)
+        mock_queue.assert_called_once_with(TENANT_ID, ConcreteBatchProxy.QUEUE_NAME)
 
     @pytest.mark.parametrize("doc_ids", [[], ["single-doc"], ["d1", "d2", "d3", "d4"]])
     def test_should_accept_any_length_document_ids_when_initialized(self, doc_ids: list[str]) -> None:
