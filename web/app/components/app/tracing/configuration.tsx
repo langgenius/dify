@@ -147,25 +147,34 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       <PopoverTrigger
         disabled={isLoading}
         render={
-          <Button className="h-auto gap-0 rounded-xl border-components-panel-border bg-background-default-dodge p-2 hover:bg-background-default-lighter" />
+          <Button className="h-auto gap-0 rounded-xl bg-background-default-lighter p-2 inset-ring-components-panel-border hover:bg-background-default-dodge" />
         }
       >
         {!isLoading && hasConfiguredTracing ? (
-          <>
-            <span className="mr-1 ml-4 flex items-center">
-              <StatusDot status={enabled ? 'success' : 'disabled'} />
-              <span className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
+          <span className="flex items-center gap-2">
+            {inUseProviderIconClassName && (
+              <span aria-hidden className="flex items-center pr-2 pl-1">
+                <span className={cn(inUseProviderIconClassName, 'h-5')} />
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <span className="flex size-3 items-center justify-center">
+                <StatusDot status={enabled ? 'success' : 'disabled'} />
+              </span>
+              <span
+                className={cn(
+                  'system-xs-semibold-uppercase',
+                  enabled ? 'text-util-colors-green-green-600' : 'text-text-tertiary',
+                )}
+              >
                 {t(($) => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
               </span>
             </span>
-            {inUseProviderIconClassName && (
-              <span aria-hidden className={cn(inUseProviderIconClassName, 'ml-1 h-4')} />
-            )}
-            <span className="ml-2 rounded-md p-1">
+            <Separator decorative orientation="vertical" className="ml-1 h-3.5" />
+            <span aria-hidden className="flex size-6 items-center justify-center rounded-md">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </span>
-            <Separator decorative orientation="vertical" className="mx-2 h-3.5" />
-          </>
+          </span>
         ) : (
           <>
             <TracingIcon size="md" />
