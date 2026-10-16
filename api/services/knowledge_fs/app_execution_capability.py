@@ -9,9 +9,6 @@ from typing import Protocol, cast
 from pydantic import JsonValue
 
 from core.app.entities.app_invoke_entities import DifyRunContext
-from core.knowledge_fs.resource import (
-    KnowledgeResourceRef,
-)
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionPort
 from services.knowledge_fs.capability_broker import KnowledgeFSAppCapabilityIssuer, KnowledgeFSIssuedProductCapability
@@ -33,6 +30,9 @@ from services.knowledge_fs.product_remote import (
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRemotePort,
     KnowledgeFSRemoteJSONRequest,
+)
+from services.knowledge_fs.resource import (
+    KnowledgeResourceRef,
 )
 
 

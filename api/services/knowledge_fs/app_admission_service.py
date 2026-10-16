@@ -7,13 +7,6 @@ from typing import NamedTuple, Protocol
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.knowledge_fs.errors import (
-    KnowledgeFSAppAdmissionError,
-    KnowledgeFSAppAuthorizationNotReadyError,
-    KnowledgeFSAppBindingNotEnabledError,
-    KnowledgeFSAppChannelDisabledError,
-    KnowledgeFSAppSpaceUnavailableError,
-)
 from libs.datetime_utils import naive_utc_now
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
@@ -23,6 +16,13 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
     KnowledgeFSExternalAccessPolicy,
+)
+from services.knowledge_fs.errors import (
+    KnowledgeFSAppAdmissionError,
+    KnowledgeFSAppAuthorizationNotReadyError,
+    KnowledgeFSAppBindingNotEnabledError,
+    KnowledgeFSAppChannelDisabledError,
+    KnowledgeFSAppSpaceUnavailableError,
 )
 from services.knowledge_fs.product_operations import product_operation_action
 from services.knowledge_fs.revocation_commands import (

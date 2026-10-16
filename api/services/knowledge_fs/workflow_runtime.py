@@ -2,16 +2,16 @@
 
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.db.session_factory import session_factory
-from core.knowledge_fs.resource import KnowledgeResourceRef
-from core.knowledge_fs.retrieval_contracts import (
+from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from services.knowledge_fs.product_dto import KnowledgeFSAppBindingResponse
+from services.knowledge_fs.query_images import issue_workflow_query_image_reference
+from services.knowledge_fs.resource import KnowledgeResourceRef
+from services.knowledge_fs.retrieval_contracts import (
     KnowledgeFSAppBindingPayload,
     KnowledgeFSMetadataFieldListResponse,
     KnowledgeFSRetrievalTestPayload,
     KnowledgeFSRetrievalTestResponse,
 )
-from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
-from services.knowledge_fs.product_dto import KnowledgeFSAppBindingResponse
-from services.knowledge_fs.query_images import issue_workflow_query_image_reference
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from tasks.knowledge_fs_failed_retrieval_tasks import enqueue_workflow_failed_retrieval_capture
 

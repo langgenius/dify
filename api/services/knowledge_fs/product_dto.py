@@ -21,7 +21,18 @@ from pydantic import (
     model_validator,
 )
 
-from core.knowledge_fs.retrieval_contracts import (
+from fields.base import ResponseModel
+from models.knowledge_fs import (
+    KnowledgeFSAppSpaceJoinStatus,
+    KnowledgeFSAppSpaceJoinType,
+    KnowledgeFSControlSpacePermissionRole,
+    KnowledgeFSControlSpaceState,
+    KnowledgeFSControlSpaceVisibility,
+    KnowledgeFSUpgradeJobStatus,
+    KnowledgeFSUpgradeStage,
+)
+from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
+from services.knowledge_fs.retrieval_contracts import (
     KnowledgeFSAppBindingPayload,
     KnowledgeFSMetadataFieldListResponse,
     KnowledgeFSMetadataFieldResponse,
@@ -41,17 +52,6 @@ from core.knowledge_fs.retrieval_contracts import (
     KnowledgeFSRetrievalTestPayload,
     KnowledgeFSRetrievalTestResponse,
 )
-from fields.base import ResponseModel
-from models.knowledge_fs import (
-    KnowledgeFSAppSpaceJoinStatus,
-    KnowledgeFSAppSpaceJoinType,
-    KnowledgeFSControlSpacePermissionRole,
-    KnowledgeFSControlSpaceState,
-    KnowledgeFSControlSpaceVisibility,
-    KnowledgeFSUpgradeJobStatus,
-    KnowledgeFSUpgradeStage,
-)
-from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 
 KnowledgeFSIconIdentity = Annotated[
     str,

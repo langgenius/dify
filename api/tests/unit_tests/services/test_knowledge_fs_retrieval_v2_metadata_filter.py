@@ -8,8 +8,15 @@ import pytest
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.llm_generator.output_parser.errors import OutputParserError
-from core.workflow.nodes.knowledge_retrieval_v2 import automatic_metadata_filter as module
-from core.workflow.nodes.knowledge_retrieval_v2.automatic_metadata_filter import (
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageRole,
+    TextPromptMessageContent,
+)
+from graphon.nodes.llm.entities import ModelConfig
+from services.knowledge_fs.knowledge_retrieval_v2 import automatic_metadata_filter as module
+from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
     KnowledgeFSAutomaticMetadataFilterExtractor,
     KnowledgeFSMetadataFieldRef,
     build_metadata_filter_prompt,
@@ -18,14 +25,7 @@ from core.workflow.nodes.knowledge_retrieval_v2.automatic_metadata_filter import
     parse_metadata_map,
     to_custom_metadata_conditions,
 )
-from core.workflow.nodes.knowledge_retrieval_v2.exc import KnowledgeFSRetrievalConfigurationError
-from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
-from graphon.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    PromptMessageRole,
-    TextPromptMessageContent,
-)
-from graphon.nodes.llm.entities import ModelConfig
+from services.knowledge_fs.knowledge_retrieval_v2.exc import KnowledgeFSRetrievalConfigurationError
 from services.knowledge_fs.product_dto import KnowledgeFSMetadataFieldResponse
 
 

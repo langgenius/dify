@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from core.knowledge_fs.retrieval_contracts import KnowledgeFSPublicFailureResponse
+from services.knowledge_fs.retrieval_contracts import KnowledgeFSPublicFailureResponse
 
 QUERY_IMAGE_MAX_COUNT = 4
 QUERY_IMAGE_MAX_TOTAL_BYTES = 32 * 1024 * 1024

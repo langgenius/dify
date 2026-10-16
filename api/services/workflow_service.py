@@ -707,7 +707,7 @@ class WorkflowService:
 
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
-        from core.workflow.nodes.knowledge_retrieval_v2.validation import (
+        from services.knowledge_fs.knowledge_retrieval_v2.validation import (
             validate_control_space_references,
         )
 

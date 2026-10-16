@@ -324,7 +324,7 @@ def test_resume_binds_original_task_and_processing_history_preserves_superseded(
 
 @pytest.mark.parametrize("status", [503, 504])
 def test_service_preserves_temporary_failure_status_and_safe_violations(status: Literal[503, 504]) -> None:
-    from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError
+    from services.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError
 
     @resources._service_api_errors
     def rejected() -> None:
@@ -357,7 +357,7 @@ def test_service_image_upload_uses_authenticated_profile_and_typed_response(monk
 def test_image_admission_checks_ownership_before_issuing_a_capability(
     runtime: FakeRuntime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError
+    from services.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError
 
     runtime.broker = FakeComponent(issue_service=Recorder())
     validator = Recorder(raises=KnowledgeFSProductRequestRejectedError(status_code=422))

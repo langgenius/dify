@@ -18,12 +18,6 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
-from core.knowledge_fs.errors import (
-    QUERY_IMAGE_MAX_COUNT,
-    QUERY_IMAGE_MAX_TOTAL_BYTES,
-    KnowledgeFSQueryImageError,
-    KnowledgeFSWorkflowQueryImageReference,
-)
 from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import File, FileTransferMethod, FileType
@@ -33,6 +27,12 @@ from models import ToolFile
 from models.enums import ApiTokenType, CreatorUserRole
 from models.model import ApiToken, UploadFile
 from services.file_service import FileService
+from services.knowledge_fs.errors import (
+    QUERY_IMAGE_MAX_COUNT,
+    QUERY_IMAGE_MAX_TOTAL_BYTES,
+    KnowledgeFSQueryImageError,
+    KnowledgeFSWorkflowQueryImageReference,
+)
 
 QUERY_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 QUERY_IMAGE_MIME_TYPES = frozenset({"image/gif", "image/jpeg", "image/png", "image/webp"})

@@ -1,10 +1,10 @@
 import pytest
 from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 
-from core.app import knowledge_runtime_config as mapping
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from models.agent_config_entities import AgentSoulConfig
+from services.agent import knowledge_runtime_config as mapping
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
 
