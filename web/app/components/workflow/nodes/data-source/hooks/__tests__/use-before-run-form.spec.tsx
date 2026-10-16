@@ -1,7 +1,7 @@
 import type { WorkflowRunNodeExecutionResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
 import type { VarInInspect } from '@/types/workflow'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
 import {
   useDataSourceStore,
@@ -326,8 +326,10 @@ describe('data-source/hooks/use-before-run-form', () => {
       },
     ]
 
+    // TanStack Query settles a failed mutation with no data after onError.
     mockMutateAsync.mockImplementation((_payload: unknown, options: DatasourceSingleRunOptions) => {
       options.onError?.()
+      options.onSettled?.(undefined)
       return Promise.resolve(undefined)
     })
 
@@ -354,5 +356,7 @@ describe('data-source/hooks/use-before-run-form', () => {
         _singleRunningStatus: NodeRunningStatus.Failed,
       }),
     })
+    // A failed run can still write default error outputs, so inspect vars refresh.
+    await waitFor(() => expect(mockFetchNodeInspectVars).toHaveBeenCalled())
   })
 })

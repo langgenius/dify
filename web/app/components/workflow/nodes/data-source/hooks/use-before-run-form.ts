@@ -84,7 +84,7 @@ const useBeforeRunForm = ({
 
   const invalidLastRun = useInvalidLastRun(flowType, flowId, nodeId)
 
-  const updateRunResult = async (data: NodeRunResult) => {
+  const updateRunResult = async (data: NodeRunResult | undefined) => {
     const isPaused = isPausedRef.current
 
     // The backend don't support pause the single run, so the frontend handle the pause state.
@@ -92,7 +92,7 @@ const useBeforeRunForm = ({
 
     const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
     if (!canRunLastRun) {
-      setRunResult(data)
+      setRunResult(data ?? null)
       return
     }
 
@@ -179,7 +179,8 @@ const useBeforeRunForm = ({
           })
         },
         onSettled: (data) => {
-          updateRunResult(selectDatasourceSingleRun(data!))
+          // A failed request settles without data; still refresh inspect vars.
+          updateRunResult(data ? selectDatasourceSingleRun(data) : undefined)
           if (!hasError && !isPausedRef.current) {
             handleNodeDataUpdate({
               id: nodeId,
