@@ -281,6 +281,7 @@
   "tracing.configProvider.username": "نام کاربری",
   "tracing.configProvider.viewDocsLink": "مشاهده مستندات {{key}}",
   "tracing.configProviderTitle.configured": "پیکربندی شده",
+  "tracing.configProviderTitle.moreProviders": "ارائه‌دهندگان بیشتر",
   "tracing.configProviderTitle.notConfigured": "برای فعال‌سازی ردیابی ارائه‌دهنده را پیکربندی کنید",
   "tracing.databricks.description": "Databricks MLflow کاملاً مدیریت‌شده با حکمرانی و امنیت قوی برای ذخیره‌سازی داده‌های ردیابی ارائه می‌دهد.",
   "tracing.databricks.title": "Databricks",

@@ -281,6 +281,7 @@
   "tracing.configProvider.username": "اسم المستخدم",
   "tracing.configProvider.viewDocsLink": "عرض وثائق {{key}}",
   "tracing.configProviderTitle.configured": "تم التكوين",
+  "tracing.configProviderTitle.moreProviders": "المزيد من المزوّدين",
   "tracing.configProviderTitle.notConfigured": "تكوين المزود لتمكين التتبع",
   "tracing.databricks.description": "توفر Databricks تدفق MLflow مدار بالكامل مع حوكمة وأمان قويين لتخزين بيانات التتبع.",
   "tracing.databricks.title": "Databricks",

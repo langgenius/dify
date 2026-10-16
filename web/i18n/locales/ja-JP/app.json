@@ -281,6 +281,7 @@
   "tracing.configProvider.username": "ユーザー名",
   "tracing.configProvider.viewDocsLink": "{{key}}に関するドキュメントを見る",
   "tracing.configProviderTitle.configured": "設定しました",
+  "tracing.configProviderTitle.moreProviders": "その他のプロバイダー",
   "tracing.configProviderTitle.notConfigured": "トレース機能を有効化するためには、サービスの設定が必要です。",
   "tracing.databricks.description": "DatabricksはフルマネージドのMLflowサービスを提供し、本番環境のトレースデータを強力なガバナンスとセキュリティの元で保存することができます。",
   "tracing.databricks.title": "Databricks",

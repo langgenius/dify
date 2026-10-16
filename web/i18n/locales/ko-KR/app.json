@@ -281,6 +281,7 @@
   "tracing.configProvider.username": "사용자 이름",
   "tracing.configProvider.viewDocsLink": "{{key}} 문서 보기",
   "tracing.configProviderTitle.configured": "구성됨",
+  "tracing.configProviderTitle.moreProviders": "다른 제공업체",
   "tracing.configProviderTitle.notConfigured": "추적을 활성화하려면 제공업체를 구성하세요",
   "tracing.databricks.description": "Databricks는 강력한 거버넌스와 보안을 갖춘 완전 관리형 MLflow를 제공하여 트레이스 데이터 저장을 지원합니다.",
   "tracing.databricks.title": "Databricks",
