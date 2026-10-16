@@ -23,6 +23,7 @@ export type Item<T extends ItemValue = ItemValue> = {
 
 type Props<T extends ItemValue> = {
   id?: string
+  label?: string
   'aria-labelledby'?: string
   className?: string
   panelClassName?: string
@@ -37,6 +38,7 @@ type Props<T extends ItemValue> = {
 
 function Chip<T extends ItemValue>({
   id,
+  label,
   'aria-labelledby': ariaLabelledBy,
   className,
   panelClassName,
@@ -51,9 +53,10 @@ function Chip<T extends ItemValue>({
   const { t } = useTranslation(['common'])
   const selectedItem = items.find((item) => Object.is(item.value, value))
   const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
+  const triggerLabel = [label, triggerContent].filter(Boolean).join(' ')
   const hasValue = selectedItem !== undefined && value !== ''
-  const clearLabel = triggerContent
-    ? `${t(($) => $['operation.clear'], { ns: 'common' })} ${triggerContent}`
+  const clearLabel = triggerLabel
+    ? `${t(($) => $['operation.clear'], { ns: 'common' })} ${triggerLabel}`
     : t(($) => $['operation.clear'], { ns: 'common' })
 
   return (
@@ -76,7 +79,7 @@ function Chip<T extends ItemValue>({
           aria-label={
             ariaLabelledBy
               ? undefined
-              : triggerContent || t(($) => $['placeholder.select'], { ns: 'common' })
+              : triggerLabel || t(($) => $['placeholder.select'], { ns: 'common' })
           }
           className={cn(
             'h-auto min-h-8 w-fit max-w-full cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt! data-popup-open:hover:bg-state-base-hover-alt [&>*:last-child]:hidden',
@@ -99,11 +102,20 @@ function Chip<T extends ItemValue>({
                 )}
               </span>
             )}
-            <span className="flex grow items-center gap-0.5 first-line:p-1">
+            <span
+              className={cn(
+                'flex min-w-0 grow items-center gap-0.5 first-line:p-1',
+                label && 'gap-1 px-1',
+              )}
+            >
+              {label && (
+                <span className="shrink-0 system-sm-regular text-text-tertiary">{label}</span>
+              )}
               <span
                 className={cn(
                   'system-sm-regular text-text-tertiary',
                   hasValue && 'text-text-secondary',
+                  label && 'truncate system-sm-medium',
                 )}
               >
                 {triggerContent}

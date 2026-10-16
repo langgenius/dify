@@ -553,11 +553,18 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
-                      input: { params: variables.params },
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
                     }),
-                  })
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
@@ -567,14 +574,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                      input: {
-                        params: variables.params,
-                        query: { tracing_provider: variables.body.tracing_provider },
-                      },
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
                     }),
-                  })
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
@@ -582,14 +596,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                      input: {
-                        params: variables.params,
-                        query: { tracing_provider: variables.body.tracing_provider },
-                      },
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
                     }),
-                  })
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
@@ -597,14 +618,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
-                      input: {
-                        params: variables.params,
-                        query: { tracing_provider: variables.query.tracing_provider },
-                      },
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.query.tracing_provider },
+                        },
+                      }),
                     }),
-                  })
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
                 },
               },
             },
@@ -1202,6 +1230,95 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAgentId: {
+          trace: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
+          traceConfig: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+            patch: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.body.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
+                        input: {
+                          params: variables.params,
+                          query: { tracing_provider: variables.query.tracing_provider },
+                        },
+                      }),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.traceCapabilities.get.key({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
           apiKeys: {
             post: {
               mutationOptions: {
