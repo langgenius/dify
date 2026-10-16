@@ -19,7 +19,8 @@ import { documentCanDownloadAtom, documentCanWriteAtom } from './runtime'
 import { selectedDocumentIdsAtom } from './scoped'
 import { documentReadOnlyReasonIdAtom } from './upload'
 
-const MAX_SELECTED_DOCUMENTS = 100
+// Bulk document payloads accept at most this many document IDs.
+export const MAX_SELECTED_DOCUMENTS = 100
 
 const availableDocumentIdsAtom = atom(
   (get) =>
@@ -77,13 +78,15 @@ const someFilteredDocumentsSelectedAtom = atom((get) => {
   )
 })
 
-const documentSelectionInvalidAtom = atom((get) => {
-  const selectedDocuments = get(selectedDocumentsAtom)
-  return (
-    selectedDocuments.length !== get(validSelectedDocumentIdsAtom).size ||
-    selectedDocuments.length > MAX_SELECTED_DOCUMENTS
-  )
-})
+export const documentSelectionLimitExceededAtom = atom(
+  (get) => get(selectedDocumentsAtom).length > MAX_SELECTED_DOCUMENTS,
+)
+
+const documentSelectionInvalidAtom = atom(
+  (get) =>
+    get(selectedDocumentsAtom).length !== get(validSelectedDocumentIdsAtom).size ||
+    get(documentSelectionLimitExceededAtom),
+)
 
 export const selectionAvailabilityTargetEnabledAtom = atom((get) => {
   const selectedDocuments = get(selectedDocumentsAtom)
@@ -100,8 +103,10 @@ export const selectionAvailabilityActionVisibleAtom = atom((get) =>
   get(selectedStatusesAtom).every(documentShowsAvailabilityAction),
 )
 
-export const selectionReindexDisabledAtom = atom((get) =>
-  get(selectedStatusesAtom).some((status) => !documentCanReindex(status)),
+export const selectionReindexDisabledAtom = atom(
+  (get) =>
+    get(documentSelectionLimitExceededAtom) ||
+    get(selectedStatusesAtom).some((status) => !documentCanReindex(status)),
 )
 
 export const downloadableDocumentIdsAtom = atom((get) => {

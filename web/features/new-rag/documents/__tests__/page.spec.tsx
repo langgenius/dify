@@ -4641,6 +4641,83 @@ describe('DocumentsPage', () => {
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
 
+  it('keeps rejected documents selected after a partial bulk deletion', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({ id: 'one', rowVersion: 2, title: 'One.pdf' }),
+            document({ id: 'two', rowVersion: 4, title: 'Two.pdf' }),
+          ],
+        },
+      ],
+    }
+    bulkRemoveDocumentsMutation.mockResolvedValue({
+      items: [],
+      results: [
+        { document_id: 'one', status: 'accepted' },
+        { document_id: 'two', status: 'rejected' },
+      ],
+      total: 2,
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.remove',
+      }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('checkbox', { name: 'One.pdf' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Two.pdf' })).toBeChecked()
+    expect(toastMock.warning).toHaveBeenCalledWith(
+      'knowledgeDocuments.documentsRemovePartial:{"rejected":1,"removed":1}',
+    )
+  })
+
+  it('explains the selection limit instead of sending oversized re-index or delete requests', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: Array.from({ length: 101 }, (_, index) =>
+            document({ id: `document-${index}`, title: `Document ${index}.pdf` }),
+          ),
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('checkbox', { name: 'knowledgeDocuments.selectAllDocuments' }),
+    )
+
+    const actions = screen.getByRole('group', {
+      name: 'knowledgeDocuments.bulkDocumentActions',
+    })
+    const reindex = within(actions).getByRole('button', {
+      name: 'knowledgeSpace.reindexDocuments',
+    })
+    const remove = within(actions).getByRole('button', { name: 'common.operation.remove' })
+    const limit = 'knowledgeDocuments.documentSelectionLimit:{"max":100}'
+    expect(within(actions).getByText(limit)).toBeVisible()
+    expect(reindex).toBeDisabled()
+    expect(reindex).toHaveAccessibleDescription(limit)
+    expect(remove).toBeDisabled()
+    expect(remove).toHaveAccessibleDescription(limit)
+
+    await user.click(reindex)
+    await user.click(remove)
+    expect(reindexMutation.mutateAsync).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(bulkRemoveDocumentsMutation).not.toHaveBeenCalled()
+  })
+
   it('prompts for model setup before re-indexing selected documents', async () => {
     const user = userEvent.setup()
     settingsState.configurationState = 'setup-required'

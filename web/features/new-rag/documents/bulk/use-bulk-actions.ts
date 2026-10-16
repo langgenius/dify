@@ -27,7 +27,7 @@ import {
   ensureDocumentModelReadyAtom,
 } from '../state/runtime'
 import {
-  clearDocumentSelectionAtom,
+  documentSelectionLimitExceededAtom,
   downloadableDocumentIdsAtom,
   replaceDocumentSelectionAtom,
   selectedDocumentResultsUnavailableAtom,
@@ -282,13 +282,14 @@ export function useBulkAvailabilityAction() {
 }
 
 export function useBulkRemoveAction() {
-  const { t } = useTranslation(['knowledgeSpace'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const canWrite = useAtomValue(documentCanWriteAtom)
   const selectionDisabled = useAtomValue(selectedDocumentResultsUnavailableAtom)
   const selectedDocumentIds = useAtomValue(validSelectedDocumentIdsAtom)
   const selectedDocuments = useAtomValue(selectedDocumentsAtom)
-  const clearSelection = useSetAtom(clearDocumentSelectionAtom)
+  const selectionLimitExceeded = useAtomValue(documentSelectionLimitExceededAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
+  const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('remove')
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
 
@@ -298,21 +299,35 @@ export function useBulkRemoveAction() {
       selectionDisabled ||
       !selectedDocumentIds.size ||
       !selectedDocuments.length ||
+      selectionLimitExceeded ||
       !begin()
     )
       return false
     try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete({
-        body: {
-          documents: selectedDocuments.map((document) => ({
-            documentId: document.id,
-            expectedRevision: document.rowVersion,
-          })),
-        },
-        headers: { 'Idempotency-Key': createRequestId() },
-        params: { control_space_id: knowledgeSpaceId },
-      })
-      clearSelection()
+      const result =
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete({
+          body: {
+            documents: selectedDocuments.map((document) => ({
+              documentId: document.id,
+              expectedRevision: document.rowVersion,
+            })),
+          },
+          headers: { 'Idempotency-Key': createRequestId() },
+          params: { control_space_id: knowledgeSpaceId },
+        })
+      const rejectedIds = (result.results ?? []).flatMap((item) =>
+        item.status === 'rejected' ? [item.document_id] : [],
+      )
+      replaceSelection(rejectedIds)
+      if (rejectedIds.length) {
+        const message = t(($) => $.documentsRemovePartial, {
+          ns: 'knowledgeDocuments',
+          rejected: rejectedIds.length,
+          removed: selectedDocuments.length - rejectedIds.length,
+        })
+        if (rejectedIds.length === selectedDocuments.length) toast.error(message)
+        else toast.warning(message)
+      }
       invalidateDocumentsAndTasks()
       return true
     } catch (error) {
@@ -325,14 +340,15 @@ export function useBulkRemoveAction() {
   }, [
     begin,
     canWrite,
-    clearSelection,
     finish,
     invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
+    replaceSelection,
     selectedDocumentIds,
     selectedDocuments,
     selectionDisabled,
+    selectionLimitExceeded,
     t,
   ])
 

@@ -18,7 +18,9 @@ import { reindexUnavailabilityAtom } from '../state/results'
 import { documentCanDownloadAtom, documentCanWriteAtom } from '../state/runtime'
 import {
   clearDocumentSelectionAtom,
+  documentSelectionLimitExceededAtom,
   downloadableDocumentIdsAtom,
+  MAX_SELECTED_DOCUMENTS,
   selectedDocumentResultsUnavailableAtom,
   selectionAvailabilityActionVisibleAtom,
   selectionAvailabilityDisabledAtom,
@@ -33,12 +35,15 @@ import {
   useBulkRemoveAction,
 } from './use-bulk-actions'
 
+const selectionLimitId = 'document-selection-limit'
+
 function BulkReindexAction() {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const disabled = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
   const reindexDisabled = useAtomValueRawSync(selectionReindexDisabledAtom)
   const unavailableReason = useAtomValueRawSync(reindexUnavailabilityAtom)
+  const selectionLimitExceeded = useAtomValueRawSync(documentSelectionLimitExceededAtom)
   const { busy, pending, run } = useBulkReindexAction()
   const disabledReason =
     unavailableReason === 'sources'
@@ -54,7 +59,13 @@ function BulkReindexAction() {
   return (
     <>
       <Button
-        aria-describedby={disabled ? 'document-reindex-unavailable' : undefined}
+        aria-describedby={
+          disabled
+            ? 'document-reindex-unavailable'
+            : selectionLimitExceeded
+              ? selectionLimitId
+              : undefined
+        }
         className="shrink-0"
         disabled={disabled || reindexDisabled || (busy && !pending)}
         loading={pending}
@@ -132,13 +143,15 @@ function BulkRemoveAction() {
   const { t: tCommon } = useTranslation(['common'])
   const [open, setOpen] = useState(false)
   const resultsUnavailable = useAtomValueRawSync(selectedDocumentResultsUnavailableAtom)
+  const selectionLimitExceeded = useAtomValueRawSync(documentSelectionLimitExceededAtom)
   const { busy, pending, run } = useBulkRemoveAction()
 
   return (
     <>
       <Button
+        aria-describedby={selectionLimitExceeded ? selectionLimitId : undefined}
         className="shrink-0"
-        disabled={resultsUnavailable || (busy && !pending)}
+        disabled={resultsUnavailable || selectionLimitExceeded || (busy && !pending)}
         loading={pending}
         size="small"
         tone="destructive"
@@ -184,6 +197,7 @@ export function DocumentBulkActionsToolbar() {
   const canDownload = useAtomValueRawSync(documentCanDownloadAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const selectedDocumentIds = useAtomValueRawSync(validSelectedDocumentIdsAtom)
+  const selectionLimitExceeded = useAtomValueRawSync(documentSelectionLimitExceededAtom)
   const clearSelectedDocuments = useSetAtom(clearDocumentSelectionAtom)
   const busy = Boolean(useAtomValueRawSync(documentBulkPendingActionAtom))
 
@@ -201,6 +215,18 @@ export function DocumentBulkActionsToolbar() {
             count: selectedDocumentIds.size,
           })}
         </span>
+        {canWrite && selectionLimitExceeded && (
+          <span
+            id={selectionLimitId}
+            className="max-w-44 shrink-0 system-2xs-regular text-text-warning"
+            role="status"
+          >
+            {t(($) => $.documentSelectionLimit, {
+              max: MAX_SELECTED_DOCUMENTS,
+              ns: 'knowledgeDocuments',
+            })}
+          </span>
+        )}
         <span aria-hidden className="h-5 w-px shrink-0 bg-divider-regular" />
         {canWrite && <BulkReindexAction />}
         {canDownload && <BulkDownloadAction />}
