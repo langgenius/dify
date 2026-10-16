@@ -125,7 +125,7 @@ describe('question-classifier/use-config', () => {
       return selector({ nodesDefaultConfigs: {} } as never)
     })
     mockUseConfigVision.mockImplementation((_model, options) => {
-      latestVisionOptions = options
+      latestVisionOptions = options as typeof latestVisionOptions
       return {
         isVisionModel: false,
         handleVisionResolutionEnabledChange: vi.fn(),

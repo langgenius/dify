@@ -872,7 +872,7 @@ const getIterationItemType = ({
     }
   }
 
-  switch (arrayType) {
+  switch (arrayType as VarType) {
     case VarType.arrayString:
       return VarType.string
     case VarType.arrayNumber:
@@ -922,7 +922,7 @@ const getLoopItemType = ({
     })
   }
 
-  switch (arrayType) {
+  switch (arrayType as VarType) {
     case VarType.arrayString:
       return VarType.string
     case VarType.arrayNumber:

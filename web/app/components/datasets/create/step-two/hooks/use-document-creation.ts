@@ -228,7 +228,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
             onSuccess(data) {
               updateIndexingTypeCache?.(indexType)
               updateResultCache?.(data)
-              updateRetrievalMethodCache?.(retrievalConfig.search_method)
+              updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
             },
           },
         )
@@ -239,7 +239,7 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
             onSuccess(data) {
               updateIndexingTypeCache?.(indexType)
               updateResultCache?.(data)
-              updateRetrievalMethodCache?.(retrievalConfig.search_method)
+              updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
             },
           },
         )

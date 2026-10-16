@@ -39,7 +39,8 @@ function createRootElementMock() {
   let mouseMoveHandler: MouseMoveHandler | null = null
   const addEventListener = vi.fn(
     (eventName: string, handler: EventListenerOrEventListenerObject) => {
-      if (eventName === 'mousemove' && typeof handler === 'function') mouseMoveHandler = handler
+      if (eventName === 'mousemove' && typeof handler === 'function')
+        mouseMoveHandler = handler as MouseMoveHandler
     },
   )
   const removeEventListener = vi.fn()

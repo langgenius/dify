@@ -162,8 +162,8 @@ describe('CodeBlock', () => {
     const windowWithLegacyAudio = window as WindowWithLegacyAudio
     originalAudioContext = windowWithLegacyAudio.AudioContext
     originalWebkitAudioContext = windowWithLegacyAudio.webkitAudioContext
-    windowWithLegacyAudio.AudioContext = MockAudioContext
-    windowWithLegacyAudio.webkitAudioContext = MockAudioContext
+    windowWithLegacyAudio.AudioContext = MockAudioContext as AudioContextCtor
+    windowWithLegacyAudio.webkitAudioContext = MockAudioContext as AudioContextCtor
     delete windowWithLegacyAudio.abcjsAudioContext
   })
 

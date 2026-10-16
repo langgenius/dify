@@ -156,7 +156,10 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
       return t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })
 
     if (embeddingModelStatus !== 'active') {
-      const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[embeddingModelStatus]
+      const statusI18nKey =
+        DERIVED_MODEL_STATUS_BADGE_I18N[
+          embeddingModelStatus as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N
+        ]
       if (statusI18nKey) return t(($) => $[statusI18nKey], { ns: 'modelProvider' })
     }
 

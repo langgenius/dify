@@ -10,10 +10,10 @@ import type * as ts from 'typescript'
  * - Inward: `as T` is the contextual type of `value`, so it can shape literals, object
  *   literals, functions and generic calls. Those values are skipped; only values whose
  *   type does not depend on their context are inspected.
- * - Outward: the expression type changes from `T` to the value type. That is always safe
- *   when both are the same type. For an upcast it is only safe where the receiver type is
- *   fixed: a non-generic, non-overloaded call argument, an annotated declaration or return,
- *   or an assignment target.
+ * - Outward: the expression type changes from `T` to the value type. That is safe when both
+ *   are the same non-literal type. For a literal type or an upcast it is only safe where the
+ *   receiver type is fixed and does not narrow: a non-generic, non-overloaded call argument,
+ *   an annotated return, or an annotated declaration or assignment whose type is not a union.
  *
  * For `value as unknown as T`, the `unknown` step is dropped when `value` and `T` are
  * assignable in one direction, which assignment guarantees to type-check as a single `as T`.
@@ -29,8 +29,23 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
 
   const isGenericCall = (node: ts.CallLikeExpression): boolean => {
     const declaration = checker.getResolvedSignature(node)?.getDeclaration()
-    return !declaration || !!declaration.typeParameters?.length
+    if (!declaration || declaration.typeParameters?.length) return true
+    // A constructor's type parameters belong to its class, not to the constructor itself.
+    if (tsApi.isConstructorDeclaration(declaration) && declaration.parent.typeParameters?.length)
+      return true
+    if (tsApi.isCallExpression(node) || tsApi.isNewExpression(node)) {
+      const calleeType = checker.getTypeAtLocation(node.expression)
+      const signatures = tsApi.isNewExpression(node)
+        ? calleeType.getConstructSignatures()
+        : calleeType.getCallSignatures()
+      return signatures.some((signature) => signature.getTypeParameters()?.length)
+    }
+    return false
   }
+
+  // Literal types widen to their base type in mutable or inferred positions (`let`, array
+  // elements, unannotated returns); an assertion to the literal type is what prevents that.
+  const hasLiteralType = (type: ts.Type): boolean => checker.getBaseTypeOfLiteralType(type) !== type
 
   // Whether the type of `node` can depend on the contextual type provided by the assertion.
   const isContextSensitive = (node: ts.Expression): boolean => {
@@ -99,8 +114,12 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       if (signatures.length !== 1) return undefined
       return checker.getContextualType(current)
     }
-    if (tsApi.isVariableDeclaration(parent) && parent.initializer === current && parent.type)
-      return checker.getTypeFromTypeNode(parent.type)
+    // Assigning to a union-typed binding narrows it to the assigned type, so an upcast there
+    // keeps later checks of the other union members valid.
+    if (tsApi.isVariableDeclaration(parent) && parent.initializer === current && parent.type) {
+      const declaredType = checker.getTypeFromTypeNode(parent.type)
+      return declaredType.isUnion() ? undefined : declaredType
+    }
     if (tsApi.isReturnStatement(parent)) {
       const fn = tsApi.findAncestor(parent, tsApi.isFunctionLike)
       if (!fn?.type || fn.typeParameters?.length) return undefined
@@ -112,8 +131,10 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       parent.right === current &&
       !tsApi.isObjectLiteralExpression(parent.left) &&
       !tsApi.isArrayLiteralExpression(parent.left)
-    )
-      return checker.getTypeAtLocation(parent.left)
+    ) {
+      const targetType = checker.getTypeAtLocation(parent.left)
+      return targetType.isUnion() ? undefined : targetType
+    }
     return undefined
   }
 
@@ -141,7 +162,7 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
 
     const targetText = node.type.getText(file)
     const contextSensitive = isContextSensitive(value)
-    if (sourceType === targetType && !contextSensitive) {
+    if (sourceType === targetType && !contextSensitive && !hasLiteralType(sourceType)) {
       reportFix(
         node,
         `The value is already \`${targetText}\`; remove the \`as unknown as\` assertion.`,
@@ -174,7 +195,7 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     const targetType = checker.getTypeFromTypeNode(node.type)
     if (sourceType.flags & tsApi.TypeFlags.Any) return
 
-    if (sourceType === targetType) {
+    if (sourceType === targetType && !hasLiteralType(sourceType)) {
       reportFix(
         node,
         `The value is already \`${node.type.getText(file)}\`; remove the type assertion.`,

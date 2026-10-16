@@ -137,7 +137,7 @@ const FeaturesTrigger = () => {
   const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
   const startNodeLimitExceeded = useMemo(() => {
     const entryCount = nodes.reduce((count, node) => {
-      const nodeType = node.data.type
+      const nodeType = node.data.type as BlockEnum
       if (nodeType === BlockEnum.Start || isTriggerNode(nodeType)) return count + 1
       return count
     }, 0)

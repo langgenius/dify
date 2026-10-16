@@ -328,7 +328,7 @@ const Flowchart = (props: FlowchartProps) => {
               curve: 'linear',
               ranker: 'tight-tree',
             }
-            config.flowchart = flowchartConfig
+            config.flowchart = flowchartConfig as MermaidConfig['flowchart']
           }
 
           if (currentTheme === 'dark') {

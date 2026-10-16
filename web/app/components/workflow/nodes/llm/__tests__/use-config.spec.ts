@@ -192,7 +192,7 @@ describe('llm/use-config', () => {
       availableNodesWithParent: [{ id: 'previous-node', data: { title: 'Previous' } }],
     } as unknown as ReturnType<typeof useAvailableVarList>)
     mockUseConfigVision.mockImplementation((_model, options) => {
-      latestVisionOptions = options
+      latestVisionOptions = options as typeof latestVisionOptions
       return {
         isVisionModel: false,
         handleVisionResolutionEnabledChange,

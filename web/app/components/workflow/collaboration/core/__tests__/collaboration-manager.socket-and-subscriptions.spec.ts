@@ -525,7 +525,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       latestPresence = presence
     })
     manager.onCursorUpdate((cursors) => {
-      latestCursors = cursors
+      latestCursors = cursors as Record<string, unknown>
     })
 
     const baseUpdate: Pick<CollaborationUpdate, 'userId' | 'timestamp'> = {

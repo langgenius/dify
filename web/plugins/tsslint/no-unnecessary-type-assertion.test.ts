@@ -18,8 +18,9 @@ describe('no-unnecessary-type-assertion', () => {
   it('removes an upcast when the receiver type is fixed', () => {
     const prelude = 'declare const s: string\ndeclare function take(value: string | number): void\n'
     expect(fixedLines(`${prelude}take(s as string | number)\n`)).toEqual(['take(s)'])
-    expect(fixedLines(`${prelude}const v: string | number = s as string | number\n`)).toEqual([
-      'const v: string | number = s',
+    const derived = 'declare const d: { a: string; b: number }\n'
+    expect(fixedLines(`${derived}const v: { a: string } = d as { a: string }\n`)).toEqual([
+      'const v: { a: string } = d',
     ])
     expect(
       fixedLines(`${prelude}function f(): string | number {\n  return s as string | number\n}\n`),
@@ -62,6 +63,41 @@ describe('no-unnecessary-type-assertion', () => {
     const code = [
       'declare function query<T extends Element = HTMLElement>(): T | null',
       'const input = (query() || query()) as HTMLInputElement | null',
+    ].join('\n')
+    expect(lint(code)).toEqual([])
+  })
+
+  it('keeps an assertion that stops a literal type from widening', () => {
+    const prelude = "const a = 'a'\n"
+    expect(lint(`${prelude}let b = a as 'a'\nconst result: 'a' = b\n`)).toEqual([])
+    expect(lint(`${prelude}export function f() {\n  return a as 'a'\n}\n`)).toEqual([])
+    expect(lint(`${prelude}const list = [a as 'a']\n`)).toEqual([])
+    expect(lint(`${prelude}const b = a as unknown as 'a'\n`).map((r) => r.message)).toEqual([
+      'A single `as` assertion is enough; remove the `as unknown` step.',
+    ])
+  })
+
+  it('keeps an upcast that stops a union-typed binding from narrowing', () => {
+    const prelude = [
+      "type State = { kind: 'idle' } | { kind: 'busy'; id: number }",
+      "declare const initial: { kind: 'idle' }",
+      '',
+    ].join('\n')
+    expect(lint(`${prelude}let state: State = initial as State\n`)).toEqual([])
+    expect(lint(`${prelude}let state: State\nstate = initial as State\n`)).toEqual([])
+    expect(
+      lint(`${prelude}declare const take: (state: State) => void\ntake(initial as State)\n`),
+    ).toHaveLength(1)
+  })
+
+  it('keeps an assertion that infers the type argument of a generic class', () => {
+    const code = [
+      'class Box<T> {',
+      '  value!: T',
+      '  constructor() {}',
+      '}',
+      'const box = new Box() as Box<string>',
+      'box.value.toUpperCase()',
     ].join('\n')
     expect(lint(code)).toEqual([])
   })

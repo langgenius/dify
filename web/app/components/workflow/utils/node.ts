@@ -148,7 +148,7 @@ export const getNodesWithSameDefaultDataType = (
   nodeType: BlockEnum,
   defaultValue: Partial<Node['data']>,
 ) => {
-  const dataType = defaultValue.type ?? nodeType
+  const dataType = (defaultValue.type as BlockEnum | undefined) ?? nodeType
   const discriminatorEntries = (['agent_node_kind', 'version'] as const)
     .map((key) => [key, (defaultValue as Record<string, unknown>)[key]] as const)
     .filter(([, value]) => value !== undefined)

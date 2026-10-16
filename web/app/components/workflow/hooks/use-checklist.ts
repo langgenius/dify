@@ -514,7 +514,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           errorMessages.push(...(duplicateEndOutputMessages.get(node!.id) || []))
         }
 
-        const isStartNodeMeta = nodesExtraData?.[node!.data.type]?.metaData.isStart ?? false
+        const isStartNodeMeta =
+          nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
         const isStartPlaceholderNode = node!.data.type === BlockEnum.StartPlaceholder
         const canSkipConnectionCheck = shouldCheckStartNode
           ? isStartNodeMeta || isStartPlaceholderNode

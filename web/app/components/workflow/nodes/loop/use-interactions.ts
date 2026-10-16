@@ -1,4 +1,4 @@
-import type { Node } from '../../types'
+import type { BlockEnum, Node } from '../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
@@ -77,7 +77,7 @@ export const useNodeLoopInteractions = () => {
       const newIdMapping = { ...idMapping }
 
       const copyChildren = childrenNodes.map((child, index) => {
-        const childNodeType = child.data.type
+        const childNodeType = child.data.type as BlockEnum
         const defaultValue = nodesMetaDataMap?.[childNodeType]?.defaultValue ?? {}
         const nodesWithSameType = nodes.filter((node) => node.data.type === childNodeType)
         const childCopy = buildLoopChildCopy({
