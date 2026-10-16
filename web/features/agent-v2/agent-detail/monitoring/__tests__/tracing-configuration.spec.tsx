@@ -472,14 +472,14 @@ describe('Agent tracing configuration', () => {
     await openProvider(user)
     state.failDelete = true
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     const dialog = within(screen.getByRole('alertdialog'))
+    await user.click(dialog.getByRole('button', { name: 'common.operation.remove' }))
     expect(await dialog.findByRole('alert')).toHaveTextContent('Delete unavailable')
     expect(writes(sent).map((req) => req.method)).toEqual(['DELETE'])
     expect(state.config).toEqual(langfuse)
     expect(state.policy.enabled).toBe(true)
     state.failDelete = false
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(dialog.getByRole('button', { name: 'common.operation.remove' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(writes(sent).map((req) => req.method)).toEqual(['DELETE', 'DELETE'])
     expect(state.config).toBeNull()
