@@ -46,13 +46,17 @@ function setup({
   ],
   providerCapabilities = capabilities,
   failPolicy = false,
+  agentTracingEnabled = true,
 }: {
   policy?: AppTraceResponse
   permissions?: string[]
   providerCapabilities?: TraceProviderCapabilitiesResponse
   failPolicy?: boolean
+  agentTracingEnabled?: boolean
 } = {}) {
-  const { wrapper, queryClient } = createConsoleQueryWrapper()
+  const { wrapper, queryClient } = createConsoleQueryWrapper({
+    features: { agent_tracing_api_collection_enabled: agentTracingEnabled },
+  })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'workflow-1' } } }),
     createAppDetailFixture({ id: 'workflow-1', permission_keys: permissions }),
@@ -193,7 +197,7 @@ describe('InheritedTracingSummary', () => {
 
   it('drops the capture policy and says why when Agent tracing is unavailable', async () => {
     const user = userEvent.setup()
-    setup({ providerCapabilities: { ...capabilities, api_collection_enabled: false } })
+    setup({ agentTracingEnabled: false })
     expect(await screen.findByText('app.tracing.agentTracingUnavailable')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'app.tracing.inherited.title' }))
