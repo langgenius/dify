@@ -287,7 +287,7 @@ async def test_reconnected_input_cannot_substitute_response_job_identity():
     assert len(commands.run_calls) == 1
 
 
-def app_client(monkeypatch, token, *, configured_stub=False):
+def app_client(monkeypatch, token, *, configured_stub=False, legacy_stub=False):
     import base64
     from unittest.mock import AsyncMock
 
@@ -313,6 +313,8 @@ def app_client(monkeypatch, token, *, configured_stub=False):
     if configured_stub:
         settings = ServerSettings(
             api_token=token,
+            inner_api_key="synthetic-legacy-stub-key" if legacy_stub else None,
+            sandbox_files_base_url="http://files.example" if legacy_stub else None,
             agent_stub_api_base_url="http://stub/agent-stub",
             server_secret_key=base64.urlsafe_b64encode(b"x" * 32).rstrip(b"=").decode(),
         )
@@ -488,7 +490,7 @@ def test_ordinary_download_with_configured_stub_still_uploads_once(monkeypatch, 
         return original(codec, context, session_id=session_id)
 
     monkeypatch.setattr(AgentStubTokenCodec, "encode_connection_token", issue_token)
-    client, scope_client, factory, _ = app_client(monkeypatch, token, configured_stub=True)
+    client, scope_client, factory, _ = app_client(monkeypatch, token, configured_stub=True, legacy_stub=True)
     commands = _Commands(outputs=[json.dumps({"reference": _REFERENCE, "transfer_method": "tool_file"})])
     runtime_client = SimpleNamespace(close=AsyncMock())
     lease = ShellctlRuntimeLease(
@@ -595,3 +597,50 @@ async def test_native_legacy_state_without_job_identity_never_sends_stdin():
         await session._tool_input("job-8", "hello\n", timeout=1)
     assert commands.input_calls == []
     assert commands.run_calls == []
+
+
+@pytest.mark.parametrize("token,header", [(None, None), ("service-key", "Bearer service-key")])
+def test_strict_runless_download_refuses_without_owner_before_issuance_or_io(monkeypatch, token, header):
+    from typing import cast
+    from unittest.mock import AsyncMock
+
+    from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
+    from dify_agent.server import binding_files
+
+    issued = []
+    original_legacy = AgentStubTokenCodec.encode_connection_token
+    original_runtime = AgentStubTokenCodec.encode_runtime_token
+
+    def issue_legacy(codec, *args, **kwargs):
+        issued.append("legacy")
+        return original_legacy(codec, *args, **kwargs)
+
+    def issue_runtime(codec, *args, **kwargs):
+        issued.append("runtime")
+        return original_runtime(codec, *args, **kwargs)
+
+    monkeypatch.setattr(AgentStubTokenCodec, "encode_connection_token", issue_legacy)
+    monkeypatch.setattr(AgentStubTokenCodec, "encode_runtime_token", issue_runtime)
+    client, scope_client, factory, profile = app_client(monkeypatch, token, configured_stub=True)
+    acquire = AsyncMock(side_effect=AssertionError("strict runless export acquired a runtime lease"))
+    execute = AsyncMock(side_effect=AssertionError("strict runless export started an upload command"))
+    monkeypatch.setattr(LocalExecutionBindingBackend, "acquire", acquire)
+    monkeypatch.setattr(binding_files, "execute_complete_with_commands", execute)
+
+    response = client.post(
+        "/execution-bindings/files/download",
+        json=download_payload("binding-1:workspace-1"),
+        headers={"Authorization": header} if header else {},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "agent_stub_upload_unavailable"
+    assert issued == []
+    acquire.assert_not_called()
+    execute.assert_not_called()
+    assert factory.clients == []
+    assert factory.runs == []
+    assert scope_client.created == []
+    assert scope_client.inspected == []
+    cast(AsyncMock, getattr(scope_client, "destroy")).assert_not_called()
+    cast(AsyncMock, profile.home_snapshots.create_from_runtime).assert_not_called()
