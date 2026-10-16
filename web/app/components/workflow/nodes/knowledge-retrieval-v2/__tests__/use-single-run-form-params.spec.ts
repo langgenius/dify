@@ -1,6 +1,10 @@
 import type { KnowledgeRetrievalV2NodeType } from '../types'
 import { renderHook } from '@testing-library/react'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -87,5 +91,60 @@ describe('knowledge-retrieval-v2/use-single-run-form-params', () => {
     )
 
     expect(result.current.forms).toHaveLength(1)
+  })
+
+  it('exposes metadata filter variables as single-run inputs and dependencies', () => {
+    const setRunInputData = vi.fn()
+    const current = { query: 'policy', '#start.department#': 'sales' }
+    const getInputVars = vi.fn((texts: string[]) =>
+      texts.includes('{{#start.department#}}')
+        ? [
+            {
+              label: 'department',
+              variable: '#start.department#',
+              type: InputVarType.textInput,
+              required: true,
+            },
+          ]
+        : [],
+    )
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'retrieval-1',
+        payload: createData({
+          query_attachment_selector: [],
+          metadata_filtering_conditions: {
+            logical_operator: LogicalOperator.and,
+            conditions: [
+              {
+                id: 'condition-1',
+                name: 'department',
+                comparison_operator: ComparisonOperator.is,
+                value: '{{#start.department#}}',
+              },
+            ],
+          },
+        }),
+        runInputData: current,
+        runInputDataRef: { current },
+        getInputVars,
+        setRunInputData,
+        toVarInputs: () => [],
+      }),
+    )
+
+    expect(result.current.forms).toHaveLength(2)
+    expect(result.current.forms[1]!.inputs).toEqual([
+      expect.objectContaining({ variable: '#start.department#' }),
+    ])
+    expect(result.current.forms[1]!.values).toEqual({ '#start.department#': 'sales' })
+    expect(result.current.getDependentVars()).toContainEqual(['start', 'department'])
+
+    result.current.forms[1]!.onChange({ '#start.department#': 'support' })
+    expect(setRunInputData).toHaveBeenCalledWith({
+      '#start.department#': 'support',
+      query: 'policy',
+      queryAttachment: undefined,
+    })
   })
 })

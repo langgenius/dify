@@ -6,11 +6,11 @@ import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -111,31 +111,14 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
       <PopoverContent placement="bottom-start" sideOffset={4} className="w-70 p-0">
         <PopoverTitle className="sr-only">{label}</PopoverTitle>
         <div className="flex items-center gap-1 p-2 pb-1">
-          <div className="relative min-w-0 grow">
-            <span
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-            />
-            <Input
-              aria-label={tApp(($) => $['studio.filters.searchCreators'])}
-              autoComplete="off"
-              value={keywords}
-              className={cn('pl-6.5', keywords && 'pr-6.5')}
-              disabled={isPending || hasInitialError}
-              placeholder={tApp(($) => $['studio.filters.searchCreators'])}
-              onChange={(event) => setKeywords(event.target.value)}
-            />
-            {keywords && (
-              <button
-                type="button"
-                aria-label={tCommon(($) => $['operation.clear'])}
-                className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder outline-hidden hover:text-components-input-text-filled focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                onClick={() => setKeywords('')}
-              >
-                <span aria-hidden className="i-ri-close-circle-fill size-4" />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            className="min-w-0 grow"
+            aria-label={tApp(($) => $['studio.filters.searchCreators'])}
+            value={keywords}
+            disabled={isPending || hasInitialError}
+            placeholder={tApp(($) => $['studio.filters.searchCreators'])}
+            onValueChange={setKeywords}
+          />
           {value.length > 0 && (
             <button
               type="button"

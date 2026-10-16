@@ -1,6 +1,7 @@
 'use client'
 
 import type { DialogContentProps, DialogProps } from '@langgenius/dify-ui/dialog'
+import type { UseInfiniteQueryResult } from '@tanstack/react-query'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
@@ -30,7 +31,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { consoleQuery } from '@/service/console'
@@ -82,6 +83,77 @@ export function DatasetScopeDialog({
   )
 }
 
+type PickerPageQuery = Pick<
+  UseInfiniteQueryResult,
+  | 'fetchNextPage'
+  | 'hasNextPage'
+  | 'isError'
+  | 'isFetchNextPageError'
+  | 'isFetchingNextPage'
+  | 'isRefetching'
+  | 'refetch'
+>
+
+// Each picker source pages independently: a failed source shows its own retry, and a source with
+// more matches offers the next page so every match stays selectable.
+function PickerPagination({
+  query,
+  errorLabel,
+  loadMoreLabel,
+  onSettled,
+}: {
+  query: PickerPageQuery
+  errorLabel: string
+  loadMoreLabel: string
+  // Returns focus to the picker input once the pagination control may have unmounted.
+  onSettled: () => void
+}) {
+  const { t } = useTranslation(['common'])
+
+  if (query.isError) {
+    const retry = async () => {
+      await (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())
+      onSettled()
+    }
+    return (
+      <div
+        role="alert"
+        className="flex items-center justify-between gap-2 px-3 py-2 system-xs-regular text-text-destructive"
+      >
+        <span className="min-w-0">{errorLabel}</span>
+        <Button
+          size="small"
+          className="shrink-0"
+          loading={query.isRefetching || query.isFetchingNextPage}
+          onClick={() => void retry()}
+        >
+          {t(($) => $['operation.retry'], { ns: 'common' })}
+        </Button>
+      </div>
+    )
+  }
+
+  if (!query.hasNextPage) return null
+
+  return (
+    <div className="px-1 pb-1">
+      <Button
+        variant="ghost"
+        size="small"
+        className="w-full"
+        loading={query.isFetchingNextPage}
+        disabled={query.isFetchingNextPage}
+        onClick={async () => {
+          await query.fetchNextPage()
+          onSettled()
+        }}
+      >
+        {loadMoreLabel}
+      </Button>
+    </div>
+  )
+}
+
 function DatasetScopeContent({
   isCreating,
   createDisabled,
@@ -93,8 +165,10 @@ function DatasetScopeContent({
   const [scope, setScope] = useState<Scope>('all')
   const [selected, setSelected] = useState<SelectedKb[]>([])
   const [keyword, setKeyword] = useState('')
+  const pickerInputRef = useRef<HTMLInputElement>(null)
+  const focusPickerInput = () => pickerInputRef.current?.focus()
 
-  const { data: datasetsPages, isLoading: datasetsLoading } = useInfiniteQuery(
+  const datasetsQuery = useInfiniteQuery(
     consoleQuery.datasets.get.infiniteOptions({
       input: (page: number) => ({ query: { page, ...(keyword ? { keyword } : {}) } }),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
@@ -106,10 +180,10 @@ function DatasetScopeContent({
   )
   const datasets = useMemo<SelectedKb[]>(
     () =>
-      (datasetsPages?.pages ?? []).flatMap((page) =>
+      (datasetsQuery.data?.pages ?? []).flatMap((page) =>
         page.data.map(({ id, name }) => ({ id, name, kind: 'dataset' })),
       ),
-    [datasetsPages],
+    [datasetsQuery.data],
   )
   // KnowledgeFS spaces come from their own list endpoint, which only exists when the
   // workspace has KnowledgeFS enabled.
@@ -139,7 +213,12 @@ function DatasetScopeContent({
     [knowledgeSpacesQuery.data],
   )
   const pickerItems = useMemo(() => [...knowledgeSpaces, ...datasets], [knowledgeSpaces, datasets])
-  const isLoading = datasetsLoading || (knowledgeFsEnabled && knowledgeSpacesQuery.isLoading)
+  const isLoading =
+    datasetsQuery.isLoading || (knowledgeFsEnabled && knowledgeSpacesQuery.isLoading)
+  // "No data" is only true once every enabled lookup succeeded; a failed lookup gets its own
+  // error state so it is not mistaken for an empty search.
+  const hasLookupError =
+    datasetsQuery.isError || (knowledgeFsEnabled && knowledgeSpacesQuery.isError)
   const selectedIds = useMemo(() => new Set(selected.map((kb) => kb.id)), [selected])
   const addLabel = t(($) => $['apiKeyModal.addKnowledgeBase'], { ns: 'appApi' })
   const searchLabel = t(($) => $['apiKeyModal.searchKnowledgeBases'], { ns: 'appApi' })
@@ -321,7 +400,11 @@ function DatasetScopeContent({
                       className="w-[min(20rem,var(--available-width))]"
                     >
                       <ComboboxInputGroup>
-                        <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
+                        <ComboboxInput
+                          ref={pickerInputRef}
+                          aria-label={searchLabel}
+                          placeholder={searchLabel}
+                        />
                       </ComboboxInputGroup>
                       <ComboboxStatus>
                         {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
@@ -351,8 +434,28 @@ function DatasetScopeContent({
                         </ComboboxGroup>
                       </ComboboxList>
                       <ComboboxEmpty>
-                        {isLoading ? null : t(($) => $.noData, { ns: 'common' })}
+                        {isLoading || hasLookupError ? null : t(($) => $.noData, { ns: 'common' })}
                       </ComboboxEmpty>
+                      {knowledgeFsEnabled && (
+                        <PickerPagination
+                          query={knowledgeSpacesQuery}
+                          errorLabel={t(($) => $['apiKeyModal.loadKnowledgeSpacesError'], {
+                            ns: 'appApi',
+                          })}
+                          loadMoreLabel={t(($) => $['apiKeyModal.loadMoreKnowledgeSpaces'], {
+                            ns: 'appApi',
+                          })}
+                          onSettled={focusPickerInput}
+                        />
+                      )}
+                      <PickerPagination
+                        query={datasetsQuery}
+                        errorLabel={t(($) => $['apiKeyModal.loadDatasetsError'], { ns: 'appApi' })}
+                        loadMoreLabel={t(($) => $['apiKeyModal.loadMoreDatasets'], {
+                          ns: 'appApi',
+                        })}
+                        onSettled={focusPickerInput}
+                      />
                     </ComboboxPopup>
                   </ComboboxPositioner>
                 </ComboboxPortal>
