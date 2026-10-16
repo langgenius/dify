@@ -1,4 +1,4 @@
-import type { ErrorDocsResponse } from '@/models/datasets'
+import type { ErrorDocsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { retryErrorDocs } from '@/service/datasets'

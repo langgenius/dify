@@ -3,7 +3,6 @@ import type {
   ChildChunkResponse,
   ConsoleSegmentListResponse,
   DocumentDetailResponse as ContractDocumentDetailResponse,
-  ErrorDocsResponse as ContractErrorDocsResponse,
   ProcessRuleResponse as ContractProcessRuleResponse,
   RelatedAppResponse as ContractRelatedAppResponse,
   DatasetDetailWithPartialMembersResponse,
@@ -422,8 +421,6 @@ export type SegmentUpdater = {
   regenerate_child_chunks?: boolean
   attachment_ids?: string[]
 }
-
-export type ErrorDocsResponse = ContractErrorDocsResponse
 
 export type SelectedDatasetsMode = {
   allHighQuality: boolean
