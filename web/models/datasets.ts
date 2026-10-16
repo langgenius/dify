@@ -13,7 +13,6 @@ import type {
   DatasetQueryDetailResponse,
   DocumentStatusListResponse,
   DocumentStatusResponse,
-  DocumentWithSegmentsListResponse,
   DocumentWithSegmentsResponse,
   ExternalHitTestingRecordResponse,
   ExternalHitTestingResponse,
@@ -332,8 +331,6 @@ export type InitialDocumentDetail = {
 
 // A document in the dataset document list.
 export type SimpleDocumentDetail = DocumentWithSegmentsResponse
-
-export type DocumentListResponse = DocumentWithSegmentsListResponse
 
 type DocumentReq = {
   original_document_id?: string

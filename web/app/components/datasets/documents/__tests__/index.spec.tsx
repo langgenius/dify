@@ -1,5 +1,5 @@
+import type { DocumentWithSegmentsListResponse as DocumentListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { DocumentListResponse } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
