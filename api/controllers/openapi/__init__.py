@@ -150,13 +150,13 @@ from controllers.openapi._models import (
 )
 from controllers.openapi._upload import describe_multipart_bodies
 from fields.file_fields import FileResponse
-from libs.device_flow_security import attach_anti_framing
-from libs.external_api import ErrorSpec, ExternalApi
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
     WorkflowRunNodeExecutionResponse,
 )
+from libs.device_flow_security import attach_anti_framing
+from libs.external_api import ErrorSpec, ExternalApi
 from services.entities.dsl_entities import CheckDependenciesResult, Import
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
@@ -353,30 +353,50 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     from . import (
         account,
+        app_create,
         app_dsl,
+        app_info,
+        app_release,
         app_run,
+        app_webapp,
+        app_workflow,
         apps,
         apps_permitted_external,
         files,
         human_input_form,
         index,
+        knowledge_bases,
+        model_providers,
+        node_types,
         oauth_device,
         oauth_device_sso,
+        plugins,
+        tool_providers,
         workflow_events,
         workspaces,
     )
 
     return (
         account,
+        app_create,
         app_dsl,
+        app_info,
+        app_release,
         app_run,
+        app_webapp,
+        app_workflow,
         apps,
         apps_permitted_external,
         files,
         human_input_form,
         index,
+        knowledge_bases,
+        model_providers,
+        node_types,
         oauth_device,
         oauth_device_sso,
+        plugins,
+        tool_providers,
         workflow_events,
         workspaces,
     )
