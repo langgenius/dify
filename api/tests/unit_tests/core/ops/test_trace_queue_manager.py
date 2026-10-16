@@ -175,7 +175,7 @@ def test_application_pipeline_snapshots_switch_without_constructing_sdk(
     trace_queue_manager_and_task, monkeypatch: pytest.MonkeyPatch, enabled_at_start: bool
 ):
     apply_config_overrides(monkeypatch, OPS_AGENT_TRACE_ENABLED=True)
-    TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
+    trace_queue_manager, trace_task_class, trace_task_name = trace_queue_manager_and_task
     trace_queue = queue.Queue()
     calls: list[object] = []
     current_enabled = enabled_at_start
@@ -194,9 +194,9 @@ def test_application_pipeline_snapshots_switch_without_constructing_sdk(
         patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance") as legacy,
         patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
     ):
-        manager = TraceQueueManager(app_id="app-id")
+        manager = trace_queue_manager(app_id="app-id")
         current_enabled = not enabled_at_start
-        task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+        task = trace_task_class(trace_type=trace_task_name.WORKFLOW_TRACE)
         manager.add_trace_task(task)
     legacy.assert_not_called()
     assert calls == ["app-id"]
