@@ -152,10 +152,6 @@ export type FetchWorkflowDraftPageResponse = {
   page: number
 }
 
-export type NodeTracingListResponse = {
-  data: NodeTracing[]
-}
-
 export type WorkflowStartedResponse = {
   task_id: string
   workflow_run_id: string

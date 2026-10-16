@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
-import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 import { useEffect } from 'react'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -62,7 +62,7 @@ const buildNode = (override: Partial<NodeTracing>): NodeTracing => ({
   ...override,
 })
 
-const mockTracingList: NodeTracingListResponse = {
+const mockTracingList: { data: NodeTracing[] } = {
   data: [
     buildNode({}),
     buildNode({
