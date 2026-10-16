@@ -704,7 +704,8 @@ dev 的 Agent 监控页已实际显示 Weave 使用中、内容/Agent 开关开�
 - 跨 tenant 隔离、ingestion 写入 429 和凭据撤销没有在本轮 LangSmith 账号上执行；本次遇到的查询 429 不替代投递限流验收。公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
 - Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
 - dev 新增 Web 页面中已核对上一节列出的 Agent 配置展示和保存；其他权限、状态轮询、Workflow 继承展示及供应商网页跳转需继续按前端任务验收，不将局部页面操作视为全部前端功能通过。
-- 全局 feature 契约已实现，首次未配置 provider 的部署提示缺口已真实复现并记录为 DIFY-2995；本次文档更新时，dev 持久开关与 false→true 的浏览器回读验收仍在进行，尚不计为通过。
+- 全局 feature 已通过真实 Console HTTPS 回读：不传 app/provider 参数，在隔离 Agent 未选 provider 的情况下分别返回 false、true，dev 的 `model_billing_source` / `model_billing_migration_status` 字段保持。常规 base + override 两文件配置已核对 9 个相关开关持久为 true，无需临时 gate overlay；main 默认 false 未改。此轮结果不替代后续 CI 部署完成后的版本核对。
+- UI 验收中，原已配置 Agent 的不可用提示在开启后消失；通过页面发起的一次真实工具调用成功，Weave 独立查询得到 6 calls、2 LLM / 1 tool、4691 tokens，canonical ID、parent、session、内容及深链检查通过。首次无 provider 时的部署提示缺口仍由 DIFY-2995 跟踪，状态 Backlog、尚未修复；不能把后端字段和已配置页面通过写成该空配置 UI 已完成。
 
 ## 13. 定稿检查与代码定位
 
