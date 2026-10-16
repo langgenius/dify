@@ -551,6 +551,18 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           trace: {
             post: {
               mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.apps.byAppId.trace.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    {
+                      ...variables.body,
+                      capture_content: variables.body.capture_content ?? false,
+                      capture_agent: variables.body.capture_agent ?? true,
+                    },
+                  )
+                },
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
                   return Promise.all([
@@ -1233,6 +1245,14 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           trace: {
             post: {
               mutationOptions: {
+                onSuccess: (data, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.agent.byAgentId.trace.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    data,
+                  )
+                },
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
                   return Promise.all([
