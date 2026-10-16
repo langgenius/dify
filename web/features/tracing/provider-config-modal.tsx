@@ -4,6 +4,8 @@ import type {
   TraceConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC, RefObject } from 'react'
+import type { ConfigurableTracingProvider } from './providers'
+import type { TracingResource } from './resource'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -22,73 +24,125 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
+import { useState } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { docURL } from './config'
-import { TracingProvider } from './type'
+import { tracingProviders } from './providers'
 
 type Props = Readonly<{
-  appId: string
-  type: TracingProvider
+  resource: TracingResource
+  type: ConfigurableTracingProvider
   payload?: TraceAppConfigResponse['tracing_config']
   onRemoved: () => void
   firstInputRef: RefObject<HTMLInputElement | null>
   onSaved: () => void
-  onChosen: (provider: TracingProvider) => void
+  onChosen: (provider: ConfigurableTracingProvider) => Promise<void>
+  onBeforeRemove: () => Promise<void>
 }>
 
 const I18N_PREFIX = 'tracing.configProvider'
 
 const ProviderConfigModal: FC<Props> = ({
-  appId,
+  resource,
   type,
   payload,
   onRemoved,
   firstInputRef,
   onSaved,
   onChosen,
+  onBeforeRemove,
 }) => {
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
-  const isEdit = !!payload
-  const createConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({
-      context: { silent: true },
-      onSuccess: () => {
-        onSaved()
-        onChosen(type)
-      },
-    }),
+  const createAppConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({ context: { silent: true } }),
   )
-  const updateConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({
-      context: { silent: true },
-      onSuccess: onSaved,
-    }),
+  const createAgentConfig = useMutation(
+    consoleQuery.agent.byAgentId.traceConfig.post.mutationOptions({ context: { silent: true } }),
   )
-  const removeConfig = useMutation(
-    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({
-      onSuccess: onRemoved,
-    }),
+  const updateAppConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
   )
-  const saveConfig = isEdit ? updateConfig : createConfig
+  const updateAgentConfig = useMutation(
+    consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
+  )
+  const removeAppConfig = useMutation(
+    consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const removeAgentConfig = useMutation(
+    consoleQuery.agent.byAgentId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
+  )
+  const [created, setCreated] = useState(false)
+  const [enableFailed, setEnableFailed] = useState(false)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string>()
+  const [removeError, setRemoveError] = useState<string>()
+  const isEdit = !!payload || created
+  const reportError = (error: unknown) =>
+    setError(error instanceof Error ? error.message : String(error))
 
-  const handleRemove = () => {
-    removeConfig.mutate({
-      params: { app_id: appId },
-      query: { tracing_provider: type },
-    })
+  const enableSavedConfiguration = async () => {
+    try {
+      await onChosen(type)
+      onSaved()
+    } catch (error) {
+      setEnableFailed(true)
+      reportError(error)
+    }
   }
-
-  const handleSave = (values: TraceConfigPayload['tracing_config']) => {
-    if (saveConfig.isPending) return
+  const handleRetryEnable = async () => {
+    setPending(true)
+    setError(undefined)
+    await enableSavedConfiguration()
+    setPending(false)
+  }
+  const handleRemove = async () => {
+    if (pending) return
+    setPending(true)
+    setRemoveError(undefined)
+    try {
+      await onBeforeRemove()
+      const query = { tracing_provider: type }
+      if (resource.kind === 'agent')
+        await removeAgentConfig.mutateAsync({ params: { agent_id: resource.agentId }, query })
+      else await removeAppConfig.mutateAsync({ params: { app_id: resource.appId }, query })
+      onRemoved()
+    } catch (error) {
+      setRemoveError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setPending(false)
+    }
+  }
+  const handleSave = async (values: TraceConfigPayload['tracing_config']) => {
+    if (pending) return
+    setPending(true)
+    setError(undefined)
     const config: TraceConfigPayload['tracing_config'] = {}
     for (const [key, value] of Object.entries(values))
       config[key] = value === '' && payload?.[key] === null ? null : value
-    saveConfig.mutate({
-      params: { app_id: appId },
-      body: { tracing_provider: type, tracing_config: config },
-    })
+    try {
+      const body: TraceConfigPayload = { tracing_provider: type, tracing_config: config }
+      if (resource.kind === 'agent')
+        await (isEdit ? updateAgentConfig : createAgentConfig).mutateAsync({
+          params: { agent_id: resource.agentId },
+          body,
+        })
+      else
+        await (isEdit ? updateAppConfig : createAppConfig).mutateAsync({
+          params: { app_id: resource.appId },
+          body,
+        })
+      if (!isEdit || enableFailed) {
+        setCreated(true)
+        await enableSavedConfiguration()
+      } else {
+        onSaved()
+      }
+    } catch (error) {
+      reportError(error)
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
@@ -109,9 +163,9 @@ const ProviderConfigModal: FC<Props> = ({
 
       <Form<TraceConfigPayload['tracing_config']> className="px-8 pb-8" onFormSubmit={handleSave}>
         <div className="space-y-4">
-          {type === TracingProvider.arize && (
+          {type === 'arize' && (
             <>
-              <Field disabled={saveConfig.isPending} name="api_key">
+              <Field disabled={pending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -129,7 +183,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="space_id">
+              <Field disabled={pending} name="space_id">
                 <FieldLabel>
                   Space ID
                   <span aria-hidden className="text-text-destructive">
@@ -146,7 +200,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="project">
+              <Field disabled={pending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -163,7 +217,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="endpoint">
+              <Field disabled={pending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
@@ -175,9 +229,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.phoenix && (
+          {type === 'phoenix' && (
             <>
-              <Field disabled={saveConfig.isPending} name="api_key">
+              <Field disabled={pending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -195,7 +249,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="project">
+              <Field disabled={pending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -212,7 +266,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="endpoint">
+              <Field disabled={pending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
@@ -224,9 +278,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.aliyun && (
+          {type === 'aliyun' && (
             <>
-              <Field disabled={saveConfig.isPending} name="license_key">
+              <Field disabled={pending} name="license_key">
                 <FieldLabel>
                   License Key
                   <span aria-hidden className="text-text-destructive">
@@ -245,7 +299,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="endpoint">
+              <Field disabled={pending} name="endpoint">
                 <FieldLabel>
                   Endpoint
                   <span aria-hidden className="text-text-destructive">
@@ -261,7 +315,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="app_name">
+              <Field disabled={pending} name="app_name">
                 <FieldLabel>
                   App Name
                   <span aria-hidden className="text-text-destructive">
@@ -273,9 +327,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.tencent && (
+          {type === 'tencent' && (
             <>
-              <Field disabled={saveConfig.isPending} name="token">
+              <Field disabled={pending} name="token">
                 <FieldLabel>
                   Token
                   <span aria-hidden className="text-text-destructive">
@@ -294,7 +348,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="endpoint">
+              <Field disabled={pending} name="endpoint">
                 <FieldLabel>
                   Endpoint
                   <span aria-hidden className="text-text-destructive">
@@ -310,7 +364,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="service_name">
+              <Field disabled={pending} name="service_name">
                 <FieldLabel>
                   Service Name
                   <span aria-hidden className="text-text-destructive">
@@ -322,9 +376,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.weave && (
+          {type === 'weave' && (
             <>
-              <Field disabled={saveConfig.isPending} name="api_key">
+              <Field disabled={pending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -342,7 +396,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="project">
+              <Field disabled={pending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -359,7 +413,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="entity">
+              <Field disabled={pending} name="entity">
                 <FieldLabel>Entity</FieldLabel>
                 <Input
                   defaultValue={payload?.entity ?? ''}
@@ -370,7 +424,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="endpoint">
+              <Field disabled={pending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
@@ -380,7 +434,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="host">
+              <Field disabled={pending} name="host">
                 <FieldLabel>Host</FieldLabel>
                 <Input
                   type="url"
@@ -392,9 +446,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.langSmith && (
+          {type === 'langsmith' && (
             <>
-              <Field disabled={saveConfig.isPending} name="api_key">
+              <Field disabled={pending} name="api_key">
                 <FieldLabel>
                   API Key
                   <span aria-hidden className="text-text-destructive">
@@ -412,7 +466,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="project">
+              <Field disabled={pending} name="project">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -429,7 +483,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="endpoint">
+              <Field disabled={pending} name="endpoint">
                 <FieldLabel>Endpoint</FieldLabel>
                 <Input
                   type="url"
@@ -441,9 +495,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.langfuse && (
+          {type === 'langfuse' && (
             <>
-              <Field disabled={saveConfig.isPending} name="secret_key">
+              <Field disabled={pending} name="secret_key">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.secretKey`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -461,7 +515,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="public_key">
+              <Field disabled={pending} name="public_key">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.publicKey`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -478,7 +532,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="host">
+              <Field disabled={pending} name="host">
                 <FieldLabel>
                   Host
                   <span aria-hidden className="text-text-destructive">
@@ -496,9 +550,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.opik && (
+          {type === 'opik' && (
             <>
-              <Field disabled={saveConfig.isPending} name="api_key">
+              <Field disabled={pending} name="api_key">
                 <FieldLabel>API Key</FieldLabel>
                 <Input
                   ref={firstInputRef}
@@ -510,7 +564,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="project">
+              <Field disabled={pending} name="project">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.project`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.project ?? ''}
@@ -521,12 +575,12 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="workspace">
+              <Field disabled={pending} name="workspace">
                 <FieldLabel>Workspace</FieldLabel>
                 <Input defaultValue={payload?.workspace ?? ''} placeholder="default" />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="url">
+              <Field disabled={pending} name="url">
                 <FieldLabel>Url</FieldLabel>
                 <Input
                   type="url"
@@ -538,9 +592,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.mlflow && (
+          {type === 'mlflow' && (
             <>
-              <Field disabled={saveConfig.isPending} name="tracking_uri">
+              <Field disabled={pending} name="tracking_uri">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.trackingUri`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -557,7 +611,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="experiment_id">
+              <Field disabled={pending} name="experiment_id">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -576,7 +630,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="username">
+              <Field disabled={pending} name="username">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.username`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.username ?? ''}
@@ -587,7 +641,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="password">
+              <Field disabled={pending} name="password">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.password`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.password ?? ''}
@@ -600,9 +654,9 @@ const ProviderConfigModal: FC<Props> = ({
               </Field>
             </>
           )}
-          {type === TracingProvider.databricks && (
+          {type === 'databricks' && (
             <>
-              <Field disabled={saveConfig.isPending} name="experiment_id">
+              <Field disabled={pending} name="experiment_id">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.experimentId`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -622,7 +676,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="host">
+              <Field disabled={pending} name="host">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.databricksHost`], { ns: 'app' })}
                   <span aria-hidden className="text-text-destructive">
@@ -641,7 +695,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="client_id">
+              <Field disabled={pending} name="client_id">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientId`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.client_id ?? ''}
@@ -652,7 +706,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="client_secret">
+              <Field disabled={pending} name="client_secret">
                 <FieldLabel>{t(($) => $[`${I18N_PREFIX}.clientSecret`], { ns: 'app' })}</FieldLabel>
                 <Input
                   defaultValue={payload?.client_secret ?? ''}
@@ -663,7 +717,7 @@ const ProviderConfigModal: FC<Props> = ({
                 />
                 <FieldError />
               </Field>
-              <Field disabled={saveConfig.isPending} name="personal_access_token">
+              <Field disabled={pending} name="personal_access_token">
                 <FieldLabel>
                   {t(($) => $[`${I18N_PREFIX}.personalAccessToken`], { ns: 'app' })}
                 </FieldLabel>
@@ -679,16 +733,24 @@ const ProviderConfigModal: FC<Props> = ({
             </>
           )}
         </div>
-        {saveConfig.error && (
+        {enableFailed && (
+          <div role="status" className="mt-4 system-sm-regular text-text-warning">
+            {t(($) => $['tracing.configurationSavedEnableFailed'], { ns: 'app' })}
+            <Button disabled={pending} onClick={handleRetryEnable}>
+              {t(($) => $['tracing.retryEnable'], { ns: 'app' })}
+            </Button>
+          </div>
+        )}
+        {error && (
           <p role="alert" className="mt-4 system-sm-regular text-text-destructive">
-            {saveConfig.error.message}
+            {error}
           </p>
         )}
         <div className="mt-8 flex items-center justify-between gap-4">
           <a
             className="flex items-center space-x-1 text-xs leading-4.5 font-normal text-primary-600"
             target="_blank"
-            href={docURL[type]}
+            href={tracingProviders[type].docUrl}
           >
             <span>
               {t(($) => $[`${I18N_PREFIX}.viewDocsLink`], {
@@ -703,7 +765,13 @@ const ProviderConfigModal: FC<Props> = ({
               <>
                 <AlertDialog>
                   <AlertDialogTrigger
-                    render={<Button className="h-9 text-sm font-medium" tone="destructive" />}
+                    render={
+                      <Button
+                        className="h-9 text-sm font-medium"
+                        tone="destructive"
+                        disabled={pending}
+                      />
+                    }
                   >
                     {t(($) => $['operation.remove'], { ns: 'common' })}
                   </AlertDialogTrigger>
@@ -719,14 +787,16 @@ const ProviderConfigModal: FC<Props> = ({
                         {t(($) => $[`${I18N_PREFIX}.removeConfirmContent`], { ns: 'app' })}
                       </AlertDialogDescription>
                     </div>
+                    {removeError && (
+                      <p role="alert" className="px-6 system-sm-regular text-text-destructive">
+                        {removeError}
+                      </p>
+                    )}
                     <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
-                      <AlertDialogConfirmButton
-                        onClick={handleRemove}
-                        loading={removeConfig.isPending}
-                      >
+                      <AlertDialogConfirmButton onClick={handleRemove} loading={pending}>
                         {t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
                     </AlertDialogFooter>
@@ -744,7 +814,7 @@ const ProviderConfigModal: FC<Props> = ({
               className="h-9 text-sm font-medium"
               variant="primary"
               type="submit"
-              loading={saveConfig.isPending}
+              loading={pending}
             >
               {t(($) => $[`operation.${isEdit ? 'save' : 'saveAndEnable'}`], {
                 ns: 'common',
