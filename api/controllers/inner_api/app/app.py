@@ -144,8 +144,8 @@ class EnterpriseAppTriggerResponse(ResponseModel):
 class EnterpriseAppDetailResponse(EnterpriseAppResponse):
     published_version: EnterpriseAppPublishedVersionResponse | None = Field(
         description=(
-            "Version the app serves; null when unpublished, when an Agent App draft has "
-            "unpublished changes, and always for chat, completion, and agent-chat apps"
+            "Version the app serves, unaffected by later unpublished draft edits; null when never published, "
+            "and always for chat, completion, and agent-chat apps"
         )
     )
     published_version_count: int = Field(

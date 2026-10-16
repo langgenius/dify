@@ -133,8 +133,9 @@ class EnterpriseAppRecord:
     app: EnterpriseAppSummary
     # None when the app has never been published (workflow and Agent Apps) or
     # has no version concept (legacy chat, completion, and agent-chat Apps).
-    # Agent Apps also report None while their draft differs from the active
-    # snapshot, matching Studio's published filter.
+    # Agent Apps keep reporting the live snapshot after later draft edits, and
+    # report None while the active snapshot is a never-published seed, matching
+    # what the runtime serves.
     published_version: EnterpriseAppPublishedVersion | None
     # Size of the user-facing version history; 0 for Apps without versions.
     published_version_count: int

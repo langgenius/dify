@@ -288,11 +288,34 @@ class TestEnterpriseAppList:
             assert item.published == (detail.published_version is not None)
             assert item.invocation_count_24h == detail.invocation_count_24h
 
-    def test_agent_with_unpublished_draft_is_not_published(
+    def test_agent_draft_edits_keep_live_publication(
         self, app: Flask, sqlite_session: Session, seeded: dict[str, str]
     ) -> None:
         agent = _publish_agent(sqlite_session, seeded["roster"])
+        # Saving draft edits after publishing marks the draft dirty, but the
+        # active snapshot keeps serving public requests.
         agent.active_config_is_published = False
+        sqlite_session.commit()
+
+        items = {item.name: item for item in _list(app).data}
+        detail = _detail(app, seeded["roster"])
+
+        assert items["Roster Agent"].published is True
+        assert detail.published_version is not None
+        assert detail.published_version.id == agent.active_config_snapshot_id
+
+    def test_agent_seed_snapshot_is_not_published(
+        self, app: Flask, sqlite_session: Session, seeded: dict[str, str]
+    ) -> None:
+        agent = sqlite_session.scalar(select(Agent).where(Agent.app_id == seeded["roster"]))
+        assert agent is not None
+        seed = _snapshot(agent, 1, datetime(2026, 1, 15))
+        sqlite_session.add(seed)
+        sqlite_session.flush()
+        sqlite_session.add(_revision(seed, 1, AgentConfigRevisionOperation.CREATE_VERSION, datetime(2026, 1, 15)))
+        # The seed matches the draft, so the flag alone would report it published.
+        agent.active_config_snapshot_id = seed.id
+        agent.active_config_is_published = True
         sqlite_session.commit()
 
         items = {item.name: item for item in _list(app).data}

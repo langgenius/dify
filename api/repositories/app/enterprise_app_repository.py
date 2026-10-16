@@ -14,6 +14,10 @@ from typing import override
 import sqlalchemy as sa
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
+from core.agent.publish_visibility import (
+    agent_has_workflow_callable_active_snapshot,
+    workflow_callable_active_snapshot_filter,
+)
 from libs.helper import escape_like_pattern
 from libs.pagination import PaginatedResult, clamp_pagination
 from libs.url_utils import normalize_api_base_url
@@ -276,7 +280,7 @@ class EnterpriseAppRepository(EnterpriseAppStore):
                             AgentConfigSnapshot.agent_id == Agent.id,
                         ),
                     )
-                    .where(App.id.in_(agent_app_ids), Agent.active_config_is_published.is_(True))
+                    .where(App.id.in_(agent_app_ids), workflow_callable_active_snapshot_filter())
                 )
             )
         return published
@@ -341,17 +345,13 @@ class EnterpriseAppRepository(EnterpriseAppStore):
     @staticmethod
     def _published_agent_snapshot(session: Session, app: App) -> tuple[EnterpriseAppPublishedVersion | None, int]:
         # TODO: move to the Agent domain repository once it exists.
-        agent = session.execute(
-            sa.select(Agent.id, Agent.source, Agent.active_config_snapshot_id, Agent.active_config_is_published)
-            .where(_roster_agent_condition(app.tenant_id, app.id))
-            .limit(1)
-        ).one_or_none()
+        agent = session.scalar(sa.select(Agent).where(_roster_agent_condition(app.tenant_id, app.id)).limit(1))
         if agent is None:
             return None, 0
-        agent_id, source, snapshot_id, is_published = agent
+        agent_id, snapshot_id = agent.id, agent.active_config_snapshot_id
         operations = (
             AGENT_APP_VERSION_OPERATIONS | {AgentConfigRevisionOperation.IMPORT_PACKAGE}
-            if source == AgentSource.IMPORTED
+            if agent.source == AgentSource.IMPORTED
             else AGENT_APP_VERSION_OPERATIONS
         )
         history = session.scalars(
@@ -369,7 +369,9 @@ class EnterpriseAppRepository(EnterpriseAppStore):
             )
             .order_by(AgentConfigSnapshot.version.asc())
         ).all()
-        if not (snapshot_id and is_published):
+        # Draft edits do not revoke the live snapshot, while a never-published
+        # seed snapshot is not served; match the runtime check.
+        if not snapshot_id or not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
             return None, len(history)
         snapshot = session.execute(
             sa.select(
