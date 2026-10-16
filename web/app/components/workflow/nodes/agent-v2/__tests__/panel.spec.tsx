@@ -3,6 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { createData, createPanelEnvironment } from './panel-test-env'
 
+vi.mock('@/app/components/app/tracing/inherited-tracing-summary', () => ({
+  InheritedTracingSummary: ({ appId }: { appId: string }) => (
+    <div data-testid="inherited-tracing">{appId}</div>
+  ),
+}))
+
 const outputPrefix = 'workflowAgent.nodes.agent.outputVars'
 const task = () => screen.getByRole('textbox', { name: 'workflowAgent.nodes.agent.task.label' })
 const outputForm = () => within(screen.getByRole('form', { name: `${outputPrefix}.editorLabel` }))
