@@ -1,6 +1,6 @@
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAtomValue } from 'jotai'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { AppModeEnum } from '@/types/app'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 
 export type AgentScope = (typeof AgentScope)[keyof typeof AgentScope]
 export const AgentScope = {
@@ -10,9 +10,9 @@ export const AgentScope = {
 } as const
 
 export const useInlineAgentScope = () => {
-  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const isChatflow = useAtomValue(isChatflowAtom)
 
-  return appMode === AppModeEnum.ADVANCED_CHAT ? AgentScope.InChatflow : AgentScope.InWorkflow
+  return isChatflow ? AgentScope.InChatflow : AgentScope.InWorkflow
 }
 
 export const trackAgentBuildModeRun = (agentScope: AgentScope) => {

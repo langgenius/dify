@@ -5,6 +5,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { StrictMode, useState } from 'react'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -29,15 +30,12 @@ const mocks = vi.hoisted(() => ({
   getEdges: () => [],
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: { maintainer: string } }) => T) =>
-    selector({ appDetail: { maintainer: 'user-1' } }),
-}))
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({ currentWorkspace: { id: 'workspace-1' } }))
 })
 vi.mock('@/app/components/base/features/hooks', () => ({
+  useFeatures: () => undefined,
   useFeaturesStore: () => ({ getState: () => ({ features: {} }) }),
 }))
 vi.mock('@/app/components/workflow/store', async () => {
@@ -110,6 +108,15 @@ vi.mock('@/service/workflow', () => ({ syncWorkflowDraft: mocks.syncWorkflowDraf
 vi.mock('@/service/console', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/console')>()),
   consoleClient: {
+    apps: {
+      byAppId: {
+        workflows: {
+          draft: {
+            post: mocks.syncWorkflowDraft,
+          },
+        },
+      },
+    },
     difyBuilder: {
       sessions: {
         post: mocks.create,
@@ -132,19 +139,22 @@ vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
 }))
 vi.mock('../../hooks/use-workflow-run', () => ({ useWorkflowRunByCanEdit: () => ({}) }))
 vi.mock('../../hooks/use-workflow-start-run', () => ({ useWorkflowStartRunByCanEdit: () => ({}) }))
-vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({}),
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: () => ({}),
 }))
 vi.mock('../../hooks/use-get-run-and-trace-url', () => ({ useGetRunAndTraceUrl: () => ({}) }))
 vi.mock('../../hooks/use-DSL', () => ({ useDSLByCanEdit: () => ({}) }))
-vi.mock('../../hooks/use-configs-map', () => ({ useConfigsMap: () => ({}) }))
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({ useInspectVarsCrud: () => ({}) }))
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: () => ({}),
+}))
 
 function CreatedAppNavigation() {
   const setPendingCreation = useSetAtom(difyBuilderPendingCreationAtom)
   const [created, setCreated] = useState(false)
   return created ? (
-    <WorkflowMain nodes={[]} edges={[]} />
+    <EditorResourceScope resource={{ kind: 'app', appId: 'created-app', mode: 'workflow' }}>
+      <WorkflowMain nodes={[]} edges={[]} />
+    </EditorResourceScope>
   ) : (
     <button
       type="button"
@@ -162,7 +172,7 @@ const createCreationQueryClient = () => {
   const queryClient = createBuilderQueryClient()
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'created-app' } } }),
-    createAppDetailFixture({ id: 'created-app', mode: 'workflow' }),
+    createAppDetailFixture({ id: 'created-app', mode: 'workflow', maintainer: 'user-1' }),
   )
   return queryClient
 }
@@ -175,7 +185,6 @@ describe('Workflow creation with App Builder', () => {
     mocks.graphReadyListener = undefined
     workflowStore = createWorkflowStore({})
     workflowStore.setState({
-      appId: 'created-app',
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'initial-hash',
       setShowDifyBuilderPanel: mocks.setShowPanel,

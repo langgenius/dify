@@ -1,5 +1,5 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { difyBuilderSessionBusyAtom } from '@/app/components/workflow-app/components/dify-builder/session/state'
@@ -7,6 +7,7 @@ import {
   difyBuilderChecklistErrorsAtom,
   difyBuilderRuntimeAtom,
 } from '@/app/components/workflow-app/components/dify-builder/store'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
@@ -63,10 +64,10 @@ vi.mock('../../../store', () => ({
 }))
 
 vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) =>
+  useHooksStore: (selector: (state: { configsMap: { resourceKind: string } }) => unknown) =>
     selector({
       configsMap: {
-        flowType: 'workflow',
+        resourceKind: 'workflow',
       },
     }),
 }))
@@ -85,7 +86,7 @@ vi.mock('../node-group', () => ({
     item: { title: string }
     onItemClick: (item: { title: string }) => void
   }) => (
-    <button data-testid={`node-group-${item.title}`} onClick={() => onItemClick(item)}>
+    <button type="button" onClick={() => onItemClick(item)}>
       {item.title}
     </button>
   ),
@@ -167,7 +168,7 @@ describe('WorkflowChecklist', () => {
     expect(screen.getByText('2')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     expect(screen.getByTestId('plugin-group')).toHaveTextContent('Missing Plugin')
-    await user.click(screen.getByTestId('node-group-Broken Node'))
+    await user.click(screen.getByRole('button', { name: 'Broken Node' }))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
     expect(mockSetOpenInlineAgentPanelNodeId).not.toHaveBeenCalled()
@@ -179,7 +180,7 @@ describe('WorkflowChecklist', () => {
     renderChecklist({ disabled: false, onItemClick })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByTestId('node-group-Broken Node'))
+    await user.click(screen.getByRole('button', { name: 'Broken Node' }))
 
     expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'node-1' }))
     expect(mockHandleNodeSelect).not.toHaveBeenCalled()
@@ -187,7 +188,9 @@ describe('WorkflowChecklist', () => {
 
   it('should show the tooltip without replacing the warning count in the accessible name', async () => {
     const user = userEvent.setup()
-    render(<WorkflowChecklist disabled={false} />)
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     const trigger = screen.getByRole('button', { name: 'workflow.panel.checklist 2' })
     await user.hover(trigger)
@@ -209,7 +212,7 @@ describe('WorkflowChecklist', () => {
     renderChecklist({ disabled: false })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
-    await user.click(screen.getByTestId('node-group-Inline Agent'))
+    await user.click(screen.getByRole('button', { name: 'Inline Agent' }))
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-1')
     expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('node-1')

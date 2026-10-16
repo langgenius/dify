@@ -233,19 +233,17 @@ def test_workspace_list_returns_only_token_tenant(resource_fixture: ResourceFixt
         "name": "Token workspace",
         "role": "",
         "status": "normal",
-        "current": True,
     }
 
 
-@pytest.mark.parametrize("endpoint", ["detail", "members", "switch"])
+@pytest.mark.parametrize("endpoint", ["detail", "members"])
 def test_other_workspace_endpoints_reject_resource_token(resource_fixture: ResourceFixture, endpoint: str) -> None:
-    from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspaceMembersApi, WorkspaceSwitchApi
+    from controllers.openapi.workspaces import WorkspaceByIdApi, WorkspaceMembersApi
 
     flask_app, _, _, tenant_id, _ = resource_fixture
     methods = {
         "detail": WorkspaceByIdApi().get,
         "members": WorkspaceMembersApi().get,
-        "switch": WorkspaceSwitchApi().post,
     }
     with flask_app.test_request_context(
         "/workspaces", headers={"Authorization": "Bearer sk-test", CATALOG_HEADER: catalog_for(flask_app)[1]}

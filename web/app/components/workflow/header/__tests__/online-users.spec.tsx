@@ -1,6 +1,7 @@
 import type { CursorPosition } from '../../collaboration/types/collaboration'
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import OnlineUsers from '../online-users'
 
 let onCursorUpdate: ((cursors: Record<string, CursorPosition>) => void) | undefined
@@ -14,10 +15,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => ({
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({ setCenter }),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { appId: string }) => unknown) => selector({ appId: 'app-1' }),
 }))
 
 vi.mock('../../hooks-store', () => ({

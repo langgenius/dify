@@ -1775,6 +1775,7 @@ Create a new application
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | The draft changed after the export the import is based on | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/recent
@@ -27811,7 +27812,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | enable_step_by_step_tour | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
-| knowledge_fs_enabled | boolean |  | Yes |
 | license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |

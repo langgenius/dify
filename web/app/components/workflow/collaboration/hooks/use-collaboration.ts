@@ -22,7 +22,11 @@ const initialState: CollaborationViewState = {
   isLeader: false,
 }
 
-export function useCollaboration(appId: string, canEdit: boolean, reactFlowStore?: ReactFlowStore) {
+export function useCollaboration(
+  appId: string | undefined,
+  canEdit: boolean,
+  reactFlowStore?: ReactFlowStore,
+) {
   const [state, setState] = useState<CollaborationViewState>(initialState)
 
   const cursorServiceRef = useRef<CursorService | null>(null)

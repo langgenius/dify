@@ -1,8 +1,10 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import { safe } from '@orpc/client'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
@@ -16,6 +18,7 @@ import { usePipelineRefreshDraft } from './use-pipeline-refresh-draft'
 
 const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
@@ -24,7 +27,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const nodesOriginal = getNodes()
     const nodes = nodesOriginal.filter((node) => !node.data._isTempNode)
     const [x, y, zoom] = transform
-    const { pipelineId, environmentVariables, syncWorkflowDraftHash, ragPipelineVariables } =
+    const { environmentVariables, syncWorkflowDraftHash, ragPipelineVariables } =
       workflowStore.getState()
 
     if (pipelineId && !!nodes.length) {

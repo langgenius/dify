@@ -14,7 +14,6 @@ import {
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
-import { AppModeEnum } from '@/types/app'
 import { List } from '../list'
 
 vi.mock('react-i18next', async () => {
@@ -200,7 +199,7 @@ const defaultAppData = {
           id: 'app-1',
           name: 'Test App 1',
           description: 'Description 1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat',
           icon: '🤖',
           icon_type: 'emoji',
           icon_background: '#FFEAD5',
@@ -213,7 +212,7 @@ const defaultAppData = {
           id: 'app-2',
           name: 'Test App 2',
           description: 'Description 2',
-          mode: AppModeEnum.WORKFLOW,
+          mode: 'workflow' as const,
           icon: '⚙️',
           icon_type: 'emoji',
           icon_background: '#E4FBCC',
@@ -655,7 +654,7 @@ describe('List', () => {
             id: 'starred-app-1',
             name: 'Starred App',
             description: 'Starred description',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat',
             icon: '⭐',
             icon_type: 'emoji',
             icon_background: '#FFEAD5',
@@ -710,7 +709,7 @@ describe('List', () => {
             id: 'starred-app-1',
             name: 'Starred App',
             description: 'Starred description',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat',
             icon: '⭐',
             icon_type: 'emoji',
             icon_background: '#FFEAD5',
@@ -764,7 +763,7 @@ describe('List', () => {
             id: 'starred-app-1',
             name: 'Starred App',
             description: 'Starred description',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat',
             icon: '⭐',
             icon_type: 'emoji',
             icon_background: '#FFEAD5',
@@ -1103,9 +1102,7 @@ describe('List', () => {
       await user.click(await screen.findByRole('option', { name: 'app.types.workflow' }))
 
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe(
-        AppModeEnum.WORKFLOW,
-      )
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe('workflow')
     })
 
     it('should update category when all option is selected', async () => {
@@ -1172,7 +1169,7 @@ describe('List', () => {
           sort_by: 'last_modified',
           tag_ids: ['tag-1'],
           creator_ids: ['creator-1'],
-          mode: AppModeEnum.WORKFLOW,
+          mode: 'workflow' as const,
         },
       })
       expect(options.getNextPageParam({ has_more: true, page: 2 })).toBe(3)
@@ -1198,7 +1195,7 @@ describe('List', () => {
           sort_by: 'last_modified',
           tag_ids: ['tag-1'],
           creator_ids: ['creator-1'],
-          mode: AppModeEnum.WORKFLOW,
+          mode: 'workflow' as const,
         },
       })
     })
@@ -1299,11 +1296,11 @@ describe('List', () => {
   describe('App Type Select Options', () => {
     it('should update category for each app type option click', async () => {
       const appTypeTexts = [
-        { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
-        { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
-        { mode: AppModeEnum.CHAT, text: 'app.types.chatbot' },
-        { mode: AppModeEnum.AGENT_CHAT, text: 'app.types.agent' },
-        { mode: AppModeEnum.COMPLETION, text: 'app.newApp.completeApp' },
+        { mode: 'workflow' as const, text: 'app.types.workflow' },
+        { mode: 'advanced-chat' as const, text: 'app.types.advanced' },
+        { mode: 'chat' as const, text: 'app.types.chatbot' },
+        { mode: 'agent-chat' as const, text: 'app.types.agent' },
+        { mode: 'completion' as const, text: 'app.newApp.completeApp' },
       ]
 
       for (const { mode, text } of appTypeTexts) {

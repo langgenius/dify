@@ -9,7 +9,6 @@ import type {
 import type { IOtherOptions } from '@/service/base'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
-import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { use } from 'react'
@@ -108,11 +107,7 @@ type CommonHooksFnMap = {
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
   accessControl: WorkflowAccessControl
-  configsMap?: {
-    flowId: string
-    flowType: FlowType
-    fileSettings: FileUpload
-  }
+  fileSettings?: FileUpload
 }
 
 export type Shape = {
@@ -160,7 +155,7 @@ export const createHooksStore = ({
   invalidateSysVarValues = noop,
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
-  configsMap,
+  fileSettings,
   accessControl = fullWorkflowAccessControl,
 }: Partial<Shape>) => {
   return createStore<Shape>((set) => ({
@@ -200,7 +195,7 @@ export const createHooksStore = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
-    configsMap,
+    fileSettings,
     accessControl,
   }))
 }

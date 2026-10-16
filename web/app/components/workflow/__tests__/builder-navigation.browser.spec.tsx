@@ -6,18 +6,19 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { useEffect, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { FeaturesProvider } from '@/app/components/base/features/context'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import DifyBuilderComposer from '../../workflow-app/components/dify-builder/composer'
 import WorkflowMain from '../../workflow-app/components/workflow-main'
 import { useWorkflowRefreshDraft } from '../../workflow-app/hooks/use-workflow-refresh-draft'
 import { createRunningWorkflowState } from '../../workflow-app/hooks/use-workflow-run-utils'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { WorkflowContext } from '../context'
+import { EditorResourceScope } from '../editor-resource/provider'
 import WorkflowWithDefaultContext, { WorkflowWithInnerContext } from '../index'
 import ZoomInOut from '../operator/zoom-in-out'
 import { createWorkflowStore } from '../store'
@@ -139,15 +140,8 @@ vi.mock('../../workflow-app/hooks/use-nodes-sync-draft', () => ({
     prepareWorkflowDraftForBuilder: async () => {},
   }),
 }))
-vi.mock('../../workflow-app/hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({ nodes: [] }),
-}))
-vi.mock('../../workflow-app/hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({
-    flowId: 'builder-navigation-app',
-    flowType: 'app-flow',
-    fileSettings: {},
-  }),
+vi.mock('../node-catalog', () => ({
+  useWorkflowNodeCatalog: () => ({ nodes: [] }),
 }))
 vi.mock('../../workflow-app/hooks/use-DSL', () => ({
   useDSLByCanEdit: () => ({
@@ -161,8 +155,8 @@ vi.mock('../../workflow-app/hooks/use-get-run-and-trace-url', () => ({
     getWorkflowRunAndTraceUrl: () => ({ runUrl: '', traceUrl: '' }),
   }),
 }))
-vi.mock('../../workflow-app/hooks/use-inspect-vars-crud', () => ({
-  useInspectVarsCrud: () => ({}),
+vi.mock('../hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: () => ({}),
 }))
 vi.mock('../../workflow-app/hooks/use-workflow-run', () => ({
   useWorkflowRunByCanEdit: () => ({}),
@@ -233,7 +227,6 @@ function Fixture({
   const [store] = useState(() => {
     const workflow = workflowStore ?? createWorkflowStore({})
     workflow.setState({
-      appId: 'builder-navigation-app',
       isWorkflowDataLoaded: true,
       canvasReadOnly: !ordinaryRun,
       workflowDraftSyncPhase: ordinaryRun ? 'idle' : 'builder',
@@ -250,7 +243,7 @@ function Fixture({
       consoleQuery.apps.byAppId.get.queryKey({
         input: { params: { app_id: 'builder-navigation-app' } },
       }),
-      createAppDetailFixture({ id: 'builder-navigation-app', mode: AppModeEnum.WORKFLOW }),
+      createAppDetailFixture({ id: 'builder-navigation-app', mode: 'workflow' }),
     )
     return query
   })
@@ -262,25 +255,31 @@ function Fixture({
   return (
     <QueryClientProvider client={queryClient}>
       <Provider store={atomStore}>
-        <EventEmitterContextProvider>
-          <WorkflowContext value={store}>
-            <WorkflowWithDefaultContext nodes={nodes} edges={[]}>
-              <div style={{ display: 'flex', width: 1000, height: 600 }}>
-                <div style={{ width: ordinaryRun ? 700 : 1000, height: 600 }}>
-                  <CanvasWithRefresh
-                    onReady={onRefreshReady}
-                    collaborationRecovery={collaborationRecovery}
-                  />
-                </div>
-                {ordinaryRun && (
-                  <div style={{ width: 300 }}>
-                    <DifyBuilderComposer />
+        <EditorResourceScope
+          resource={{ kind: 'app', appId: 'builder-navigation-app', mode: 'workflow' }}
+        >
+          <FeaturesProvider>
+            <EventEmitterContextProvider>
+              <WorkflowContext value={store}>
+                <WorkflowWithDefaultContext nodes={nodes} edges={[]}>
+                  <div style={{ display: 'flex', width: 1000, height: 600 }}>
+                    <div style={{ width: ordinaryRun ? 700 : 1000, height: 600 }}>
+                      <CanvasWithRefresh
+                        onReady={onRefreshReady}
+                        collaborationRecovery={collaborationRecovery}
+                      />
+                    </div>
+                    {ordinaryRun && (
+                      <div style={{ width: 300 }}>
+                        <DifyBuilderComposer />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </WorkflowWithDefaultContext>
-          </WorkflowContext>
-        </EventEmitterContextProvider>
+                </WorkflowWithDefaultContext>
+              </WorkflowContext>
+            </EventEmitterContextProvider>
+          </FeaturesProvider>
+        </EditorResourceScope>
       </Provider>
     </QueryClientProvider>
   )

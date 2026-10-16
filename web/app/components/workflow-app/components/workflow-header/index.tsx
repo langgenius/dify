@@ -2,21 +2,23 @@ import type { HeaderProps } from '@/app/components/workflow/header'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import {
+  isChatflowAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import Header from '@/app/components/workflow/header'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import { useIsChatMode } from '../../hooks/use-is-chat-mode'
 import { difyBuilderHasSessionAtom } from '../dify-builder/store'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
-  const appDetail = useAppStore((state) => state.appDetail)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { data: difyBuilderEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({
       select: (features) => features.dify_builder_enabled,
@@ -31,11 +33,11 @@ const WorkflowHeader = () => {
   const viewHistoryProps = useMemo(() => {
     return {
       onClearLogAndMessageModal: handleClearLogAndMessageModal,
-      historyUrl: isChatMode
-        ? `/apps/${appDetail!.id}/advanced-chat/workflow-runs`
-        : `/apps/${appDetail!.id}/workflow-runs`,
+      historyUrl: isChatflow
+        ? `/apps/${appId}/advanced-chat/workflow-runs`
+        : `/apps/${appId}/workflow-runs`,
     }
-  }, [appDetail, isChatMode, handleClearLogAndMessageModal])
+  }, [appId, isChatflow, handleClearLogAndMessageModal])
 
   const headerProps: HeaderProps = useMemo(() => {
     return {
@@ -49,8 +51,8 @@ const WorkflowHeader = () => {
           showDifyBuilderButton: difyBuilderEnabled,
         },
         runAndHistoryProps: {
-          showRunButton: !isChatMode,
-          showPreviewButton: isChatMode,
+          showRunButton: !isChatflow,
+          showPreviewButton: isChatflow,
           viewHistoryProps,
         },
       },
@@ -65,7 +67,7 @@ const WorkflowHeader = () => {
     difyBuilderEnabled,
     hasDifyBuilderSession,
     resetWorkflowVersionHistory,
-    isChatMode,
+    isChatflow,
     viewHistoryProps,
   ])
   return <Header {...headerProps} />

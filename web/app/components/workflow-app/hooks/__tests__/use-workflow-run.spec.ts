@@ -1,6 +1,9 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useWorkflowRun } from '../use-workflow-run'
 
 type DebugAbortControllerRef = {
@@ -42,13 +45,6 @@ type WorkflowRunFailedTrackingEvent = {
 }
 
 const mocks = vi.hoisted(() => {
-  const appStoreState = {
-    appDetail: {
-      id: 'app-1',
-      mode: 'workflow',
-      name: 'Workflow App',
-    },
-  }
   const reactFlowStoreState = {
     edges: [{ id: 'edge-1' }],
     getNodes: vi.fn(),
@@ -70,7 +66,6 @@ const mocks = vi.hoisted(() => {
   })
 
   return {
-    appStoreState,
     reactFlowStoreState,
     workflowStoreState,
     workflowStoreSetState,
@@ -125,16 +120,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const useStore = Object.assign(vi.fn(), {
-    getState: () => mocks.appStoreState,
-  })
-
-  return {
-    useStore,
-  }
-})
-
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mocks.mockTrackEvent,
 }))
@@ -172,7 +157,9 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
   usePathname: () => '/apps/app-1/workflow',
 }))
 
@@ -184,7 +171,7 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mocks.mockInvalidateAllLastRun,
+  useInvalidateAllLastRun: () => mocks.mockInvalidateAllLastRun,
   useInvalidateWorkflowRunHistory: () => mocks.mockInvalidateRunHistory,
   useInvalidateConversationVarValues: () => vi.fn(),
   useInvalidateSysVarValues: () => vi.fn(),
@@ -197,13 +184,6 @@ vi.mock('@/service/workflow', () => ({
 vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
   useSetWorkflowVarsWithValue: () => ({
     fetchInspectVars: mocks.mockFetchInspectVars,
-  }),
-}))
-
-vi.mock('../use-configs-map', () => ({
-  useConfigsMap: () => ({
-    flowId: 'flow-1',
-    flowType: 'workflow',
   }),
 }))
 
@@ -228,6 +208,15 @@ vi.mock('../use-workflow-run-callbacks', async (importOriginal) => {
     }),
   }
 })
+
+const renderWorkflowRunHook = () => {
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow', name: 'Workflow App' }),
+  )
+  return renderHookWithConsoleQuery(() => useWorkflowRun(), { queryClient })
+}
 
 const createWorkflowStoreState = () => ({
   hasWorkflowDraftConflict: false,
@@ -292,7 +281,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should backup the current draft once and skip subsequent backups until it is cleared', () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleBackupDraft()
@@ -319,7 +308,7 @@ describe('useWorkflowRun', () => {
       environmentVariables: [{ id: 'env-backup', value: 'value' }],
     }
 
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleLoadBackupDraft()
@@ -340,7 +329,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should prepare the graph and dispatch a workflow run through ssePost for user-input mode', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -374,7 +363,7 @@ describe('useWorkflowRun', () => {
 
   it('should not start a run while the draft has an unresolved conflict', async () => {
     mocks.workflowStoreState.hasWorkflowDraftConflict = true
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: {} })
@@ -396,7 +385,7 @@ describe('useWorkflowRun', () => {
       mocks.workflowStoreState.hasWorkflowDraftConflict = true
       return null
     })
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({}, undefined, {
@@ -454,7 +443,7 @@ describe('useWorkflowRun', () => {
   ])(
     'should dispatch $title trigger runs through the debug runner integration',
     async ({ params, options, expectedUrl, expectedBody, expectedNodeIds, expectedIsAll }) => {
-      const { result } = renderHook(() => useWorkflowRun())
+      const { result } = renderWorkflowRunHook()
 
       await act(async () => {
         await result.current.handleRun(params, undefined, options)
@@ -478,7 +467,7 @@ describe('useWorkflowRun', () => {
   )
 
   it('should expose the workflow-failed tracker through the callback factory context', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -501,7 +490,7 @@ describe('useWorkflowRun', () => {
     )
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
-      workflow_id: 'flow-1',
+      workflow_id: 'app-1',
       reason: 'failed',
       node_type: 'llm',
       data: {
@@ -515,7 +504,7 @@ describe('useWorkflowRun', () => {
     baseCallbackFactoryContext.trackWorkflowRunFailed('Server Error', workflowData)
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
-      workflow_id: 'flow-1',
+      workflow_id: 'app-1',
       reason: 'Server Error',
       node_type: undefined,
       data: {
@@ -527,7 +516,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should split serialized workflow data into chunks when it exceeds the amplitude string limit', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -560,7 +549,7 @@ describe('useWorkflowRun', () => {
     if (!chunks) throw new Error('Expected workflow data chunks to be tracked')
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
-      workflow_id: 'flow-1',
+      workflow_id: 'app-1',
       reason: 'failed',
       node_type: 'llm',
       data: {
@@ -576,7 +565,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should track workflow failures when the error or workflow data is malformed', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -591,7 +580,7 @@ describe('useWorkflowRun', () => {
     baseCallbackFactoryContext.trackWorkflowRunFailed(new Error('network down'), undefined)
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
-      workflow_id: 'flow-1',
+      workflow_id: 'app-1',
       reason: 'network down',
       node_type: undefined,
       data: {
@@ -613,7 +602,7 @@ describe('useWorkflowRun', () => {
     )
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
-      workflow_id: 'flow-1',
+      workflow_id: 'app-1',
       reason: undefined,
       node_type: undefined,
       data: {
@@ -624,7 +613,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should lazily create audio players with the correct public and private tts urls', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ token: 'public-token' })
@@ -672,7 +661,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should stop workflow runs by task id or by aborting active debug controllers', async () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     await act(async () => {
       await result.current.handleRun({ inputs: { query: 'hello' } })
@@ -722,7 +711,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should restore published workflow graph, features, and environment variables', () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleRestoreFromPublishedWorkflow({
@@ -769,7 +758,7 @@ describe('useWorkflowRun', () => {
   })
 
   it('should restore published workflows with empty environment variables as an empty list', () => {
-    const { result } = renderHook(() => useWorkflowRun())
+    const { result } = renderWorkflowRunHook()
 
     act(() => {
       result.current.handleRestoreFromPublishedWorkflow({

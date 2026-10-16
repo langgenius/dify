@@ -1,9 +1,14 @@
-import { act, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { act, renderHook as renderHookWithProviders, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { consoleQuery } from '@/service/console'
 import { httpErrorFromResponse } from '@/service/http-error'
-import { createConsoleQueryClient } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useDSLByCanEdit } from '../use-DSL'
 
@@ -276,8 +281,17 @@ workflow:
     queryClient.removeQueries({
       queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
     })
-
-    const { result } = renderHook(() => useDSLByCanEdit(true))
+    const store = createWorkflowStore({})
+    const { wrapper: ConsoleWrapper } = createConsoleQueryWrapper({ queryClient })
+    const { result } = renderHookWithProviders(() => useDSLByCanEdit(true), {
+      wrapper: ({ children }: { children: ReactNode }) =>
+        createElement(ConsoleWrapper, {
+          children: createElement(EditorResourceScope, {
+            resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+            children: createElement(WorkflowContext, { value: store }, children),
+          }),
+        }),
+    })
 
     await act(async () => {
       await result.current.exportCheck()
