@@ -437,3 +437,34 @@ def test_present_config_reports_decryption_failure_as_processing_error() -> None
 
     assert caught.value.__cause__ is failure
     manager.obfuscated_decrypt_token.assert_not_called()
+
+
+@pytest.mark.parametrize("malformed", [False, True])
+def test_validate_saved_config_decrypts_and_validates_without_vendor_io(
+    monkeypatch: pytest.MonkeyPatch, malformed: bool
+) -> None:
+    monkeypatch.setattr(gateway_module, "provider_config_map", {"arize": _provider_entry()})
+    with patch.object(gateway_module, "OpsTraceManager") as manager:
+        manager.decrypt_tracing_config.return_value = {"project": ["invalid-project"] if malformed else "saved-project"}
+        gateway = OpsTraceManagerGateway()
+        if malformed:
+            with pytest.raises(AppTracingConfigInvalidConfigurationError):
+                gateway.validate_saved_config(
+                    workspace_id="workspace", tracing_provider="arize", tracing_config={"api_key": "encrypted"}
+                )
+        else:
+            gateway.validate_saved_config(
+                workspace_id="workspace", tracing_provider="arize", tracing_config={"api_key": "encrypted"}
+            )
+        manager.decrypt_tracing_config.assert_called_once_with("workspace", "arize", {"api_key": "encrypted"})
+        manager.check_trace_config_is_effective.assert_not_called()
+
+
+def test_validate_saved_config_rejects_undecryptable_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(gateway_module, "provider_config_map", {"arize": _provider_entry()})
+    with patch.object(gateway_module, "OpsTraceManager") as manager:
+        manager.decrypt_tracing_config.side_effect = ValueError("invalid ciphertext")
+        with pytest.raises(AppTracingConfigProcessingError):
+            OpsTraceManagerGateway().validate_saved_config(
+                workspace_id="workspace", tracing_provider="arize", tracing_config={"api_key": "broken"}
+            )

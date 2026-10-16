@@ -1,7 +1,5 @@
 'use client'
 import type {
-  AppTracePayload,
-  AppTraceResponse,
   TraceAppConfigResponse,
   TraceConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -37,7 +35,6 @@ type ProviderConfigModalProps = {
   onRemoved: () => void
   firstInputRef: RefObject<HTMLInputElement | null>
   onSaved: () => void
-  policy: AppTraceResponse
 }
 
 const I18N_PREFIX = 'tracing.configProvider'
@@ -49,7 +46,6 @@ export function ProviderConfigModal({
   onRemoved,
   firstInputRef,
   onSaved,
-  policy,
 }: ProviderConfigModalProps) {
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const createAppConfig = useMutation(
@@ -64,14 +60,6 @@ export function ProviderConfigModal({
   const updateAgentConfig = useMutation(
     consoleQuery.agent.byAgentId.traceConfig.patch.mutationOptions({ context: { silent: true } }),
   )
-  const resourceId = resource.kind === 'agent' ? resource.agentId : resource.appId
-  const scope = { id: `tracing:${resource.kind}:${resourceId}` }
-  const updateAppTrace = useMutation(
-    consoleQuery.apps.byAppId.trace.post.mutationOptions({ context: { silent: true }, scope }),
-  )
-  const updateAgentTrace = useMutation(
-    consoleQuery.agent.byAgentId.trace.post.mutationOptions({ context: { silent: true }, scope }),
-  )
   const removeAppConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.delete.mutationOptions({ context: { silent: true } }),
   )
@@ -81,75 +69,41 @@ export function ProviderConfigModal({
   const createConfig = resource.kind === 'agent' ? createAgentConfig : createAppConfig
   const updateConfig = resource.kind === 'agent' ? updateAgentConfig : updateAppConfig
   const removeConfig = resource.kind === 'agent' ? removeAgentConfig : removeAppConfig
-  const updateTrace = resource.kind === 'agent' ? updateAgentTrace : updateAppTrace
-  const isEdit = !!payload || createConfig.isSuccess
-  const pending =
-    createConfig.isPending ||
-    updateConfig.isPending ||
-    removeConfig.isPending ||
-    updateTrace.isPending
-  const enableFailed =
-    createConfig.isSuccess && updateTrace.isError && updateTrace.variables.body.enabled
-  const saveConfig =
-    updateConfig.submittedAt > createConfig.submittedAt ? updateConfig : createConfig
-  const error = pending
-    ? undefined
-    : saveConfig.submittedAt > updateTrace.submittedAt
-      ? saveConfig.error?.message
-      : updateTrace.variables?.body.enabled
-        ? updateTrace.error?.message
-        : undefined
-
-  const removeError =
-    removeConfig.error ?? (updateTrace.variables?.body.enabled === false ? updateTrace.error : null)
-  const updatePolicy = (enabled: boolean, onSuccess: () => void) => {
-    const body: AppTracePayload = {
-      enabled,
-      tracing_provider: enabled ? type : null,
-      capture_content: policy.capture_content ?? false,
-      capture_agent: policy.capture_agent ?? true,
-    }
-    if (resource.kind === 'agent')
-      updateAgentTrace.mutate({ params: { agent_id: resource.agentId }, body }, { onSuccess })
-    else updateAppTrace.mutate({ params: { app_id: resource.appId }, body }, { onSuccess })
-  }
+  const isEdit = !!payload
+  const saveError = createConfig.error ?? updateConfig.error
+  const pending = createConfig.isPending || updateConfig.isPending || removeConfig.isPending
   const handleRemove = () => {
     if (pending) return
-    const removeSavedConfiguration = () => {
-      const query = { tracing_provider: type }
-      if (resource.kind === 'agent')
-        removeAgentConfig.mutate(
-          { params: { agent_id: resource.agentId }, query },
-          { onSuccess: onRemoved },
-        )
-      else
-        removeAppConfig.mutate(
-          { params: { app_id: resource.appId }, query },
-          { onSuccess: onRemoved },
-        )
-    }
-    if (policy.tracing_provider === type) updatePolicy(false, removeSavedConfiguration)
-    else removeSavedConfiguration()
+    const query = { tracing_provider: type }
+    if (resource.kind === 'agent')
+      removeAgentConfig.mutate(
+        { params: { agent_id: resource.agentId }, query },
+        { onSuccess: onRemoved },
+      )
+    else
+      removeAppConfig.mutate(
+        { params: { app_id: resource.appId }, query },
+        { onSuccess: onRemoved },
+      )
   }
   const handleSave = (values: TraceConfigPayload['tracing_config']) => {
     if (pending) return
+    createConfig.reset()
+    updateConfig.reset()
     const config: TraceConfigPayload['tracing_config'] = {}
     for (const [key, value] of Object.entries(values))
       config[key] = value === '' && payload?.[key] === null ? null : value
     const body: TraceConfigPayload = { tracing_provider: type, tracing_config: config }
-    const onSuccess = () => {
-      if (!isEdit || createConfig.isSuccess) updatePolicy(true, onSaved)
-      else onSaved()
-    }
+    if (!isEdit) body.activate = true
     if (resource.kind === 'agent')
       (isEdit ? updateAgentConfig : createAgentConfig).mutate(
         { params: { agent_id: resource.agentId }, body },
-        { onSuccess },
+        { onSuccess: onSaved },
       )
     else
       (isEdit ? updateAppConfig : createAppConfig).mutate(
         { params: { app_id: resource.appId }, body },
-        { onSuccess },
+        { onSuccess: onSaved },
       )
   }
 
@@ -741,22 +695,9 @@ export function ProviderConfigModal({
             </>
           )}
         </div>
-        {enableFailed && (
-          <div role="status" className="mt-4 system-sm-regular text-text-warning">
-            {t(($) => $['tracing.configurationSavedEnableFailed'], { ns: 'app' })}
-            <Button
-              disabled={pending}
-              onClick={() => {
-                updatePolicy(true, onSaved)
-              }}
-            >
-              {t(($) => $['tracing.retryEnable'], { ns: 'app' })}
-            </Button>
-          </div>
-        )}
-        {error && (
+        {saveError && (
           <p role="alert" className="mt-4 system-sm-regular text-text-destructive">
-            {error}
+            {saveError.message}
           </p>
         )}
         <div className="mt-8 flex items-center justify-between gap-4">
@@ -800,9 +741,9 @@ export function ProviderConfigModal({
                         {t(($) => $[`${I18N_PREFIX}.removeConfirmContent`], { ns: 'app' })}
                       </AlertDialogDescription>
                     </div>
-                    {removeError && (
+                    {removeConfig.error && (
                       <p role="alert" className="px-6 system-sm-regular text-text-destructive">
-                        {removeError.message}
+                        {removeConfig.error.message}
                       </p>
                     )}
                     <AlertDialogFooter>

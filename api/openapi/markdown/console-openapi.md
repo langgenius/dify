@@ -1503,7 +1503,10 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Updated Agent tracing settings | **application/json**: [AppTraceResponse](#apptraceresponse)<br> |
-| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/trace-capabilities
@@ -1578,6 +1581,7 @@ Get available TTS voices for an Agent and language
 | 200 | Agent provider updated | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingConfigVerificationFailedError](#tracingconfigverificationfailederror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3735,8 +3739,11 @@ Update app tracing configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trace configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/trace-capabilities
@@ -3823,6 +3830,7 @@ Update an existing tracing configuration for an application
 | 400 | Invalid request parameters or tracing configuration | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingConfigVerificationFailedError](#tracingconfigverificationfailederror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Application or tracing configuration not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [TracingConfigConflictError](#tracingconfigconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -27863,6 +27871,7 @@ Tracing configuration not found.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| activate | boolean | Save, select this provider, and enable tracing atomically; preserve capture settings | No |
 | tracing_config | object | Tracing configuration data | Yes |
 | tracing_provider | string | Tracing provider name | Yes |
 
@@ -27948,6 +27957,14 @@ An accepted trace cannot be exported again.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TracingAlreadyAcceptedError |  | An accepted trace cannot be exported again. |  |
+
+#### TracingConfigConflictError
+
+Tracing configuration changed. Refresh and try again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TracingConfigConflictError |  | Tracing configuration changed. Refresh and try again. |  |
 
 #### TracingConfigProcessingFailedError
 
