@@ -347,7 +347,8 @@ def test_postgres_terminal_retirement_settles_and_quarantines_cleanup(workspace_
     c = workspace_case
     result = prepare(c)
     with c.ledger.factory.begin() as session:
-        session.get(DifyBuilderExecutionRequest, c.ref.request_id).state = "completed"
+        # Requests seal on terminal outcomes; completed is an invocation state.
+        session.get(DifyBuilderExecutionRequest, c.ref.request_id).state = "sealed"
         session.get(NativeTestScope, c.ref.request_id).cancelled = True
     c.backend.cleanup_failure = True
     with pytest.raises(RuntimeError, match="quarantined"):

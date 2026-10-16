@@ -514,3 +514,84 @@ def test_ordinary_download_with_configured_stub_still_uploads_once(monkeypatch, 
     runtime_client.close.assert_awaited_once()
     assert scope_client.inspected == []
     assert factory.runs == []
+
+
+def test_empty_native_job_refs_preserve_legacy_shell_state_wire():
+    import json
+
+    from dify_agent.layers.shell.layer import State
+    from dify_agent.runtime.modules import snapshot_modules
+    from tests.local.dify_agent.layers.shell.test_layer import FakeCommands, _layer
+
+    expected = {"initialized": True, "job_ids": [], "job_offsets": {}}
+    state = State.model_validate(expected)
+    assert state.model_dump(mode="json") == expected
+    assert json.loads(state.model_dump_json()) == expected
+    session, _ = _layer(commands=FakeCommands())
+    session.save_state(state)
+    assert session.deps.layers["shell"]["state"] == expected
+    assert snapshot_modules(session.deps).layers["shell"] == expected
+
+
+@pytest.mark.anyio
+async def test_native_job_refs_survive_layer_snapshot_and_reconnect_without_run():
+    import json
+
+    from dify_agent.layers.shell.layer import ShellSession, State
+    from dify_agent.runtime.modules import snapshot_modules
+    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease, ShellJobRef
+    from tests.local.dify_agent.layers.shell.test_layer import FakeCommands, _command_result, _layer
+
+    saved = ShellJobRef(
+        binding_ref="native:binding-1:1",
+        backend_revision="a7-v1",
+        workspace_generation=1,
+        job_id="job-8",
+        output_offset=12,
+    )
+    state = State(initialized=True, job_ids=["job-8"], job_offsets={"job-8": 12}, job_refs={"job-8": saved})
+    restored = State.model_validate_json(state.model_dump_json())
+    assert restored.job_refs == {"job-8": saved}
+    commands = FakeCommands(
+        input_handler=lambda job, text, offset, timeout: _command_result(job, offset=18, output="continued")
+    )
+    session, _ = _layer(commands=commands)
+    session.deps.resources.leases["runtime"] = NativeScopeLease(
+        handle=saved.binding_ref,
+        layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
+        client=SimpleNamespace(),
+        commands=commands,
+    )
+    session.save_state(restored)
+    snapshot = snapshot_modules(session.deps)
+    wire = json.loads(snapshot.model_dump_json())
+    assert wire["layers"]["shell"]["job_refs"]["job-8"] == saved.model_dump(mode="json")
+    session.deps.layers["shell"]["state"] = wire["layers"]["shell"]
+    reconnected = ShellSession("shell", session.deps)
+    result = await reconnected._tool_input("job-8", "hello\n", timeout=1)
+    assert "continued" in result
+    assert commands.run_calls == []
+    assert len(commands.input_calls) == 1
+    assert commands.input_calls[0].offset == 12
+
+
+@pytest.mark.anyio
+async def test_native_legacy_state_without_job_identity_never_sends_stdin():
+    from dify_agent.layers.shell.layer import State
+    from dify_agent.runtime.native_continuation import NativePolicyStopped
+    from dify_agent.runtime_backend.native_test_scope import NativeScopeLease
+    from tests.local.dify_agent.layers.shell.test_layer import FakeCommands, _layer
+
+    commands = FakeCommands()
+    session, _ = _layer(commands=commands)
+    session.deps.resources.leases["runtime"] = NativeScopeLease(
+        handle="native:binding-1:1",
+        layout=SimpleNamespace(home_dir="/home/dify", workspace_dir="/workspace"),
+        client=SimpleNamespace(),
+        commands=commands,
+    )
+    session.save_state(State.model_validate({"initialized": True, "job_ids": ["job-8"], "job_offsets": {"job-8": 12}}))
+    with pytest.raises(NativePolicyStopped, match="native_job_identity_missing"):
+        await session._tool_input("job-8", "hello\n", timeout=1)
+    assert commands.input_calls == []
+    assert commands.run_calls == []

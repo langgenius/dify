@@ -183,7 +183,8 @@ class State(BaseModel):
     initialized: bool = False
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
-    job_refs: dict[str, ShellJobRef] = Field(default_factory=dict)
+    # Preserve the legacy ordinary state wire; only native jobs add identities.
+    job_refs: dict[str, ShellJobRef] = Field(default_factory=dict, exclude_if=lambda refs: not refs)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
 
