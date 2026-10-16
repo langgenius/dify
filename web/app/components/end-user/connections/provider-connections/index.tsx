@@ -7,7 +7,7 @@ import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAvatarInitial } from '@/utils/avatar'
 import EmptyState from '../../empty-state'
-import LinkedAppsPopover from './linked-apps-popover'
+import LinkedAppsDialog from './linked-apps-dialog'
 import RemoveConnectionDialog from './remove-connection-dialog'
 
 type Props = {
@@ -43,7 +43,7 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
         </div>
       </th>
       <td className="px-2 py-4 align-middle">
-        <LinkedAppsPopover connection={connection} connectionLabelId={connectionLabelId} />
+        <LinkedAppsDialog connection={connection} connectionLabelId={connectionLabelId} />
       </td>
       <td className="px-2 py-4 align-middle system-xs-medium text-text-accent">
         {connection.type === 'oauth'

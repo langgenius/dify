@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} tətbiq",
   "endUser.linkedAppCount_other": "{{count}} tətbiq",
   "endUser.linkedApps": "Əlaqəli tətbiqlər",
+  "endUser.linkedAppsTitle": "Əlaqəli tətbiqlər ({{count}})",
   "endUser.myApps": "Tətbiqlərim",
   "endUser.myConnections": "Bağlantılarım",
   "endUser.nameAscending": "Ad A–Z",

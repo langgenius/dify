@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} ແອັບ",
   "endUser.linkedAppCount_other": "{{count}} ແອັບ",
   "endUser.linkedApps": "ແອັບທີ່ເຊື່ອມໂຍງ",
+  "endUser.linkedAppsTitle": "ແອັບທີ່ເຊື່ອມໂຍງ ({{count}})",
   "endUser.myApps": "ແອັບຂອງຂ້ອຍ",
   "endUser.myConnections": "ການເຊື່ອມຕໍ່ຂອງຂ້ອຍ",
   "endUser.nameAscending": "ຊື່ A–Z",

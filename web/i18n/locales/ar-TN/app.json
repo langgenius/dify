@@ -73,6 +73,7 @@
   "endUser.linkedAppCount_two": "{{count}} تطبيقان",
   "endUser.linkedAppCount_zero": "{{count}} تطبيق",
   "endUser.linkedApps": "التطبيقات المرتبطة",
+  "endUser.linkedAppsTitle": "التطبيقات المرتبطة ({{count}})",
   "endUser.myApps": "تطبيقاتي",
   "endUser.myConnections": "اتصالاتي",
   "endUser.nameAscending": "الاسم أ–ي",

@@ -24,15 +24,38 @@ const oauthConnection: EndUserConnection = {
   name: 'Work Google account',
   type: 'oauth',
   apps: [
-    { id: 'planning', name: 'Planning Assistant', href: '/apps/planning' },
-    { id: 'budget', name: 'Budget helper', href: '/apps/budget' },
+    {
+      id: 'planning',
+      name: 'Planning Assistant',
+      description: 'Plan the next project milestone',
+      icon: '📅',
+      iconBackground: '#E0F2FE',
+      href: '/apps/planning',
+    },
+    {
+      id: 'budget',
+      name: 'Budget helper',
+      description: 'Review your project expenses',
+      icon: '💰',
+      iconBackground: '#FEF3C7',
+      href: '/apps/budget',
+    },
   ],
 }
 const apiConnection: EndUserConnection = {
   id: 'finance-key',
   name: 'Finance API key',
   type: 'api-key',
-  apps: [{ id: 'research', name: 'Research Reports', href: '/apps/research' }],
+  apps: [
+    {
+      id: 'research',
+      name: 'Research Reports',
+      description: 'Find insights in your reports',
+      icon: '📊',
+      iconBackground: '#EDE9FE',
+      href: '/apps/research',
+    },
+  ],
 }
 const connectionLabel = (key: string, connection: EndUserConnection) =>
   `app.endUser.${key}:${JSON.stringify({ name: connection.name })}`
@@ -95,7 +118,7 @@ describe('End user Connections', () => {
     }
   })
 
-  it('shows only the selected connection’s linked apps in its popover', async () => {
+  it('shows each connection’s linked apps and descriptions in a counted dialog without leaking the previous connection', async () => {
     const user = userEvent.setup()
     setupProvider()
     for (const connection of [oauthConnection, apiConnection]) {
@@ -104,17 +127,18 @@ describe('End user Connections', () => {
           name: `app.endUser.linkedAppCount:${JSON.stringify({ count: connection.apps.length })}`,
         }),
       )
-      const popover = await screen.findByRole('dialog', { name: 'app.endUser.linkedApps' })
-      const links = within(popover).getAllByRole('link')
-      expect(links.map((link) => link.textContent)).toEqual(connection.apps.map((app) => app.name))
+      const dialog = await screen.findByRole('dialog', {
+        name: `app.endUser.linkedAppsTitle:${JSON.stringify({ count: connection.apps.length })}`,
+      })
+      expect(within(dialog).getAllByRole('link')).toHaveLength(connection.apps.length)
       for (const app of connection.apps) {
-        expect(within(popover).getByRole('link', { name: app.name })).toHaveAttribute(
-          'href',
-          app.href,
-        )
+        const link = within(dialog).getByRole('link', { name: new RegExp(app.name) })
+        expect(link).toHaveAttribute('href', app.href)
+        expect(within(link).getByText(app.name)).toBeVisible()
+        expect(within(link).getByText(app.description)).toBeVisible()
       }
-      await user.keyboard('{Escape}')
-      await waitFor(() => expect(popover).not.toBeInTheDocument())
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
     }
   })
 

@@ -71,6 +71,7 @@
   "endUser.linkedAppCount_one": "{{count}} застосунок",
   "endUser.linkedAppCount_other": "{{count}} застосунку",
   "endUser.linkedApps": "Пов’язані застосунки",
+  "endUser.linkedAppsTitle": "Пов’язані застосунки ({{count}})",
   "endUser.myApps": "Мої застосунки",
   "endUser.myConnections": "Мої підключення",
   "endUser.nameAscending": "Назва А–Я",

@@ -71,6 +71,7 @@
   "endUser.linkedAppCount_one": "{{count}} приложение",
   "endUser.linkedAppCount_other": "{{count}} приложения",
   "endUser.linkedApps": "Связанные приложения",
+  "endUser.linkedAppsTitle": "Связанные приложения ({{count}})",
   "endUser.myApps": "Мои приложения",
   "endUser.myConnections": "Мои подключения",
   "endUser.nameAscending": "Название А–Я",

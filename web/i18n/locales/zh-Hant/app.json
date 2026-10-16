@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} 個應用程式",
   "endUser.linkedAppCount_other": "{{count}} 個應用程式",
   "endUser.linkedApps": "關聯應用程式",
+  "endUser.linkedAppsTitle": "關聯應用程式（{{count}}）",
   "endUser.myApps": "我的應用程式",
   "endUser.myConnections": "我的連線",
   "endUser.nameAscending": "名稱 A–Z",

@@ -597,6 +597,7 @@ export default interface Resources {
     'endUser.lastUsed': 'Last used'
     'endUser.linkedAppCount': '{{count}} app' | '{{count}} apps'
     'endUser.linkedApps': 'Linked apps'
+    'endUser.linkedAppsTitle': 'Linked apps ({{count}})'
     'endUser.myApps': 'My apps'
     'endUser.myConnections': 'My connections'
     'endUser.nameAscending': 'Name A–Z'

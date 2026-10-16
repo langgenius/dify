@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} 个应用",
   "endUser.linkedAppCount_other": "{{count}} 个应用",
   "endUser.linkedApps": "关联应用",
+  "endUser.linkedAppsTitle": "关联应用（{{count}}）",
   "endUser.myApps": "我的应用",
   "endUser.myConnections": "我的连接",
   "endUser.nameAscending": "名称 A–Z",

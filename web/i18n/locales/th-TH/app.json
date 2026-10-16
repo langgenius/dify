@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} แอป",
   "endUser.linkedAppCount_other": "{{count}} แอป",
   "endUser.linkedApps": "แอปที่เชื่อมโยง",
+  "endUser.linkedAppsTitle": "แอปที่เชื่อมโยง ({{count}})",
   "endUser.myApps": "แอปของฉัน",
   "endUser.myConnections": "การเชื่อมต่อของฉัน",
   "endUser.nameAscending": "ชื่อ A–Z",

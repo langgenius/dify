@@ -8,6 +8,9 @@ export type ConnectionProvider = {
 export type LinkedApp = {
   id: string
   name: string
+  description: string
+  icon: string
+  iconBackground: string
   href: string
 }
 

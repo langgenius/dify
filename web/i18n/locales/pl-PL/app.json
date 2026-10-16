@@ -71,6 +71,7 @@
   "endUser.linkedAppCount_one": "{{count}} aplikacja",
   "endUser.linkedAppCount_other": "{{count}} aplikacji",
   "endUser.linkedApps": "Powiązane aplikacje",
+  "endUser.linkedAppsTitle": "Powiązane aplikacje ({{count}})",
   "endUser.myApps": "Moje aplikacje",
   "endUser.myConnections": "Moje połączenia",
   "endUser.nameAscending": "Nazwa A–Z",

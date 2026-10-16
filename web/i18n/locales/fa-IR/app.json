@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} برنامه",
   "endUser.linkedAppCount_other": "{{count}} برنامه",
   "endUser.linkedApps": "برنامه‌های مرتبط",
+  "endUser.linkedAppsTitle": "برنامه‌های مرتبط ({{count}})",
   "endUser.myApps": "برنامه‌های من",
   "endUser.myConnections": "اتصال‌های من",
   "endUser.nameAscending": "نام از الف تا ی",

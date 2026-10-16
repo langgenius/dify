@@ -32,10 +32,35 @@ const appHref = 'https://agent-app.dify.dev/workflow/RWv44MH1ypIb8gs8'
 const salesApp: LinkedApp = {
   id: 'sales-follow-up',
   name: 'Sales Follow-up Assistant',
+  description: 'Research prospects, review customer notes, and send personalized follow-up emails.',
+  icon: '🍯',
+  iconBackground: 'var(--color-components-icon-bg-blue-soft)',
   href: appHref,
 }
-const researchApp: LinkedApp = { id: 'research-inbox', name: 'Research Inbox', href: appHref }
-const customerApp: LinkedApp = { id: 'customer-brief', name: 'Customer Brief', href: appHref }
+const researchApp: LinkedApp = {
+  id: 'research-inbox',
+  name: 'Research Inbox',
+  description: 'Find relevant emails and summarize research insights.',
+  icon: '🚀',
+  iconBackground: 'var(--color-components-icon-bg-teal-soft)',
+  href: appHref,
+}
+const leadApp: LinkedApp = {
+  id: 'lead-qualifier',
+  name: 'Lead Qualifier',
+  description: 'Assess leads and identify promising prospects.',
+  icon: '🏖️',
+  iconBackground: 'var(--color-components-icon-bg-violet-soft)',
+  href: appHref,
+}
+const customerApp: LinkedApp = {
+  id: 'customer-brief',
+  name: 'Customer Brief',
+  description: 'Summarize customer context before your next conversation.',
+  icon: '🏖️',
+  iconBackground: 'var(--color-components-icon-bg-violet-soft)',
+  href: appHref,
+}
 
 export const demoConnections: Readonly<Record<string, readonly EndUserConnection[]>> = {
   gmail: [
@@ -43,7 +68,7 @@ export const demoConnections: Readonly<Record<string, readonly EndUserConnection
       id: 'gmail-alex',
       name: 'alex@northstar.io',
       type: 'oauth',
-      apps: [salesApp, researchApp, customerApp],
+      apps: [salesApp, researchApp, leadApp],
     },
     { id: 'gmail-research', name: 'research@northstar.io', type: 'oauth', apps: [researchApp] },
     { id: 'gmail-archived', name: 'Archived key', type: 'api-key', apps: [salesApp] },

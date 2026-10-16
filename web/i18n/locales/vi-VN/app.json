@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} ứng dụng",
   "endUser.linkedAppCount_other": "{{count}} ứng dụng",
   "endUser.linkedApps": "Ứng dụng được liên kết",
+  "endUser.linkedAppsTitle": "Ứng dụng được liên kết ({{count}})",
   "endUser.myApps": "Ứng dụng của tôi",
   "endUser.myConnections": "Kết nối của tôi",
   "endUser.nameAscending": "Tên A–Z",

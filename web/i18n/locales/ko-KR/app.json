@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "앱 {{count}}개",
   "endUser.linkedAppCount_other": "앱 {{count}}개",
   "endUser.linkedApps": "연결된 앱",
+  "endUser.linkedAppsTitle": "연결된 앱 ({{count}})",
   "endUser.myApps": "내 앱",
   "endUser.myConnections": "내 연결",
   "endUser.nameAscending": "이름 A–Z",

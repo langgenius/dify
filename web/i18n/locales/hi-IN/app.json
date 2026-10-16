@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} ऐप",
   "endUser.linkedAppCount_other": "{{count}} ऐप",
   "endUser.linkedApps": "जुड़े हुए ऐप",
+  "endUser.linkedAppsTitle": "जुड़े हुए ऐप ({{count}})",
   "endUser.myApps": "मेरे ऐप",
   "endUser.myConnections": "मेरे कनेक्शन",
   "endUser.nameAscending": "नाम A–Z",

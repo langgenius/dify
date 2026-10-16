@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} 個のアプリ",
   "endUser.linkedAppCount_other": "{{count}} 個のアプリ",
   "endUser.linkedApps": "リンクされたアプリ",
+  "endUser.linkedAppsTitle": "リンクされたアプリ（{{count}}）",
   "endUser.myApps": "マイアプリ",
   "endUser.myConnections": "マイ接続",
   "endUser.nameAscending": "名前 A–Z",

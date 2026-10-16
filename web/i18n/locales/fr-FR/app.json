@@ -70,6 +70,7 @@
   "endUser.linkedAppCount_one": "{{count}} application",
   "endUser.linkedAppCount_other": "{{count}} applications",
   "endUser.linkedApps": "Applications liées",
+  "endUser.linkedAppsTitle": "Applications liées ({{count}})",
   "endUser.myApps": "Mes applications",
   "endUser.myConnections": "Mes connexions",
   "endUser.nameAscending": "Nom A–Z",

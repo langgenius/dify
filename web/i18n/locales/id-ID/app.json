@@ -69,6 +69,7 @@
   "endUser.linkedAppCount_one": "{{count}} aplikasi",
   "endUser.linkedAppCount_other": "{{count}} aplikasi",
   "endUser.linkedApps": "Aplikasi tertaut",
+  "endUser.linkedAppsTitle": "Aplikasi tertaut ({{count}})",
   "endUser.myApps": "Aplikasi saya",
   "endUser.myConnections": "Koneksi saya",
   "endUser.nameAscending": "Nama A–Z",

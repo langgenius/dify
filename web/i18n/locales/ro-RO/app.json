@@ -70,6 +70,7 @@
   "endUser.linkedAppCount_one": "{{count}} aplicație",
   "endUser.linkedAppCount_other": "{{count}} de aplicații",
   "endUser.linkedApps": "Aplicații asociate",
+  "endUser.linkedAppsTitle": "Aplicații asociate ({{count}})",
   "endUser.myApps": "Aplicațiile mele",
   "endUser.myConnections": "Conexiunile mele",
   "endUser.nameAscending": "Nume A–Z",

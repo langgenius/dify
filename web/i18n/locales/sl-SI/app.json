@@ -71,6 +71,7 @@
   "endUser.linkedAppCount_other": "{{count}} aplikacij",
   "endUser.linkedAppCount_two": "{{count}} aplikaciji",
   "endUser.linkedApps": "Povezane aplikacije",
+  "endUser.linkedAppsTitle": "Povezane aplikacije ({{count}})",
   "endUser.myApps": "Moje aplikacije",
   "endUser.myConnections": "Moje povezave",
   "endUser.nameAscending": "Ime A–Z",
