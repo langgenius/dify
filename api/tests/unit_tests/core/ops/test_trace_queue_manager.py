@@ -35,18 +35,18 @@ class TestTraceQueueManagerTelemetryGuard:
         This is the core guard: when _enterprise_telemetry_enabled=False AND
         trace_instance=None, the task should be silently dropped.
         """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
+        trace_queue_manager, trace_task_type, trace_task_name = trace_queue_manager_and_task
 
         trace_queue = queue.Queue()
 
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+        trace_task = trace_task_type(trace_type=trace_task_name.WORKFLOW_TRACE)
 
         with (
             patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
             patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
             patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
         ):
-            manager = TraceQueueManager(app_id="test-app-id")
+            manager = trace_queue_manager(app_id="test-app-id")
             manager.add_trace_task(trace_task)
 
             assert trace_queue.empty()
@@ -57,18 +57,18 @@ class TestTraceQueueManagerTelemetryGuard:
         When _enterprise_telemetry_enabled=True, the task should be enqueued
         regardless of trace_instance state.
         """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
+        trace_queue_manager, trace_task_type, trace_task_name = trace_queue_manager_and_task
 
         trace_queue = queue.Queue()
 
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+        trace_task = trace_task_type(trace_type=trace_task_name.WORKFLOW_TRACE)
 
         with (
             patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
             patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
             patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
         ):
-            manager = TraceQueueManager(app_id="test-app-id")
+            manager = trace_queue_manager(app_id="test-app-id")
             manager.add_trace_task(trace_task)
 
             called_task = trace_queue.get_nowait()
@@ -82,13 +82,13 @@ class TestTraceQueueManagerTelemetryGuard:
         When trace_instance is not None (e.g., Langfuse configured), the task
         should be enqueued even if enterprise telemetry is disabled.
         """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
+        trace_queue_manager, trace_task_type, trace_task_name = trace_queue_manager_and_task
 
         trace_queue = queue.Queue()
 
         mock_trace_instance = MagicMock()
 
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+        trace_task = trace_task_type(trace_type=trace_task_name.WORKFLOW_TRACE)
 
         with (
             patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=False),
@@ -97,7 +97,7 @@ class TestTraceQueueManagerTelemetryGuard:
             ),
             patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
         ):
-            manager = TraceQueueManager(app_id="test-app-id")
+            manager = trace_queue_manager(app_id="test-app-id")
             manager.add_trace_task(trace_task)
 
             called_task = trace_queue.get_nowait()
@@ -111,13 +111,13 @@ class TestTraceQueueManagerTelemetryGuard:
         When both _enterprise_telemetry_enabled=True AND trace_instance is set,
         the task should definitely be enqueued.
         """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
+        trace_queue_manager, trace_task_type, trace_task_name = trace_queue_manager_and_task
 
         trace_queue = queue.Queue()
 
         mock_trace_instance = MagicMock()
 
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+        trace_task = trace_task_type(trace_type=trace_task_name.WORKFLOW_TRACE)
 
         with (
             patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
@@ -126,7 +126,7 @@ class TestTraceQueueManagerTelemetryGuard:
             ),
             patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
         ):
-            manager = TraceQueueManager(app_id="test-app-id")
+            manager = trace_queue_manager(app_id="test-app-id")
             manager.add_trace_task(trace_task)
 
             called_task = trace_queue.get_nowait()
@@ -140,18 +140,18 @@ class TestTraceQueueManagerTelemetryGuard:
         The guard logic sets trace_task.app_id = self.app_id before calling
         trace_manager_queue.put(trace_task). This test verifies that behavior.
         """
-        TraceQueueManager, TraceTask, TraceTaskName = trace_queue_manager_and_task
+        trace_queue_manager, trace_task_type, trace_task_name = trace_queue_manager_and_task
 
         trace_queue = queue.Queue()
 
-        trace_task = TraceTask(trace_type=TraceTaskName.WORKFLOW_TRACE)
+        trace_task = trace_task_type(trace_type=trace_task_name.WORKFLOW_TRACE)
 
         with (
             patch("core.telemetry.gateway.is_enterprise_telemetry_enabled", return_value=True),
             patch("core.ops.ops_trace_manager.OpsTraceManager.get_ops_trace_instance", return_value=None),
             patch("core.ops.ops_trace_manager.trace_manager_queue", trace_queue),
         ):
-            manager = TraceQueueManager(app_id="expected-app-id")
+            manager = trace_queue_manager(app_id="expected-app-id")
             manager.add_trace_task(trace_task)
 
             called_task = trace_queue.get_nowait()

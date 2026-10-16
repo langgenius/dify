@@ -24,7 +24,8 @@ class TestWorkflowEntryRedisChannel:
         redis_channel = RedisChannel(mock_redis_client, "test:channel:key")
 
         # Patch GraphEngine to verify it receives the Redis channel
-        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
+        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as mock_graph_engine_type:
+            mock_graph_engine = mock_graph_engine_type.return_value  # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
                 app_id="test-app",
@@ -41,8 +42,8 @@ class TestWorkflowEntryRedisChannel:
             )
 
             # Verify GraphEngine was initialized with the Redis channel
-            MockGraphEngine.assert_called_once()
-            call_args = MockGraphEngine.call_args[1]
+            mock_graph_engine_type.assert_called_once()
+            call_args = mock_graph_engine_type.call_args[1]
             assert call_args["command_channel"] == redis_channel
             assert workflow_entry.command_channel == redis_channel
 
@@ -56,10 +57,13 @@ class TestWorkflowEntryRedisChannel:
 
         # Patch GraphEngine and InMemoryChannel
         with (
-            patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine,
-            patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as MockInMemoryChannel,
+            patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as mock_graph_engine_type,
+            patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as mock_in_memory_channel,
         ):
-            mock_inmemory_channel = MockInMemoryChannel.return_value  # Create WorkflowEntry without providing a channel
+            mock_graph_engine = mock_graph_engine_type.return_value
+            mock_inmemory_channel = (
+                mock_in_memory_channel.return_value
+            )  # Create WorkflowEntry without providing a channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
                 app_id="test-app",
@@ -76,11 +80,11 @@ class TestWorkflowEntryRedisChannel:
             )
 
             # Verify InMemoryChannel was created
-            MockInMemoryChannel.assert_called_once()
+            mock_in_memory_channel.assert_called_once()
 
             # Verify GraphEngine was initialized with the InMemory channel
-            MockGraphEngine.assert_called_once()
-            call_args = MockGraphEngine.call_args[1]
+            mock_graph_engine_type.assert_called_once()
+            call_args = mock_graph_engine_type.call_args[1]
             assert call_args["command_channel"] == mock_inmemory_channel
             assert workflow_entry.command_channel == mock_inmemory_channel
 
@@ -101,10 +105,10 @@ class TestWorkflowEntryRedisChannel:
         mock_event2 = MagicMock()
 
         # Patch GraphEngine
-        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as MockGraphEngine:
+        with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as mock_graph_engine_type:
             mock_graph_engine = MagicMock()
             mock_graph_engine.run.return_value = iter([mock_event1, mock_event2])
-            MockGraphEngine.return_value = mock_graph_engine
+            mock_graph_engine_type.return_value = mock_graph_engine
 
             # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
