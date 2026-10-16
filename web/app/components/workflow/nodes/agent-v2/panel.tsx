@@ -738,7 +738,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onChange={handleDeclaredOutputsChange}
           />
         </div>
-        {resource.kind === 'app' && <InheritedTracingSummary appId={resource.appId} />}
+        {resource.kind === 'app' && (
+          <InheritedTracingSummary
+            resource={{ kind: 'app', appId: resource.appId, mode: resource.mode }}
+          />
+        )}
       </div>
     </div>
   )

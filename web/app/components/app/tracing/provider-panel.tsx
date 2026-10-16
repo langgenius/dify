@@ -1,11 +1,14 @@
 'use client'
 import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigurableTracingProvider } from './providers'
+import type { TracingResource } from './resource'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
+import { ProviderCapabilities } from './provider-capabilities'
 import { tracingProviders } from './providers'
+import { usesAgentTracePipeline } from './resource'
 
 const I18N_PREFIX = 'tracing'
 
@@ -15,6 +18,7 @@ export type ProviderConfigError = {
 }
 
 type ProviderPanelProps = {
+  resource: TracingResource
   type: ConfigurableTracingProvider
   readOnly: boolean
   pending: boolean
@@ -25,6 +29,7 @@ type ProviderPanelProps = {
 }
 
 export function ProviderPanel({
+  resource,
   type,
   readOnly,
   pending,
@@ -100,6 +105,12 @@ export function ProviderPanel({
       <div className="mt-2 system-xs-regular text-text-tertiary">
         {t(($) => $[`${I18N_PREFIX}.${type}.description`], { ns: 'app' })}
       </div>
+      {isChosen && usesAgentTracePipeline(resource) && (
+        // Sits above the card-wide selection button, like the card actions.
+        <div className="relative">
+          <ProviderCapabilities resource={resource} provider={type} />
+        </div>
+      )}
     </div>
   )
 }
