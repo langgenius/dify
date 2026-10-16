@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.builtin_tool.providers.knowledge_fs.knowledge_fs import KnowledgeFSProvider
-from core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task import KnowledgeFSCreateResearchTaskTool
 from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.app_execution_capability import KnowledgeResourceRef
+from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from services.knowledge_fs.builtin_tool.knowledge_fs.tools.create_research_task import KnowledgeFSCreateResearchTaskTool
 from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskCreatePayload,
     KnowledgeFSResearchTaskResponse,
@@ -122,7 +122,7 @@ def test_tool_is_a_real_agent_and_workflow_consumer_using_run_context_identity(
     with (
         Session(engine) as session,
         patch(
-            "core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime",
+            "services.knowledge_fs.builtin_tool.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime",
             return_value=runtime,
         ),
     ):
@@ -174,7 +174,7 @@ def test_tool_fails_closed_without_a_dify_run_context_before_runtime_io() -> Non
     with (
         Session(engine) as session,
         patch(
-            "core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime"
+            "services.knowledge_fs.builtin_tool.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime"
         ) as create_runtime,
         pytest.raises(ToolInvokeError),
     ):
@@ -207,7 +207,7 @@ def test_tool_rejects_cross_tenant_and_non_application_callers_before_runtime_io
         with (
             Session(engine) as session,
             patch(
-                "core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime"
+                "services.knowledge_fs.builtin_tool.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime"
             ) as create_runtime,
             pytest.raises(ToolInvokeError),
         ):
@@ -231,7 +231,7 @@ def test_tool_omits_unspecified_mode_and_maps_invalid_model_input_to_tool_error(
     with (
         Session(engine) as session,
         patch(
-            "core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime",
+            "services.knowledge_fs.builtin_tool.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime",
             return_value=runtime,
         ),
     ):
@@ -274,7 +274,7 @@ def test_tool_preserves_explicit_tool_errors_from_the_capability_boundary() -> N
     with (
         Session(engine) as session,
         patch(
-            "core.tools.builtin_tool.providers.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime",
+            "services.knowledge_fs.builtin_tool.knowledge_fs.tools.create_research_task.create_knowledge_fs_runtime",
             return_value=runtime,
         ),
         pytest.raises(ToolInvokeError, match="binding revoked"),

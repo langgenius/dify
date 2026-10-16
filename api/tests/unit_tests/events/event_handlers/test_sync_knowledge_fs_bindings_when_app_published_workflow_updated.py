@@ -8,11 +8,11 @@ from typing import override
 import pytest
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.knowledge_retrieval_v2.validation import missing_control_space_ids
 from events.event_handlers import sync_knowledge_fs_bindings_when_app_published_workflow_updated as handler
 from models.knowledge_fs import KnowledgeFSControlSpace, KnowledgeFSControlSpaceState
 from models.model import App
 from models.workflow import Workflow
+from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 
 
 @dataclass

@@ -38,7 +38,10 @@ ignore_imports =
     core.app.apps.agent_app.app_generator -> services.agent.composer_service
     core.app.apps.agent_app.app_generator -> services.agent.workspace_service
     core.app.apps.agent_app.app_generator -> services.conversation_service
+    # KnowledgeFS agent glue lives in services; agent runners only project its config and citations.
+    core.app.apps.agent_app.app_runner -> services.agent.knowledge_citations
     core.app.apps.agent_app.runtime_request_builder -> services.agent.prompt_mentions
+    core.app.apps.agent_app.runtime_request_builder -> services.agent.knowledge_runtime_config
     core.app.apps.agent_app.session_store -> services.agent.workspace_service
     core.app.apps.agent_chat.app_generator -> services.conversation_service
     core.app.apps.base_app_generator -> services.workflow_draft_variable_service
@@ -85,12 +88,17 @@ ignore_imports =
     core.workflow.node_runtime -> services
     # Node construction delegates datasource dependency assembly to the composition root.
     core.workflow.node_factory -> extensions.application_services.data_sources
+    # The KnowledgeFS retrieval node is owned by services.knowledge_fs and only wired in here.
+    core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter
+    core.workflow.node_factory -> services.knowledge_fs.knowledge_retrieval_v2.entities
     core.workflow.nodes.agent.message_transformer -> services
+    core.workflow.nodes.agent_v2.agent_node -> services.agent.knowledge_citations
     core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
     core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.dify_tools_builder -> services
     core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
+    core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.knowledge_runtime_config
     core.workflow.nodes.agent_v2.runtime_request_builder -> services.skill_management_service
     core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
     core.workflow.nodes.agent_v2.validators -> services.agent.knowledge_datasets

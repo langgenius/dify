@@ -11,7 +11,6 @@ from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
-from core.plugin.backwards_invocation.datasource import PluginDatasourceBackwardsInvocation
 from core.plugin.backwards_invocation.encrypt import PluginEncrypter
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
@@ -51,6 +50,7 @@ from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
+from services.plugin.datasource_backwards_invocation import PluginDatasourceBackwardsInvocation
 
 
 def _model_invocation_error_response(error: Exception) -> dict[str, object]:

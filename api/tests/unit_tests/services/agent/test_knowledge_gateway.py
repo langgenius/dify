@@ -19,8 +19,6 @@ from dify_agent.protocol.knowledge_fs import (
 from sqlalchemy.orm import Session
 
 from core.app.file_access import FileAccessScope
-from core.app.knowledge_citations import knowledge_sources_from_tool_part
-from core.knowledge_fs.errors import KnowledgeFSWorkflowQueryImageReference
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
@@ -28,9 +26,11 @@ from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent import knowledge_gateway as gateway
+from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
 from services.agent_config_service import AgentConfigTarget, AgentConfigVersionKind
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
+from services.knowledge_fs.errors import KnowledgeFSWorkflowQueryImageReference
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageMetadata
 from services.knowledge_fs.runtime import KnowledgeFSRuntime
 from tests.unit_tests.config_override import apply_config_overrides

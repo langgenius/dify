@@ -96,6 +96,7 @@ class WorkflowToolRuntimeSpec(Protocol):
 class ToolManager:
     _builtin_provider_lock = Lock()
     _hardcoded_providers: dict[str, BuiltinToolProviderController] = {}
+    _external_hardcoded_provider_classes: list[type[BuiltinToolProviderController]] = []
     _builtin_providers_loaded = False
     _builtin_tools_labels: dict[str, I18nObject | None] = {}
 
@@ -554,10 +555,7 @@ class ToolManager:
         provider_controller = cls.get_hardcoded_provider(provider)
 
         absolute_path = path.join(
-            path.dirname(path.realpath(__file__)),
-            "builtin_tool",
-            "providers",
-            provider,
+            provider_controller.provider_directory,
             "_assets",
             provider_controller.entity.identity.icon,
         )
@@ -640,17 +638,33 @@ class ToolManager:
                         ),
                         parent_type=BuiltinToolProviderController,
                     )
-                    provider: BuiltinToolProviderController = provider_class()
-                    cls._hardcoded_providers[provider.entity.identity.name] = provider
-                    for tool in provider.get_tools():
-                        cls._builtin_tools_labels[tool.entity.identity.name] = tool.entity.identity.label
-                    yield provider
+                    yield cls._cache_hardcoded_provider(provider_class())
 
                 except Exception:
                     logger.exception("load builtin provider %s", provider_path)
                     continue
+        for external_provider_class in cls._external_hardcoded_provider_classes:
+            try:
+                yield cls._cache_hardcoded_provider(external_provider_class())
+            except Exception:
+                logger.exception("load builtin provider %s", external_provider_class.__module__)
         # set builtin providers loaded
         cls._builtin_providers_loaded = True
+
+    @classmethod
+    def _cache_hardcoded_provider(cls, provider: BuiltinToolProviderController) -> BuiltinToolProviderController:
+        cls._hardcoded_providers[provider.entity.identity.name] = provider
+        for tool in provider.get_tools():
+            cls._builtin_tools_labels[tool.entity.identity.name] = tool.entity.identity.label
+        return provider
+
+    @classmethod
+    def register_hardcoded_provider_class(cls, provider_class: type[BuiltinToolProviderController]) -> None:
+        """Register a builtin provider owned outside ``core`` from the application composition root."""
+        with cls._builtin_provider_lock:
+            if provider_class not in cls._external_hardcoded_provider_classes:
+                cls._external_hardcoded_provider_classes.append(provider_class)
+                cls._builtin_providers_loaded = False
 
     @classmethod
     def load_hardcoded_providers_cache(cls):

@@ -8,7 +8,6 @@ from typing import TypeVar, cast
 
 from celery.exceptions import Retry
 
-from core.knowledge_fs.retrieval_contracts import KnowledgeFSPublicFailureResponse
 from services.knowledge_fs.observability import (
     KnowledgeFSBatchStatusMetric,
     KnowledgeFSCapabilityIssuanceMetric,
@@ -25,6 +24,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyResponse,
     KnowledgeFSSourceWorkflowResponse,
 )
+from services.knowledge_fs.retrieval_contracts import KnowledgeFSPublicFailureResponse
 
 _PayloadT = TypeVar("_PayloadT")
 

@@ -11,12 +11,12 @@ from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
 from core.db.session_factory import session_factory
-from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError, KnowledgeFSQueryImageError
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from services.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError, KnowledgeFSQueryImageError
 from services.knowledge_fs.query_images import (
     DATASET_API_KEY_SUBJECT_PREFIX,
     QUERY_IMAGE_MAX_BYTES,

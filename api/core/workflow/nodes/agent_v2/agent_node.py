@@ -23,7 +23,6 @@ from clients.agent_backend import (
     AgentBackendValidationError,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.app.knowledge_citations import knowledge_sources_from_stream_event
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -43,6 +42,7 @@ from graphon.node_events import (
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
+from services.agent.knowledge_citations import knowledge_sources_from_stream_event
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from services.agent.workspace_service import AgentWorkspaceNotFoundError
 

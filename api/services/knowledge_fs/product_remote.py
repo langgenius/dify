@@ -8,7 +8,7 @@ from typing import NamedTuple, Protocol
 
 from pydantic import JsonValue
 
-from core.knowledge_fs.errors import (
+from services.knowledge_fs.errors import (
     KnowledgeFSOperationUnavailableError,
     KnowledgeFSProductRemoteError,
     KnowledgeFSProductRequestRejectedError,

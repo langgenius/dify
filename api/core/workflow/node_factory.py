@@ -54,10 +54,6 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
-from core.workflow.nodes.knowledge_retrieval_v2.automatic_metadata_filter import (
-    KnowledgeFSAutomaticMetadataFilterExtractor,
-)
-from core.workflow.nodes.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from extensions.application_services.data_sources import build_data_source_credentials
@@ -79,6 +75,10 @@ from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeDat
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
+from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
+    KnowledgeFSAutomaticMetadataFilterExtractor,
+)
+from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -128,6 +128,7 @@ def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
     _import_node_package("graphon.nodes")
     _import_node_package("core.workflow.nodes")
+    _import_node_package("services.knowledge_fs.knowledge_retrieval_v2")
 
 
 def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]]]:

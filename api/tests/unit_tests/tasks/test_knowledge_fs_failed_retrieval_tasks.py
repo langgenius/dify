@@ -8,13 +8,13 @@ from celery.app.task import Context
 from celery.exceptions import Retry
 from typing_extensions import TypedDict
 
-from core.knowledge_fs.resource import KnowledgeResourceRef
 from services.knowledge_fs.app_admission_service import KnowledgeFSAppAdmissionError
 from services.knowledge_fs.product_dto import (
     KnowledgeFSWorkflowFailedRetrievalCapturePayload,
     KnowledgeFSWorkflowFailedRetrievalCaptureResponse,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
+from services.knowledge_fs.resource import KnowledgeResourceRef
 from tasks import knowledge_fs_failed_retrieval_tasks as task_module
 from tests.unit_tests.tasks.knowledge_fs_task_fakes import RecordingRetry
 from tests.unit_tests.tasks.task_options import task_options

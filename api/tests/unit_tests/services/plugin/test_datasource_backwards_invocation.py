@@ -15,9 +15,9 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadFileRequest,
     OnlineDriveDownloadMessage,
 )
-from core.plugin.backwards_invocation.datasource import PluginDatasourceBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeDatasource
 from models.account import Tenant
+from services.plugin.datasource_backwards_invocation import PluginDatasourceBackwardsInvocation
 from tests.unit_tests.knowledge_fs_core_fakes import Marker
 
 
@@ -123,7 +123,7 @@ def test_invoke_online_document_uses_dify_bound_runtime_and_credential() -> None
 
     with (
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceManager.get_datasource_plugin_provider",
+            "services.plugin.datasource_backwards_invocation.DatasourceManager.get_datasource_plugin_provider",
             return_value=controller,
         ) as get_provider,
         patch(
@@ -175,7 +175,7 @@ def test_validate_credentials_uses_resolved_provider_controller() -> None:
 
     with (
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceManager.get_datasource_plugin_provider",
+            "services.plugin.datasource_backwards_invocation.DatasourceManager.get_datasource_plugin_provider",
             return_value=controller,
         ),
         patch(
@@ -210,7 +210,7 @@ def test_invoke_website_crawl_uses_the_bound_datasource_plugin() -> None:
 
     with (
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceManager.get_datasource_plugin_provider",
+            "services.plugin.datasource_backwards_invocation.DatasourceManager.get_datasource_plugin_provider",
             return_value=controller,
         ),
         patch(
@@ -253,7 +253,7 @@ def test_invoke_online_document_content_builds_the_dify_request_entity() -> None
 
     with (
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceManager.get_datasource_plugin_provider",
+            "services.plugin.datasource_backwards_invocation.DatasourceManager.get_datasource_plugin_provider",
             return_value=controller,
         ),
         patch(
@@ -319,7 +319,7 @@ def test_invoke_online_drive_builds_typed_dify_requests(
 
     with (
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceManager.get_datasource_plugin_provider",
+            "services.plugin.datasource_backwards_invocation.DatasourceManager.get_datasource_plugin_provider",
             return_value=controller,
         ),
         patch(
@@ -444,7 +444,7 @@ def test_invoke_rejects_missing_required_credential() -> None:
 
     with (
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceManager.get_datasource_plugin_provider",
+            "services.plugin.datasource_backwards_invocation.DatasourceManager.get_datasource_plugin_provider",
             return_value=controller,
         ),
         patch(
@@ -468,7 +468,7 @@ def test_invoke_rejects_provider_declaration_type_mismatch() -> None:
 
     with (
         patch(
-            "core.plugin.backwards_invocation.datasource.DatasourceManager.get_datasource_plugin_provider",
+            "services.plugin.datasource_backwards_invocation.DatasourceManager.get_datasource_plugin_provider",
             return_value=controller,
         ),
         pytest.raises(ValueError, match="Datasource provider type mismatch"),

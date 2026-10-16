@@ -8,11 +8,11 @@ import pytest
 from sqlalchemy.sql import ClauseElement
 from werkzeug.datastructures import FileStorage
 
-from core.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError, KnowledgeFSQueryImageError
 from extensions.storage.storage_type import StorageType
 from models.enums import ApiTokenType, CreatorUserRole
 from models.model import UploadFile
 from services.knowledge_fs import query_images, service_query_image_upload
+from services.knowledge_fs.errors import KnowledgeFSProductRequestRejectedError, KnowledgeFSQueryImageError
 from services.knowledge_fs.service_api_authorization import KnowledgeFSServiceApiProfile
 from tests.unit_tests.config_override import apply_config_overrides
 

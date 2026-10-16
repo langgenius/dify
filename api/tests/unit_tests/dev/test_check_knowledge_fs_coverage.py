@@ -28,17 +28,15 @@ from dev.check_knowledge_fs_coverage import (
         "api/controllers/inner_api/knowledge_fs/storage.py",
         "api/controllers/openapi/knowledge_fs.py",
         "api/controllers/service_api/knowledge_fs/resources.py",
-        "api/core/knowledge_fs/__init__.py",
-        "api/core/knowledge_fs/errors.py",
-        "api/core/knowledge_fs/resource.py",
-        "api/core/knowledge_fs/retrieval_contracts.py",
-        "api/core/tools/builtin_tool/providers/knowledge_fs/knowledge_fs.py",
         "api/events/event_handlers/sync_knowledge_fs_bindings_when_app_published_workflow_updated.py",
         "api/extensions/ext_knowledge_fs_observability.py",
         "api/models/knowledge_fs.py",
         "api/repositories/sqlalchemy_knowledge_fs_cutover_repository.py",
         "api/services/dataset_knowledge_fs_upgrade_file_lease.py",
         "api/services/dataset_knowledge_fs_upgrade_service.py",
+        "api/services/knowledge_fs/builtin_tool/knowledge_fs/knowledge_fs.py",
+        "api/services/knowledge_fs/knowledge_retrieval_v2/knowledge_retrieval_v2_node.py",
+        "api/services/knowledge_fs/retrieval_contracts.py",
         "api/services/knowledge_fs/runtime.py",
         "api/services/knowledge_fs_capability.py",
         "api/tasks/knowledge_fs_lifecycle_tasks.py",
@@ -61,7 +59,9 @@ def test_core_coverage_scope_excludes_glue_migrations_and_tests(path: str) -> No
     assert not is_core_coverage_path(path)
 
 
-@pytest.mark.parametrize("owned_path", ["api/services/knowledge_fs/runtime.py", "api/core/knowledge_fs/resource.py"])
+@pytest.mark.parametrize(
+    "owned_path", ["api/services/knowledge_fs/runtime.py", "api/services/knowledge_fs/resource.py"]
+)
 def test_core_coverage_aggregates_lines_and_branches_and_fails_closed(tmp_path: Path, owned_path: str) -> None:
     service_path = tmp_path / owned_path
     model_path = tmp_path / "api/models/knowledge_fs.py"

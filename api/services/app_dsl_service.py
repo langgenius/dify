@@ -38,7 +38,6 @@ from core.workflow.llm_environment_variable import (
 )
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from core.workflow.nodes.knowledge_retrieval_v2.validation import missing_control_space_ids
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
@@ -84,6 +83,7 @@ from services.icon_configuration import (
     DEFAULT_ICON_TYPE,
     is_valid_image_icon,
 )
+from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow.graph_diff import draft_token
 from services.workflow_draft_variable_service import WorkflowDraftVariableService

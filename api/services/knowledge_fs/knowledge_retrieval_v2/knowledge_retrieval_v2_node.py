@@ -17,35 +17,6 @@ from pydantic import ValidationError
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, UserFrom
 from core.app.llm.model_access import build_dify_model_access
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
-from core.knowledge_fs.errors import (
-    QUERY_IMAGE_MAX_COUNT,
-    QUERY_IMAGE_MAX_TOTAL_BYTES,
-    KnowledgeFSAppAdmissionError,
-    KnowledgeFSAppAuthorizationNotReadyError,
-    KnowledgeFSAppBindingManagementError,
-    KnowledgeFSAppChannelDisabledError,
-    KnowledgeFSAppSpaceUnavailableError,
-    KnowledgeFSOperationUnavailableError,
-    KnowledgeFSProductRemoteError,
-    KnowledgeFSProductRequestRejectedError,
-    KnowledgeFSQueryImageError,
-    KnowledgeFSWorkflowQueryImageReference,
-)
-from core.knowledge_fs.resource import (
-    KnowledgeResourceRef,
-)
-from core.knowledge_fs.retrieval_contracts import (
-    KnowledgeFSAppBindingPayload,
-    KnowledgeFSMetadataFieldListResponse,
-    KnowledgeFSMetadataFieldResponse,
-    KnowledgeFSRetrievalCustomMetadataCondition,
-    KnowledgeFSRetrievalCustomMetadataFilter,
-    KnowledgeFSRetrievalMetadataFilters,
-    KnowledgeFSRetrievalQueryImageReference,
-    KnowledgeFSRetrievalTestItemResponse,
-    KnowledgeFSRetrievalTestPayload,
-    KnowledgeFSRetrievalTestResponse,
-)
 from core.model_manager import ModelInstance, ModelManager
 from graphon.entities import GraphInitParams
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -59,6 +30,35 @@ from graphon.variables import ArrayFileSegment, FileSegment, StringSegment
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from graphon.variables.template_resolution import convert_template
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from services.knowledge_fs.errors import (
+    QUERY_IMAGE_MAX_COUNT,
+    QUERY_IMAGE_MAX_TOTAL_BYTES,
+    KnowledgeFSAppAdmissionError,
+    KnowledgeFSAppAuthorizationNotReadyError,
+    KnowledgeFSAppBindingManagementError,
+    KnowledgeFSAppChannelDisabledError,
+    KnowledgeFSAppSpaceUnavailableError,
+    KnowledgeFSOperationUnavailableError,
+    KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSQueryImageError,
+    KnowledgeFSWorkflowQueryImageReference,
+)
+from services.knowledge_fs.resource import (
+    KnowledgeResourceRef,
+)
+from services.knowledge_fs.retrieval_contracts import (
+    KnowledgeFSAppBindingPayload,
+    KnowledgeFSMetadataFieldListResponse,
+    KnowledgeFSMetadataFieldResponse,
+    KnowledgeFSRetrievalCustomMetadataCondition,
+    KnowledgeFSRetrievalCustomMetadataFilter,
+    KnowledgeFSRetrievalMetadataFilters,
+    KnowledgeFSRetrievalQueryImageReference,
+    KnowledgeFSRetrievalTestItemResponse,
+    KnowledgeFSRetrievalTestPayload,
+    KnowledgeFSRetrievalTestResponse,
+)
 
 from .automatic_metadata_filter import (
     KnowledgeFSAutomaticMetadataFilterExtractor,

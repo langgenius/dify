@@ -7,13 +7,13 @@ from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
-from core.workflow.nodes.knowledge_retrieval_v2.validation import collect_control_space_ids
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.knowledge_fs import AppKnowledgeFSSpaceJoin, KnowledgeFSAppSpaceJoinType
 from models.model import App
 from models.workflow import Workflow
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
+from services.knowledge_fs.knowledge_retrieval_v2.validation import collect_control_space_ids
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 

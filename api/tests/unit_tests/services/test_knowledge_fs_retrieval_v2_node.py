@@ -12,11 +12,6 @@ from pydantic import ValidationError
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import resolve_workflow_node_class
-from core.workflow.nodes.knowledge_retrieval_v2 import knowledge_retrieval_v2_node as node_module
-from core.workflow.nodes.knowledge_retrieval_v2.automatic_metadata_filter import KnowledgeFSMetadataExtraction
-from core.workflow.nodes.knowledge_retrieval_v2.entities import KnowledgeRetrievalV2NodeData
-from core.workflow.nodes.knowledge_retrieval_v2.exc import KnowledgeFSRetrievalConfigurationError
-from core.workflow.nodes.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -31,6 +26,11 @@ from services.knowledge_fs.app_admission_service import (
     KnowledgeFSAppChannelDisabledError,
     KnowledgeFSAppSpaceUnavailableError,
 )
+from services.knowledge_fs.knowledge_retrieval_v2 import knowledge_retrieval_v2_node as node_module
+from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import KnowledgeFSMetadataExtraction
+from services.knowledge_fs.knowledge_retrieval_v2.entities import KnowledgeRetrievalV2NodeData
+from services.knowledge_fs.knowledge_retrieval_v2.exc import KnowledgeFSRetrievalConfigurationError
+from services.knowledge_fs.knowledge_retrieval_v2.knowledge_retrieval_v2_node import KnowledgeRetrievalV2Node
 from services.knowledge_fs.product_dto import (
     KnowledgeFSMetadataFieldListResponse,
     KnowledgeFSRetrievalTestResponse,
