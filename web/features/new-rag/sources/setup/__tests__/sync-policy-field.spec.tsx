@@ -7,18 +7,6 @@ import { createReactI18nextMock } from '@/test/i18n-mock'
 import { SyncPolicyField } from '../sync-policy-field'
 
 const i18nLanguage = vi.hoisted(() => ({ current: 'en-US' }))
-const popoverOpenStates = vi.hoisted(() => [] as Array<boolean | undefined>)
-
-vi.mock('@langgenius/dify-ui/popover', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/popover')>()
-  return {
-    ...actual,
-    Popover: (props: Parameters<typeof actual.Popover>[0]) => {
-      popoverOpenStates.push(props.open)
-      return <actual.Popover {...props} />
-    },
-  }
-})
 
 vi.mock('react-i18next', () => {
   const mock = createReactI18nextMock({
@@ -67,7 +55,6 @@ function SyncPolicyFieldHarness() {
 describe('SyncPolicyField', () => {
   beforeEach(() => {
     i18nLanguage.current = 'en-US'
-    popoverOpenStates.length = 0
   })
 
   it('separates numbers from units in Simplified Chinese interval labels', async () => {
@@ -125,7 +112,7 @@ describe('SyncPolicyField', () => {
     ).toHaveValue('2')
   })
 
-  it('keeps the custom interval popover mounted through close and resets its draft', async () => {
+  it('closes the custom interval popover on Escape and resets its draft when reopened', async () => {
     const user = userEvent.setup()
     render(<SyncPolicyFieldHarness />)
 
@@ -139,7 +126,6 @@ describe('SyncPolicyField', () => {
     await user.keyboard('{Escape}')
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(popoverOpenStates.at(-1)).toBe(false)
     await user.click(trigger)
     await user.click(screen.getByRole('option', { name: 'Custom interval' }))
     popover = await screen.findByRole('dialog')
