@@ -71,9 +71,11 @@ export const zApiKeyAuthDataSourceListResponse = z.object({
 /**
  * ApiKeyAuthConfigPayload
  */
-export const zApiKeyAuthConfigPayload = z.object({
-  api_key: z.string().min(1),
-})
+export const zApiKeyAuthConfigPayload = z
+  .object({
+    api_key: z.string().min(1),
+  })
+  .catchall(z.unknown())
 
 /**
  * ApiKeyAuthCredentialsPayload

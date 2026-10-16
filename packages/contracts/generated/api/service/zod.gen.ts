@@ -146,51 +146,57 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
 /**
  * BlockingRetrieverResourceResponse
  */
-export const zBlockingRetrieverResourceResponse = z.object({
-  content: z.string().nullish(),
-  created_at: z.int().nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_id: z.uuid().nullish(),
-  dataset_name: z.string().nullish(),
-  document_id: z.uuid().nullish(),
-  document_name: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.uuid().nullish(),
-  index_node_hash: z.string().nullish(),
-  message_id: z.uuid().nullish(),
-  position: z.int(),
-  score: z.number().nullish(),
-  segment_id: z.uuid().nullish(),
-  segment_position: z.int().nullish(),
-  summary: z.string().nullish(),
-  word_count: z.int().nullish(),
-})
+export const zBlockingRetrieverResourceResponse = z
+  .object({
+    content: z.string().nullish(),
+    created_at: z.int().nullish(),
+    data_source_type: z.string().nullish(),
+    dataset_id: z.uuid().nullish(),
+    dataset_name: z.string().nullish(),
+    document_id: z.uuid().nullish(),
+    document_name: z.string().nullish(),
+    hit_count: z.int().nullish(),
+    id: z.uuid().nullish(),
+    index_node_hash: z.string().nullish(),
+    message_id: z.uuid().nullish(),
+    position: z.int(),
+    score: z.number().nullish(),
+    segment_id: z.uuid().nullish(),
+    segment_position: z.int().nullish(),
+    summary: z.string().nullish(),
+    word_count: z.int().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * BlockingUsageResponse
  */
-export const zBlockingUsageResponse = z.object({
-  completion_price: z.string().nullish(),
-  completion_price_unit: z.string().nullish(),
-  completion_tokens: z.int().nullish(),
-  completion_unit_price: z.string().nullish(),
-  currency: z.string().nullish(),
-  latency: z.number().nullish(),
-  prompt_price: z.string().nullish(),
-  prompt_price_unit: z.string().nullish(),
-  prompt_tokens: z.int().nullish(),
-  prompt_unit_price: z.string().nullish(),
-  total_price: z.string().nullish(),
-  total_tokens: z.int().nullish(),
-})
+export const zBlockingUsageResponse = z
+  .object({
+    completion_price: z.string().nullish(),
+    completion_price_unit: z.string().nullish(),
+    completion_tokens: z.int().nullish(),
+    completion_unit_price: z.string().nullish(),
+    currency: z.string().nullish(),
+    latency: z.number().nullish(),
+    prompt_price: z.string().nullish(),
+    prompt_price_unit: z.string().nullish(),
+    prompt_tokens: z.int().nullish(),
+    prompt_unit_price: z.string().nullish(),
+    total_price: z.string().nullish(),
+    total_tokens: z.int().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * BlockingMetadataResponse
  */
-export const zBlockingMetadataResponse = z.object({
-  retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish(),
-  usage: zBlockingUsageResponse.nullish(),
-})
+export const zBlockingMetadataResponse = z
+  .object({
+    retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish(),
+    usage: zBlockingUsageResponse.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * ButtonStyle
@@ -202,17 +208,19 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 /**
  * ChatMessageBlockingResponse
  */
-export const zChatMessageBlockingResponse = z.object({
-  answer: z.string(),
-  conversation_id: z.uuid(),
-  created_at: z.int(),
-  event: z.literal('message'),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
-})
+export const zChatMessageBlockingResponse = z
+  .object({
+    answer: z.string(),
+    conversation_id: z.uuid(),
+    created_at: z.int(),
+    event: z.literal('message'),
+    id: z.uuid(),
+    message_id: z.uuid(),
+    metadata: zBlockingMetadataResponse,
+    mode: z.string(),
+    task_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * ChatRequestPayload
@@ -365,16 +373,18 @@ export const zChildChunkUpdatePayload = z.object({
 /**
  * CompletionBlockingResponse
  */
-export const zCompletionBlockingResponse = z.object({
-  answer: z.string(),
-  created_at: z.int(),
-  event: z.string(),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
-})
+export const zCompletionBlockingResponse = z
+  .object({
+    answer: z.string(),
+    created_at: z.int(),
+    event: z.string(),
+    id: z.uuid(),
+    message_id: z.uuid(),
+    metadata: zBlockingMetadataResponse,
+    mode: z.string(),
+    task_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * CompletionRequestPayload
@@ -945,9 +955,11 @@ export const zDocumentUploadFileDetailResponse = z.object({
  *
  * The uploaded file for file documents; Notion and website documents repeat their source info.
  */
-export const zDocumentSourceDetailResponse = z.object({
-  upload_file: zDocumentUploadFileDetailResponse.nullish(),
-})
+export const zDocumentSourceDetailResponse = z
+  .object({
+    upload_file: zDocumentUploadFileDetailResponse.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * EndUserDetail
@@ -1398,58 +1410,64 @@ export const zJsonObject = z.record(z.string(), z.unknown())
  *
  * Public pause reason emitted by a blocking Chatflow execution.
  */
-export const zChatPauseReasonResponse = z.object({
-  TYPE: z.string(),
-  actions: z.array(zJsonObject).optional(),
-  approval_channels: z.array(z.string()).optional(),
-  display_in_ui: z.boolean().nullish(),
-  expiration_time: z.int().nullish(),
-  form_content: z.string().nullish(),
-  form_id: z.uuid().nullish(),
-  form_token: z.string().nullish(),
-  inputs: z.array(zJsonObject).optional(),
-  message: z.string().nullish(),
-  node_id: z.string().nullish(),
-  node_title: z.string().nullish(),
-  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
-})
+export const zChatPauseReasonResponse = z
+  .object({
+    TYPE: z.string(),
+    actions: z.array(zJsonObject).optional(),
+    approval_channels: z.array(z.string()).optional(),
+    display_in_ui: z.boolean().nullish(),
+    expiration_time: z.int().nullish(),
+    form_content: z.string().nullish(),
+    form_id: z.uuid().nullish(),
+    form_token: z.string().nullish(),
+    inputs: z.array(zJsonObject).optional(),
+    message: z.string().nullish(),
+    node_id: z.string().nullish(),
+    node_title: z.string().nullish(),
+    resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * ChatPausedBlockingDataResponse
  */
-export const zChatPausedBlockingDataResponse = z.object({
-  answer: z.string(),
-  conversation_id: z.uuid(),
-  created_at: z.int(),
-  elapsed_time: z.number(),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  paused_nodes: z.array(z.string()),
-  reasons: z.array(zChatPauseReasonResponse),
-  status: z.literal('paused'),
-  total_steps: z.int(),
-  total_tokens: z.int(),
-  workflow_run_id: z.uuid(),
-})
+export const zChatPausedBlockingDataResponse = z
+  .object({
+    answer: z.string(),
+    conversation_id: z.uuid(),
+    created_at: z.int(),
+    elapsed_time: z.number(),
+    id: z.uuid(),
+    message_id: z.uuid(),
+    metadata: zBlockingMetadataResponse,
+    mode: z.string(),
+    paused_nodes: z.array(z.string()),
+    reasons: z.array(zChatPauseReasonResponse),
+    status: z.literal('paused'),
+    total_steps: z.int(),
+    total_tokens: z.int(),
+    workflow_run_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * ChatPausedBlockingResponse
  */
-export const zChatPausedBlockingResponse = z.object({
-  answer: z.string(),
-  conversation_id: z.uuid(),
-  created_at: z.int(),
-  data: zChatPausedBlockingDataResponse,
-  event: z.literal('workflow_paused'),
-  id: z.uuid(),
-  message_id: z.uuid(),
-  metadata: zBlockingMetadataResponse,
-  mode: z.string(),
-  task_id: z.uuid(),
-  workflow_run_id: z.uuid(),
-})
+export const zChatPausedBlockingResponse = z
+  .object({
+    answer: z.string(),
+    conversation_id: z.uuid(),
+    created_at: z.int(),
+    data: zChatPausedBlockingDataResponse,
+    event: z.literal('workflow_paused'),
+    id: z.uuid(),
+    message_id: z.uuid(),
+    metadata: zBlockingMetadataResponse,
+    mode: z.string(),
+    task_id: z.uuid(),
+    workflow_run_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * ChatBlockingResponse
@@ -3251,27 +3269,31 @@ export const zWorkflowEventsQuery = z.object({
 /**
  * WorkflowFinishedBlockingDataResponse
  */
-export const zWorkflowFinishedBlockingDataResponse = z.object({
-  created_at: z.int(),
-  elapsed_time: z.number(),
-  error: z.string().nullable(),
-  finished_at: z.int().nullable(),
-  id: z.uuid(),
-  outputs: z.record(z.string(), z.unknown()).nullable(),
-  status: z.enum(['failed', 'partial-succeeded', 'stopped', 'succeeded']),
-  total_steps: z.int(),
-  total_tokens: z.int(),
-  workflow_id: z.uuid(),
-})
+export const zWorkflowFinishedBlockingDataResponse = z
+  .object({
+    created_at: z.int(),
+    elapsed_time: z.number(),
+    error: z.string().nullable(),
+    finished_at: z.int().nullable(),
+    id: z.uuid(),
+    outputs: z.record(z.string(), z.unknown()).nullable(),
+    status: z.enum(['failed', 'partial-succeeded', 'stopped', 'succeeded']),
+    total_steps: z.int(),
+    total_tokens: z.int(),
+    workflow_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowFinishedBlockingResponse
  */
-export const zWorkflowFinishedBlockingResponse = z.object({
-  data: zWorkflowFinishedBlockingDataResponse,
-  task_id: z.uuid(),
-  workflow_run_id: z.uuid(),
-})
+export const zWorkflowFinishedBlockingResponse = z
+  .object({
+    data: zWorkflowFinishedBlockingDataResponse,
+    task_id: z.uuid(),
+    workflow_run_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowLogQuery
@@ -3292,48 +3314,54 @@ export const zWorkflowLogQuery = z.object({
  *
  * Public pause reason emitted by a blocking Workflow execution.
  */
-export const zWorkflowPauseReasonResponse = z.object({
-  TYPE: z.string(),
-  actions: z.array(zJsonObject).optional(),
-  approval_channels: z.array(z.string()).optional(),
-  display_in_ui: z.boolean().nullish(),
-  expiration_time: z.int().nullish(),
-  form_content: z.string().nullish(),
-  form_id: z.uuid().nullish(),
-  form_token: z.string().nullish(),
-  inputs: z.array(zJsonObject).optional(),
-  message: z.string().nullish(),
-  node_id: z.string().nullish(),
-  node_title: z.string().nullish(),
-  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
-})
+export const zWorkflowPauseReasonResponse = z
+  .object({
+    TYPE: z.string(),
+    actions: z.array(zJsonObject).optional(),
+    approval_channels: z.array(z.string()).optional(),
+    display_in_ui: z.boolean().nullish(),
+    expiration_time: z.int().nullish(),
+    form_content: z.string().nullish(),
+    form_id: z.uuid().nullish(),
+    form_token: z.string().nullish(),
+    inputs: z.array(zJsonObject).optional(),
+    message: z.string().nullish(),
+    node_id: z.string().nullish(),
+    node_title: z.string().nullish(),
+    resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowPausedBlockingDataResponse
  */
-export const zWorkflowPausedBlockingDataResponse = z.object({
-  created_at: z.int(),
-  elapsed_time: z.number(),
-  error: z.string().nullable(),
-  finished_at: z.int().nullable(),
-  id: z.uuid(),
-  outputs: z.record(z.string(), z.unknown()).nullable(),
-  paused_nodes: z.array(z.string()),
-  reasons: z.array(zWorkflowPauseReasonResponse),
-  status: z.literal('paused'),
-  total_steps: z.int(),
-  total_tokens: z.int(),
-  workflow_id: z.uuid(),
-})
+export const zWorkflowPausedBlockingDataResponse = z
+  .object({
+    created_at: z.int(),
+    elapsed_time: z.number(),
+    error: z.string().nullable(),
+    finished_at: z.int().nullable(),
+    id: z.uuid(),
+    outputs: z.record(z.string(), z.unknown()).nullable(),
+    paused_nodes: z.array(z.string()),
+    reasons: z.array(zWorkflowPauseReasonResponse),
+    status: z.literal('paused'),
+    total_steps: z.int(),
+    total_tokens: z.int(),
+    workflow_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowPausedBlockingResponse
  */
-export const zWorkflowPausedBlockingResponse = z.object({
-  data: zWorkflowPausedBlockingDataResponse,
-  task_id: z.uuid(),
-  workflow_run_id: z.uuid(),
-})
+export const zWorkflowPausedBlockingResponse = z
+  .object({
+    data: zWorkflowPausedBlockingDataResponse,
+    task_id: z.uuid(),
+    workflow_run_id: z.uuid(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowBlockingResponse

@@ -1866,26 +1866,30 @@ export const zWebAppToken = z.object({
 /**
  * WorkflowAgentLogMetadataResponse
  */
-export const zWorkflowAgentLogMetadataResponse = z.object({
-  elapsed_time: z.number().nullish(),
-  icon: z.string().nullish(),
-  provider: z.string().nullish(),
-})
+export const zWorkflowAgentLogMetadataResponse = z
+  .object({
+    elapsed_time: z.number().nullish(),
+    icon: z.string().nullish(),
+    provider: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowAgentLogResponse
  */
-export const zWorkflowAgentLogResponse = z.object({
-  data: z.record(z.string(), z.unknown()).nullish(),
-  error: z.string().nullish(),
-  label: z.string().nullish(),
-  message_id: z.string().nullish(),
-  metadata: zWorkflowAgentLogMetadataResponse.nullish(),
-  node_execution_id: z.string().nullish(),
-  node_id: z.string().nullish(),
-  parent_id: z.string().nullish(),
-  status: z.string().nullish(),
-})
+export const zWorkflowAgentLogResponse = z
+  .object({
+    data: z.record(z.string(), z.unknown()).nullish(),
+    error: z.string().nullish(),
+    label: z.string().nullish(),
+    message_id: z.string().nullish(),
+    metadata: zWorkflowAgentLogMetadataResponse.nullish(),
+    node_execution_id: z.string().nullish(),
+    node_id: z.string().nullish(),
+    parent_id: z.string().nullish(),
+    status: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowDiff
@@ -1917,99 +1921,117 @@ export const zReleaseCheckResponse = z.object({
 /**
  * WorkflowGraphEdgeDataResponse
  */
-export const zWorkflowGraphEdgeDataResponse = z.object({
-  sourceType: z.string().nullish(),
-  targetType: z.string().nullish(),
-})
+export const zWorkflowGraphEdgeDataResponse = z
+  .object({
+    sourceType: z.string().nullish(),
+    targetType: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraphEdgeResponse
  */
-export const zWorkflowGraphEdgeResponse = z.object({
-  data: zWorkflowGraphEdgeDataResponse.nullish(),
-  id: z.string().nullish(),
-  source: z.string(),
-  sourceHandle: z.string().nullish(),
-  target: z.string(),
-  targetHandle: z.string().nullish(),
-})
+export const zWorkflowGraphEdgeResponse = z
+  .object({
+    data: zWorkflowGraphEdgeDataResponse.nullish(),
+    id: z.string().nullish(),
+    source: z.string(),
+    sourceHandle: z.string().nullish(),
+    target: z.string(),
+    targetHandle: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraphNodeDataResponse
  */
-export const zWorkflowGraphNodeDataResponse = z.object({
-  desc: z.string().nullish(),
-  title: z.string().nullish(),
-  type: z.string(),
-})
+export const zWorkflowGraphNodeDataResponse = z
+  .object({
+    desc: z.string().nullish(),
+    title: z.string().nullish(),
+    type: z.string(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraphPositionResponse
  */
-export const zWorkflowGraphPositionResponse = z.object({
-  x: z.number(),
-  y: z.number(),
-})
+export const zWorkflowGraphPositionResponse = z
+  .object({
+    x: z.number(),
+    y: z.number(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraphNodeResponse
  */
-export const zWorkflowGraphNodeResponse = z.object({
-  data: zWorkflowGraphNodeDataResponse,
-  id: z.string(),
-  position: zWorkflowGraphPositionResponse.nullish(),
-  type: z.string().nullish(),
-})
+export const zWorkflowGraphNodeResponse = z
+  .object({
+    data: zWorkflowGraphNodeDataResponse,
+    id: z.string(),
+    position: zWorkflowGraphPositionResponse.nullish(),
+    type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraphViewportResponse
  */
-export const zWorkflowGraphViewportResponse = z.object({
-  x: z.number(),
-  y: z.number(),
-  zoom: z.number(),
-})
+export const zWorkflowGraphViewportResponse = z
+  .object({
+    x: z.number(),
+    y: z.number(),
+    zoom: z.number(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraphResponse
  */
-export const zWorkflowGraphResponse = z.object({
-  edges: z.array(zWorkflowGraphEdgeResponse).optional(),
-  nodes: z.array(zWorkflowGraphNodeResponse).optional(),
-  viewport: zWorkflowGraphViewportResponse.nullish(),
-})
+export const zWorkflowGraphResponse = z
+  .object({
+    edges: z.array(zWorkflowGraphEdgeResponse).optional(),
+    nodes: z.array(zWorkflowGraphNodeResponse).optional(),
+    viewport: zWorkflowGraphViewportResponse.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowNodeToolInfoResponse
  */
-export const zWorkflowNodeToolInfoResponse = z.object({
-  agent_strategy: z.string().nullish(),
-  icon: z.string().nullish(),
-})
+export const zWorkflowNodeToolInfoResponse = z
+  .object({
+    agent_strategy: z.string().nullish(),
+    icon: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowNodeExecutionMetadataResponse
  */
-export const zWorkflowNodeExecutionMetadataResponse = z.object({
-  agent_log: z.array(zWorkflowAgentLogResponse).nullish(),
-  currency: z.string().nullish(),
-  error_strategy: z.string().nullish(),
-  iteration_duration_map: z.record(z.string(), z.number()).nullish(),
-  iteration_id: z.string().nullish(),
-  iteration_index: z.int().nullish(),
-  loop_duration_map: z.record(z.string(), z.number()).nullish(),
-  loop_id: z.string().nullish(),
-  loop_index: z.int().nullish(),
-  loop_variable_map: z.record(z.string(), z.unknown()).nullish(),
-  parallel_id: z.string().nullish(),
-  parallel_mode_run_id: z.string().nullish(),
-  parallel_start_node_id: z.string().nullish(),
-  parent_parallel_id: z.string().nullish(),
-  parent_parallel_start_node_id: z.string().nullish(),
-  tool_info: zWorkflowNodeToolInfoResponse.nullish(),
-  total_price: z.number().nullish(),
-  total_tokens: z.int().nullish(),
-})
+export const zWorkflowNodeExecutionMetadataResponse = z
+  .object({
+    agent_log: z.array(zWorkflowAgentLogResponse).nullish(),
+    currency: z.string().nullish(),
+    error_strategy: z.string().nullish(),
+    iteration_duration_map: z.record(z.string(), z.number()).nullish(),
+    iteration_id: z.string().nullish(),
+    iteration_index: z.int().nullish(),
+    loop_duration_map: z.record(z.string(), z.number()).nullish(),
+    loop_id: z.string().nullish(),
+    loop_index: z.int().nullish(),
+    loop_variable_map: z.record(z.string(), z.unknown()).nullish(),
+    parallel_id: z.string().nullish(),
+    parallel_mode_run_id: z.string().nullish(),
+    parallel_start_node_id: z.string().nullish(),
+    parent_parallel_id: z.string().nullish(),
+    parent_parallel_start_node_id: z.string().nullish(),
+    tool_info: zWorkflowNodeToolInfoResponse.nullish(),
+    total_price: z.number().nullish(),
+    total_tokens: z.int().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowRunData
