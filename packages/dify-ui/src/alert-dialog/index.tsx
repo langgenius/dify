@@ -59,7 +59,8 @@ function AlertDialogContent({
       <BaseAlertDialog.Popup
         className={(state) =>
           cn(
-            'fixed top-1/2 left-1/2 max-h-[calc(100vh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            // Same chrome as DialogContent; change both together.
+            'fixed top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
             modalPopupAnimationClassName,
             resolveClassName(className, state),
           )
@@ -85,6 +86,7 @@ function AlertDialogTitle({ className, ...props }: AlertDialogTitleProps) {
     <BaseAlertDialog.Title
       className={(state) =>
         cn(
+          // Same look as DialogTitle; change both together.
           'title-2xl-semi-bold wrap-break-word text-text-primary',
           resolveClassName(className, state),
         )
