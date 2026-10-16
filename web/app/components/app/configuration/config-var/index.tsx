@@ -11,6 +11,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -400,17 +401,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         onOpenChange={(open) => !open && hideDeleteContextVarModal()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="truncate">
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
                 ns: 'appDebug',
                 varName: promptVariables[removeIndex as number]?.name ?? '',
               })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTip'], { ns: 'appDebug' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

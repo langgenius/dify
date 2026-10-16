@@ -12,6 +12,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -523,11 +524,11 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                   </span>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
-                  <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                    <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
                       {t(($) => $['archives.delete.title'], { ns: 'appLog', month: archiveMonth })}
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
+                    <AlertDialogDescription>
                       {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
                     </AlertDialogDescription>
                     {deleteArchiveMutation.isError && (
@@ -535,7 +536,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                         {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
                       </div>
                     )}
-                  </div>
+                  </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancelButton
                       variant="secondary"

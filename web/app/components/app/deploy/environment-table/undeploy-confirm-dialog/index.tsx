@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -38,20 +39,18 @@ export function UndeployConfirmDialog({
         if (!isPending) onOpenChange(nextOpen)
       }}
     >
-      <AlertDialogContent className="w-120">
-        <div className="flex flex-col items-start gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['studio.undeployConfirmTitle'], {
               envName: environmentName,
               versionName,
             })}
           </AlertDialogTitle>
-          <AlertDialogDescription render={<div />} className="flex flex-col gap-2">
-            <p className="system-md-regular text-text-secondary">
-              {t(($) => $['studio.undeployConfirmDesc'])}
-            </p>
+          <AlertDialogDescription className="text-text-secondary">
+            {t(($) => $['studio.undeployConfirmDesc'])}
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" className="min-w-20" disabled={isPending}>
             {tCommon(($) => $['operation.cancel'])}

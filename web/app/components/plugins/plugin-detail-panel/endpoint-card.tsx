@@ -7,6 +7,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -117,8 +118,8 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                 }
               />
               <AlertDialogContent backdropProps={{ forceRender: true }}>
-                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                  <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
                     {t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
                   </AlertDialogTitle>
                   <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
@@ -127,7 +128,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                       name: data.name,
                     })}
                   </div>
-                </div>
+                </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancelButton>
                     {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -207,14 +208,14 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
         onOpenChange={(open) => !open && hideDisableConfirm()}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
             <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
               {t(($) => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
             </div>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

@@ -12,6 +12,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -143,11 +144,11 @@ const AppInfoModals = ({
               onConfirmDelete()
             }}
           >
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
               </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              <AlertDialogDescription>
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
               <Field name="confirm-app-name" className="mt-2 gap-0">
@@ -184,7 +185,7 @@ const AppInfoModals = ({
                   </InputGroupAddon>
                 </InputGroup>
               </Field>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton type="button">
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -215,14 +216,14 @@ const AppInfoModals = ({
         ) : (
           exportDialogMode === 'warning' && (
             <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="truncate">
                   {t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
                 </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                <AlertDialogDescription>
                   {t(($) => $['sidebar.exportWarningDesc'], { ns: 'workflow' })}
                 </AlertDialogDescription>
-              </div>
+              </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}

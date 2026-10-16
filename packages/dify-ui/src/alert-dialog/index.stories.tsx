@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '.'
@@ -24,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose title, description, and actions via `AlertDialogFooter`, `AlertDialogCancelButton`, and `AlertDialogConfirmButton`.',
+          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose `AlertDialogTitle` and `AlertDialogDescription` in `AlertDialogHeader`, and the actions in `AlertDialogFooter` with `AlertDialogCancelButton` and `AlertDialogConfirmButton`. The title wraps rather than truncates, so a long object name stays readable.',
       },
     },
   },
@@ -41,15 +42,15 @@ export const Default: Story = {
         Delete project
       </AlertDialogTrigger>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 p-6 pb-4">
-          <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             Delete project?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+          <AlertDialogDescription>
             This action cannot be undone. All workflows, datasets, and API keys will be permanently
             removed.
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">Cancel</AlertDialogCancelButton>
           <AlertDialogConfirmButton>Delete</AlertDialogConfirmButton>
@@ -86,18 +87,42 @@ export const NonDestructive: Story = {
         Publish changes
       </AlertDialogTrigger>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 p-6 pb-4">
-          <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             Publish the latest draft?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+          <AlertDialogDescription>
             Collaborators will immediately see the new workflow. You can still revert from version
             history.
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">Not now</AlertDialogCancelButton>
           <AlertDialogConfirmButton tone="default">Publish</AlertDialogConfirmButton>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ),
+}
+
+export const LongObjectName: Story = {
+  render: () => (
+    <AlertDialog>
+      <AlertDialogTrigger render={<button type="button" className={triggerButtonClassName} />}>
+        Delete knowledge base
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Delete “Customer support escalation playbook for enterprise accounts (2026 Q3)”?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {'Documents, segments, and retrieval settings will be removed.\nApps that use this knowledge base will stop retrieving from it.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton>Cancel</AlertDialogCancelButton>
+          <AlertDialogConfirmButton>Delete</AlertDialogConfirmButton>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -119,15 +144,15 @@ function ControlledDemo() {
       </span>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               Revoke API token?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+            <AlertDialogDescription>
               Any integration using this token will immediately stop working. You can issue a new
               token afterwards.
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton variant="secondary">Keep token</AlertDialogCancelButton>
             <AlertDialogConfirmButton
@@ -168,15 +193,15 @@ function LoadingConfirmDemo() {
         Archive workspace
       </AlertDialogTrigger>
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 p-6 pb-4">
-          <AlertDialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             Archive this workspace?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm leading-5 text-text-secondary">
+          <AlertDialogDescription>
             Members will lose access until the workspace is restored. This may take a moment to
             finalize.
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={pending}>
             Cancel

@@ -10,8 +10,6 @@ import { modalBackdropClassName, modalPopupAnimationClassName } from '../interna
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root
-const AlertDialogTitle = BaseAlertDialog.Title
-const AlertDialogDescription = BaseAlertDialog.Description
 const createAlertDialogHandle = BaseAlertDialog.createHandle
 
 type AlertDialogActions = BaseAlertDialog.Root.Actions
@@ -33,9 +31,6 @@ function AlertDialogTrigger<Payload = unknown>({
     />
   )
 }
-type AlertDialogTitleProps = BaseAlertDialog.Title.Props
-type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
-
 type AlertDialogBackdropProps = BaseAlertDialog.Backdrop.Props
 
 function AlertDialogBackdrop({ className, ...props }: AlertDialogBackdropProps) {
@@ -77,6 +72,45 @@ function AlertDialogContent({
   )
 }
 
+type AlertDialogHeaderProps = React.ComponentProps<'div'>
+
+function AlertDialogHeader({ className, ...props }: AlertDialogHeaderProps) {
+  return <div className={cn('flex flex-col gap-2 px-6 pt-6 pb-4', className)} {...props} />
+}
+
+type AlertDialogTitleProps = BaseAlertDialog.Title.Props
+
+// Wraps instead of truncating: the title often names the object being acted on.
+function AlertDialogTitle({ className, ...props }: AlertDialogTitleProps) {
+  return (
+    <BaseAlertDialog.Title
+      className={(state) =>
+        cn(
+          'title-2xl-semi-bold wrap-break-word text-text-primary',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
+
+function AlertDialogDescription({ className, ...props }: AlertDialogDescriptionProps) {
+  return (
+    <BaseAlertDialog.Description
+      className={(state) =>
+        cn(
+          'system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
 type AlertDialogFooterProps = React.ComponentProps<'div'>
 
 function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
@@ -113,6 +147,7 @@ export {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
   createAlertDialogHandle,
@@ -128,6 +163,7 @@ export type {
   AlertDialogDescriptionProps,
   AlertDialogFooterProps,
   AlertDialogHandle,
+  AlertDialogHeaderProps,
   AlertDialogProps,
   AlertDialogTitleProps,
   AlertDialogTriggerProps,

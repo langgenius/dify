@@ -11,6 +11,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -708,17 +709,17 @@ const ProviderConfigModal: FC<Props> = ({
                     {t(($) => $['operation.remove'], { ns: 'common' })}
                   </AlertDialogTrigger>
                   <AlertDialogContent>
-                    <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                      <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="truncate">
                         {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
                           ns: 'app',
                           key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),
                         })}
                       </AlertDialogTitle>
-                      <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                      <AlertDialogDescription>
                         {t(($) => $[`${I18N_PREFIX}.removeConfirmContent`], { ns: 'app' })}
                       </AlertDialogDescription>
-                    </div>
+                    </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}

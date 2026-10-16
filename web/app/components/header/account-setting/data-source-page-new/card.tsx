@@ -6,6 +6,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
@@ -183,11 +184,11 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
       )}
       <AlertDialog open={!!deleteCredentialId} onOpenChange={(open) => !open && closeConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

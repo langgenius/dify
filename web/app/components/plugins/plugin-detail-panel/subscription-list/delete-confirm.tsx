@@ -5,6 +5,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -69,11 +70,11 @@ export const DeleteConfirm = (props: Props) => {
             onConfirm()
           }}
         >
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="truncate">
               {t(($) => $[`${tPrefix}.title`], { ns: 'pluginTrigger', name: currentName })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {workflowsInUse > 0
                 ? t(($) => $[`${tPrefix}.contentWithApps`], {
                     ns: 'pluginTrigger',
@@ -99,7 +100,7 @@ export const DeleteConfirm = (props: Props) => {
                 />
               </Field>
             )}
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

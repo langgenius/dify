@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -40,14 +41,14 @@ export const AppExportConfirmContent = ({
   }, [exportSecrets, isExporting, onClose, onConfirm])
 
   return (
-    <AlertDialogContent className="w-120">
-      <div className="px-6 pt-6">
-        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['exportSecret.title'], { ns: 'app' })}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 mb-6 system-sm-regular text-text-secondary">
+    <AlertDialogContent>
+      <AlertDialogHeader className="pb-6">
+        <AlertDialogTitle>{t(($) => $['exportSecret.title'], { ns: 'app' })}</AlertDialogTitle>
+        <AlertDialogDescription className="system-sm-regular text-text-secondary">
           {t(($) => $['exportSecret.description'], { ns: 'app' })}
         </AlertDialogDescription>
+      </AlertDialogHeader>
+      <div className="px-6">
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">

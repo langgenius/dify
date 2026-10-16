@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -54,14 +55,12 @@ const DatasetCardModals = ({
         onOpenChange={(open) => !open && onCloseConfirm()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $.deleteDatasetConfirmTitle, { ns: 'dataset' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {modalState.confirmMessage}
-            </AlertDialogDescription>
-          </div>
+            <AlertDialogDescription>{modalState.confirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

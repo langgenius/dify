@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
@@ -56,14 +57,16 @@ export function DeleteAgentDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="p-6">
-        <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.deleteDialog.title'], { ns: 'agentRoster', name: agentName })}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {t(($) => $['roster.deleteDialog.description'], { ns: 'agentRoster', name: agentName })}
-        </AlertDialogDescription>
-        <AlertDialogFooter className="p-0 pt-6">
+      <AlertDialogContent>
+        <AlertDialogHeader className="pb-0">
+          <AlertDialogTitle className="truncate">
+            {t(($) => $['roster.deleteDialog.title'], { ns: 'agentRoster', name: agentName })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t(($) => $['roster.deleteDialog.description'], { ns: 'agentRoster', name: agentName })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
           <AlertDialogCancelButton disabled={deleteAgentMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>

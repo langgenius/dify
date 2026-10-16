@@ -7,6 +7,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
@@ -35,18 +36,18 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <AlertDialogContent className="overflow-hidden! border-none text-left align-middle shadow-xl">
-        <div className="flex flex-col gap-y-2 p-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent className="overflow-hidden border-none shadow-xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {`${t(($) => $['common.restore'], { ns: 'workflow' })} ${getWorkflowVersionName(
               versionInfo,
               t(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
             )}`}
           </AlertDialogTitle>
-          <AlertDialogDescription className="system-md-regular text-text-secondary">
+          <AlertDialogDescription className="text-text-secondary">
             {t(($) => $['versionHistory.restorationTip'], { ns: 'workflowHistory' })}
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary">
             {t(($) => $['operation.cancel'], { ns: 'common' })}

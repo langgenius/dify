@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -242,17 +243,12 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           onOpenChange={(open) => !open && setShowConfirm(false)}
         >
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle
-                className="w-full truncate title-2xl-semi-bold text-text-primary"
-                title="Warning"
-              >
-                Warning
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogHeader>
+              <AlertDialogTitle title="Warning">Warning</AlertDialogTitle>
+              <AlertDialogDescription>
                 {`${t(($) => $['editExternalAPIConfirmWarningContent.front'], { ns: 'dataset' })} ${datasetBindings?.length} ${t(($) => $['editExternalAPIConfirmWarningContent.end'], { ns: 'dataset' })}`}
               </AlertDialogDescription>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

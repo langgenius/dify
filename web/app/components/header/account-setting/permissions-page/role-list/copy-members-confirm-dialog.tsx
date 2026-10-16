@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -39,11 +40,11 @@ export function CopyMembersConfirmDialog({
   return (
     <AlertDialog open onOpenChange={onOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['role.copyMembersTitle'], { ns: 'permission' })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
+          <AlertDialogDescription className="text-text-secondary">
             {isLoadingMemberCount
               ? t(($) => $['role.copyMembersLoading'], { ns: 'permission' })
               : t(($) => $['role.copyMembersDescription'], {
@@ -52,7 +53,7 @@ export function CopyMembersConfirmDialog({
                   count: memberCount,
                 })}
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <Button
             variant="secondary"

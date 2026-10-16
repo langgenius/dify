@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -357,14 +358,16 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           skillId={skillId}
         />
         <AlertDialog open={!!saveConflictConfirm}>
-          <AlertDialogContent className="p-6">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
-            </AlertDialogDescription>
-            <AlertDialogFooter className="p-0 pt-6">
+          <AlertDialogContent>
+            <AlertDialogHeader className="pb-0">
+              <AlertDialogTitle>
+                {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogConfirmButton
                 loading={saveConflictReloading}
                 tone="default"

@@ -10,6 +10,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -323,13 +324,11 @@ function DeleteSkillDialog({
       }}
     >
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="truncate title-2xl-semi-bold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="truncate">
             {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-            {description}
-          </AlertDialogDescription>
+          <AlertDialogDescription className="mt-2">{description}</AlertDialogDescription>
           {referenceCount > 0 && (
             <div className="mt-4">
               {referencesQuery.isPending ? (
@@ -380,7 +379,7 @@ function DeleteSkillDialog({
               </InputGroup>
             </Field>
           )}
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}

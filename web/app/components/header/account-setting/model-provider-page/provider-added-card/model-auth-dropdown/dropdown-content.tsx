@@ -5,8 +5,8 @@ import {
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { memo, useCallback } from 'react'
@@ -120,12 +120,11 @@ function DropdownContent({
         }}
       >
         <AlertDialogContent>
-          <div className="p-6 pb-0">
-            <AlertDialogTitle className="system-xl-semibold text-text-primary">
+          <AlertDialogHeader className="pb-1">
+            <AlertDialogTitle className="system-xl-semibold!">
               {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="mt-1 system-sm-regular text-text-secondary" />
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={doingAction}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
