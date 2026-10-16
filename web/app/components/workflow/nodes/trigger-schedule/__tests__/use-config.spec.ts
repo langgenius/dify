@@ -1,5 +1,5 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
@@ -148,5 +148,35 @@ describe('trigger-schedule/use-config', () => {
         visual_config: undefined,
       }),
     )
+  })
+
+  it('saves the profile timezone when the node has none, so the backend does not fall back to UTC', async () => {
+    renderHook(() => useConfig('schedule-node', createData({ timezone: undefined })), {
+      wrapper: createAccountProfileQueryWrapper(),
+    })
+
+    await waitFor(() => {
+      expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({ timezone: 'Asia/Shanghai' }))
+    })
+  })
+
+  it('does not overwrite a timezone that is already saved', async () => {
+    renderHook(() => useConfig('schedule-node', createData({ timezone: 'Europe/Berlin' })), {
+      wrapper: createAccountProfileQueryWrapper(),
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(setInputs).not.toHaveBeenCalled()
+  })
+
+  it('does not save the timezone in read-only mode', async () => {
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true, getNodesReadOnly: () => true })
+
+    renderHook(() => useConfig('schedule-node', createData({ timezone: undefined })), {
+      wrapper: createAccountProfileQueryWrapper(),
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(setInputs).not.toHaveBeenCalled()
   })
 })
