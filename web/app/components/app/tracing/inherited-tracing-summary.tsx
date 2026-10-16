@@ -12,7 +12,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
-import { selectAgentTracingEnabled, traceCapabilitiesQueryOptions } from './capabilities'
+import { traceCapabilitiesQueryOptions } from './capabilities'
 import { hasProviderForm } from './providers'
 import { tracingQueryParamName } from './query-params'
 
@@ -55,7 +55,9 @@ export function InheritedTracingSummary({
   const provider = hasProviderForm(policy?.tracing_provider) ? policy.tracing_provider : null
   const enabled = !!policy?.enabled && !!provider
   const { data: agentTracingEnabled } = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectAgentTracingEnabled }),
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.agent_tracing_api_collection_enabled,
+    }),
   )
   const capabilitiesQuery = useQuery(
     traceCapabilitiesQueryOptions(
