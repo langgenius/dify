@@ -216,6 +216,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
 | control_space_id | path |  | Yes | string |
 
 #### Request Body
@@ -257,6 +258,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
 | control_space_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
@@ -914,6 +916,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| Idempotency-Key | header |  | Yes | string |
 | documents | query |  | No | string, <br>**Available values:** "cascade", "keep", <br>**Default:** cascade |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |

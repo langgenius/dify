@@ -6694,6 +6694,9 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkData = {
   body: KnowledgeFsBulkDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
   path: {
     control_space_id: string
   }
@@ -6743,6 +6746,9 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse =
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
   body: KnowledgeFsDocumentDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
   path: {
     control_space_id: string
     document_id: string
@@ -7697,6 +7703,9 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesResponse =
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
   body: KnowledgeFsSourceDeletePayload
+  headers: {
+    'Idempotency-Key': string
+  }
   path: {
     control_space_id: string
     source_id: string

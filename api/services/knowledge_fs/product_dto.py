@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
@@ -2160,7 +2160,9 @@ KnowledgeFSSourceEditSelectionPayload = Annotated[
 ]
 
 
-class KnowledgeFSSourceEditSyncPolicyPayload(BaseModel):
+class KnowledgeFSSyncPolicyFields(BaseModel):
+    """Sync policy fields and rules shared by every endpoint that accepts a sync policy."""
+
     custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000, alias="customIntervalSeconds")
     enabled: bool
     mode: Literal["manual", "interval", "custom"]
@@ -2168,12 +2170,16 @@ class KnowledgeFSSourceEditSyncPolicyPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
     @model_validator(mode="after")
-    def validate_custom_interval(self) -> KnowledgeFSSourceEditSyncPolicyPayload:
+    def validate_custom_interval(self) -> Self:
         if self.mode == "custom" and self.custom_interval_seconds is None:
             raise ValueError("customIntervalSeconds is required for a custom sync policy")
         if self.mode != "custom" and self.custom_interval_seconds is not None:
             raise ValueError("customIntervalSeconds is only valid for a custom sync policy")
         return self
+
+
+class KnowledgeFSSourceEditSyncPolicyPayload(KnowledgeFSSyncPolicyFields):
+    pass
 
 
 class KnowledgeFSSourceUpdatePayload(BaseModel):
@@ -2419,14 +2425,9 @@ class KnowledgeFSSourceConnectionRefreshPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
-class KnowledgeFSSourceSyncPolicyPayload(BaseModel):
-    custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000, alias="customIntervalSeconds")
-    enabled: bool
+class KnowledgeFSSourceSyncPolicyPayload(KnowledgeFSSyncPolicyFields):
     expected_revision: int = Field(ge=0, alias="expectedRevision")
     expected_source_version: int = Field(ge=1, alias="expectedSourceVersion")
-    mode: Literal["manual", "interval", "custom"]
-
-    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
 class KnowledgeFSSourceWorkflowCancelPayload(BaseModel):
@@ -2461,20 +2462,8 @@ class KnowledgeFSCrawlPreviewSelectionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
-class KnowledgeFSDeferredSyncPolicyPayload(BaseModel):
-    custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000, alias="customIntervalSeconds")
-    enabled: bool
-    mode: Literal["manual", "interval", "custom"]
-
-    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
-
-    @model_validator(mode="after")
-    def validate_custom_interval(self) -> KnowledgeFSDeferredSyncPolicyPayload:
-        if self.mode == "custom" and self.custom_interval_seconds is None:
-            raise ValueError("customIntervalSeconds is required for a custom sync policy")
-        if self.mode != "custom" and self.custom_interval_seconds is not None:
-            raise ValueError("customIntervalSeconds is only valid for a custom sync policy")
-        return self
+class KnowledgeFSDeferredSyncPolicyPayload(KnowledgeFSSyncPolicyFields):
+    pass
 
 
 class KnowledgeFSAsyncCrawlPreviewImportPayload(BaseModel):

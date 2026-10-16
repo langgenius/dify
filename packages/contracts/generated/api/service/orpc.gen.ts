@@ -56,9 +56,11 @@ import {
   zDeleteDatasetsTagsBody,
   zDeleteDatasetsTagsResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkHeaders,
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdHeaders,
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath,
@@ -66,6 +68,7 @@ import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody,
+  zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdHeaders,
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath,
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdQuery,
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse,
@@ -2672,6 +2675,7 @@ export const delete9 = oc
   .input(
     z.object({
       body: zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody,
+      headers: zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkHeaders,
       params: zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkPath,
     }),
   )
@@ -2806,6 +2810,7 @@ export const delete10 = oc
   .input(
     z.object({
       body: zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody,
+      headers: zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdHeaders,
       params: zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath,
     }),
   )
@@ -3685,6 +3690,7 @@ export const delete13 = oc
   .input(
     z.object({
       body: zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody,
+      headers: zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdHeaders,
       params: zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath,
       query: zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdQuery.optional(),
     }),

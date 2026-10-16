@@ -14,6 +14,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCatQuery,
     KnowledgeFSCatResponse,
+    KnowledgeFSDeferredSyncPolicyPayload,
     KnowledgeFSDiffQuery,
     KnowledgeFSDiffResponse,
     KnowledgeFSDocumentChunkResponse,
@@ -56,8 +57,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSettingsResponse,
     KnowledgeFSSourceCreatePayload,
     KnowledgeFSSourceCredentialTestResponse,
+    KnowledgeFSSourceEditSyncPolicyPayload,
     KnowledgeFSSourceImportFailureResponse,
     KnowledgeFSSourceListQuery,
+    KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSourceWorkflowResponse,
@@ -1953,3 +1956,26 @@ def test_golden_question_source_lifecycle(metadata: dict[str, str], status: str,
     assert response.status == status
     assert response.status_reason == reason
     assert response.expected_evidence_ids == ["node-1"]
+
+
+_SYNC_POLICY_REVISIONS = {"expectedRevision": 0, "expectedSourceVersion": 1}
+
+
+@pytest.mark.parametrize(
+    ("payload_type", "extra"),
+    [
+        (KnowledgeFSSourceEditSyncPolicyPayload, {}),
+        (KnowledgeFSDeferredSyncPolicyPayload, {}),
+        (KnowledgeFSSourceSyncPolicyPayload, _SYNC_POLICY_REVISIONS),
+    ],
+)
+def test_every_sync_policy_entry_point_applies_the_same_custom_interval_rules(
+    payload_type: type[KnowledgeFSSourceEditSyncPolicyPayload], extra: dict[str, int]
+) -> None:
+    accepted = payload_type.model_validate({"enabled": True, "mode": "custom", "customIntervalSeconds": 3_600, **extra})
+    assert accepted.custom_interval_seconds == 3_600
+    assert payload_type.model_validate({"enabled": True, "mode": "interval", **extra}).mode == "interval"
+    with pytest.raises(ValidationError, match="customIntervalSeconds is required"):
+        payload_type.model_validate({"enabled": True, "mode": "custom", **extra})
+    with pytest.raises(ValidationError, match="customIntervalSeconds is only valid"):
+        payload_type.model_validate({"enabled": True, "mode": "manual", "customIntervalSeconds": 3_600, **extra})

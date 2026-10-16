@@ -6712,6 +6712,10 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse =
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkBody =
   zKnowledgeFsBulkDocumentDeletePayload
 
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkPath = z.object({
   control_space_id: z.string(),
 })
@@ -6741,6 +6745,10 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse =
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdBody =
   zKnowledgeFsDocumentDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath = z.object({
   control_space_id: z.string(),
@@ -7250,6 +7258,10 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesResponse = zKnowledgeF
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdBody =
   zKnowledgeFsSourceDeletePayload
+
+export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
 
 export const zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.object({
   control_space_id: z.string(),

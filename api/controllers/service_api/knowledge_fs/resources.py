@@ -431,6 +431,11 @@ class KnowledgeFSServiceDocumentsApi(Resource):
 @service_api_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents/bulk")
 class KnowledgeFSServiceBulkDocumentsApi(Resource):
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSBulkDocumentDeletePayload.__name__])
+    @service_api_ns.doc(
+        params={
+            "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
+        }
+    )
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
         "Agent Knowledge Base document deletions accepted",
@@ -504,6 +509,11 @@ class KnowledgeFSServiceDocumentApi(Resource):
         return _dump_response(KnowledgeFSLogicalDocumentResponse, raw)
 
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSDocumentDeletePayload.__name__])
+    @service_api_ns.doc(
+        params={
+            "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
+        }
+    )
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
         "Agent Knowledge Base document deletion accepted",
@@ -820,6 +830,11 @@ class KnowledgeFSServiceSourceApi(Resource):
 
     @service_api_ns.expect(service_api_ns.models[KnowledgeFSSourceDeletePayload.__name__])
     @service_api_ns.doc(params=query_params_from_model(KnowledgeFSSourceDeleteQuery))
+    @service_api_ns.doc(
+        params={
+            "Idempotency-Key": {"in": "header", "required": True, "type": "string", "minLength": 8, "maxLength": 255}
+        }
+    )
     @service_api_ns.response(
         HTTPStatus.ACCEPTED,
         "Agent Knowledge Base source deletion accepted",
