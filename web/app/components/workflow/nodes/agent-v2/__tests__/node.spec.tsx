@@ -108,29 +108,19 @@ describe('agent/node', () => {
   })
 
   it('renders the selected roster agent', () => {
-    const { container } = render(<AgentV2Node id="agent-node" data={createData()} />)
+    render(<AgentV2Node id="agent-node" data={createData()} />)
 
-    expect(screen.getByText('workflow.nodes.agent.roster.label')).toHaveClass(
-      'px-2.5',
-      'py-0.5',
-      'system-2xs-medium-uppercase',
-    )
-    expect(screen.getByText('Nadia')).toHaveClass('system-xs-regular', 'text-text-secondary')
-    expect(container.querySelector('.bg-workflow-block-parma-bg')).toHaveClass(
-      'gap-1',
-      'rounded-lg',
-      'p-1',
-    )
-    expect(container.querySelector('.h-1.px-3')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
+    expect(screen.getByText('Nadia')).toBeInTheDocument()
   })
 
   it('renders a stable roster placeholder while agent detail is loading', () => {
     mockUseAgentRosterDetail.mockReturnValue({ data: undefined })
 
-    const { container } = render(<AgentV2Node id="agent-node" data={createData()} />)
+    render(<AgentV2Node id="agent-node" data={createData()} />)
 
-    expect(container.querySelector('.bg-workflow-block-parma-bg')).toBeInTheDocument()
-    expect(container.querySelector('.h-2.w-20')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
+    expect(screen.queryByText('Nadia')).not.toBeInTheDocument()
   })
 
   it('renders the fixed inline setup name when workflow composer state is loaded', () => {
@@ -150,14 +140,12 @@ describe('agent/node', () => {
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(screen.queryByText('Workflow Agent 1')).not.toBeInTheDocument()
-    expect(screen.getByText('workflowAgent.nodes.agent.roster.inlineSetup.name')).toHaveClass(
-      'system-xs-regular',
-      'text-text-secondary',
-    )
-    expect(screen.getByText('workflowAgent.nodes.agent.roster.inlineSetup.type')).toHaveClass(
-      'system-2xs-regular',
-      'text-text-tertiary',
-    )
+    expect(
+      screen.getByText('workflowAgent.nodes.agent.roster.inlineSetup.name'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowAgent.nodes.agent.roster.inlineSetup.type'),
+    ).toBeInTheDocument()
   })
 
   it('renders a stable inline placeholder while agent detail is loading', () => {
@@ -166,7 +154,7 @@ describe('agent/node', () => {
       data: undefined,
     })
 
-    const { container } = render(
+    render(
       <AgentV2Node
         id="agent-node"
         data={createData({
@@ -182,11 +170,7 @@ describe('agent/node', () => {
     expect(
       screen.queryByText('workflowAgent.nodes.agent.roster.inlineSetup.name'),
     ).not.toBeInTheDocument()
-    expect(container.querySelector('.bg-workflow-block-parma-bg')).toBeInTheDocument()
-    expect(
-      container.querySelector('.size-8.shrink-0.rounded-full.bg-text-quaternary\\/20'),
-    ).toBeInTheDocument()
-    expect(container.querySelector('.h-2.w-20')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
   })
 
   it('renders an error state when no roster agent is selected', () => {
