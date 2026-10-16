@@ -773,6 +773,18 @@ export const zAppTracePayload = z.object({
 })
 
 /**
+ * InvalidTracingConfigError
+ *
+ * The tracing configuration is invalid.
+ */
+export const zInvalidTracingConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_tracing_config'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * TracingProviderUnavailableError
  *
  * The tracing provider is not available in this deployment.
@@ -783,21 +795,6 @@ export const zTracingProviderUnavailableError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
-
-/**
- * TraceProviderCapabilitiesResponse
- */
-export const zTraceProviderCapabilitiesResponse = z.object({
-  agent_spans: z.boolean(),
-  api_collection_enabled: z.boolean(),
-  export_ack: z.literal('accepted'),
-  native_cost: z.boolean(),
-  native_usage: z.boolean(),
-  provider: z.string(),
-  session: z.boolean(),
-  span_url: z.boolean(),
-  trace_url: z.boolean(),
-})
 
 /**
  * UnsupportedTracingProviderError
@@ -824,6 +821,18 @@ export const zTraceConfigNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * TracingConfigConflictError
+ *
+ * Tracing configuration changed. Refresh and try again.
+ */
+export const zTracingConfigConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * TracingConfigProcessingFailedError
  *
  * The tracing configuration could not be processed.
@@ -834,6 +843,21 @@ export const zTracingConfigProcessingFailedError = zErrorResponse.and(
     status: z.literal(500),
   }),
 )
+
+/**
+ * TraceProviderCapabilitiesResponse
+ */
+export const zTraceProviderCapabilitiesResponse = z.object({
+  agent_spans: z.boolean(),
+  api_collection_enabled: z.boolean(),
+  export_ack: z.literal('accepted'),
+  native_cost: z.boolean(),
+  native_usage: z.boolean(),
+  provider: z.string(),
+  session: z.boolean(),
+  span_url: z.boolean(),
+  trace_url: z.boolean(),
+})
 
 /**
  * TraceAppConfigResponse
@@ -855,21 +879,10 @@ export const zTraceAppConfigResponse = z.object({
  * TraceConfigPayload
  */
 export const zTraceConfigPayload = z.object({
+  activate: z.boolean().optional().default(false),
   tracing_config: z.record(z.string(), z.string().nullable()),
   tracing_provider: z.string(),
 })
-
-/**
- * InvalidTracingConfigError
- *
- * The tracing configuration is invalid.
- */
-export const zInvalidTracingConfigError = zErrorResponse.and(
-  z.object({
-    code: z.literal('invalid_tracing_config'),
-    status: z.literal(400),
-  }),
-)
 
 /**
  * TracingConfigVerificationFailedError

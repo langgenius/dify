@@ -36,6 +36,7 @@ import {
   zTraceConfigAlreadyExistsError,
   zTraceConfigNotFoundError,
   zTracingAlreadyAcceptedError,
+  zTracingConfigConflictError,
   zTracingConfigProcessingFailedError,
   zTracingConfigVerificationFailedError,
   zTracingDuplicateAcknowledgementRequiredError,
@@ -1432,7 +1433,14 @@ export const post18 = oc
   })
   .input(z.object({ body: zPostAgentByAgentIdTraceBody, params: zPostAgentByAgentIdTracePath }))
   .output(zPostAgentByAgentIdTraceResponse)
-  .errors({ tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError } })
+  .errors({
+    invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
+    trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
+    tracing_config_conflict: { status: 409, data: zTracingConfigConflictError },
+    tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
+    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
+    unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
+  })
 
 export const trace = {
   get: get29,
@@ -1524,6 +1532,7 @@ export const patch = oc
     app_not_found: { status: 404, data: zAppNotFoundError },
     invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
     trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
+    tracing_config_conflict: { status: 409, data: zTracingConfigConflictError },
     tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
     tracing_config_verification_failed: {
       status: 400,

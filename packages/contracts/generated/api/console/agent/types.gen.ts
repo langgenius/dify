@@ -586,9 +586,34 @@ export type AppTracePayload = {
   tracing_provider?: string | null
 }
 
+export type InvalidTracingConfigError = ErrorResponse & {
+  code: 'invalid_tracing_config'
+  status: 400
+}
+
 export type TracingProviderUnavailableError = ErrorResponse & {
   code: 'tracing_provider_unavailable'
   status: 400
+}
+
+export type UnsupportedTracingProviderError = ErrorResponse & {
+  code: 'unsupported_tracing_provider'
+  status: 400
+}
+
+export type TraceConfigNotFoundError = ErrorResponse & {
+  code: 'trace_config_not_found'
+  status: 404
+}
+
+export type TracingConfigConflictError = ErrorResponse & {
+  code: 'tracing_config_conflict'
+  status: 409
+}
+
+export type TracingConfigProcessingFailedError = ErrorResponse & {
+  code: 'tracing_config_processing_failed'
+  status: 500
 }
 
 export type TraceProviderCapabilitiesResponse = {
@@ -603,24 +628,9 @@ export type TraceProviderCapabilitiesResponse = {
   trace_url: boolean
 }
 
-export type UnsupportedTracingProviderError = ErrorResponse & {
-  code: 'unsupported_tracing_provider'
-  status: 400
-}
-
 export type AppNotFoundError = ErrorResponse & {
   code: 'app_not_found'
   status: 404
-}
-
-export type TraceConfigNotFoundError = ErrorResponse & {
-  code: 'trace_config_not_found'
-  status: 404
-}
-
-export type TracingConfigProcessingFailedError = ErrorResponse & {
-  code: 'tracing_config_processing_failed'
-  status: 500
 }
 
 export type TraceAppConfigResponse = {
@@ -639,15 +649,11 @@ export type TraceAppConfigResponse = {
 }
 
 export type TraceConfigPayload = {
+  activate?: boolean
   tracing_config: {
     [key: string]: string | null
   }
   tracing_provider: string
-}
-
-export type InvalidTracingConfigError = ErrorResponse & {
-  code: 'invalid_tracing_config'
-  status: 400
 }
 
 export type TracingConfigVerificationFailedError = ErrorResponse & {
@@ -4157,7 +4163,14 @@ export type PostAgentByAgentIdTraceData = {
 }
 
 export type PostAgentByAgentIdTraceErrors = {
-  400: TracingProviderUnavailableError | ErrorResponse
+  400:
+    | InvalidTracingConfigError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+    | ErrorResponse
+  404: TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
+  500: TracingConfigProcessingFailedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4270,6 +4283,7 @@ export type PatchAgentByAgentIdTraceConfigErrors = {
     | UnsupportedTracingProviderError
     | ErrorResponse
   404: AppNotFoundError | TraceConfigNotFoundError | ErrorResponse
+  409: TracingConfigConflictError | ErrorResponse
   500: TracingConfigProcessingFailedError | ErrorResponse
   default: ErrorResponse
 }
