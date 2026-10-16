@@ -52,7 +52,8 @@ export function settingsDraftFromSnapshot({
       visibility: space.visibility,
     },
     external: {
-      apiEnabled: Boolean(externalAccess?.service_api_enabled && externalAccess.agent_enabled),
+      agentEnabled: externalAccess?.agent_enabled ?? false,
+      serviceApiEnabled: externalAccess?.service_api_enabled ?? false,
       workflowEnabled: externalAccess?.workflow_enabled ?? false,
     },
     retrieval: retrievalDraftFromSettings(settings),
@@ -72,7 +73,8 @@ export function settingsDraftsMatch(left: KnowledgeSettingsDraft, right: Knowled
     left.basic.visibility === right.basic.visibility &&
     memberIdsFingerprint(left.basic.selectedMemberIds) ===
       memberIdsFingerprint(right.basic.selectedMemberIds) &&
-    left.external.apiEnabled === right.external.apiEnabled &&
+    left.external.agentEnabled === right.external.agentEnabled &&
+    left.external.serviceApiEnabled === right.external.serviceApiEnabled &&
     left.external.workflowEnabled === right.external.workflowEnabled &&
     modelFingerprint(left.retrieval.embeddingModel) ===
       modelFingerprint(right.retrieval.embeddingModel) &&
@@ -100,7 +102,8 @@ export function settingsDraftChanges(
       memberIdsFingerprint(original.basic.selectedMemberIds)
   const external =
     canManageAccess &&
-    (draft.external.apiEnabled !== original.external.apiEnabled ||
+    (draft.external.agentEnabled !== original.external.agentEnabled ||
+      draft.external.serviceApiEnabled !== original.external.serviceApiEnabled ||
       draft.external.workflowEnabled !== original.external.workflowEnabled)
   const embedding =
     canEdit &&

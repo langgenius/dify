@@ -66,11 +66,16 @@ export function rebaseSettingsDraft(
           : fresh.basic.selectedMemberIds,
     },
     external: {
-      apiEnabled:
+      agentEnabled:
         !completed.includes('external') &&
-        draft.external.apiEnabled !== original.external.apiEnabled
-          ? draft.external.apiEnabled
-          : fresh.external.apiEnabled,
+        draft.external.agentEnabled !== original.external.agentEnabled
+          ? draft.external.agentEnabled
+          : fresh.external.agentEnabled,
+      serviceApiEnabled:
+        !completed.includes('external') &&
+        draft.external.serviceApiEnabled !== original.external.serviceApiEnabled
+          ? draft.external.serviceApiEnabled
+          : fresh.external.serviceApiEnabled,
       workflowEnabled:
         !completed.includes('external') &&
         draft.external.workflowEnabled !== original.external.workflowEnabled
@@ -156,16 +161,11 @@ export function settingsExternalPayload(
   draft: KnowledgeSettingsDraft,
   baseline: KnowledgeSettingsSnapshot,
 ): KnowledgeFsExternalAccessPayload {
-  const original = baseline.externalAccess
-  const apiChanged =
-    draft.external.apiEnabled !== settingsDraftFromSnapshot(baseline).external.apiEnabled
   return {
-    agent_enabled: apiChanged ? draft.external.apiEnabled : (original?.agent_enabled ?? false),
-    service_api_enabled: apiChanged
-      ? draft.external.apiEnabled
-      : (original?.service_api_enabled ?? false),
+    agent_enabled: draft.external.agentEnabled,
+    service_api_enabled: draft.external.serviceApiEnabled,
     workflow_enabled: draft.external.workflowEnabled,
-    mcp_enabled: original?.mcp_enabled ?? false,
+    mcp_enabled: baseline.externalAccess?.mcp_enabled ?? false,
   }
 }
 

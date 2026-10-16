@@ -223,6 +223,10 @@ export const saveKnowledgeSettingsAtom = atom(
         })
         await queryClient.cancelQueries({ queryKey: queries.space.queryKey })
         queryClient.setQueryData(queries.space.queryKey, space)
+        // List cards render the same name, icon and visibility; refresh every list variant.
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+        })
         checkpoint({ ...session.baseline, space }, ['space'])
       }
       if (settingsDraftChanges(session.draft, session.baseline).members) {

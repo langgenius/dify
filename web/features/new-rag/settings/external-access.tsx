@@ -24,6 +24,8 @@ export function ExternalAccessSection() {
   if (!space || !current) return null
   const canManageAccess = space.permission_keys.includes('knowledge_space_access_config')
   const disabled = !canManageAccess || interactionLocked
+  // A partially enabled API channel still exposes the space, so it reads as on and one toggle clears both.
+  const apiEnabled = current.agentEnabled || current.serviceApiEnabled
 
   return (
     <div className="flex flex-col gap-4">
@@ -33,9 +35,11 @@ export function ExternalAccessSection() {
           <Switch
             aria-label={t(($) => $.apiAgentAccess)}
             aria-describedby={API_ACCESS_DESCRIPTION_ID}
-            checked={current.apiEnabled}
+            checked={apiEnabled}
             disabled={disabled}
-            onCheckedChange={(apiEnabled) => !disabled && updateDraft({ apiEnabled })}
+            onCheckedChange={(enabled) =>
+              !disabled && updateDraft({ agentEnabled: enabled, serviceApiEnabled: enabled })
+            }
           />
           <p
             id={API_ACCESS_DESCRIPTION_ID}
