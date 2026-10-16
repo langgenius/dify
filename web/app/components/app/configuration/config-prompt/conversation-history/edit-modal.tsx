@@ -2,7 +2,14 @@
 import type { FC } from 'react'
 import type { ConversationHistoriesRole } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,42 +32,47 @@ const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) =>
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-120 overflow-hidden border-none p-6">
-        <DialogTitle>
-          {t(($) => $['feature.conversationHistory.editModal.title'], { ns: 'appDebug' })}
-        </DialogTitle>
+      <DialogContent className="w-full max-w-120">
+        <DialogHeader>
+          <DialogTitle>
+            {t(($) => $['feature.conversationHistory.editModal.title'], { ns: 'appDebug' })}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div className="text-sm leading-5.25 font-medium text-text-primary">
+            {t(($) => $['feature.conversationHistory.editModal.userPrefix'], { ns: 'appDebug' })}
+          </div>
+          <input
+            className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
+            value={tempData.user_prefix}
+            onChange={(e) =>
+              setTempData({
+                ...tempData,
+                user_prefix: e.target.value,
+              })
+            }
+          />
 
-        <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
-          {t(($) => $['feature.conversationHistory.editModal.userPrefix'], { ns: 'appDebug' })}
-        </div>
-        <input
-          className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
-          value={tempData.user_prefix}
-          onChange={(e) =>
-            setTempData({
-              ...tempData,
-              user_prefix: e.target.value,
-            })
-          }
-        />
+          <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
+            {t(($) => $['feature.conversationHistory.editModal.assistantPrefix'], {
+              ns: 'appDebug',
+            })}
+          </div>
+          <input
+            className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
+            value={tempData.assistant_prefix}
+            onChange={(e) =>
+              setTempData({
+                ...tempData,
+                assistant_prefix: e.target.value,
+              })
+            }
+            placeholder={t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' }) || ''}
+          />
+        </DialogBody>
 
-        <div className="mt-6 text-sm leading-5.25 font-medium text-text-primary">
-          {t(($) => $['feature.conversationHistory.editModal.assistantPrefix'], { ns: 'appDebug' })}
-        </div>
-        <input
-          className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm/10"
-          value={tempData.assistant_prefix}
-          onChange={(e) =>
-            setTempData({
-              ...tempData,
-              assistant_prefix: e.target.value,
-            })
-          }
-          placeholder={t(($) => $['chat.conversationNamePlaceholder'], { ns: 'common' }) || ''}
-        />
-
-        <div className="mt-10 flex justify-end">
-          <Button className="mr-2 shrink-0" onClick={onClose}>
+        <DialogFooter>
+          <Button className="shrink-0" onClick={onClose}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           <Button
@@ -71,7 +83,7 @@ const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) =>
           >
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

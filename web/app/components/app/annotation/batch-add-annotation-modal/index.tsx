@@ -1,8 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { RiCloseLine } from '@remixicon/react'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -99,30 +106,30 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   }
 
   return (
-    <Dialog open={isShow}>
-      <DialogContent className="w-full max-w-130 overflow-hidden rounded-xl border-none px-8 py-6">
-        <div className="relative pb-1 system-xl-medium text-text-primary">
-          {t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}
-        </div>
-        <button
-          type="button"
-          className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-          onClick={onCancel}
-        >
-          <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
-        </button>
-        <CSVUploader file={currentCSV} updateFile={handleFile} />
-        <CSVDownloader />
+    <Dialog
+      open={isShow}
+      disablePointerDismissal
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent className="w-full max-w-130">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}</DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <CSVUploader file={currentCSV} updateFile={handleFile} />
+          <CSVDownloader />
 
-        {isAnnotationFull && (
-          <div className="mt-4">
-            <AnnotationFull />
-          </div>
-        )}
-
-        <div className="mt-7 flex justify-end pt-6">
-          <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
+          {isAnnotationFull && (
+            <div className="mt-4">
+              <AnnotationFull />
+            </div>
+          )}
+        </DialogBody>
+        <DialogFooter>
+          <Button className="system-sm-medium text-text-tertiary" onClick={onCancel}>
             {t(($) => $['batchModal.cancel'], { ns: 'appAnnotation' })}
           </Button>
           <Button
@@ -135,7 +142,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
           >
             {t(($) => $['batchModal.run'], { ns: 'appAnnotation' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

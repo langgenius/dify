@@ -1,9 +1,15 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { RiCloseLine } from '@remixicon/react'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -74,22 +80,12 @@ const ImportFromMarketplaceTemplateModal = ({
       }}
     >
       <DialogContent className="w-130">
-        <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
+        <DialogHeader>
           <DialogTitle>{t(($) => $['marketplace.template.modalTitle'], { ns: 'app' })}</DialogTitle>
-          <DialogClose
-            render={
-              <IconButton
-                size="lg"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="mr-1.5"
-              >
-                <RiCloseLine aria-hidden className="size-5" />
-              </IconButton>
-            }
-          />
-        </div>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
 
-        <div className="px-6 py-4" aria-busy={isLoading}>
+        <DialogBody aria-busy={isLoading}>
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <div className="system-md-regular text-text-tertiary">
@@ -161,12 +157,10 @@ const ImportFromMarketplaceTemplateModal = ({
               )}
             </div>
           )}
-        </div>
+        </DialogBody>
 
-        <div className="flex justify-end px-6 py-5">
-          <Button className="mr-2" onClick={onClose}>
-            {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-          </Button>
+        <DialogFooter>
+          <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
           <Button
             variant="primary"
             disabled={isLoading || isError}
@@ -175,7 +169,7 @@ const ImportFromMarketplaceTemplateModal = ({
           >
             {t(($) => $['marketplace.template.importConfirm'], { ns: 'app' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

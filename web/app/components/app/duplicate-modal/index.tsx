@@ -2,9 +2,16 @@
 import type { AppDetailWithSite, CopyAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -105,25 +112,18 @@ const DuplicateAppModal = ({
           if (!open) onHide()
         }}
       >
-        <DialogContent className="w-full max-w-120 overflow-hidden border-none px-8 py-6">
-          <IconButton
-            size="lg"
-            className="absolute top-4 right-4"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onHide}
-          >
-            <span aria-hidden="true" className="i-ri-close-line size-4" />
-          </IconButton>
-          <DialogTitle className="relative mt-3 mb-9">
-            {t(($) => $.duplicateTitle, { ns: 'app' })}
-          </DialogTitle>
+        <DialogContent className="w-full max-w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.duplicateTitle, { ns: 'app' })}</DialogTitle>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
           <form
             onSubmit={(event) => {
               event.preventDefault()
               submit()
             }}
           >
-            <div className="mb-9 system-sm-regular text-text-secondary">
+            <DialogBody>
               <IconPicker value={pickerValue} onValueChange={setSelectedIcon}>
                 <Field name="name">
                   <FieldLabel className="system-md-medium">
@@ -148,20 +148,20 @@ const DuplicateAppModal = ({
                 <IconPickerContent />
               </IconPicker>
               {isAppsFull && <AppsFull className="mt-4" loc="app-duplicate-create" />}
-            </div>
-            <div className="flex flex-row-reverse">
+            </DialogBody>
+            <DialogFooter>
+              <Button type="button" className="w-24" onClick={onHide}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
               <Button
                 type="submit"
                 disabled={isAppQuotaUnavailable || isAppsFull}
-                className="ml-2 w-24"
+                className="w-24"
                 variant="primary"
               >
                 {t(($) => $.duplicate, { ns: 'app' })}
               </Button>
-              <Button type="button" className="w-24" onClick={onHide}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

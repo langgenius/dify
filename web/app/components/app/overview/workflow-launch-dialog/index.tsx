@@ -3,7 +3,15 @@
 import type { FormEvent } from 'react'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../app-card-utils'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import {
@@ -54,19 +62,19 @@ function WorkflowLaunchForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="space-y-4 px-6 pb-4">
+      <DialogBody className="space-y-4">
         <WorkflowHiddenInputFields
           hiddenVariables={hiddenVariables}
           values={values}
           onValueChange={handleValueChange}
         />
-      </div>
-      <div className="flex items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+      </DialogBody>
+      <DialogFooter>
         <Button onClick={onClose}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
         <Button type="submit" variant="primary" disabled={launchDisabled}>
           {t(($) => $['overview.appInfo.launch'], { ns: 'appOverview' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
@@ -94,7 +102,7 @@ export function WorkflowLaunchDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-140">
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+        <DialogHeader>
           <DialogTitle>
             {t(($) => $['overview.appInfo.workflowLaunchHiddenInputs.title'], {
               ns: 'appOverview',
@@ -107,7 +115,7 @@ export function WorkflowLaunchDialog({
               components={{ bold: <span className="system-md-medium" /> }}
             />
           </DialogDescription>
-        </div>
+        </DialogHeader>
         <WorkflowLaunchForm
           key={open ? `open:${targetUrl}` : 'closed'}
           hiddenVariables={supportedVariables}
