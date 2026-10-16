@@ -68,11 +68,13 @@ export function UpgradeModal({
             )}
             <div className={cn('mt-6 space-y-2', classNames?.copy)}>
               <DialogTitle
+                // oxlint-disable-next-line shadcn/no-restyle -- Upgrade hero keeps its marketing title type.
                 className={cn(styles.highlight, 'title-3xl-semi-bold', classNames?.title)}
               >
                 {title}
               </DialogTitle>
               <DialogDescription
+                // oxlint-disable-next-line shadcn/no-restyle -- Upgrade hero keeps its marketing body type.
                 className={cn('text-sm/5 text-text-tertiary', classNames?.description)}
               >
                 {description}

@@ -72,7 +72,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
 
   return (
     <Dialog open>
-      <DialogContent className="h-[min(640px,calc(100dvh-2rem))] max-h-none w-230 overflow-hidden border-none">
+      <DialogContent className="h-[min(640px,calc(100dvh-2rem))] max-h-none w-230 overflow-hidden">
         <button
           type="button"
           aria-label={t(($) => $['operation.close'], { ns: 'common' })}

@@ -17,6 +17,7 @@ const Header = () => {
           </div>
           <DialogTitle
             className={cn(
+              // oxlint-disable-next-line shadcn/no-restyle -- Pricing hero keeps its serif display title.
               'min-w-0 bg-billing-plan-title-bg bg-clip-text px-1.5 text-[37px] leading-[1.2] font-normal wrap-anywhere text-transparent',
               styles.instrumentSerif,
             )}
@@ -24,7 +25,10 @@ const Header = () => {
             {t(($) => $['plansCommon.title.plans'], { ns: 'billing' })}
           </DialogTitle>
         </div>
-        <DialogDescription className="text-[13px]/4 text-text-tertiary">
+        <DialogDescription
+          // oxlint-disable-next-line shadcn/no-restyle -- Pricing hero keeps its 13px subtitle.
+          className="text-[13px]/4 text-text-tertiary"
+        >
           {t(($) => $['plansCommon.title.description'], { ns: 'billing' })}
         </DialogDescription>
       </div>

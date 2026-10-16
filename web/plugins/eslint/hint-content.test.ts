@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
-import { hintContentRules } from '../../../lint.config'
+import { stylingContractRules } from '../../../lint.config'
 
 function lintFixture(source: string) {
   const require = createRequire(import.meta.url)
@@ -17,7 +17,7 @@ function lintFixture(source: string) {
       JSON.stringify({
         categories: { correctness: 'off' },
         jsPlugins: [require.resolve('@shadcn/lint')],
-        rules: hintContentRules,
+        rules: stylingContractRules,
       }),
     )
     writeFileSync(join(directory, 'fixture.tsx'), source)
@@ -133,7 +133,7 @@ it('allows Infotip widths and content line breaks while retaining its own conten
     const examples = <>
       <Explanation />
       <Explanation className="w-60 max-w-75 whitespace-pre-wrap" />
-      <Explanation className="max-w-[261px] sm:w-60" />
+      <Explanation className="max-w-65.25 sm:w-60" />
       <Explanation className={expanded ? 'w-60' : 'w-45'} />
     </>
   `)

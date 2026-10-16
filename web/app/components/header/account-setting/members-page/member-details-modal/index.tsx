@@ -119,7 +119,11 @@ const MemberDetailsModal = ({
           if (!next) onClose()
         }}
       >
-        <DialogContent className="w-110 overflow-visible" backdropProps={{ forceRender: true }}>
+        <DialogContent
+          // oxlint-disable-next-line shadcn/no-restyle -- Keeps content that reaches past the edge unclipped, as before.
+          className="w-110 overflow-visible"
+          backdropProps={{ forceRender: true }}
+        >
           <DialogHeader>
             <DialogTitle>
               {t(($) => $['members.memberDetails.title'], {

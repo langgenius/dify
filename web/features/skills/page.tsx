@@ -977,7 +977,11 @@ function ImportSkillDialogForm({
               />
             </p>
           )}
-          <DialogDescription id={descriptionId} className="text-center">
+          <DialogDescription
+            id={descriptionId}
+            // oxlint-disable-next-line shadcn/no-restyle -- Description is centred under the upload drop zone.
+            className="text-center"
+          >
             {t(($) => $['skillManagement.importDialog.description'])}
           </DialogDescription>
         </div>

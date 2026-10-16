@@ -327,7 +327,7 @@ function AgentFilePreviewContent({
           >
             {line.lineNumber}
           </span>
-          <code className="block min-w-0 flex-1 wrap-anywhere wrap-break-word whitespace-pre-wrap text-text-primary">
+          <code className="block min-w-0 flex-1 wrap-anywhere whitespace-pre-wrap text-text-primary">
             {line.content}
           </code>
         </div>
@@ -351,7 +351,7 @@ export function AgentSkillDetailDialog({
   return (
     <DialogContent
       backdropProps={{ forceRender: true, className: 'fixed' }}
-      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden"
+      className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] overflow-hidden"
     >
       <div
         className={cn(

@@ -24,7 +24,7 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-100 min-w-100 overflow-hidden border-none">
+      <DialogContent className="w-100 min-w-100 overflow-hidden">
         <DialogClose
           render={
             <IconButton

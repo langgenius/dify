@@ -125,7 +125,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
             }
           }}
         >
-          <DialogContent className="w-120 border-none p-6 sm:min-w-132">
+          <DialogContent className="w-120 p-6 sm:min-w-132">
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
               onChange={handleSetTempDataSetConfigs}

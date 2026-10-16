@@ -199,7 +199,10 @@ function JsonSchemaConfigContent({ defaultSchema, onSave }: JsonSchemaConfigProp
     >
       {/* Header */}
       <div className="relative flex p-6 pr-14 pb-3">
-        <DialogTitle className="grow">
+        <DialogTitle
+          // oxlint-disable-next-line shadcn/no-restyle -- Title shares the editor's header row with its actions.
+          className="grow"
+        >
           {t(($) => $['nodes.llm.jsonSchema.title'], { ns: 'workflowModels' })}
         </DialogTitle>
         <DialogClose

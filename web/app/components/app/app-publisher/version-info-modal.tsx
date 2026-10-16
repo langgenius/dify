@@ -83,7 +83,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
     >
       <DialogContent className="w-120">
         <DialogHeader>
-          <DialogTitle className="first-letter:capitalize">
+          <DialogTitle>
             {versionInfo?.marked_name
               ? t(($) => $['versionHistory.editVersionInfo'], { ns: 'workflowHistory' })
               : t(($) => $['versionHistory.nameThisVersion'], { ns: 'workflowHistory' })}
