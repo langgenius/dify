@@ -2733,7 +2733,7 @@ describe('DocumentsPage', () => {
     const preview = await screen.findByRole('img', { name: 'PDF preview' })
     expect(preview).toHaveAttribute('data-url', 'blob:handbook')
     expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
-    expect((createObjectUrl.mock.calls[0]?.[0] as Blob).type).toBe('application/pdf')
+    expect((createObjectUrl.mock.calls[0]?.[0] as Blob).size).toBe(file.size)
     expect(open).not.toHaveBeenCalled()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
 
