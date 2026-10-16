@@ -1055,3 +1055,68 @@ def test_fix1_official_iteration_length_zero_and_finite_counter_boundary(value):
     projected = policy.event(event)
     assert projected.metadata == {"iteration_length": value}
     assert SENTINEL not in projected.model_dump_json()
+
+
+@pytest.mark.parametrize("kind", ["loop", "iteration"])
+def test_existing_scalar_control_schemas_accept_exact_empty_http_manifest(kind):
+    """Structural qualification only; native factory still owns executability."""
+    ctx = container_context(kind)
+    graph = deepcopy(graph_data(ctx))
+    graph["nodes"] = [n for n in graph["nodes"] if n["id"] != "http"]
+    next(n for n in graph["nodes"] if n["id"] == "end")["data"]["outputs"] = []
+    if kind == "iteration":
+        next(n for n in graph["nodes"] if n["id"] == "container")["data"]["output_selector"] = ["body-start", "index"]
+    graph["edges"] = [{"source": "start", "target": "container"}, {"source": "container", "target": "end"}]
+    ctx = ctx.model_copy(update={"graph": graph, "resource_manifest": ()})
+    policy = owner().qualify(context=ctx, profile=build_native_http_profile())
+    assert SENTINEL not in json.dumps(policy.graph(ctx.graph))
+    # Empty HTTP metadata cannot excuse a broken existing container association.
+    next(n for n in graph["nodes"] if n["id"] == "container")["data"]["start_node_id"] = "missing"
+    with pytest.raises(BuilderExecutionPolicyError):
+        owner().qualify(context=ctx, profile=build_native_http_profile())
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "manifest", "effect_kind", "start_file", "end_file", "no_start", "duplicate",
+        "edge", "version", "mock", "child", "inputs", "hostile",
+    ],
+)
+def test_empty_http_manifest_keeps_schema_owner_and_privacy_refusals(fault):
+    ctx = context()
+    graph = deepcopy(graph_data(ctx))
+    graph.pop("viewport")
+    graph["nodes"] = [n for n in graph["nodes"] if n["id"] != "http"]
+    graph["nodes"][-1]["data"]["outputs"] = []
+    graph["edges"] = [{"source": "start", "target": "end"}]
+    ctx = ctx.model_copy(update={"graph": graph, "resource_manifest": ()})
+    if fault == "manifest":
+        ctx = ctx.model_copy(update={"resource_manifest": context().resource_manifest})
+    elif fault == "effect_kind":
+        graph["nodes"][-1]["data"]["type"] = "agent"
+    elif fault == "start_file":
+        graph["nodes"][0]["data"]["variables"] = [{"variable": "f", "label": "f", "type": "file"}]
+    elif fault == "end_file":
+        graph["nodes"][-1]["data"]["outputs"] = [
+            {"variable": "f", "value_selector": ["start", "f"], "value_type": "file"}
+        ]
+    elif fault == "no_start":
+        graph["nodes"] = graph["nodes"][1:]
+    elif fault == "duplicate":
+        graph["nodes"].append(deepcopy(graph["nodes"][0]))
+    elif fault == "edge":
+        graph["edges"][0]["target"] = "missing"
+    elif fault == "version":
+        graph["nodes"][0]["data"]["version"] = "2"
+    elif fault == "mock":
+        ctx = ctx.model_copy(update={"execution_mode": "mock"})
+    elif fault == "child":
+        ctx = ctx.model_copy(update={"parent_invocation_id": "parent", "call_depth": 1})
+    elif fault == "inputs":
+        ctx = ctx.model_copy(update={"input_revision": "f" * 64})
+    else:
+        ctx = ctx.model_copy(update={"inputs": {"private": Hostile()}})
+    with pytest.raises(BuilderExecutionPolicyError) as caught:
+        owner().qualify(context=ctx, profile=build_native_http_profile())
+    assert SENTINEL not in str(caught.value)

@@ -788,3 +788,36 @@ def test_actual_worker_replaces_raw_error_before_queue_error_model_and_logging(m
     assert SENTINEL not in str(queue._q.get_nowait())
     assert SENTINEL not in output.getvalue()
     assert case.lifetime.unknown
+
+
+@pytest.mark.parametrize("case", ["start_end", "literal_http"], indirect=True)
+def test_initial_host_binds_current_profile_without_native_activity(case, monkeypatch):
+    """Actual pre-claim observation composition, labeled owner/object doubles."""
+    protect_logs(monkeypatch)
+    authorization = Mock()
+    lifetime = NativeHostLifetime(context=case.context, dispatch_id="initial-observation")
+    host = NativeHostLaunch(
+        context=case.context,
+        dispatch_id=lifetime.dispatch_id,
+        lifetime=lifetime,
+        journal=NodeOperationJournal(state=case.store, authorization=authorization),
+        checkpoints=NativeCheckpointBridge(state=case.store, lifecycle=Mock()),
+        fence_pending=Mock(),
+        stop_sealer=Mock(),
+        authorization=authorization,
+        http_baseline=(1, 1, 1),
+    )
+    assert lifetime._registry is None
+    guard = host.bind_observation()
+    assert host.bind_observation() is guard
+    assert host.native_observation is guard
+    assert not host.lifetime.unknown
+    assert not host.lifetime._threads
+    assert not host.lifetime._node_scopes
+    from models.dify_builder_native_tests import NativeTestScope
+
+    case.rows[NativeTestScope][0].cancelled = True
+    with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
+        _ = host.native_observation
+    assert host.boundary_owner.status == "UNKNOWN_NONRESUMABLE"
+    assert lifetime._registry is None  # Failed observation grants no acquisition.

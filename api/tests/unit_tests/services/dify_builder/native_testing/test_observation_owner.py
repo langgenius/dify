@@ -44,10 +44,17 @@ def owner():
 
 
 @pytest.fixture
-def case(monkeypatch):
+def case(monkeypatch, request):
     """No database/crypto/RPC claim: real methods read explicitly modeled owner rows."""
     source = sample_context()
     graph, inputs = deepcopy(source.graph), deepcopy(source.inputs)
+    shape = getattr(request, "param", "literal_http")
+    if shape == "start_end":
+        graph.pop("viewport")
+        graph["nodes"] = [n for n in graph["nodes"] if n["data"]["type"] != "http-request"]
+        graph["nodes"][-1]["data"]["outputs"] = []
+        graph["nodes"][-1]["data"]["title"] = SENTINEL
+        graph["edges"] = [{"id": "e1", "source": "start", "target": "end", "sourceHandle": "source"}]
     workflow = SimpleNamespace(
         id="workflow",
         app_id="app",
@@ -90,7 +97,7 @@ def case(monkeypatch):
         request_id="request", invocation_id="invocation", context_digest=canonical_digest(stored)
     )
     context = source.model_copy(
-        update={"ref": ref, "graph_revision": revision, "resource_manifest": manifest}, deep=True
+        update={"ref": ref, "graph": graph, "graph_revision": revision, "resource_manifest": manifest}, deep=True
     )
     request = SimpleNamespace(
         id="request",
@@ -195,6 +202,7 @@ def case(monkeypatch):
     store = NativeExecutionStateStore(loader)
     c = SimpleNamespace(
         store=store,
+        shape=shape,
         loader=loader,
         context=context,
         request=request,
@@ -343,3 +351,50 @@ def test_safe_refusal_never_formats_unknown_payload_or_underlying_error(case, mo
 
 def test_callback_validation_is_owned_by_existing_guard(case):
     _refuses(case, on_failure=True)
+
+
+@pytest.mark.parametrize("case", ["start_end", "literal_http"], indirect=True)
+def test_initial_current_profile_observation_preserves_private_snapshot(case):
+    """Real owners over labeled SQL/object doubles; no run, claim or effect."""
+    c = case
+    # Match actual protected JSON reconstruction, rather than an unchecked DTO copy.
+    from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
+
+    context = ResolvedNativeTestContext.model_validate(c.context.model_dump(mode="json"))
+    assert bool(context.resource_manifest) == (c.shape == "literal_http")
+    if c.shape == "start_end":
+        assert set(context.graph) == {"nodes", "edges"}
+        assert [set(node["data"]) for node in context.graph["nodes"]] == [
+            {"title", "type", "variables"}, {"title", "type", "outputs"}
+        ]
+    before = deepcopy(c.rows)
+    guard = owner()(state=c.store, context=context, on_failure=lambda: c.notices.append("unknown"))
+    assert type(guard) is NativeObservationGuard
+    assert not guard.failed
+    assert c.reads == 2
+    assert c.rows == before
+    assert c.notices == []
+    projected = json.dumps(guard.graph(context.graph))
+    assert SENTINEL not in projected
+    assert context.graph == c.context.graph
+    assert context.inputs == c.context.inputs
+
+
+@pytest.mark.parametrize("case", ["start_end", "literal_http"], indirect=True)
+@pytest.mark.parametrize("fault", ["membership", "cancelled", "inactive", "terminal", "profile", "manifest"])
+def test_initial_current_profile_keeps_owner_active_and_descriptor_guards(case, fault):
+    c = case
+    if fault == "membership":
+        c.rows[TenantAccountJoin] = []
+    elif fault == "cancelled":
+        c.rows[NativeTestScope][0].cancelled = True
+    elif fault == "inactive":
+        c.rows[NativeTestInvocation][0].active = False
+    elif fault == "terminal":
+        c.request.state = "cancelled"
+    elif fault == "profile":
+        c.request.context["profile"]["implementation_revision"] = "other"
+        c.rebind()
+    else:
+        c.context = c.context.model_copy(update={"resource_manifest": ({"node_id": "invented"},)})
+    _refuses(c)

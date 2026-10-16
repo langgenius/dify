@@ -1,4 +1,4 @@
-"""Pure, opt-in diagnostic views of the first qualified native HTTP graph.
+"""Pure, opt-in diagnostic views of the qualified native HTTP-profile graph.
 
 Structural qualification is not admission, authorization, binding provenance or
 proof of dispatch. The trusted host must reload the protected request/ref/profile,
@@ -261,6 +261,8 @@ class NativeHttpObservationPolicy:
         Context has no stored profile/features or serialized Workflow revision
         material. The host must verify them against their real owner first; no
         substitute profile or invented Workflow revision hash is accepted here.
+        An admitted scalar graph can have no HTTP resources; the exact empty
+        descriptor match still requires every existing node schema and guard.
         """
         try:
             if (
@@ -355,7 +357,7 @@ class NativeHttpObservationPolicy:
                         _refuse()
                 else:
                     _refuse()
-            if not expected or canonical_json(expected) != canonical_json(
+            if canonical_json(expected) != canonical_json(
                 list(checked.resource_manifest)
             ):
                 _refuse()

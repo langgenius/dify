@@ -63,7 +63,8 @@ CANARY = "PRIVATE_NATIVE_HISTORY_FIXTURE_4f3a"
 
 
 @pytest.fixture
-def history_case(native_owner, no_live, migrated_continuation_tables, migrated_dispatch_claims):
+def history_case(native_owner, no_live, migrated_continuation_tables, migrated_dispatch_claims, request):
+    shape = getattr(request, "param", "literal_http")
     # Test-owned application logging sinks use the real installed privacy filter.
     filtering = SensitiveHttpLogFilter()
     handlers = tuple(logging.getLogger().handlers)
@@ -93,6 +94,14 @@ def history_case(native_owner, no_live, migrated_continuation_tables, migrated_d
                 {"id": "b", "source": "http", "target": "end", "sourceHandle": "source"},
             ],
         }
+        if shape == "start_end":
+            graph = {
+                "nodes": [
+                    {"id": "start", "data": {"title": CANARY, "type": "start", "variables": []}},
+                    {"id": "end", "data": {"title": CANARY, "type": "end", "outputs": []}},
+                ],
+                "edges": [{"id": "a", "source": "start", "target": "end", "sourceHandle": "source"}],
+            }
         inputs, run_id = {"flag": True}, str(uuid4())
         public_key = generate_key_pair(ledger.actor.tenant_id)
         with ledger.factory.begin() as session:
@@ -101,12 +110,16 @@ def history_case(native_owner, no_live, migrated_continuation_tables, migrated_d
             workflow = session.get(Workflow, request.workflow_id)
             workflow.graph = json.dumps(graph)
             revision = native_workflow_revision(workflow)
-            descriptor = describe_http_resource(
-                node_id="http",
-                raw=literal_data(),
-                workflow_revision=revision,
-                app_id=request.app_id,
-                workflow_id=request.workflow_id,
+            manifest = tuple(
+                describe_http_resource(
+                    node_id=node["id"],
+                    raw=node["data"],
+                    workflow_revision=revision,
+                    app_id=request.app_id,
+                    workflow_id=request.workflow_id,
+                )
+                for node in graph["nodes"]
+                if node["data"]["type"] == "http-request"
             )
             test_input = session.get(DifyBuilderTestInput, request.test_input_id)
             request.context = {
@@ -124,7 +137,7 @@ def history_case(native_owner, no_live, migrated_continuation_tables, migrated_d
                 "execution_revision": revision,
                 "input_revision": canonical_digest(inputs),
                 "start_schema_hash": test_input.start_schema_hash,
-                "resource_manifest_digest": canonical_digest([descriptor]),
+                "resource_manifest_digest": canonical_digest(list(manifest)),
                 "profile": build_native_http_profile().model_dump(mode="json"),
             }
             request.context_digest = canonical_digest(request.context)
@@ -147,7 +160,7 @@ def history_case(native_owner, no_live, migrated_continuation_tables, migrated_d
             inputs=inputs,
             graph_revision=revision,
             input_revision=canonical_digest(inputs),
-            resource_manifest=(descriptor,),
+            resource_manifest=manifest,
             generation=0,
             native_run_id=run_id,
             root_native_run_id=run_id,
@@ -158,7 +171,7 @@ def history_case(native_owner, no_live, migrated_continuation_tables, migrated_d
             execution_mode="native",
         )
         store.initialize_context(context=context)
-        yield SimpleNamespace(factory=ledger.factory, actor=ledger.actor, store=store, ref=ref)
+        yield SimpleNamespace(factory=ledger.factory, actor=ledger.actor, store=store, ref=ref, shape=shape)
     finally:
         for handler in handlers:
             handler.removeFilter(filtering)
@@ -296,3 +309,27 @@ def test_foreign_upload_owner_refuses_before_actual_storage_read(history_case, m
     forbidden.assert_not_called()
     assert nodes._node_execution_cache == {}
     assert guard.failed
+
+
+@pytest.mark.parametrize("history_case", ["start_end", "literal_http"], indirect=True)
+def test_initial_current_profile_observation_reads_real_sql_and_protected_object(history_case):
+    """CI only: initial guard composition without a native run or effect send."""
+    c = history_case
+    context = c.store.load_context(ref=c.ref)
+    assert bool(context.resource_manifest) == (c.shape == "literal_http")
+    with c.factory() as session:
+        request = session.get(DifyBuilderExecutionRequest, c.ref.request_id)
+        before = (request.state, request.context_digest, request.context)
+        assert session.get(WorkflowRun, context.native_run_id) is None
+    guard = create_http_observation_guard(state=c.store, context=context, on_failure=lambda: pytest.fail("unknown"))
+    assert not guard.failed
+    assert CANARY not in json.dumps(guard.graph(context.graph))
+    with c.factory() as session:
+        request = session.get(DifyBuilderExecutionRequest, c.ref.request_id)
+        assert (request.state, request.context_digest, request.context) == before
+        assert session.get(WorkflowRun, context.native_run_id) is None
+        scope = session.get(NativeTestScope, c.ref.request_id)
+        scope.cancelled = True
+        session.commit()
+    with pytest.raises(NativeObservationError, match="^native_observation_failed$"):
+        create_http_observation_guard(state=c.store, context=context, on_failure=lambda: None)
