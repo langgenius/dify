@@ -422,7 +422,7 @@ jobs:
                   problems.append(f"missing unit module {module}")
           a3_expected = {'tests.unit_tests.services.dify_builder.test_agent_tool_declarations': {'test_schema_preparation_never_constructs_runtime_or_refreshes_expired_oauth': 2,
                                                                                    'test_default_plugin_metadata_path_does_not_call_dynamic_or_credential_runtime': 1,
-                                                                                   'test_same_permit_validation_does_not_claim_or_spend': 8,
+                                                                                   'test_same_permit_validation_does_not_claim_or_spend': 10,
                                                                                    'test_marked_request_builder_stops_missing_ref_before_metadata': 1,
                                                                                    'test_private_bridge_maps_exact_decisions_without_losing_payload': 4,
                                                                                    'test_materialization_rejects_phase_mismatch_and_missing_fence_before_io': 1,
