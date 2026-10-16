@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "ویرایش سوال مرجع",
   "qualityPage.evaluation.back": "بازگشت به اجراها",
   "qualityPage.evaluation.createdAt": "ایجادشده",
+  "qualityPage.evaluation.dialogDescriptionPending": "همه سوال‌های مرجع فعال شما را در پس‌زمینه دوباره اجرا می‌کند. پیش‌نویس‌ها و سوال‌های قدیمی نادیده گرفته می‌شوند.",
   "qualityPage.evaluation.dialogDescription_one": "{{count}} سوال مرجع فعال شما را در پس‌زمینه دوباره اجرا می‌کند. پیش‌نویس‌ها و سوال‌های قدیمی نادیده گرفته می‌شوند.",
   "qualityPage.evaluation.dialogDescription_other": "{{count}} سوال مرجع فعال شما را در پس‌زمینه دوباره اجرا می‌کند. پیش‌نویس‌ها و سوال‌های قدیمی نادیده گرفته می‌شوند.",
   "qualityPage.evaluation.dialogTitle": "اجرای ارزیابی کیفیت",

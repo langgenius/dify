@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "编辑参考问题",
   "qualityPage.evaluation.back": "返回任务列表",
   "qualityPage.evaluation.createdAt": "创建时间",
+  "qualityPage.evaluation.dialogDescriptionPending": "系统会在后台重新测试所有有效参考问题，跳过草稿和已过时的问题。",
   "qualityPage.evaluation.dialogDescription_one": "系统会在后台重新测试 {{count}} 个有效参考问题，跳过草稿和已过时的问题。",
   "qualityPage.evaluation.dialogDescription_other": "系统会在后台重新测试 {{count}} 个有效参考问题，跳过草稿和已过时的问题。",
   "qualityPage.evaluation.dialogTitle": "运行质量评测",

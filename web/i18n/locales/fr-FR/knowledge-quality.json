@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Modifier la question de référence",
   "qualityPage.evaluation.back": "Retour aux exécutions",
   "qualityPage.evaluation.createdAt": "Créé",
+  "qualityPage.evaluation.dialogDescriptionPending": "Réexécute toutes vos questions de référence actives en arrière-plan. Les brouillons et les questions obsolètes sont ignorés.",
   "qualityPage.evaluation.dialogDescription_one": "Réexécute votre {{count}} question de référence active en arrière-plan. Les brouillons et les questions obsolètes sont ignorés.",
   "qualityPage.evaluation.dialogDescription_other": "Réexécute vos {{count}} questions de référence actives en arrière-plan. Les brouillons et les questions obsolètes sont ignorés.",
   "qualityPage.evaluation.dialogTitle": "Lancer l’évaluation de la qualité",

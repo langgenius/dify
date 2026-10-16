@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Editar pergunta de referência",
   "qualityPage.evaluation.back": "Voltar às execuções",
   "qualityPage.evaluation.createdAt": "Criada em",
+  "qualityPage.evaluation.dialogDescriptionPending": "Repete todas as suas perguntas de referência ativas em segundo plano. Rascunhos e perguntas desatualizadas são ignorados.",
   "qualityPage.evaluation.dialogDescription_one": "Repete sua {{count}} pergunta de referência ativa em segundo plano. Rascunhos e perguntas desatualizadas são ignorados.",
   "qualityPage.evaluation.dialogDescription_other": "Repete suas {{count}} perguntas de referência ativas em segundo plano. Rascunhos e perguntas desatualizadas são ignorados.",
   "qualityPage.evaluation.dialogTitle": "Executar avaliação de qualidade",

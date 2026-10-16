@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "ແກ້ໄຂຄຳຖາມມາດຕະຖານ",
   "qualityPage.evaluation.back": "ກັບໄປຫາລາຍການປະເມີນ",
   "qualityPage.evaluation.createdAt": "ສ້າງເມື່ອ",
+  "qualityPage.evaluation.dialogDescriptionPending": "ດຳເນີນຄຳຖາມມາດຕະຖານທີ່ໃຊ້ງານຢູ່ທັງໝົດຄືນໃໝ່ໃນພື້ນຫຼັງ. ຮ່າງ ແລະ ຄຳຖາມທີ່ເກົ່າຈະຖືກຂ້າມ.",
   "qualityPage.evaluation.dialogDescription_one": "ດຳເນີນຄຳຖາມມາດຕະຖານທີ່ໃຊ້ງານຢູ່ {{count}} ຂໍ້ຄືນໃໝ່ໃນພື້ນຫຼັງ. ຮ່າງ ແລະ ຄຳຖາມທີ່ເກົ່າຈະຖືກຂ້າມ.",
   "qualityPage.evaluation.dialogDescription_other": "ດຳເນີນຄຳຖາມມາດຕະຖານທີ່ໃຊ້ງານຢູ່ {{count}} ຂໍ້ຄືນໃໝ່ໃນພື້ນຫຼັງ. ຮ່າງ ແລະ ຄຳຖາມທີ່ເກົ່າຈະຖືກຂ້າມ.",
   "qualityPage.evaluation.dialogTitle": "ດຳເນີນການປະເມີນຄຸນະພາບ",

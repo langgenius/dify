@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "참고 질문 수정",
   "qualityPage.evaluation.back": "실행 목록으로 돌아가기",
   "qualityPage.evaluation.createdAt": "생성 시간",
+  "qualityPage.evaluation.dialogDescriptionPending": "모든 활성 참고 질문을 백그라운드에서 다시 실행합니다. 초안 및 오래된 질문은 건너뜁니다.",
   "qualityPage.evaluation.dialogDescription_one": "활성 참고 질문 {{count}}개를 백그라운드에서 다시 실행합니다. 초안 및 오래된 질문은 건너뜁니다.",
   "qualityPage.evaluation.dialogDescription_other": "활성 참고 질문 {{count}}개를 백그라운드에서 다시 실행합니다. 초안 및 오래된 질문은 건너뜁니다.",
   "qualityPage.evaluation.dialogTitle": "품질 평가 실행",

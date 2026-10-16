@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Редагувати еталонне запитання",
   "qualityPage.evaluation.back": "Назад до запусків",
   "qualityPage.evaluation.createdAt": "Створено",
+  "qualityPage.evaluation.dialogDescriptionPending": "Усі активні еталонні запитання буде повторно виконано у фоновому режимі. Чернетки та застарілі запитання буде пропущено.",
   "qualityPage.evaluation.dialogDescription_one": "Повторно запускає у фоновому режимі {{count}} активне еталонне запитання. Чернетки та застарілі запитання пропускаються.",
   "qualityPage.evaluation.dialogDescription_other": "Усі активні еталонні запитання буде повторно виконано у фоновому режимі. Кількість запитань: {{count}}. Чернетки та застарілі запитання буде пропущено.",
   "qualityPage.evaluation.dialogTitle": "Запустити оцінювання якості",

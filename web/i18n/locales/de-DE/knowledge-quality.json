@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Referenzfrage bearbeiten",
   "qualityPage.evaluation.back": "Zurück zu den Läufen",
   "qualityPage.evaluation.createdAt": "Erstellt",
+  "qualityPage.evaluation.dialogDescriptionPending": "Testet alle aktiven Referenzfragen im Hintergrund erneut. Entwürfe und veraltete Fragen werden übersprungen.",
   "qualityPage.evaluation.dialogDescription_one": "Testet Ihre {{count}} aktive Referenzfrage im Hintergrund erneut. Entwürfe und veraltete Fragen werden übersprungen.",
   "qualityPage.evaluation.dialogDescription_other": "Testet Ihre {{count}} aktiven Referenzfragen im Hintergrund erneut. Entwürfe und veraltete Fragen werden übersprungen.",
   "qualityPage.evaluation.dialogTitle": "Qualitätsbewertung ausführen",

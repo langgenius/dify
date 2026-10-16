@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Editați întrebarea de referință",
   "qualityPage.evaluation.back": "Înapoi la rulări",
   "qualityPage.evaluation.createdAt": "Creat",
+  "qualityPage.evaluation.dialogDescriptionPending": "Toate întrebările de referință active vor fi rulate din nou în fundal. Ciornele și întrebările învechite vor fi omise.",
   "qualityPage.evaluation.dialogDescription_one": "Rulează din nou în fundal {{count}} întrebare de referință activă. Ciornele și întrebările învechite sunt omise.",
   "qualityPage.evaluation.dialogDescription_other": "Toate întrebările de referință active vor fi rulate din nou în fundal. Număr de întrebări: {{count}}. Ciornele și întrebările învechite vor fi omise.",
   "qualityPage.evaluation.dialogTitle": "Rulează evaluarea calității",

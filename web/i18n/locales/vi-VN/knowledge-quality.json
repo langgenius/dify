@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Chỉnh sửa câu hỏi tham chiếu",
   "qualityPage.evaluation.back": "Quay lại các lượt chạy",
   "qualityPage.evaluation.createdAt": "Đã tạo",
+  "qualityPage.evaluation.dialogDescriptionPending": "Chạy lại tất cả câu hỏi tham chiếu đang hoạt động trong nền. Bản nháp và câu hỏi đã lỗi thời sẽ bị bỏ qua.",
   "qualityPage.evaluation.dialogDescription_one": "Chạy lại {{count}} câu hỏi tham chiếu đang hoạt động trong nền. Bản nháp và câu hỏi đã lỗi thời sẽ bị bỏ qua.",
   "qualityPage.evaluation.dialogDescription_other": "Chạy lại {{count}} câu hỏi tham chiếu đang hoạt động trong nền. Bản nháp và câu hỏi đã lỗi thời sẽ bị bỏ qua.",
   "qualityPage.evaluation.dialogTitle": "Chạy đánh giá chất lượng",
