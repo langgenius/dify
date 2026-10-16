@@ -24,6 +24,7 @@ from models.dify_builder_native_tests import (
     NativeTestScope,
 )
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
 from services.dify_builder.native_testing.pending_actions import NativePendingActionService
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     _root_with_child_dispatch,
@@ -166,6 +167,29 @@ def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_ca
         c.store.read_checkpoint(ref=child, checkpoint=actual).native_run_id
         == c.store.load_context(ref=child).native_run_id
     )
+    payload = c.store.read_checkpoint(ref=child, checkpoint=actual)
+    assert payload.generation == 0
+    assert c.store.load_context(ref=child).generation == local_generation == 2
+    with c.factory() as session:
+        assert session.get(NativeTestScope, child.request_id).generation == 3
+    assert payload.node_journals == ()
+    # This real checkpoint has no recorded journal operations. The witness is
+    # SQL selector → encrypted readback → authenticated restore association;
+    # successful nonempty reconstruction/C02 replay remains unit qualification.
+    journal = NodeOperationJournal(state=c.store, authorization=c.ledger.guard)
+    before_restore = _snapshot(c)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_generation_conflict"):
+        journal.restore(ref=child, checkpoint=actual)
+    assert journal.snapshot(ref=child) == ()
+    journal.restore_claimed(
+        ref=child,
+        generation=local_generation,
+        dispatch_id=child_id,
+        lifecycle=c.lifecycle,
+        expected_payload=payload,
+    )
+    assert journal.snapshot(ref=child) == payload.node_journals
+    assert _snapshot(c) == before_restore
 
 
 def test_generation_zero_claim_has_no_resume_checkpoint_authority(checkpoint_case):
