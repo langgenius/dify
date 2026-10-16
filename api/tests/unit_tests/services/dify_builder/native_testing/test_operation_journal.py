@@ -1,6 +1,7 @@
 """Journal ordering/reconstruction units; real SQL/encrypted owners remain CI-owned."""
 
 import importlib
+import importlib.util
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -12,6 +13,7 @@ from services.dify_builder.native_testing.contracts import (
     CheckpointRef,
     DispatchPermit,
     EffectIntent,
+    JsonValue,
     NativeTestContextRef,
     PolicyStop,
     RecordedResult,
@@ -20,7 +22,7 @@ from services.dify_builder.native_testing.runtime_contracts import NativeCheckpo
 
 REF = NativeTestContextRef(request_id="request", invocation_id="invocation", context_digest="a" * 64)
 PATH = ("root", "iteration:items:2", "tool:send")
-INPUT = {"file": {"id": "file-1"}, "history": [True, 1, "1"]}
+INPUT: dict[str, JsonValue] = {"file": {"id": "file-1"}, "history": [True, 1, "1"]}
 CP = CheckpointRef(checkpoint_id="checkpoint", payload_digest="b" * 64)
 
 
@@ -34,7 +36,7 @@ class State:
     """Owned-state port double; deliberately no SQL or object-store implementation."""
 
     def __init__(self):
-        self.values = {"inputs": deepcopy(INPUT), "result": {"history": [False, 1, "1"]}}
+        self.values: dict[str, JsonValue] = {"inputs": deepcopy(INPUT), "result": {"history": [False, 1, "1"]}}
         self.generation = 0
         self.payload = None
         self.failure = None
@@ -209,6 +211,7 @@ def test_snapshot_isolated_from_caller_mutation_and_parallel_frames():
     cursor = bound(journal)
     original = intent(cursor.next_key())
     cursor.before_call(intent=original)
+    assert isinstance(original.parameters, dict)
     original.parameters["value"] = "changed"
     saved = cursor.snapshot()
     saved.intents[0].parameters["value"] = "also-changed"
@@ -424,3 +427,47 @@ def test_same_generation_c02_permit_is_returned_without_replay_or_completion():
         cursor.recorded_result()
     with pytest.raises(BuilderExecutionPolicyError, match="native_journal_result_unavailable"):
         cursor.finish()
+
+
+def test_resolve_cursor_returns_only_existing_bound_current_issued_key_without_authorizing():
+    journal, _, authorization = make_journal()
+    cursor = bound(journal)
+    key = cursor.next_key()
+    assert journal.resolve_cursor(ref=REF, key=key) is cursor
+    assert journal.resolve_cursor(ref=REF, key=key) is cursor
+    assert authorization.calls == []
+    assert cursor.snapshot().operation_keys == ()
+
+
+@pytest.mark.parametrize("stage", ["missing", "unbound", "unissued", "old-key", "generation", "owner"])
+def test_resolve_cursor_rejects_missing_or_untrusted_delivery_without_authorizing(stage):
+    journal, state, authorization = make_journal()
+    cursor = bound(journal)
+    key = cursor.next_key()
+    ref = REF
+    if stage == "missing":
+        key = key.model_copy(update={"occurrence_path": ("missing",)})
+    elif stage == "unbound":
+        journal.open(ref=REF, occurrence_path=PATH).next_key()
+    elif stage == "unissued":
+        cursor.rewind()
+    elif stage == "old-key":
+        cursor.next_key()
+    elif stage == "generation":
+        state.generation += 1
+    else:
+        ref = REF.model_copy(update={"invocation_id": "foreign"})
+    with pytest.raises(BuilderExecutionPolicyError):
+        journal.resolve_cursor(ref=ref, key=key)
+    assert authorization.calls == []
+
+
+def test_resolve_cursor_returns_replacement_identity_for_same_occurrence_only_after_input_and_key_prepare():
+    journal, _, authorization = make_journal()
+    first = bound(journal)
+    key = first.next_key()
+    replacement = bound(journal)
+    assert replacement.next_key() == key
+    assert journal.resolve_cursor(ref=REF, key=key) is replacement
+    assert replacement is not first
+    assert authorization.calls == []

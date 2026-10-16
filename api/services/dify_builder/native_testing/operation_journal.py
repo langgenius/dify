@@ -204,6 +204,28 @@ class NodeOperationJournal:
         self._open[identity] = cursor
         return cursor
 
+    def resolve_cursor(self, *, ref: NativeTestContextRef, key: OperationKey) -> OperationCursor:
+        """Find an already prepared delivery without creating execution authority.
+
+        The input owner must have opened, bound and issued this exact current
+        key. Callers retaining a cursor must also compare returned object
+        identity across owner boundaries: reopening replaces the delivery.
+        This lookup never advances a cursor or consults C02.
+        """
+        ref = NativeTestContextRef.model_validate(ref.model_dump(mode="json"))
+        key = OperationKey.model_validate(key.model_dump(mode="json"))
+        if key.invocation_id != ref.invocation_id:
+            raise BuilderExecutionPolicyError("native_journal_owner_mismatch")
+        cursor = self._open.get((ref, key.occurrence_path))
+        if cursor is None or cursor._ref != ref:
+            raise BuilderExecutionPolicyError("native_journal_cursor_unavailable")
+        cursor._check_context()
+        if not cursor._input_bound or cursor._saved is None:
+            raise BuilderExecutionPolicyError("native_journal_input_mismatch")
+        if cursor._position - 1 != key.cursor:
+            raise BuilderExecutionPolicyError("native_journal_sequence_conflict")
+        return cursor
+
     def restore(self, *, ref: NativeTestContextRef, checkpoint: CheckpointRef) -> None:
         """Read exclusively through C03; runtime must supply its claimed checkpoint.
 
