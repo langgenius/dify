@@ -2,8 +2,9 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
@@ -73,7 +74,6 @@ const mockWorkflowStore = {
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => mockUseNodesReadOnly(),
-  useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
@@ -244,7 +244,17 @@ const renderWithToast = (
   })
   seedFeatures(queryClient, { billing: { subscription: { plan } } })
   vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
-  return { queryClient, ...render(ui, { wrapper }) }
+  return {
+    ...render(ui, {
+      resource: {
+        kind: 'app',
+        appId: 'app-id',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+      wrapper,
+      queryClient,
+    }),
+  }
 }
 
 describe('FeaturesTrigger', () => {

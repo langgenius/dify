@@ -11,7 +11,7 @@ import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowled
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
 
@@ -185,7 +185,7 @@ vi.mock(
 
 // Mock context
 const mockConfigContext: any = {
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   isAgent: false,
   dataSets: [],
@@ -516,7 +516,7 @@ describe('DatasetConfig', () => {
     it('should show context variable selector in completion mode with datasets', () => {
       const dataset = createMockDataset()
       renderDatasetConfig({
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         dataSets: [dataset],
         modelConfig: {
           configs: {
@@ -537,7 +537,7 @@ describe('DatasetConfig', () => {
     it('should not show context variable selector in chat mode', () => {
       const dataset = createMockDataset()
       renderDatasetConfig({
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         dataSets: [dataset],
         modelConfig: {
           configs: {
@@ -555,7 +555,7 @@ describe('DatasetConfig', () => {
       const user = userEvent.setup()
       const dataset = createMockDataset()
       renderDatasetConfig({
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         dataSets: [dataset],
         modelConfig: {
           configs: {
@@ -877,7 +877,7 @@ describe('DatasetConfig', () => {
       // Context var is only shown when datasets exist AND there are prompt_variables
       // Test with no datasets to ensure context var is not shown
       renderDatasetConfig({
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         dataSets: [],
         modelConfig: {
           configs: {
@@ -960,7 +960,7 @@ describe('DatasetConfig', () => {
           metadata_model_config: {
             provider: 'openai',
             name: 'gpt-3.5-turbo',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: { temperature: 0.7 },
           },
         },
@@ -976,7 +976,7 @@ describe('DatasetConfig', () => {
           metadata_model_config: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: { temperature: 0.7 },
           },
         }),
@@ -993,7 +993,7 @@ describe('DatasetConfig', () => {
           metadata_model_config: {
             provider: 'openai',
             name: 'gpt-3.5-turbo',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: { temperature: 0.5, max_tokens: 100 },
           },
         },

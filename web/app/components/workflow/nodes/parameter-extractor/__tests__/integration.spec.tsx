@@ -7,7 +7,6 @@ import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ChangeType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { ExtractParameterList } from '../components/extract-parameter/list'
 import { ParameterDialog } from '../components/extract-parameter/update'
@@ -59,7 +58,7 @@ vi.mock(
             setModel({
               provider: 'anthropic',
               modelId: 'claude-3-7-sonnet',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             })
           }
         >
@@ -247,7 +246,7 @@ const createData = (
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   query: ['node-1', 'query'],
@@ -266,7 +265,7 @@ const createConfigResult = (
   readOnly: false,
   handleInputVarChange: vi.fn(),
   filterVar: (_varPayload: Var) => true,
-  isChatMode: true,
+  isChatflow: true,
   inputs: createData(),
   isChatModel: true,
   isCompletionModel: false,
@@ -571,7 +570,7 @@ describe('parameter-extractor path', () => {
             model: {
               provider: '',
               name: '',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
               completion_params: {},
             },
           })}
@@ -634,7 +633,7 @@ describe('parameter-extractor path', () => {
       expect(handleModelChanged).toHaveBeenCalledWith({
         provider: 'anthropic',
         modelId: 'claude-3-7-sonnet',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
       expect(handleInputVarChange).toHaveBeenCalledWith(['node-1', 'query'])

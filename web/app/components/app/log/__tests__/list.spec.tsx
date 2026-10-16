@@ -8,7 +8,6 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { renderWithNuqs } from '@/test/nuqs-testing'
-import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
 
 const mockFetchChatMessages = vi.fn()
@@ -304,7 +303,7 @@ const createChatMessage = (id: string, overrides: Record<string, unknown> = {}) 
 })
 
 const renderConversationList = ({
-  appDetail = { id: 'app-1', mode: AppModeEnum.CHAT } as any,
+  appDetail = { id: 'app-1', mode: 'chat' as const } as any,
   logs = createLogs() as any,
   searchParams = '?page=2',
 }: {
@@ -518,36 +517,39 @@ describe('ConversationList', () => {
   )
 
   it.each([
-    ['chatbot', AppModeEnum.CHAT, 'false'],
-    ['agent', AppModeEnum.AGENT_CHAT, 'false'],
-    ['chatflow', AppModeEnum.ADVANCED_CHAT, 'true'],
-  ])('should expose run details only for %s conversation answers', async (_, mode, expected) => {
-    mockChatConversationDetail = {
-      id: 'conversation-1',
-      created_at: 1710000000,
-      model_config: {
-        model: 'gpt-4o',
-        configs: {
-          introduction: 'Hello there',
+    ['chatbot', 'chat', 'false'],
+    ['agent', 'agent-chat', 'false'],
+    ['chatflow', 'advanced-chat', 'true'],
+  ] as const)(
+    'should expose run details only for %s conversation answers',
+    async (_, mode, expected) => {
+      mockChatConversationDetail = {
+        id: 'conversation-1',
+        created_at: 1710000000,
+        model_config: {
+          model: 'gpt-4o',
+          configs: {
+            introduction: 'Hello there',
+          },
+          user_input_form: [],
         },
-        user_input_form: [],
-      },
-      message: {
-        inputs: {},
-      },
-    }
-    mockFetchChatMessages.mockResolvedValue({
-      data: [createChatMessage('message-1')],
-      has_more: false,
-    })
+        message: {
+          inputs: {},
+        },
+      }
+      mockFetchChatMessages.mockResolvedValue({
+        data: [createChatMessage('message-1')],
+        has_more: false,
+      })
 
-    renderConversationList({
-      appDetail: { id: 'app-1', mode } as any,
-      searchParams: '?conversation_id=conversation-1',
-    })
+      renderConversationList({
+        appDetail: { id: 'app-1', mode } as any,
+        searchParams: '?conversation_id=conversation-1',
+      })
 
-    expect(await screen.findByTestId('chat-panel')).toHaveAttribute('data-log-enabled', expected)
-  })
+      expect(await screen.findByTestId('chat-panel')).toHaveAttribute('data-log-enabled', expected)
+    },
+  )
 
   it('should render completion details and refetch after feedback updates', async () => {
     mockCompletionConversationDetail = {
@@ -575,7 +577,7 @@ describe('ConversationList', () => {
     }
 
     renderConversationList({
-      appDetail: { id: 'app-1', mode: AppModeEnum.COMPLETION } as any,
+      appDetail: { id: 'app-1', mode: 'completion' as const } as any,
       logs: createCompletionLogs() as any,
       searchParams: '?page=2&conversation_id=conversation-1',
     })
@@ -605,7 +607,7 @@ describe('ConversationList', () => {
 
   it('should render chatflow status cells and feedback counters for advanced chat logs', () => {
     renderConversationList({
-      appDetail: { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT } as any,
+      appDetail: { id: 'app-1', mode: 'advanced-chat' as const } as any,
       logs: {
         data: [
           {
@@ -744,7 +746,7 @@ describe('ConversationList', () => {
     })
   })
 
-  it.each(['workflow', 'agent', 'prompt'])(
+  it.each(['workflow', 'agent', 'prompt'] as const)(
     'should open and close the selected %s log within the conversation',
     async (kind) => {
       mockChatConversationDetail = {
@@ -753,7 +755,7 @@ describe('ConversationList', () => {
         message: { inputs: {} },
       }
       renderConversationList({
-        appDetail: { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
+        appDetail: { id: 'app-1', mode: 'advanced-chat' as const },
         searchParams: '?conversation_id=conversation-1',
       })
       const user = userEvent.setup()
@@ -776,7 +778,7 @@ describe('ConversationList', () => {
       message: { inputs: {} },
     }
     renderConversationList({
-      appDetail: { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
+      appDetail: { id: 'app-1', mode: 'advanced-chat' as const },
       searchParams: '?conversation_id=conversation-1',
     })
     const user = userEvent.setup()
@@ -791,7 +793,7 @@ describe('ConversationList', () => {
   it('should clear a selected log when URL navigation changes or closes the conversation', async () => {
     const user = userEvent.setup()
     const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
-    const appDetail = createAppDetailFixture({ mode: AppModeEnum.ADVANCED_CHAT })
+    const appDetail = createAppDetailFixture({ mode: 'advanced-chat' as const })
     const view = (searchParams: string) => (
       <NuqsTestingAdapter searchParams={searchParams} hasMemory>
         <QueryClientTestProvider queryClient={queryClient}>

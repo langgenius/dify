@@ -1,7 +1,8 @@
 import type { Datasource } from '../../test-run/types'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useDraftPipelinePreProcessingParams } from '@/service/use-pipeline'
 import DataSourceOptions from '../../test-run/preparation/data-source-options'
 import Form from './form'
@@ -13,7 +14,7 @@ type DatasourceProps = {
 
 const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourceProps) => {
   const { t } = useTranslation(['datasetPipeline'])
-  const pipelineId = useStore((state) => state.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const { data: paramsConfig } = useDraftPipelinePreProcessingParams(
     {
       pipeline_id: pipelineId!,

@@ -182,14 +182,14 @@ vi.mock('../../../../../hooks/use-workflow-history', async (importOriginal) => {
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (
     selector: (state: {
-      configsMap: { flowId: string; flowType: string }
+      configsMap: { flowId: string; resourceKind: string }
       accessControl: { canRun: boolean }
     }) => unknown,
   ) =>
     selector({
       configsMap: {
         flowId: 'flow-1',
-        flowType: 'app',
+        resourceKind: 'app',
       },
       accessControl: {
         canRun: mockCanRun,

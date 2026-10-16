@@ -1,4 +1,4 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite, AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 /**
  * WorkflowAppLogList Component Tests
@@ -10,7 +10,6 @@ import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } fr
  * - Drawer with run details
  * - Loading states
  */
-import type { AppModeEnum } from '@/types/app'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -203,7 +202,7 @@ describe('WorkflowAppLogList', () => {
 
     it('should render trigger column for workflow apps', () => {
       const logs = createMockLogsResponse([createMockWorkflowLog()])
-      const workflowApp = createMockApp({ mode: 'workflow' as AppModeEnum })
+      const workflowApp = createMockApp({ mode: 'workflow' as AppMode })
 
       render(
         <WorkflowAppLogList logs={logs} appDetail={workflowApp} onRefresh={defaultOnRefresh} />,
@@ -214,7 +213,7 @@ describe('WorkflowAppLogList', () => {
 
     it('should not render trigger column for non-workflow apps', () => {
       const logs = createMockLogsResponse([createMockWorkflowLog()])
-      const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
+      const chatApp = createMockApp({ mode: 'advanced-chat' as AppMode })
 
       render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 
@@ -855,7 +854,7 @@ describe('WorkflowAppLogList', () => {
           }),
         }),
       ])
-      const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
+      const chatApp = createMockApp({ mode: 'advanced-chat' as AppMode })
 
       render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 

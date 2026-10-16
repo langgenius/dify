@@ -247,8 +247,8 @@ describe('debug-and-preview components', () => {
       renderWorkflowComponent(
         <ConversationVariableModal conversationID="conversation-1" onHide={vi.fn()} />,
         {
+          resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
           initialStoreState: {
-            appId: 'app-1',
             conversationVariables: [createConversationVariable()],
           },
         },
@@ -428,8 +428,8 @@ describe('debug-and-preview components', () => {
             }),
           ],
           edges: [],
+          resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
           initialStoreState: {
-            appId: 'app-1',
             conversationVariables: [createConversationVariable()],
           },
         },

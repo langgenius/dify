@@ -1,4 +1,5 @@
 'use client'
+
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -8,7 +9,6 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AppModeEnum } from '@/types/app'
 
 type TemplateCardProps = {
   app: RecommendedAppResponse
@@ -91,27 +91,27 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
             </div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
-            {appMode === AppModeEnum.ADVANCED_CHAT && (
+            {appMode === 'advanced-chat' && (
               <div className="truncate">
                 {t(($) => $['types.advanced'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.CHAT && (
+            {appMode === 'chat' && (
               <div className="truncate">
                 {t(($) => $['types.chatbot'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {(appMode === AppModeEnum.AGENT_CHAT || appMode === AppModeEnum.AGENT) && (
+            {(appMode === 'agent-chat' || appMode === 'agent') && (
               <div className="truncate">
                 {t(($) => $['types.agent'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.WORKFLOW && (
+            {appMode === 'workflow' && (
               <div className="truncate">
                 {t(($) => $['types.workflow'], { ns: 'app' }).toUpperCase()}
               </div>
             )}
-            {appMode === AppModeEnum.COMPLETION && (
+            {appMode === 'completion' && (
               <div className="truncate">
                 {t(($) => $['types.completion'], { ns: 'app' }).toUpperCase()}
               </div>

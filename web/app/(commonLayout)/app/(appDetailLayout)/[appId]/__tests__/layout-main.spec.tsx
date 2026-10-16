@@ -9,7 +9,6 @@ import {
   seedAppDetail,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailLayout from '../layout-main'
 
@@ -63,7 +62,7 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
   createAppDetailFixture({
     id: 'app-1',
     name: 'Demo App',
-    mode: AppModeEnum.WORKFLOW,
+    mode: 'workflow' as const,
     permission_keys: [AppACLPermission.ViewLayout, AppACLPermission.Monitor],
     ...overrides,
   })
@@ -148,15 +147,15 @@ describe('AppDetailLayout', () => {
 
   describe('Document title', () => {
     it.each([
-      ['/app/app-1/workflow', 'common.appMenus.promptEng', AppModeEnum.WORKFLOW],
-      ['/app/app-1/configuration', 'common.appMenus.promptEng', AppModeEnum.CHAT],
-      ['/app/app-1/access-point', 'common.appMenus.accessPoint', AppModeEnum.WORKFLOW],
-      ['/app/app-1/deploy', 'common.appMenus.deploy', AppModeEnum.WORKFLOW],
-      ['/app/app-1/logs', 'common.appMenus.logs', AppModeEnum.WORKFLOW],
-      ['/app/app-1/annotations', 'common.appMenus.annotations', AppModeEnum.CHAT],
-      ['/app/app-1/overview', 'common.appMenus.overview', AppModeEnum.WORKFLOW],
-      ['/app/app-1/access-config', 'navigation.settings.resourceAccess', AppModeEnum.WORKFLOW],
-    ])('identifies the current detail page for %s', async (pathname, pageTitle, mode) => {
+      ['/app/app-1/workflow', 'common.appMenus.promptEng', 'workflow'],
+      ['/app/app-1/configuration', 'common.appMenus.promptEng', 'chat'],
+      ['/app/app-1/access-point', 'common.appMenus.accessPoint', 'workflow'],
+      ['/app/app-1/deploy', 'common.appMenus.deploy', 'workflow'],
+      ['/app/app-1/logs', 'common.appMenus.logs', 'workflow'],
+      ['/app/app-1/annotations', 'common.appMenus.annotations', 'chat'],
+      ['/app/app-1/overview', 'common.appMenus.overview', 'workflow'],
+      ['/app/app-1/access-config', 'navigation.settings.resourceAccess', 'workflow'],
+    ] as const)('identifies the current detail page for %s', async (pathname, pageTitle, mode) => {
       mockPathname = pathname
       mockAppResponse.mockResolvedValue(
         createAppDetail({
@@ -543,7 +542,7 @@ describe('AppDetailLayout', () => {
     mockPathname = '/app/app-1/access-config'
     mockAppResponse.mockResolvedValue(
       createAppDetail({
-        mode: AppModeEnum.AGENT,
+        mode: 'agent' as const,
         bound_agent_id: 'agent-1',
         permission_keys: [AppACLPermission.AccessConfig],
       }),
@@ -570,7 +569,7 @@ describe('AppDetailLayout', () => {
       </AppDetailLayout>,
       {
         cachedAppDetail: createAppDetail({
-          mode: AppModeEnum.AGENT,
+          mode: 'agent' as const,
           bound_agent_id: 'agent-1',
           permission_keys: [AppACLPermission.AccessConfig],
         }),
@@ -608,7 +607,7 @@ describe('AppDetailLayout', () => {
     mockPathname = '/app/app-1/annotations'
     mockAppResponse.mockResolvedValue(
       createAppDetail({
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.Monitor],
       }),
     )
@@ -629,7 +628,7 @@ describe('AppDetailLayout', () => {
     mockPathname = '/app/app-1/annotations'
     mockAppResponse.mockResolvedValue(
       createAppDetail({
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.LogAndAnnotation],
       }),
     )

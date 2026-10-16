@@ -6,7 +6,7 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableBlocks } from '../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
-import { useIsChatMode, useNodesReadOnly } from '../../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import IterationStartNode, { IterationStartNodeDumb } from '../index'
 
 vi.mock('../../../hooks/use-available-blocks', async (importOriginal) => {
@@ -33,14 +33,13 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
   }
 })
 
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 
 const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> => ({
   getAvailableBlocks: vi.fn(() => ({
@@ -105,4 +104,11 @@ describe('IterationStartNode', () => {
       expect(container.querySelector('[data-handleid="source"]')).not.toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

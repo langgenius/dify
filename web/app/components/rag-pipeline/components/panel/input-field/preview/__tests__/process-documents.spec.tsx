@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import ProcessDocuments from '../process-documents'
 
 const mockUseDraftPipelineProcessingParams = vi.hoisted(() =>
@@ -30,7 +31,9 @@ describe('ProcessDocuments preview', () => {
   })
 
   it('should render the processing step and its variables', () => {
-    render(<ProcessDocuments dataSourceNodeId="node-2" />)
+    render(<ProcessDocuments dataSourceNodeId="node-2" />, {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    })
 
     expect(
       screen.getByText('datasetPipeline.inputFieldPanel.preview.stepTwoTitle'),

@@ -2,7 +2,6 @@ import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import * as amplitude from '@/app/components/base/amplitude/utils'
 import { AgentScope } from '@/features/agent-v2/analytics'
-import { AppModeEnum } from '@/types/app'
 import {
   buildCreateAppEventPayload,
   extractExternalCreateAppAttribution,
@@ -96,7 +95,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'studio_blank',
-            appMode: AppModeEnum.ADVANCED_CHAT,
+            appMode: 'advanced-chat' as const,
           },
           null,
           new Date(2026, 3, 13, 14, 5, 9),
@@ -113,7 +112,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'studio_blank',
-            appMode: AppModeEnum.AGENT_CHAT,
+            appMode: 'agent-chat' as const,
           },
           null,
           new Date(2026, 3, 13, 9, 8, 7),
@@ -166,7 +165,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'studio_blank',
-            appMode: AppModeEnum.CHAT,
+            appMode: 'chat' as const,
           },
           null,
           new Date(2026, 3, 13, 8, 0, 1),
@@ -181,7 +180,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'studio_blank',
-            appMode: AppModeEnum.COMPLETION,
+            appMode: 'completion' as const,
           },
           null,
           new Date(2026, 3, 13, 8, 0, 2),
@@ -198,7 +197,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'studio_blank',
-            appMode: AppModeEnum.WORKFLOW,
+            appMode: 'workflow' as const,
           },
           null,
           new Date(2026, 3, 13, 7, 6, 5),
@@ -215,7 +214,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'studio_template_list',
-            appMode: AppModeEnum.CHAT,
+            appMode: 'chat' as const,
             templateId: 'template-1',
           },
           null,
@@ -234,7 +233,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'studio_template_list',
-            appMode: AppModeEnum.WORKFLOW,
+            appMode: 'workflow' as const,
             templateId: 'template-1',
           },
           {
@@ -258,7 +257,7 @@ describe('create-app-tracking', () => {
         buildCreateAppEventPayload(
           {
             source: 'external',
-            appMode: AppModeEnum.WORKFLOW,
+            appMode: 'workflow' as const,
           },
           null,
           new Date(2026, 3, 13, 7, 6, 5),
@@ -277,7 +276,7 @@ describe('create-app-tracking', () => {
       } as ReturnType<typeof amplitude.flushEvents>)
 
       await expect(
-        trackCreateApp({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT }),
+        trackCreateApp({ source: 'studio_blank', appMode: 'advanced-chat' as const }),
       ).resolves.toBeUndefined()
 
       expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
@@ -295,7 +294,7 @@ describe('create-app-tracking', () => {
 
       trackCreateApp({
         source: 'studio_template_list',
-        appMode: AppModeEnum.WORKFLOW,
+        appMode: 'workflow' as const,
         templateId: 'template-1',
       })
 
@@ -310,7 +309,7 @@ describe('create-app-tracking', () => {
 
       trackCreateApp({
         source: 'studio_template_list',
-        appMode: AppModeEnum.WORKFLOW,
+        appMode: 'workflow' as const,
         templateId: 'template-1',
       })
 
@@ -357,7 +356,7 @@ describe('create-app-tracking', () => {
 
       trackCreateApp({
         source: 'explore_template_preview',
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         templateId: 'template-2',
       })
 
@@ -380,7 +379,7 @@ describe('create-app-tracking', () => {
           value: undefined,
         })
 
-        trackCreateApp({ source: 'studio_blank', appMode: AppModeEnum.AGENT_CHAT })
+        trackCreateApp({ source: 'studio_blank', appMode: 'agent-chat' as const })
 
         expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
           source: 'studio_blank',
@@ -404,7 +403,7 @@ describe('create-app-tracking', () => {
         }),
       )
 
-      trackCreateApp({ source: 'studio_blank', appMode: AppModeEnum.CHAT })
+      trackCreateApp({ source: 'studio_blank', appMode: 'chat' as const })
 
       expect(amplitude.trackEvent).toHaveBeenCalledWith('create_app', {
         source: 'external',
@@ -419,7 +418,7 @@ describe('create-app-tracking', () => {
     it('should not track external source without remembered attribution', () => {
       trackCreateApp({
         source: 'external',
-        appMode: AppModeEnum.WORKFLOW,
+        appMode: 'workflow' as const,
         templateId: 'template-1',
       })
 
