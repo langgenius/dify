@@ -124,16 +124,15 @@ export function AgentKnowledgeRetrieval() {
           ))
         )}
       </ConfigureSection>
-      {isDialogOpen && (
-        <AgentKnowledgeRetrievalDialog
-          initialBindings={retrievals}
-          onConfirm={confirmBindings}
-          onClose={() => {
-            setIsDialogOpen(false)
-            addOptionsRef.current = undefined
-          }}
-        />
-      )}
+      <AgentKnowledgeRetrievalDialog
+        open={isDialogOpen}
+        initialBindings={retrievals}
+        onConfirm={confirmBindings}
+        onOpenChange={(open) => {
+          setIsDialogOpen(open)
+          if (!open) addOptionsRef.current = undefined
+        }}
+      />
     </>
   )
 }
