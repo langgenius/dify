@@ -93,7 +93,7 @@ function DialogPopup({ className, ...props }: DialogPopupProps) {
     <BaseDialog.Popup
       className={(state) =>
         cn(
-          // Same chrome as AlertDialogContent; change both together.
+          // Radius, border and surface match AlertDialogContent; change both together.
           'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl',
           modalPopupAnimationClassName,
           resolveClassName(className, state),
