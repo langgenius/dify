@@ -33,7 +33,6 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
           input: { params: { app_id: resource.appId } },
         }),
   )
-  const tracingStatus = statusQuery.data
   const providers = configurableProviders
   const configQueries = useQueries({
     queries: readOnly
@@ -63,13 +62,21 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       ] as const
     }),
   )
+  const resourceId = resource.kind === 'agent' ? resource.agentId : resource.appId
+  const scope = { id: `tracing:${resource.kind}:${resourceId}` }
   const updateAppTrace = useMutation(
-    consoleQuery.apps.byAppId.trace.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.trace.post.mutationOptions({ context: { silent: true }, scope }),
   )
   const updateAgentTrace = useMutation(
-    consoleQuery.agent.byAgentId.trace.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.trace.post.mutationOptions({ context: { silent: true }, scope }),
   )
   const updateTracingStatus = resource.kind === 'agent' ? updateAgentTrace : updateAppTrace
+  const isCurrentMutation =
+    (resource.kind === 'agent'
+      ? updateAgentTrace.variables?.params.agent_id
+      : updateAppTrace.variables?.params.app_id) === resourceId
+  const pending = isCurrentMutation && updateTracingStatus.isPending
+  const tracingStatus = pending ? updateTracingStatus.variables.body : statusQuery.data
   const enabled = tracingStatus?.enabled ?? false
   const inUseTracingProvider =
     providers.find((provider) => provider === tracingStatus?.tracing_provider) ?? null
@@ -174,8 +181,8 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
         <ConfigPopup
           resource={resource}
           readOnly={readOnly}
-          pending={updateTracingStatus.isPending}
-          policyError={updateTracingStatus.error?.message}
+          pending={pending}
+          policyError={isCurrentMutation ? updateTracingStatus.error?.message : undefined}
           policy={tracingStatus}
           onPolicyChange={updatePolicy}
           configs={Object.fromEntries(configs)}
