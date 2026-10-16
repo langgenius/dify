@@ -22,9 +22,10 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiBook2Line, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
+import { RiBook2Line, RiInformation2Line } from '@remixicon/react'
 import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
 import { toast } from '@/app/notifications'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
@@ -209,33 +210,26 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
             formSchemas={formSchemas}
           />
         </DialogBody>
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={onCancel}>
-            {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
-          </Button>
-          <Button
-            form={formId}
-            type="submit"
-            variant="primary"
-            loading={loading}
-            disabled={hasEmptyInputs}
-          >
-            {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
-          </Button>
-        </DialogFooter>
-        <div className="flex shrink-0 items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
-          <RiLock2Fill className="size-3 text-text-quaternary" />
-          {t(($) => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
-          <a
-            className="text-text-accent"
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
-          >
-            PKCS1_OAEP
-          </a>
-          {t(($) => $['externalAPIForm.encrypted.end'], { ns: 'dataset' })}
-        </div>
+        <EncryptedFooter>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onCancel}>
+              {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
+            </Button>
+            <Button
+              form={formId}
+              type="submit"
+              variant="primary"
+              loading={loading}
+              disabled={hasEmptyInputs}
+            >
+              {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
+            </Button>
+          </DialogFooter>
+          <EncryptedBottom
+            front={t(($) => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
+            back={t(($) => $['externalAPIForm.encrypted.end'], { ns: 'dataset' })}
+          />
+        </EncryptedFooter>
         <AlertDialog
           open={showConfirm && (datasetBindings?.length ?? 0) > 0}
           onOpenChange={(open) => !open && setShowConfirm(false)}

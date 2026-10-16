@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -122,6 +123,7 @@ vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
 
 vi.mock('@/app/components/base/encrypted-bottom', () => ({
   EncryptedBottom: () => <div data-testid="encrypted-bottom">EncryptedBottom</div>,
+  EncryptedFooter: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
 // Form values storage keyed by form identifier

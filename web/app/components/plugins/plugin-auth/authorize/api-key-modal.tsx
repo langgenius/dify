@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -193,23 +193,25 @@ const ApiKeyModal = ({
             </div>
           )}
         </DialogBody>
-        <DialogFooter>
-          {editValues && (
-            <>
-              <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
-                {t(($) => $['operation.remove'], { ns: 'common' })}
-              </Button>
-              <div className="mx-1 h-4 w-px bg-divider-regular"></div>
-            </>
-          )}
-          <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
-            {t(($) => $['operation.save'], { ns: 'common' })}
-          </Button>
-        </DialogFooter>
-        <EncryptedBottom />
+        <EncryptedFooter>
+          <DialogFooter>
+            {editValues && (
+              <>
+                <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
+                  {t(($) => $['operation.remove'], { ns: 'common' })}
+                </Button>
+                <div className="mx-1 h-4 w-px bg-divider-regular"></div>
+              </>
+            )}
+            <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+          <EncryptedBottom />
+        </EncryptedFooter>
       </DialogContent>
     </Dialog>
   )

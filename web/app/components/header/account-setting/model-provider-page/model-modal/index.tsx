@@ -29,6 +29,7 @@ import {
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -381,64 +382,52 @@ const ModelModal: FC<ModelModalProps> = ({
             />
           )}
         </DialogBody>
-        <DialogFooter>
-          {provider.help && (provider.help.title || provider.help.url) && (
-            <a
-              href={provider.help?.url[language] || provider.help?.url.en_US}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="me-auto inline-block align-middle system-xs-regular text-text-accent"
-              onClick={(e) => !provider.help?.url && e.preventDefault()}
-            >
-              {provider.help.title?.[language] ||
-                provider.help.url[language] ||
-                provider.help.title?.en_US ||
-                provider.help.url.en_US}
-              <span
-                aria-hidden
-                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
-              />
-            </a>
-          )}
-          {isEditMode && (
-            <Button
-              variant="primary"
-              tone="destructive"
-              onClick={() => openConfirmDelete(credential, model)}
-            >
-              {t(($) => $['operation.remove'], { ns: 'common' })}
-            </Button>
-          )}
-          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            disabled={isLoading || doingAction || !canSaveCredentialChange}
-          >
-            {saveButtonText}
-          </Button>
-        </DialogFooter>
-        {(mode === ModelModalModeEnum.configCustomModel ||
-          mode === ModelModalModeEnum.configProviderCredential) && (
-          <div className="border-t-[0.5px] border-t-divider-regular">
-            <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-              <span
-                aria-hidden
-                className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
-              />
-              {t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+        <EncryptedFooter>
+          <DialogFooter>
+            {provider.help && (provider.help.title || provider.help.url) && (
               <a
-                className="mx-1 text-text-accent"
+                href={provider.help?.url[language] || provider.help?.url.en_US}
                 target="_blank"
                 rel="noopener noreferrer"
-                href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
+                className="me-auto inline-block align-middle system-xs-regular text-text-accent"
+                onClick={(e) => !provider.help?.url && e.preventDefault()}
               >
-                PKCS1_OAEP
+                {provider.help.title?.[language] ||
+                  provider.help.url[language] ||
+                  provider.help.title?.en_US ||
+                  provider.help.url.en_US}
+                <span
+                  aria-hidden
+                  className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
+                />
               </a>
-              {t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
-            </div>
-          </div>
-        )}
+            )}
+            {isEditMode && (
+              <Button
+                variant="primary"
+                tone="destructive"
+                onClick={() => openConfirmDelete(credential, model)}
+              >
+                {t(($) => $['operation.remove'], { ns: 'common' })}
+              </Button>
+            )}
+            <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={isLoading || doingAction || !canSaveCredentialChange}
+            >
+              {saveButtonText}
+            </Button>
+          </DialogFooter>
+          {(mode === ModelModalModeEnum.configCustomModel ||
+            mode === ModelModalModeEnum.configProviderCredential) && (
+            <EncryptedBottom
+              front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+              back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+            />
+          )}
+        </EncryptedFooter>
       </DialogContent>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>

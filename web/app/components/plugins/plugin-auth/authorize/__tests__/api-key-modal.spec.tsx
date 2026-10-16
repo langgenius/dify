@@ -70,6 +70,7 @@ vi.mock('../../../readme-panel/entrance', () => ({
 
 vi.mock('@/app/components/base/encrypted-bottom', () => ({
   EncryptedBottom: () => <div data-testid="encrypted-bottom" />,
+  EncryptedFooter: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 vi.mock('@/app/components/base/form/form-scenarios/auth', () => {

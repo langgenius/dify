@@ -251,6 +251,7 @@ vi.mock('@/app/components/base/form/components/base', async () => {
 
 vi.mock('@/app/components/base/encrypted-bottom', () => ({
   EncryptedBottom: () => <div data-testid="encrypted-bottom">Encrypted</div>,
+  EncryptedFooter: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 vi.mock('../../log-viewer', () => ({

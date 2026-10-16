@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { ConfigurationStepContent, MultiSteps, VerifyStepContent } from './components/modal-steps'
 import {
@@ -111,21 +111,22 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
         )}
       </DialogBody>
 
-      <DialogFooter>
-        <Button disabled={isDisabled} onClick={onClose}>
-          {t(($) => $['operation.cancel'], { ns: 'common' })}
-        </Button>
-        <Button
-          variant="primary"
-          disabled={isDisabled}
-          data-testid="modal-confirm"
-          onClick={handleConfirm}
-        >
-          {confirmButtonText}
-        </Button>
-      </DialogFooter>
-
-      {isVerifyStep && <EncryptedBottom />}
+      <EncryptedFooter>
+        <DialogFooter>
+          <Button disabled={isDisabled} onClick={onClose}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={isDisabled}
+            data-testid="modal-confirm"
+            onClick={handleConfirm}
+          >
+            {confirmButtonText}
+          </Button>
+        </DialogFooter>
+        {isVerifyStep && <EncryptedBottom />}
+      </EncryptedFooter>
     </>
   )
 }
