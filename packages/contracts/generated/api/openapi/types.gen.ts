@@ -19,6 +19,16 @@ export type AccountResponse = {
   workspaces?: Array<WorkspacePayload>
 }
 
+export type AdvancedChatNodeRunPayload = {
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  query?: string
+}
+
 export type AdvancedChatRunPayload = {
   attachments?: Array<Blob | File> | null
   auto_generate_name?: boolean
@@ -26,12 +36,102 @@ export type AdvancedChatRunPayload = {
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   query: string
   workflow_id?: string | null
   workspace_id?: string | null
+}
+
+export type AdvancedChatWebApp = {
+  access_token?: string | null
+  app_base_url: string
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  show_workflow_steps?: boolean
+  title?: string | null
+  url?: string | null
+  use_icon_as_answer_icon?: boolean
+}
+
+export type AdvancedChatWebAppPatch = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean | null
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  show_workflow_steps?: boolean | null
+  title?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
+export type AgentAppInfo = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  max_active_requests?: number | null
+  name: string
+  role?: string | null
+  use_icon_as_answer_icon?: boolean
+}
+
+export type AgentAppInfoPatch = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  max_active_requests?: number | null
+  name?: string | null
+  role?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
+export type AgentServiceApi = {
+  access_ready: boolean
+  api_rph?: number
+  api_rpm?: number
+  base_url: string
+  enabled: boolean
+}
+
+export type AgentWebApp = {
+  access_ready: boolean
+  access_token?: string | null
+  app_base_url: string
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  title?: string | null
+  url?: string | null
+  use_icon_as_answer_icon?: boolean
 }
 
 export type AppDescribeInfo = {
@@ -49,6 +149,7 @@ export type AppDescribeQuery = {
 }
 
 export type AppDescribeResponse = {
+  hints?: Array<Hint>
   info?: AppDescribeInfo | null
   input_schema?: {
     [key: string]: unknown
@@ -65,11 +166,13 @@ export type AppDslExportQuery = {
 
 export type AppDslExportResponse = {
   data: string
+  draft_hash?: string | null
 }
 
 export type AppDslImportPayload = {
   app_id?: string | null
   description?: string | null
+  draft_hash?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -97,6 +200,15 @@ export type AppInfo = {
   id: string
   mode: string
   name: string
+}
+
+export type AppInfoPatch = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  max_active_requests?: number | null
+  name?: string | null
 }
 
 export type AppListQuery = {
@@ -136,6 +248,35 @@ export type AppMode =
   | 'rag-pipeline'
   | 'workflow'
 
+export type AppSettingsInfo = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  max_active_requests?: number | null
+  name: string
+}
+
+export type ChatAppInfo = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  max_active_requests?: number | null
+  name: string
+  use_icon_as_answer_icon?: boolean
+}
+
+export type ChatAppInfoPatch = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  max_active_requests?: number | null
+  name?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
 export type ChatRunPayload = {
   attachments?: Array<Blob | File> | null
   auto_generate_name?: boolean
@@ -143,11 +284,53 @@ export type ChatRunPayload = {
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   query: string
   workspace_id?: string | null
+}
+
+export type ChatWebApp = {
+  access_token?: string | null
+  app_base_url: string
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  title?: string | null
+  url?: string | null
+  use_icon_as_answer_icon?: boolean
+}
+
+export type ChatWebAppPatch = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean | null
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  title?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
+export type CheckDependenciesResponse = {
+  hints?: Array<Hint>
+  leaked_dependencies?: Array<PluginDependency>
 }
 
 export type CheckDependenciesResult = {
@@ -159,11 +342,55 @@ export type CompletionRunPayload = {
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   query?: string
   workspace_id?: string | null
+}
+
+export type CreateAppPayload = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  name: string
+}
+
+export type CreatedAppResponse = {
+  app_id: string
+  mode: string
+  name: string
+}
+
+export type CredentialFormField = {
+  label: string | null
+  name: string
+  options: Array<string> | null
+  placeholder: string | null
+  required: boolean
+  show_on: Array<{
+    [key: string]: string
+  }>
+  type: string
+}
+
+export type CredentialRef = {
+  id: string
+  name: string | null
+}
+
+export type CredentialWriteResponse = {
+  active: boolean
+  hints?: Array<Hint>
+  id: string
+  name: string | null
+}
+
+export type CustomModelRow = {
+  active_credential: CredentialRef | null
+  model: string
+  model_type: string
 }
 
 export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
@@ -230,6 +457,28 @@ export type DeviceTokenResponse = {
   workspaces?: Array<WorkspacePayload>
 }
 
+export type DraftWorkflowRunPayload = {
+  attachments?: Array<Blob | File> | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  workspace_id?: string | null
+}
+
+export type DslCheckPayload = {
+  app_id?: string | null
+  yaml_content: string
+}
+
+export type DslCheckResponse = {
+  hints?: Array<Hint>
+  issues: Array<DslIssueRow>
+  valid: boolean
+}
+
 export type DslImportWarning = {
   code: string
   details?: {
@@ -239,10 +488,40 @@ export type DslImportWarning = {
   path: string
 }
 
+export type DslIssueRow = {
+  code: string
+  loc: Array<string | number>
+  message: string
+  node_id: string | null
+  severity: string
+}
+
+export type EnvVariableListResponse = {
+  data: Array<EnvVariableRow>
+}
+
+export type EnvVariableRow = {
+  description?: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
+}
+
+export type EnvVariableSetPayload = {
+  description?: string
+  name: string
+  value: unknown
+  value_type: EnvVariableValueType
+}
+
+export type EnvVariableValueType = 'number' | 'secret' | 'string'
+
 export type ErrorBody = {
   code: string
   details?: Array<ErrorDetail> | null
   hint?: string | null
+  hints?: Array<Hint> | null
   message: string
   status: number
 }
@@ -278,7 +557,7 @@ export type FileUploadPayload = {
 }
 
 export type FormSubmitResponse = {
-  [key: string]: never
+  hints?: Array<Hint>
 }
 
 export type HealthResponse = {
@@ -325,6 +604,76 @@ export type Import = {
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
 export type JsonValue = unknown
+
+export type KnowledgeBaseListQuery = {
+  limit?: number
+  page?: number
+  query?: string
+}
+
+export type KnowledgeBaseListResponse = {
+  data: Array<KnowledgeBaseRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type KnowledgeBaseRow = {
+  description: string | null
+  document_count: number
+  id: string
+  indexing_technique: string | null
+  name: string
+  node_data: KnowledgeRetrievalFragment
+  provider: string
+  usable: boolean
+}
+
+export type KnowledgeRetrievalFragment = {
+  dataset_ids: Array<string>
+  multiple_retrieval_config?: MultipleRetrievalFragment
+  retrieval_mode?: 'multiple'
+}
+
+export type LlmModelBlock = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: string
+  name: string
+  provider: string
+}
+
+export type MarketplacePluginListResponse = {
+  data: Array<MarketplacePluginRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type MarketplacePluginQuery = {
+  category?: PluginCategory | null
+  limit?: number
+  page?: number
+  query?: string
+}
+
+export type MarketplacePluginRow = {
+  authorized_category: string | null
+  brief: string | null
+  category: string
+  identifier: string
+  install_count: number
+  installed: boolean
+  installed_version: string | null
+  label: string | null
+  plugin_id: string
+  version: string
+}
 
 export type MemberActionResponse = {
   result?: 'success'
@@ -378,8 +727,124 @@ export type MessageMetadata = {
   usage?: UsageInfo | null
 }
 
+export type ModelCredentialCreatePayload = {
+  credentials: {
+    [key: string]: unknown
+  }
+  model: string
+  model_type: ModelType
+  name?: string | null
+}
+
+export type ModelCredentialUpdatePayload = {
+  credentials: {
+    [key: string]: unknown
+  }
+  model: string
+  model_type: ModelType
+  name?: string | null
+}
+
+export type ModelListQuery = {
+  limit?: number
+  model_type?: ModelType | null
+  page?: number
+  provider?: string | null
+  query?: string
+}
+
+export type ModelListResponse = {
+  data: Array<ModelRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type ModelProviderDetailResponse = {
+  active_credential: CredentialRef | null
+  configured: boolean
+  credential_form: Array<CredentialFormField>
+  credentials: Array<CredentialRef>
+  custom_model_form: Array<CredentialFormField> | null
+  custom_models: Array<CustomModelRow>
+  hints?: Array<Hint>
+  label: string | null
+  model_types: Array<string>
+  provider: string
+}
+
+export type ModelProviderRow = {
+  active_credential: CredentialRef | null
+  configured: boolean
+  label: string | null
+  model_types: Array<string>
+  provider: string
+}
+
+export type ModelRef = {
+  model: string
+  model_type: ModelType
+}
+
+export type ModelRow = {
+  features: Array<string>
+  label: string | null
+  model: string
+  model_type: string
+  node_model?: LlmModelBlock | null
+  provider: string
+  provider_label: string | null
+  status: string
+}
+
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+
+export type MultipleRetrievalFragment = {
+  reranking_enable?: boolean
+  top_k?: number
+}
+
+export type NodeChange = {
+  fields: Array<string>
+  id: string
+  title: string
+  type: string
+}
+
+export type NodeRunPayload = {
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  inputs?: {
+    [key: string]: unknown
+  }
+}
+
+export type NodeTypeDetailResponse = {
+  default_config: {
+    [key: string]: unknown
+  }
+  schema: {
+    [key: string]: unknown
+  }
+  type: string
+  version: string
+}
+
+export type NodeTypeListResponse = {
+  data: Array<NodeTypeRow>
+}
+
+export type NodeTypeRow = {
+  type: string
+  version: string
+}
+
 export type OpenApiErrorCode =
   | 'agent_not_published'
+  | 'app_mode_mismatch'
   | 'app_unavailable'
   | 'bad_gateway'
   | 'bad_request'
@@ -387,6 +852,13 @@ export type OpenApiErrorCode =
   | 'completion_request_error'
   | 'conflict'
   | 'conversation_completed'
+  | 'credential_invalid'
+  | 'credential_not_found'
+  | 'credential_oauth_only'
+  | 'draft_changed'
+  | 'draft_not_found'
+  | 'dsl_invalid'
+  | 'env_variable_not_found'
   | 'file_extension_blocked'
   | 'file_too_large'
   | 'filename_not_exists'
@@ -394,18 +866,30 @@ export type OpenApiErrorCode =
   | 'form_not_found'
   | 'internal_server_error'
   | 'invalid_param'
+  | 'marketplace_disabled'
+  | 'marketplace_unavailable'
   | 'member_license_exceeded'
   | 'member_limit_exceeded'
   | 'method_not_allowed'
   | 'model_currently_not_support'
   | 'no_file_uploaded'
+  | 'node_not_found'
+  | 'node_type_not_found'
   | 'not_acceptable'
   | 'not_found'
+  | 'plugin_install_forbidden'
+  | 'plugin_not_installed'
+  | 'plugin_service_unavailable'
+  | 'provider_not_found'
   | 'provider_not_initialize'
   | 'provider_quota_exceeded'
   | 'rate_limit_error'
   | 'recipient_surface_mismatch'
   | 'request_entity_too_large'
+  | 'run_not_found'
+  | 'secret_mask_not_secret'
+  | 'secret_mask_unknown_id'
+  | 'service_api_disabled'
   | 'too_many_files'
   | 'too_many_requests'
   | 'trigger_workflow_service_mode_unavailable'
@@ -413,6 +897,12 @@ export type OpenApiErrorCode =
   | 'unknown'
   | 'unsupported_file_type'
   | 'unsupported_media_type'
+  | 'version_not_found'
+  | 'version_not_restorable'
+  | 'webapp_access_mode_console_only'
+  | 'webapp_access_requires_ee'
+  | 'webapp_access_unavailable'
+  | 'webapp_public_access_disabled'
 
 export type OpenApiFormSubmitPayload = {
   action: string
@@ -440,6 +930,19 @@ export type PermittedExternalAppsListResponse = {
   total: number
 }
 
+export type PluginCategory =
+  | 'agent-strategy'
+  | 'datasource'
+  | 'extension'
+  | 'model'
+  | 'tool'
+  | 'trigger'
+
+export type PluginDeleteResponse = {
+  deleted: boolean
+  plugin_id: string
+}
+
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
@@ -465,13 +968,139 @@ export type PluginDependencyPackage = {
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
+export type PluginInstallPayload = {
+  identifiers: Array<string>
+}
+
+export type PluginInstallTaskStatus = 'failed' | 'pending' | 'running' | 'success'
+
+export type PluginListQuery = {
+  category?: PluginCategory | null
+}
+
+export type PluginListResponse = {
+  data: Array<PluginRow>
+  hints?: Array<Hint>
+}
+
+export type PluginProvides = {
+  model_provider: string | null
+  tool_provider: string | null
+}
+
+export type PluginRow = {
+  category: string
+  identifier: string
+  label: string | null
+  latest_version: string | null
+  plugin_id: string
+  provides: PluginProvides
+  source: string
+  version: string
+}
+
+export type PluginTaskItem = {
+  identifier: string
+  message: string
+  plugin_id: string
+  status: PluginInstallTaskStatus
+}
+
+export type PluginTaskResponse = {
+  hints?: Array<Hint>
+  plugins: Array<PluginTaskItem>
+  status: PluginInstallTaskStatus
+  task_id: string
+}
+
+export type PluginTaskStartResponse = {
+  all_installed: boolean
+  hints?: Array<Hint>
+  task_id: string
+}
+
+export type ProviderCredentialCreatePayload = {
+  credentials: {
+    [key: string]: unknown
+  }
+  name?: string | null
+}
+
+export type ProviderCredentialUpdatePayload = {
+  credentials: {
+    [key: string]: unknown
+  }
+  name?: string | null
+}
+
+export type PublishPayload = {
+  marked_comment?: string
+  marked_name?: string
+}
+
+export type PublishResponse = {
+  created_at: number
+  version_id: string
+  warning?: string | null
+}
+
+export type ReleaseCheckName = 'draft_valid' | 'tested'
+
+export type ReleaseCheckResponse = {
+  changes: WorkflowDiff
+  checks: Array<ReleaseCheckRow>
+  hints?: Array<Hint>
+  issues: Array<DslIssueRow>
+  ready: boolean
+  state: ReleaseState
+}
+
+export type ReleaseCheckRow = {
+  detail: string
+  name: ReleaseCheckName
+  passed: boolean
+}
+
+export type ReleaseState = {
+  service_api_enabled: boolean
+  webapp_enabled: boolean
+}
+
+export type RestoreResponse = {
+  draft_hash: string
+  result: 'success'
+}
+
 export type RevokeResponse = {
   status: string
+}
+
+export type RunListQuery = {
+  last_id?: string | null
+  limit?: number
+  status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded' | null
+  triggered_from?: 'app-run' | 'debugging'
+}
+
+export type RunListResponse = {
+  data: Array<WorkflowRunForListResponse>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
 }
 
 export type ServerVersionResponse = {
   edition: DeploymentEdition
   version: string
+}
+
+export type ServiceApi = {
+  base_url: string
+  enabled: boolean
+}
+
+export type ServiceApiPatch = {
+  enabled: boolean
 }
 
 export type SessionListQuery = {
@@ -498,6 +1127,19 @@ export type SessionRow = {
   prefix: string
 }
 
+export type SimpleAccountResponse = {
+  email: string
+  id: string
+  name: string
+}
+
+export type SimpleEndUser = {
+  id: string
+  is_anonymous: boolean
+  session_id?: string | null
+  type: string
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -510,10 +1152,192 @@ export type TaskStopResponse = {
   result: 'success'
 }
 
+export type ToolCredentialCreatePayload = {
+  credentials: {
+    [key: string]: unknown
+  }
+  name?: string | null
+}
+
+export type ToolCredentialUpdatePayload = {
+  credentials: {
+    [key: string]: unknown
+  }
+  name?: string | null
+}
+
+export type ToolInputType = 'constant' | 'mixed' | 'variable'
+
+export type ToolInputValue = {
+  type?: ToolInputType
+  value?: unknown
+}
+
+export type ToolListQuery = {
+  limit?: number
+  page?: number
+  provider?: string | null
+  provider_type?: ToolSource | null
+  query?: string
+}
+
+export type ToolListResponse = {
+  data: Array<ToolRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+  total: number
+}
+
+export type ToolNodeTemplate = {
+  plugin_id: string | null
+  plugin_unique_identifier: string | null
+  provider_id: string
+  provider_name: string
+  provider_type: string
+  title: string
+  tool_configurations: {
+    [key: string]: ToolInputValue
+  }
+  tool_label: string
+  tool_name: string
+  tool_node_version?: string
+  tool_parameters: {
+    [key: string]: ToolInputValue
+  }
+  type?: string
+}
+
+export type ToolParameterRow = {
+  default: unknown
+  form: string
+  label: string | null
+  llm_description: string | null
+  max: number | null
+  min: number | null
+  name: string
+  options: Array<string>
+  required: boolean
+  type: string
+}
+
+export type ToolProviderDetailResponse = {
+  configured: boolean
+  credential_form: Array<CredentialFormField>
+  credential_types: Array<string>
+  credentials: Array<CredentialRef>
+  default_credential: CredentialRef | null
+  hints?: Array<Hint>
+  label: string | null
+  provider: string
+}
+
+export type ToolProviderRow = {
+  configured: boolean
+  credential_types: Array<string>
+  label: string | null
+  provider: string
+}
+
+export type ToolRow = {
+  configured: boolean
+  description: string | null
+  label: string
+  name: string
+  node_data: ToolNodeTemplate
+  parameters: Array<ToolParameterRow>
+  provider: string
+  provider_label: string | null
+  provider_type: string
+}
+
+export type ToolSource = 'api' | 'builtin' | 'mcp' | 'workflow'
+
 export type UsageInfo = {
   completion_tokens?: number
   prompt_tokens?: number
   total_tokens?: number
+}
+
+export type VersionListQuery = {
+  limit?: number
+  named_only?: boolean
+  page?: number
+}
+
+export type VersionListResponse = {
+  data: Array<VersionRow>
+  has_more: boolean
+  hints?: Array<Hint>
+  limit: number
+  page: number
+}
+
+export type VersionRow = {
+  created_at: number
+  created_by?: string | null
+  current?: boolean
+  id: string
+  marked_comment: string
+  marked_name: string
+}
+
+export type WebApp = {
+  access_token?: string | null
+  app_base_url: string
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  privacy_policy?: string | null
+  title?: string | null
+  url?: string | null
+}
+
+export type WebAppAccess = {
+  access_mode: string
+}
+
+export type WebAppAccessMode = 'private' | 'private_all' | 'public' | 'sso_verified'
+
+export type WebAppAccessPayload = {
+  access_mode: WebAppAccessMode
+}
+
+export type WebAppPatch = {
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  privacy_policy?: string | null
+  title?: string | null
+}
+
+export type WebAppToken = {
+  access_token?: string | null
+  app_base_url: string
+  url?: string | null
+}
+
+export type WorkflowDiff = {
+  edges_added: Array<string>
+  edges_removed: Array<string>
+  env_added: Array<string>
+  env_removed: Array<string>
+  features_changed: boolean
+  nodes_added: Array<NodeChange>
+  nodes_changed: Array<NodeChange>
+  nodes_removed: Array<NodeChange>
+  published: boolean
 }
 
 export type WorkflowRunData = {
@@ -531,21 +1355,114 @@ export type WorkflowRunData = {
   workflow_id: string
 }
 
+export type WorkflowRunDetailResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  exceptions_count?: number | null
+  finished_at?: number | null
+  graph: unknown
+  id: string
+  inputs: unknown
+  outputs: unknown
+  status?: string | null
+  total_steps?: number | null
+  total_tokens?: number | null
+  version?: string | null
+}
+
+export type WorkflowRunForListResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  elapsed_time?: number | null
+  exceptions_count?: number | null
+  finished_at?: number | null
+  id: string
+  retry_index?: number | null
+  status?: string | null
+  total_steps?: number | null
+  total_tokens?: number | null
+  version?: string | null
+}
+
+export type WorkflowRunNodeExecutionListResponse = {
+  data: Array<WorkflowRunNodeExecutionResponse>
+}
+
+export type WorkflowRunNodeExecutionResponse = {
+  created_at?: number | null
+  created_by_account?: SimpleAccountResponse | null
+  created_by_end_user?: SimpleEndUser | null
+  created_by_role?: string | null
+  elapsed_time?: number | null
+  error?: string | null
+  execution_metadata?: unknown
+  extras?: unknown
+  finished_at?: number | null
+  id: string
+  index?: number | null
+  inputs?: unknown
+  inputs_truncated?: boolean | null
+  node_id?: string | null
+  node_type?: string | null
+  outputs?: unknown
+  outputs_truncated?: boolean | null
+  predecessor_node_id?: string | null
+  process_data?: unknown
+  process_data_truncated?: boolean | null
+  retry_index?: number | null
+  status?: string | null
+  title?: string | null
+}
+
 export type WorkflowRunPayload = {
   attachments?: Array<Blob | File> | null
   files?: {
     [key: string]: Blob | File | Array<Blob | File>
   } | null
-  inputs: {
+  inputs?: {
     [key: string]: unknown
   }
   workflow_id?: string | null
   workspace_id?: string | null
 }
 
+export type WorkflowWebApp = {
+  access_token?: string | null
+  app_base_url: string
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  privacy_policy?: string | null
+  show_workflow_steps?: boolean
+  title?: string | null
+  url?: string | null
+}
+
+export type WorkflowWebAppPatch = {
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language?: string | null
+  description?: string | null
+  enabled?: boolean | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: 'emoji' | 'image' | 'link' | null
+  privacy_policy?: string | null
+  show_workflow_steps?: boolean | null
+  title?: string | null
+}
+
 export type WorkspaceDetailResponse = {
   created_at?: string | null
-  current: boolean
   id: string
   name: string
   role: string
@@ -573,7 +1490,6 @@ export type WorkspacePayload = {
 }
 
 export type WorkspaceSummaryResponse = {
-  current: boolean
   id: string
   name: string
   role: string
@@ -800,6 +1716,288 @@ export type PostAppsByAppIdAdvancedChatRunResponses = {
 export type PostAppsByAppIdAdvancedChatRunResponse =
   PostAppsByAppIdAdvancedChatRunResponses[keyof PostAppsByAppIdAdvancedChatRunResponses]
 
+export type GetAppsByAppIdAppInfoAdvancedChatData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/advanced-chat'
+}
+
+export type GetAppsByAppIdAppInfoAdvancedChatErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdAppInfoAdvancedChatError =
+  GetAppsByAppIdAppInfoAdvancedChatErrors[keyof GetAppsByAppIdAppInfoAdvancedChatErrors]
+
+export type GetAppsByAppIdAppInfoAdvancedChatResponses = {
+  200: ChatAppInfo
+}
+
+export type GetAppsByAppIdAppInfoAdvancedChatResponse =
+  GetAppsByAppIdAppInfoAdvancedChatResponses[keyof GetAppsByAppIdAppInfoAdvancedChatResponses]
+
+export type PatchAppsByAppIdAppInfoAdvancedChatData = {
+  body: ChatAppInfoPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/advanced-chat'
+}
+
+export type PatchAppsByAppIdAppInfoAdvancedChatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdAppInfoAdvancedChatError =
+  PatchAppsByAppIdAppInfoAdvancedChatErrors[keyof PatchAppsByAppIdAppInfoAdvancedChatErrors]
+
+export type PatchAppsByAppIdAppInfoAdvancedChatResponses = {
+  200: ChatAppInfo
+}
+
+export type PatchAppsByAppIdAppInfoAdvancedChatResponse =
+  PatchAppsByAppIdAppInfoAdvancedChatResponses[keyof PatchAppsByAppIdAppInfoAdvancedChatResponses]
+
+export type GetAppsByAppIdAppInfoAgentData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/agent'
+}
+
+export type GetAppsByAppIdAppInfoAgentErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdAppInfoAgentError =
+  GetAppsByAppIdAppInfoAgentErrors[keyof GetAppsByAppIdAppInfoAgentErrors]
+
+export type GetAppsByAppIdAppInfoAgentResponses = {
+  200: AgentAppInfo
+}
+
+export type GetAppsByAppIdAppInfoAgentResponse =
+  GetAppsByAppIdAppInfoAgentResponses[keyof GetAppsByAppIdAppInfoAgentResponses]
+
+export type PatchAppsByAppIdAppInfoAgentData = {
+  body: AgentAppInfoPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/agent'
+}
+
+export type PatchAppsByAppIdAppInfoAgentErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdAppInfoAgentError =
+  PatchAppsByAppIdAppInfoAgentErrors[keyof PatchAppsByAppIdAppInfoAgentErrors]
+
+export type PatchAppsByAppIdAppInfoAgentResponses = {
+  200: AgentAppInfo
+}
+
+export type PatchAppsByAppIdAppInfoAgentResponse =
+  PatchAppsByAppIdAppInfoAgentResponses[keyof PatchAppsByAppIdAppInfoAgentResponses]
+
+export type GetAppsByAppIdAppInfoAgentChatData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/agent-chat'
+}
+
+export type GetAppsByAppIdAppInfoAgentChatErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdAppInfoAgentChatError =
+  GetAppsByAppIdAppInfoAgentChatErrors[keyof GetAppsByAppIdAppInfoAgentChatErrors]
+
+export type GetAppsByAppIdAppInfoAgentChatResponses = {
+  200: ChatAppInfo
+}
+
+export type GetAppsByAppIdAppInfoAgentChatResponse =
+  GetAppsByAppIdAppInfoAgentChatResponses[keyof GetAppsByAppIdAppInfoAgentChatResponses]
+
+export type PatchAppsByAppIdAppInfoAgentChatData = {
+  body: ChatAppInfoPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/agent-chat'
+}
+
+export type PatchAppsByAppIdAppInfoAgentChatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdAppInfoAgentChatError =
+  PatchAppsByAppIdAppInfoAgentChatErrors[keyof PatchAppsByAppIdAppInfoAgentChatErrors]
+
+export type PatchAppsByAppIdAppInfoAgentChatResponses = {
+  200: ChatAppInfo
+}
+
+export type PatchAppsByAppIdAppInfoAgentChatResponse =
+  PatchAppsByAppIdAppInfoAgentChatResponses[keyof PatchAppsByAppIdAppInfoAgentChatResponses]
+
+export type GetAppsByAppIdAppInfoChatData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/chat'
+}
+
+export type GetAppsByAppIdAppInfoChatErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdAppInfoChatError =
+  GetAppsByAppIdAppInfoChatErrors[keyof GetAppsByAppIdAppInfoChatErrors]
+
+export type GetAppsByAppIdAppInfoChatResponses = {
+  200: ChatAppInfo
+}
+
+export type GetAppsByAppIdAppInfoChatResponse =
+  GetAppsByAppIdAppInfoChatResponses[keyof GetAppsByAppIdAppInfoChatResponses]
+
+export type PatchAppsByAppIdAppInfoChatData = {
+  body: ChatAppInfoPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/chat'
+}
+
+export type PatchAppsByAppIdAppInfoChatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdAppInfoChatError =
+  PatchAppsByAppIdAppInfoChatErrors[keyof PatchAppsByAppIdAppInfoChatErrors]
+
+export type PatchAppsByAppIdAppInfoChatResponses = {
+  200: ChatAppInfo
+}
+
+export type PatchAppsByAppIdAppInfoChatResponse =
+  PatchAppsByAppIdAppInfoChatResponses[keyof PatchAppsByAppIdAppInfoChatResponses]
+
+export type GetAppsByAppIdAppInfoCompletionData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/completion'
+}
+
+export type GetAppsByAppIdAppInfoCompletionErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdAppInfoCompletionError =
+  GetAppsByAppIdAppInfoCompletionErrors[keyof GetAppsByAppIdAppInfoCompletionErrors]
+
+export type GetAppsByAppIdAppInfoCompletionResponses = {
+  200: AppSettingsInfo
+}
+
+export type GetAppsByAppIdAppInfoCompletionResponse =
+  GetAppsByAppIdAppInfoCompletionResponses[keyof GetAppsByAppIdAppInfoCompletionResponses]
+
+export type PatchAppsByAppIdAppInfoCompletionData = {
+  body: AppInfoPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/completion'
+}
+
+export type PatchAppsByAppIdAppInfoCompletionErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdAppInfoCompletionError =
+  PatchAppsByAppIdAppInfoCompletionErrors[keyof PatchAppsByAppIdAppInfoCompletionErrors]
+
+export type PatchAppsByAppIdAppInfoCompletionResponses = {
+  200: AppSettingsInfo
+}
+
+export type PatchAppsByAppIdAppInfoCompletionResponse =
+  PatchAppsByAppIdAppInfoCompletionResponses[keyof PatchAppsByAppIdAppInfoCompletionResponses]
+
+export type GetAppsByAppIdAppInfoWorkflowData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/workflow'
+}
+
+export type GetAppsByAppIdAppInfoWorkflowErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdAppInfoWorkflowError =
+  GetAppsByAppIdAppInfoWorkflowErrors[keyof GetAppsByAppIdAppInfoWorkflowErrors]
+
+export type GetAppsByAppIdAppInfoWorkflowResponses = {
+  200: AppSettingsInfo
+}
+
+export type GetAppsByAppIdAppInfoWorkflowResponse =
+  GetAppsByAppIdAppInfoWorkflowResponses[keyof GetAppsByAppIdAppInfoWorkflowResponses]
+
+export type PatchAppsByAppIdAppInfoWorkflowData = {
+  body: AppInfoPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/app-info/workflow'
+}
+
+export type PatchAppsByAppIdAppInfoWorkflowErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdAppInfoWorkflowError =
+  PatchAppsByAppIdAppInfoWorkflowErrors[keyof PatchAppsByAppIdAppInfoWorkflowErrors]
+
+export type PatchAppsByAppIdAppInfoWorkflowResponses = {
+  200: AppSettingsInfo
+}
+
+export type PatchAppsByAppIdAppInfoWorkflowResponse =
+  PatchAppsByAppIdAppInfoWorkflowResponses[keyof PatchAppsByAppIdAppInfoWorkflowResponses]
+
 export type PostAppsByAppIdChatRunData = {
   body: ChatRunPayload
   path: {
@@ -865,11 +2063,109 @@ export type GetAppsByAppIdDependenciesCheckError =
   GetAppsByAppIdDependenciesCheckErrors[keyof GetAppsByAppIdDependenciesCheckErrors]
 
 export type GetAppsByAppIdDependenciesCheckResponses = {
-  200: CheckDependenciesResult
+  200: CheckDependenciesResponse
 }
 
 export type GetAppsByAppIdDependenciesCheckResponse =
   GetAppsByAppIdDependenciesCheckResponses[keyof GetAppsByAppIdDependenciesCheckResponses]
+
+export type PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunData = {
+  body: AdvancedChatNodeRunPayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/draft/advanced-chat/nodes/{node_id}:run'
+}
+
+export type PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunError =
+  PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunErrors[keyof PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunErrors]
+
+export type PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunResponses = {
+  200: WorkflowRunNodeExecutionResponse
+}
+
+export type PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunResponse =
+  PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunResponses[keyof PostAppsByAppIdDraftAdvancedChatNodesByNodeIdRunResponses]
+
+export type PostAppsByAppIdDraftAdvancedChatRunData = {
+  body: ChatRunPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/draft/advanced-chat:run'
+}
+
+export type PostAppsByAppIdDraftAdvancedChatRunErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdDraftAdvancedChatRunError =
+  PostAppsByAppIdDraftAdvancedChatRunErrors[keyof PostAppsByAppIdDraftAdvancedChatRunErrors]
+
+export type PostAppsByAppIdDraftAdvancedChatRunResponses = {
+  200: EventStreamResponse
+}
+
+export type PostAppsByAppIdDraftAdvancedChatRunResponse =
+  PostAppsByAppIdDraftAdvancedChatRunResponses[keyof PostAppsByAppIdDraftAdvancedChatRunResponses]
+
+export type PostAppsByAppIdDraftWorkflowNodesByNodeIdRunData = {
+  body: NodeRunPayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/draft/workflow/nodes/{node_id}:run'
+}
+
+export type PostAppsByAppIdDraftWorkflowNodesByNodeIdRunErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdDraftWorkflowNodesByNodeIdRunError =
+  PostAppsByAppIdDraftWorkflowNodesByNodeIdRunErrors[keyof PostAppsByAppIdDraftWorkflowNodesByNodeIdRunErrors]
+
+export type PostAppsByAppIdDraftWorkflowNodesByNodeIdRunResponses = {
+  200: WorkflowRunNodeExecutionResponse
+}
+
+export type PostAppsByAppIdDraftWorkflowNodesByNodeIdRunResponse =
+  PostAppsByAppIdDraftWorkflowNodesByNodeIdRunResponses[keyof PostAppsByAppIdDraftWorkflowNodesByNodeIdRunResponses]
+
+export type PostAppsByAppIdDraftWorkflowRunData = {
+  body: DraftWorkflowRunPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/draft/workflow:run'
+}
+
+export type PostAppsByAppIdDraftWorkflowRunErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdDraftWorkflowRunError =
+  PostAppsByAppIdDraftWorkflowRunErrors[keyof PostAppsByAppIdDraftWorkflowRunErrors]
+
+export type PostAppsByAppIdDraftWorkflowRunResponses = {
+  200: EventStreamResponse
+}
+
+export type PostAppsByAppIdDraftWorkflowRunResponse =
+  PostAppsByAppIdDraftWorkflowRunResponses[keyof PostAppsByAppIdDraftWorkflowRunResponses]
 
 export type GetAppsByAppIdDslData = {
   body?: never
@@ -895,6 +2191,76 @@ export type GetAppsByAppIdDslResponses = {
 }
 
 export type GetAppsByAppIdDslResponse = GetAppsByAppIdDslResponses[keyof GetAppsByAppIdDslResponses]
+
+export type GetAppsByAppIdEnvData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/env'
+}
+
+export type GetAppsByAppIdEnvErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdEnvError = GetAppsByAppIdEnvErrors[keyof GetAppsByAppIdEnvErrors]
+
+export type GetAppsByAppIdEnvResponses = {
+  200: EnvVariableListResponse
+}
+
+export type GetAppsByAppIdEnvResponse = GetAppsByAppIdEnvResponses[keyof GetAppsByAppIdEnvResponses]
+
+export type DeleteAppsByAppIdEnvByEnvIdData = {
+  body?: never
+  path: {
+    app_id: string
+    env_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/env/{env_id}'
+}
+
+export type DeleteAppsByAppIdEnvByEnvIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAppsByAppIdEnvByEnvIdError =
+  DeleteAppsByAppIdEnvByEnvIdErrors[keyof DeleteAppsByAppIdEnvByEnvIdErrors]
+
+export type DeleteAppsByAppIdEnvByEnvIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteAppsByAppIdEnvByEnvIdResponse =
+  DeleteAppsByAppIdEnvByEnvIdResponses[keyof DeleteAppsByAppIdEnvByEnvIdResponses]
+
+export type PutAppsByAppIdEnvByEnvIdData = {
+  body: EnvVariableSetPayload
+  path: {
+    app_id: string
+    env_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/env/{env_id}'
+}
+
+export type PutAppsByAppIdEnvByEnvIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutAppsByAppIdEnvByEnvIdError =
+  PutAppsByAppIdEnvByEnvIdErrors[keyof PutAppsByAppIdEnvByEnvIdErrors]
+
+export type PutAppsByAppIdEnvByEnvIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type PutAppsByAppIdEnvByEnvIdResponse =
+  PutAppsByAppIdEnvByEnvIdResponses[keyof PutAppsByAppIdEnvByEnvIdResponses]
 
 export type PostAppsByAppIdFilesData = {
   body: FileUploadPayload
@@ -972,6 +2338,199 @@ export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses = {
 export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse =
   PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses[keyof PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses]
 
+export type GetAppsByAppIdReleaseCheckData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/release:check'
+}
+
+export type GetAppsByAppIdReleaseCheckErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdReleaseCheckError =
+  GetAppsByAppIdReleaseCheckErrors[keyof GetAppsByAppIdReleaseCheckErrors]
+
+export type GetAppsByAppIdReleaseCheckResponses = {
+  200: ReleaseCheckResponse
+}
+
+export type GetAppsByAppIdReleaseCheckResponse =
+  GetAppsByAppIdReleaseCheckResponses[keyof GetAppsByAppIdReleaseCheckResponses]
+
+export type GetAppsByAppIdRunsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    last_id?: string
+    limit?: number
+    status?: 'failed' | 'partial-succeeded' | 'running' | 'stopped' | 'succeeded'
+    triggered_from?: 'app-run' | 'debugging'
+  }
+  url: '/apps/{app_id}/runs'
+}
+
+export type GetAppsByAppIdRunsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdRunsError = GetAppsByAppIdRunsErrors[keyof GetAppsByAppIdRunsErrors]
+
+export type GetAppsByAppIdRunsResponses = {
+  200: RunListResponse
+}
+
+export type GetAppsByAppIdRunsResponse =
+  GetAppsByAppIdRunsResponses[keyof GetAppsByAppIdRunsResponses]
+
+export type GetAppsByAppIdRunsByRunIdData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/runs/{run_id}'
+}
+
+export type GetAppsByAppIdRunsByRunIdErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdRunsByRunIdError =
+  GetAppsByAppIdRunsByRunIdErrors[keyof GetAppsByAppIdRunsByRunIdErrors]
+
+export type GetAppsByAppIdRunsByRunIdResponses = {
+  200: WorkflowRunDetailResponse
+}
+
+export type GetAppsByAppIdRunsByRunIdResponse =
+  GetAppsByAppIdRunsByRunIdResponses[keyof GetAppsByAppIdRunsByRunIdResponses]
+
+export type GetAppsByAppIdRunsByRunIdNodesData = {
+  body?: never
+  path: {
+    app_id: string
+    run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/runs/{run_id}/nodes'
+}
+
+export type GetAppsByAppIdRunsByRunIdNodesErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdRunsByRunIdNodesError =
+  GetAppsByAppIdRunsByRunIdNodesErrors[keyof GetAppsByAppIdRunsByRunIdNodesErrors]
+
+export type GetAppsByAppIdRunsByRunIdNodesResponses = {
+  200: WorkflowRunNodeExecutionListResponse
+}
+
+export type GetAppsByAppIdRunsByRunIdNodesResponse =
+  GetAppsByAppIdRunsByRunIdNodesResponses[keyof GetAppsByAppIdRunsByRunIdNodesResponses]
+
+export type GetAppsByAppIdServiceApiData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/service-api'
+}
+
+export type GetAppsByAppIdServiceApiErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdServiceApiError =
+  GetAppsByAppIdServiceApiErrors[keyof GetAppsByAppIdServiceApiErrors]
+
+export type GetAppsByAppIdServiceApiResponses = {
+  200: ServiceApi
+}
+
+export type GetAppsByAppIdServiceApiResponse =
+  GetAppsByAppIdServiceApiResponses[keyof GetAppsByAppIdServiceApiResponses]
+
+export type PatchAppsByAppIdServiceApiData = {
+  body: ServiceApiPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/service-api'
+}
+
+export type PatchAppsByAppIdServiceApiErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdServiceApiError =
+  PatchAppsByAppIdServiceApiErrors[keyof PatchAppsByAppIdServiceApiErrors]
+
+export type PatchAppsByAppIdServiceApiResponses = {
+  200: ServiceApi
+}
+
+export type PatchAppsByAppIdServiceApiResponse =
+  PatchAppsByAppIdServiceApiResponses[keyof PatchAppsByAppIdServiceApiResponses]
+
+export type GetAppsByAppIdServiceApiAgentData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/service-api/agent'
+}
+
+export type GetAppsByAppIdServiceApiAgentErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdServiceApiAgentError =
+  GetAppsByAppIdServiceApiAgentErrors[keyof GetAppsByAppIdServiceApiAgentErrors]
+
+export type GetAppsByAppIdServiceApiAgentResponses = {
+  200: AgentServiceApi
+}
+
+export type GetAppsByAppIdServiceApiAgentResponse =
+  GetAppsByAppIdServiceApiAgentResponses[keyof GetAppsByAppIdServiceApiAgentResponses]
+
+export type PatchAppsByAppIdServiceApiAgentData = {
+  body: ServiceApiPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/service-api/agent'
+}
+
+export type PatchAppsByAppIdServiceApiAgentErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdServiceApiAgentError =
+  PatchAppsByAppIdServiceApiAgentErrors[keyof PatchAppsByAppIdServiceApiAgentErrors]
+
+export type PatchAppsByAppIdServiceApiAgentResponses = {
+  200: AgentServiceApi
+}
+
+export type PatchAppsByAppIdServiceApiAgentResponse =
+  PatchAppsByAppIdServiceApiAgentResponses[keyof PatchAppsByAppIdServiceApiAgentResponses]
+
 export type GetAppsByAppIdTasksByTaskIdEventsData = {
   body?: never
   path: {
@@ -1024,6 +2583,480 @@ export type PostAppsByAppIdTasksByTaskIdStopResponses = {
 export type PostAppsByAppIdTasksByTaskIdStopResponse =
   PostAppsByAppIdTasksByTaskIdStopResponses[keyof PostAppsByAppIdTasksByTaskIdStopResponses]
 
+export type GetAppsByAppIdVersionsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    limit?: number
+    named_only?: boolean
+    page?: number
+  }
+  url: '/apps/{app_id}/versions'
+}
+
+export type GetAppsByAppIdVersionsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdVersionsError =
+  GetAppsByAppIdVersionsErrors[keyof GetAppsByAppIdVersionsErrors]
+
+export type GetAppsByAppIdVersionsResponses = {
+  200: VersionListResponse
+}
+
+export type GetAppsByAppIdVersionsResponse =
+  GetAppsByAppIdVersionsResponses[keyof GetAppsByAppIdVersionsResponses]
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreData = {
+  body?: never
+  path: {
+    app_id: string
+    version_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/versions/{version_id}:restore'
+}
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreError =
+  PostAppsByAppIdVersionsByVersionIdRestoreErrors[keyof PostAppsByAppIdVersionsByVersionIdRestoreErrors]
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreResponses = {
+  200: RestoreResponse
+}
+
+export type PostAppsByAppIdVersionsByVersionIdRestoreResponse =
+  PostAppsByAppIdVersionsByVersionIdRestoreResponses[keyof PostAppsByAppIdVersionsByVersionIdRestoreResponses]
+
+export type GetAppsByAppIdWebappAccessData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp-access'
+}
+
+export type GetAppsByAppIdWebappAccessErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappAccessError =
+  GetAppsByAppIdWebappAccessErrors[keyof GetAppsByAppIdWebappAccessErrors]
+
+export type GetAppsByAppIdWebappAccessResponses = {
+  200: WebAppAccess
+}
+
+export type GetAppsByAppIdWebappAccessResponse =
+  GetAppsByAppIdWebappAccessResponses[keyof GetAppsByAppIdWebappAccessResponses]
+
+export type PutAppsByAppIdWebappAccessData = {
+  body: WebAppAccessPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp-access'
+}
+
+export type PutAppsByAppIdWebappAccessErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutAppsByAppIdWebappAccessError =
+  PutAppsByAppIdWebappAccessErrors[keyof PutAppsByAppIdWebappAccessErrors]
+
+export type PutAppsByAppIdWebappAccessResponses = {
+  200: WebAppAccess
+}
+
+export type PutAppsByAppIdWebappAccessResponse =
+  PutAppsByAppIdWebappAccessResponses[keyof PutAppsByAppIdWebappAccessResponses]
+
+export type GetAppsByAppIdWebappAccessAgentData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp-access/agent'
+}
+
+export type GetAppsByAppIdWebappAccessAgentErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappAccessAgentError =
+  GetAppsByAppIdWebappAccessAgentErrors[keyof GetAppsByAppIdWebappAccessAgentErrors]
+
+export type GetAppsByAppIdWebappAccessAgentResponses = {
+  200: WebAppAccess
+}
+
+export type GetAppsByAppIdWebappAccessAgentResponse =
+  GetAppsByAppIdWebappAccessAgentResponses[keyof GetAppsByAppIdWebappAccessAgentResponses]
+
+export type PutAppsByAppIdWebappAccessAgentData = {
+  body: WebAppAccessPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp-access/agent'
+}
+
+export type PutAppsByAppIdWebappAccessAgentErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PutAppsByAppIdWebappAccessAgentError =
+  PutAppsByAppIdWebappAccessAgentErrors[keyof PutAppsByAppIdWebappAccessAgentErrors]
+
+export type PutAppsByAppIdWebappAccessAgentResponses = {
+  200: WebAppAccess
+}
+
+export type PutAppsByAppIdWebappAccessAgentResponse =
+  PutAppsByAppIdWebappAccessAgentResponses[keyof PutAppsByAppIdWebappAccessAgentResponses]
+
+export type GetAppsByAppIdWebappAdvancedChatData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/advanced-chat'
+}
+
+export type GetAppsByAppIdWebappAdvancedChatErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappAdvancedChatError =
+  GetAppsByAppIdWebappAdvancedChatErrors[keyof GetAppsByAppIdWebappAdvancedChatErrors]
+
+export type GetAppsByAppIdWebappAdvancedChatResponses = {
+  200: AdvancedChatWebApp
+}
+
+export type GetAppsByAppIdWebappAdvancedChatResponse =
+  GetAppsByAppIdWebappAdvancedChatResponses[keyof GetAppsByAppIdWebappAdvancedChatResponses]
+
+export type PatchAppsByAppIdWebappAdvancedChatData = {
+  body: AdvancedChatWebAppPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/advanced-chat'
+}
+
+export type PatchAppsByAppIdWebappAdvancedChatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdWebappAdvancedChatError =
+  PatchAppsByAppIdWebappAdvancedChatErrors[keyof PatchAppsByAppIdWebappAdvancedChatErrors]
+
+export type PatchAppsByAppIdWebappAdvancedChatResponses = {
+  200: AdvancedChatWebApp
+}
+
+export type PatchAppsByAppIdWebappAdvancedChatResponse =
+  PatchAppsByAppIdWebappAdvancedChatResponses[keyof PatchAppsByAppIdWebappAdvancedChatResponses]
+
+export type GetAppsByAppIdWebappAgentData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/agent'
+}
+
+export type GetAppsByAppIdWebappAgentErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappAgentError =
+  GetAppsByAppIdWebappAgentErrors[keyof GetAppsByAppIdWebappAgentErrors]
+
+export type GetAppsByAppIdWebappAgentResponses = {
+  200: AgentWebApp
+}
+
+export type GetAppsByAppIdWebappAgentResponse =
+  GetAppsByAppIdWebappAgentResponses[keyof GetAppsByAppIdWebappAgentResponses]
+
+export type PatchAppsByAppIdWebappAgentData = {
+  body: ChatWebAppPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/agent'
+}
+
+export type PatchAppsByAppIdWebappAgentErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdWebappAgentError =
+  PatchAppsByAppIdWebappAgentErrors[keyof PatchAppsByAppIdWebappAgentErrors]
+
+export type PatchAppsByAppIdWebappAgentResponses = {
+  200: AgentWebApp
+}
+
+export type PatchAppsByAppIdWebappAgentResponse =
+  PatchAppsByAppIdWebappAgentResponses[keyof PatchAppsByAppIdWebappAgentResponses]
+
+export type GetAppsByAppIdWebappAgentChatData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/agent-chat'
+}
+
+export type GetAppsByAppIdWebappAgentChatErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappAgentChatError =
+  GetAppsByAppIdWebappAgentChatErrors[keyof GetAppsByAppIdWebappAgentChatErrors]
+
+export type GetAppsByAppIdWebappAgentChatResponses = {
+  200: ChatWebApp
+}
+
+export type GetAppsByAppIdWebappAgentChatResponse =
+  GetAppsByAppIdWebappAgentChatResponses[keyof GetAppsByAppIdWebappAgentChatResponses]
+
+export type PatchAppsByAppIdWebappAgentChatData = {
+  body: ChatWebAppPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/agent-chat'
+}
+
+export type PatchAppsByAppIdWebappAgentChatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdWebappAgentChatError =
+  PatchAppsByAppIdWebappAgentChatErrors[keyof PatchAppsByAppIdWebappAgentChatErrors]
+
+export type PatchAppsByAppIdWebappAgentChatResponses = {
+  200: ChatWebApp
+}
+
+export type PatchAppsByAppIdWebappAgentChatResponse =
+  PatchAppsByAppIdWebappAgentChatResponses[keyof PatchAppsByAppIdWebappAgentChatResponses]
+
+export type PostAppsByAppIdWebappAgentResetData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/agent:reset'
+}
+
+export type PostAppsByAppIdWebappAgentResetErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdWebappAgentResetError =
+  PostAppsByAppIdWebappAgentResetErrors[keyof PostAppsByAppIdWebappAgentResetErrors]
+
+export type PostAppsByAppIdWebappAgentResetResponses = {
+  200: WebAppToken
+}
+
+export type PostAppsByAppIdWebappAgentResetResponse =
+  PostAppsByAppIdWebappAgentResetResponses[keyof PostAppsByAppIdWebappAgentResetResponses]
+
+export type GetAppsByAppIdWebappChatData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/chat'
+}
+
+export type GetAppsByAppIdWebappChatErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappChatError =
+  GetAppsByAppIdWebappChatErrors[keyof GetAppsByAppIdWebappChatErrors]
+
+export type GetAppsByAppIdWebappChatResponses = {
+  200: ChatWebApp
+}
+
+export type GetAppsByAppIdWebappChatResponse =
+  GetAppsByAppIdWebappChatResponses[keyof GetAppsByAppIdWebappChatResponses]
+
+export type PatchAppsByAppIdWebappChatData = {
+  body: ChatWebAppPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/chat'
+}
+
+export type PatchAppsByAppIdWebappChatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdWebappChatError =
+  PatchAppsByAppIdWebappChatErrors[keyof PatchAppsByAppIdWebappChatErrors]
+
+export type PatchAppsByAppIdWebappChatResponses = {
+  200: ChatWebApp
+}
+
+export type PatchAppsByAppIdWebappChatResponse =
+  PatchAppsByAppIdWebappChatResponses[keyof PatchAppsByAppIdWebappChatResponses]
+
+export type GetAppsByAppIdWebappCompletionData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/completion'
+}
+
+export type GetAppsByAppIdWebappCompletionErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappCompletionError =
+  GetAppsByAppIdWebappCompletionErrors[keyof GetAppsByAppIdWebappCompletionErrors]
+
+export type GetAppsByAppIdWebappCompletionResponses = {
+  200: WebApp
+}
+
+export type GetAppsByAppIdWebappCompletionResponse =
+  GetAppsByAppIdWebappCompletionResponses[keyof GetAppsByAppIdWebappCompletionResponses]
+
+export type PatchAppsByAppIdWebappCompletionData = {
+  body: WebAppPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/completion'
+}
+
+export type PatchAppsByAppIdWebappCompletionErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdWebappCompletionError =
+  PatchAppsByAppIdWebappCompletionErrors[keyof PatchAppsByAppIdWebappCompletionErrors]
+
+export type PatchAppsByAppIdWebappCompletionResponses = {
+  200: WebApp
+}
+
+export type PatchAppsByAppIdWebappCompletionResponse =
+  PatchAppsByAppIdWebappCompletionResponses[keyof PatchAppsByAppIdWebappCompletionResponses]
+
+export type GetAppsByAppIdWebappWorkflowData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/workflow'
+}
+
+export type GetAppsByAppIdWebappWorkflowErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdWebappWorkflowError =
+  GetAppsByAppIdWebappWorkflowErrors[keyof GetAppsByAppIdWebappWorkflowErrors]
+
+export type GetAppsByAppIdWebappWorkflowResponses = {
+  200: WorkflowWebApp
+}
+
+export type GetAppsByAppIdWebappWorkflowResponse =
+  GetAppsByAppIdWebappWorkflowResponses[keyof GetAppsByAppIdWebappWorkflowResponses]
+
+export type PatchAppsByAppIdWebappWorkflowData = {
+  body: WorkflowWebAppPatch
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp/workflow'
+}
+
+export type PatchAppsByAppIdWebappWorkflowErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchAppsByAppIdWebappWorkflowError =
+  PatchAppsByAppIdWebappWorkflowErrors[keyof PatchAppsByAppIdWebappWorkflowErrors]
+
+export type PatchAppsByAppIdWebappWorkflowResponses = {
+  200: WorkflowWebApp
+}
+
+export type PatchAppsByAppIdWebappWorkflowResponse =
+  PatchAppsByAppIdWebappWorkflowResponses[keyof PatchAppsByAppIdWebappWorkflowResponses]
+
+export type PostAppsByAppIdWebappResetData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/webapp:reset'
+}
+
+export type PostAppsByAppIdWebappResetErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdWebappResetError =
+  PostAppsByAppIdWebappResetErrors[keyof PostAppsByAppIdWebappResetErrors]
+
+export type PostAppsByAppIdWebappResetResponses = {
+  200: WebAppToken
+}
+
+export type PostAppsByAppIdWebappResetResponse =
+  PostAppsByAppIdWebappResetResponses[keyof PostAppsByAppIdWebappResetResponses]
+
 export type PostAppsByAppIdWorkflowRunData = {
   body: WorkflowRunPayload
   path: {
@@ -1047,6 +3080,72 @@ export type PostAppsByAppIdWorkflowRunResponses = {
 
 export type PostAppsByAppIdWorkflowRunResponse =
   PostAppsByAppIdWorkflowRunResponses[keyof PostAppsByAppIdWorkflowRunResponses]
+
+export type PostAppsByAppIdPublishData = {
+  body: PublishPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}:publish'
+}
+
+export type PostAppsByAppIdPublishErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdPublishError =
+  PostAppsByAppIdPublishErrors[keyof PostAppsByAppIdPublishErrors]
+
+export type PostAppsByAppIdPublishResponses = {
+  200: PublishResponse
+}
+
+export type PostAppsByAppIdPublishResponse =
+  PostAppsByAppIdPublishResponses[keyof PostAppsByAppIdPublishResponses]
+
+export type GetNodeTypesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/node-types'
+}
+
+export type GetNodeTypesErrors = {
+  default: ErrorBody
+}
+
+export type GetNodeTypesError = GetNodeTypesErrors[keyof GetNodeTypesErrors]
+
+export type GetNodeTypesResponses = {
+  200: NodeTypeListResponse
+}
+
+export type GetNodeTypesResponse = GetNodeTypesResponses[keyof GetNodeTypesResponses]
+
+export type GetNodeTypesByNodeTypeData = {
+  body?: never
+  path: {
+    node_type: string
+  }
+  query?: never
+  url: '/node-types/{node_type}'
+}
+
+export type GetNodeTypesByNodeTypeErrors = {
+  default: ErrorBody
+}
+
+export type GetNodeTypesByNodeTypeError =
+  GetNodeTypesByNodeTypeErrors[keyof GetNodeTypesByNodeTypeErrors]
+
+export type GetNodeTypesByNodeTypeResponses = {
+  200: NodeTypeDetailResponse
+}
+
+export type GetNodeTypesByNodeTypeResponse =
+  GetNodeTypesByNodeTypeResponses[keyof GetNodeTypesByNodeTypeResponses]
 
 export type PostOauthDeviceApproveData = {
   body: DeviceMutateRequest
@@ -1258,6 +3357,30 @@ export type GetWorkspacesByWorkspaceIdResponses = {
 export type GetWorkspacesByWorkspaceIdResponse =
   GetWorkspacesByWorkspaceIdResponses[keyof GetWorkspacesByWorkspaceIdResponses]
 
+export type PostWorkspacesByWorkspaceIdAppsAdvancedChatData = {
+  body: CreateAppPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/advanced-chat'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsAdvancedChatErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsAdvancedChatError =
+  PostWorkspacesByWorkspaceIdAppsAdvancedChatErrors[keyof PostWorkspacesByWorkspaceIdAppsAdvancedChatErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsAdvancedChatResponses = {
+  201: CreatedAppResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAppsAdvancedChatResponse =
+  PostWorkspacesByWorkspaceIdAppsAdvancedChatResponses[keyof PostWorkspacesByWorkspaceIdAppsAdvancedChatResponses]
+
 export type PostWorkspacesByWorkspaceIdAppsImportsData = {
   body: AppDslImportPayload
   path: {
@@ -1308,6 +3431,111 @@ export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses = {
 
 export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse =
   PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckData = {
+  body: DslCheckPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/imports:check'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckError =
+  PostWorkspacesByWorkspaceIdAppsImportsCheckErrors[keyof PostWorkspacesByWorkspaceIdAppsImportsCheckErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckResponses = {
+  200: DslCheckResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAppsImportsCheckResponse =
+  PostWorkspacesByWorkspaceIdAppsImportsCheckResponses[keyof PostWorkspacesByWorkspaceIdAppsImportsCheckResponses]
+
+export type PostWorkspacesByWorkspaceIdAppsWorkflowData = {
+  body: CreateAppPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/apps/workflow'
+}
+
+export type PostWorkspacesByWorkspaceIdAppsWorkflowErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdAppsWorkflowError =
+  PostWorkspacesByWorkspaceIdAppsWorkflowErrors[keyof PostWorkspacesByWorkspaceIdAppsWorkflowErrors]
+
+export type PostWorkspacesByWorkspaceIdAppsWorkflowResponses = {
+  201: CreatedAppResponse
+}
+
+export type PostWorkspacesByWorkspaceIdAppsWorkflowResponse =
+  PostWorkspacesByWorkspaceIdAppsWorkflowResponses[keyof PostWorkspacesByWorkspaceIdAppsWorkflowResponses]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    page?: number
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/knowledge-bases'
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesError =
+  GetWorkspacesByWorkspaceIdKnowledgeBasesErrors[keyof GetWorkspacesByWorkspaceIdKnowledgeBasesErrors]
+
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesResponses = {
+  200: KnowledgeBaseListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdKnowledgeBasesResponse =
+  GetWorkspacesByWorkspaceIdKnowledgeBasesResponses[keyof GetWorkspacesByWorkspaceIdKnowledgeBasesResponses]
+
+export type GetWorkspacesByWorkspaceIdMarketplacePluginsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    category?: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+    limit?: number
+    page?: number
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/marketplace/plugins'
+}
+
+export type GetWorkspacesByWorkspaceIdMarketplacePluginsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdMarketplacePluginsError =
+  GetWorkspacesByWorkspaceIdMarketplacePluginsErrors[keyof GetWorkspacesByWorkspaceIdMarketplacePluginsErrors]
+
+export type GetWorkspacesByWorkspaceIdMarketplacePluginsResponses = {
+  200: MarketplacePluginListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMarketplacePluginsResponse =
+  GetWorkspacesByWorkspaceIdMarketplacePluginsResponses[keyof GetWorkspacesByWorkspaceIdMarketplacePluginsResponses]
 
 export type GetWorkspacesByWorkspaceIdMembersData = {
   body?: never
@@ -1409,25 +3637,366 @@ export type PatchWorkspacesByWorkspaceIdMembersByMemberIdResponses = {
 export type PatchWorkspacesByWorkspaceIdMembersByMemberIdResponse =
   PatchWorkspacesByWorkspaceIdMembersByMemberIdResponses[keyof PatchWorkspacesByWorkspaceIdMembersByMemberIdResponses]
 
-export type PostWorkspacesByWorkspaceIdSwitchData = {
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderData = {
+  body?: never
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/model-providers/{provider}'
+}
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderError =
+  GetWorkspacesByWorkspaceIdModelProvidersByProviderErrors[keyof GetWorkspacesByWorkspaceIdModelProvidersByProviderErrors]
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderResponses = {
+  200: ModelProviderDetailResponse
+}
+
+export type GetWorkspacesByWorkspaceIdModelProvidersByProviderResponse =
+  GetWorkspacesByWorkspaceIdModelProvidersByProviderResponses[keyof GetWorkspacesByWorkspaceIdModelProvidersByProviderResponses]
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsData = {
+  body: ProviderCredentialCreatePayload
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/credentials'
+}
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsError =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsErrors[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsErrors]
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses = {
+  201: CredentialWriteResponse
+}
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses]
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdData = {
+  body: ProviderCredentialUpdatePayload
+  path: {
+    credential_id: string
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}'
+}
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdError =
+  PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors]
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses =
+  {
+    200: CredentialWriteResponse
+  }
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
+  PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses]
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsData = {
+  body: ModelCredentialCreatePayload
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials'
+}
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsError =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsErrors[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsErrors]
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses = {
+  201: CredentialWriteResponse
+}
+
+export type PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse =
+  PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponses]
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdData =
+  {
+    body: ModelCredentialUpdatePayload
+    path: {
+      credential_id: string
+      provider: string
+      workspace_id: string
+    }
+    query?: never
+    url: '/workspaces/{workspace_id}/model-providers/{provider}/models/credentials/{credential_id}'
+  }
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors =
+  {
+    422: ErrorBody
+    default: ErrorBody
+  }
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdError =
+  PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdErrors]
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses =
+  {
+    200: CredentialWriteResponse
+  }
+
+export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponse =
+  PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsByCredentialIdResponses]
+
+export type GetWorkspacesByWorkspaceIdModelsData = {
   body?: never
   path: {
     workspace_id: string
   }
-  query?: never
-  url: '/workspaces/{workspace_id}:switch'
+  query?: {
+    limit?: number
+    model_type?: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+    page?: number
+    provider?: string
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/models'
 }
 
-export type PostWorkspacesByWorkspaceIdSwitchErrors = {
+export type GetWorkspacesByWorkspaceIdModelsErrors = {
+  422: ErrorBody
   default: ErrorBody
 }
 
-export type PostWorkspacesByWorkspaceIdSwitchError =
-  PostWorkspacesByWorkspaceIdSwitchErrors[keyof PostWorkspacesByWorkspaceIdSwitchErrors]
+export type GetWorkspacesByWorkspaceIdModelsError =
+  GetWorkspacesByWorkspaceIdModelsErrors[keyof GetWorkspacesByWorkspaceIdModelsErrors]
 
-export type PostWorkspacesByWorkspaceIdSwitchResponses = {
-  200: WorkspaceDetailResponse
+export type GetWorkspacesByWorkspaceIdModelsResponses = {
+  200: ModelListResponse
 }
 
-export type PostWorkspacesByWorkspaceIdSwitchResponse =
-  PostWorkspacesByWorkspaceIdSwitchResponses[keyof PostWorkspacesByWorkspaceIdSwitchResponses]
+export type GetWorkspacesByWorkspaceIdModelsResponse =
+  GetWorkspacesByWorkspaceIdModelsResponses[keyof GetWorkspacesByWorkspaceIdModelsResponses]
+
+export type GetWorkspacesByWorkspaceIdPluginTasksByTaskIdData = {
+  body?: never
+  path: {
+    task_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/plugin-tasks/{task_id}'
+}
+
+export type GetWorkspacesByWorkspaceIdPluginTasksByTaskIdErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdPluginTasksByTaskIdError =
+  GetWorkspacesByWorkspaceIdPluginTasksByTaskIdErrors[keyof GetWorkspacesByWorkspaceIdPluginTasksByTaskIdErrors]
+
+export type GetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponses = {
+  200: PluginTaskResponse
+}
+
+export type GetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponse =
+  GetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponses[keyof GetWorkspacesByWorkspaceIdPluginTasksByTaskIdResponses]
+
+export type GetWorkspacesByWorkspaceIdPluginsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    category?: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/{workspace_id}/plugins'
+}
+
+export type GetWorkspacesByWorkspaceIdPluginsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdPluginsError =
+  GetWorkspacesByWorkspaceIdPluginsErrors[keyof GetWorkspacesByWorkspaceIdPluginsErrors]
+
+export type GetWorkspacesByWorkspaceIdPluginsResponses = {
+  200: PluginListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdPluginsResponse =
+  GetWorkspacesByWorkspaceIdPluginsResponses[keyof GetWorkspacesByWorkspaceIdPluginsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdPluginsByPluginIdData = {
+  body?: never
+  path: {
+    plugin_id: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/plugins/{plugin_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdPluginsByPluginIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdPluginsByPluginIdError =
+  DeleteWorkspacesByWorkspaceIdPluginsByPluginIdErrors[keyof DeleteWorkspacesByWorkspaceIdPluginsByPluginIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponses = {
+  200: PluginDeleteResponse
+}
+
+export type DeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponse =
+  DeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponses[keyof DeleteWorkspacesByWorkspaceIdPluginsByPluginIdResponses]
+
+export type PostWorkspacesByWorkspaceIdPluginsInstallData = {
+  body: PluginInstallPayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/plugins:install'
+}
+
+export type PostWorkspacesByWorkspaceIdPluginsInstallErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdPluginsInstallError =
+  PostWorkspacesByWorkspaceIdPluginsInstallErrors[keyof PostWorkspacesByWorkspaceIdPluginsInstallErrors]
+
+export type PostWorkspacesByWorkspaceIdPluginsInstallResponses = {
+  200: PluginTaskStartResponse
+}
+
+export type PostWorkspacesByWorkspaceIdPluginsInstallResponse =
+  PostWorkspacesByWorkspaceIdPluginsInstallResponses[keyof PostWorkspacesByWorkspaceIdPluginsInstallResponses]
+
+export type GetWorkspacesByWorkspaceIdToolProvidersByProviderData = {
+  body?: never
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/tool-providers/{provider}'
+}
+
+export type GetWorkspacesByWorkspaceIdToolProvidersByProviderErrors = {
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdToolProvidersByProviderError =
+  GetWorkspacesByWorkspaceIdToolProvidersByProviderErrors[keyof GetWorkspacesByWorkspaceIdToolProvidersByProviderErrors]
+
+export type GetWorkspacesByWorkspaceIdToolProvidersByProviderResponses = {
+  200: ToolProviderDetailResponse
+}
+
+export type GetWorkspacesByWorkspaceIdToolProvidersByProviderResponse =
+  GetWorkspacesByWorkspaceIdToolProvidersByProviderResponses[keyof GetWorkspacesByWorkspaceIdToolProvidersByProviderResponses]
+
+export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsData = {
+  body: ToolCredentialCreatePayload
+  path: {
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials'
+}
+
+export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsError =
+  PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsErrors[keyof PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsErrors]
+
+export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses = {
+  201: CredentialWriteResponse
+}
+
+export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse =
+  PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses]
+
+export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdData = {
+  body: ToolCredentialUpdatePayload
+  path: {
+    credential_id: string
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}'
+}
+
+export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdError =
+  PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors[keyof PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors]
+
+export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses =
+  {
+    200: CredentialWriteResponse
+  }
+
+export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
+  PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses[keyof PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses]
+
+export type GetWorkspacesByWorkspaceIdToolsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: {
+    limit?: number
+    page?: number
+    provider?: string
+    provider_type?: 'api' | 'builtin' | 'mcp' | 'workflow'
+    query?: string
+  }
+  url: '/workspaces/{workspace_id}/tools'
+}
+
+export type GetWorkspacesByWorkspaceIdToolsErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetWorkspacesByWorkspaceIdToolsError =
+  GetWorkspacesByWorkspaceIdToolsErrors[keyof GetWorkspacesByWorkspaceIdToolsErrors]
+
+export type GetWorkspacesByWorkspaceIdToolsResponses = {
+  200: ToolListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdToolsResponse =
+  GetWorkspacesByWorkspaceIdToolsResponses[keyof GetWorkspacesByWorkspaceIdToolsResponses]
