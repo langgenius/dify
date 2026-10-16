@@ -16,12 +16,13 @@ from extensions.logstore.repositories.logstore_workflow_execution_repository imp
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
-from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from libs.datetime_utils import naive_utc_now
 from models import Account, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.workflow_run_control import apply_workflow_stop_to_node
 from tasks.workflow_execution_tasks import _update_workflow_run_from_execution
@@ -63,7 +64,7 @@ def test_task_owner_is_durable_before_start_and_delayed_writes_cannot_revive_sto
     )
     if isinstance(repository, LogstoreWorkflowExecutionRepository):
         repository._enable_dual_write = False
-    execution = WorkflowExecution.new(
+    execution = WorkflowExecution(
         id_="run-1",
         workflow_id="workflow-1",
         workflow_type=WorkflowType.WORKFLOW,
@@ -128,7 +129,7 @@ def test_logstore_pause_lifecycle_uses_sql_control_with_dual_write_disabled(
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
     )
     sql.save_synchronously(
-        WorkflowExecution.new(
+        WorkflowExecution(
             id_="run-1",
             workflow_id="workflow-1",
             workflow_type=WorkflowType.WORKFLOW,
@@ -168,7 +169,8 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
 ) -> None:
     user = Account(name="Test", email="test@example.com")
     user.id = "account-1"
-    run = WorkflowExecution.new(
+    run = WorkflowExecution(
+        accumulated_elapsed_time=3.5,
         id_="run-1",
         workflow_id="workflow-1",
         workflow_type=WorkflowType.WORKFLOW,
@@ -259,7 +261,9 @@ def test_logstore_stop_orders_before_delayed_upload_and_overrides_stale_indexes(
         run_writer.save(run)
         expected_status = "stopped"
         assert max(records, key=lambda row: int(row["log_version"]))["status"] == expected_status
+        run.accumulated_elapsed_time = 999.0
         run_writer.save(run)  # Another late RUNNING/PAUSED write also remains terminal.
+        assert float(records[-1]["elapsed_time"]) == 3.5
     else:
         node_writer.save(node)
         expected_status = "failed"

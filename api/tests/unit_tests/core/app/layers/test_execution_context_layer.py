@@ -79,9 +79,9 @@ def test_host_context_preserves_each_engine_file_runtime(monkeypatch: pytest.Mon
     def run_engine(item: tuple[Engine, list[str]]) -> None:
         engine, checked_nodes = item
         with use_workflow_file_runtime(caller_runtime):
-            for event in engine.run():
+            for _event in engine.run():
                 assert peek_workflow_file_runtime() is caller_runtime
-            assert isinstance(event, GraphRunSucceededEvent)
+            assert isinstance(_event, GraphRunSucceededEvent)
             assert set(checked_nodes) == {"start", "end"}
             assert peek_workflow_file_runtime() is caller_runtime
 

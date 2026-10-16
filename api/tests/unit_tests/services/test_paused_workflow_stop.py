@@ -138,6 +138,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
             persisted = session.get(WorkflowRun, workflow_run_id)
             assert persisted is not None
             assert persisted.status == WorkflowExecutionStatus.STOPPED
+            assert persisted.elapsed_time == 1
             node = session.get(WorkflowNodeExecutionModel, "node-app-1")
             assert node is not None
             assert node.status == WorkflowNodeExecutionStatus.FAILED
@@ -180,7 +181,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
     event = json.loads(publications[0])
     assert event["event"] == "workflow_finished"
     assert event["data"]["status"] == "stopped"
-    assert event["data"]["elapsed_time"] == 60
+    assert event["data"]["elapsed_time"] == 1
     assert event["workflow_run_id"] == "run-1"
     assert event["task_id"] == run.task_id
     assert redis.reads == []
@@ -190,6 +191,7 @@ def test_paused_stop_publishes_terminal_event_after_commit_and_retires_run_resou
         assert len(logstore_records[AliyunLogStore.workflow_execution_logstore]) == 1
         history = logstore_records[AliyunLogStore.workflow_execution_logstore][0]
         assert history["status"] == "stopped"
+        assert float(history["elapsed_time"]) == 1
         assert (history["tenant_id"], history["app_id"], history["id"]) == ("tenant-1", "app-1", "run-1")
         node_history = logstore_records[AliyunLogStore.workflow_node_execution_logstore]
         assert all(float(record["elapsed_time"]) == 60 for record in node_history)
