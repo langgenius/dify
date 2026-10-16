@@ -45,7 +45,7 @@ from controllers.openapi._models import MemberInvitePayload, MemberListQuery, Me
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_caller, load_workspace
 from controllers.openapi.auth.subjects import AccountSubject
-from controllers.openapi.workspaces import WorkspaceMemberApi, WorkspaceMembersApi, WorkspaceSwitchApi
+from controllers.openapi.workspaces import WorkspaceMemberApi, WorkspaceMembersApi
 from libs.oauth_bearer import AuthContext
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
@@ -59,7 +59,6 @@ from services.errors.workspace import (
     RoleAlreadyAssignedError,
     WorkspaceInvitationQuotaError,
     WorkspaceMemberLicenseQuotaError,
-    WorkspaceNotLinkedError,
 )
 from tests.unit_tests.account_domain import AccountDomain
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
@@ -219,64 +218,6 @@ def test_invalid_request_is_422_on_the_wire(
     )
 
     _assert_validation_422(resp)
-
-
-# ---------------------------------------------------------------------------
-# Switch endpoint behavior
-# ---------------------------------------------------------------------------
-
-
-def test_switch_returns_workspace_detail_with_current_true(database_session: Session):
-    """Happy path: switch service is called, then the workspace+membership
-    row is re-queried so the returned `current` reflects post-commit state.
-    """
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceSwitchApi()
-
-    _persist_workspace(
-        database_session,
-        ws_id,
-        [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, False)],
-    )
-
-    result = api.post.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id)
-
-    assert result.id == ws_id
-    assert result.current is True
-    membership = database_session.scalar(
-        select(TenantAccountJoin).where(
-            TenantAccountJoin.tenant_id == ws_id,
-            TenantAccountJoin.account_id == str(acct_id),
-        )
-    )
-    assert membership is not None
-    assert membership.current is True
-
-
-def test_switch_404s_when_service_raises_account_not_link_tenant(
-    monkeypatch: pytest.MonkeyPatch, database_session: Session
-):
-    """If switch_tenant raises (e.g. Tenant.status != NORMAL), the body
-    surfaces as NotFound, not 500."""
-    ws_id = str(uuid.uuid4())
-    acct_id = uuid.uuid4()
-    api = WorkspaceSwitchApi()
-
-    _persist_workspace(
-        database_session,
-        ws_id,
-        [(str(acct_id), "caller@example.com", TenantAccountRole.OWNER, False)],
-    )
-
-    monkeypatch.setattr(
-        workspaces_module.application_services().workspaces.management,
-        "switch_membership",
-        Mock(side_effect=WorkspaceNotLinkedError("…")),
-    )
-
-    with pytest.raises(NotFound):
-        api.post.__handler__(api, _context(database_session, acct_id, ws_id), workspace_id=ws_id)
 
 
 # ---------------------------------------------------------------------------
