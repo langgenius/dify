@@ -18,7 +18,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -71,7 +71,7 @@ function AgentSkillPackageUploader({
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const { data: fileUploadConfig } = useQuery(consoleQuery.files.upload.get.queryOptions())
-  const { skillSizeLimit } = useFileSizeLimit(fileUploadConfig)
+  const { skillSizeLimit } = getFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)

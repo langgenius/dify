@@ -2,7 +2,7 @@ import type { UploadFileSetting } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import FileTypeItem from '../file-type-item'
@@ -20,10 +20,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 const mockUseFileUploadConfig = mockFileUploadConfigHook
-const mockUseFileSizeLimit = vi.mocked(useFileSizeLimit)
+const mockGetFileSizeLimit = vi.mocked(getFileSizeLimit)
 
 vi.mock('@/app/components/base/file-uploader/hooks', () => ({
-  useFileSizeLimit: vi.fn(),
+  getFileSizeLimit: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -49,13 +49,13 @@ describe('File upload support components', () => {
     mockUseFileUploadConfig.mockReturnValue({ data: {} } as ReturnType<
       typeof mockFileUploadConfigHook
     >)
-    mockUseFileSizeLimit.mockReturnValue({
+    mockGetFileSizeLimit.mockReturnValue({
       imgSizeLimit: 10 * 1024 * 1024,
       docSizeLimit: 20 * 1024 * 1024,
       audioSizeLimit: 30 * 1024 * 1024,
       videoSizeLimit: 40 * 1024 * 1024,
       maxFileUploadLimit: 10,
-    } as ReturnType<typeof useFileSizeLimit>)
+    } as ReturnType<typeof getFileSizeLimit>)
   })
 
   describe('FileTypeItem', () => {

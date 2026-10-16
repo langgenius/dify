@@ -27,8 +27,8 @@ vi.mock('../hooks/use-auth', () => ({
 }))
 
 let mockCanAddedModels: { model: string; model_type: string }[] = []
-vi.mock('../hooks/use-custom-models', () => ({
-  useCanAddedModels: () => mockCanAddedModels,
+vi.mock('../hooks/get-custom-models', () => ({
+  getCanAddedModels: () => mockCanAddedModels,
 }))
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
