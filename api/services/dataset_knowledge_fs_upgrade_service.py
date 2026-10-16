@@ -41,6 +41,10 @@ from models.oauth import DatasourceProvider
 from models.provider_ids import ModelProviderID
 from services.dataset_knowledge_fs_upgrade_file_lease import release_upgrade_file_lease
 from services.feature_service import FeatureService
+from services.knowledge_fs.initial_source_import import (
+    KnowledgeFSInitialSourceNotReadyError,
+    submit_initial_source_for_upgrade,
+)
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingPayload,
     KnowledgeFSDocumentAvailabilityPayload,
@@ -583,8 +587,6 @@ class KnowledgeFSUpgradeRunner:
             source_id = source.id
             source_payload = dict(source.payload_snapshot)
         payload = self._resolve_initial_source_payload(job, source_payload)
-        from tasks.knowledge_fs_initial_source_tasks import submit_initial_source_for_upgrade
-
         try:
             result = submit_initial_source_for_upgrade(
                 tenant_id=job.tenant_id,
@@ -596,8 +598,6 @@ class KnowledgeFSUpgradeRunner:
         except KnowledgeFSUpgradeNotReadyError:
             raise
         except Exception as error:
-            from tasks.knowledge_fs_initial_source_tasks import KnowledgeFSInitialSourceNotReadyError
-
             if isinstance(error, KnowledgeFSInitialSourceNotReadyError):
                 with self._session_maker.begin() as session:
                     persisted_source = session.get(KnowledgeFSUpgradeSource, source_id)

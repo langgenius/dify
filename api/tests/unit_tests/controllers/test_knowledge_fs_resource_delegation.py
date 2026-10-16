@@ -44,6 +44,7 @@ from controllers.service_api.knowledge_fs.error import (
 from libs.exception import BaseHTTPException
 from models import Account
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
+from services.knowledge_fs import source_edit_service
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAtomicSourceUpdatePayload,
@@ -943,7 +944,7 @@ def test_console_source_update_commits_complete_edit_selection(
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
-    monkeypatch.setattr(console_resources, "commit_source_import", commit)
+    monkeypatch.setattr(source_edit_service, "commit_source_import", commit)
     monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
     app = Flask(__name__)
 
@@ -992,7 +993,7 @@ def test_console_source_update_does_not_import_an_unchanged_complete_selection(
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
-    monkeypatch.setattr(console_resources, "commit_source_import", commit)
+    monkeypatch.setattr(source_edit_service, "commit_source_import", commit)
     monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
     app = Flask(__name__)
 
@@ -1035,7 +1036,7 @@ def test_source_edit_reimports_when_selection_adds_a_canonical_duplicate() -> No
         }
     )
 
-    assert console_resources._source_edit_requires_import(source, payload) is True
+    assert source_edit_service.source_edit_requires_import(source, payload) is True
 
 
 def test_source_edit_ignores_order_when_canonical_url_multiplicity_is_unchanged() -> None:
@@ -1063,7 +1064,7 @@ def test_source_edit_ignores_order_when_canonical_url_multiplicity_is_unchanged(
         }
     )
 
-    assert console_resources._source_edit_requires_import(source, payload) is False
+    assert source_edit_service.source_edit_requires_import(source, payload) is False
 
 
 def test_source_edit_uses_latest_effective_website_selection_instead_of_stale_crawl_metadata() -> None:
@@ -1099,8 +1100,8 @@ def test_source_edit_uses_latest_effective_website_selection_instead_of_stale_cr
         }
     )
 
-    assert console_resources._source_edit_requires_import(source, unchanged) is False
-    assert console_resources._source_edit_requires_import(source, changed) is True
+    assert source_edit_service.source_edit_requires_import(source, unchanged) is False
+    assert source_edit_service.source_edit_requires_import(source, changed) is True
 
 
 def test_source_edit_reimports_an_unchanged_selection_when_source_is_in_error() -> None:
@@ -1132,7 +1133,7 @@ def test_source_edit_reimports_an_unchanged_selection_when_source_is_in_error() 
         }
     )
 
-    assert console_resources._source_edit_requires_import(source, payload) is True
+    assert source_edit_service.source_edit_requires_import(source, payload) is True
 
 
 def test_console_source_update_applies_policy_without_creating_import_work(
@@ -1155,7 +1156,7 @@ def test_console_source_update_applies_policy_without_creating_import_work(
     monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
     monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
     monkeypatch.setattr(console_resources, "_payload", lambda _: payload)
-    monkeypatch.setattr(console_resources, "commit_source_import", commit)
+    monkeypatch.setattr(source_edit_service, "commit_source_import", commit)
     monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
     app = Flask(__name__)
 
