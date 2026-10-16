@@ -261,7 +261,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           />
         }
         backdropProps={{ forceRender: true }}
-        className="flex max-h-[calc(100dvh-2rem)] max-w-120 flex-col overflow-hidden"
+        className="flex max-w-120 flex-col overflow-hidden"
       >
         <DialogClose
           render={

@@ -359,7 +359,7 @@ const ConfigPopup: FC<PopupProps> = ({
           </div>
           <DialogContent
             initialFocus={firstInputRef}
-            className="max-h-[calc(100dvh-2rem)] w-160"
+            className="w-160"
           >
             {provider && (
               <ProviderConfigModal

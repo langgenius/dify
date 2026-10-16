@@ -369,7 +369,7 @@ export function EmbeddedDialogContent({
   const { t } = useTranslation(['appOverview', 'common'])
 
   return (
-    <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden p-6">
+    <DialogContent className="flex w-160 flex-col overflow-hidden p-6">
       <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
         {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
       </DialogTitle>
