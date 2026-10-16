@@ -44,7 +44,7 @@ vi.mock('../chart-view', () => ({
   ),
 }))
 
-vi.mock('@/features/tracing/configuration', () => ({
+vi.mock('@/app/components/app/tracing/configuration', () => ({
   TracingConfiguration: () => <button type="button">tracing</button>,
 }))
 
