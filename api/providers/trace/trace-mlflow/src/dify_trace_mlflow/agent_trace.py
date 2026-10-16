@@ -209,5 +209,6 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
             raise TraceExportUncertainError(
                 "Databricks accepted trace metadata but artifact delivery is incomplete"
             ) from None
-        url = f"{host}/ml/experiments/{experiment}/traces?selectedTraceId={quote(trace_id, safe='')}"
+        # Databricks opens its trace detail panel with a different key from OSS MLflow.
+        url = f"{host}/ml/experiments/{experiment}/traces?selectedEvaluationId={quote(trace_id, safe='')}"
     return TraceExportResult(trace_id=trace_id, trace_url=url)

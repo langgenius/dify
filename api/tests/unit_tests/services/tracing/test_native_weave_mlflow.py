@@ -164,6 +164,7 @@ def test_mlflow_sdk_span_roundtrip_and_credential_isolation(
             trace,
         )
         assert result.trace_id == "tr-" + trace.trace_id
+        assert result.trace_url == f"https://mlflow.example/#/experiments/42/traces?selectedTraceId=tr-{trace.trace_id}"
     for index, (url, options) in enumerate(calls):
         assert url == "https://mlflow.example/v1/traces"
         assert options["headers"]["x-mlflow-experiment-id"] == "42"
@@ -207,6 +208,7 @@ def test_databricks_sdk_v3_metadata_and_native_artifact(
     calls: list[tuple[str, str, TransportOptions]] = []
     uploaded: list[TraceData] = []
     before = dict(os.environ)
+    server_trace_id = "tr-abcdef0123456789abcdef0123456789"
 
     def send(_method: str, url: str, **kwargs: Unpack[TransportOptions]) -> httpx.Response:
         calls.append((_method, url, kwargs))
@@ -217,8 +219,10 @@ def test_databricks_sdk_v3_metadata_and_native_artifact(
             assert kwargs["headers"]["Authorization"] == ("Bearer oauth-token" if oauth else "Bearer pat-token")
             body = json.loads(kwargs["content"])
             assert body["trace"]["trace_info"]["trace_metadata"]["mlflow.trace.session"] == "session-1"
+            body["trace"]["trace_info"]["trace_id"] = server_trace_id
             return _response(url, body=body)
         if url.endswith("/credentials-for-data-upload"):
+            assert f"/traces/{server_trace_id}/" in url
             return _response(
                 url,
                 body={
@@ -240,9 +244,13 @@ def test_databricks_sdk_v3_metadata_and_native_artifact(
         {"client_id": "client", "client_secret": "client-secret"} if oauth else {"personal_access_token": "pat-token"}
     )
     result = export_trace("databricks", config, trace)
-    assert result.trace_id == "tr-" + trace.trace_id
+    assert result.trace_id == server_trace_id
+    assert result.trace_url == (
+        f"https://databricks.example/ml/experiments/42/traces?selectedEvaluationId={server_trace_id}"
+    )
     data = uploaded[0]
     assert len(data.spans) == 2
+    assert all(span.trace_id == server_trace_id for span in data.spans)
     assert data.spans[1].parent_id == data.spans[0].span_id
     usage = data.spans[1].get_attribute(SpanAttributeKey.CHAT_USAGE)
     assert usage is not None
