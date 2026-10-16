@@ -83,10 +83,6 @@ export type RAGPipelineVariable = {
 export type InputVar = Omit<RAGPipelineVariable, 'belong_to_node_id'>
 export type RAGPipelineVariables = RAGPipelineVariable[]
 
-export type PipelineProcessingParamsResponse = {
-  variables: RAGPipelineVariables
-}
-
 export type PublishedPipelineRunResponse = PipelineGenerateResponse
 
 export type InitialDocumentDetail = PipelineDocument

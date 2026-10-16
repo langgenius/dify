@@ -1,11 +1,8 @@
 import type { ZodSchema } from 'zod'
+import type { useInputVariables } from '../hooks'
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import type {
-  PipelineProcessingParamsResponse,
-  RAGPipelineVariable,
-  RAGPipelineVariables,
-} from '@/models/pipeline'
+import type { RAGPipelineVariable, RAGPipelineVariables } from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -35,7 +32,9 @@ vi.mock('@/app/components/workflow/store', () => ({
   },
 }))
 
-let mockParamsConfig: PipelineProcessingParamsResponse | undefined
+type ProcessingParams = ReturnType<typeof useInputVariables>['paramsConfig']
+
+let mockParamsConfig: ProcessingParams | undefined
 let mockIsFetchingParams = false
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -170,7 +169,7 @@ const createMockSchema = (): ZodSchema =>
 
 const setupMocks = (options?: {
   pipelineId?: string | null
-  paramsConfig?: PipelineProcessingParamsResponse
+  paramsConfig?: ProcessingParams
   isFetchingParams?: boolean
   initialData?: Record<string, unknown>
   configurations?: BaseConfiguration[]
