@@ -12,13 +12,13 @@ from models.enums import AppStatus
 from models.model import App, TraceAppConfig
 from repositories.app.console_visibility import console_visible_condition
 from services.app_tracing_config_service import (
+    AppTraceSettings,
     AppTracingConfigAppNotFoundError,
     AppTracingConfigConflictError,
     AppTracingConfigNotFoundError,
     AppTracingConfigRecord,
     AppTracingConfigStore,
 )
-from services.entities.app_entities import AppTraceSettings
 
 _trace_settings = TypeAdapter(AppTraceSettings)
 

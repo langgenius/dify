@@ -12,8 +12,7 @@ from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfi
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
-from services.app_tracing_config_service import AppTracingConfigService
-from services.entities.app_entities import AppTraceSettings
+from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigService
 
 type TraceConfigArguments = tuple[()] | tuple[AppTraceSettings] | tuple[str] | tuple[str, dict[str, str]]
 type RecordedCall = tuple[str, tuple[object, ...]]

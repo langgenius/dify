@@ -72,6 +72,7 @@ from services.app.console_service import (
     InvalidAppExportError,
 )
 from services.app_tracing_config_service import (
+    AppTraceSettings,
     AppTracingConfigAppNotFoundError,
     AppTracingConfigConflictError,
     AppTracingConfigInvalidConfigurationError,
@@ -85,7 +86,6 @@ from services.entities.app_entities import (
     AppListParams,
     AppListSortBy,
     AppRecord,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     StarredAppListParams,

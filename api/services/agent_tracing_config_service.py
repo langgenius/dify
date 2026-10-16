@@ -7,8 +7,7 @@ their caller's tracing policy and must not create a hidden configuration owner.
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
-from services.app_tracing_config_service import AppTracingConfigRecord, AppTracingConfigService
-from services.entities.app_entities import AppTraceSettings
+from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigRecord, AppTracingConfigService
 
 
 class AgentTracingOwner(Protocol):
