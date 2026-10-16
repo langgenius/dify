@@ -80,6 +80,14 @@ class LocalRateLimit:
 
 @pytest.fixture
 def native_draft(draft_tools, sqlite_session, monkeypatch, config_overrides):
+    import core.tools.tool_manager as runtime_module
+    import services.tools.ordinary_tool_credentials as credential_owner
+
+    # Ordinary credential SQL/crypto moved out of ToolManager. Bind the new
+    # owner to the same real SQLite database and existing fail-closed sentinel.
+    # Its legacy label is retained so every no-secret assertion stays unchanged.
+    monkeypatch.setattr(credential_owner, "db", runtime_module.db)
+    monkeypatch.setattr(credential_owner, "create_provider_encrypter", runtime_module.create_provider_encrypter)
     config_overrides(DEPLOYMENT_EDITION="COMMUNITY")
     monkeypatch.setattr(generate_module, "RateLimit", LocalRateLimit)
     monkeypatch.setattr(workflow_module.SystemFeatureService, "is_plugin_manager_enabled", lambda: False)
@@ -837,6 +845,7 @@ def native_draft_oauth(
     import contexts
     import core.tools.tool_manager as runtime_module
     import services.tools.builtin_tools_manage_service as client_module
+    import services.tools.ordinary_tool_credentials as credential_owner
     from core.helper import provider_cache
     from core.plugin.entities.plugin_daemon import CredentialType as ToolCredentialType
     from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
@@ -899,6 +908,7 @@ def native_draft_oauth(
         credential_id = credential.id
         native_database = SimpleNamespace(engine=native_draft.tools.engine, session=sqlite_session)
         monkeypatch.setattr(runtime_module, "db", native_database)
+        monkeypatch.setattr(credential_owner, "db", native_database)
         monkeypatch.setattr(client_module, "db", native_database)
         monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
         monkeypatch.setattr(OAuthHandler, "refresh_credentials", _NATIVE_OAUTH_REFRESH)
@@ -963,6 +973,7 @@ def native_draft_oauth(
                 return 1
 
         monkeypatch.setattr(runtime_module, "create_provider_encrypter", crypto_factory)
+        monkeypatch.setattr(credential_owner, "create_provider_encrypter", crypto_factory)
         monkeypatch.setattr(client_module, "create_provider_encrypter", crypto_factory)
         monkeypatch.setattr(OAuthHandler, "_request_with_plugin_daemon_response_stream", refresh_stream)
         monkeypatch.setattr(provider_cache, "redis_client", RedisBoundary())
