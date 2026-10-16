@@ -58,7 +58,7 @@
   "blocksAbout.question-classifier": "定義使用者問題的分類條件，LLM 能夠根據分類描述定義對話的進展方式",
   "blocksAbout.start": "定義一個 workflow 流程啟動的參數",
   "blocksAbout.start-placeholder": "選擇此工作流程的啟動方式",
-  "blocksAbout.template-transform": "使用 Jinja 範本語法將資料轉換為字元串",
+  "blocksAbout.template-transform": "使用 Jinja 範本語法將資料轉換為字串",
   "blocksAbout.tool": "使用外部工具來擴展工作流程功能",
   "blocksAbout.trigger-plugin": "第三方整合觸發器，從外部平台事件啟動工作流程",
   "blocksAbout.trigger-schedule": "基於時間的工作流程觸發器，可按計劃啟動工作流程",

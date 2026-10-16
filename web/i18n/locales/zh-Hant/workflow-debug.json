@@ -9,7 +9,7 @@
   "debug.variableInspect.clearNode": "清除快取變數",
   "debug.variableInspect.edited": "編輯的",
   "debug.variableInspect.emptyLink": "了解更多",
-  "debug.variableInspect.emptyTip": "在畫布上逐步執行節點或逐步執行節點後，您可以在變數檢視中查看節點變數的當前值。",
+  "debug.variableInspect.emptyTip": "在畫布上逐步瀏覽節點或逐步執行節點後，您可以在變數檢視中查看節點變數的當前值。",
   "debug.variableInspect.envNode": "環境",
   "debug.variableInspect.export": "出口",
   "debug.variableInspect.exportToolTip": "將變數匯出為檔案",
