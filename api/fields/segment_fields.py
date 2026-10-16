@@ -1,10 +1,14 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import field_serializer
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
-from models.enums import SegmentStatus, SegmentType
+
+# Mirrors models.enums.SegmentStatus / SegmentType; response schemas do not import models.
+SegmentStatus = Literal["waiting", "indexing", "completed", "error", "paused", "re_segment"]
+SegmentType = Literal["automatic", "customized"]
 
 
 class SegmentAttachmentResponse(ResponseModel):
