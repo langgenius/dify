@@ -193,3 +193,17 @@ it('checks Infotip class helpers and same-file props without restricting unrelat
   expect(diagnostics.some(({ message }) => message.includes('"shadow-none"'))).toBe(true)
   expect(diagnostics.some(({ message }) => message.includes('"p-2"'))).toBe(true)
 })
+
+it('keeps centered dialogs on DialogContent while DialogPopup places custom surfaces', () => {
+  const diagnostics = lintFixture(`
+    import { DialogContent, DialogPopup } from '@langgenius/dify-ui/dialog'
+    const examples = <>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden" />
+      <DialogPopup className="fixed top-2 right-2 bottom-2 flex w-160 flex-col overflow-hidden rounded-xl" />
+      <DialogPopup className="fixed top-1/2 left-1/2 w-120 -translate-x-1/2 -translate-y-1/2" />
+    </>
+  `)
+  expect(diagnostics).toHaveLength(4)
+  for (const className of ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'])
+    expect(diagnostics.some(({ message }) => message.includes(`"${className}"`))).toBe(true)
+})

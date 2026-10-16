@@ -59,6 +59,13 @@ export const stylingContractRules = {
             '"{{className}}" is outside the {{component}} styling contract. The surface owns position, chrome and scrolling, and its parts own spacing; callers may only size it. Compose DialogPortal, DialogBackdrop and DialogPopup for a custom surface.',
         },
         {
+          pattern: '^DialogPopup$',
+          allow: ['*'],
+          deny: ['top-1/2', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'],
+          message:
+            '"{{className}}" recreates the DialogContent centering. Use DialogContent for a centered dialog; DialogPopup is for a surface that places itself.',
+        },
+        {
           pattern: '^(Dialog|AlertDialog)(Title|Description)$',
           allow: ['sr-only'],
           message:
