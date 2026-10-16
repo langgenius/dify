@@ -12,13 +12,12 @@ import posixpath
 import re
 import shlex
 from dataclasses import dataclass, field
+from typing import cast
 
 import httpx2 as httpx
-from shellctl.client.sdk import ShellctlClient, ShellctlClientError
-from shellctl.shared.schemas import NativeScopeHandle, NativeScopeSpec
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
-from dify_agent.adapters.shell.shellctl import ShellctlClientFactory
+from dify_agent.adapters.shell.shellctl import ShellctlClientFactory, ShellctlClientProtocol
 from dify_agent.runtime_backend.errors import (
     BindingAcquireError,
     BindingCreateError,
@@ -26,6 +25,7 @@ from dify_agent.runtime_backend.errors import (
     BindingLostError,
     HomeSnapshotCreateError,
 )
+from dify_agent.runtime_backend.native_test_scope import NativeScopeCommands, NativeScopeLease, native_binding_identity
 from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
@@ -39,6 +39,8 @@ from dify_agent.runtime_backend.shellctl import (
     create_shellctl_lease,
     run_shellctl_control_command,
 )
+from shellctl.client.sdk import ShellctlClient, ShellctlClientError
+from shellctl.shared.schemas import NativeScopeHandle, NativeScopeSpec
 
 _SAFE_REF_PART = re.compile(r"^[A-Za-z0-9._-]+$")
 _BINDING_REF_SEPARATOR = ":"
@@ -122,6 +124,25 @@ class LocalExecutionBindingBackend:
     native_scope_client: LocalNativeScopeClient | None = None
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
+        if spec.native_test_scope is not None:
+            scope = spec.native_test_scope
+            if (
+                self.native_scope_client is None
+                or spec.existing_workspace_ref is not None
+                or scope.binding_ref != spec.binding_id
+                or scope.scope_id != spec.binding_id
+                or scope.base_snapshot_ref != spec.home_snapshot_ref
+            ):
+                raise BindingCreateError("native_scope_unavailable")
+            try:
+                if spec.native_scope_reconcile:
+                    await self.native_scope_client.inspect(scope.scope_id, scope.generation)
+                else:
+                    await self.native_scope_client.create(scope)
+            except ShellctlClientError as exc:
+                raise BindingCreateError("native_scope_unavailable") from exc
+            ref = f"native:{scope.scope_id}:{scope.generation}"
+            return ExecutionBindingAllocation(binding_ref=ref, workspace_ref=ref)
         binding_id = _validated_ref_part(spec.binding_id)
         workspace_id = _validated_ref_part(spec.workspace_id)
         workspace_ref = workspace_id
@@ -173,6 +194,23 @@ class LocalExecutionBindingBackend:
             await _close_best_effort(lease, resource_ref=binding_ref)
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
+        identity = native_binding_identity(binding_ref)
+        if identity is not None:
+            if self.native_scope_client is None:
+                raise BindingAcquireError("native_scope_unavailable")
+            scope_id, generation = identity
+            try:
+                handle = await self.native_scope_client.inspect(scope_id, generation)
+            except ShellctlClientError as exc:
+                raise BindingLostError("native_scope_unavailable") from exc
+            client = cast(ShellctlClientProtocol, self.native_scope_client.job_client(handle))
+            return NativeScopeLease(
+                handle=binding_ref,
+                layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace"),
+                client=client,
+                commands=NativeScopeCommands(client=client),
+                workspace_generation=generation,
+            )
         lease = self._lease(binding_ref)
         try:
             result = await run_shellctl_control_command(
@@ -206,6 +244,15 @@ class LocalExecutionBindingBackend:
             raise BindingAcquireError(str(exc)) from exc
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        identity = native_binding_identity(spec.binding_ref)
+        if identity is not None:
+            if self.native_scope_client is None or not spec.destroy_workspace or spec.workspace_ref != spec.binding_ref:
+                raise BindingDestroyError("native_scope_cleanup_unavailable")
+            try:
+                await self.native_scope_client.destroy(*identity)
+            except ShellctlClientError as exc:
+                raise BindingDestroyError("native_scope_cleanup_unavailable") from exc
+            return
         binding_id, workspace_id = _parse_local_binding_ref(spec.binding_ref)
         if spec.destroy_workspace:
             workspace_ref = _validated_ref_part(spec.workspace_ref or "")

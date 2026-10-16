@@ -168,6 +168,8 @@ class EnterpriseExecutionBindingBackend:
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create a default Gateway sandbox and initialize its canonical layout."""
+        if spec.native_test_scope is not None:
+            raise BindingCreateError("native_scope_unavailable")
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current Enterprise backend cannot attach to an existing Workspace")
 
@@ -223,6 +225,8 @@ class EnterpriseExecutionBindingBackend:
             raise
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
+        if binding_ref.startswith("native:"):
+            raise BindingAcquireError("native_scope_unavailable")
         """Reconnect to one existing Gateway sandbox without creating a replacement."""
         data_plane: ShellctlRuntimeLease | None = None
         try:
@@ -266,6 +270,8 @@ class EnterpriseExecutionBindingBackend:
             raise BindingAcquireError(str(exc)) from exc
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        if spec.binding_ref.startswith("native:"):
+            raise BindingDestroyError("native_scope_cleanup_unavailable")
         """Delete the coupled sandbox only when its Workspace is also retired."""
         if not spec.destroy_workspace:
             raise WorkspacePreservationUnsupportedError(

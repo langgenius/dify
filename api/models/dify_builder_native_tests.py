@@ -69,7 +69,9 @@ class NativeTestInvocation(Identity, InvocationOwner, Base):
     __table_args__ = (sa.UniqueConstraint("tenant_id", "request_id", "invocation_id", name="native_invocation_owner"),)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False)
     # Only the trusted native binding/cursor producer writes this map. Keys are
-    # persisted OperationKey digests, not caller-provided retry counters.
+    # persisted OperationKey digests, not caller-provided retry counters. The
+    # reserved `_agent_workspace_v1` key holds typed private resource allocation
+    # metadata only; it is never interpreted as a binding or dispatch permit.
     bindings: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
 
 

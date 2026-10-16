@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar, NotRequired, Protocol, Self, TypedDict, override, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
-from pydantic_ai import RunContext
+from pydantic_ai import DeferredToolRequests, RunContext
 from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.capabilities.abstract import WrapRunHandler
 from pydantic_ai.run import AgentRunResult
@@ -33,6 +33,12 @@ from dify_agent.runtime.context import Deps
 from dify_agent.runtime.native_continuation import NativeApprovalSuspended, NativePolicyStopped
 from dify_agent.runtime.native_effects import NativeToolBoundary
 from dify_agent.runtime_backend import RuntimeLease
+from dify_agent.runtime_backend.native_test_scope import (
+    AgentJobUnavailable,
+    NativeScopeLease,
+    ShellJobRef,
+    validate_job_identity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +183,7 @@ class State(BaseModel):
     initialized: bool = False
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
+    job_refs: dict[str, ShellJobRef] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
 
@@ -262,6 +269,7 @@ class Capability(AbstractCapability[Deps]):
     async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
         session = ShellSession(self.name, ctx.deps)
         ctx.deps.resources.shells[self.name] = session
+        retain = False
         try:
             state = session.runtime_state
             if not state.initialized:
@@ -290,12 +298,20 @@ class Capability(AbstractCapability[Deps]):
                         )
                 state.initialized = True
                 session.save_state(state)
-            return await handler()
+            result = await handler()
+            retain = ctx.deps.native_effects is not None and isinstance(result.output, DeferredToolRequests)
+            return result
+        except NativeApprovalSuspended:
+            retain = ctx.deps.native_effects is not None
+            raise
         finally:
             try:
-                await session._delete_tracked_jobs_best_effort(session.runtime_state.job_ids)
+                if not retain:
+                    await session._delete_tracked_jobs_best_effort(session.runtime_state.job_ids)
             finally:
-                session._clear_tracked_jobs()
+                if not retain:
+                    session._clear_tracked_jobs()
+                session._job_agent_stub_tokens.clear()
                 del ctx.deps.resources.shells[self.name]
 
 
@@ -375,8 +391,10 @@ class ShellSession:
         except (NativeApprovalSuspended, NativePolicyStopped):
             raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return _tool_error_from_exception(exc)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_run", exc)
 
     async def _tool_wait(self, job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
@@ -385,6 +403,7 @@ class ShellSession:
         try:
             offset = self._tracked_offset(job_id)
             result = await self._require_resource().commands.wait(job_id, offset=offset, timeout=timeout)
+            self._validate_result_job(job_id, result.job_id)
             observation = await render_prompt_observation_from_result(
                 self._require_resource().commands,
                 result,
@@ -411,8 +430,10 @@ class ShellSession:
         except (NativeApprovalSuspended, NativePolicyStopped):
             raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_wait", exc, job_id=job_id)
 
     async def _tool_input(self, job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
@@ -421,6 +442,7 @@ class ShellSession:
         try:
             offset = self._tracked_offset(job_id)
             result = await self._require_resource().commands.input(job_id, text, offset=offset, timeout=timeout)
+            self._validate_result_job(job_id, result.job_id)
             observation = await render_prompt_observation_from_result(
                 self._require_resource().commands,
                 result,
@@ -447,8 +469,10 @@ class ShellSession:
         except (NativeApprovalSuspended, NativePolicyStopped):
             raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_input", exc, job_id=job_id)
 
     async def _tool_interrupt(
@@ -461,6 +485,7 @@ class ShellSession:
         try:
             self._ensure_tracked_job(job_id)
             result = await self._require_resource().commands.interrupt(job_id, grace_seconds=grace_seconds)
+            self._validate_result_job(job_id, result.job_id)
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, result.offset)
             self._job_agent_stub_tokens.pop(result.job_id, None)
@@ -496,9 +521,19 @@ class ShellSession:
         except (NativeApprovalSuspended, NativePolicyStopped):
             raise
         except (RuntimeError, ValueError) as exc:
+            self._stop_native_job_failure()
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
+            self._stop_native_job_failure()
             return _tool_unexpected_error("shell_interrupt", exc, job_id=job_id)
+
+    def _stop_native_job_failure(self) -> None:
+        if isinstance(self.deps.resources.leases.get(self.config.runtime), NativeScopeLease):
+            raise NativePolicyStopped("native_job_unavailable")
+
+    def _validate_result_job(self, expected: str, observed: str) -> None:
+        if isinstance(self._require_resource(), NativeScopeLease) and expected != observed:
+            raise NativePolicyStopped("native_job_identity_mismatch")
 
     async def run_remote_script_complete(
         self,
@@ -562,6 +597,15 @@ class ShellSession:
     def _ensure_tracked_job(self, job_id: str) -> None:
         if job_id not in self.runtime_state.job_ids:
             raise ValueError(f"Unknown shell job id for this session: {job_id}.")
+        lease = self._require_resource()
+        if isinstance(lease, NativeScopeLease):
+            saved = self.runtime_state.job_refs.get(job_id)
+            if saved is None:
+                raise NativePolicyStopped("native_job_identity_missing")
+            try:
+                validate_job_identity(saved=saved, actual=lease.job_ref(job_id, saved.output_offset))
+            except AgentJobUnavailable:
+                raise NativePolicyStopped("native_job_identity_mismatch") from None
 
     def _tracked_offset(self, job_id: str) -> int:
         self._ensure_tracked_job(job_id)
@@ -577,7 +621,14 @@ class ShellSession:
     def _remember_job_offset(self, job_id: str, offset: int) -> None:
         state = self.runtime_state
         state.job_offsets = {**state.job_offsets, job_id: offset}
+        lease = self._require_resource()
+        if isinstance(lease, NativeScopeLease):
+            state.job_refs = {**state.job_refs, job_id: lease.job_ref(job_id, offset)}
         self.save_state(state)
+        if self.deps.native_effects is not None:
+            self.deps.native_effects.continuation.job_refs = tuple(
+                item.model_dump_json() for item in state.job_refs.values()
+            )
 
     async def _delete_tracked_jobs_best_effort(self, job_ids: Sequence[str]) -> None:
         if not job_ids:
@@ -597,6 +648,7 @@ class ShellSession:
         state = self.runtime_state
         state.job_offsets = {}
         state.job_ids = []
+        state.job_refs = {}
         self.save_state(state)
         self._job_agent_stub_tokens.clear()
 
@@ -606,6 +658,14 @@ class ShellSession:
         include_agent_stub_env: bool,
         require_agent_stub_env: bool = False,
     ) -> dict[str, str]:
+        if isinstance(self._require_resource(), NativeScopeLease):
+            if (
+                _shell_config_env(self.config)
+                or self.config.secret_refs
+                or any(tool.secret_refs for tool in self.config.cli_tools)
+            ):
+                raise NativePolicyStopped("native_environment_import_requires_capability")
+            return {}
         env = _shell_config_env(self.config)
         env["HOME"] = self._require_resource().layout.home_dir
         if not include_agent_stub_env:

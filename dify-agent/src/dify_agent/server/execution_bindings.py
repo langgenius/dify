@@ -17,6 +17,7 @@ from dify_agent.runtime_backend import (
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 
 
 class ExecutionBindingServiceError(RuntimeError):
@@ -36,6 +37,10 @@ class ExecutionBindingService:
     backend: ExecutionBindingBackend
 
     async def create_binding(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
+        if request.native_test_scope is not None and not isinstance(self.backend, LocalExecutionBindingBackend):
+            raise ExecutionBindingServiceError(
+                "native_scope_unavailable", "Backend has no enforcing native scope", status_code=409
+            )
         try:
             allocation = await self.backend.create_binding(
                 ExecutionBindingCreateSpec(
@@ -45,6 +50,8 @@ class ExecutionBindingService:
                     workspace_id=request.workspace_id,
                     existing_workspace_ref=request.existing_workspace_ref,
                     home_snapshot_ref=request.home_snapshot_ref,
+                    native_test_scope=request.native_test_scope,
+                    native_scope_reconcile=request.native_scope_reconcile,
                 )
             )
         except SharedWorkspaceUnsupportedError as exc:

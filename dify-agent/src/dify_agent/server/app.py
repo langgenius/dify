@@ -18,28 +18,29 @@ instance owned by the app lifespan and injected into each run's runner.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing_extensions import cast
 
 import httpx
 from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
+from typing_extensions import cast
 
-from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.server.router import create_agent_stub_router
+from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.native_continuation import NativeContinuationOwner
 from dify_agent.runtime.run_scheduler import RunScheduler
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 from dify_agent.server.auth import create_bearer_token_dependency
+from dify_agent.server.binding_files import BindingFileService
+from dify_agent.server.execution_bindings import ExecutionBindingService
+from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.observability import configure_agent_observability, configure_server_observability
+from dify_agent.server.routes.binding_files import create_binding_files_router
 from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
-from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
-from dify_agent.server.routes.binding_files import create_binding_files_router
-from dify_agent.server.execution_bindings import ExecutionBindingService
-from dify_agent.server.binding_files import BindingFileService
-from dify_agent.server.home_snapshots import HomeSnapshotService
+from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
 
@@ -68,6 +69,16 @@ def create_app(
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
     runtime_backend_profile = resolved_settings.build_runtime_backend_profile()
+    if (
+        resolved_settings.api_token is None
+        and runtime_backend_profile is not None
+        and isinstance(runtime_backend_profile.execution_bindings, LocalExecutionBindingBackend)
+    ):
+        # The ordinary migration mode intentionally allows anonymous control
+        # requests. Never expose the privileged native supervisor in that mode.
+        # All routes and run services borrow this same backend, so existing
+        # native refs also fail before acquisition, files, snapshot or cleanup I/O.
+        runtime_backend_profile.execution_bindings.native_scope_client = None
     binding_file_service = (
         BindingFileService(
             execution_bindings=runtime_backend_profile.execution_bindings,
