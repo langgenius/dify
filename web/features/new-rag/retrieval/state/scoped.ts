@@ -54,6 +54,12 @@ export const retrievalComposerImagesAtom = atom<ComposerImagesDraft>({ images: [
 export const retrievalRecordImagesAtom = atom<Record<string, RetrievalComposerImage[]>>({})
 export const retrievalLocalRunAtom = atom<LocalQueryRun | undefined>()
 export const retrievalLocalSelectedAtom = atom<SelectedRun | undefined>()
+/**
+ * The default (newest-record) selection captured when the composer is first edited without an
+ * explicit selection, so history that loads or refreshes later cannot swap the unsent draft for
+ * another record's query. Explicitly selecting a record clears it.
+ */
+export const retrievalFrozenFallbackSelectionAtom = atom<{ selected: SelectedRun | undefined }>()
 export const retrievalResearchPlansAtom = atom<Record<string, KnowledgeFsResearchTaskPlanResponse>>(
   {},
 )
@@ -74,6 +80,7 @@ export const retrievalScopedAtoms = [
   retrievalRecordImagesAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
+  retrievalFrozenFallbackSelectionAtom,
   retrievalResearchPlansAtom,
   retrievalResearchEventsAtom,
   retrievalAdmittedResearchTasksAtom,

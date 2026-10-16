@@ -25,6 +25,7 @@ import {
   retrievalComposerDraftAtom,
   retrievalComposerImagesAtom,
   retrievalComposerUploadPendingAtom,
+  retrievalFrozenFallbackSelectionAtom,
   retrievalHistorySourceFilterAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
@@ -156,6 +157,8 @@ export const retrievalSelectedAtom = atom((get) => {
       return { id: persistedTraceId, kind: 'trace' as const }
   }
   if (requested) return requested
+  const frozen = get(retrievalFrozenFallbackSelectionAtom)
+  if (frozen) return frozen.selected
   const newest = get(retrievalDisplayRecordsAtom)[0]
   return newest ? { id: newest.id, kind: newest.kind } : undefined
 })
@@ -556,7 +559,14 @@ export const retrievalResultFactsAtom = atom((get) => {
   }
 })
 
+/** Pins the default selection once the composer is edited, keeping the draft under one record. */
+const freezeFallbackSelectionAtom = atom(null, (get, set) => {
+  if (get(requestedSelectionAtom) || get(retrievalFrozenFallbackSelectionAtom)) return
+  set(retrievalFrozenFallbackSelectionAtom, { selected: get(retrievalSelectedAtom) })
+})
+
 export const updateRetrievalComposerQueryAtom = atom(null, (get, set, query: string) => {
+  set(freezeFallbackSelectionAtom)
   set(retrievalComposerDraftAtom, {
     mode: get(retrievalComposerModeAtom),
     query,
@@ -567,6 +577,7 @@ export const updateRetrievalComposerQueryAtom = atom(null, (get, set, query: str
 })
 
 export const updateRetrievalComposerModeAtom = atom(null, (get, set, mode: RetrievalTestMode) => {
+  set(freezeFallbackSelectionAtom)
   set(retrievalComposerDraftAtom, {
     mode,
     query: get(retrievalComposerQueryAtom),
@@ -579,6 +590,7 @@ export const updateRetrievalComposerModeAtom = atom(null, (get, set, mode: Retri
 export const updateRetrievalComposerImagesAtom = atom(
   null,
   (get, set, images: RetrievalComposerImage[]) => {
+    set(freezeFallbackSelectionAtom)
     const selectionKey = get(retrievalSelectedHistoryKeyAtom)
     set(retrievalComposerImagesAtom, { images, ...(selectionKey ? { selectionKey } : {}) })
   },
@@ -621,6 +633,7 @@ export const commitRetrievalComposerUploadAtom = atom(
 )
 
 export const selectRetrievalRecordAtom = atom(null, (get, set, record: RetrievalTestRecord) => {
+  set(retrievalFrozenFallbackSelectionAtom, undefined)
   if (record.kind === 'local') {
     set(retrievalLocalSelectedAtom, { id: record.id, kind: record.kind })
     void set(

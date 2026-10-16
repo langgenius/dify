@@ -17,6 +17,7 @@ const apiMock = vi.hoisted(() => ({
   createResearch: vi.fn(),
   planResearch: vi.fn(),
   readinessRefetch: vi.fn(),
+  refreshQueries: () => {},
   resolveDocumentReference: vi.fn(),
   routerPush: vi.fn(),
   partials: [] as Array<Record<string, unknown>>,
@@ -179,6 +180,7 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
     const store = getDefaultStore()
     store.set(queryRevisionAtom, store.get(queryRevisionAtom) + 1)
   }
+  apiMock.refreshQueries = refreshQueryAtoms
   const refetchTraces = async (...args: unknown[]) => {
     const result = await apiMock.refetchTraces(...args)
     refreshQueryAtoms()
@@ -1396,6 +1398,37 @@ describe('RetrievalTestPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps an unsent draft when history resolves after the user started typing', async () => {
+    apiMock.traces = []
+    const user = userEvent.setup()
+    renderPage()
+
+    const composer = screen.getByLabelText('knowledgeRetrieval.retrievalTest.queryPlaceholder')
+    await user.type(composer, 'My unsent draft')
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-newest',
+        mode: 'fast',
+        profile: {},
+        query: 'Newest persisted query',
+        result_count: 0,
+        scores: {},
+        stages: [],
+      },
+    ]
+    act(() => apiMock.refreshQueries())
+
+    const record = await screen.findByRole('button', { name: /Newest persisted query/ })
+    expect(composer).toHaveValue('My unsent draft')
+    expect(record).toHaveAttribute('aria-pressed', 'false')
+
+    // Explicitly switching to a history record still restores that record's query.
+    await user.click(record)
+    expect(composer).toHaveValue('Newest persisted query')
+  })
+
   it('renders generated Research answer deltas while the task is still active', async () => {
     apiMock.researchTasks = [
       {
@@ -2316,6 +2349,63 @@ describe('RetrievalTestPage', () => {
     )
     expect(apiMock.queryAdmission).toHaveBeenCalledTimes(1)
     expect(onUrlUpdate).toHaveBeenCalled()
+  })
+
+  it('runs a one-shot retest from a linked image-only trace', async () => {
+    apiMock.traceDetail = {
+      completed: true,
+      created_at: '2026-07-01T00:00:00.000Z',
+      id: 'trace-image',
+      mode: 'fast',
+      profile: {},
+      query: '',
+      query_images: [{ upload_file_id: 'trace-image-1' }],
+      scores: {},
+      stages: [],
+    }
+    renderPage({ searchParams: '?trace=trace-image&retest=trace-image' })
+
+    await waitFor(() =>
+      expect(apiMock.queryAdmission).toHaveBeenCalledWith({
+        body: { mode: 'fast', query: '', queryImages: [{ uploadFileId: 'trace-image-1' }] },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
+    expect(apiMock.queryAdmission).toHaveBeenCalledTimes(1)
+  })
+
+  it('persists an image-only trace as a bad case', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-image',
+        mode: 'fast',
+        profile: {},
+        query: '',
+        query_images: [{ upload_file_id: 'trace-image-1' }],
+        scores: {},
+        stages: [],
+      },
+    ]
+    const user = userEvent.setup()
+    renderPage({ searchParams: '?trace=trace-image' })
+
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.makeBadCase' }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'knowledgeSpace.qualityPage.reasonValues.lowScore',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(apiMock.createBadCase).toHaveBeenCalledWith({
+        body: { reason: 'low-score', tags: ['retrieval-test'], trace_id: 'trace-image' },
+        params: { control_space_id: 'space-1' },
+      }),
+    )
   })
 
   it('opens retrieval evidence through its logical document instead of its asset', async () => {
