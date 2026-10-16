@@ -982,3 +982,27 @@ def test_child_unknown_outcome_does_not_replace_actual_subtree_cleanup_evidence(
     consume(parent)
     assert child.unknown
     registry.dispose()
+
+
+def test_actual_late_frame_runtime_tracking_never_reopens_execution_or_quiet_sample() -> None:
+    from tests.unit_tests.services.dify_builder.native_testing.test_control import bound_guard, make_native, permit
+
+    registry, life = opened()
+    worker(life).join(1)
+    close(life, 0.04)
+    assert life.settle() == "settled"
+    _, frame = make_native(decision=permit())
+    life.bind_runtime(runtime_state=frame.runtime)
+    with life.node_scope(node=bound_guard(frame), phase="resume_container"):
+        with life.call_scope() as ticket:
+            with pytest.raises(ValueError):
+                with ticket.callback_scope():
+                    pytest.fail("late frame observation must not reopen physical entry")
+        with pytest.raises(ValueError):
+            life.register_thread(thread=Thread(), role="reader")
+        sleep(0.06)
+    assert life.settle() == "unknown"
+    consume(life)
+    with pytest.raises(ValueError):
+        life.bind_runtime(runtime_state=frame.runtime)
+    registry.dispose()

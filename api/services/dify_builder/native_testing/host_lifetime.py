@@ -373,14 +373,18 @@ class NativeHostLifetime:
             self._threads.append(_ThreadOwnership(thread=thread, role="dispatcher", attempted=True))
 
     def bind_runtime(self, *, runtime_state: GraphRuntimeState) -> None:
-        """Retain each actual root/container runtime before entering its nodes."""
+        """Observe actual root/frame runtime, including late current work.
+
+        Tracking grants no physical entry or new-thread authority after control.
+        """
         with self._condition:
-            self._require_open()
+            self._require_tracking()
             if not isinstance(runtime_state, GraphRuntimeState) or any(
                 item is runtime_state for item in self._runtimes
             ):
                 raise ValueError("native_host_runtime_invalid")
             self._runtimes.append(runtime_state)
+            self._invalidate_settlement()
 
     @contextmanager
     def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> Generator[None]:
