@@ -56,6 +56,7 @@ def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> No
         EVALUATION_RUN_LEASE_TIMEOUT=180,
     )
 
+    assert config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED is False
     assert config.EVALUATION_RUN_MAX_RETRIES == 3
     assert config.EVALUATION_RUN_RETRY_DELAY == 30
 

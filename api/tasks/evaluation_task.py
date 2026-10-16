@@ -374,6 +374,8 @@ def _execute_evaluation(session: Session, run_data: EvaluationRunData, lease: Ev
     ):
         raise ValueError("Evaluation task payload is missing target_workflow_version_id.")
 
+    EvaluationService.validate_default_metric_node_types(run_data.default_metrics)
+
     evaluation_instance = EvaluationManager.get_evaluation_instance(run_data.evaluation_framework)
     if evaluation_instance is None:
         raise ValueError("Evaluation framework not configured")
