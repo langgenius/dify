@@ -1237,7 +1237,7 @@ describe('Agent access surface cards', () => {
       expect(screen.getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })).toHaveValue(
         'app-new-secret-key-token',
       )
-      const result = screen.getByRole('alertdialog', { name: 'appApi.apiKeyModal.createdTitle' })
+      const result = screen.getByRole('dialog', { name: 'appApi.apiKeyModal.createdTitle' })
       await user.click(within(result).getByRole('button', { name: 'appApi.apiKeyModal.saved' }))
 
       await user.click(
