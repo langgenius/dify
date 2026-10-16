@@ -17,7 +17,6 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
 export type AppInfoModalType =
@@ -234,7 +233,7 @@ export function useAppInfoActions({
 
   const exportCheck = useCallback(async () => {
     if (isExporting) return
-    if (appMode !== AppModeEnum.WORKFLOW && appMode !== AppModeEnum.ADVANCED_CHAT) {
+    if (appMode !== 'workflow' && appMode !== 'advanced-chat') {
       onExport()
       return
     }

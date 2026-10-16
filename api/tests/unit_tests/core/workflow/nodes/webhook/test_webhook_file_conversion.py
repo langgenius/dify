@@ -395,7 +395,7 @@ def test_webhook_node_different_file_types():
         mock_file_vars = [Mock() for _ in range(3)]
 
         # Map each segment.value to its corresponding mock file obj
-        for seg, f in zip(mock_segments, mock_file_objs):
+        for seg, f in zip(mock_segments, mock_file_objs, strict=False):
             seg.value = f
 
         mock_file_factory.side_effect = mock_file_objs

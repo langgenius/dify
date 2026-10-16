@@ -6,7 +6,7 @@ import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback, useEffect } from 'react'
 import { DATASET_DEFAULT } from '@/config'
-import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
+import { RETRIEVE_TYPE } from '@/types/app'
 import { getMultipleRetrievalConfig } from '../utils'
 
 type ModelIdentity = {
@@ -67,7 +67,7 @@ const useKnowledgeModelConfig = ({
         const draftModel = draft.single_retrieval_config!.model
         draftModel.provider = model.provider
         draftModel.name = model.modelId
-        draftModel.mode = model.mode || AppModeEnum.CHAT
+        draftModel.mode = model.mode || 'chat'
       })
       setInputs(nextInputs)
     },
@@ -120,7 +120,7 @@ const useKnowledgeModelConfig = ({
           draft.single_retrieval_config = createSingleRetrievalConfig({
             provider: currentProvider.provider,
             name: currentModel.model,
-            mode: currentModel.model_properties?.mode || AppModeEnum.CHAT,
+            mode: currentModel.model_properties?.mode || 'chat',
             completion_params: {},
           })
         }
@@ -168,7 +168,7 @@ const useKnowledgeModelConfig = ({
           draft.single_retrieval_config = createSingleRetrievalConfig({
             provider: currentProvider?.provider || '',
             name: currentModel?.model || '',
-            mode: currentModel?.model_properties?.mode || AppModeEnum.CHAT,
+            mode: currentModel?.model_properties?.mode || 'chat',
             completion_params: {},
           })
         }

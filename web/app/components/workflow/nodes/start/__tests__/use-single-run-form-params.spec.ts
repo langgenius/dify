@@ -1,5 +1,5 @@
 import type { StartNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import useSingleRunFormParams from '../use-single-run-form-params'
@@ -16,7 +16,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => mockUseIsChatMode(),
   }
 })
 
@@ -48,16 +47,18 @@ describe('start/use-single-run-form-params', () => {
   it('should include sys.query and sys.files dependencies for chat mode', () => {
     mockUseIsChatMode.mockReturnValue(true)
 
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'start-node',
-        payload: createPayload(),
-        runInputData: { query: 'hello' },
-        runInputDataRef: { current: {} },
-        getInputVars: () => [],
-        setRunInputData,
-        toVarInputs: () => [],
-      }),
+    const { result } = renderHook(
+      () =>
+        useSingleRunFormParams({
+          id: 'start-node',
+          payload: createPayload(),
+          runInputData: { query: 'hello' },
+          runInputDataRef: { current: {} },
+          getInputVars: () => [],
+          setRunInputData,
+          toVarInputs: () => [],
+        }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
 
     expect(result.current.forms).toHaveLength(1)
@@ -84,16 +85,18 @@ describe('start/use-single-run-form-params', () => {
   it('should omit sys.query when the workflow is not in chat mode', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'start-node',
-        payload: createPayload(),
-        runInputData: {},
-        runInputDataRef: { current: {} },
-        getInputVars: () => [],
-        setRunInputData,
-        toVarInputs: () => [],
-      }),
+    const { result } = renderHook(
+      () =>
+        useSingleRunFormParams({
+          id: 'start-node',
+          payload: createPayload(),
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          getInputVars: () => [],
+          setRunInputData,
+          toVarInputs: () => [],
+        }),
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
     )
 
     expect(result.current.forms[0]!.inputs).toEqual(
@@ -104,4 +107,11 @@ describe('start/use-single-run-form-params', () => {
       ['sys', 'files'],
     ])
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

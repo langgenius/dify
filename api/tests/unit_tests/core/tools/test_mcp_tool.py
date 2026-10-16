@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 from unittest.mock import patch
 
 import pytest
@@ -288,8 +289,6 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
                 with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
                     with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
                         # Should not raise; should not call enterprise.
-                        try:
+                        with contextlib.suppress(Exception):
                             tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
-                        except Exception:
-                            pass
         inject.assert_not_called()

@@ -329,7 +329,7 @@ class PluginService:
             )
             return None, False
 
-        for cache_key, cached_providers in zip(cache_keys, cached_provider_entries):
+        for cache_key, cached_providers in zip(cache_keys, cached_provider_entries, strict=False):
             if not cached_providers:
                 continue
 

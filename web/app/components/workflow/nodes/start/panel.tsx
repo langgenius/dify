@@ -17,7 +17,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
   const { t } = useTranslation(['common', 'workflow'])
   const {
     readOnly,
-    isChatMode,
+    isChatflow,
     inputs,
     isShowAddVarModal,
     showAddVarModal,
@@ -62,7 +62,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
 
             <div className="mt-1 space-y-1">
               <Split className="my-2" />
-              {isChatMode && (
+              {isChatflow && (
                 <VarItem
                   readonly
                   payload={
@@ -78,7 +78,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
 
               <VarItem
                 readonly
-                showLegacyBadge={!isChatMode}
+                showLegacyBadge={!isChatflow}
                 payload={
                   {
                     variable: 'userinput.files',

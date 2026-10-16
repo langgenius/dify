@@ -84,7 +84,7 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
         </SelectValue>
       </SelectTrigger>
       <SelectPortal>
-        <SelectPositioner className="-translate-x-6">
+        <SelectPositioner>
           <SelectPopup className="w-50">
             <SelectList className="p-1">
               {items.map((item) => (

@@ -26,6 +26,7 @@ import {
   pricingQueryParamName,
   pricingQueryParser,
 } from '@/app/components/billing/pricing/query-params'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
@@ -74,7 +75,7 @@ export function Popup({
   const { datasetId } = useParams()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector((s) => s.mutateDatasetRes)
   const { data: currentUserId } = useSuspenseQuery({

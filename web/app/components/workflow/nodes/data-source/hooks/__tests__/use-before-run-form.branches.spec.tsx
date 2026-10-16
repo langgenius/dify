@@ -9,9 +9,8 @@ import {
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
-import { useInvalidLastRun } from '@/service/use-workflow'
+import { useInvalidateLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
-import { FlowType } from '@/types/common'
 import { useNodeDataUpdate } from '../../../../hooks/use-node-data-update'
 import { useNodesSyncDraft } from '../../../../hooks/use-nodes-sync-draft'
 import useBeforeRunForm from '../use-before-run-form'
@@ -82,7 +81,7 @@ vi.mock('@/service/use-pipeline', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidLastRun: vi.fn(),
+  useInvalidateLastRun: vi.fn(),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -98,7 +97,7 @@ const mockUseStoreApi = vi.mocked(useStoreApi)
 const mockUseNodeDataUpdateHook = vi.mocked(useNodeDataUpdate)
 const mockUseNodesSyncDraftHook = vi.mocked(useNodesSyncDraft)
 const mockUseDatasourceSingleRunHook = vi.mocked(useDatasourceSingleRun)
-const mockUseInvalidLastRunHook = vi.mocked(useInvalidLastRun)
+const mockUseInvalidLastRunHook = vi.mocked(useInvalidateLastRun)
 const mockFetchNodeInspectVarsFn = vi.mocked(fetchNodeInspectVars)
 const mockUseDataSourceStoreHook = vi.mocked(useDataSourceStore)
 const mockUseDataSourceStoreWithSelectorHook = vi.mocked(useDataSourceStoreWithSelector)
@@ -120,8 +119,8 @@ const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNode
 
 const createProps = (overrides: Partial<CustomRunFormProps> = {}): CustomRunFormProps => ({
   nodeId: 'data-source-node',
-  flowId: 'flow-id',
-  flowType: FlowType.ragPipeline,
+  resource: { kind: 'knowledge-pipeline', pipelineId: 'flow-id' },
+
   payload: createData(),
   setRunResult: vi.fn(),
   setIsRunAfterSingleRun: vi.fn(),

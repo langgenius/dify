@@ -5,6 +5,7 @@ These tests verify that the backend schedule_utils functions properly support
 the enhanced cron syntax introduced in the frontend, ensuring full compatibility.
 """
 
+import contextlib
 import unittest
 from datetime import UTC, datetime, timedelta
 
@@ -368,10 +369,8 @@ class TestPerformanceEnhanced(unittest.TestCase):
         # under xdist, where worker preemption can inflate elapsed time without
         # indicating a real regression in cron parsing.
         for expr in complex_expressions:
-            try:
+            with contextlib.suppress(Exception):
                 calculate_next_run_at(expr, "UTC", self.base_time)
-            except Exception:
-                pass
 
         start_time = time.process_time()
 

@@ -2,12 +2,12 @@ import type { AgentInviteOptionsResponse } from '@dify/contracts/api/console/age
 import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
 
 vi.mock('../components/agent-output-routes', () => ({ AgentOutputRoutes: () => null }))
@@ -57,7 +57,7 @@ const {
   },
   mockConfigsMap: {
     flowId: 'app-1',
-    flowType: 'appFlow' as FlowType,
+    resourceKind: 'appFlow' as EditorResource['kind'],
   },
   mockCreateInlineAgentBinding: vi.fn(),
   mockSetInputs: vi.fn(),
@@ -341,7 +341,7 @@ describe('agent/panel', () => {
     mockStoreState.openInlineAgentPanelNodeId = undefined
     mockCopyFromRosterState.isPending = false
     mockConfigsMap.flowId = 'app-1'
-    mockConfigsMap.flowType = FlowType.appFlow
+    mockConfigsMap.resourceKind = 'app'
     mockCopyFromRosterMutate.mockImplementation(
       (
         _variables,
@@ -524,9 +524,11 @@ describe('agent/panel', () => {
 
   it('copies a roster agent through the snippet composer API', () => {
     mockConfigsMap.flowId = 'snippet-1'
-    mockConfigsMap.flowType = FlowType.snippet
+    mockConfigsMap.resourceKind = 'snippet'
     mockStoreState.appId = undefined as never
-    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />, {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     fireEvent.click(
       screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
