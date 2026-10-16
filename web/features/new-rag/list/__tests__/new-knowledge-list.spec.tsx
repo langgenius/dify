@@ -1218,7 +1218,7 @@ describe('NewKnowledgeList', () => {
 
     await user.click(screen.getByRole('button', { name: 'dataset.creatorFilter.creators' }))
     expect(screen.queryByRole('checkbox', { name: /Pending member/ })).not.toBeInTheDocument()
-    const creatorSearch = screen.getByRole('textbox', {
+    const creatorSearch = screen.getByRole('searchbox', {
       name: 'app.studio.filters.searchCreators',
     })
     await user.type(creatorSearch, 'ali')
