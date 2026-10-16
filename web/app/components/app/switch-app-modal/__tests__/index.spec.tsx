@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
-import { AppModeEnum } from '@/types/app'
 import SwitchAppModal from '../index'
 
 const mockPush = vi.fn()
@@ -74,12 +73,6 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>open-icon-picker</button>
-  ),
-}))
-
 const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   id: 'app-123',
   name: 'Demo App',
@@ -90,7 +83,7 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   icon_background: '#FFEAD5',
   icon_url: null,
   use_icon_as_answer_icon: false,
-  mode: AppModeEnum.COMPLETION,
+  mode: 'completion' as const,
   created_at: Date.now(),
   updated_at: Date.now(),
   tags: [],
@@ -253,7 +246,7 @@ describe('SwitchAppModal', () => {
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail, notify, onClose } = renderComponent()
+      const { appDetail, onClose } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-001',
         permission_keys: ['app.acl.view_layout'],
@@ -274,7 +267,6 @@ describe('SwitchAppModal', () => {
           },
         })
         expect(onClose).toHaveBeenCalledTimes(1)
-        expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })
@@ -288,7 +280,7 @@ describe('SwitchAppModal', () => {
         permission_keys: ['app.acl.view_layout'],
       })
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
@@ -318,7 +310,7 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })

@@ -1,4 +1,4 @@
-from typing import Any, Literal, Union, get_args
+from typing import Any, Literal, get_args
 
 from flask import Response, request
 from flask_restx import Resource
@@ -52,7 +52,7 @@ class MCPRequestPayload(BaseModel):
 
 class MCPJSONRPCErrorResponse(ResponseModel):
     jsonrpc: Literal["2.0"]
-    id: int | str | None
+    id: int | float | str | None
     error: mcp_types.ErrorData
 
 
@@ -73,7 +73,7 @@ class MCPAppApi(Resource):
     @mcp_ns.response(200, "MCP JSON-RPC response", mcp_ns.models[MCPJSONRPCResponse.__name__])
     @mcp_ns.response(202, "MCP notification accepted")
     @mcp_ns.response(400, "Invalid MCP request or parameters", mcp_ns.models[MCPJSONRPCErrorResponse.__name__])
-    @mcp_ns.response(404, "Server or app not found")
+    @mcp_ns.response(404, "Server or app not found", mcp_ns.models[MCPJSONRPCErrorResponse.__name__])
     def post(self, server_code: str):
         """Handle MCP requests for a specific server.
 
@@ -106,7 +106,7 @@ class MCPAppApi(Resource):
         # Allowed requests retain the existing full body/protocol parser. The
         # 64 KiB cap belongs only to opaque errors, not normal MCP invocations.
         args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
-        request_id: Union[int, str] | None = args.id
+        request_id: int | str | None = args.id
         try:
             mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
         except MCPRequestError as e:
@@ -149,9 +149,7 @@ class MCPAppApi(Resource):
         except MCPServerNotFoundError:
             return mcp_server_not_found_response()
 
-    def _protocol_version_error_response(
-        self, request_id: Union[int, str] | None, header_value: str | None
-    ) -> Response:
+    def _protocol_version_error_response(self, request_id: int | str | None, header_value: str | None) -> Response:
         """Return a JSON-RPC error for an unsupported MCP-Protocol-Version header.
 
         Per JSON-RPC 2.0, an error whose request id is unknown uses a null id, so we echo the
@@ -190,7 +188,7 @@ class MCPAppApi(Resource):
     def _process_mcp_message(
         self,
         mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification,
-        request_id: Union[int, str] | None,
+        request_id: int | str | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -216,7 +214,7 @@ class MCPAppApi(Resource):
     def _handle_request(
         self,
         mcp_request: mcp_types.ClientRequest,
-        request_id: Union[int, str] | None,
+        request_id: int | str | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -327,7 +325,7 @@ class MCPAppApi(Resource):
         mcp_request: mcp_types.ClientRequest,
         user_input_form: list[VariableEntity],
         session: Session,
-        request_id: Union[int, str],
+        request_id: int | str,
         protocol_version: str,
     ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
         """Handle MCP request and return response"""

@@ -8,15 +8,14 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AccessControlEntry } from './access-control'
 import { BuiltInAccessPoints } from './built-in-access-points'
@@ -57,7 +56,9 @@ function AccessPointContent({
   showEnvironmentTabs,
 }: AccessPointContentProps) {
   const { t } = useTranslation(['common', 'deployments', 'workflow'])
-  const appInfo = useAppStore((state) => state.appDetail)
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
   const { accessPoint: highlightedAccessPoint, environment } = queryStates
@@ -84,17 +85,11 @@ function AccessPointContent({
                 appMode={appInfo.mode}
                 isPublished={Boolean(
                   appInfo &&
-                  (appInfo.mode === AppModeEnum.WORKFLOW ||
-                  appInfo.mode === AppModeEnum.ADVANCED_CHAT
+                  (appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat'
                     ? appInfo.workflow?.id
                     : appInfo.model_config),
                 )}
-                appIcon={{
-                  iconType: appInfo?.icon_type,
-                  icon: appInfo?.icon ?? undefined,
-                  background: appInfo?.icon_background,
-                  imageUrl: appInfo?.icon_url,
-                }}
+                appIcon={{ icon: appInfo }}
                 canEditBinding={canManageAccessPoint}
               />
             )}
@@ -174,19 +169,20 @@ function AccessPointContent({
 }
 
 export default function AccessPoint({ appId }: AccessPointProps) {
-  const appDetail = useAppStore((state) => state.appDetail)
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+  const [{ data: appDetail }, { data: userProfile }] = useSuspenseQueries({
+    queries: [
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+      userProfileQueryOptions(),
+    ],
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const capabilities = getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
+    currentUserId: userProfile.profile.id,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
   const showEnvironmentTabs =
-    (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) &&
+    (appDetail?.mode === 'workflow' || appDetail?.mode === 'advanced-chat') &&
     capabilities.canViewAccessPoint
 
   return (

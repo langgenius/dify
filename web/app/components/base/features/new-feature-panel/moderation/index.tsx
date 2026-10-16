@@ -1,6 +1,7 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,7 +10,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { useModalContext } from '@/context/modal-context'
-import { useCodeBasedExtensions } from '@/service/use-common'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -22,7 +23,7 @@ const Moderation = ({ disabled, onChange }: Props) => {
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures((s) => s.features.moderation)
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
+  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
   const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {

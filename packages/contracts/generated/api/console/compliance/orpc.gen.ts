@@ -2,6 +2,11 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import {
+  zBillingOperationFailedError,
+  zBillingUnavailableError,
+  zComplianceRateLimitError,
+} from './zod.gen.ts'
 import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen.ts'
 
 /**
@@ -18,6 +23,11 @@ export const get = oc
   })
   .input(z.object({ query: zGetComplianceDownloadQuery }))
   .output(zGetComplianceDownloadResponse)
+  .errors({
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    compliance_rate_limit: { status: 429, data: zComplianceRateLimitError },
+  })
 
 export const download = {
   get,

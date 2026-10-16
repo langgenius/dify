@@ -6,13 +6,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDocLink } from '@/context/i18n'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
 import { getPublishedWorkflowState, isAdvancedApp } from '../shared/utils'
@@ -40,7 +40,9 @@ export function BuiltInAccessPoints({
 }: BuiltInAccessPointsProps) {
   const { t } = useTranslation(['common', 'deployments'])
   const docLink = useDocLink()
-  const appInfo = useAppStore((state) => state.appDetail)
+  const { data: appInfo } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspace = useAtomValue(currentWorkspaceAtom)
   const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
@@ -55,7 +57,7 @@ export function BuiltInAccessPoints({
     isPending: workflowLoading,
   } = useAppWorkflow(shouldFetchWorkflow ? appId : '', {
     retry: (failureCount, error) => {
-      if (error instanceof Response && error.status === 403) return false
+      if (getHttpErrorStatus(error) === 403) return false
 
       return failureCount < 3
     },

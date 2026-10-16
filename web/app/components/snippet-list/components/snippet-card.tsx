@@ -1,5 +1,4 @@
 'use client'
-
 import type { SnippetListItem } from '@/types/snippet'
 import {
   AlertDialog,
@@ -17,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +29,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import Link from '@/next/link'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import {
   useDeleteSnippetMutation,
   useExportSnippetMutation,
@@ -54,8 +54,9 @@ const SnippetCard = ({
   const { t } = useTranslation(['snippet', 'datasetDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data: membersData } = useMembers()
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const updateSnippetMutation = useUpdateSnippetMutation()
@@ -88,14 +89,12 @@ const SnippetCard = ({
   )
 
   const handleOpenEditDialog = () => {
-    setIsOperationsMenuOpen(false)
     setIsEditDialogOpen(true)
   }
 
   const handleExportSnippet = async () => {
     if (!canCreateAndModifySnippet) return
 
-    setIsOperationsMenuOpen(false)
     try {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
       const file = new Blob([data], { type: 'application/yaml' })
@@ -112,7 +111,6 @@ const SnippetCard = ({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $.deleted))
           setIsDeleteDialogOpen(false)
           onRefresh?.()
         },
@@ -134,7 +132,6 @@ const SnippetCard = ({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $.editDone))
           setIsEditDialogOpen(false)
           onRefresh?.()
         },
@@ -189,11 +186,7 @@ const SnippetCard = ({
           {canShowOperations && (
             <div className="pointer-events-none absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
               <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
-              <DropdownMenu
-                modal={false}
-                open={isOperationsMenuOpen}
-                onOpenChange={setIsOperationsMenuOpen}
-              >
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
                   aria-label={tCommon(($) => $['operation.moreActionsFor'], {
                     ns: 'common',
@@ -230,10 +223,7 @@ const SnippetCard = ({
                       <DropdownMenuItem
                         variant="destructive"
                         className="gap-2 px-3"
-                        onClick={() => {
-                          setIsOperationsMenuOpen(false)
-                          setIsDeleteDialogOpen(true)
-                        }}
+                        onClick={() => setIsDeleteDialogOpen(true)}
                       >
                         <span className="system-sm-regular">
                           {t(($) => $['menu.deleteSnippet'])}

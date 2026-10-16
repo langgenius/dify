@@ -18,6 +18,7 @@ import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
+import { toChunkingMode } from '../../../dataset-fields'
 import ChunkStructure from '../../chunk-structure'
 import IndexMethod from '../../index-method'
 import SummaryIndexSetting from '../../summary-index-setting'
@@ -71,6 +72,7 @@ const IndexingSection = ({
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
+  const chunkingMode = toChunkingMode(currentDataset?.doc_form)
 
   const isShowIndexMethod =
     currentDataset &&
@@ -84,13 +86,14 @@ const IndexingSection = ({
 
   const showSummaryIndexSetting =
     indexMethod === IndexingType.QUALIFIED &&
-    embeddingChunkingModes.includes(currentDataset?.doc_form as ChunkingMode) &&
+    !!chunkingMode &&
+    embeddingChunkingModes.includes(chunkingMode) &&
     isNonCloudEdition
 
   return (
     <>
       {/* Chunk Structure */}
-      {!!currentDataset?.doc_form && (
+      {!!chunkingMode && (
         <>
           <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
           <div className={rowClass}>
@@ -111,7 +114,7 @@ const IndexingSection = ({
               </div>
             </div>
             <div className="min-w-0 grow">
-              <ChunkStructure chunkStructure={currentDataset?.doc_form} />
+              <ChunkStructure chunkStructure={chunkingMode} />
             </div>
           </div>
         </>
@@ -134,7 +137,7 @@ const IndexingSection = ({
               value={indexMethod!}
               disabled={!currentDataset?.embedding_available || readonly}
               onChange={setIndexMethod}
-              currentValue={currentDataset.indexing_technique}
+              currentValue={currentDataset.indexing_technique ?? undefined}
               keywordNumber={keywordNumber}
               onKeywordNumberChange={setKeywordNumber}
             />

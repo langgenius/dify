@@ -6,13 +6,6 @@ import FilePreview from '../file-preview'
 const mockFileData = { content: 'file content here with some text' }
 let mockIsFetching = false
 
-vi.mock('@/service/use-common', () => ({
-  useFilePreview: () => ({
-    data: mockIsFetching ? undefined : mockFileData,
-    isFetching: mockIsFetching,
-  }),
-}))
-
 vi.mock('../../../../common/document-file-icon', () => ({
   default: () => <span data-testid="file-icon" />,
 }))
@@ -20,6 +13,16 @@ vi.mock('../../../../common/document-file-icon', () => ({
 vi.mock('../loading', () => ({
   default: () => <div data-testid="loading" />,
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.byFileId.preview.get': () => ({
+      data: mockIsFetching ? undefined : mockFileData,
+      isFetching: mockIsFetching,
+    }),
+  })
+})
 
 describe('FilePreview', () => {
   const defaultProps = {

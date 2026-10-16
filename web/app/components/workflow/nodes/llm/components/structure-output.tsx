@@ -64,7 +64,7 @@ export function StructureOutput({ className, value, onChange, readOnly }: Props)
       ) : (
         <DialogTrigger
           handle={dialogHandle}
-          className="mt-1.5 flex h-10 w-full cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="mt-1.5 flex h-10 w-full cursor-pointer items-center justify-center rounded-[10px] bg-background-section system-xs-regular text-text-tertiary"
         >
           {t(($) => $['structOutput.notConfiguredTip'], { ns: 'app' })}
         </DialogTrigger>

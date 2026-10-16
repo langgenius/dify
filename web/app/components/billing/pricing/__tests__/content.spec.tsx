@@ -358,7 +358,6 @@ it.each(['month', 'year'] as const)(
     await waitFor(() => expect(openBillingWindow).toHaveResolvedWith('https://billing.example.com'))
   },
 )
-
 it('includes the marketplace in the Premium purchase link name', async () => {
   const user = userEvent.setup()
   const { queryClient, show } = setup()

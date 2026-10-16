@@ -7,6 +7,7 @@ Unrelated resources and authentication failures retain their own contracts.
 """
 
 from collections.abc import Mapping
+from contextlib import suppress
 from typing import Literal
 
 from flask import Blueprint, Response, current_app, request
@@ -128,11 +129,9 @@ def register_app_access_error_metadata(blueprint: Blueprint, *, surface: Literal
         # Never mislabel an internal Docker/ALB peer as the user's address when
         # deployment trust configuration is missing.
         if trusted_proxy_cidrs.strip():
-            try:
+            # Optional display metadata must not turn a genuine 404 into 503.
+            with suppress(NetworkAccessClientIPUnavailableError):
                 payload["client_ip"] = resolve_network_access_client_ip(request.environ, trusted_proxy_cidrs)
-            except NetworkAccessClientIPUnavailableError:
-                # Optional display metadata must not turn a genuine 404 into 503.
-                pass
 
         if surface == "web":
             return _canonical_json(response, payload)

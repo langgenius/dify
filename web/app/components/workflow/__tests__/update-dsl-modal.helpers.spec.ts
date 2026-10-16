@@ -1,5 +1,4 @@
 import { DSLImportStatus } from '@/models/app'
-import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../types'
 import {
   getImportNotificationPayload,
@@ -20,7 +19,7 @@ workflow:
           type: trigger-webhook
 `
 
-      expect(validateDSLContent(content, AppModeEnum.ADVANCED_CHAT)).toBe(false)
+      expect(validateDSLContent(content, 'advanced-chat')).toBe(false)
     })
 
     it('should reject disallowed node types inherited through YAML merge keys', () => {
@@ -34,11 +33,11 @@ workflow:
           <<: *trigger
 `
 
-      expect(validateDSLContent(content, AppModeEnum.ADVANCED_CHAT)).toBe(false)
+      expect(validateDSLContent(content, 'advanced-chat')).toBe(false)
     })
 
     it('should reject malformed yaml and answer nodes in non-advanced mode', () => {
-      expect(validateDSLContent('[', AppModeEnum.CHAT)).toBe(false)
+      expect(validateDSLContent('[', 'chat')).toBe(false)
       expect(
         validateDSLContent(
           `
@@ -48,7 +47,7 @@ workflow:
       - data:
           type: answer
 `,
-          AppModeEnum.CHAT,
+          'chat',
         ),
       ).toBe(false)
     })
@@ -63,28 +62,28 @@ workflow:
       - data:
           type: tool
 `,
-          AppModeEnum.ADVANCED_CHAT,
+          'advanced-chat',
         ),
       ).toBe(true)
     })
 
     it('should accept empty yaml content', () => {
-      expect(validateDSLContent('', AppModeEnum.CHAT)).toBe(true)
+      expect(validateDSLContent('', 'chat')).toBe(true)
     })
 
     it('should accept comment-only yaml content', () => {
-      expect(validateDSLContent('# No document', AppModeEnum.CHAT)).toBe(true)
+      expect(validateDSLContent('# No document', 'chat')).toBe(true)
     })
 
     it('should reject yaml streams with multiple documents', () => {
-      expect(validateDSLContent('---\n{}\n---\n{}', AppModeEnum.CHAT)).toBe(false)
+      expect(validateDSLContent('---\n{}\n---\n{}', 'chat')).toBe(false)
     })
 
     it('should expose the invalid node sets per mode', () => {
-      expect(getInvalidNodeTypes(AppModeEnum.ADVANCED_CHAT)).toEqual(
+      expect(getInvalidNodeTypes('advanced-chat')).toEqual(
         expect.arrayContaining([BlockEnum.End, BlockEnum.TriggerWebhook]),
       )
-      expect(getInvalidNodeTypes(AppModeEnum.CHAT)).toEqual([BlockEnum.Answer])
+      expect(getInvalidNodeTypes('chat')).toEqual([BlockEnum.Answer])
     })
   })
 

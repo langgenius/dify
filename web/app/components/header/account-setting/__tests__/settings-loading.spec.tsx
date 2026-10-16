@@ -5,10 +5,12 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { Suspense, useState } from 'react'
 import { I18nClientProvider } from '@/app/components/provider/i18n'
+import { consoleQuery } from '@/service/console'
 import { seedNetworkAccessGroups } from '@/test/console/network-access'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
+import { workspaceRoleListInfiniteOptions } from '../workspace-role-list-query'
 
 vi.unmock('react-i18next')
 const mocks = vi.hoisted(() => ({ loadResource: vi.fn() }))
@@ -28,13 +30,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: ['workspace.member.manage'],
   }))
 })
-vi.mock('@/service/use-common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-common')>()),
-  useMembers: () => ({ data: { accounts: [] }, refetch: vi.fn() }),
-}))
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useWorkspaceRoleList: () => ({ data: { pages: [] }, isLoading: false }),
-}))
 vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: { mobile: 'mobile', tablet: 'tablet', pc: 'pc' },
   default: () => 'pc',
@@ -82,6 +77,19 @@ function Settings() {
 
 function renderSettings() {
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.members.get.queryKey({ input: { query: { language: 'en' } } }),
+    { accounts: [] },
+  )
+  queryClient.setQueryData(
+    workspaceRoleListInfiniteOptions({ page: 1, limit: 20, language: 'en' }).queryKey,
+    {
+      pages: [
+        { data: [], pagination: { current_page: 1, total_pages: 0, per_page: 20, total_count: 0 } },
+      ],
+      pageParams: [1],
+    },
+  )
   seedNetworkAccessGroups(queryClient, { entitled: true, groups: [] })
   return renderWithConsoleQuery(
     <I18nClientProvider locale="en-US" resource={resources}>

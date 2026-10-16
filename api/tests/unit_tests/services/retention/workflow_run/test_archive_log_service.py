@@ -1,9 +1,12 @@
 import datetime
+import json
+import logging
 from collections.abc import Sequence
 from contextlib import nullcontext
 
 import pytest
 
+from core.logging.structured_formatter import StructuredJSONFormatter
 from machinery.context import RequestContext
 from services.retention.workflow_run.archive_deletion_task import (
     WorkflowRunArchiveDeletionDispatcher,
@@ -505,21 +508,43 @@ def test_old_download_is_unavailable_after_its_bundles_are_deleted() -> None:
         _service(tasks=FakeTaskStore({task.download_id: task})).get_download(_CONTEXT, download_id=task.download_id)
 
 
-def test_delete_archive_commits_request_before_dispatch_and_can_be_retried() -> None:
+def test_delete_archive_commits_request_before_dispatch_and_can_be_retried(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_log_service")
     bundles = FakeBundleQuery((_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024),))
     dispatches: list[tuple[str, int, int]] = []
 
     def dispatch(*, tenant_id: str, year: int, month: int) -> None:
         assert bundles.records[0].deletion_status == WorkflowRunArchiveDeletionStatus.PENDING
+        assert caplog.records[-1].__dict__["attributes"]["event"] == "workflow_run_archive.deletion_requested"
         dispatches.append((tenant_id, year, month))
 
     service = _service(bundles=bundles, deletion_dispatcher=dispatch)
     assert service.delete_archive(_CONTEXT, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.PENDING
     assert service.delete_archive(_CONTEXT, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.PENDING
     assert dispatches == [("tenant-1", 2025, 3), ("tenant-1", 2025, 3)]
+    events = [json.loads(StructuredJSONFormatter().format(record)) for record in caplog.records]
+    assert [event["attributes"]["event"] for event in events] == [
+        "workflow_run_archive.deletion_requested",
+        "workflow_run_archive.deletion_enqueued",
+    ] * 2
+    for event in events:
+        assert datetime.datetime.fromisoformat(event["ts"]).tzinfo == datetime.UTC
+        assert event["attributes"] == {
+            "audit": True,
+            "event": event["attributes"]["event"],
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "year": 2025,
+            "month": 3,
+            "request_id": "request-1",
+            "deletion_status": "pending",
+        }
+        assert "account_id=account-1" in event["message"]
+        assert "request_id=request-1" in event["message"]
 
 
-def test_failed_deletion_dispatch_preserves_request_and_disables_downloads() -> None:
+def test_failed_deletion_dispatch_preserves_request_and_disables_downloads(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_log_service")
     bundles = FakeBundleQuery((_bundle(shard="00-of-01", bundle_id="bundle-a", archive_bytes=1024),))
 
     def fail_dispatch(*, tenant_id: str, year: int, month: int) -> None:
@@ -533,7 +558,17 @@ def test_failed_deletion_dispatch_preserves_request_and_disables_downloads() -> 
         _service(bundles=bundles).list_archives(_CONTEXT).months[0].deletion_status
         == WorkflowRunArchiveDeletionStatus.FAILED
     )
+    audit = [record.__dict__["attributes"] for record in caplog.records]
+    assert [event["event"] for event in audit] == [
+        "workflow_run_archive.deletion_requested",
+        "workflow_run_archive.deletion_enqueue_failed",
+    ]
+    assert audit[-1]["account_id"] == "account-1"
+    assert audit[-1]["request_id"] == "request-1"
 
 
-def test_delete_archive_without_bundles_returns_completed() -> None:
+def test_delete_archive_without_bundles_returns_completed(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_log_service")
     assert _service().delete_archive(_CONTEXT, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.COMPLETED
+    assert len(caplog.records) == 1
+    assert caplog.records[0].__dict__["attributes"]["event"] == "workflow_run_archive.deletion_noop"

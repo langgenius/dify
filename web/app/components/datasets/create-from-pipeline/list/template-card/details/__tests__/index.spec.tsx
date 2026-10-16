@@ -15,9 +15,19 @@ vi.mock('@/app/components/workflow/workflow-preview', () => ({
 }))
 
 const mockUsePipelineTemplateById = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateById: (...args: unknown[]) => mockUsePipelineTemplateById(...args),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.templates.byTemplateId.get': (o: {
+      input: { params: { template_id: string }; query: { type: string } }
+      enabled?: boolean
+    }) =>
+      mockUsePipelineTemplateById(
+        { template_id: o.input.params.template_id, type: o.input.query.type },
+        o.enabled ?? true,
+      ),
+  })
+})
 
 const createPipelineTemplateInfo = (overrides = {}) => ({
   name: 'Test Pipeline',
@@ -207,7 +217,7 @@ describe('Details', () => {
       })
 
       renderDetails(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
+      expect(screen.getByText('📊')).toBeInTheDocument()
     })
 
     it('should handle image icon type', () => {

@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
+import { createHttpError } from '@/service/http-error'
 import Splash from '../splash'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -150,7 +151,7 @@ describe('Splash', () => {
       userLoggedIn: true,
       appLoggedIn: false,
     })
-    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 404 }))
+    fetchAccessTokenMock.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
 
     render(
       <Splash>
@@ -196,7 +197,7 @@ describe('Splash', () => {
       userLoggedIn: true,
       appLoggedIn: false,
     })
-    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 401 }))
+    fetchAccessTokenMock.mockRejectedValue(createHttpError(new Response(null, { status: 401 })))
 
     render(
       <Splash>
@@ -277,7 +278,9 @@ describe('Splash', () => {
 
   it('should show an unavailable state when login status fails without allowing the app to load', async () => {
     navigationMocks.searchParams = new URLSearchParams()
-    webAppAuthMocks.webAppLoginStatus.mockRejectedValue(new Response(null, { status: 503 }))
+    webAppAuthMocks.webAppLoginStatus.mockRejectedValue(
+      createHttpError(new Response(null, { status: 503 })),
+    )
 
     render(
       <Splash>
@@ -300,7 +303,7 @@ describe('Splash', () => {
       appLoggedIn: false,
     })
     fetchAccessTokenMock.mockRejectedValue(
-      Response.json({ code: 'policy_unavailable' }, { status: 503 }),
+      createHttpError(new Response(null, { status: 503 }), { code: 'policy_unavailable' }),
     )
 
     render(
@@ -390,7 +393,7 @@ describe('Splash', () => {
       userLoggedIn: true,
       appLoggedIn: false,
     })
-    let rejectPassport!: (error: Response) => void
+    let rejectPassport!: (error: unknown) => void
     fetchAccessTokenMock.mockReturnValue(
       new Promise((_resolve, reject) => {
         rejectPassport = reject
@@ -405,7 +408,7 @@ describe('Splash', () => {
 
     ipAccessState.isDenied = true
     await act(async () => {
-      rejectPassport(new Response(null, { status: 401 }))
+      rejectPassport(createHttpError(new Response(null, { status: 401 })))
     })
 
     expect(webAppAuthMocks.webAppLogout).not.toHaveBeenCalled()

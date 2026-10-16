@@ -51,7 +51,7 @@ function SettingTimeZone({ children }: { children?: ReactNode }) {
 
   return (
     <DialogClose
-      className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+      className="cursor-pointer border-none bg-transparent p-0 text-left body-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
       onClick={() => {
         if (settingsDestination)
           setSettingsDestination('preferences', { history: 'replace', shallow: true })

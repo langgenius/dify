@@ -43,6 +43,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableWithoutValueResponse,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account, App, AppMode
@@ -204,6 +205,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_workflow_variables")
     @console_ns.doc(description="Get draft workflow variables")
@@ -584,6 +586,7 @@ class SystemVariableCollectionApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
 class EnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_environment_variables")
     @console_ns.doc(description="Get environment variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})

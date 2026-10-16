@@ -560,7 +560,10 @@ describe('SkillDetailPage builder', () => {
     expect(mocks.modelParameterRulesFetch).toHaveBeenCalledTimes(1)
     const request = mocks.modelParameterRulesFetch.mock.calls[0]![0]
     const url = new URL(request instanceof Request ? request.url : String(request))
-    expect(url.pathname).toContain('/model-providers/langgenius/anthropic/anthropic/')
+    // Provider ids contain slashes and are sent percent-encoded.
+    expect(decodeURIComponent(url.pathname)).toContain(
+      '/model-providers/langgenius/anthropic/anthropic/',
+    )
     expect(url.searchParams.get('model')).toBe('claude-sonnet-4-6')
   })
 
@@ -626,10 +629,13 @@ describe('SkillDetailPage builder', () => {
     )
 
     renderSkillDetailPage()
+    // The settings button waits for the model list and its lazily loaded contract segment.
     await user.click(
-      await screen.findByRole('button', {
-        name: 'modelProvider.modelProvider.modelSettings',
-      }),
+      await screen.findByRole(
+        'button',
+        { name: 'modelProvider.modelProvider.modelSettings' },
+        { timeout: 5000 },
+      ),
     )
     const dialog = await screen.findByRole('dialog', {
       name: 'modelProvider.modelProvider.modelSettings',
@@ -652,7 +658,8 @@ describe('SkillDetailPage builder', () => {
         },
       }),
     )
-  })
+    // Opens the settings dialog, loads parameter rules and types through several fields.
+  }, 15000)
 
   it('uploads image attachments in Skill Builder', async () => {
     const user = userEvent.setup({ applyAccept: false })

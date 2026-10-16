@@ -1,4 +1,4 @@
-import type { FetchOptionType, ResponseError } from './fetch'
+import type { FetchOptionType } from './fetch'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { AppAccessScope } from '@/features/app-access-error/state'
 import type { VisionFile } from '@/types/app'
@@ -29,6 +29,7 @@ import type {
   WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import Cookies from 'js-cookie'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 import { toast } from '@/app/notifications'
@@ -53,6 +54,7 @@ import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
+import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
@@ -71,7 +73,7 @@ const isWebAppAuthorizationEndpoint = (url: string) =>
   /\/(?:login(?:\/|\?|$)|passport(?:\?|$))/.test(url)
 
 const recoverEnvironmentWebAppAuthorization = (
-  error: { code?: string | number; message?: string; reason?: string },
+  error: { code?: string | number; message?: string; reason?: unknown },
   url?: string,
 ) => {
   const address = resolveWebAppAddress()
@@ -93,7 +95,7 @@ const recoverEnvironmentWebAppAuthorization = (
 }
 
 const handleWebAppAuthorizationError = (
-  error: { code?: string | number; message?: string; reason?: string },
+  error: { code?: string | number; message?: string; reason?: unknown },
   url?: string,
 ) => {
   if (
@@ -192,7 +194,7 @@ const handlePublicStreamResponseError = async (
   appAccessScope: AppAccessScope | null,
   onCompleted: IOnCompleted | undefined,
 ) => {
-  let data: { code?: string; message?: string; reason?: string } | undefined
+  let data: { code?: string; message?: string; reason?: unknown } | undefined
   try {
     data = (await response.clone().json()) as typeof data
   } catch {}
@@ -675,8 +677,8 @@ export const upload = async (
     xhr.withCredentials = true
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 201) resolve(xhr.response)
+      if (xhr.readyState === 4 && xhr.status !== 0) {
+        if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
         else {
           if (handleAppAccessError(xhr.status, xhr.response, appAccessScope, xhr)) {
             reject(xhr)
@@ -693,10 +695,13 @@ export const upload = async (
             xhr.response !== null
           )
             handleWebAppAuthorizationError(xhr.response)
-          reject(xhr)
+          reject(httpErrorFromXhr(xhr))
         }
       }
     }
+    xhr.onerror = () => reject(new TypeError('Failed to fetch'))
+    xhr.onabort = () => reject(new DOMException('The operation was aborted.', 'AbortError'))
+    xhr.ontimeout = () => reject(new DOMException('The operation timed out.', 'TimeoutError'))
     if (mergedOptions.onprogress) xhr.upload.onprogress = mergedOptions.onprogress
     xhr.send(mergedOptions.data)
   })
@@ -1173,29 +1178,24 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         completeWebAppAuthorizationRecovery(address)
       return resp
     }
-    const errResp: Response = err as any
-    if (errResp.status === 403 || errResp.status === 404) {
-      const data = await errResp
-        .clone()
-        .json()
-        .catch(() => undefined)
-      if (handleAppAccessError(errResp.status, data, appAccessScope, errResp, appIdentity))
+    if (err instanceof ORPCError && (err.status === 403 || err.status === 404)) {
+      if (handleAppAccessError(err.status, err.data, appAccessScope, err, appIdentity))
         return Promise.reject(err)
     }
-    if (errResp.status === 401 || (errResp.status === 403 && isPublicAPI)) {
+    if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
 
-      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.clone().json())
       if (appAccessScope && !canRecoverWebAppAuthorization(appAccessScope))
         return Promise.reject(err)
-      if (parseErr) {
-        if (errResp.status === 401) {
+      const errRespData = { code: err.code, message: err.message, reason: err.data?.reason }
+      if (!err.data) {
+        if (err.status === 401) {
           discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
           window.location.href = buildSigninUrlWithRedirect()
         }
         return Promise.reject(err)
       }
-      if (/\/login/.test(url)) return Promise.reject(errRespData)
+      if (/\/login/.test(url)) return Promise.reject(err)
       if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
       // special code
       const { code, message } = errRespData
@@ -1203,7 +1203,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (errResp.status === 403) return Promise.reject(err)
+      if (err.status === 403) return Promise.reject(err)
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
         discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
@@ -1230,6 +1230,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // Preserve the transient failure so callers can retry instead of treating the session as ended.
+      if (isTransientHttpError(refreshErr)) return Promise.reject(refreshErr)
       // /device is the device-flow chooser; logged-out is a valid state
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
@@ -1292,16 +1294,6 @@ export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOt
 
 export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
-
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
 /**

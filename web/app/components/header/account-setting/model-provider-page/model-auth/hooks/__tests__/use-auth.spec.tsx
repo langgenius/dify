@@ -38,8 +38,19 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useRefreshModel: () => ({ handleRefreshModel: mockHandleRefreshModel }),
 }))
 
-vi.mock('@/service/use-models', () => ({
-  useDeleteModel: () => ({ mutateAsync: mockDeleteModelService }),
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    workspaces: {
+      current: {
+        modelProviders: { byProvider: { models: { delete: { mutationOptions: () => ({}) } } } },
+      },
+    },
+  },
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useMutation: () => ({ mutateAsync: mockDeleteModelService }),
 }))
 
 vi.mock('../use-auth-service', () => ({
@@ -204,8 +215,8 @@ describe('useAuth', () => {
     })
 
     expect(mockDeleteModelService).toHaveBeenCalledWith({
-      model: 'gpt-4',
-      model_type: ModelTypeEnum.textGeneration,
+      params: { provider: 'openai' },
+      query: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration },
     })
     expect(onRemove).toHaveBeenCalledWith('')
   })

@@ -1,18 +1,19 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
@@ -58,7 +59,10 @@ export const useWorkflowInit = () => {
   const queryClient = useQueryClient()
   const workflowStore = useWorkflowStore()
   const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
-  const appDetail = useAppStore((state) => state.appDetail)!
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -77,9 +81,6 @@ export const useWorkflowInit = () => {
   const setSyncWorkflowDraftHash = useStore((s) => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
-  useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
-  }, [appDetail.id, workflowStore])
 
   const handleUpdateWorkflowFileUploadConfig = useCallback(
     (config: FileUploadConfigResponse) => {
@@ -126,62 +127,56 @@ export const useWorkflowInit = () => {
       setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
     } catch (error: unknown) {
-      const responseError = error as {
-        bodyUsed?: boolean
-        json?: () => Promise<{ code?: string }>
-      }
-      if (responseError.json && !responseError.bodyUsed && appDetail) {
-        responseError.json().then((err) => {
-          if (err.code === 'draft_workflow_not_exist') {
-            const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
-            const initialGraph = {
-              nodes: isAdvancedChat ? nodesTemplate : [],
-              edges: isAdvancedChat ? edgesTemplate : [],
-            }
-            workflowStore.setState({
-              notInitialWorkflow: true,
-              showOnboarding: false,
-              shouldAutoOpenStartNodeSelector: false,
-              hasSelectedStartNode: false,
-              hasShownOnboarding: !isAdvancedChat,
-            })
-
-            if (!appACLCapabilities.canEdit) {
-              const initialData = createLocalWorkflowDraft({
-                ...getWorkflowDraftGraphForCanvas(initialGraph, {
-                  localStartPlaceholderNodes: nodesTemplate,
-                }),
-                viewport: undefined,
-              })
-              setData(initialData)
-              workflowStore.setState({
-                envSecrets: {},
-                environmentVariables: [],
-                conversationVariables: [],
-                isWorkflowDataLoaded: true,
-              })
-              setSyncWorkflowDraftHash(initialData.hash)
-              setIsLoading(false)
-              return
-            }
-
-            syncWorkflowDraft({
-              url: `/apps/${appDetail.id}/workflows/draft`,
-              params: {
-                graph: initialGraph,
-                force: true,
-                features: {
-                  retriever_resource: { enabled: true },
-                },
-                conversation_variables: [],
-              },
-            }).then((res) => {
-              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash)
-              handleGetInitialWorkflowData()
-            })
+      if (error instanceof ORPCError) {
+        if (error.code === 'draft_workflow_not_exist') {
+          const isAdvancedChat = appDetail.mode === 'advanced-chat'
+          const initialGraph = {
+            nodes: isAdvancedChat ? nodesTemplate : [],
+            edges: isAdvancedChat ? edgesTemplate : [],
           }
-        })
+          workflowStore.setState({
+            notInitialWorkflow: true,
+            showOnboarding: false,
+            shouldAutoOpenStartNodeSelector: false,
+            hasSelectedStartNode: false,
+            hasShownOnboarding: !isAdvancedChat,
+          })
+
+          if (!appACLCapabilities.canEdit) {
+            const initialData = createLocalWorkflowDraft({
+              ...getWorkflowDraftGraphForCanvas(initialGraph, {
+                localStartPlaceholderNodes: nodesTemplate,
+              }),
+              viewport: undefined,
+            })
+            setData(initialData)
+            workflowStore.setState({
+              envSecrets: {},
+              environmentVariables: [],
+              conversationVariables: [],
+              isWorkflowDataLoaded: true,
+            })
+            setSyncWorkflowDraftHash(initialData.hash)
+            setIsLoading(false)
+            return
+          }
+
+          syncWorkflowDraft({
+            url: `/apps/${appDetail.id}/workflows/draft`,
+            params: {
+              graph: initialGraph,
+              force: true,
+              features: {
+                retriever_resource: { enabled: true },
+              },
+              conversation_variables: [],
+            },
+          }).then((res) => {
+            workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+            setSyncWorkflowDraftHash(res.hash)
+            handleGetInitialWorkflowData()
+          })
+        }
       }
     }
   }, [

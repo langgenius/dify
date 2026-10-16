@@ -185,7 +185,6 @@ const createProvider = (overrides?: Partial<ModelProvider>): ModelProvider => ({
         quota_unit: QuotaUnitEnum.times,
         quota_limit: 0,
         quota_used: 0,
-        last_used: 0,
         is_valid: true,
       },
     ],

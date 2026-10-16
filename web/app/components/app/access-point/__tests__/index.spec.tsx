@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/utils/access-point'
@@ -16,11 +17,12 @@ import {
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
-let appMode = 'workflow'
+let appMode: AppMode = 'workflow'
 let appPublished = false
 let appPermissionKeys: string[] = [AppACLPermission.AccessPointView]
 const accessPointMocks = vi.hoisted(() => ({
@@ -41,20 +43,6 @@ vi.mock('react-i18next', async () => {
     'workflow.nodes.common.memories.builtIn': 'Built-in',
   })
 })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: appMode,
-        workflow: appPublished ? { id: 'published-workflow' } : null,
-        model_config: appPublished ? { id: 'published-config' } : null,
-        maintainer: 'user-2',
-        permission_keys: appPermissionKeys,
-      },
-    }),
-}))
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -127,6 +115,17 @@ const renderAccessPoint = ({
     seedNetworkAccessGroups(queryClient, { groups: [createNetworkAccessGroupFixture()] })
     seedAppNetworkAccessGroup(queryClient, 'app-1')
   }
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({
+      id: 'app-1',
+      mode: appMode,
+      workflow: appPublished ? { id: 'published-workflow' } : null,
+      model_config: appPublished ? createAppModelConfigFixture() : null,
+      maintainer: 'user-2',
+      permission_keys: appPermissionKeys,
+    }),
+  )
   const queryOptions =
     consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
       input: {
@@ -322,7 +321,7 @@ describe('AccessPoint', () => {
     )
   })
 
-  it.each(['workflow', 'advanced-chat', 'chat', 'agent-chat', 'completion'])(
+  it.each(['workflow', 'advanced-chat', 'chat', 'agent-chat', 'completion'] as const)(
     'checks published %s apps before applying a policy that excludes the current IP',
     async (mode) => {
       const user = userEvent.setup()

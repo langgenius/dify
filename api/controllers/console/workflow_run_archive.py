@@ -137,7 +137,7 @@ class WorkflowRunArchiveMonthApi(Resource):
     )
     @console_account_admission(
         editions=frozenset({DeploymentEdition.CLOUD}),
-        allowed_roles=_WORKFLOW_RUN_ARCHIVE_ALLOWED_ROLES,
+        allowed_roles=frozenset({TenantAccountRole.OWNER}),
     )
     @cloud_edition_billing_paid_plan_required
     def delete(self, request_context: RequestContext, year: int, month: int):

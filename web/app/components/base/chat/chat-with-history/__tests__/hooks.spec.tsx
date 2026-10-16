@@ -5,6 +5,7 @@ import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AppToastHost } from '@/app/notifications/host'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   AppSourceType,
   delConversation,
@@ -306,9 +307,11 @@ describe('useChatWithHistory', () => {
       setConversationIdInfo('environment:environment-code', 'conversation-1')
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockRejectedValue(
-        new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
-          status: 404,
-        }),
+        await httpErrorFromResponse(
+          new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+            status: 404,
+          }),
+        ),
       )
 
       const { result } = await renderWithClient(() => useChatWithHistory())
@@ -1187,6 +1190,36 @@ describe('useChatWithHistory', () => {
       expect(callback).not.toHaveBeenCalled()
     })
 
+    it('should invoke callback when a required number input is zero', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          {
+            number: {
+              variable: 'required_number',
+              label: 'Required Number',
+              required: true,
+              default: 0,
+            },
+          },
+        ],
+      } as unknown as ChatConfig
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.newConversationInputsRef.current.required_number).toBe(0)
+      })
+      const callback = vi.fn()
+
+      act(() => {
+        result!.current.handleStartChat(callback)
+      })
+
+      expect(callback).toHaveBeenCalledTimes(1)
+    })
+
     it('should invoke callback when allInputsHidden is true regardless of required fields', async () => {
       // Arrange
       mockStoreState.appParams = {
@@ -1901,6 +1934,37 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         const form = result!.current.inputsForms[0]
         expect(form.default).toBe(99)
+      })
+
+      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})
+    })
+  })
+
+  describe('inputsForms number numeric zero', () => {
+    it('should preserve zero from URL params and seed it into new conversation inputs', async () => {
+      const { getRawInputsFromUrlParams } = await import('../../utils')
+      vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({ num_var: '0' })
+
+      mockStoreState.appParams = {
+        user_input_form: [
+          {
+            number: {
+              variable: 'num_var',
+              label: 'Number',
+              required: false,
+              default: 10,
+            },
+          },
+        ],
+      } as unknown as ChatConfig
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.inputsForms[0].default).toBe(0)
+        expect(result!.current.newConversationInputsRef.current.num_var).toBe(0)
       })
 
       vi.mocked(getRawInputsFromUrlParams).mockResolvedValue({})

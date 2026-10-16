@@ -71,7 +71,7 @@ export function CurlImportDialog({ readOnly, onImport }: CurlImportDialogProps) 
 
   return (
     <Dialog actionsRef={actionsRef}>
-      <DialogTrigger className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-2 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden">
+      <DialogTrigger className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-2 hover:bg-state-base-hover">
         <span
           aria-hidden
           className="i-custom-vender-line-files-file-arrow-01 size-3 text-text-tertiary"

@@ -143,7 +143,7 @@ describe('usePreviewState', () => {
         }),
       )
       const value = result.current.getPreviewPickerValue()
-      expect(value).toBe(files[0])
+      expect(value).toEqual({ id: 'f-1', name: 'file1.txt', extension: 'txt' })
     })
 
     it('should return mapped notion page value for NOTION type', () => {

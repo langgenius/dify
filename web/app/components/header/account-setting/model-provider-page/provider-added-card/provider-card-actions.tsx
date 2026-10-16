@@ -31,7 +31,6 @@ import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-v
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
-import { commonQueryKeys } from '@/service/use-common'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { getMarketplaceUrl } from '@/utils/var'
 
@@ -75,7 +74,9 @@ const ProviderCardActions: FC<Props> = (props) => {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.plugin.list.latestVersions.post.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+      }),
       queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
       queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
     ])

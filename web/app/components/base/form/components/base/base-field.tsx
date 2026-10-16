@@ -396,7 +396,7 @@ const BaseField = ({
           )}
           {isSelect && (
             <>
-              <SelectTrigger id={controlId} {...controlProps} className="px-2">
+              <SelectTrigger id={controlId} {...controlProps}>
                 {multiple ? (
                   <SelectValue<string, true> placeholder={selectPlaceholder}>
                     {(selectedValue) =>
@@ -506,13 +506,13 @@ const BaseField = ({
               >
                 <FieldsetLegend className="sr-only">{translatedLabel || name}</FieldsetLegend>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio value={true} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio value={false} />
                     False
                   </FieldLabel>

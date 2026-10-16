@@ -16,28 +16,31 @@ type DocDetail = {
 const mockMutateAsync = vi.fn().mockResolvedValue({})
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useBatchUpdateDocMetadata: () => ({
-    mutateAsync: mockMutateAsync,
-  }),
-  useCreateMetaData: () => ({
-    mutateAsync: mockDoAddMetaData,
-  }),
-  useDocumentMetaData: () => ({
-    data: {
-      doc_metadata: [
-        { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
-        { id: '2', name: 'field_two', type: DataType.number, value: 42 },
-        { id: 'built-in', name: 'created_at', type: DataType.time, value: 1609459200 },
-      ],
-    },
-  }),
-  useDatasetMetaData: () => ({
-    data: {
-      built_in_field_enabled: true,
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.metadata.post': () => ({
+      mutateAsync: mockMutateAsync,
+    }),
+    'datasets.byDatasetId.metadata.post': () => ({
+      mutateAsync: mockDoAddMetaData,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.get': () => ({
+      data: {
+        doc_metadata: [
+          { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
+          { id: '2', name: 'field_two', type: DataType.number, value: 42 },
+          { id: 'built-in', name: 'created_at', type: DataType.time, value: 1609459200 },
+        ],
+      },
+    }),
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        built_in_field_enabled: true,
+      },
+    }),
+  })
+})
 
 // Mock useDatasetDetailContext
 vi.mock('@/context/dataset-detail', () => ({

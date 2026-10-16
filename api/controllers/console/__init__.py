@@ -7,7 +7,15 @@ from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
 from controllers.common.app_access_error import register_app_access_error_metadata
-from controllers.common.errors import register_permission_error_handler
+from controllers.common.errors import (
+    InternalServerError,
+    InvalidArgumentError,
+    NotFoundError,
+    UnauthorizedError,
+    register_permission_error_handler,
+)
+from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from controllers.console.workspace.error import AccountNotInitializedError
 from libs.external_api import ExternalApi
 from machinery.errors import ActiveWorkspaceRequiredError
 from services.retention.workflow_run.archive_log_service import (
@@ -27,6 +35,20 @@ api = ExternalApi(
     description="Console management APIs for app configuration, monitoring, and administration",
 )
 register_permission_error_handler(api)
+# Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
+# input); any operation may answer with them, so no operation lists them. The shared
+# ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
+# exceptions already produce on every operation, so documenting them per operation adds nothing.
+api.document_generic_errors(
+    NotSetupError,
+    NotInitValidateError,
+    AccountNotInitializedError,
+    UnauthorizedAndForceLogout,
+    InvalidArgumentError,
+    NotFoundError,
+    UnauthorizedError,
+    InternalServerError,
+)
 
 
 @api.errorhandler(ActiveWorkspaceRequiredError)
@@ -79,6 +101,17 @@ for error_type in (
     WorkflowRunArchiveDownloadNotReadyError,
 ):
     cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(error_type, last=False)
+# What those handlers emit, so the document resolves a declared error to its status and code and the
+# contract check admits the codes they serve.
+api.document_error_handler(
+    ActiveWorkspaceRequiredError,
+    status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    code=ActiveWorkspaceRequiredError.error_code,
+)
+api.document_error_handler(WorkflowRunArchiveInvalidMonthError, status=HTTPStatus.BAD_REQUEST, code="bad_request")
+api.document_error_handler(WorkflowRunArchiveNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
+api.document_error_handler(WorkflowRunArchiveDownloadTaskNotFoundError, status=HTTPStatus.NOT_FOUND, code="not_found")
+api.document_error_handler(WorkflowRunArchiveDownloadNotReadyError, status=HTTPStatus.CONFLICT, code="conflict")
 
 
 console_ns = Namespace("console", description="Console management API operations", path="/")
@@ -105,9 +138,9 @@ from . import (
     feature,
     human_input_form,
     init_validate,
-    knowledge_fs_proxy,
     notification,
     onboarding,
+    resource_access_token,
     setup,
     spec,
     system,
@@ -263,7 +296,6 @@ __all__ = [
     "human_input_form",
     "init_validate",
     "installed_app",
-    "knowledge_fs_proxy",
     "load_balancing_config",
     "login",
     "mcp_server",
@@ -288,6 +320,7 @@ __all__ = [
     "rag_pipeline_workflow",
     "rbac",
     "recommended_app",
+    "resource_access_token",
     "saved_message",
     "setup",
     "site",

@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
@@ -54,6 +55,8 @@ const createXhr = (data: unknown, status = 403) =>
     }),
     status,
     response: data,
+    statusText: '',
+    getAllResponseHeaders: () => 'Content-Type: application/json',
     readyState: 4,
     upload: {},
     withCredentials: false,
@@ -88,7 +91,7 @@ describe('WebApp IP access denial transport', () => {
   })
 
   it.each(['/site', '/webapp/access-mode', '/login/status', '/passport'])(
-    'handles denied initialization request %s without consuming its body or changing the URL',
+    'handles denied initialization request %s with its error data intact and without changing the URL',
     async (path) => {
       const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(createResponse(denial))
       const url = window.location.href
@@ -100,10 +103,10 @@ describe('WebApp IP access denial transport', () => {
         error = caught
       }
 
-      expect(error).toBeInstanceOf(Response)
+      expect(error).toBeInstanceOf(ORPCError)
       expect(isAppAccessError(error)).toBe(true)
       expect(appAccessStore.get(appAccessErrorAtom)?.clientIp).toBe(denial.client_ip)
-      await expect((error as Response).json()).resolves.toEqual(denial)
+      expect((error as ORPCError<string, unknown>).data).toEqual(denial)
       expect(fetch).toHaveBeenCalledOnce()
       expect(window.location.href).toBe(url)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
@@ -174,7 +177,7 @@ describe('WebApp IP access denial transport', () => {
             : new Response('not JSON', { status }),
         )
 
-        expect(await response).toBeInstanceOf(Response)
+        expect(await response).toBeInstanceOf(ORPCError)
         expect(window.location.href).toBe(url)
         expect(appAccessStore.get(appAccessErrorAtom)).toBe(currentDenial)
         expect(beginRecovery).not.toHaveBeenCalled()
@@ -270,10 +273,10 @@ describe('WebApp IP access denial transport', () => {
         (caught: unknown) => caught,
       )
 
-      expect(error).toBeInstanceOf(Response)
+      expect(error).toBeInstanceOf(ORPCError)
       expect(isAppAccessError(error)).toBe(false)
       expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
-      await expect((error as Response).json()).resolves.toEqual(data)
+      expect((error as ORPCError<string, unknown>).data).toEqual(data)
       expect(toast.error).toHaveBeenCalledWith(data.message)
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
     },
@@ -337,7 +340,11 @@ describe('WebApp IP access denial transport', () => {
   it('preserves unrelated XHR errors', async () => {
     const xhr = createXhr({ code: 'file_too_large', message: 'File too large' }, 413)
 
-    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toBe(xhr)
+    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toMatchObject({
+      code: 'file_too_large',
+      status: 413,
+      data: xhr.response,
+    })
 
     expect(isAppAccessError(xhr)).toBe(false)
   })
@@ -366,7 +373,7 @@ describe('application not-found transport', () => {
       { isPublicAPI: true },
     ).catch((error) => error)
     expect(isAppAccessError(error)).toBe(true)
-    expect(await (error as Response).json()).toEqual(body)
+    expect((error as ORPCError<string, unknown>).data).toEqual(body)
     expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
       reason: 'app_not_found',
       clientIp: '203.0.113.8',
@@ -450,15 +457,15 @@ describe('application not-found transport', () => {
     ['/agents/app/access', '/agent/app', false],
     ['/installed/app', '/installed-apps/app', false],
   ])(
-    'handles an identity 404 at %s without consuming the error or retrying',
+    'handles an identity 404 at %s with its error data intact and without retrying',
     async (route, url, isPublicAPI) => {
       window.history.replaceState({}, '', route)
       const body = { code: 'not_found', message: 'App not found', client_ip: '203.0.113.8' }
       const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(createResponse(body, 404))
       const error = await request(url, {}, { isPublicAPI }).catch((error) => error)
       expect(isAppAccessError(error)).toBe(true)
-      expect(error).toBeInstanceOf(Response)
-      expect(await (error as Response).json()).toEqual(body)
+      expect(error).toBeInstanceOf(ORPCError)
+      expect((error as ORPCError<string, unknown>).data).toEqual(body)
       expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
         reason: 'app_not_found',
         clientIp: '203.0.113.8',

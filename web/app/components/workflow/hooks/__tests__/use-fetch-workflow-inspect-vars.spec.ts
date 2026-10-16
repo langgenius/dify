@@ -1,7 +1,6 @@
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
-import { FlowType } from '@/types/common'
 import { createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -17,6 +16,7 @@ const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 const schemaTypeDefinitions: SchemaTypeDefinition[] = [
   {
     name: 'simple',
+    label: 'Simple',
     schema: {
       properties: {},
     },
@@ -27,8 +27,11 @@ vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
 )
 
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
+  ),
 )
 
 vi.mock('@/service/use-workflow', () => ({
@@ -110,18 +113,11 @@ describe('use-fetch-workflow-inspect-vars', () => {
       }),
     ])
 
-    const { result, store } = renderWorkflowHook(
-      () =>
-        useSetWorkflowVarsWithValue({
-          flowType: FlowType.appFlow,
-          flowId: 'flow-1',
-        }),
-      {
-        initialStoreState: {
-          dataSourceList: [],
-        },
+    const { result, store } = renderWorkflowHook(() => useSetWorkflowVarsWithValue(), {
+      initialStoreState: {
+        dataSourceList: [],
       },
-    )
+    })
 
     await act(async () => {
       await result.current.fetchInspectVars({})
@@ -129,7 +125,11 @@ describe('use-fetch-workflow-inspect-vars', () => {
 
     expect(mockInvalidateConversationVarValues).toHaveBeenCalledTimes(1)
     expect(mockInvalidateSysVarValues).toHaveBeenCalledTimes(1)
-    expect(mockFetchAllInspectVars).toHaveBeenCalledWith(FlowType.appFlow, 'flow-1')
+    expect(mockFetchAllInspectVars).toHaveBeenCalledWith({
+      kind: 'app',
+      appId: 'app-1',
+      mode: 'workflow',
+    })
     expect(mockHandleCancelAllNodeSuccessStatus).toHaveBeenCalledTimes(1)
     expect(store.getState().nodesWithInspectVars).toEqual([
       expect.objectContaining({
@@ -163,18 +163,11 @@ describe('use-fetch-workflow-inspect-vars', () => {
       dataSourceList: [],
     }
 
-    const { result, store } = renderWorkflowHook(
-      () =>
-        useSetWorkflowVarsWithValue({
-          flowType: FlowType.appFlow,
-          flowId: 'flow-2',
-        }),
-      {
-        initialStoreState: {
-          dataSourceList: [],
-        },
+    const { result, store } = renderWorkflowHook(() => useSetWorkflowVarsWithValue(), {
+      initialStoreState: {
+        dataSourceList: [],
       },
-    )
+    })
 
     await act(async () => {
       await result.current.fetchInspectVars({

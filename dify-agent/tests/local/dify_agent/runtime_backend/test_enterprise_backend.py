@@ -694,3 +694,23 @@ async def test_enterprise_snapshot_delete_propagates_gateway_failures(
 
     with pytest.raises(BindingDestroyError, match=reason):
         await snapshots.delete("tenant-1/agent-1/home-2")
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("reason", ["snapshot_not_found", "not_found"])
+async def test_enterprise_snapshot_delete_treats_absent_snapshot_as_success(
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(404, json={"code": 404, "reason": reason, "message": "home snapshot missing"})
+
+    _ = _mock_http(monkeypatch, handler)
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    await snapshots.delete("tenant-1/agent-1/home-2")
+
+    assert [request.method for request in requests] == ["DELETE"]

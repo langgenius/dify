@@ -1,4 +1,5 @@
 'use client'
+
 import type { PropsWithChildren } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +19,7 @@ import {
 } from '@/features/app-access-error/state'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
@@ -143,16 +145,19 @@ function Splash({ children }: PropsWithChildren) {
           } catch (error) {
             if (!canContinue() || isAppAccessError(error)) return
 
-            if (error instanceof Response && error.status >= 500) {
-              setInitializationError({ shareCode: effectiveShareCode, status: error.status })
+            if ((getHttpErrorStatus(error) ?? 0) >= 500) {
+              setInitializationError({
+                shareCode: effectiveShareCode,
+                status: getHttpErrorStatus(error),
+              })
               return
             }
-            if (error instanceof Response && error.status === 404) {
+            if (getHttpErrorStatus(error) === 404) {
               setInitializationError({ shareCode: effectiveShareCode, status: 404 })
               return
             }
             await webAppLogout(address)
-            proceedToAuth(error instanceof Response && error.status === 401)
+            proceedToAuth(getHttpErrorStatus(error) === 401)
           }
         }
       } catch (error) {
@@ -160,7 +165,7 @@ function Splash({ children }: PropsWithChildren) {
 
         setInitializationError({
           shareCode: effectiveShareCode,
-          status: error instanceof Response ? error.status : undefined,
+          status: getHttpErrorStatus(error),
         })
       }
     }

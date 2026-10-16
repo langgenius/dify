@@ -7,16 +7,7 @@ import { inputVarTypeToVarType } from '../../data-source/utils'
 
 const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
 
-export const isSnippetCanvas = () => {
-  if (typeof globalThis.location === 'undefined') return false
-
-  return /^\/snippets\/[^/]+\/orchestrate/.test(globalThis.location.pathname)
-}
-
-export const filterSnippetSystemVars = (
-  availableVars: NodeOutPutVar[],
-  isSnippetFlow = isSnippetCanvas(),
-) => {
+export const filterSnippetSystemVars = (availableVars: NodeOutPutVar[], isSnippetFlow: boolean) => {
   if (!isSnippetFlow) return availableVars
 
   return availableVars
@@ -93,16 +84,18 @@ const buildSnippetInputFieldVars = (
 
 export const appendSnippetInputFieldVars = ({
   availableNodes,
+  isSnippetFlow,
   fields,
   title,
 }: {
   availableNodes: Node[]
+  isSnippetFlow: boolean
   fields?: SnippetInputField[]
   title: string
 }) => {
   const inputFields = fields ?? []
   const shouldAppendSnippetInputFields =
-    isSnippetCanvas() &&
+    isSnippetFlow &&
     inputFields.length > 0 &&
     !availableNodes.some((node) => node.data.type === BlockEnum.Start)
   const snippetInputFieldNode = shouldAppendSnippetInputFields

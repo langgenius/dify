@@ -82,7 +82,7 @@ class RosterAgentPackageImporter:
         icon_background: str | None = None,
     ) -> RosterAgentPackageImportResult:
         """Import a catalog-admitted published source without an outer archive."""
-        app, resources, _ = RosterAgentPackageExporter().collect(
+        app, resources = RosterAgentPackageExporter().collect(
             tenant_id=source.tenant_id, agent_id=source.agent_id, version_id=source.version_id
         )
         payloads, resource_index, icons = resources.read_local_resources(app.agent.package_ref)

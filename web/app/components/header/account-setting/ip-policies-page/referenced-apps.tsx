@@ -1,17 +1,12 @@
 'use client'
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { AppIconType } from '@/types/app'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
 type PolicyReferencedAppsProps = {
   apps: NetworkAccessGroupResponse['apps']
   usedByCount: number
-}
-
-function toAppIconType(iconType: string | null | undefined): AppIconType | undefined {
-  if (iconType === 'image' || iconType === 'emoji' || iconType === 'link') return iconType
 }
 
 export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedAppsProps) {
@@ -41,14 +36,7 @@ export function PolicyReferencedApps({ apps, usedByCount }: PolicyReferencedApps
             rel="noreferrer"
             className="flex min-h-7 max-w-full items-center gap-1.5 rounded-md border border-components-panel-border-subtle bg-background-default py-1 pr-1.5 pl-1 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
-            <AppIcon
-              size="xs"
-              decorative
-              iconType={toAppIconType(app.icon_type)}
-              icon={app.icon ?? undefined}
-              background={app.icon_background}
-              className="size-5 shrink-0 rounded-sm"
-            />
+            <AppIcon size="xs" decorative icon={app} className="size-5 shrink-0 rounded-sm" />
             <span className="min-w-0 system-sm-medium wrap-anywhere text-text-primary">
               {app.name}
             </span>

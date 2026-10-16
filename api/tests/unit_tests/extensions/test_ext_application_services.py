@@ -45,8 +45,10 @@ from models.provider import ProviderCredential
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
@@ -92,7 +94,10 @@ from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGate
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
 from services.app.api_key_service import AppApiKeyService
+from services.app.console_gateway import EnterpriseConsoleAppAccess
 from services.app.creators_platform_gateway import CreatorsPlatformGateway
+from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
+from services.app.workflow_comment_service import WorkflowCommentService
 from services.app_generate_service import AppGenerateService
 from services.app_preview_query_service import AppPreviewRef, AppPreviewUnavailableError
 from services.app_scoped_end_user_query_service import AppScopedEndUserQueryService
@@ -123,9 +128,11 @@ from services.installed_app_generation_adapters import AppGenerateServiceRuntime
 from services.installed_app_generation_service import InstalledAppGenerationService
 from services.knowledge.api_key_service import DatasetApiKeyService
 from services.knowledge.dataset_access import DatasetAccessService
+from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.documents.application import DatasetDocumentApplicationService
+from services.knowledge.external.adapters import SQLAlchemyExternalKnowledgeOperations
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
 from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
@@ -138,7 +145,6 @@ from services.network_access_group_gateway import (
 )
 from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
-from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -253,7 +259,11 @@ def test_init_app_registers_services_for_the_current_app(
         assert repository._session_factory is sqlite_session_factory
         assert isinstance(services.workflow_statistics, WorkflowStatisticQueryService)
         assert isinstance(services.apps, AppServices)
-        assert services.apps.console._apps is services.apps.queries._apps
+        assert services.apps.console._apps is services.apps.discovery._apps
+        dataset_operations = services.knowledge.datasets._operations
+        assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
+        assert isinstance(dataset_operations._app_queries, ConsoleAppRepository)
+        assert dataset_operations._app_queries._session_factory is sqlite_session_factory
         creators = services.apps.console._creators
         assert isinstance(creators, CreatorsPlatformGateway)
         assert creators._oauth is services.oauth_server
@@ -291,6 +301,25 @@ def test_build_application_services_preserves_composed_boundaries(
     assert services.trial_apps.access._apps is trial_apps
     assert services.trial_apps.generation._usage is trial_apps
     assert services.recommended_app_queries._trial_apps is trial_apps
+
+    assert services.rbac.resources._apps is services.apps.console._apps
+    assert services.rbac.queries._apps is services.rbac.resources._apps
+    assert services.rbac.queries._datasets is services.rbac.resources._datasets
+    dataset_access = services.knowledge.datasets._dataset_access
+    assert isinstance(dataset_access, DatasetAccessService)
+    assert services.rbac.resources._datasets is dataset_access._datasets
+    assert services.rbac.members._members is services.rbac.resources._members
+    assert services.rbac.members._members is services.workspaces.members._workspaces
+    assert services.rbac.members._workspace_roles is services.workspaces.members
+    app_access = services.apps.console._access
+    assert isinstance(app_access, EnterpriseConsoleAppAccess)
+    assert app_access._members is services.rbac.members
+    dataset_operations = services.knowledge.datasets._operations
+    assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
+    assert dataset_operations._members_service is services.rbac.members
+    external_operations = services.knowledge.external._operations
+    assert isinstance(external_operations, SQLAlchemyExternalKnowledgeOperations)
+    assert external_operations._members is services.rbac.members
 
 
 @pytest.mark.parametrize(
@@ -585,6 +614,22 @@ def test_build_application_services_wires_workflow_app_log_boundary(
     assert services.workflow_app_logs._logs._session_factory is sqlite_session_factory
 
 
+def test_build_application_services_wires_workflow_comment_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=_redis(),
+    )
+
+    assert isinstance(services.workflow_comments, WorkflowCommentService)
+    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
+    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
+
+
 def test_build_application_services_wires_app_statistic_boundary(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -635,11 +680,6 @@ def test_build_application_services_wires_billing_service(
             "get_invoices",
             return_value={"url": "https://billing.example.com/portal"},
         ) as get_invoices,
-        patch.object(
-            BillingService,
-            "sync_partner_tenants_bindings",
-            return_value={"result": "success"},
-        ) as sync_partner_tenants_bindings,
     ):
         services = ext_application_services.build_application_services(
             database_client=sqlite_session_factory,
@@ -661,15 +701,8 @@ def test_build_application_services_wires_billing_service(
         interval="month",
     ) == {"url": "https://billing.example.com/checkout"}
     assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
-    assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
-    assert services.partner_tenant_bindings.sync(
-        account_id="account-1",
-        partner_key="partner-key",
-        click_id="click-1",
-    ) == {"result": "success"}
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
-    sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
 
 
 def test_build_application_services_wires_network_access_group_boundary(

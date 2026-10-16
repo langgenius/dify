@@ -2,16 +2,7 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import {
-  AlertDialog,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -51,7 +42,7 @@ type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string
-  mode: AppModeEnum
+  modelMode: ModelModeType
   isShow: boolean
   codeLanguages: CodeLanguage
   onClose: () => void
@@ -62,7 +53,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   flowId,
   nodeId,
   currentCode,
-  mode,
+  modelMode,
   isShow,
   codeLanguages,
   onClose,
@@ -89,10 +80,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     return {
       name: defaultModel?.model ?? '',
       provider: defaultModel?.provider.provider ?? '',
-      mode: mode as unknown as ModelModeType,
+      mode: modelMode,
       completion_params: defaultCompletionParams,
     }
-  }, [defaultModel, mode, selectedModel, storedModel])
+  }, [defaultModel, modelMode, selectedModel, storedModel])
   const [instructionFromSessionStorage, setInstructionFromSessionStorage] =
     useSessionStorageState<string>(`improve-instruction-${flowId}-${nodeId}`)
 
@@ -182,11 +173,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     }
   }
 
-  const [
-    isShowConfirmOverwrite,
-    { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
-  ] = useBoolean(false)
-
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <LoadingPlaceholder />
@@ -269,40 +255,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
                 currentVersionIndex={currentVersionIndex || 0}
                 setCurrentVersionIndex={setCurrentVersionIndex}
                 versions={versions || []}
-                onApply={showConfirmOverwrite}
+                onApply={() => onFinished(current!)}
                 generatorType={GeneratorType.code}
               />
             </div>
           )}
         </div>
-        <AlertDialog
-          open={isShowConfirmOverwrite}
-          onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
-        >
-          <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appGeneration' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                {t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appGeneration' })}
-              </AlertDialogDescription>
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancelButton>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </AlertDialogCancelButton>
-              <AlertDialogConfirmButton
-                onClick={() => {
-                  hideShowConfirmOverwrite()
-                  onFinished(current!)
-                }}
-              >
-                {t(($) => $['operation.confirm'], { ns: 'common' })}
-              </AlertDialogConfirmButton>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </DialogContent>
     </Dialog>
   )

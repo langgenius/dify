@@ -2,16 +2,18 @@
 
 import datetime
 import json
+import logging
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
 from typing import override
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_redis import RedisClientWrapper
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorage, ArchiveStorageError
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -28,6 +30,7 @@ from services.retention.workflow_run.archive_download_task import (
     build_archive_download_id,
     build_pending_archive_download_task,
 )
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLease
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
@@ -103,18 +106,22 @@ def _deleter(
     repository: WorkflowRunArchiveBundleQueryRepository,
     archive: MemoryStorage,
     downloads: MemoryStorage,
+    lease: WorkflowRunArchiveMonthLease,
 ) -> WorkflowRunArchiveDeleter:
     return WorkflowRunArchiveDeleter(
         bundles=repository,
         archive_storage_provider=lambda: archive,
         download_storage_provider=lambda: downloads,
-        month_lock=lambda **_kwargs: nullcontext(MagicMock(assert_owned=MagicMock())),
+        month_lock=lambda **_kwargs: nullcontext(lease),
     )
 
 
 def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
     sqlite_session_factory: sessionmaker[Session],
+    caplog: pytest.LogCaptureFixture,
+    month_lease: WorkflowRunArchiveMonthLease,
 ) -> None:
+    caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_deletion")
     archive, downloads = MemoryStorage(), MemoryStorage()
     target, other_tenant, other_month = _bundle(), _bundle(tenant_id=OTHER_TENANT_ID), _bundle(month=2)
     target_prefix = _put_bundle(archive, target)
@@ -159,7 +166,7 @@ def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
     event.listen(engine, "before_cursor_execute", record_writes)
     try:
         repository.request_deletion(TENANT_ID, year=2025, month=3)
-        result = _deleter(repository, archive, downloads).delete(tenant_id=TENANT_ID, year=2025, month=3)
+        result = _deleter(repository, archive, downloads, month_lease).delete(tenant_id=TENANT_ID, year=2025, month=3)
     finally:
         event.remove(engine, "before_cursor_execute", record_writes)
 
@@ -176,13 +183,31 @@ def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
             other_tenant.id,
             other_month.id,
         }
+    completed = [
+        record.__dict__.get("attributes", {})
+        for record in caplog.records
+        if record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+    ]
+    assert completed == [
+        {
+            "audit": True,
+            "event": "workflow_run_archive.deletion_completed",
+            "tenant_id": TENANT_ID,
+            "year": 2025,
+            "month": 3,
+            "bundle_count": 1,
+        }
+    ]
 
 
 @pytest.mark.parametrize("failure_stage", ["archive", "download"])
 def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     sqlite_session_factory: sessionmaker[Session],
     failure_stage: str,
+    caplog: pytest.LogCaptureFixture,
+    month_lease: WorkflowRunArchiveMonthLease,
 ) -> None:
+    caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_deletion")
     archive, downloads = MemoryStorage(), MemoryStorage()
     target = _bundle()
     prefix = _put_bundle(archive, target)
@@ -196,7 +221,7 @@ def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
         session.add(target)
     repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)
     repository.request_deletion(TENANT_ID, year=2025, month=3)
-    deleter = _deleter(repository, archive, downloads)
+    deleter = _deleter(repository, archive, downloads, month_lease)
 
     assert deleter.delete(tenant_id=TENANT_ID, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.FAILED
     records = repository.list_for_tenant_month(TENANT_ID, year=2025, month=3)
@@ -205,6 +230,16 @@ def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     if failure_stage == "archive":
         assert prefix + "manifest.json" in archive.objects
     assert download_key in downloads.objects
+    assert not any(
+        record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+        for record in caplog.records
+    )
+    failed = next(
+        record.__dict__.get("attributes", {})
+        for record in caplog.records
+        if record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_failed"
+    )
+    assert (failed["tenant_id"], failed["year"], failed["month"]) == (TENANT_ID, 2025, 3)
 
     archive.fail_key = downloads.fail_key = None
     repository.request_deletion(TENANT_ID, year=2025, month=3)
@@ -213,10 +248,18 @@ def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     assert not archive.list_objects(prefix)
     assert not downloads.objects
     assert deleter.delete(tenant_id=TENANT_ID, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.COMPLETED
+    assert (
+        sum(
+            record.__dict__.get("attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+            for record in caplog.records
+        )
+        == 1
+    )
 
 
 def test_deletion_requires_durable_request_and_never_deletes_new_active_bundles(
     sqlite_session_factory: sessionmaker[Session],
+    month_lease: WorkflowRunArchiveMonthLease,
 ) -> None:
     archive, downloads = MemoryStorage(), MemoryStorage()
     target, new_bundle = _bundle(), _bundle(bundle_id="new-bundle")
@@ -225,7 +268,7 @@ def test_deletion_requires_durable_request_and_never_deletes_new_active_bundles(
     with sqlite_session_factory.begin() as session:
         session.add(target)
     repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)
-    deleter = _deleter(repository, archive, downloads)
+    deleter = _deleter(repository, archive, downloads, month_lease)
     deleter.delete(tenant_id=TENANT_ID, year=2025, month=3)
     assert not archive.deleted
     repository.request_deletion(TENANT_ID, year=2025, month=3)
@@ -241,7 +284,9 @@ def test_deletion_requires_durable_request_and_never_deletes_new_active_bundles(
     ]
 
 
-def test_manifest_mismatch_fails_without_deleting_objects(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_manifest_mismatch_fails_without_deleting_objects(
+    sqlite_session_factory: sessionmaker[Session], month_lease: WorkflowRunArchiveMonthLease
+) -> None:
     archive, downloads = MemoryStorage(), MemoryStorage()
     target = _bundle()
     prefix = _put_bundle(archive, target)
@@ -253,14 +298,16 @@ def test_manifest_mismatch_fails_without_deleting_objects(sqlite_session_factory
     repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)
     repository.request_deletion(TENANT_ID, year=2025, month=3)
 
-    result = _deleter(repository, archive, downloads).delete(tenant_id=TENANT_ID, year=2025, month=3)
+    result = _deleter(repository, archive, downloads, month_lease).delete(tenant_id=TENANT_ID, year=2025, month=3)
 
     assert result.status == WorkflowRunArchiveDeletionStatus.FAILED
     assert not archive.deleted
     assert repository.list_for_tenant_month(TENANT_ID, year=2025, month=3)
 
 
-def test_lost_month_lease_keeps_durable_index_for_retry(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_lost_month_lease_keeps_durable_index_for_retry(
+    sqlite_session_factory: sessionmaker[Session], month_lease: WorkflowRunArchiveMonthLease
+) -> None:
     archive, downloads = MemoryStorage(), MemoryStorage()
     target = _bundle()
     prefix = _put_bundle(archive, target)
@@ -268,15 +315,15 @@ def test_lost_month_lease_keeps_durable_index_for_retry(sqlite_session_factory: 
         session.add(target)
     repository = WorkflowRunArchiveBundleQueryRepository(session_factory=sqlite_session_factory)
     repository.request_deletion(TENANT_ID, year=2025, month=3)
-    lease = MagicMock(assert_owned=MagicMock(side_effect=[None, None, RuntimeError("lease lost")]))
     deleter = WorkflowRunArchiveDeleter(
         bundles=repository,
         archive_storage_provider=lambda: archive,
         download_storage_provider=lambda: downloads,
-        month_lock=lambda **_kwargs: nullcontext(lease),
+        month_lock=lambda **_kwargs: nullcontext(month_lease),
     )
 
-    result = deleter.delete(tenant_id=TENANT_ID, year=2025, month=3)
+    with patch.object(month_lease, "assert_owned", side_effect=[None, None, RuntimeError("lease lost")]):
+        result = deleter.delete(tenant_id=TENANT_ID, year=2025, month=3)
 
     assert result.status == WorkflowRunArchiveDeletionStatus.FAILED
     assert not archive.list_objects(prefix)
@@ -287,6 +334,9 @@ def test_lost_month_lease_keeps_durable_index_for_retry(sqlite_session_factory: 
 
 def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
     sqlite_session_factory: sessionmaker[Session],
+    month_lease: WorkflowRunArchiveMonthLease,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     archive, downloads = MemoryStorage(), MemoryStorage()
     target = _bundle()
@@ -310,10 +360,11 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
         ),
     )
     state = [task]
-    cache = MagicMock()
-    cache.get.side_effect = lambda **_kwargs: state[0]
-    cache.save.side_effect = lambda saved: state.__setitem__(0, saved)
-    cache.lock.side_effect = lambda **_kwargs: nullcontext()
+    redis, _commands = redis_transport
+    cache = WorkflowRunArchiveDownloadTaskCache(redis=redis)
+    monkeypatch.setattr(cache, "get", lambda **_kwargs: state[0])
+    monkeypatch.setattr(cache, "save", lambda saved: state.__setitem__(0, saved))
+    monkeypatch.setattr(cache, "lock", lambda **_kwargs: nullcontext())
     mutex = threading.Lock()
     deletion_waiting = threading.Event()
 
@@ -323,7 +374,7 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
         if threading.current_thread() is not threading.main_thread():
             deletion_waiting.set()
         with mutex:
-            yield MagicMock(assert_owned=MagicMock())
+            yield month_lease
 
     deleter = WorkflowRunArchiveDeleter(
         bundles=repository,
@@ -363,7 +414,7 @@ def test_month_lease_lets_deletion_clean_zip_after_failed_upload_compensation(
         cache=cache,
         month_lock=month_lock,
     )
-    preparer._build_zip_payload = MagicMock(return_value=b"prepared ZIP")
+    monkeypatch.setattr(preparer, "_build_zip_payload", lambda *_args: b"prepared ZIP")
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
     deletion_worker.join(timeout=5)

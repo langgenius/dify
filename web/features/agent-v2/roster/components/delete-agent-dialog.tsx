@@ -44,7 +44,6 @@ export function DeleteAgentDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['roster.deleteSuccess'], { ns: 'agentRoster' }))
           onOpenChange(false)
           onDeleted?.()
         },

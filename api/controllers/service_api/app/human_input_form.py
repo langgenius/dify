@@ -25,9 +25,17 @@ from core.workflow.human_input_policy import HumanInputSurface, is_recipient_typ
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import to_timestamp
 from models.model import App, EndUser
-from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormNotFoundError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +85,7 @@ def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
 
 @service_api_ns.route("/form/human_input/<string:form_token>")
 class WorkflowHumanInputFormApi(Resource):
+    @error_responses(FormExpiredError, FormSubmittedError)
     @service_api_ns.doc(
         summary="Get Human Input Form",
         description=(
@@ -123,6 +132,7 @@ class WorkflowHumanInputFormApi(Resource):
         inputs = service.resolve_form_inputs(form)
         return _jsonify_form_definition(form, inputs=inputs)
 
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError)
     @service_api_ns.doc(
         summary="Submit Human Input Form",
         description=(

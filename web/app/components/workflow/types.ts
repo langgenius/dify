@@ -1,6 +1,7 @@
 import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
+import type { MarketplacePlugin } from '@dify/contracts/marketplace'
 import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition } from 'reactflow'
-import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
+import type { PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type {
   BlockClassification,
@@ -519,7 +520,7 @@ export type ToolWithProvider = Collection & {
 
 export type RAGRecommendedPlugins = {
   installed_recommended_plugins: ToolWithProvider[]
-  uninstalled_recommended_plugins: Plugin[]
+  uninstalled_recommended_plugins: MarketplacePlugin[]
 }
 
 export const SupportUploadFileTypes = {

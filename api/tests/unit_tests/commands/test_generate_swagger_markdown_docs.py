@@ -327,6 +327,72 @@ def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path: Pat
     assert module._patch_union_schema_markdown("unchanged", spec_path) == "unchanged"
 
 
+def test_patch_union_response_markdown_fills_converter_blank_error_bodies(tmp_path: Path):
+    module = _load_generate_swagger_markdown_docs_module()
+    spec_path = tmp_path / "console-openapi.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "paths": {
+                    "/plugins/{category}/list": {
+                        "get": {
+                            "responses": {
+                                "200": {"content": {"application/json": {"schema": {"type": "object"}}}},
+                                "400": {
+                                    "content": {
+                                        "application/json": {
+                                            "schema": {
+                                                "anyOf": [
+                                                    {"$ref": "#/components/schemas/PluginError"},
+                                                    {"$ref": "#/components/schemas/ErrorResponse"},
+                                                ]
+                                            }
+                                        }
+                                    }
+                                },
+                                "default": {
+                                    "content": {
+                                        "application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}
+                                    }
+                                },
+                            }
+                        }
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    markdown = """### ~~[GET] /plugins/{category}/list~~
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: object<br> |
+| 400 | Bad \\| Request | **application/json**: <br> |
+| 404 | Undocumented | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /unknown
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 400 | Bad Request | **application/json**: <br> |
+"""
+
+    patched = module._patch_union_response_markdown(markdown, spec_path)
+
+    assert (
+        "| 400 | Bad \\| Request | **application/json**: "
+        "[PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |"
+    ) in patched
+    assert "| 200 | Success | **application/json**: object<br> |" in patched
+    assert "| 404 | Undocumented | **application/json**: <br> |" in patched
+    assert "| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |" in patched
+    assert patched.endswith("| 400 | Bad Request | **application/json**: <br> |\n")
+
+
 def test_patch_wildcard_media_type_markdown_preserves_literal_wildcard():
     module = _load_generate_swagger_markdown_docs_module()
 

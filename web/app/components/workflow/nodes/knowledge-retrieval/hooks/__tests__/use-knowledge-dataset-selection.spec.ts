@@ -1,10 +1,11 @@
 import type { MutableRefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../../types'
-import type { DataSet } from '@/models/datasets'
+import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import useKnowledgeDatasetSelection from '../use-knowledge-dataset-selection'
 
@@ -12,12 +13,14 @@ vi.mock('@/service/datasets', () => ({
   fetchDatasets: vi.fn(),
 }))
 
+type DatasetListItem = DataSetListResponse['data'][number]
+
 const mockFetchDatasets = vi.mocked(fetchDatasets)
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (overrides: Partial<DatasetListItem> = {}): DatasetListItem => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -34,24 +37,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -160,7 +151,6 @@ describe('use-knowledge-dataset-selection', () => {
     })
 
     expect(mockFetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
       params: {
         page: 1,
         ids: ['dataset-1'],

@@ -4,18 +4,12 @@ import type {
   SegmentDetailModel,
   SegmentUpdater,
 } from '@/models/datasets'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  useChildSegmentList,
-  useChildSegmentListKey,
-  useDeleteChildSegment,
-  useUpdateChildSegment,
-} from '@/service/knowledge/use-segment'
-import { useInvalid } from '@/service/use-base'
+import { consoleQuery } from '@/service/console'
 import { useDocumentContext } from '../../context'
 
 type UseChildSegmentDataOptions = {
@@ -35,7 +29,7 @@ type UseChildSegmentDataOptions = {
 type UseChildSegmentDataReturn = {
   childSegments: ChildChunkDetail[]
   isLoadingChildSegmentList: boolean
-  childChunkListData: ReturnType<typeof useChildSegmentList>['data']
+  childChunkListData: ChildSegmentsResponse | undefined
   childSegmentListRef: React.RefObject<HTMLDivElement | null>
   needScrollToBottom: React.RefObject<boolean>
   // Operations
@@ -81,24 +75,30 @@ export const useChildSegmentData = (
     [currentPage, limit, searchValue],
   )
   const segmentId = segments[0]?.id || ''
-  // Build query key for optimistic updates
-  const currentQueryKey = useMemo(
-    () => [...useChildSegmentListKey, datasetId, documentId, segmentId, queryParams],
-    [datasetId, documentId, segmentId, queryParams],
-  )
-  // Fetch child segment list
-  const { isLoading: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
-    {
-      datasetId,
-      documentId,
-      segmentId,
-      params: queryParams,
-    },
-    !isFullDocMode || segments.length === 0,
-  )
+  const childSegmentListQuery =
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.queryOptions(
+      {
+        input: {
+          params: { dataset_id: datasetId, document_id: documentId, segment_id: segmentId },
+          query: queryParams,
+        },
+        enabled: isFullDocMode && segments.length > 0,
+      },
+    )
+  // Query key for optimistic updates
+  const currentQueryKey = childSegmentListQuery.queryKey
+  const { isLoading: isLoadingChildSegmentList, data: childChunkListData } =
+    useQuery(childSegmentListQuery)
   // Derive child segments from query data
   const childSegments = useMemo(() => childChunkListData?.data || [], [childChunkListData])
-  const invalidChildSegmentList = useInvalid(useChildSegmentListKey)
+  const invalidChildSegmentList = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey:
+        consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+          { input: { params: { dataset_id: datasetId, document_id: documentId } } },
+        ),
+    })
+  }, [queryClient, datasetId, documentId])
   // Scroll to bottom when child segments change
   useEffect(() => {
     if (childSegmentListRef.current && needScrollToBottom.current) {
@@ -126,12 +126,23 @@ export const useChildSegmentData = (
     [queryClient, currentQueryKey],
   )
   // Mutations
-  const { mutateAsync: deleteChildSegment } = useDeleteChildSegment()
-  const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
+  const { mutateAsync: deleteChildSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.delete.mutationOptions(),
+  )
+  const { mutateAsync: updateChildSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.patch.mutationOptions(),
+  )
   const onDeleteChildChunk = useCallback(
     async (segmentIdParam: string, childChunkId: string) => {
       await deleteChildSegment(
-        { datasetId, documentId, segmentId: segmentIdParam, childChunkId },
+        {
+          params: {
+            dataset_id: datasetId,
+            document_id: documentId,
+            segment_id: segmentIdParam,
+            child_chunk_id: childChunkId,
+          },
+        },
         {
           onSuccess: () => {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -171,10 +182,17 @@ export const useChildSegmentData = (
       params.content = content
       eventEmitter?.emit('update-child-segment')
       await updateChildSegment(
-        { datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params },
+        {
+          params: {
+            dataset_id: datasetId,
+            document_id: documentId,
+            segment_id: segmentIdParam,
+            child_chunk_id: childChunkId,
+          },
+          body: params,
+        },
         {
           onSuccess: (res) => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             onCloseChildSegmentDetail()
             if (parentMode === 'paragraph') {
               // Update parent segment's child_chunks in cache

@@ -55,7 +55,8 @@ def test_setup_endpoint_persists_bootstrap_state_and_rejects_repeat(
     response = test_client_with_containers.post(
         "/console/api/setup",
         json=_setup_payload(email="admin@example.com", password=password),
-        headers={"CF-Connecting-IP": "203.0.113.7"},
+        headers={"CF-Connecting-IP": "198.51.100.7"},
+        environ_overrides={"REMOTE_ADDR": "203.0.113.7"},
     )
 
     assert response.status_code == 201

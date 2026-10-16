@@ -2,18 +2,22 @@ import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '..
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithAccountProfile } from '@/test/console/account-profile'
+import { renderWithAccountProfile as renderAccountProfile } from '@/test/console/account-profile'
+import { EditorResourceScope } from '../../editor-resource/provider'
 import { CommentIcon } from '../comment-icon'
 import { CommentInput } from '../comment-input'
 import { CommentThread } from '../thread'
 
+const renderWithAccountProfile = (ui: Parameters<typeof renderAccountProfile>[0]) =>
+  renderAccountProfile(
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
+  )
+
 const storeState = vi.hoisted(() => ({
   mentionableUsersCache: { 'app-1': [] } as Record<string, UserProfile[]>,
   setCommentPreviewHovering: vi.fn(),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
 }))
 
 vi.mock('reactflow', () => ({
@@ -187,6 +191,71 @@ describe('Comment thread focus', () => {
     expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('keeps reply deletion pending until the reply disappears, then focuses the reply input', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const onDelete = vi.fn()
+    let finishDeletion!: () => void
+    const deletion = new Promise<void>((resolve) => {
+      finishDeletion = resolve
+    })
+    const initial = createComment()
+    initial.replies = [
+      {
+        id: 'reply-1',
+        content: 'A reply',
+        created_at: 2,
+        created_by: 'user-1',
+        created_by_account: initial.created_by_account,
+      },
+    ]
+
+    function Thread() {
+      const [comment, setComment] = useState(initial)
+      const [loading, setLoading] = useState(false)
+      return (
+        <CommentThread
+          comment={comment}
+          loading={loading}
+          onClose={() => {}}
+          onReply={() => {}}
+          onReplyEdit={() => {}}
+          onReplyDeleteDirect={async (id) => {
+            setLoading(true)
+            onDelete(id)
+            await deletion
+            setComment({ ...initial, replies: [] })
+            setLoading(false)
+          }}
+        />
+      )
+    }
+
+    renderWithAccountProfile(<Thread />)
+    await act(() => vi.advanceTimersByTimeAsync(100))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
+    )
+    await user.click(
+      screen.getByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', { name: 'common.operation.delete' })
+    await user.click(confirm)
+    await waitFor(() => expect(confirm).toHaveAttribute('aria-disabled', 'true'))
+    expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.click(confirm)
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
+
+    await act(async () => finishDeletion())
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(
+      screen.queryByRole('button', { name: 'workflowComments.comments.aria.replyActions' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
   })
 
   it('focuses the reply input when navigating to another comment', async () => {

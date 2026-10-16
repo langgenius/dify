@@ -1,3 +1,4 @@
+import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
@@ -9,14 +10,25 @@ import { render } from '@/test/console/render'
 import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
-const mockCreateMCP = vi.fn().mockResolvedValue({ id: 'new-mcp-id', name: 'New MCP' })
+const mockCreateMCP = vi.fn().mockResolvedValue({
+  id: 'new-mcp-id',
+  name: 'New MCP',
+  author: 'tester',
+  label: { en_US: 'New MCP' },
+  description: { en_US: '' },
+  icon: '',
+  type: 'mcp',
+} satisfies ToolProviderApiEntityResponse)
 
 // Mock the service
-vi.mock('@/service/use-tools', () => ({
-  useCreateMCP: () => ({
-    mutateAsync: mockCreateMCP,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.toolProvider.mcp.post': () => ({
+      mutateAsync: mockCreateMCP,
+    }),
+  })
+})
 
 // Mock the MCP Modal
 type MockMCPModalProps = {
@@ -196,8 +208,10 @@ describe('NewMCPCard', () => {
 
         await waitFor(() => {
           expect(mockCreateMCP).toHaveBeenCalledWith({
-            name: 'Test MCP',
-            server_url: 'https://test.com',
+            body: {
+              name: 'Test MCP',
+              server_url: 'https://test.com',
+            },
           })
           expect(handleCreate).toHaveBeenCalled()
         })

@@ -1,29 +1,28 @@
 'use client'
 
+import type { TextDirection } from '../../direction-provider'
 import type { IconButtonProps } from '../../icon-button'
 import type {
   PopoverActions,
+  PopoverChangeEventDetails,
   PopoverContentProps,
   PopoverProps,
   PopoverTriggerProps,
 } from '../../popover'
-import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../../cn'
 import { DirectionProvider, useDirection } from '../../direction-provider'
-import { formLabelClassName } from '../../form-control-shared'
 import { IconButton } from '../../icon-button'
-import { resolveClassName } from '../../internals/resolve-class-name'
+import { formLabelClassName } from '../../internal/form-control'
+import { resolveClassName } from '../../internal/resolve-class-name'
 import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
+import { useMergedRefs } from '../../use-merged-refs'
 
-type PickerOpenChangeDetails = Omit<
-  Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
-  'preventUnmountOnClose'
->
+type PickerOpenChangeDetails = Omit<PopoverChangeEventDetails, 'preventUnmountOnClose'>
 
 type PickerFieldProps = Pick<PopoverProps, 'open' | 'defaultOpen'> & {
   /** Overrides DirectionProvider for this field and its popup; independent of locale. */
-  direction?: DirectionProvider.Props['direction']
+  direction?: TextDirection
   placeholder?: string
   disabled?: boolean
   readOnly?: boolean
@@ -282,7 +281,9 @@ function PickerTrigger({
       className={(state) =>
         cn(
           'flex h-8 w-63 max-w-full items-center justify-between gap-0.5 rounded-lg bg-components-input-bg-normal ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled',
-          'hover:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-popup-open:bg-state-base-hover-alt',
+          'hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+          'aria-invalid:not-data-disabled:bg-components-input-bg-destructive aria-invalid:not-data-disabled:inset-ring-1 aria-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
+          'aria-disabled:not-data-disabled:cursor-default data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled',
           !field.serializedValue && 'text-text-tertiary in-data-[theme=dark]:text-text-secondary',
           resolveClassName(className, state),
         )

@@ -62,13 +62,7 @@ export function AgentAccessPage({ agentId }: AgentAccessPageProps) {
             appId={agent.app_id}
             appMode="agent"
             isPublished={agent.access_ready === true}
-            appIcon={{
-              iconType:
-                agent.icon_type === 'image' || agent.icon_type === 'link' ? 'image' : 'emoji',
-              icon: agent.icon ?? undefined,
-              background: agent.icon_background,
-              imageUrl: agent.icon_url,
-            }}
+            appIcon={{ icon: agent }}
             canEditBinding={capabilities.canManageAccessPoint}
           />
         )}

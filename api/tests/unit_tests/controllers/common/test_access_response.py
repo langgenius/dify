@@ -152,6 +152,7 @@ def mcp_client(http_app: Flask, monkeypatch: pytest.MonkeyPatch) -> MCPClient:
     bp = Blueprint("mcp_test", __name__, url_prefix="/mcp")
     api = ExternalApi(bp)
     namespace = Namespace("mcp_test", path="/")
+    namespace.models.update(mcp.mcp_ns.models)
     namespace.add_resource(mcp.MCPAppApi, "/server/<string:server_code>/mcp")
     api.add_namespace(namespace)
     http_app.register_blueprint(bp)

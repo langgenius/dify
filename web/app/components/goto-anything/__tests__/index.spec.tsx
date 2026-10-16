@@ -23,6 +23,7 @@ vi.mock('@/next/navigation', () => ({
     push: routerPush,
   }),
   usePathname: () => '/',
+  useParams: () => ({}),
 }))
 
 let debouncedSearchQuery: string | undefined

@@ -10,7 +10,6 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
-import { AppModeEnum } from '@/types/app'
 
 type HandleRunMode = TriggerType
 export type HandleRunOptions = {
@@ -116,7 +115,7 @@ export const createFailedWorkflowState = (error: string) => {
 }
 
 export const buildRunHistoryUrl = (appDetail?: AppDetailLike) => {
-  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  return appDetail?.mode === 'advanced-chat'
     ? `/apps/${appDetail.id}/advanced-chat/workflow-runs`
     : `/apps/${appDetail?.id}/workflow-runs`
 }
@@ -148,7 +147,7 @@ export const resolveWorkflowRunUrl = (
     return `/apps/${appDetail.id}/workflows/draft/trigger/run-all`
   }
 
-  if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT)
+  if (appDetail?.mode === 'advanced-chat')
     return `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
 
   if (isInWorkflowDebug && appDetail?.id) return `/apps/${appDetail.id}/workflows/draft/run`
@@ -453,9 +452,8 @@ export const runTriggerDebug = async ({
     } catch (error) {
       if (controller.signal.aborted) return
 
-      if (error instanceof Response) {
-        const data = (await error.clone().json()) as Record<string, unknown>
-        const errorMessage = typeof data?.error === 'string' ? data.error : ''
+      if (error instanceof Error) {
+        const errorMessage = error.message
         toast.error(errorMessage)
         clearAbortController()
         setWorkflowRunningData(createFailedWorkflowState(errorMessage))

@@ -5,9 +5,12 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { BuiltInAccessPoints } from '../built-in-access-points'
 
@@ -18,8 +21,8 @@ vi.mock('@/app/components/app/overview/customize', () => ({
   default: () => null,
   CustomizeDialog: () => null,
 }))
-vi.mock('@/app/components/app/overview/settings', () => ({ default: () => null }))
-vi.mock('@/app/components/app/overview/embedded', () => ({ default: () => null }))
+vi.mock('@/app/components/app/overview/settings', () => ({ SettingsDialog: () => null }))
+vi.mock('@/app/components/app/overview/embedded', () => ({ EmbeddedDialogContent: () => null }))
 
 const inService = 'agentV2.agentDetail.access.status.inService'
 const unavailable = 'deployments.health.ENVIRONMENT_STATUS_FAILED'
@@ -99,13 +102,15 @@ function renderAccessPoints({
     if (path === '/apps/app-1/triggers') return triggerResponse ?? Response.json({ data: triggers })
     throw new Error(`Unexpected request: ${request.method} ${path}`)
   })
-  useAppStore.setState({
-    appDetail: createAppDetailFixture({
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({
       mode,
       site: createAppSiteFixture(),
       workflow: published ? { id: 'published-workflow' } : null,
     }),
-  })
+  )
   renderWithConsoleQuery(
     <BuiltInAccessPoints
       appId="app-1"
@@ -115,6 +120,7 @@ function renderAccessPoints({
       canReleaseAndVersion={role === 'owner'}
     />,
     {
+      queryClient,
       currentWorkspace: { role },
       systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: rbacEnabled },
     },

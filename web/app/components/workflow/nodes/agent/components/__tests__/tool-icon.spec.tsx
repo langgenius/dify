@@ -14,24 +14,15 @@ let mockWorkflowTools: ToolProvider[] | undefined
 let mockMcpTools: ToolProvider[] | undefined
 let mockMarketplaceIcon: string | { content: string; background: string } | undefined
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
-  useAllCustomTools: () => ({ data: mockCustomTools }),
-  useAllWorkflowTools: () => ({ data: mockWorkflowTools }),
-  useAllMCPTools: () => ({ data: mockMcpTools }),
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({
-    icon,
-    background,
-    className,
-  }: {
-    icon?: string
-    background?: string
-    className?: string
-  }) => <div className={className}>{`app-icon:${background}:${icon}`}</div>,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: mockBuiltInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: mockCustomTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: mockWorkflowTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: mockMcpTools }),
+  })
+})
 
 vi.mock('@langgenius/dify-ui/status-dot', () => ({
   StatusDot: ({ status }: { status: string }) => <div>{`indicator:${status}`}</div>,

@@ -269,19 +269,68 @@ class WorkflowRunArchiveService:
         """Durably disable downloads before enqueueing an idempotent archive-only deletion."""
         tenant_id = context.active_workspace_id
         status = self._bundles.request_deletion(tenant_id, year=year, month=month)
+        event = (
+            "workflow_run_archive.deletion_requested" if status is not None else "workflow_run_archive.deletion_noop"
+        )
+        audit_attributes = {
+            "audit": True,
+            "tenant_id": tenant_id,
+            "account_id": context.account_id,
+            "year": year,
+            "month": month,
+            "request_id": context.request_id,
+        }
+        # The repository has committed the deletion marker; a request is not proof of completed deletion.
+        logger.info(
+            "audit: %s tenant_id=%s account_id=%s year=%s month=%s request_id=%s status=%s",
+            event,
+            tenant_id,
+            context.account_id,
+            year,
+            month,
+            context.request_id,
+            status,
+            extra={"attributes": {**audit_attributes, "event": event, "deletion_status": status}},
+        )
         if status is None:
             return WorkflowRunArchiveDeletionTask(year, month, WorkflowRunArchiveDeletionStatus.COMPLETED)
         try:
             # Re-dispatch pending/processing requests too: a lost or interrupted worker must be recoverable.
             self._deletion_dispatcher(tenant_id=tenant_id, year=year, month=month)
         except Exception:
-            logger.exception("Failed to enqueue archive deletion: tenant=%s year=%s month=%s", tenant_id, year, month)
+            logger.exception(
+                "audit: workflow_run_archive.deletion_enqueue_failed "
+                "tenant_id=%s account_id=%s year=%s month=%s request_id=%s",
+                tenant_id,
+                context.account_id,
+                year,
+                month,
+                context.request_id,
+                extra={"attributes": {**audit_attributes, "event": "workflow_run_archive.deletion_enqueue_failed"}},
+            )
             self._bundles.set_deletion_status(
                 tenant_id, year=year, month=month, status=WorkflowRunArchiveDeletionStatus.FAILED
             )
             return WorkflowRunArchiveDeletionTask(
                 year, month, WorkflowRunArchiveDeletionStatus.FAILED, "Failed to enqueue archive deletion."
             )
+        logger.info(
+            "audit: workflow_run_archive.deletion_enqueued "
+            "tenant_id=%s account_id=%s year=%s month=%s request_id=%s status=%s",
+            tenant_id,
+            context.account_id,
+            year,
+            month,
+            context.request_id,
+            status,
+            extra={
+                "attributes": {
+                    **audit_attributes,
+                    "event": "workflow_run_archive.deletion_enqueued",
+                    "deletion_status": status,
+                }
+            },
+        )
         return WorkflowRunArchiveDeletionTask(year, month, status)
 
     def get_download_url(self, context: RequestContext, *, download_id: str) -> str:

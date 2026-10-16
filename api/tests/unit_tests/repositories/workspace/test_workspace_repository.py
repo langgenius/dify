@@ -49,6 +49,16 @@ def seeded(sqlite_session_factory: sessionmaker[Session]) -> WorkspaceRepository
     return WorkspaceRepository(sqlite_session_factory)
 
 
+def test_names_by_ids_returns_only_existing_requested_workspaces(seeded: WorkspaceRepository) -> None:
+    assert seeded.names_by_ids(["w1", "w3", "missing", "w1"]) == {"w1": "First", "w3": "Archived"}
+    assert seeded.names_by_ids(["missing"]) == {}
+
+
+def test_names_by_ids_short_circuits_empty_input(unbound_session_factory: sessionmaker[Session]) -> None:
+    repository = WorkspaceRepository(unbound_session_factory)
+    assert repository.names_by_ids([]) == {}
+
+
 def test_lists_preserve_visibility_order_and_archived_memberships(seeded: WorkspaceRepository) -> None:
     assert [row.id for row in seeded.list_for_account("a1")] == ["w1", "w2"]
     assert seeded.list_for_account("absent") == ()

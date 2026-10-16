@@ -44,7 +44,7 @@ const tool = {
 describe('ToolItem', () => {
   it('opens and closes tool details from the keyboard', async () => {
     const user = userEvent.setup()
-    render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} />)
+    render(<ToolItem collection={collection} tool={tool} isBuiltIn />)
 
     const toolButton = screen.getByRole('button', { name: 'Tool label' })
     toolButton.focus()
@@ -62,7 +62,7 @@ describe('ToolItem', () => {
 
   it('does not open tool details when disabled', async () => {
     const user = userEvent.setup()
-    render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} disabled />)
+    render(<ToolItem collection={collection} tool={tool} isBuiltIn disabled />)
 
     const toolButton = screen.getByRole('button', { name: 'Tool label' })
     expect(toolButton).toBeDisabled()

@@ -97,7 +97,6 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
 const createMockEstimateData = (
   overrides?: Partial<FileIndexingEstimateResponse>,
 ): FileIndexingEstimateResponse => ({
-  total_nodes: 5,
   tokens: 1000,
   total_price: 0.01,
   currency: 'USD',

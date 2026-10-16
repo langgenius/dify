@@ -1,6 +1,8 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { useUpdateDSLModal } from '../use-update-dsl-modal'
 
 class MockFileReader {
@@ -77,10 +79,13 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({ mutateAsync: mockImportDSL }),
-  useImportPipelineDSLConfirm: () => ({ mutateAsync: mockImportDSLConfirm }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.imports.post': () => ({ mutateAsync: mockImportDSL }),
+    'rag.pipelines.imports.byImportId.confirm.post': () => ({ mutateAsync: mockImportDSLConfirm }),
+  })
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({
@@ -99,11 +104,13 @@ describe('useUpdateDSLModal', () => {
   const mockOnImport = vi.fn()
 
   const renderUpdateDSLModal = (overrides?: { onImport?: () => void }) =>
-    renderHook(() =>
-      useUpdateDSLModal({
-        onCancel: mockOnCancel,
-        onImport: overrides?.onImport ?? mockOnImport,
-      }),
+    renderHook(
+      () =>
+        useUpdateDSLModal({
+          onCancel: mockOnCancel,
+          onImport: overrides?.onImport ?? mockOnImport,
+        }),
+      { resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' } },
     )
 
   beforeEach(() => {
@@ -185,9 +192,11 @@ describe('useUpdateDSLModal', () => {
       })
 
       expect(mockImportDSL).toHaveBeenCalledWith({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: 'test content',
-        pipeline_id: 'test-pipeline-id',
+        body: {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'test content',
+          pipeline_id: 'test-pipeline-id',
+        },
       })
     })
 
@@ -385,14 +394,16 @@ describe('useUpdateDSLModal', () => {
 
     it('should notify response error when importDSL rejects with a response body', async () => {
       mockImportDSL.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Missing rag_pipeline data in YAML content',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Missing rag_pipeline data in YAML content',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
         ),
       )
 
@@ -470,7 +481,7 @@ describe('useUpdateDSLModal', () => {
         await (result.current.onUpdateDSLConfirm as unknown as AsyncFn)()
       })
 
-      expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-id')
+      expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-id' } })
     })
 
     it('should notify success and call onCancel after successful confirm', async () => {
@@ -541,14 +552,16 @@ describe('useUpdateDSLModal', () => {
 
     it('should notify response error when confirm rejects with a response body', async () => {
       mockImportDSLConfirm.mockRejectedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Import information expired or does not exist',
-          }),
-          {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          },
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              error: 'Import information expired or does not exist',
+            }),
+            {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          ),
         ),
       )
 
@@ -594,7 +607,9 @@ describe('useUpdateDSLModal', () => {
 
   describe('optional onImport', () => {
     it('should work without onImport callback', async () => {
-      const { result } = renderHook(() => useUpdateDSLModal({ onCancel: mockOnCancel }))
+      const { result } = renderHook(() => useUpdateDSLModal({ onCancel: mockOnCancel }), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleFile(createFile())

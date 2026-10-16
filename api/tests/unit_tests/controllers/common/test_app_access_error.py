@@ -328,6 +328,8 @@ def test_success_and_non_404_errors_are_unchanged(prefix: str, status: int) -> N
 
 @pytest.mark.parametrize("path", ["/api/site", f"/console/api/apps/{APP_ID}"])
 @pytest.mark.parametrize("status", [200, 201, 204, 301, 302, 303, 304, 307, 308, 401, 500, 503])
+# The contract observer parses responses; this test verifies that the metadata hook never does.
+@pytest.mark.allow_error_contract_violations
 def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatch, path: str, status: int) -> None:
     body = b'{"code":"app_not_found","message":"unchanged","data":[1,2,3]}'
     original = Response(body, status=status, mimetype="application/json")
@@ -361,6 +363,8 @@ def test_non_candidate_statuses_do_not_parse_json(monkeypatch: pytest.MonkeyPatc
         ("/api/human-input-forms/files", "POST", 404),
     ],
 )
+# The contract observer parses responses; this test verifies that the metadata hook never does.
+@pytest.mark.allow_error_contract_violations
 def test_route_and_surface_ineligible_errors_do_not_parse_json(
     monkeypatch: pytest.MonkeyPatch, path: str, method: str, status: int
 ) -> None:
@@ -382,6 +386,8 @@ def test_route_and_surface_ineligible_errors_do_not_parse_json(
 
 @pytest.mark.parametrize("status", [200, 400, 403, 404])
 @pytest.mark.parametrize("direct_passthrough", [False, True])
+# The contract observer parses responses; this test verifies that the metadata hook never does.
+@pytest.mark.allow_error_contract_violations
 def test_candidate_and_success_streams_never_parse_or_consume_response(
     monkeypatch: pytest.MonkeyPatch, status: int, direct_passthrough: bool
 ) -> None:
@@ -451,6 +457,8 @@ def test_typed_service_api_error_is_unchanged() -> None:
 
 
 @pytest.mark.parametrize("kind", ["stream", "passthrough", "html", "list", "null", "invalid-json"])
+# Deliberately malformed and streaming bodies exercise the metadata hook outside the JSON error contract.
+@pytest.mark.allow_error_contract_violations
 def test_non_json_object_and_streamed_responses_are_not_consumed(kind: str) -> None:
     consumed: list[bool] = []
 

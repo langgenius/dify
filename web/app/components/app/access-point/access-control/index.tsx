@@ -59,10 +59,7 @@ import {
 } from './network-access'
 import { AccessControlStatusPanel } from './status-panel'
 
-export type AccessControlAppIcon = Pick<
-  ComponentProps<typeof AppIcon>,
-  'iconType' | 'icon' | 'background' | 'imageUrl'
->
+export type AccessControlAppIcon = Pick<ComponentProps<typeof AppIcon>, 'icon'>
 
 type AccessControlEntryProps = {
   appId: string

@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -28,11 +28,10 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
-import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
-import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import RenameDatasetModal from '../../datasets/rename-modal'
 
@@ -41,30 +40,9 @@ type DropDownProps = {
   triggerClassName?: string
 }
 
-type JsonErrorResponse = {
-  json: () => Promise<{ message?: string }>
-}
-
-const isJsonErrorResponse = (error: unknown): error is JsonErrorResponse => {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'json' in error &&
-    typeof error.json === 'function'
-  )
-}
-
-const getErrorMessage = async (error: unknown) => {
-  if (!isJsonErrorResponse(error)) return 'Unknown error'
-
-  const res = await error.json()
-  return res?.message || 'Unknown error'
-}
-
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const { t } = useTranslation(['app', 'common', 'dataset', 'datasetPipeline', 'navigation'])
   const { push, replace } = useRouter()
-  const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -99,8 +77,17 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     datasetACLCapabilities.canAccessConfig ||
     datasetACLCapabilities.canDelete
 
-  const invalidDatasetList = useInvalidDatasetList()
-  const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
+  const invalidDatasetDetail = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+        input: { params: { dataset_id: dataset.id } },
+      }),
+    })
+  }, [queryClient, dataset.id])
 
   const refreshDataset = useCallback(() => {
     invalidDatasetList()
@@ -108,23 +95,23 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const openRenameModal = useCallback(() => {
-    setOpen(false)
     queueMicrotask(() => {
       setShowRenameModal(true)
     })
   }, [])
 
-  const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
+  const { mutateAsync: exportPipelineConfig } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions(),
+  )
 
   const handleExportPipeline = useCallback(
     async (include = false) => {
       const { pipeline_id, name } = dataset
       if (!pipeline_id) return
-      setOpen(false)
       try {
         const { data } = await exportPipelineConfig({
-          pipelineId: pipeline_id,
-          include,
+          params: { pipeline_id },
+          query: { include_secret: String(include) },
         })
         const file = new Blob([data], { type: 'application/yaml' })
         downloadBlob({ data: file, fileName: `${name}.pipeline` })
@@ -136,7 +123,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   )
 
   const detectIsUsedByApp = useCallback(async () => {
-    setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
       setConfirmMessage(
@@ -146,12 +132,11 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
       )
       setShowConfirmDelete(true)
     } catch (e: unknown) {
-      toast.error(await getErrorMessage(e))
+      toast.error(getErrorMessage(e) ?? 'Unknown error')
     }
   }, [dataset.id, t])
 
   const openAccessConfig = useCallback(() => {
-    setOpen(false)
     push(`/datasets/${dataset.id}/access-config`)
   }, [dataset.id, push])
 
@@ -172,7 +157,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   if (!canShowOperations) return null
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <IconButton
