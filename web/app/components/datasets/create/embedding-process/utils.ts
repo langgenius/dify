@@ -1,4 +1,7 @@
-import type { IndexingStatusResponse, InitialDocumentDetail } from '@/models/datasets'
+import type {
+  DocumentResponse,
+  DocumentStatusResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
 import { getNotionPageIcon } from '@/app/components/datasets/documents/document-source'
 
@@ -7,13 +10,13 @@ const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning', 'wai
 /**
  * Check if a status indicates the source is being embedded
  */
-export const isSourceEmbedding = (detail: IndexingStatusResponse): boolean =>
+export const isSourceEmbedding = (detail: DocumentStatusResponse): boolean =>
   EMBEDDING_STATUSES.includes(detail.indexing_status as (typeof EMBEDDING_STATUSES)[number])
 
 /**
  * Calculate the progress percentage for a document
  */
-export const getSourcePercent = (detail: IndexingStatusResponse): number => {
+export const getSourcePercent = (detail: DocumentStatusResponse): number => {
   const completedCount = detail.completed_segments || 0
   const totalCount = detail.total_segments || 0
 
@@ -31,7 +34,7 @@ export const getFileType = (name?: string): string => name?.split('.').pop() || 
 /**
  * Document lookup utilities - provides document info by ID from a list
  */
-export const createDocumentLookup = (documents: InitialDocumentDetail[]) => {
+export const createDocumentLookup = (documents: DocumentResponse[]) => {
   const documentMap = new Map(documents.map((doc) => [doc.id, doc]))
 
   return {

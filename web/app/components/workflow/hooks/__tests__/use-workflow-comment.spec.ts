@@ -1,7 +1,7 @@
 import type {
+  WorkflowCommentBasic,
   WorkflowCommentDetail,
-  WorkflowCommentList,
-} from '@/app/components/workflow/comment/types'
+} from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
@@ -102,7 +102,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-const baseComment = (): WorkflowCommentList => ({
+const baseComment = (): WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 10,
   position_y: 20,
@@ -406,7 +406,7 @@ describe('useWorkflowComment', () => {
 
   it('focuses comment thread, loads detail, and updates navigation/create/close states', async () => {
     const commentA = baseComment()
-    const commentB: WorkflowCommentList = {
+    const commentB: WorkflowCommentBasic = {
       ...baseComment(),
       id: 'comment-2',
       content: 'second',
@@ -471,7 +471,7 @@ describe('useWorkflowComment', () => {
 
   it('runs resolve, delete, and reply lifecycle handlers with collaboration sync', async () => {
     const commentA = baseComment()
-    const commentB: WorkflowCommentList = {
+    const commentB: WorkflowCommentBasic = {
       ...baseComment(),
       id: 'comment-2',
       content: 'fallback',
@@ -664,7 +664,7 @@ describe('useWorkflowComment', () => {
 
   it('does not overwrite the active comment when a different comment is resolved/refreshed', async () => {
     const commentA = baseComment()
-    const commentB: WorkflowCommentList = {
+    const commentB: WorkflowCommentBasic = {
       ...baseComment(),
       id: 'comment-2',
       content: 'second',

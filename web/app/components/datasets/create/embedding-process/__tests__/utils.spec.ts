@@ -1,4 +1,7 @@
-import type { IndexingStatusResponse, InitialDocumentDetail } from '@/models/datasets'
+import type {
+  DocumentResponse,
+  DocumentStatusResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { describe, expect, it } from 'vite-plus/test'
 import { createDocumentLookup, getFileType, getSourcePercent, isSourceEmbedding } from '../utils'
 
@@ -7,41 +10,41 @@ describe('isSourceEmbedding', () => {
   const nonEmbeddingStatuses = ['completed', 'error', 'paused', 'unknown']
 
   it.each(embeddingStatuses)('should return true for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as IndexingStatusResponse)).toBe(true)
+    expect(isSourceEmbedding({ indexing_status: status } as DocumentStatusResponse)).toBe(true)
   })
 
   it.each(nonEmbeddingStatuses)('should return false for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as IndexingStatusResponse)).toBe(false)
+    expect(isSourceEmbedding({ indexing_status: status } as DocumentStatusResponse)).toBe(false)
   })
 })
 
 describe('getSourcePercent', () => {
   it('should calculate correct percentage', () => {
     expect(
-      getSourcePercent({ completed_segments: 50, total_segments: 100 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 50, total_segments: 100 } as DocumentStatusResponse),
     ).toBe(50)
   })
 
   it('should return 0 when total is 0', () => {
     expect(
-      getSourcePercent({ completed_segments: 0, total_segments: 0 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 0, total_segments: 0 } as DocumentStatusResponse),
     ).toBe(0)
   })
 
   it('should cap at 100', () => {
     expect(
-      getSourcePercent({ completed_segments: 150, total_segments: 100 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 150, total_segments: 100 } as DocumentStatusResponse),
     ).toBe(100)
   })
 
   it('should round to nearest integer', () => {
     expect(
-      getSourcePercent({ completed_segments: 1, total_segments: 3 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 1, total_segments: 3 } as DocumentStatusResponse),
     ).toBe(33)
   })
 
   it('should handle undefined segments as 0', () => {
-    expect(getSourcePercent({} as IndexingStatusResponse)).toBe(0)
+    expect(getSourcePercent({} as DocumentStatusResponse)).toBe(0)
   })
 })
 
@@ -83,7 +86,7 @@ describe('createDocumentLookup', () => {
         notion_page_icon: 'https://icon.url',
       },
     },
-  ] as unknown as InitialDocumentDetail[]
+  ] as unknown as DocumentResponse[]
 
   it('should get document by id', () => {
     const lookup = createDocumentLookup(documents)
@@ -116,7 +119,7 @@ describe('createDocumentLookup', () => {
         id: 'doc-3',
         data_source_info: { some_other: 'field' },
       },
-    ] as unknown as InitialDocumentDetail[]
+    ] as unknown as DocumentResponse[]
     const lookup = createDocumentLookup(docs)
     expect(lookup.getNotionIcon('doc-3')).toBeUndefined()
   })

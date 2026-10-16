@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -47,7 +47,9 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector(
+    (state) => state.dataset,
+  ) as DatasetDetailWithPartialMembersResponse
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

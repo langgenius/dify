@@ -1,7 +1,8 @@
 import type { ReactElement } from 'react'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
@@ -32,7 +33,7 @@ vi.mock('@/app/notifications', () => ({
 
 type DialogProps = {
   selectedGraph?: SnippetCanvasData
-  inputFields?: SnippetInputField[]
+  inputFields?: InputVar[]
 }
 
 const createNode = (id: string, data: Record<string, unknown>): Node =>

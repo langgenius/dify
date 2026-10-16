@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -20,7 +20,7 @@ type ModalState = {
 }
 
 type DatasetCardModalsProps = {
-  dataset: DataSet
+  dataset: DatasetDetailWithPartialMembersResponse
   modalState: ModalState
   onCloseRename: () => void
   onCloseConfirm: () => void

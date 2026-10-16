@@ -1,5 +1,5 @@
 'use client'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +16,9 @@ type DatasetInfoProps = {
 
 const DatasetInfo = ({ expand }: DatasetInfoProps) => {
   const { t } = useTranslation(['dataset'])
-  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector(
+    (state) => state.dataset,
+  ) as DatasetDetailWithPartialMembersResponse
   const iconInfo = dataset.icon_info || {
     icon: '📙',
     icon_type: 'emoji',

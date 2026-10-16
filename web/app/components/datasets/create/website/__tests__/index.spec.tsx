@@ -1,4 +1,4 @@
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -83,7 +83,10 @@ const createMockCrawlOptions = (overrides: Partial<CrawlOptions> = {}): CrawlOpt
   ...overrides,
 })
 
-const createMockDataSourceAuth = (provider: string, credentialsCount = 1): DataSourceAuth => ({
+const createMockDataSourceAuth = (
+  provider: string,
+  credentialsCount = 1,
+): DatasourceProviderAuthResponse => ({
   author: 'test',
   provider,
   plugin_id: `${provider}-plugin`,
@@ -105,7 +108,7 @@ const createMockDataSourceAuth = (provider: string, credentialsCount = 1): DataS
 })
 
 type RenderProps = {
-  authedDataSourceList?: DataSourceAuth[]
+  authedDataSourceList?: DatasourceProviderAuthResponse[]
   enableJina?: boolean
   enableFirecrawl?: boolean
   enableWatercrawl?: boolean

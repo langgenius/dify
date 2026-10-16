@@ -1,7 +1,7 @@
 'use client'
 
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -64,7 +64,7 @@ const DatasetDetailPageTitle = ({ title }: { title: string }) => {
 }
 
 const getDatasetRedirectionPath = (
-  dataset: DataSet,
+  dataset: DatasetDetailWithPartialMembersResponse,
   datasetACLCapabilities: ReturnType<typeof getDatasetACLCapabilities>,
 ) => {
   if (dataset.provider === 'external') {

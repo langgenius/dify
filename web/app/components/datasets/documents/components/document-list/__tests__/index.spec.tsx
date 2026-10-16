@@ -1,4 +1,4 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -75,7 +75,9 @@ vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metada
 
 const createWrapper = () => createConsoleQueryWrapper().wrapper
 
-const createMockDoc = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail =>
+const createMockDoc = (
+  overrides: Partial<DocumentWithSegmentsResponse> = {},
+): DocumentWithSegmentsResponse =>
   ({
     id: `doc-${Math.random().toString(36).substr(2, 9)}`,
     position: 1,
@@ -108,7 +110,7 @@ const createMockDoc = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDoc
     hit_count: 10,
     doc_form: 'text_model',
     ...overrides,
-  }) as SimpleDocumentDetail
+  }) as DocumentWithSegmentsResponse
 
 const defaultPagination: PaginationProps = {
   current: 1,

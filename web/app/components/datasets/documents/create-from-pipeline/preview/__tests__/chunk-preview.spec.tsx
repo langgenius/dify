@@ -1,5 +1,6 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { CrawlResultItem, CustomFile } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
@@ -95,8 +96,8 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
 })
 
 const createMockEstimateData = (
-  overrides?: Partial<FileIndexingEstimateResponse>,
-): FileIndexingEstimateResponse => ({
+  overrides?: Partial<IndexingEstimateResponse>,
+): IndexingEstimateResponse => ({
   tokens: 1000,
   total_price: 0.01,
   currency: 'USD',

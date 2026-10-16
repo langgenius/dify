@@ -1,5 +1,5 @@
+import type { Annotation as AnnotationData } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { AnnotationItem } from '../type'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
@@ -196,7 +196,7 @@ const appDetail = createAppDetailFixture({
   mode: 'chat' as const,
 })
 
-const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
+const createAnnotation = (overrides: Partial<AnnotationData> = {}): AnnotationData => ({
   id: overrides.id ?? 'annotation-1',
   question: overrides.question ?? 'Question 1',
   answer: overrides.answer ?? 'Answer 1',

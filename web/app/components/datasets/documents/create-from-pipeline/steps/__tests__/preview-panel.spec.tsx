@@ -1,12 +1,8 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  FileIndexingEstimateResponse,
-  FileItem,
-} from '@/models/datasets'
+import type { CrawlResultItem, CustomFile, FileItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -194,11 +190,11 @@ describe('StepTwoPreview', () => {
     { id: 'drive-1', name: 'drive-file.txt' } as OnlineDriveFile,
   ]
 
-  const mockEstimateData: FileIndexingEstimateResponse = {
+  const mockEstimateData: IndexingEstimateResponse = {
     tokens: 1000,
     total_price: 0.01,
     total_segments: 10,
-  } as FileIndexingEstimateResponse
+  } as IndexingEstimateResponse
 
   const defaultProps = {
     datasourceType: DatasourceType.localFile,

@@ -49,13 +49,11 @@ const getUserInputVariable = (item: unknown) => {
   return typeof variable === 'string' ? variable : undefined
 }
 
-type LogMessage = MessageDetailResponse
-
 const isTransferMethod = (value: string): value is TransferMethod =>
   (Object.values(TransferMethod) as string[]).includes(value)
 
 // Agent thoughts keep raw message files; the agent content renderer converts them once.
-const toThoughtFiles = (item: LogMessage): VisionFile[] =>
+const toThoughtFiles = (item: MessageDetailResponse): VisionFile[] =>
   item.message_files.map((file) => ({
     id: file.id,
     type: file.type,
@@ -67,7 +65,7 @@ const toThoughtFiles = (item: LogMessage): VisionFile[] =>
     belongs_to: file.belongs_to ?? undefined,
   }))
 
-const toFileResponse = (file: LogMessage['message_files'][number]): FileResponse => ({
+const toFileResponse = (file: MessageDetailResponse['message_files'][number]): FileResponse => ({
   related_id: file.id ?? file.upload_file_id,
   extension: '',
   filename: '',
@@ -85,19 +83,21 @@ const toFileResponse = (file: LogMessage['message_files'][number]): FileResponse
 const toText = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
 
 // `inputs` values are untyped JSON in the console API response.
-export const getStringInputs = (inputs: LogMessage['inputs']) =>
+export const getStringInputs = (inputs: MessageDetailResponse['inputs']) =>
   Object.fromEntries(
     Object.entries(inputs).filter(
       (entry): entry is [string, string] => typeof entry[1] === 'string',
     ),
   )
 
-const toFeedback = (feedback?: LogMessage['feedbacks'][number]): FeedbackType | undefined =>
+const toFeedback = (
+  feedback?: MessageDetailResponse['feedbacks'][number],
+): FeedbackType | undefined =>
   feedback?.rating === 'like' || feedback?.rating === 'dislike'
     ? { rating: feedback.rating, content: feedback.content }
     : undefined
 
-const toThoughtItems = (message: LogMessage): ThoughtItem[] =>
+const toThoughtItems = (message: MessageDetailResponse): ThoughtItem[] =>
   message.agent_thoughts.map((thought) => ({
     id: thought.id,
     tool: thought.tool ?? '',
@@ -116,15 +116,15 @@ const toThoughtItems = (message: LogMessage): ThoughtItem[] =>
   }))
 
 // `message` and `metadata` are untyped JSON in the console API response.
-const getPromptLog = (message: LogMessage) =>
+const getPromptLog = (message: MessageDetailResponse) =>
   (Array.isArray(message.message) ? message.message : []) as NonNullable<IChatItem['log']>
 
-const getCitations = (message: LogMessage) =>
+const getCitations = (message: MessageDetailResponse) =>
   isPlainObject(message.metadata) && Array.isArray(message.metadata.retriever_resources)
     ? (message.metadata.retriever_resources as CitationItem[])
     : undefined
 
-const getAnnotation = (message: LogMessage): Annotation | undefined => {
+const getAnnotation = (message: MessageDetailResponse): Annotation | undefined => {
   if (message.annotation_hit_history) {
     return {
       id: message.annotation_hit_history.annotation_id,
@@ -152,7 +152,7 @@ const getAnnotation = (message: LogMessage): Annotation | undefined => {
 }
 
 export const getFormattedChatList = (
-  messages: LogMessage[],
+  messages: MessageDetailResponse[],
   conversationId: string,
   timezone: string,
   format: string,

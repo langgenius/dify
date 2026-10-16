@@ -1,4 +1,3 @@
-import type { WorkflowTriggerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   ToolParameter as ContractToolParameter,
   DatasourceProviderType,
@@ -292,5 +291,3 @@ export const MCPAuthMethod = {
 } as const
 
 export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]
-
-export type AppTrigger = WorkflowTriggerResponse

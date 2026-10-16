@@ -1,4 +1,4 @@
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { ORPCError } from '@orpc/client'
 import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -87,7 +87,7 @@ vi.mock('../use-snippet-refresh-draft', () => ({
   }),
 }))
 
-const createInputField = (variable: string): SnippetInputField => ({
+const createInputField = (variable: string): InputVar => ({
   type: PipelineInputVarType.textInput,
   label: variable,
   variable,

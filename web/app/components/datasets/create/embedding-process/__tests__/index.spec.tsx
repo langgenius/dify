@@ -1,5 +1,5 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactElement } from 'react'
-import type { IndexingStatusResponse } from '@/models/datasets'
 import { QueryClient } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -10,7 +10,7 @@ import EmbeddingProcess from '../index'
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: 'sandbox' | 'professional' | 'team' = 'sandbox'
 let mockPollingState: {
-  statusList: IndexingStatusResponse[]
+  statusList: DocumentStatusResponse[]
   isEmbedding: boolean
   isEmbeddingCompleted: boolean
 } = {
@@ -124,7 +124,7 @@ describe('EmbeddingProcess', () => {
           error_code: 'vector_space_estimate_exceeded',
           estimated_vector_space_mb: 61,
           vector_space_limit_mb: 50,
-        } as IndexingStatusResponse,
+        } as DocumentStatusResponse,
       ],
       isEmbedding: false,
       isEmbeddingCompleted: true,
@@ -147,7 +147,7 @@ describe('EmbeddingProcess', () => {
           error_code: null,
           estimated_vector_space_mb: 61,
           vector_space_limit_mb: 50,
-        } as IndexingStatusResponse,
+        } as DocumentStatusResponse,
       ],
       isEmbedding: false,
       isEmbeddingCompleted: true,
@@ -169,7 +169,7 @@ describe('EmbeddingProcess', () => {
           error_code: 'vector_space_estimate_exceeded',
           estimated_vector_space_mb: 61,
           vector_space_limit_mb: 50,
-        } as IndexingStatusResponse,
+        } as DocumentStatusResponse,
       ],
       isEmbedding: false,
       isEmbeddingCompleted: true,

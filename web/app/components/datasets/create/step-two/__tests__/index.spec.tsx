@@ -1,15 +1,12 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DocumentDetailResponse,
+  IndexingEstimateResponse,
+  PreProcessingRule,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
-import type {
-  CrawlOptions,
-  CrawlResultItem,
-  CustomFile,
-  DataSet,
-  FileIndexingEstimateResponse,
-  FullDocumentDetail,
-  PreProcessingRule,
-  Rules,
-} from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CustomFile, Rules } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -50,7 +47,7 @@ vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
 })
 
 const mockDataset: Pick<
-  DataSet,
+  DatasetDetailWithPartialMembersResponse,
   | 'id'
   | 'doc_form'
   | 'data_source_type'
@@ -227,7 +224,9 @@ const createMockWebsitePage = (overrides?: Partial<CrawlResultItem>): CrawlResul
     ...overrides,
   }) as CrawlResultItem
 
-const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): FullDocumentDetail =>
+const createMockDocumentDetail = (
+  overrides?: Partial<DocumentDetailResponse>,
+): DocumentDetailResponse =>
   ({
     id: 'doc-1',
     doc_form: ChunkingMode.text,
@@ -240,7 +239,7 @@ const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): Full
       },
     },
     ...overrides,
-  }) as FullDocumentDetail
+  }) as DocumentDetailResponse
 
 const createMockRules = (overrides?: Partial<Rules>): Rules => ({
   segmentation: { separator: '\\n\\n', max_tokens: 1024, chunk_overlap: 50 },
@@ -254,8 +253,8 @@ const createMockRules = (overrides?: Partial<Rules>): Rules => ({
 })
 
 const createMockEstimate = (
-  overrides?: Partial<FileIndexingEstimateResponse>,
-): FileIndexingEstimateResponse => ({
+  overrides?: Partial<IndexingEstimateResponse>,
+): IndexingEstimateResponse => ({
   total_segments: 10,
   tokens: 5000,
   total_price: 0.01,
@@ -1775,7 +1774,7 @@ describe('PreviewPanel', () => {
     onClose: vi.fn(),
     dataSourceType: DataSourceType.FILE,
     currentDocForm: ChunkingMode.text,
-    estimate: undefined as FileIndexingEstimateResponse | undefined,
+    estimate: undefined as IndexingEstimateResponse | undefined,
     parentChildConfig: defaultParentChildConfig,
     isSetting: false,
     pickerFiles: [{ id: 'file-1', name: 'test.pdf', extension: 'pdf' }],

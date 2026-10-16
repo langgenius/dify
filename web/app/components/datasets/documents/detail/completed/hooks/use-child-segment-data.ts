@@ -1,9 +1,9 @@
 import type {
-  ChildChunkDetail,
-  ChildSegmentsResponse,
-  SegmentDetailModel,
-  SegmentUpdater,
-} from '@/models/datasets'
+  ChildChunkListResponse,
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { SegmentUpdater } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,20 +16,20 @@ type UseChildSegmentDataOptions = {
   searchValue: string
   currentPage: number
   limit: number
-  segments: SegmentDetailModel[]
+  segments: SegmentResponse[]
   currChunkId: string
   isFullDocMode: boolean
   onCloseChildSegmentDetail: () => void
   refreshChunkListDataWithDetailChanged: () => void
   updateSegmentInCache: (
     segmentId: string,
-    updater: (seg: SegmentDetailModel) => SegmentDetailModel,
+    updater: (seg: SegmentResponse) => SegmentResponse,
   ) => void
 }
 type UseChildSegmentDataReturn = {
-  childSegments: ChildChunkDetail[]
+  childSegments: ChildChunkResponse[]
   isLoadingChildSegmentList: boolean
-  childChunkListData: ChildSegmentsResponse | undefined
+  childChunkListData: ChildChunkListResponse | undefined
   childSegmentListRef: React.RefObject<HTMLDivElement | null>
   needScrollToBottom: React.RefObject<boolean>
   // Operations
@@ -39,7 +39,7 @@ type UseChildSegmentDataReturn = {
     childChunkId: string,
     content: string,
   ) => Promise<void>
-  onSaveNewChildChunk: (newChildChunk?: ChildChunkDetail) => void
+  onSaveNewChildChunk: (newChildChunk?: ChildChunkResponse) => void
   resetChildList: () => void
   viewNewlyAddedChildChunk: () => void
 }
@@ -114,8 +114,8 @@ export const useChildSegmentData = (
   }, [invalidChildSegmentList])
   // Optimistic update helper for child segments
   const updateChildSegmentInCache = useCallback(
-    (childChunkId: string, updater: (chunk: ChildChunkDetail) => ChildChunkDetail) => {
-      queryClient.setQueryData<ChildSegmentsResponse>(currentQueryKey, (old) => {
+    (childChunkId: string, updater: (chunk: ChildChunkResponse) => ChildChunkResponse) => {
+      queryClient.setQueryData<ChildChunkListResponse>(currentQueryKey, (old) => {
         if (!old) return old
         return {
           ...old,
@@ -241,7 +241,7 @@ export const useChildSegmentData = (
     ],
   )
   const onSaveNewChildChunk = useCallback(
-    (newChildChunk?: ChildChunkDetail) => {
+    (newChildChunk?: ChildChunkResponse) => {
       if (parentMode === 'paragraph') {
         // Update parent segment's child_chunks in cache
         updateSegmentInCache(currChunkId, (seg) => ({

@@ -1,4 +1,4 @@
-import type { SimpleDocumentDetail } from '@/models/datasets'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -24,7 +24,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import DocumentSourceIcon from './document-source-icon'
 import { renderTdValue } from './utils'
 
-type LocalDoc = SimpleDocumentDetail & { percent?: number }
+type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
 type DocumentTableRowProps = {
   doc: LocalDoc

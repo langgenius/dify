@@ -1,6 +1,6 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { IOtherOptions } from '@/service/base'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
@@ -271,7 +271,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: VersionHistory) => {
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
       const nodes = publishedWorkflow.graph.nodes.map((node) => ({
         ...node,
         selected: false,

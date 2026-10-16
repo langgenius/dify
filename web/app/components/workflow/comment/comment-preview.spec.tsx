@@ -1,9 +1,9 @@
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CommentPreview from './comment-preview'
 
-type UserProfile = NonNullable<WorkflowCommentList['created_by_account']>
+type UserProfile = NonNullable<WorkflowCommentBasic['created_by_account']>
 
 const mockSetHovering = vi.fn()
 let capturedUsers: UserProfile[] = []
@@ -27,7 +27,7 @@ vi.mock('../store', () => ({
   ) => selector({ setCommentPreviewHovering: mockSetHovering }),
 }))
 
-const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCommentList => {
+const createComment = (overrides: Partial<WorkflowCommentBasic> = {}): WorkflowCommentBasic => {
   const author = { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: null }
   const participant = { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }
 

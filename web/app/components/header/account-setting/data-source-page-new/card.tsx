@@ -1,4 +1,7 @@
-import type { DataSourceAuth, DataSourceCredential } from './types'
+import type {
+  DatasourceCredentialResponse,
+  DatasourceProviderAuthResponse,
+} from '@dify/contracts/api/console/auth/types.gen'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import {
   AlertDialog,
@@ -30,7 +33,7 @@ const getPluginVersion = (uniqueIdentifier?: string) => {
 }
 
 type CardProps = {
-  item: DataSourceAuth
+  item: DatasourceProviderAuthResponse
   disabled?: boolean
   pluginDetail?: PluginDetail
   onPluginUpdate?: (isDelete?: boolean) => void
@@ -86,7 +89,7 @@ const Card = ({ item, disabled, pluginDetail, onPluginUpdate }: CardProps) => {
   const handleAction = useCallback(
     (
       action: string,
-      credentialItem: DataSourceCredential,
+      credentialItem: DatasourceCredentialResponse,
       renamePayload?: { credential_id: string; name: string },
     ) => {
       if (action === 'edit') {

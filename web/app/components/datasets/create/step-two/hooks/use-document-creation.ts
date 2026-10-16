@@ -1,3 +1,7 @@
+import type {
+  DatasetAndDocumentResponse,
+  DocumentDetailResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { StepTwoFile, StepTwoNotionPage } from '../types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -6,8 +10,6 @@ import type {
   CrawlOptions,
   CrawlResultItem,
   CreateDocumentReq,
-  createDocumentResponse,
-  FullDocumentDetail,
   ProcessRule,
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
@@ -28,7 +30,7 @@ import { MAXIMUM_CHUNK_TOKEN_LENGTH } from './use-segmentation-state'
 type UseDocumentCreationOptions = {
   datasetId?: string
   isSetting?: boolean
-  documentDetail?: FullDocumentDetail
+  documentDetail?: DocumentDetailResponse
   dataSourceType: DataSourceType
   files: StepTwoFile[]
   notionPages: StepTwoNotionPage[]
@@ -41,7 +43,7 @@ type UseDocumentCreationOptions = {
   // Callbacks
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
-  updateResultCache?: (res: createDocumentResponse) => void
+  updateResultCache?: (res: DatasetAndDocumentResponse) => void
   updateRetrievalMethodCache?: (method: RETRIEVE_METHOD | '') => void
   onSave?: () => void
   mutateDatasetRes?: () => void

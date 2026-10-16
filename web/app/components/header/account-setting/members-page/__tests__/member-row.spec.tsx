@@ -1,4 +1,4 @@
-import type { Member } from '@/models/common'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -18,7 +18,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('@/hooks/use-format-time-from-now')
 
-const member: Member = {
+const member: AccountWithRoleResponse = {
   id: 'member-1',
   name: 'Member User',
   email: 'member@example.com',

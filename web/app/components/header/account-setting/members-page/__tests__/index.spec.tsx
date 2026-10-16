@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -126,7 +126,7 @@ vi.mock('../member-menu', () => ({
     onTransferOwnership,
     canTransferOwnership,
   }: {
-    member: Member
+    member: AccountWithRoleResponse
     isCurrentUser?: boolean
     onTransferOwnership?: () => void
     canTransferOwnership?: boolean
@@ -161,7 +161,7 @@ vi.mock('../member-details-modal', () => ({
     canAssignRoles,
     onAssignSubmit,
   }: {
-    member: Member
+    member: AccountWithRoleResponse
     onClose: () => void
     canAssignRoles?: boolean
     onAssignSubmit?: (roles: Role[]) => void
@@ -193,7 +193,7 @@ describe('MembersPage', () => {
   const mockFormatTimeFromNow = vi.fn(() => 'just now')
   const mockUpdateRolesOfMember = vi.fn()
 
-  const mockAccounts: Member[] = [
+  const mockAccounts: AccountWithRoleResponse[] = [
     {
       id: '1',
       name: 'Owner User',
@@ -410,7 +410,7 @@ describe('MembersPage', () => {
   })
 
   it('should show pending status and you indicator', () => {
-    const pendingAccount: Member = {
+    const pendingAccount: AccountWithRoleResponse = {
       ...mockAccounts[1]!,
       status: 'pending',
     }
@@ -537,7 +537,7 @@ describe('MembersPage', () => {
   })
 
   it('should use created_at as fallback when last_active_at is empty', () => {
-    const memberNoLastActive: Member = {
+    const memberNoLastActive: AccountWithRoleResponse = {
       ...mockAccounts[1]!,
       last_active_at: null,
       created_at: 1700000000,
@@ -589,7 +589,9 @@ describe('MembersPage', () => {
       isCurrentWorkspaceManager: false,
     } as unknown as ConsoleStateFixture)
     vi.mocked(mockMembersHook).mockReturnValue({
-      data: { accounts: [{ ...mockAccounts[1], role: 'unknown_role' as Member['role'] }] },
+      data: {
+        accounts: [{ ...mockAccounts[1], role: 'unknown_role' as AccountWithRoleResponse['role'] }],
+      },
       refetch: mockRefetch,
     })
 

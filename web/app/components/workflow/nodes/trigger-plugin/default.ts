@@ -1,8 +1,8 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { TFunction } from 'i18next'
 import type { NodeDefault, Var } from '../../types'
 import type { Field, StructuredOutput } from '../llm/types'
 import type { PluginTriggerNodeType } from './types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import { BlockEnum, VarType } from '../../types'
 import { genNodeMetaData } from '../../utils'
 import { VarKindType } from '../_base/types'
@@ -40,7 +40,7 @@ const pickItemSchema = (schema: any) => {
 
 const extractSchemaType = (
   schema: any,
-  _schemaTypeDefinitions?: SchemaTypeDefinition[],
+  _schemaTypeDefinitions?: SchemaDefinitionItemResponse[],
 ): string | undefined => {
   if (!schema) return undefined
 
@@ -53,7 +53,7 @@ const extractSchemaType = (
 
 const resolveVarType = (
   schema: any,
-  schemaTypeDefinitions?: SchemaTypeDefinition[],
+  schemaTypeDefinitions?: SchemaDefinitionItemResponse[],
 ): { type: VarType; schemaType?: string } => {
   const schemaType = extractSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
@@ -129,7 +129,7 @@ const toArrayItemType = (type: Type): Exclude<Type, typeof Type.array> => {
 
 const convertJsonSchemaToField = (
   schema: any,
-  schemaTypeDefinitions?: SchemaTypeDefinition[],
+  schemaTypeDefinitions?: SchemaDefinitionItemResponse[],
 ): Field => {
   const schemaType = extractSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
@@ -177,7 +177,7 @@ const convertJsonSchemaToField = (
 
 const buildOutputVars = (
   schema: Record<string, any>,
-  schemaTypeDefinitions?: SchemaTypeDefinition[],
+  schemaTypeDefinitions?: SchemaDefinitionItemResponse[],
 ): Var[] => {
   if (!schema || typeof schema !== 'object') return []
 

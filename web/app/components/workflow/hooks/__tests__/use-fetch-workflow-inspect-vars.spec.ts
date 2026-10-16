@@ -1,4 +1,4 @@
-import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
@@ -13,7 +13,7 @@ const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
 const mockHandleCancelAllNodeSuccessStatus = vi.hoisted(() => vi.fn())
 const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 
-const schemaTypeDefinitions: SchemaTypeDefinition[] = [
+const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   {
     name: 'simple',
     label: 'Simple',
