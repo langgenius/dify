@@ -6,7 +6,11 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import BadRequest, NotFound, ServiceUnavailable
 
+from controllers.inner_api import inner_api_ns
 from controllers.inner_api.knowledge_fs.texts import KnowledgeFSTextApi
+from libs.external_api import ExternalApi
+from services.knowledge_fs.text_store import TextIndexPendingError
+from services.tidb_binding_service import TidbBindingPendingError
 
 PAYLOAD = {
     "operation": "get",
@@ -82,8 +86,6 @@ def test_text_controller_accepts_only_configured_inner_key(app: Flask, config_ov
 
 
 def test_text_controller_reports_pending_index_without_leaking_credentials(app: Flask) -> None:
-    from services.knowledge_fs.text_store import TextIndexPendingError
-
     handler = KnowledgeFSTextApi()
     with (
         app.test_request_context(json=PAYLOAD),
@@ -96,3 +98,28 @@ def test_text_controller_reports_pending_index_without_leaking_credentials(app: 
             inspect.unwrap(handler.post)(handler)
         assert error.value.retry_after == 5
         assert "secret" not in str(error.value)
+
+
+@pytest.mark.parametrize("pending_error", [TidbBindingPendingError, TextIndexPendingError])
+def test_http_pending_response_preserves_retry_after_header(
+    config_overrides: Callable[..., None], pending_error: type[Exception]
+) -> None:
+    config_overrides(PLUGIN_DAEMON_KEY="enabled", INNER_API_KEY_FOR_PLUGIN="trusted-key")
+    http_app = Flask(__name__)
+    api = ExternalApi(http_app)
+    api.models.update(inner_api_ns.models)
+    api.add_resource(KnowledgeFSTextApi, "/texts")
+    with patch(
+        "controllers.inner_api.knowledge_fs.texts.configured_text_client",
+        side_effect=pending_error("private endpoint"),
+    ):
+        response = http_app.test_client().post("/texts", json=PAYLOAD, headers={"X-Inner-Api-Key": "trusted-key"})
+
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "5"
+    assert response.mimetype == "application/json"
+    assert response.get_json() == {
+        "code": "service_unavailable",
+        "message": "KnowledgeFS full-text index is being initialized",
+        "status": 503,
+    }
