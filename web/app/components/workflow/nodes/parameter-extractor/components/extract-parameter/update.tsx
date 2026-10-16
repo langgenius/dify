@@ -78,7 +78,7 @@ export function ParameterDialog(props: Props) {
         }
       />
       <DialogContent className="w-100 max-w-100 overflow-hidden border-none p-4">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">{triggerLabel}</DialogTitle>
+        <DialogTitle>{triggerLabel}</DialogTitle>
         <ParameterForm {...props} onSaved={() => actionsRef.current?.close()} />
       </DialogContent>
     </Dialog>

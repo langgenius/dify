@@ -95,12 +95,12 @@ export function WorkflowLaunchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-140">
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          <DialogTitle>
             {t(($) => $['overview.appInfo.workflowLaunchHiddenInputs.title'], {
               ns: 'appOverview',
             })}
           </DialogTitle>
-          <DialogDescription className="system-md-regular text-text-tertiary">
+          <DialogDescription>
             <Trans
               i18nKey={($) => $['overview.appInfo.workflowLaunchHiddenInputs.description']}
               ns="appOverview"

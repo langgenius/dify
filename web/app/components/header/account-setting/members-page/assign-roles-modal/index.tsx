@@ -74,10 +74,8 @@ const AssignRolesModalBody = ({
           }
         />
         <div className="pr-8">
-          <DialogTitle className="system-xl-semibold text-text-primary">{title}</DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {description}
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="mt-1">{description}</DialogDescription>
         </div>
       </div>
 

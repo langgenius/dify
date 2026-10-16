@@ -35,7 +35,7 @@ function EditAccountNameForm({ name, isPending, onSave }: EditAccountNameFormPro
         if (!isPending && draftName) void onSave(draftName)
       }}
     >
-      <DialogTitle className="mb-6 title-2xl-semi-bold text-text-primary">
+      <DialogTitle className="mb-6">
         {t(($) => $['account.editName'], { ns: 'accountSettings' })}
       </DialogTitle>
       <Field name="name" className="gap-0">

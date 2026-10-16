@@ -182,12 +182,8 @@ export function SkillUploadReviewDialog({
           }
         />
         <header className="px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.uploadReviewTitle'])}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-            {summary}
-          </DialogDescription>
+          <DialogTitle>{t(($) => $['skillManagement.detail.uploadReviewTitle'])}</DialogTitle>
+          <DialogDescription className="mt-1">{summary}</DialogDescription>
         </header>
         <div className="flex max-h-[min(520px,60dvh)] flex-col gap-4 overflow-y-auto px-6 py-3">
           {candidateItems.length > 0 && (
@@ -262,10 +258,8 @@ export function SkillUploadFailuresDialog({
           }
         />
         <header className="px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['skillManagement.detail.uploadFailureTitle'])}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+          <DialogTitle>{t(($) => $['skillManagement.detail.uploadFailureTitle'])}</DialogTitle>
+          <DialogDescription className="mt-1">
             {t(($) => $['skillManagement.detail.uploadFailureSummary'], {
               failed: failedItems.length,
               total: items.length,

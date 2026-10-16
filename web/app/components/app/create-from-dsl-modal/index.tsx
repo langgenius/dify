@@ -303,9 +303,7 @@ function CreateFromDSLModal({
             className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden overscroll-contain text-left align-middle"
           >
             <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
-              <DialogTitle className="title-2xl-semi-bold text-text-primary">
-                {t(($) => $.importApp, { ns: 'app' })}
-              </DialogTitle>
+              <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
               <IconButton
                 variant="ghost"
                 size="lg"

@@ -880,9 +880,7 @@ function ImportSkillDialogForm({
       }}
     >
       <div className="flex items-center justify-between border-b border-divider-subtle px-5 py-4">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['skillManagement.importDialog.title'])}
-        </DialogTitle>
+        <DialogTitle>{t(($) => $['skillManagement.importDialog.title'])}</DialogTitle>
         <DialogClose
           disabled={importing}
           render={
@@ -978,10 +976,7 @@ function ImportSkillDialogForm({
               />
             </p>
           )}
-          <DialogDescription
-            id={descriptionId}
-            className="text-center system-sm-regular text-text-tertiary"
-          >
+          <DialogDescription id={descriptionId} className="text-center">
             {t(($) => $['skillManagement.importDialog.description'])}
           </DialogDescription>
         </div>

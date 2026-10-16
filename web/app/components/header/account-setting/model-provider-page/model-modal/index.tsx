@@ -212,13 +212,13 @@ const ModelModal: FC<ModelModalProps> = ({
       else label = t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'modelProvider' })
     }
 
-    return <DialogTitle className="title-2xl-semi-bold text-text-primary">{label}</DialogTitle>
+    return <DialogTitle>{label}</DialogTitle>
   }, [t, mode, credential])
 
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription className="mt-1">
           {t(($) => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'modelProvider' })}
         </DialogDescription>
       )

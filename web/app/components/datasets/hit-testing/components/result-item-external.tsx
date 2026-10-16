@@ -61,7 +61,7 @@ export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExter
             </IconButton>
           }
         />
-        <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
+        <DialogTitle className="shrink-0">
           {t(($) => $.chunkDetail, { ns: 'datasetHitTesting' })}
         </DialogTitle>
         <div className="mt-4 flex min-h-0 flex-1 flex-col">

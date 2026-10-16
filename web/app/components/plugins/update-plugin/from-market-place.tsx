@@ -170,7 +170,7 @@ const UpdatePluginModal = ({
         )}
         {!doShowDowngradeWarningModal && (
           <>
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
+            <DialogTitle>
               {t(
                 ($) =>
                   $[

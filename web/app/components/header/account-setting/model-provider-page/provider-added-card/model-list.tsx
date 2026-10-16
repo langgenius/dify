@@ -23,7 +23,7 @@ const ModelLoadBalancingLoadingDialog = ({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose?.()}>
       <DialogContent className="w-160 max-w-none border-none px-8 pt-8 pb-6">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <DialogTitle>
           {t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
         </DialogTitle>
         <div className="flex items-center gap-2 py-8" role="status" aria-busy="true">

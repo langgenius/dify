@@ -77,10 +77,10 @@ export function CustomizeDialog({
         {triggerLabel ?? t(($) => $['overview.appInfo.customize.entry'], { ns: 'appOverview' })}
       </DialogTrigger>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden p-6">
-        <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
+        <DialogTitle className="shrink-0">
           {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
         </DialogTitle>
-        <DialogDescription className="mt-2 shrink-0 body-md-regular text-text-secondary">
+        <DialogDescription className="mt-2 shrink-0">
           {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
         </DialogDescription>
         <DialogClose

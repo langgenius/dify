@@ -75,9 +75,7 @@ const PublishAsKnowledgePipelineModal = ({
           }}
         >
           <div className="relative flex items-center p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['common.publishAs'], { ns: 'pipeline' })}
-            </DialogTitle>
+            <DialogTitle>{t(($) => $['common.publishAs'], { ns: 'pipeline' })}</DialogTitle>
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               size="lg"

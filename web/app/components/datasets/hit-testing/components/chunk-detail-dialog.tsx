@@ -88,7 +88,7 @@ export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDi
             </IconButton>
           }
         />
-        <DialogTitle className="pr-10 title-2xl-semi-bold text-text-primary">
+        <DialogTitle className="pr-10">
           {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
         </DialogTitle>
 

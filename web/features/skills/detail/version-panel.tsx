@@ -357,9 +357,7 @@ function VersionRow({
             }
           />
           <div className="px-6 pt-6 pr-14 pb-4">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {versionInfoLabel}
-            </DialogTitle>
+            <DialogTitle>{versionInfoLabel}</DialogTitle>
             <DialogDescription className="sr-only">
               {t(($) => $['skillManagement.detail.renameVersionPrompt'])}
             </DialogDescription>

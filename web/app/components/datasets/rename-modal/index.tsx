@@ -106,9 +106,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           }}
         >
           <div className="flex items-center justify-between pb-2">
-            <DialogTitle className="text-xl leading-7.5 font-medium text-text-primary">
-              {t(($) => $.title, { ns: 'datasetSettings' })}
-            </DialogTitle>
+            <DialogTitle>{t(($) => $.title, { ns: 'datasetSettings' })}</DialogTitle>
             <IconButton
               size="lg"
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}

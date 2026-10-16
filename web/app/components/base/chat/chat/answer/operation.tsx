@@ -96,10 +96,10 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
       }}
     >
       <div className="relative shrink-0 p-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <DialogTitle>
           {t(($) => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
         </DialogTitle>
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription className="mt-1">
           {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
             'Please tell us what went wrong with this response'}
         </DialogDescription>

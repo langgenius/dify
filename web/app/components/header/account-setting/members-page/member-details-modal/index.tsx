@@ -125,7 +125,7 @@ const MemberDetailsModal = ({
                 </IconButton>
               }
             />
-            <DialogTitle className="pr-8 system-xl-semibold text-text-primary">
+            <DialogTitle className="pr-8">
               {t(($) => $['members.memberDetails.title'], {
                 ns: 'workspaceMembers',
                 defaultValue: 'Member Details',

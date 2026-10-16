@@ -243,10 +243,10 @@ export function CloudPlanItem({ plan, billingInterval, billing }: CloudPlanItemP
             }
           />
           <div className="flex flex-col gap-2 pr-10">
-            <DialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+            <DialogTitle className="w-full">
               {t(($) => $['educationPricingConfirm.title'], { ns: 'education' })}
             </DialogTitle>
-            <DialogDescription className="w-full system-md-regular text-text-tertiary">
+            <DialogDescription className="w-full">
               {t(($) => $['educationPricingConfirm.description'], { ns: 'education' })}
             </DialogDescription>
           </div>

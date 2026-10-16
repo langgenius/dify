@@ -155,7 +155,7 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
       >
         <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
       </button>
-      <DialogTitle className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
+      <DialogTitle className="relative pb-3">
         {!isCreate
           ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
           : t(($) => $['mcp.modal.title'], { ns: 'tools' })}

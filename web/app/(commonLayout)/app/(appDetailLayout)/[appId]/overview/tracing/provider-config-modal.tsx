@@ -94,7 +94,7 @@ const ProviderConfigModal: FC<Props> = ({
   return (
     <>
       <div className="flex items-center justify-between gap-4 px-8 pt-8 pb-4">
-        <DialogTitle className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+        <DialogTitle className="min-w-0 flex-1">
           {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
           {t(($) => $[`tracing.${type}.title`], { ns: 'app' })}
         </DialogTitle>

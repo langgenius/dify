@@ -74,7 +74,7 @@ export const TagManagementModal = ({
   return (
     <Dialog open={show} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="w-150 rounded-xl p-8">
-        <DialogTitle className="relative pb-2 text-xl/7.5 font-semibold text-text-primary">
+        <DialogTitle className="relative pb-2">
           {t(($) => $['tag.manageTags'], { ns: 'common' })}
         </DialogTitle>
         <DialogClose

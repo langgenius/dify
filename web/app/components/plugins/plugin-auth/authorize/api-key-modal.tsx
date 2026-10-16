@@ -150,9 +150,7 @@ const ApiKeyModal = ({
       <DialogContent backdropProps={{ forceRender: true }} className="w-160">
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}
-            </DialogTitle>
+            <DialogTitle>{t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}</DialogTitle>
             <div className="mt-1 system-xs-regular text-text-tertiary">
               {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
             </div>

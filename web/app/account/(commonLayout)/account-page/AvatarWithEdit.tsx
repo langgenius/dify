@@ -165,7 +165,7 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
         onOpenChange={(open) => !open && setIsShowDeleteConfirm(false)}
       >
         <DialogContent className="w-90.5 p-6">
-          <DialogTitle className="mb-3 title-2xl-semi-bold text-text-primary">
+          <DialogTitle className="mb-3">
             {t(($) => $['avatar.deleteTitle'], { ns: 'common' })}
           </DialogTitle>
           <p className="mb-8 text-text-secondary">

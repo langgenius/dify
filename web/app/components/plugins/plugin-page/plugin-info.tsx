@@ -37,9 +37,7 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
             </IconButton>
           }
         />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}
-        </DialogTitle>
+        <DialogTitle>{t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</DialogTitle>
 
         <div className="mt-5 space-y-3">
           {repository && (

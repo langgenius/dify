@@ -173,7 +173,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
           </IconButton>
         }
       />
-      <DialogTitle className="pr-8 text-xl font-semibold text-text-primary">
+      <DialogTitle className="pr-8">
         {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}
       </DialogTitle>
       <div className="mt-6 space-y-4">

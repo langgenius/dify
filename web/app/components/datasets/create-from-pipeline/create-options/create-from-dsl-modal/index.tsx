@@ -55,9 +55,7 @@ const CreateFromDSLModal = ({
       <Dialog open={show} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
         <DialogContent className="w-full max-w-120 overflow-hidden">
           <div className="relative flex items-center justify-between pt-6 pr-14 pb-3 pl-6">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $.importFromDSL, { ns: 'app' })}
-            </DialogTitle>
+            <DialogTitle>{t(($) => $.importFromDSL, { ns: 'app' })}</DialogTitle>
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               className="absolute top-5 right-5"

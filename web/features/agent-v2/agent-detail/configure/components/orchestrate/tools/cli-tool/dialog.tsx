@@ -174,7 +174,7 @@ export function CliToolDialog({
               </IconButton>
             }
           />
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          <DialogTitle>
             {t(
               ($) =>
                 $[
@@ -184,7 +184,7 @@ export function CliToolDialog({
                 ],
             )}
           </DialogTitle>
-          <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+          <DialogDescription className="mt-1">
             {t(($) => $['agentDetail.configure.tools.cliDialog.description'])}
           </DialogDescription>
         </div>

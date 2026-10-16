@@ -146,9 +146,7 @@ const EditMetadataBatchModal: FC<Props> = ({
             </IconButton>
           }
         />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}
-        </DialogTitle>
+        <DialogTitle>{t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}</DialogTitle>
 
         <div className="mt-1 system-xs-medium text-text-accent">
           {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}

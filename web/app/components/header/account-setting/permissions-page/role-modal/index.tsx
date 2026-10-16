@@ -81,10 +81,10 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
             }
           />
           <div className="pr-8">
-            <DialogTitle className="system-xl-semibold text-text-primary">
+            <DialogTitle>
               {t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}
             </DialogTitle>
-            <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+            <DialogDescription className="mt-1">
               {t(($) => $[`role.modal.${mode}.description`], { ns: 'permission' })}
             </DialogDescription>
           </div>

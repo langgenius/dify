@@ -211,7 +211,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
             handleConfirm()
           }}
         >
-          <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
+          <DialogTitle className="shrink-0 px-6 pt-6">
             {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
               ns: 'appDebug',
             })}

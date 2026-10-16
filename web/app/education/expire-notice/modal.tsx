@@ -56,7 +56,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
             </IconButton>
           }
         />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <DialogTitle>
           {expired
             ? t(($) => $[`${i18nPrefix}.expired.title`], { ns: 'education' })
             : t(($) => $[`${i18nPrefix}.isAboutToExpire.title`], {

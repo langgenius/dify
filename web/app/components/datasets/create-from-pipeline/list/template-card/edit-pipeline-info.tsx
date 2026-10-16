@@ -97,9 +97,7 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
     >
       {/* Header */}
       <div className="pt-6 pr-14 pb-3 pl-6">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $.editPipelineInfo, { ns: 'datasetPipeline' })}
-        </DialogTitle>
+        <DialogTitle>{t(($) => $.editPipelineInfo, { ns: 'datasetPipeline' })}</DialogTitle>
       </div>
       <IconButton
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}

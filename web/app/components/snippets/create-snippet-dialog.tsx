@@ -132,7 +132,7 @@ export function CreateSnippetDialog({
             />
 
             <div className="px-6 pt-6 pb-3">
-              <DialogTitle className="title-2xl-semi-bold text-text-primary">
+              <DialogTitle>
                 {title || t(($) => $['snippet.createDialogTitle'], { ns: 'workflow' })}
               </DialogTitle>
             </div>

@@ -215,7 +215,7 @@ const EmbeddedContent = ({
 
   return (
     <>
-      <DialogDescription className="mt-8 mb-4 system-sm-medium text-text-primary">
+      <DialogDescription className="mt-8 mb-4">
         {t(($) => $[`${prefixEmbedded}.explanation`], { ns: 'appOverview' })}
       </DialogDescription>
       {supportedHiddenInputs.length > 0 && (
@@ -370,7 +370,7 @@ export function EmbeddedDialogContent({
 
   return (
     <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden p-6">
-      <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
+      <DialogTitle className="shrink-0">
         {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
       </DialogTitle>
       <DialogClose

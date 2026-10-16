@@ -117,10 +117,8 @@ function DatasetScopeContent({
       }}
     >
       <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pr-14 pb-4">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['apiKeyModal.addTitle'], { ns: 'appApi' })}
-        </DialogTitle>
-        <DialogDescription className="system-sm-regular text-text-tertiary">
+        <DialogTitle>{t(($) => $['apiKeyModal.addTitle'], { ns: 'appApi' })}</DialogTitle>
+        <DialogDescription>
           {t(($) => $['apiKeyModal.addSubtitle'], { ns: 'appApi' })}
         </DialogDescription>
       </div>

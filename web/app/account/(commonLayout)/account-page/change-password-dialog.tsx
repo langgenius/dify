@@ -106,7 +106,7 @@ function ChangePasswordForm({
 
   return (
     <Form<ChangePasswordFormValues> onFormSubmit={handleSubmit}>
-      <DialogTitle className="mb-6 title-2xl-semi-bold text-text-primary">
+      <DialogTitle className="mb-6">
         {isPasswordSet
           ? t(($) => $['account.resetPassword'], { ns: 'accountSettings' })
           : t(($) => $['account.setPassword'], { ns: 'accountSettings' })}

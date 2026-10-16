@@ -208,7 +208,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
           </IconButton>
           {step === STEP.start && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
+              <DialogTitle className="pb-3">
                 {t(($) => $['account.changeEmail.title'], { ns: 'accountSettings' })}
               </DialogTitle>
               <div className="space-y-0.5 pt-1 pb-2">
@@ -239,7 +239,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
           )}
           {step === STEP.verifyOrigin && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
+              <DialogTitle className="pb-3">
                 {t(($) => $['account.changeEmail.verifyEmail'], { ns: 'accountSettings' })}
               </DialogTitle>
               <div className="space-y-0.5 pt-1 pb-2">
@@ -308,7 +308,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
           )}
           {step === STEP.newEmail && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
+              <DialogTitle className="pb-3">
                 {t(($) => $['account.changeEmail.newEmail'], { ns: 'accountSettings' })}
               </DialogTitle>
               <div className="space-y-0.5 pt-1 pb-2">
@@ -358,7 +358,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
           )}
           {step === STEP.verifyNew && (
             <>
-              <DialogTitle className="pb-3 title-2xl-semi-bold text-text-primary">
+              <DialogTitle className="pb-3">
                 {t(($) => $['account.changeEmail.verifyNew'], { ns: 'accountSettings' })}
               </DialogTitle>
               <div className="space-y-0.5 pt-1 pb-2">

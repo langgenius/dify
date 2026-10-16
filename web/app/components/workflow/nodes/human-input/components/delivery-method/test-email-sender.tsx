@@ -253,7 +253,7 @@ const EmailSenderContent = ({
     return (
       <>
         <div className="space-y-2">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          <DialogTitle>
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.done`], {
               ns: 'workflowHumanInput',
             })}
@@ -338,7 +338,7 @@ const EmailSenderContent = ({
         }
       />
       <div className="space-y-1 pr-8">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <DialogTitle>
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.title`], {
             ns: 'workflowHumanInput',
           })}

@@ -75,9 +75,7 @@ const ImportFromMarketplaceTemplateModal = ({
     >
       <DialogContent className="w-130">
         <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['marketplace.template.modalTitle'], { ns: 'app' })}
-          </DialogTitle>
+          <DialogTitle>{t(($) => $['marketplace.template.modalTitle'], { ns: 'app' })}</DialogTitle>
           <DialogClose
             render={
               <IconButton

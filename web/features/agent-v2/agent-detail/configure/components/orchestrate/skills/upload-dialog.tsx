@@ -338,10 +338,8 @@ export function AgentSkillUploadDialog({
             </IconButton>
           }
         />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['agentDetail.configure.skills.upload.title'])}
-        </DialogTitle>
-        <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+        <DialogTitle>{t(($) => $['agentDetail.configure.skills.upload.title'])}</DialogTitle>
+        <DialogDescription className="mt-1">
           {t(($) => $['agentDetail.configure.skills.upload.description'])}
         </DialogDescription>
         <AgentSkillPackageUploader

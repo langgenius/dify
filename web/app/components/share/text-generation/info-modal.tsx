@@ -44,7 +44,7 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
             icon={data}
           />
           <div className="w-full text-center">
-            <DialogTitle className="system-xl-semibold text-text-secondary">
+            <DialogTitle>
               {data?.title || t(($) => $['userProfile.about'], { ns: 'common' })}
             </DialogTitle>
             <div className="mt-1 system-xl-medium text-text-tertiary">{data?.description}</div>

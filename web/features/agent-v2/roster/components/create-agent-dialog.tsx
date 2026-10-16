@@ -55,9 +55,7 @@ function CreateAgentFormSession({
   return (
     <>
       <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['roster.createDialog.title'], { ns: 'agentRoster' })}
-        </DialogTitle>
+        <DialogTitle>{t(($) => $['roster.createDialog.title'], { ns: 'agentRoster' })}</DialogTitle>
         <DialogDescription className="sr-only">
           {t(($) => $['roster.createDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>

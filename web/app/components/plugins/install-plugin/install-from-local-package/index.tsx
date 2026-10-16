@@ -108,9 +108,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
         />
 
         <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
-            {getTitle()}
-          </DialogTitle>
+          <DialogTitle className="self-stretch">{getTitle()}</DialogTitle>
         </div>
         {step === InstallStep.uploading && (
           <Uploading

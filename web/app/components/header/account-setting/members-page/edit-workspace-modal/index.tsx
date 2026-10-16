@@ -78,7 +78,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           }}
         >
           <div className="mb-4 pr-8">
-            <DialogTitle className="text-xl font-semibold text-text-primary">
+            <DialogTitle>
               {t(($) => $['account.editWorkspaceInfo'], { ns: 'accountSettings' })}
             </DialogTitle>
           </div>

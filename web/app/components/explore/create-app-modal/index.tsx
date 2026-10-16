@@ -213,13 +213,9 @@ const CreateAppModal = ({
               </IconButton>
             }
           />
-          {isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
-              {t(($) => $.editAppTitle, { ns: 'app' })}
-            </DialogTitle>
-          )}
+          {isEditModal && <DialogTitle>{t(($) => $.editAppTitle, { ns: 'app' })}</DialogTitle>}
           {!isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
+            <DialogTitle>
               {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
             </DialogTitle>
           )}

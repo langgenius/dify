@@ -55,7 +55,7 @@ const PluginMutationModal: FC<Props> = ({
             </IconButton>
           }
         />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">{modelTitle}</DialogTitle>
+        <DialogTitle>{modelTitle}</DialogTitle>
 
         <div className="mt-3 mb-2 system-md-regular text-text-secondary">{description}</div>
         <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">

@@ -123,7 +123,7 @@ export default function ResourceAccessTokenDialog({
             </IconButton>
           }
         />
-        <DialogTitle className="mb-5 pr-8 text-xl font-semibold text-text-primary">
+        <DialogTitle className="mb-5 pr-8">
           {isEdit
             ? t(($) => $['resourceAccessToken.editTitle'], { ns: 'accountSettings' })
             : createdToken

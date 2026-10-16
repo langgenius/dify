@@ -65,7 +65,7 @@ export default function FeedBack(props: DeleteAccountProps) {
         className="max-w-120 overflow-hidden p-6"
         backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
-        <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
+        <DialogTitle className="pr-8 pb-3">
           {t(($) => $['account.feedbackTitle'], { ns: 'accountSettings' })}
         </DialogTitle>
         <Form<FeedbackFormValues>

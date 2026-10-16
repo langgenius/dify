@@ -212,9 +212,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
 
         <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <div className="flex grow flex-col items-start gap-1">
-            <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
-              {getTitle()}
-            </DialogTitle>
+            <DialogTitle className="self-stretch">{getTitle()}</DialogTitle>
             <div className="self-stretch system-xs-regular text-text-tertiary">
               {!completedSteps.includes(state.step) &&
                 t(($) => $['installFromGitHub.installNote'], { ns: 'plugin' })}

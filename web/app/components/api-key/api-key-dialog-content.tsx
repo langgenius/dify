@@ -30,10 +30,8 @@ export function ApiKeyDialogContent({
   return (
     <DialogContent finalFocus={finalFocus} className="flex w-200 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pr-14 pb-4">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['apiKeyModal.apiSecretKey'])}
-        </DialogTitle>
-        <DialogDescription className="system-sm-regular text-text-tertiary">
+        <DialogTitle>{t(($) => $['apiKeyModal.apiSecretKey'])}</DialogTitle>
+        <DialogDescription>
           {t(($) => $['apiKeyModal.apiSecretKeyTips'])}
           {limitDescription && <span className="block">{limitDescription}</span>}
         </DialogDescription>

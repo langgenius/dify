@@ -60,7 +60,7 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
               <AppIcon size="large" icon={pipelineTemplateInfo.icon_info} />
               <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
                 <DialogTitle
-                  className="truncate system-md-semibold text-text-secondary"
+                  className="truncate text-sm/5 text-text-secondary"
                   title={pipelineTemplateInfo.name}
                 >
                   {pipelineTemplateInfo.name}

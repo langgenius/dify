@@ -40,10 +40,8 @@ const OAuthVisibilityDialog = ({
       <DialogContent>
         <div className="flex flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
-            </DialogTitle>
-            <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+            <DialogTitle>{t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}</DialogTitle>
+            <DialogDescription className="mt-1">
               {t(($) => $['auth.oauthCredentialPermissionDescription'], { ns: 'plugin' })}
             </DialogDescription>
             <DialogClose

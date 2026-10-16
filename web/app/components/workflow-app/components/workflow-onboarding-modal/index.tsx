@@ -46,10 +46,10 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
 
         <div className="pb-4">
           <div className="mb-6">
-            <DialogTitle className="mb-2 title-2xl-semi-bold text-text-primary">
+            <DialogTitle className="mb-2">
               {t(($) => $['onboarding.title'], { ns: 'workflow' })}
             </DialogTitle>
-            <DialogDescription className="body-xs-regular leading-4 text-text-tertiary">
+            <DialogDescription>
               {t(($) => $['onboarding.description'], { ns: 'workflow' })}
             </DialogDescription>
           </div>

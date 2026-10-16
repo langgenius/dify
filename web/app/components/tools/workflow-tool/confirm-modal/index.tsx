@@ -30,7 +30,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
             className="i-custom-vender-solid-alertsAndFeedback-alert-triangle h-6 w-6 text-[rgb(247,144,9)]"
           />
         </div>
-        <DialogTitle className="relative mt-3 text-xl leading-7.5 font-semibold text-text-primary">
+        <DialogTitle className="relative mt-3">
           {t(($) => $['createTool.confirmTitle'], { ns: 'tools' })}
         </DialogTitle>
         <div className="my-1 text-sm/5 text-text-tertiary">

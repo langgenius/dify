@@ -73,7 +73,7 @@ export function UpgradeModal({
                 {title}
               </DialogTitle>
               <DialogDescription
-                className={cn('system-md-regular text-text-tertiary', classNames?.description)}
+                className={cn('text-sm/5 text-text-tertiary', classNames?.description)}
               >
                 {description}
               </DialogDescription>

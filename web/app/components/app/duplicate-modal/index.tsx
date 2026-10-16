@@ -114,7 +114,7 @@ const DuplicateAppModal = ({
           >
             <span aria-hidden="true" className="i-ri-close-line size-4" />
           </IconButton>
-          <DialogTitle className="relative mt-3 mb-9 text-xl leading-7.5 font-semibold text-text-primary">
+          <DialogTitle className="relative mt-3 mb-9">
             {t(($) => $.duplicateTitle, { ns: 'app' })}
           </DialogTitle>
           <form

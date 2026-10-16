@@ -102,12 +102,12 @@ const PermissionSetModalBody = ({
             }
           />
           <div className="pr-8">
-            <DialogTitle className="system-xl-semibold text-text-primary">
+            <DialogTitle>
               {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.title`], {
                 ns: 'permission',
               })}
             </DialogTitle>
-            <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+            <DialogDescription className="mt-1">
               {t(($) => $[`permissionSet.modal.${mode}.${resourceType}.description`], {
                 ns: 'permission',
               })}

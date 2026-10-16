@@ -99,7 +99,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
           }
         />
 
-        <DialogTitle className="mb-2 pr-8 text-xl font-semibold text-text-primary">
+        <DialogTitle className="mb-2 pr-8">
           {mode === 'edit'
             ? t(($) => $['apiBasedExtension.modal.editTitle'], { ns: 'common' })
             : t(($) => $['apiBasedExtension.modal.title'], { ns: 'common' })}

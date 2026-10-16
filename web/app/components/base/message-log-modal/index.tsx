@@ -40,7 +40,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   const activeTab = isRunActiveTab(defaultTab) ? defaultTab : 'DETAIL'
   const modalContent = (
     <>
-      <DialogTitle className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">
+      <DialogTitle className="shrink-0 px-4 py-1">
         {t(($) => $['runDetail.title'], { ns: 'appLog' })}
       </DialogTitle>
       <button

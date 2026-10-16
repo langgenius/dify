@@ -275,7 +275,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           }
         />
         <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          <DialogTitle>
             {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
           </DialogTitle>
           <p className="mt-1 system-xs-regular text-text-tertiary">

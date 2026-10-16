@@ -110,7 +110,7 @@ const EmailConfigureModal = ({
           }
         />
         <div className="space-y-1 pr-8">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          <DialogTitle>
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], {
               ns: 'workflowHumanInput',
             })}

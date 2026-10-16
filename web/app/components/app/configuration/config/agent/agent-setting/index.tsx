@@ -88,9 +88,7 @@ function AgentSettingsForm({
       }}
     >
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
-        <DialogTitle className="text-base leading-6 font-semibold text-text-primary">
-          {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
-        </DialogTitle>
+        <DialogTitle>{t(($) => $['agent.setting.name'], { ns: 'appDebug' })}</DialogTitle>
         <DialogClose
           render={
             <IconButton

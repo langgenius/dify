@@ -139,7 +139,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-none flex-col overflow-hidden">
         <div className="relative flex min-h-0 w-full flex-1 flex-col items-start">
           <div className="flex shrink-0 flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-            <DialogTitle className="grow self-stretch title-2xl-semi-bold text-text-primary">
+            <DialogTitle className="grow self-stretch">
               {isEditMode
                 ? t(($) => $.editExternalAPIFormTitle, { ns: 'dataset' })
                 : t(($) => $.createExternalAPI, { ns: 'dataset' })}

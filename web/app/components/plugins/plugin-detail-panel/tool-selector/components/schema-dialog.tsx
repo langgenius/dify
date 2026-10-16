@@ -64,7 +64,7 @@ export function SchemaDialog({ schema, rootName, compact = false }: SchemaDialog
       {entry}
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-240 min-w-0 flex-col overflow-hidden">
         <div className="relative shrink-0 p-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+          <DialogTitle>
             {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflowAgent' })}
           </DialogTitle>
           <DialogClose

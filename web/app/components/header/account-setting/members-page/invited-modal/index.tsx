@@ -68,7 +68,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
             <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />
           </div>
         </div>
-        <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">
+        <DialogTitle className="mb-1">
           {t(
             ($) =>
               $[onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent'],
