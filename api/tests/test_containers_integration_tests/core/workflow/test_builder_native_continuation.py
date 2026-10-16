@@ -29,6 +29,7 @@ from services.dify_builder.native_testing.runtime_contracts import (
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
     _migration,
+    raw_ledger_case,
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
     ledger_case as ledger_case,  # noqa: PLC0414 - shared pytest fixture
@@ -126,13 +127,14 @@ class ContinuationCase:
 
 
 @pytest.fixture
-def continuation_case(ledger_case, native_owner):
+def continuation_case(native_owner, no_live):
     from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
     from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
     from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
 
+    ledger_case = raw_ledger_case(native_owner, no_live)
     # native_owner commits with expire_on_commit=True and leaves materialized
     # setup objects in the scoped identity map. Close those committed setup
     # reads before updating the key through a separate service Session. Keep
@@ -242,8 +244,9 @@ def test_result_owner_digest_and_completed_effect_replay(continuation_case):
 
 
 @pytest.fixture
-def node_input_case(ledger_case, native_owner):
+def node_input_case(native_owner, no_live):
     """Dedicated synthetic admitted Run correlation; no actual native ID provenance claim."""
+    ledger_case = raw_ledger_case(native_owner, no_live)
     from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
@@ -789,6 +792,7 @@ def test_child_input_owner_and_unique_identity_and_completion_wakeup(continuatio
         output_result_ref=result_ref,
     )
     c.pause()
+    c.ledger.confirm()  # Explicit parent approval precedes automatic child-completion enqueue.
     child_service.complete(child_ref=child, outcome=outcome)
     child_service.complete(child_ref=child, outcome=outcome)
     with c.factory() as session:

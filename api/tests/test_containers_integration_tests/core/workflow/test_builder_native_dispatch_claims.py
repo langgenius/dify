@@ -73,30 +73,17 @@ def migrated_dispatch_claims(migrated_native_tables, flask_app_with_containers):
 @pytest.fixture
 def claim_case(ledger_case):
     case = ledger_case
-    with case.factory.begin() as session:
-        request = session.get(DifyBuilderExecutionRequest, case.ref.request_id)
-        session.add(
-            NativeInvocationState(
-                tenant_id=case.actor.tenant_id,
-                request_id=case.ref.request_id,
-                invocation_id=case.ref.invocation_id,
-                app_id=request.app_id,
-                workflow_id=request.workflow_id,
-                context_object_id=str(uuid4()),
-                parent_invocation_id=None,
-                parent_operation_digest=None,
-                child_identity_digest=None,
-                generation=0,
-                state="running",
-                checkpoint_id=None,
-                pending_ids=[],
-                wait_reason=None,
-                outcome=None,
-                resolution=[],
-                cancellation_key=None,
-                cleanup_complete=False,
+    with case.factory() as session:
+        state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == case.ref.request_id,
+                NativeInvocationState.invocation_id == case.ref.invocation_id,
             )
         )
+        request = session.get(DifyBuilderExecutionRequest, case.ref.request_id)
+        assert state.context_object_id
+        assert (state.app_id, state.workflow_id) == (request.app_id, request.workflow_id)
+        assert (state.state, state.generation, state.pending_ids) == ("running", 0, [])
     case.confirm(max_calls=2, max_dispatches=2)
     permit = case.guard.before_call(ref=case.ref, intent=case.intent)
     assert isinstance(permit, DispatchPermit)

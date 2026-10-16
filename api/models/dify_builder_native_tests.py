@@ -210,6 +210,14 @@ class NativePayloadObject(Identity, InvocationOwner, Base):
 
 
 class NativeInvocationState(Identity, InvocationOwner, Base):
+    """Current local execution facts.
+
+    While running, a real wait_reason with validated current pending_ids is an
+    admission fence, not a resumable receipt. Reason None with retained older
+    acknowledged IDs preserves claim/recovery evidence. The exclusive validated
+    generation claim clears the reason while retaining precisely those IDs.
+    """
+
     __tablename__ = "dify_builder_native_invocation_states"
     __table_args__ = (
         sa.UniqueConstraint("request_id", "invocation_id", name="native_state_invocation"),

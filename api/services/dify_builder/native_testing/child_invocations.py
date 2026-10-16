@@ -11,10 +11,14 @@ from services.dify_builder.execution_contracts import BuilderExecutionPolicyErro
 from services.dify_builder.execution_policy_service import check_execution_permission
 from services.dify_builder.native_testing.contracts import NativeTestContextRef, OperationKey, operation_digest
 from services.dify_builder.native_testing.private_reads import validate_invocation_workflow
-from services.dify_builder.native_testing.repository import native_workflow_revision
+from services.dify_builder.native_testing.repository import native_workflow_revision, utc_now
 from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome, ResolvedNativeTestContext
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore, invocation_state, owner_query
-from services.dify_builder.native_testing.transitions import has_unknown_descendant, quarantine_unknown
+from services.dify_builder.native_testing.transitions import (
+    dispatch_readiness,
+    has_unknown_descendant,
+    quarantine_unknown,
+)
 
 
 class NativeChildResolver(Protocol):
@@ -51,12 +55,9 @@ class NativeChildInvocationService:
         input_digest: str,
         input_result_ref: str,
     ) -> NativeTestContextRef:
-        parent = self.store.load_context(ref=parent_ref)
         if key.invocation_id != parent_ref.invocation_id:
             raise BuilderExecutionPolicyError("native_child_owner_mismatch")
-        inputs = self.store.load_result(ref=parent_ref, result_ref=input_result_ref)
-        if not isinstance(inputs, dict) or canonical_digest(inputs) != input_digest:
-            raise BuilderExecutionPolicyError("native_child_input_mismatch")
+        owned = self.loader.load(ref=parent_ref)
         occurrence = operation_digest(key)
         identity = canonical_digest(
             {
@@ -69,16 +70,35 @@ class NativeChildInvocationService:
         with self.loader.session_factory() as session:
             existing = session.scalar(
                 select(NativeInvocationState).where(
-                    NativeInvocationState.tenant_id == parent.tenant_id,
+                    NativeInvocationState.tenant_id == owned.tenant_id,
                     NativeInvocationState.request_id == parent_ref.request_id,
                     NativeInvocationState.parent_invocation_id == parent_ref.invocation_id,
                     NativeInvocationState.parent_operation_digest == occurrence,
                 )
             )
-            if existing is not None:
-                if existing.child_identity_digest != identity:
-                    raise BuilderExecutionPolicyError("native_child_conflict")
-                return parent_ref.model_copy(update={"invocation_id": existing.invocation_id})
+            if existing is not None and existing.child_identity_digest != identity:
+                raise BuilderExecutionPolicyError("native_child_conflict")
+            replay = (
+                existing is not None and existing.state in {"completed", "stopped"} and existing.outcome is not None
+            )
+            if not replay:
+                dispatch_readiness(session, ref=parent_ref, tenant_id=owned.tenant_id, now=utc_now())
+                if existing is not None:
+                    dispatch_readiness(
+                        session,
+                        ref=parent_ref.model_copy(update={"invocation_id": existing.invocation_id}),
+                        tenant_id=owned.tenant_id,
+                        now=utc_now(),
+                    )
+            existing_ref = parent_ref.model_copy(update={"invocation_id": existing.invocation_id}) if existing else None
+        # Existing lookup/replay retains the actual parent's current permission,
+        # protected context revision and input authority, all outside the writer.
+        parent = self.store.load_context(ref=parent_ref)
+        inputs = self.store.load_result(ref=parent_ref, result_ref=input_result_ref)
+        if not isinstance(inputs, dict) or canonical_digest(inputs) != input_digest:
+            raise BuilderExecutionPolicyError("native_child_input_mismatch")
+        if existing_ref is not None:
+            return existing_ref
         child_ref = parent_ref.model_copy(update={"invocation_id": str(uuid4())})
         child = self.resolver.resolve_child(
             parent=parent,
@@ -131,6 +151,7 @@ class NativeChildInvocationService:
             payload=child.model_dump(mode="json"),
         )
         with self.loader.locked(ref=parent_ref) as (session, owned, _):
+            dispatch_readiness(session, ref=parent_ref, tenant_id=owned.tenant_id, now=utc_now())
             state = invocation_state(session, parent_ref, owned.tenant_id)
             if state.generation != parent.generation or state.state != "running":
                 raise BuilderExecutionPolicyError("native_generation_conflict")
@@ -145,6 +166,13 @@ class NativeChildInvocationService:
             if existing is not None:
                 if existing.child_identity_digest != identity:
                     raise BuilderExecutionPolicyError("native_child_conflict")
+                if existing.state not in {"completed", "stopped"} or existing.outcome is None:
+                    dispatch_readiness(
+                        session,
+                        ref=parent_ref.model_copy(update={"invocation_id": existing.invocation_id}),
+                        tenant_id=owned.tenant_id,
+                        now=utc_now(),
+                    )
                 return parent_ref.model_copy(update={"invocation_id": existing.invocation_id})
             obj = self.store.acknowledge_object(session, receipt)
             session.add(
@@ -238,8 +266,22 @@ class NativeChildInvocationService:
                 or has_unknown_descendant(session, parent_ref, owned.tenant_id)
             ):
                 return
+            from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+
+            parent_owned, _ = self.loader._load(session, ref=parent_ref, lock=False)
+            try:
+                resolutions = NativeTestLifecycleService(self.loader, state_store=self.store)._resolve_pending(
+                    session, parent_owned, parent
+                )
+            except BuilderExecutionPolicyError as error:
+                if error.reason_code in {"native_pending_unresolved", "native_pending_resolver_required"}:
+                    # Config/form completion needs its qualified C04 owner.
+                    # Child evidence alone cannot authenticate a parent resume.
+                    return
+                raise
             scope.generation += 1
             parent.generation, parent.state = scope.generation, "queued"
+            parent.resolution = [resolution.model_dump(mode="json") for resolution in resolutions]
             session.add(
                 NativeDispatch(
                     tenant_id=owned.tenant_id,

@@ -210,11 +210,7 @@ class PendingDecisionGuard(FrozenDTO):
     invocation_revision: Digest
 
     def recheck(self, *, session: Session, owned: OwnedNativeTest, intent: EffectIntent, scope_digest: str) -> None:
-        if (
-            owned.ref != self.resolved.ref
-            or owned.generation != self.resolved.generation
-            or intent != self.resolved.intent
-        ):
+        if owned.ref != self.resolved.ref or intent != self.resolved.intent:
             raise BuilderExecutionPolicyError("native_pending_conflict")
         pending = session.scalar(select(NativePendingAction).where(NativePendingAction.id == self.pending_operation_id))
         operation = (
@@ -263,7 +259,8 @@ class PendingDecisionGuard(FrozenDTO):
         if (
             scope is None
             or scope.cancelled
-            or scope.generation != self.resolved.generation
+            or state.generation != self.resolved.generation
+            or (scope.tenant_id, scope.request_id) != (owned.tenant_id, owned.ref.request_id)
             or self.terms.max_calls > scope.max_calls
             or self.terms.max_dispatches > scope.max_dispatches
             or self.terms.max_cost_units > scope.max_cost_units

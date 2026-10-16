@@ -85,8 +85,26 @@ def _effects(c, count=1):
     return tuple(c.ledger.occurrence("fixture-" + str(uuid4())) for _ in range(count))
 
 
+def _input_effect(c, effect):
+    effect = effect.model_copy(update={"input_digest": canonical_digest({"limit": 1})})
+    with c.factory.begin() as session:
+        row = session.scalar(
+            select(NativeTestInvocation).where(
+                NativeTestInvocation.request_id == c.ref.request_id,
+                NativeTestInvocation.invocation_id == c.ref.invocation_id,
+            )
+        )
+        identity = operation_digest(effect.key)
+        row.bindings = {
+            **row.bindings,
+            identity: {**row.bindings[identity], "intent_digest": canonical_digest(effect.model_dump(mode="json"))},
+        }
+    return effect
+
+
 def _prepare_pending(c, effects):
     inputs = {"limit": 1}
+    generation = c.store.load_context(ref=c.ref).generation
     prepared, journals, waits = [], [], []
     terms = NativeApprovalTerms(
         max_calls=1,
@@ -95,16 +113,7 @@ def _prepare_pending(c, effects):
         expires_at=(datetime.now(UTC) + timedelta(minutes=3)).isoformat(),
     )
     for effect in effects:
-        effect = effect.model_copy(update={"input_digest": canonical_digest(inputs)})
-        with c.factory.begin() as session:
-            row = session.scalar(
-                select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id)
-            )
-            identity = operation_digest(effect.key)
-            row.bindings = {
-                **row.bindings,
-                identity: {**row.bindings[identity], "intent_digest": canonical_digest(effect.model_dump(mode="json"))},
-            }
+        effect = _input_effect(c, effect)
         input_key = effect.key.model_copy(update={"occurrence_path": (*effect.key.occurrence_path, "input")})
         input_ref = c.store.store_result(ref=c.ref, key=input_key, result=inputs)
         wait = c.ledger.guard.before_call(ref=c.ref, intent=effect)
@@ -125,11 +134,11 @@ def _prepare_pending(c, effects):
         )
     checkpoint = c.store.commit_checkpoint(
         ref=c.ref,
-        generation=0,
+        generation=generation,
         payload=NativeCheckpointPayload(
             schema_version="1",
             native_run_id=c.context.native_run_id,
-            generation=0,
+            generation=generation,
             generate_entity_json="{}",
             graph_runtime_state_json="{}",
             response_stream_filter_json="{}",
@@ -139,12 +148,14 @@ def _prepare_pending(c, effects):
             approval_proposals=tuple(NativeApprovalProposal(key=effect.key, terms=terms) for effect in prepared),
         ),
     )
-    c.lifecycle.pause(ref=c.ref, checkpoint=checkpoint, pending_operation_ids=tuple(waits), expected_generation=0)
+    c.lifecycle.pause(
+        ref=c.ref, checkpoint=checkpoint, pending_operation_ids=tuple(waits), expected_generation=generation
+    )
     reader = ProtectedPendingIntentReader(loader=c.ledger.guard.loader, state_store=c.store)
     receipt = NativeTestPublicReceipt(
         request_id=c.ref.request_id,
-        generation=0,
-        version=1,
+        generation=generation,
+        version=generation + 1,
         status="waiting",
         wait_reason="approval",
         native_run_id=None,
@@ -164,7 +175,7 @@ def _prepare_pending(c, effects):
             PendingDecisionGuard(
                 resolved=resolved,
                 pending_operation_id=pending_id,
-                expected_version=1,
+                expected_version=generation + 1,
                 scope_digest=digest,
                 idempotency_digest=canonical_digest("decision-" + pending_id),
                 body_digest=canonical_digest({"decision": "confirm", "pending": pending_id}),
@@ -192,7 +203,27 @@ def _decide(c, guard, *, decision="approved", service=None):
     )
 
 
+def _resume(c):
+    generation = c.store.load_context(ref=c.ref).generation
+    receipt = c.lifecycle.resume(
+        actor=c.ledger.actor,
+        request_id=c.ref.request_id,
+        expected_generation=generation,
+        idempotency_key="approval-resume-" + str(uuid4()),
+    )
+    assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
+
+
 def _claim(c, effect, *, service=None):
+    with c.factory() as session:
+        from models.dify_builder_native_tests import NativeInvocationState
+
+        current = session.scalar(
+            select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
+        )
+        waiting = current.state == "waiting"
+    if waiting:
+        _resume(c)
     auth = service or c.ledger.guard
     permit = auth.before_call(ref=c.ref, intent=effect)
     assert isinstance(permit, DispatchPermit)
@@ -225,7 +256,9 @@ def _counts(c):
 
 def test_operation_confirmations_are_separate_immutable_single_calls_under_root_limit(approval_case):
     c = approval_case
-    effects, guards = _prepare_pending(c, _effects(c, 3))
+    raw = tuple(_input_effect(c, effect) for effect in _effects(c, 3))
+    first_effects, first_guards = _prepare_pending(c, raw[:1])
+    effects, guards = list(first_effects), list(first_guards)
     assert _decide(c, guards[0]) == _decide(c, guards[0])
     first = _claim(c, effects[0])
     result = c.store.store_result(ref=c.ref, key=effects[0].key, result={"done": True})
@@ -244,12 +277,19 @@ def test_operation_confirmations_are_separate_immutable_single_calls_under_root_
         "expires_at": datetime.fromisoformat(guards[0].terms.expires_at),
     }
     assert c.ledger.guard.decide(**reconfirm) == c.ledger.guard.decide(**reconfirm)
-    assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=effects[1]), ApprovalWait)
+    assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=raw[1]), ApprovalWait)
     assert _counts(c).grants == [(1, 1, 2, 1)]
+    next_effects, next_guards = _prepare_pending(c, raw[1:2])
+    effects.extend(next_effects)
+    guards.extend(next_guards)
     _decide(c, guards[1])
     second = _claim(c, effects[1])
     c.ledger.guard.record_outcome(permit=second, outcome="unknown", result_ref=None)
+    next_effects, next_guards = _prepare_pending(c, raw[2:])
+    effects.extend(next_effects)
+    guards.extend(next_guards)
     _decide(c, guards[2])
+    _resume(c)
     assert c.ledger.guard.before_call(ref=c.ref, intent=effects[2]) == PolicyStop(reason_code="native_budget_exhausted")
     counts = _counts(c)
     assert counts.quota == (2, 2, 4)
@@ -260,10 +300,15 @@ def test_operation_confirmations_are_separate_immutable_single_calls_under_root_
 
 def test_unknown_operation_cannot_redispatch_using_another_operation_grant(approval_case):
     c = approval_case
-    effects, guards = _prepare_pending(c, _effects(c, 2))
+    raw = tuple(_input_effect(c, effect) for effect in _effects(c, 2))
+    first_effects, first_guards = _prepare_pending(c, raw[:1])
+    effects, guards = list(first_effects), list(first_guards)
     _decide(c, guards[0])
     first = _claim(c, effects[0])
     c.ledger.guard.record_outcome(permit=first, outcome="unknown", result_ref=None)
+    next_effects, next_guards = _prepare_pending(c, raw[1:])
+    effects.extend(next_effects)
+    guards.extend(next_guards)
     _decide(c, guards[1])
     for _ in range(2):
         assert c.ledger.guard.before_call(ref=c.ref, intent=effects[0]) == PolicyStop(reason_code="outcome_unknown")
@@ -334,6 +379,7 @@ def test_concurrent_guarded_decisions_and_claims_serialize_once(approval_case):
         receipts = list(pool.map(lambda _: _decide(c, guards[0]), range(2)))
     assert receipts[0] == receipts[1]
     assert _counts(c).grants == [(1, 1, 2, 0)]
+    _resume(c)
 
     def reserve_and_claim(_):
         decision = c.ledger.guard.before_call(ref=c.ref, intent=effects[0])
@@ -367,6 +413,7 @@ def test_current_scope_metadata_drift_rejects_decision_and_physical_claim(approv
         assert _counts(c).quota == (0, 0, 0)
     else:
         _decide(c, guards[0])
+        _resume(c)
         permit = c.ledger.guard.before_call(ref=c.ref, intent=effects[0])
         assert isinstance(permit, DispatchPermit)
         with pytest.raises(BuilderExecutionPolicyError, match="native_binding_drift"):
@@ -385,7 +432,14 @@ def test_guarded_decision_rechecks_current_owner_and_generation(approval_case, d
     else:
         changed = c.ledger.guard
         with c.factory.begin() as session:
-            session.get(NativeTestScope, c.ref.request_id).generation = 1
+            from models.dify_builder_native_tests import NativeInvocationState
+
+            session.scalar(
+                select(NativeInvocationState).where(
+                    NativeInvocationState.request_id == c.ref.request_id,
+                    NativeInvocationState.invocation_id == c.ref.invocation_id,
+                )
+            ).generation = 1
     with pytest.raises(BuilderExecutionPolicyError):
         _decide(c, guards[0], service=changed)
     assert _counts(c).quota == (0, 0, 0)

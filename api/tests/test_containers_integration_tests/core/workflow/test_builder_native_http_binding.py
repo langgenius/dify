@@ -75,6 +75,7 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
     no_live as no_live,  # noqa: PLC0414 - shared pytest fixture
 )
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
 
 
 def literal_data():
@@ -92,8 +93,9 @@ def literal_data():
 
 
 @pytest.fixture
-def http_case(ledger_case, native_owner, migrated_continuation_tables, migrated_dispatch_claims):
+def http_case(native_owner, no_live, migrated_continuation_tables, migrated_dispatch_claims):
     """Reuse shared migration/owner fixtures unchanged; initialize one real private HTTP context."""
+    ledger_case = raw_ledger_case(native_owner, no_live)
     assert migrated_continuation_tables is None
     assert migrated_dispatch_claims is None
     from extensions.ext_database import db

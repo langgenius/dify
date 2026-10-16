@@ -5,7 +5,9 @@ from sqlalchemy import select
 from models.dify_builder_native_tests import NativePendingAction
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import ApprovalWait, NativeTestContextRef
-from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, PendingOwner
+from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, PendingOwner, utc_now
+from services.dify_builder.native_testing.state_store import invocation_state
+from services.dify_builder.native_testing.transitions import dispatch_readiness
 
 
 class NativePendingActionService:
@@ -23,14 +25,18 @@ class NativePendingActionService:
     def _wait(self, ref, category, reference, generation):
         self.loader.load(ref=ref)
         with self.loader.locked(ref=ref) as (session, owned, _):
-            if type(generation) is not int or generation != owned.generation:
+            state = invocation_state(session, ref, owned.tenant_id)
+            if type(generation) is not int or generation != state.generation:
                 raise BuilderExecutionPolicyError("native_generation_conflict")
+            fence = dispatch_readiness(session, ref=ref, tenant_id=owned.tenant_id, now=utc_now(), coalesce_self=True)
             owner = self.loader.resolver.resolve_pending(
                 session=session, owned=owned, category=category, reference=reference
             )
             owner = PendingOwner.model_validate(owner.model_dump(mode="json"))
             if owner.category != category or owner.reference != reference:
                 raise BuilderExecutionPolicyError("pending_owner_mismatch")
+            if fence is not None:
+                return ApprovalWait(pending_operation_id=fence.id, wait_reason=fence.category)
             digest = canonical_digest({"reference": reference, "owner": owner.owner_ref, "version": owner.version})
             pending = session.scalar(
                 select(NativePendingAction).where(

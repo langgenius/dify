@@ -49,7 +49,7 @@ from services.dify_builder.native_testing.repository import (
     native_workflow_revision,
     utc_now,
 )
-from services.dify_builder.native_testing.transitions import require_ancestor_authority
+from services.dify_builder.native_testing.transitions import dispatch_readiness, require_ancestor_authority
 
 
 def validate_binding(intent: EffectIntent, binding: NativeBinding) -> None:
@@ -156,6 +156,9 @@ class EffectAuthorizationService:
             return self._existing(session, owned, operation, now)
         if now >= scope.expires_at:
             return PolicyStop(reason_code="native_scope_expired")
+        fence = dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now, coalesce_self=True)
+        if fence is not None:
+            return ApprovalWait(pending_operation_id=fence.id, wait_reason=fence.category)
         if operation is None:
             operation = NativeEffectOperation(
                 **_owner(owned),
@@ -272,15 +275,18 @@ class EffectAuthorizationService:
 
     @staticmethod
     def _pending(session: Session, owned: OwnedNativeTest, operation: NativeEffectOperation) -> ApprovalWait:
+        state = session.scalar(_owned_query(NativeInvocationState, owned))
+        if state is None:
+            raise BuilderExecutionPolicyError("native_invocation_mismatch")
         pending = session.scalar(
             _owned_query(NativePendingAction, owned).where(
-                NativePendingAction.operation_id == operation.id, NativePendingAction.generation == owned.generation
+                NativePendingAction.operation_id == operation.id, NativePendingAction.generation == state.generation
             )
         )
         if pending is None:
             pending = NativePendingAction(
                 **_owner(owned),
-                generation=owned.generation,
+                generation=state.generation,
                 category="approval",
                 reference_digest=canonical_digest(operation.id),
                 reference=operation.id,
@@ -546,6 +552,7 @@ class EffectAuthorizationService:
         )
         binding = self._binding(session, owned, intent)
         now = self.clock()
+        dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now)
         if (
             operation is None
             or operation.operation_digest != operation_digest(intent.key)

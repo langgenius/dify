@@ -219,8 +219,8 @@ def migrated_native_tables(flask_app_with_containers):
         connection.execute(text("COMMENT ON TABLE dify_builder_native_attempts IS 'ci-alembic:c67e12a904bf'"))
 
 
-@pytest.fixture
-def ledger_case(native_owner, no_live):
+def raw_ledger_case(native_owner, no_live):
+    """Ordinary shared setup helper; no implicit pytest dependency or admitted state."""
     assert no_live is None
     from models.dify_builder_native_tests import NativeTestInvocation, NativeTestScope
     from services.dify_builder.native_testing.repository import NativeBinding
@@ -308,6 +308,57 @@ def ledger_case(native_owner, no_live):
             )
         )
     return LedgerCase(factory, actor, ref, effect, MetadataOwner())
+
+
+@pytest.fixture
+def ledger_case(native_owner, no_live):
+    """Bare ledger users receive a real encrypted C03 context and current state."""
+    import json
+
+    from extensions.ext_database import db
+    from libs.key_providers import generate_key_pair
+    from models.workflow import Workflow
+    from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+    from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
+    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+    case = raw_ledger_case(native_owner, no_live)
+    _, _, app, workflow, _, _ = native_owner
+    assert app.id
+    assert workflow.id
+    db.session.expunge(app)
+    db.session.expunge(workflow)
+    db.session.close()
+    public_key = generate_key_pair(case.actor.tenant_id)
+    with case.factory.begin() as session:
+        session.get(Tenant, case.actor.tenant_id).encrypt_public_key = public_key
+        request = session.get(DifyBuilderExecutionRequest, case.ref.request_id)
+        workflow = session.get(Workflow, request.workflow_id)
+        inputs = session.get(DifyBuilderTestInput, request.test_input_id).inputs
+        context = ResolvedNativeTestContext(
+            ref=case.ref,
+            tenant_id=case.actor.tenant_id,
+            actor_id=case.actor.account_id,
+            app_id=request.app_id,
+            workflow_id=request.workflow_id,
+            graph=json.loads(workflow.graph),
+            inputs=inputs,
+            graph_revision=request.context["execution_revision"],
+            input_revision=canonical_digest(inputs),
+            resource_manifest=(),
+            generation=0,
+            root_native_run_id="native-run",
+            native_run_id="native-run",
+            parent_invocation_id=None,
+            call_depth=0,
+            budget_ref=case.ref.request_id,
+            cancellation_ref=case.ref.request_id,
+            execution_mode="native",
+        )
+    store = NativeExecutionStateStore(OwnedNativeTestLoader(case.factory, actor=case.actor, resolver=case.metadata))
+    store.initialize_context(context=context)
+    assert store.load_context(ref=case.ref) == context
+    return case
 
 
 def test_duplicate_delivery_does_not_get_second_permit(ledger_case):

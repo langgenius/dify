@@ -276,12 +276,24 @@ def test_current_resource_rotation_cannot_approve(pending_console):
     assert c.ledger.dispatched_attempt_count() == 0
 
 
+def _claim_approved_generation(c):
+    generation = c.store.load_context(ref=c.ref).generation
+    receipt = c.api.lifecycle.resume(
+        actor=c.ledger.actor,
+        request_id=c.ref.request_id,
+        expected_generation=generation,
+        idempotency_key="confirmed-console-resume",
+    )
+    assert c.api.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
+
+
 def test_frozen_two_call_proposal_cannot_authorize_third_call(pending_console):
     from services.dify_builder.native_testing.contracts import ApprovalWait, DispatchPermit
 
     c = pending_console
     second, third = c.ledger.occurrence(1), c.ledger.occurrence(2)
     assert c.client.post(c.url + f"/{c.ref.request_id}/decisions", json=c.body).status_code == 200
+    _claim_approved_generation(c)
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent), DispatchPermit)
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=second), DispatchPermit)
     assert isinstance(c.ledger.guard.before_call(ref=c.ref, intent=third), ApprovalWait)
@@ -580,6 +592,7 @@ def test_cleanup_ack_cannot_erase_unknown_dispatched_effect(pending_console):
 
     c = pending_console
     assert c.client.post(c.url + f"/{c.ref.request_id}/decisions", json=c.body).status_code == 200
+    _claim_approved_generation(c)
     permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
     assert isinstance(permit, DispatchPermit)
     c.api.lifecycle.runtime = SimpleNamespace(cancel=lambda *, refs: tuple(ref.invocation_id for ref in refs))
