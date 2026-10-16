@@ -327,10 +327,15 @@ def test_real_resume_writer_refuses_wait_cleanup_before_source_finalize_then_sam
     assert c.sends == []
 
 
-def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(runtime_case):
+@pytest.mark.parametrize("registered_before_cancel", [False, True])
+def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(runtime_case, registered_before_cancel):
     c = runtime_case
     message = c.published[0]
     assert c.owner._requests == c.owner._current == {}
+    registered = delivery(c, message) if registered_before_cancel else None
+    if registered is not None:
+        assert isinstance(registered.runtime, DifyNativeRuntime)
+        assert registered.runtime.host.lifetime._registry is None
     result = c.api.cancel(
         actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="before-worker"
     )
@@ -340,7 +345,14 @@ def test_actual_api_cancel_initial_outbox_before_delivery_is_logically_settled(r
     late = delivery(c, message)
     with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
         execute(c, late, message)
+    c.owner.retire_closed(sessions=c.factory)
     assert c.owner._requests == c.owner._current == {}
+    if registered is not None:
+        assert isinstance(registered.runtime, DifyNativeRuntime)
+        assert registered.runtime.registry._disposed
+        assert not registered.runtime.host.lifetime._consumed
+        with pytest.raises(ValueError, match="native_host_acquisition_not_current"):
+            registered.runtime.registry.activate(lifetime=registered.runtime.host.lifetime)
     assert c.sends == []
     with c.factory() as session:
         state = session.scalar(select(NativeInvocationState).where(NativeInvocationState.request_id == c.request_id))

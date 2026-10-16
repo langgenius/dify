@@ -549,8 +549,11 @@ class DifyNativeRuntimeOwner:
         return "unknown"
 
     def retire_closed(self, *, sessions):
-        # Disposal requires actual durable admission closure plus consumption
-        # of every retained physical owner, never age/TTL/handle absence.
+        from services.dify_builder.native_testing.host_capacity import finish_unacquired_cancellation
+
+        # Durable closure precedes disposal. A retained inactive generation-zero
+        # candidate additionally needs the existing complete SQL never-acquired
+        # proof; missing handles or inactivity alone never grant retirement.
         with self._lock:
             registries = tuple(self._requests.items())
         for key, registry in registries:
@@ -567,11 +570,43 @@ class DifyNativeRuntimeOwner:
                 continue
             with self._lock:
                 if self._requests.get(key) is not registry:
-                    continue  # Another delivery already disposed/replaced this exact registry.
-                entries = [(k, v) for k, v in self._current.items() if k[0] == key]
-                if any(not v.host.lifetime._consumed for _, v in entries):
                     continue
-                registry.dispose()
+                entries = tuple((k, v) for k, v in self._current.items() if k[0] == key)
+            eligible = True
+            for _, current in entries:
+                if current.host.lifetime._consumed:
+                    continue
+                if (
+                    current.registry is not registry
+                    or current.delivery.generation != 0
+                    or current.host.lifetime._registry is not None
+                    or current.host.lifetime.unknown
+                ):
+                    eligible = False
+                    break
+                try:
+                    # SQL only, outside owner/host locks. This preserves the
+                    # complete scoped initial outbox/no-effects/context proof.
+                    if not finish_unacquired_cancellation(current.lifecycle, ref=current.delivery.ref):
+                        eligible = False
+                        break
+                except Exception:
+                    eligible = False
+                    break
+            if not eligible:
+                continue
+            with self._lock:
+                if self._requests.get(key) is not registry or entries != tuple(
+                    (k, v) for k, v in self._current.items() if k[0] == key
+                ):
+                    continue  # Actual retained owner changed during unlocked SQL.
+                try:
+                    # Atomic with registry.activate: an activated unconsumed
+                    # lifetime refuses disposal; a disposed registry fences any
+                    # future activation. Never mark an inactive lifetime consumed.
+                    registry.dispose()
+                except ValueError:
+                    continue
                 for identity, _ in entries:
                     del self._current[identity]
                 del self._requests[key]

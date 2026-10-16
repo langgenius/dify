@@ -1496,3 +1496,159 @@ def test_composed_cancel_does_not_upgrade_incomplete_or_noninitial_history(cance
     assert c.api.lifecycle.reconcile() == 1
     assert not state.cleanup_complete
     assert c.owner._requests == c.owner._current == {}
+
+
+def test_delivered_unclaimed_cancel_retires_logically_without_consuming_lifetime(cancel_composition, monkeypatch):
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.contracts import decode_native_ref
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntime
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    c = cancel_composition
+    message = c.published[0]
+    ref = decode_native_ref(message["ref"])
+    lifecycle = c.owner.delivery(sessions=c.sessions, delivery=NativeDispatchRef(ref, 0, message["dispatch_id"]))
+    runtime = lifecycle.runtime
+    assert isinstance(runtime, DifyNativeRuntime)
+    assert runtime.host.lifetime._registry is None
+    result = c.api.cancel(
+        actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="preclaim"
+    )
+    assert result.cancellation.status == "cancelled"
+    with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
+        lifecycle.execute_dispatch(ref=ref, generation=0, dispatch_id=message["dispatch_id"])
+    assert c.api.lifecycle.reconcile() == 0
+    c.owner.retire_closed(sessions=c.sessions)
+    assert c.owner._requests == c.owner._current == {}
+    assert runtime.registry._disposed
+    assert runtime.host.lifetime._registry is None
+    assert not runtime.host.lifetime._consumed
+    with pytest.raises(ValueError, match="native_host_acquisition_not_current"):
+        runtime.registry.activate(lifetime=runtime.host.lifetime)
+    assert not runtime.host.lifetime._consumed
+
+
+@pytest.mark.timeout(60)
+def test_over_128_delivered_unclaimed_logical_cancellations_reclaim_same_worker_slots(cancel_composition, monkeypatch):
+    from services.dify_builder.native_testing.contracts import decode_native_ref
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntime
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    c = cancel_composition
+    prior = None
+    for index in range(130):
+        started = (
+            c.started
+            if index == 0
+            else c.api.start(
+                actor=c.actor,
+                session_id="session",
+                test_input_id="input",
+                expected_version=1,
+                mode="native",
+                idempotency_key="unclaimed-" + str(index),
+            )
+        )
+        message = c.published[-1]
+        lifecycle = c.owner.delivery(
+            sessions=c.sessions,
+            delivery=NativeDispatchRef(decode_native_ref(message["ref"]), 0, message["dispatch_id"]),
+        )
+        runtime = lifecycle.runtime
+        assert isinstance(runtime, DifyNativeRuntime)
+        if prior is not None:
+            assert prior.registry._disposed
+            assert not prior.host.lifetime._consumed
+        result = c.api.cancel(
+            actor=c.actor,
+            session_id="session",
+            request_id=started.request_id,
+            idempotency_key="logical-cancel-" + str(index),
+        )
+        assert result.cancellation.status == "cancelled"
+        assert not runtime.host.lifetime._consumed
+        assert runtime.host.lifetime._registry is None
+        assert len(c.owner._requests) == len(c.owner._current) == 1
+        prior = runtime
+    c.owner.retire_closed(sessions=c.sessions)
+    assert c.owner._requests == c.owner._current == {}
+    assert len(c.published) == 130
+
+
+@pytest.mark.parametrize("race", ["entry-replaced", "registry-replaced", "activated", "missing-history", "resumed"])
+def test_logical_preclaim_retirement_rechecks_proof_and_exact_retained_owners(cancel_composition, monkeypatch, race):
+    from threading import Event, Thread, current_thread
+
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
+    from services.dify_builder.native_testing import host_capacity
+    from services.dify_builder.native_testing.contracts import decode_native_ref
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntime, DifyNativeRuntimeOwner
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    c = cancel_composition
+    message = c.published[0]
+    delivery = NativeDispatchRef(decode_native_ref(message["ref"]), 0, message["dispatch_id"])
+    runtime = c.owner.delivery(sessions=c.sessions, delivery=delivery).runtime
+    replacement = DifyNativeRuntimeOwner().delivery(sessions=c.sessions, delivery=delivery).runtime
+    assert isinstance(runtime, DifyNativeRuntime)
+    assert isinstance(replacement, DifyNativeRuntime)
+    result = c.api.cancel(
+        actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="logical-race"
+    )
+    assert result.cancellation.status == "cancelled"
+    if race == "missing-history":
+        c.rows[NativeDispatch].clear()
+    elif race == "resumed":
+        c.rows[NativeInvocationState][0].generation = c.rows[NativeTestScope][0].generation = 1
+    actual_proof = host_capacity.finish_unacquired_cancellation
+    entered, release = Event(), Event()
+    worker = None
+
+    def work():
+        entered.set()
+        try:
+            assert release.wait(10)
+        finally:
+            runtime.host.lifetime.thread_finished(thread=current_thread())
+
+    def proof(*args, **kwargs):
+        nonlocal worker
+        result = actual_proof(*args, **kwargs)
+        if race == "activated":
+            # Race the real physical handoff after unlocked SQL. Atomic registry
+            # disposal must refuse even this conservative late activation.
+            runtime.registry.activate(lifetime=runtime.host.lifetime)
+            worker = Thread(target=work)
+            runtime.host.lifetime.register_thread(thread=worker, role="worker")
+            runtime.host.lifetime.start_thread(thread=worker)
+            assert entered.wait(2)
+            runtime.host.mark_unknown()
+        elif race == "entry-replaced":
+            identity = next(iter(c.owner._current))
+            with c.owner._lock:
+                c.owner._current[identity] = replacement
+        elif race == "registry-replaced":
+            key = next(iter(c.owner._requests))
+            with c.owner._lock:
+                c.owner._requests[key] = replacement.registry
+        return result
+
+    monkeypatch.setattr(host_capacity, "finish_unacquired_cancellation", proof)
+    try:
+        c.owner.retire_closed(sessions=c.sessions)
+        assert len(c.owner._requests) == len(c.owner._current) == 1
+        assert not runtime.registry._disposed
+        assert not runtime.host.lifetime._consumed
+        if worker is not None:
+            assert worker.is_alive()
+    finally:
+        release.set()
+        if worker is not None:
+            worker.join(2)
+    assert not replacement.host.lifetime._consumed
