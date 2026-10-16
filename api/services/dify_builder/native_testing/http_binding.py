@@ -212,7 +212,11 @@ def _node(graph: dict, node_id: str) -> dict:
 
 
 class NativeHttpResourceSnapshot:
-    """Compiler metadata from the actual tenant-owned invocation Workflow."""
+    """Compiler HTTP metadata from the actual tenant-owned invocation Workflow.
+
+    An empty tuple means the graph declares no HTTP resources. Native node
+    capability checks remain the delivery bridge's responsibility.
+    """
 
     def __init__(self, *, session_factory):
         self._sessions = session_factory
@@ -240,7 +244,7 @@ class NativeHttpResourceSnapshot:
                 for node in graph.get("nodes", [])
                 if node.get("data", {}).get("type") == "http-request"
             )
-        if not entries or len({entry["node_id"] for entry in entries}) != len(entries):
+        if len({entry["node_id"] for entry in entries}) != len(entries):
             raise BuilderExecutionPolicyError("native_http_manifest_unavailable")
         return entries
 
