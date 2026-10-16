@@ -1,8 +1,8 @@
 import type { Mock } from 'vite-plus/test'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-describe('useFoldAnimInto', () => {
+describe('createFoldAnimInto', () => {
   let mockOnClose: Mock<() => void>
 
   beforeEach(() => {
@@ -20,34 +20,34 @@ describe('useFoldAnimInto', () => {
 
   describe('foldIntoAnim', () => {
     it('should call onClose immediately when modal element is not found', async () => {
-      const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-      const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
+      const createFoldAnimInto = (await import('../create-fold-anim-into')).default
+      const result = createFoldAnimInto(mockOnClose)
 
       await act(async () => {
-        await result.current.foldIntoAnim()
+        await result.foldIntoAnim()
       })
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
     it('should call onClose when modal exists but trigger element is not found', async () => {
-      const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-      const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
+      const createFoldAnimInto = (await import('../create-fold-anim-into')).default
+      const result = createFoldAnimInto(mockOnClose)
 
       const modal = document.createElement('div')
       modal.className = 'install-modal'
       document.body.appendChild(modal)
 
       await act(async () => {
-        await result.current.foldIntoAnim()
+        await result.foldIntoAnim()
       })
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
     it('should animate and call onClose when both elements exist', async () => {
-      const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-      const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
+      const createFoldAnimInto = (await import('../create-fold-anim-into')).default
+      const result = createFoldAnimInto(mockOnClose)
 
       const modal = document.createElement('div')
       modal.className = 'install-modal'
@@ -65,7 +65,7 @@ describe('useFoldAnimInto', () => {
       document.body.appendChild(trigger)
 
       await act(async () => {
-        await result.current.foldIntoAnim()
+        await result.foldIntoAnim()
       })
 
       // Should apply animation styles
@@ -76,8 +76,8 @@ describe('useFoldAnimInto', () => {
     })
 
     it('should use plugins-nav-button as fallback trigger element', async () => {
-      const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-      const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
+      const createFoldAnimInto = (await import('../create-fold-anim-into')).default
+      const result = createFoldAnimInto(mockOnClose)
 
       const modal = document.createElement('div')
       modal.className = 'install-modal'
@@ -95,7 +95,7 @@ describe('useFoldAnimInto', () => {
       document.body.appendChild(navButton)
 
       await act(async () => {
-        await result.current.foldIntoAnim()
+        await result.foldIntoAnim()
       })
 
       expect(modal.style.transform).toContain('translate')
@@ -105,15 +105,15 @@ describe('useFoldAnimInto', () => {
 
   describe('clearCountDown', () => {
     it('should clear the countdown timer', async () => {
-      const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-      const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
+      const createFoldAnimInto = (await import('../create-fold-anim-into')).default
+      const result = createFoldAnimInto(mockOnClose)
 
       // Start countdown then clear it
       await act(async () => {
-        result.current.countDownFoldIntoAnim()
+        result.countDownFoldIntoAnim()
       })
 
-      result.current.clearCountDown()
+      result.clearCountDown()
 
       // Advance past the countdown time — onClose should NOT be called
       await act(async () => {
@@ -127,11 +127,11 @@ describe('useFoldAnimInto', () => {
 
   describe('countDownFoldIntoAnim', () => {
     it('should trigger foldIntoAnim after 15 seconds', async () => {
-      const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-      const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
+      const createFoldAnimInto = (await import('../create-fold-anim-into')).default
+      const result = createFoldAnimInto(mockOnClose)
 
       await act(async () => {
-        result.current.countDownFoldIntoAnim()
+        result.countDownFoldIntoAnim()
       })
 
       // Advance by 15 seconds
@@ -144,11 +144,11 @@ describe('useFoldAnimInto', () => {
     })
 
     it('should not trigger before 15 seconds', async () => {
-      const useFoldAnimInto = (await import('../use-fold-anim-into')).default
-      const { result } = renderHook(() => useFoldAnimInto(mockOnClose))
+      const createFoldAnimInto = (await import('../create-fold-anim-into')).default
+      const result = createFoldAnimInto(mockOnClose)
 
       await act(async () => {
-        result.current.countDownFoldIntoAnim()
+        result.countDownFoldIntoAnim()
       })
 
       // Advance only 10 seconds

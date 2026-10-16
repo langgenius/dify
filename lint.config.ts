@@ -4,6 +4,7 @@ import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
 
 const rootDir = import.meta.dirname
+const webPackageJson = path.resolve(rootDir, 'web/package.json')
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
 
@@ -899,7 +900,7 @@ export const lintConfig = {
     {
       files: ['web/.storybook/main.{js,cjs,mjs,ts}'],
       rules: {
-        'storybook/no-uninstalled-addons': 'error',
+        'storybook/no-uninstalled-addons': ['error', { packageJsonLocation: webPackageJson }],
       },
     },
     {
