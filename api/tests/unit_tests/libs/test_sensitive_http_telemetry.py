@@ -12,15 +12,14 @@ from threading import Barrier
 import httpcore
 import httpx
 import pytest
+from dify_app import DifyApp
+from extensions import ext_logging
+from extensions.otel import instrumentation
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.utils import is_instrumentation_enabled
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-
-from dify_app import DifyApp
-from extensions import ext_logging
-from extensions.otel import instrumentation
 from tests.unit_tests.config_override import apply_config_overrides
 
 CANARY = "nw4-secret-query-canary"
@@ -385,3 +384,114 @@ def test_concurrent_ordinary_thread_keeps_real_auto_instrumented_span(applicatio
     finally:
         instrumentor.uninstrument()
         provider.shutdown()
+
+
+def test_actual_thread_lease_rejects_live_release_and_preserves_other_threads(application_logs):
+    from threading import Event, Thread
+
+    logs = application_logs()
+    module = telemetry()
+    entered, release = Event(), Event()
+    leases = []
+
+    def sensitive():
+        lease = module.protect_current_thread_logs(additional_emitters=("graphon",))
+        leases.append(lease)
+        with pytest.raises(module.SensitiveHttpTelemetryUnavailable):
+            lease.release_after_exit()
+        entered.set()
+        assert release.wait(3)
+        logging.getLogger("graphon.graph_engine.error_handler").error(CANARY)
+
+    thread = Thread(target=sensitive)
+    thread.start()
+    try:
+        assert entered.wait(2)
+        assert leases[0].thread is thread
+        with pytest.raises(module.SensitiveHttpTelemetryUnavailable):
+            leases[0].release_after_exit()
+        logging.getLogger("graphon").error("ordinary-other-thread")
+    finally:
+        release.set()
+        thread.join(2)
+    assert not thread.is_alive()
+    leases[0].release_after_exit()
+    leases[0].release_after_exit()
+    logging.getLogger("graphon").error("ordinary-after-lease")
+    text = persisted(logs)
+    assert CANARY not in text
+    assert "ordinary-other-thread" in text
+    assert "ordinary-after-lease" in text
+
+
+def test_multiple_owned_thread_leases_do_not_remove_each_other_or_protect_new_identity(application_logs):
+    from threading import Thread
+
+    logs = application_logs()
+    module = telemetry()
+    leases = []
+
+    def sensitive():
+        leases.extend((module.protect_current_thread_logs(), module.protect_current_thread_logs()))
+        logging.getLogger("httpx").error(CANARY)
+
+    thread = Thread(target=sensitive, name="same-name")
+    thread.start()
+    thread.join(2)
+    assert len(leases) == 2
+    leases[0].release_after_exit()
+    assert leases[1].thread is thread
+    # The old OS ident may be reused; association is the exact Thread object.
+    ordinary = Thread(target=lambda: logging.getLogger("httpx").error("ordinary-new-identity"), name="same-name")
+    ordinary.start()
+    ordinary.join(2)
+    leases[1].release_after_exit()
+    assert CANARY not in persisted(logs)
+    assert "ordinary-new-identity" in persisted(logs)
+
+
+@pytest.mark.parametrize("configuration", ["unfiltered-root", "custom-route"])
+def test_thread_lease_refuses_unready_sinks_before_registration(application_logs, monkeypatch, configuration):
+    application_logs()
+    module = telemetry()
+    if configuration == "unfiltered-root":
+        logging.getLogger().addHandler(logging.StreamHandler(io.StringIO()))
+    else:
+        monkeypatch.setattr(logging.getLogger("graphon.dispatcher"), "propagate", False)
+    with pytest.raises(module.SensitiveHttpTelemetryUnavailable):
+        module.protect_current_thread_logs(additional_emitters=("graphon",))
+
+
+def test_thread_lease_drops_before_render_and_retains_unknown_background(application_logs):
+    from threading import Event, Thread
+
+    logs = application_logs()
+    module = telemetry()
+    entered, finish = Event(), Event()
+    leases = []
+
+    rendered = []
+
+    class Unrenderable:
+        def __str__(self):
+            rendered.append(True)
+            raise AssertionError("protected record rendered")
+
+    def unknown_background():
+        leases.append(module.protect_current_thread_logs())
+        entered.set()
+        assert finish.wait(3)
+        logging.getLogger("httpx").error("raw %s", Unrenderable())
+
+    thread = Thread(target=unknown_background)
+    thread.start()
+    try:
+        assert entered.wait(2)
+        with pytest.raises(module.SensitiveHttpTelemetryUnavailable):
+            leases[0].release_after_exit()
+    finally:
+        finish.set()
+        thread.join(2)
+    leases[0].release_after_exit()
+    assert rendered == []
+    assert "raw" not in persisted(logs)

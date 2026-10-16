@@ -14,13 +14,14 @@ from dataclasses import dataclass
 from math import isfinite
 from threading import Lock, RLock, Thread, current_thread
 from time import monotonic
-from typing import Literal, Protocol, override
+from typing import Literal, Protocol, cast, override
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
+from libs.sensitive_http_telemetry import SensitiveThreadLogLease
 
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.command_channels import CommandChannel
@@ -62,6 +63,7 @@ from services.dify_builder.native_testing.control import (
 from services.dify_builder.native_testing.host_lifetime import CloseReason, NativeHostCallTicket, NativeHostLifetime
 from services.dify_builder.native_testing.http_adapter import PreparedHttpBinding, PreparedHttpRequest
 from services.dify_builder.native_testing.http_binding import NativeHttpBindingProducer
+from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.operation_journal import JournalAuthorizationPort, NodeOperationJournal
 from services.dify_builder.native_testing.runtime_contracts import (
     NativeCheckpointPayload,
@@ -119,7 +121,14 @@ class _HostCommandChannel:
         if self._channel is None:
             raise ValueError("native_host_launch_retired")
         self._host.lifetime.observe_dispatcher()
-        return self._channel.fetch_commands()
+        self._host._protect_dispatcher_logs()
+        try:
+            return self._channel.fetch_commands()
+        except BaseException:
+            if self._host._observation is not None:
+                self._host.mark_unknown()
+                raise NativeObservationError() from None
+            raise
 
     def send_command(self, command: GraphEngineCommand) -> None:
         if self._channel is None:
@@ -308,6 +317,10 @@ class NativeHostLaunch:
         self._stream_exhausted = False
         self._interrupted = False
         self._wait_snapshot: NativeCheckpointPayload | None = None
+        self._observation: NativeObservationGuard | None = None
+        self._observation_attempted = False
+        self._observation_state: NativeStatePort | None = None
+        self._dispatcher_log_leases: list[SensitiveThreadLogLease] = []
         self._control_sink = DifyNativeControlSink(self)
 
     @property
@@ -395,6 +408,146 @@ class NativeHostLaunch:
     def mark_unknown(self) -> None:
         """Public failure latch for the coordinator/qualified diagnostic owner."""
         self._unknown()
+
+    def bind_observation(self) -> NativeObservationGuard:
+        """Bind once through actual protected-profile owner, outside host locks."""
+        from libs.sensitive_http_telemetry import sensitive_http_telemetry
+
+        from services.dify_builder.native_testing.context_runtime import NATIVE_LOG_EMITTERS
+        from services.dify_builder.native_testing.observation_owner import create_http_observation_guard
+        from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+        try:
+            with self._registration:
+                self._require_live()
+                if self._observation_attempted:
+                    existing = self._observation
+                    journal = None
+                else:
+                    self._observation_attempted = True
+                    existing = None
+                    journal = self._journal
+                context = self.lifetime.context
+                state = journal._state if journal is not None else None
+            if existing is not None:
+                return self.native_observation
+            if journal is None or self.lifetime.unknown:
+                raise NativeObservationError()
+            with sensitive_http_telemetry(additional_emitters=NATIVE_LOG_EMITTERS):
+                guard = create_http_observation_guard(
+                    state=cast(NativeExecutionStateStore, state),
+                    context=context,
+                    on_failure=self.mark_unknown,
+                )
+            if type(guard) is not NativeObservationGuard:
+                raise NativeObservationError()
+            guard.require_healthy()
+            with self._registration:
+                self._require_live()
+                if (
+                    self.lifetime.context is not context
+                    or self._journal is not journal
+                    or journal._state is not state
+                    or self.lifetime.unknown
+                ):
+                    raise NativeObservationError()
+                self._observation = guard
+                self._observation_state = state
+            return self.native_observation
+        except BaseException:
+            self.mark_unknown()
+            raise NativeObservationError() from None
+
+    @property
+    def native_observation(self) -> NativeObservationGuard:
+        """The same healthy guard after a fresh current-state identity read."""
+        from services.dify_builder.native_testing.context_runtime import native_observation_scope
+
+        try:
+            with self._registration:
+                self._require_live()
+                guard, journal, context = self._observation, self._journal, self.lifetime.context
+            if (
+                type(guard) is not NativeObservationGuard
+                or journal is None
+                or self.lifetime.unknown
+                or journal._state is not self._observation_state
+            ):
+                raise NativeObservationError()
+            with native_observation_scope(guard=guard):
+                if journal._state.load_context(ref=context.ref) != context:
+                    raise NativeObservationError()
+            with self._registration:
+                self._require_live()
+                if (
+                    self._observation is not guard
+                    or self._journal is not journal
+                    or self.lifetime.context is not context
+                    or journal._state is not self._observation_state
+                    or self.lifetime.unknown
+                ):
+                    raise NativeObservationError()
+            guard.require_healthy()
+            return guard
+        except BaseException:
+            self.mark_unknown()
+            raise NativeObservationError() from None
+
+    @contextmanager
+    def observation_scope(self) -> Generator[None]:
+        from services.dify_builder.native_testing.context_runtime import native_observation_scope
+
+        with native_observation_scope(guard=self.native_observation):
+            yield
+
+    def _protect_dispatcher_logs(self) -> None:
+        """First actual public command poll, before delegation/raw dispatcher logs.
+
+        The lifetime already retained current_thread at this port. Pool/app
+        contexts remain bounded separately; the dispatcher is a new per-run
+        Thread and keeps this logging-only lease until its real joined exit.
+        """
+        from libs.sensitive_http_telemetry import assert_sensitive_http_telemetry_ready, protect_current_thread_logs
+
+        from services.dify_builder.native_testing.context_runtime import NATIVE_LOG_EMITTERS
+
+        with self._registration:
+            guard = self._observation
+            held = any(lease.thread is current_thread() for lease in self._dispatcher_log_leases)
+        if guard is None:
+            return  # Isolated historical host components have no initial DI guard.
+        try:
+            assert_sensitive_http_telemetry_ready(additional_emitters=NATIVE_LOG_EMITTERS)
+            if not held:
+                lease = protect_current_thread_logs(additional_emitters=NATIVE_LOG_EMITTERS)
+                with self._registration:
+                    # Retain even on a concurrent failure: a live dispatcher
+                    # must never lose protection because its result is unknown.
+                    self._dispatcher_log_leases.append(lease)
+                    self._require_live()
+                    if self._observation is not guard:
+                        raise NativeObservationError()
+            guard.require_healthy()
+        except BaseException:
+            self.mark_unknown()
+            raise NativeObservationError() from None
+
+    def release_dispatcher_logs(self) -> None:
+        """Before capacity ACK, require actual settlement and dead exact Threads."""
+        try:
+            self.lifetime.require_settled_root()
+            with self._registration:
+                leases = tuple(self._dispatcher_log_leases)
+            for lease in leases:
+                lease.release_after_exit()
+            self.lifetime.require_settled_root()
+            with self._registration:
+                if tuple(self._dispatcher_log_leases) != leases:
+                    raise NativeObservationError()
+                self._dispatcher_log_leases.clear()
+        except BaseException:
+            self.mark_unknown()
+            raise NativeObservationError() from None
 
     def _observe_root_event(self, *, event: GraphEngineEvent, layer: GraphEngineLayer) -> None:
         terminals: dict[type[GraphEngineEvent], RootTerminal] = {
@@ -611,6 +764,8 @@ class NativeHostLaunch:
             self._prepared.clear()
             self._controls_seen.clear()
             self._wait_snapshot = None
+            self._observation = None
+            self._observation_state = None
             self._worker = None
         if release is not None:
             release()  # No writer/registration/admission lock; never retried.

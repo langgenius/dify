@@ -282,7 +282,18 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 ),
             )
 
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            if self._native_host is not None:
+                from services.dify_builder.native_testing.context_runtime import NativeGraphRuntimeState
+
+                # The actual worker entered the exact host's bounded context.
+                guard = self._native_host.native_observation
+                from services.dify_builder.native_testing.context_runtime import current_native_observation
+
+                if current_native_observation() is not guard:
+                    guard.fail()
+                graph_runtime_state = NativeGraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            else:
+                graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
             graph = self._init_graph(
                 builder_execution=entity.builder_execution,
                 native_test_required=entity.native_test_required,
@@ -352,6 +363,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             workflow_execution_repository=self._workflow_execution_repository,
             workflow_node_execution_repository=self._workflow_node_execution_repository,
             trace_manager=self.application_generate_entity.trace_manager,
+            native_observation=self._native_host.native_observation if self._native_host is not None else None,
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)

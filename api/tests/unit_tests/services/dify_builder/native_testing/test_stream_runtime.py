@@ -36,6 +36,11 @@ def stream_class():
 class StreamCase:
     def __init__(self, monkeypatch, *, waiting=False, failed=False, partial=False, stopped=False, baseline=(1, 1, 1)):
         self.case = case = LaunchCase(baseline=baseline)
+        from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
+            bind_component_observation,
+        )
+
+        bind_component_observation(case, monkeypatch)
         policy: dict[str, object] | None = (
             {
                 "error_strategy": "default-value",
@@ -157,6 +162,14 @@ class StreamCase:
 
     def source(self):
         try:
+            import logging
+
+            from libs.sensitive_http_telemetry import _sensitive_http
+            from services.dify_builder.native_testing.context_runtime import current_native_observation
+
+            assert _sensitive_http.get()
+            assert current_native_observation() is self.case.host.native_observation
+            logging.getLogger("core.app.apps.workflow.generate_task_pipeline").error("reader-private-canary")
             self.reading.set()
             assert self.done.wait(2)
             assert self.source_release.wait(2)
@@ -440,3 +453,25 @@ def test_blocked_admission_fence_does_not_block_coordinator_quarantine(monkeypat
     fixture.case.lifetime.settle()
     fixture.cleanup(ref=fixture.case.lifetime.ref, generation=0, dispatch_id="dispatch")
     fixture.case.host.retire()
+
+
+def test_dispatcher_logging_release_failure_precedes_capacity_ack(monkeypatch):
+    from libs.sensitive_http_telemetry import SensitiveThreadLogLease
+
+    fixture = StreamCase(monkeypatch)
+    actual_release = SensitiveThreadLogLease.release_after_exit
+
+    def failed_release(self):
+        raise ValueError("synthetic lease cleanup failure")
+
+    monkeypatch.setattr(SensitiveThreadLogLease, "release_after_exit", failed_release)
+    worker = fixture.start()
+    outcome = fixture.consume()
+    worker.join(2)
+    assert outcome.status == "unknown"
+    assert fixture.events == ["read-run", "quarantine"]
+    assert fixture.callbacks == []
+    assert fixture.case.host._dispatcher_log_leases
+    for lease in fixture.case.host._dispatcher_log_leases:
+        assert not lease.thread.is_alive()
+        actual_release(lease)  # Test-only teardown; no capacity cleanup ACK.

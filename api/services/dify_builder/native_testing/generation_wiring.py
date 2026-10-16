@@ -57,6 +57,37 @@ def validate_native_host(
         raise NativeContextUnavailable("native_host_identity_mismatch")
 
 
+def preflight_native_observation(*, host: NativeHostLaunch, entity: WorkflowAppGenerateEntity, workflow: Any) -> None:
+    """Refuse unqualified side paths before creating an application worker."""
+    guard = host.native_observation
+    with host.observation_scope():
+        additional = entity.app_config.additional_features
+        features = workflow.features_dict
+        if (
+            entity.files
+            or entity.trace_manager is not None
+            or entity.single_iteration_run
+            or entity.single_loop_run
+            or entity.builder_execution is not None
+            or entity.app_config.sensitive_word_avoidance
+            or any(
+                entity.extras.get(key) is not None
+                for key in ("trace_session_id", "external_trace_id", "parent_trace_context")
+            )
+            or features.get("text_to_speech", {}).get("enabled")
+            or (
+                additional is not None
+                and (
+                    additional.file_upload is not None
+                    or additional.text_to_speech is not None
+                    or additional.speech_to_text
+                    or additional.trace_config is not None
+                )
+            )
+        ):
+            guard.fail()
+
+
 def bind_native_generation(
     *,
     host: NativeHostLaunch,

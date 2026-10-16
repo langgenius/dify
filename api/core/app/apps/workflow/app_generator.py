@@ -20,6 +20,7 @@ from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from pydantic import ValidationError
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 from sqlalchemy import select
@@ -283,7 +284,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 or workflow.graph_dict != native_context.graph
             ):
                 raise NativeContextUnavailable("native_context_mismatch")
-            native_inputs = native_runtime.prepare_inputs(native_context)
+            assert native_host is not None
+            guard = native_host.bind_observation()
+            with native_host.observation_scope():
+                if (
+                    args.get("files")
+                    or pause_state_config is not None
+                    or graph_engine_layers
+                    or not streaming
+                    or workflow.features_dict.get("text_to_speech", {}).get("enabled")
+                    or any(
+                        args.get(key) is not None
+                        for key in ("trace_session_id", "external_trace_id", "parent_trace_context")
+                    )
+                ):
+                    guard.fail()
+                native_inputs = native_runtime.prepare_inputs(native_context)
         try:
             if builder_execution is not None and (
                 builder_execution_admit is None
@@ -542,6 +558,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
             not streaming or graph_runtime_state is not None or pause_state_config is not None
         ):
             raise NativeContextUnavailable("native_resume_unavailable")
+        native_observation = None
+        if native_host is not None:
+            from services.dify_builder.native_testing.generation_wiring import preflight_native_observation
+
+            native_observation = native_host.bind_observation()
+            preflight_native_observation(host=native_host, entity=application_generate_entity, workflow=workflow)
         with self._bind_file_access_scope(
             tenant_id=application_generate_entity.app_config.tenant_id,
             user=user,
@@ -555,6 +577,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 user_id=application_generate_entity.user_id,
                 invoke_from=application_generate_entity.invoke_from,
                 app_mode=app_model.mode,
+                native_observation=native_observation,
             )
 
             resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
@@ -631,6 +654,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     user=user,
                     draft_var_saver_factory=draft_var_saver_factory,
                     stream=streaming,
+                    native_observation=native_observation,
                 )
                 converted_response = WorkflowAppGenerateResponseConverter.convert(
                     response=response,
@@ -867,7 +891,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
         execution_recorder = None
         exit_kind: Literal["returned", "policy_refused", "stopped", "failed"] = "failed"
         try:
-            with preserve_flask_contexts(flask_app, context_vars=context):
+            from services.dify_builder.native_testing.context_runtime import native_flask_worker_scope
+
+            worker_scope = (
+                native_flask_worker_scope(host=native_host, flask_app=flask_app, context_vars=context)
+                if native_host is not None
+                else preserve_flask_contexts(flask_app, context_vars=context)
+            )
+            with worker_scope:
                 try:
                     native_context = None
                     if (
@@ -1001,7 +1032,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     exit_kind = "returned"
                 except GenerateTaskStoppedError:
                     exit_kind = "stopped"
-                    logger.warning("Task stopped", exc_info=True)
+                    logger.warning("Task stopped", exc_info=native_host is None)
                     pass
                 except InvokeAuthorizationError:
                     queue_manager.publish_error(
@@ -1011,20 +1042,29 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     exit_kind = "policy_refused"
                     queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
                 except ValidationError as e:
-                    logger.exception("Validation Error when generating")
-                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                    if native_host is not None:
+                        queue_manager.publish_error(NativeObservationError(), PublishFrom.APPLICATION_MANAGER)
+                    else:
+                        logger.exception("Validation Error when generating")
+                        queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
                 except BuilderExecutionPolicyError as e:
                     exit_kind = "policy_refused"
                     if builder_execution_admit is not None:
                         builder_execution_admit.on_refusal(e)
                     queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
                 except ValueError as e:
-                    if dify_config.DEBUG:
-                        logger.exception("Error when generating")
-                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                    if native_host is not None:
+                        queue_manager.publish_error(NativeObservationError(), PublishFrom.APPLICATION_MANAGER)
+                    else:
+                        if dify_config.DEBUG:
+                            logger.exception("Error when generating")
+                        queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
                 except Exception as e:
-                    logger.exception("Unknown Error when generating")
-                    queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                    if native_host is not None:
+                        queue_manager.publish_error(NativeObservationError(), PublishFrom.APPLICATION_MANAGER)
+                    else:
+                        logger.exception("Unknown Error when generating")
+                        queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
         except BaseException:
             exit_kind = "failed"
             raise
@@ -1054,6 +1094,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
+        *,
+        native_observation: NativeObservationGuard | None = None,
     ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Handle response.
@@ -1073,11 +1115,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             draft_var_saver_factory=draft_var_saver_factory,
             stream=stream,
+            native_observation=native_observation,
         )
 
         try:
             return generate_task_pipeline.process()
         except ValueError as e:
+            if native_observation is not None:
+                native_observation.fail()
             if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:

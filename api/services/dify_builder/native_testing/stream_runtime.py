@@ -40,7 +40,14 @@ class _ReaderFinalizer:
     def close(self) -> None:
         # Lifetime's actual call ticket closes on this same reader. A failed
         # source close leaves the ticket incomplete, including for late cleanup.
-        self._stream.finish_reader()
+        from libs.sensitive_http_telemetry import sensitive_http_telemetry
+
+        from services.dify_builder.native_testing.context_runtime import NATIVE_LOG_EMITTERS
+
+        # Even a failed diagnostic guard cannot fabricate source-close ACK.
+        # A missing telemetry boundary conservatively leaves this ticket open.
+        with sensitive_http_telemetry(additional_emitters=NATIVE_LOG_EMITTERS):
+            self._stream.finish_reader()
 
 
 class DifyNativeStreamOwner:
@@ -81,10 +88,11 @@ class DifyNativeStreamOwner:
         try:
             with host.lifetime.call_scope() as ticket:
                 ticket.own_stream(stream=_ReaderFinalizer(stream))
-                for _ in stream:
-                    # Raw SSE is drained only. Public callbacks are constructed
-                    # from confirmed bounded outcomes after the real barriers.
-                    pass
+                with host.observation_scope():
+                    for _ in stream:
+                        # Raw SSE is drained only. The same retained guard owns
+                        # the queue/pipeline before any source serialization.
+                        pass
         except BaseException:
             host.mark_unknown()
         finally:
@@ -254,6 +262,8 @@ class DifyNativeStreamOwner:
             if self._host.lifetime.settle() != "settled":
                 return self._unknown(context)
             outcome = self._outcome(context)
+            self._host.lifetime.require_settled_root()
+            self._host.release_dispatcher_logs()
             self._host.lifetime.require_settled_root()
             self._capacity.record_cleanup(
                 ref=context.ref,

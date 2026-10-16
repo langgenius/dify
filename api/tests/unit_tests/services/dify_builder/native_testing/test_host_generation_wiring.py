@@ -56,7 +56,11 @@ def runtime_for(case: LaunchCase) -> NativeRuntimeBridge:
 
 def generate_fixture(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
     from core.app.apps.workflow import app_generator as module
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
+        bind_component_observation,
+    )
 
+    bind_component_observation(case, monkeypatch)
     entity, _, response_filter, workflow_repo, node_repo = generation_objects(case, monkeypatch)
     generator = WorkflowAppGenerator()
     monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **kwargs: nullcontext())
@@ -66,7 +70,7 @@ def generate_fixture(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(module.WorkflowAppGenerateResponseConverter, "convert", lambda **kwargs: kwargs["response"])
     arguments: dict[str, Any] = {
         "app_model": SimpleNamespace(mode="workflow", tenant_id=case.state.context.tenant_id),
-        "workflow": SimpleNamespace(),
+        "workflow": SimpleNamespace(features_dict={}),
         "user": SimpleNamespace(),
         "application_generate_entity": entity,
         "invoke_from": InvokeFrom.DEBUGGER,
@@ -142,6 +146,11 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
         workflow_repository=workflow_repo,
         node_repository=node_repo,
     )
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
+        bind_component_observation,
+    )
+
+    bind_component_observation(case, monkeypatch)
     workflow = SimpleNamespace(graph_dict=case.state.context.graph)
     monkeypatch.setattr(
         module.session_factory, "create_session", lambda: nullcontext(SimpleNamespace(scalar=lambda query: workflow))
@@ -153,7 +162,16 @@ def test_owned_worker_preserves_bound_entity_and_reports_finally_on_actual_threa
             seen.append(kwargs)
 
         def run(self):
-            pass
+            import logging
+
+            from flask import current_app
+            from libs.sensitive_http_telemetry import _sensitive_http
+            from services.dify_builder.native_testing.context_runtime import current_native_observation
+
+            assert current_app.name == __name__
+            assert _sensitive_http.get()
+            assert current_native_observation() is case.host.native_observation
+            logging.getLogger("core.app.apps.workflow.app_generator").error("worker-private-canary")
 
     monkeypatch.setattr(module, "WorkflowAppRunner", RunnerPort)
     monkeypatch.setattr(module, "active_workflow_task", lambda task: nullcontext())
@@ -465,6 +483,11 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
         workflow_repository=workflow_repo,
         node_repository=node_repo,
     )
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
+        bind_component_observation,
+    )
+
+    guard = bind_component_observation(case, monkeypatch)
     context = case.state.context
     workflow = Workflow(
         id=context.workflow_id,
@@ -518,7 +541,12 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
     monkeypatch.setattr(module, "StopFlagCommandChannel", lambda **kwargs: InMemoryChannel())
     monkeypatch.setattr(module, "CombinedCommandChannel", build_channel)
     monkeypatch.setattr(module, "attach_stop_aware_ready_queue", lambda *args, **kwargs: None)
-    monkeypatch.setattr(module, "WorkflowPersistenceLayer", lambda **kwargs: LayerPort())
+
+    def persistence(**kwargs):
+        assert kwargs["native_observation"] is guard
+        return LayerPort()
+
+    monkeypatch.setattr(module, "WorkflowPersistenceLayer", persistence)
     monkeypatch.setattr(module, "build_workflow_agent_workspace_retirement_layer", lambda **kwargs: LayerPort())
     runner = module.WorkflowAppRunner(
         application_generate_entity=entity,
@@ -540,7 +568,8 @@ def test_actual_runner_passes_same_host_filter_runtime_and_wrapped_combined_chan
 
     def run():
         try:
-            runner.run()
+            with case.host.observation_scope():
+                runner.run()
         except BaseException as error:
             errors.append(error)
         finally:
