@@ -13,9 +13,6 @@ from uuid import uuid4
 
 import pytest
 from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
-from shellctl.shared.schemas import NativeScopeLimits
-from sqlalchemy import select
-
 from libs.key_providers import generate_key_pair
 from models.account import Tenant
 from models.agent import AgentWorkingResourceStatus, AgentWorkspaceBinding
@@ -33,6 +30,8 @@ from services.dify_builder.native_testing.runtime_contracts import (
     ResolvedNativeTestContext,
 )
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from shellctl.shared.schemas import NativeScopeLimits
+from sqlalchemy import select
 from tests.test_containers_integration_tests.core.workflow.test_builder_agent_workspace import (
     native_owner as native_owner,  # noqa: PLC0414
 )
@@ -43,6 +42,9 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_e
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
+from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+    native_owner as base_native_owner,  # noqa: F401 - shared pytest fixture dependency
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import no_live as no_live  # noqa: PLC0414
 
 CANARY = "PRIVATE_A5_PROTECTED_BYTES_CANARY_81ac"
