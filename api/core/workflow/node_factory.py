@@ -654,20 +654,22 @@ class DifyNodeFactory(NodeFactory):
             ref = self._dify_context.native_test_ref
             if ref is None:
                 raise NativeContextUnavailable("native_context_missing")
-            native_kwargs = self._native_runtime.arguments(
+            prepared = self._native_runtime.prepare_node(
                 ref=ref,
                 node_id=node_id,
                 node_data=resolved_node_data,
                 node_class=node_class,
                 runtime_state=self.graph_runtime_state,
             )
-            return node_class(
+            node = prepared.node_class(
                 node_id=node_id,
                 data=resolved_node_data.model_dump(mode="python", by_alias=True),
                 graph_init_params=self.graph_init_params,
                 graph_runtime_state=self.graph_runtime_state,
-                **native_kwargs,
+                **prepared.arguments,
             )
+            prepared.attach(node)
+            return node
         if isinstance(context, BuilderExecutionContext):
             validate_restricted_node(
                 context=context, node_id=node_id, node_class=node_class, resolved_node_data=resolved_node_data

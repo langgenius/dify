@@ -270,8 +270,16 @@ def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setu
     )
     state = Mock(load_context=Mock(return_value=context))
     prepare = Mock(return_value=NativePreparedInputs(inputs=context.inputs, files=(), environment_variables=()))
+    from services.dify_builder.native_testing.control import BoundaryOwnerState
+    from tests.unit_tests.services.dify_builder.native_testing.test_runtime_bridge import SyntheticSink
+
     bridge = NativeRuntimeBridge(
-        state=state, collaborators=Mock(), occurrences=Mock(), node_arguments=Mock(), prepare_inputs=prepare
+        state=state,
+        collaborators=Mock(),
+        node_arguments=Mock(),
+        prepare_inputs=prepare,
+        boundary_owner=BoundaryOwnerState(ref=context.ref),
+        control_sink=SyntheticSink(),
     )
     generator = app_generator.WorkflowAppGenerator()
     launch = Mock()
