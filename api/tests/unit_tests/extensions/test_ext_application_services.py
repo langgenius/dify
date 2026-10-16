@@ -53,6 +53,7 @@ from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.human_input_file_upload_repository import SQLAlchemyHumanInputFileUploadRepository
 from repositories.installed_app_repository import SQLAlchemyInstalledAppRepository
+from repositories.knowledge.external_repository import SQLAlchemyExternalKnowledgeRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
@@ -131,7 +132,7 @@ from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
 from services.knowledge.datasets.application import DatasetApplicationService
 from services.knowledge.document_sync import DocumentSyncApplicationService
 from services.knowledge.documents.application import DatasetDocumentApplicationService
-from services.knowledge.external.adapters import SQLAlchemyExternalKnowledgeOperations
+from services.knowledge.external.adapters import ExternalKnowledgeGateway
 from services.knowledge.external.application import ExternalKnowledgeApplicationService
 from services.knowledge.indexing.adapters.estimate import IndexingEstimateAdapter, SQLAlchemyProcessRuleReader
 from services.knowledge.indexing.adapters.sources import NotionSourceResolver
@@ -311,9 +312,11 @@ def test_build_application_services_preserves_composed_boundaries(
     dataset_operations = services.knowledge.datasets._operations
     assert isinstance(dataset_operations, SQLAlchemyDatasetOperations)
     assert dataset_operations._members_service is services.rbac.members
-    external_operations = services.knowledge.external._operations
-    assert isinstance(external_operations, SQLAlchemyExternalKnowledgeOperations)
-    assert external_operations._members is services.rbac.members
+    external = services.knowledge.external
+    assert external._dataset_details is dataset_operations
+    assert isinstance(external._repository, SQLAlchemyExternalKnowledgeRepository)
+    assert dataset_operations._external_templates is external._repository
+    assert isinstance(external._retrieval, ExternalKnowledgeGateway)
 
 
 @pytest.mark.parametrize(

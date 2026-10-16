@@ -1,4 +1,22 @@
+from typing import Never
+
+from controllers.common.errors import InternalServerError, NotFoundError
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from core.errors.error import (
+    LLMBadRequestError,
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from libs.exception import BaseHTTPException
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
+from services.errors.index import IndexNotInitializedError
+from services.errors.knowledge_retrieval import HitTestingFailedError, HitTestingInvocationError
 
 
 class DatasetNotInitializedError(BaseHTTPException):
@@ -77,3 +95,29 @@ class PipelineNotFoundError(BaseHTTPException):
     error_code = "pipeline_not_found"
     description = "Pipeline not found."
     code = 404
+
+
+def raise_hit_testing_error(error: Exception) -> Never:
+    """Translate knowledge retrieval failures at the HTTP boundary."""
+    if isinstance(error, DatasetNotFoundError):
+        raise NotFoundError(description="Dataset not found.") from error
+    if isinstance(error, DatasetAccessDeniedError):
+        raise DatasetAccessDeniedRequestError(description=str(error)) from error
+    if isinstance(error, IndexNotInitializedError):
+        raise DatasetNotInitializedError() from error
+    if isinstance(error, ProviderTokenNotInitError):
+        raise ProviderNotInitializeError(error.description) from error
+    if isinstance(error, QuotaExceededError):
+        raise ProviderQuotaExceededError() from error
+    if isinstance(error, ModelCurrentlyNotSupportError):
+        raise ProviderModelCurrentlyNotSupportError() from error
+    if isinstance(error, LLMBadRequestError):
+        raise ProviderNotInitializeError(
+            "No Embedding Model or Reranking Model available. Please configure a valid provider "
+            "in the Settings -> Model Provider."
+        ) from error
+    if isinstance(error, HitTestingInvocationError):
+        raise CompletionRequestError(str(error)) from error
+    if isinstance(error, HitTestingFailedError):
+        raise InternalServerError(description=str(error)) from error
+    raise error

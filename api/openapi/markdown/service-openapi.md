@@ -921,9 +921,9 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[DatasetNotInitializedError](#datasetnotinitializederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -950,9 +950,9 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[DatasetNotInitializedError](#datasetnotinitializederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2903,6 +2903,14 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | CustomConfigurationStatus | string | Enum class for custom configuration status. |  |
 
+#### DatasetAccessDeniedError
+
+Dataset access denied.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetAccessDeniedError |  | Dataset access denied. |  |
+
 #### DatasetBoundTagListResponse
 
 | Name | Type | Description | Required |
@@ -3126,6 +3134,14 @@ The dataset name already exists. Please modify your dataset name.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DatasetNameDuplicateError |  | The dataset name already exists. Please modify your dataset name. |  |
+
+#### DatasetNotInitializedError
+
+The dataset is still being initialized or indexing. Please wait a moment.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetNotInitializedError |  | The dataset is still being initialized or indexing. Please wait a moment. |  |
 
 #### DatasetRerankingModelResponse
 

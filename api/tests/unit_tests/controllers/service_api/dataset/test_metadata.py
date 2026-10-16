@@ -44,8 +44,8 @@ from models.enums import PermissionEnum
 from services.errors.base import NoPermissionError
 from services.errors.metadata import MetadataResourceNotFoundError
 from services.knowledge.entities.knowledge_entities import MetadataArgs, MetadataOperationData
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.metadata.application import MetadataService
-from services.knowledge.resource_scope import DatasetRef
 
 
 @pytest.mark.parametrize(

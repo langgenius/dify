@@ -30,6 +30,7 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderManager
+from core.rag.datasource.retrieval_service import RetrievalService
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from graphon.file import FileUploadConfig
@@ -45,7 +46,6 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from models.dataset import Dataset
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, IconType, Message
-from services.knowledge.external.service import ExternalDatasetService
 from tests.unit_tests.core.model_fixtures import make_model_config
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
@@ -352,11 +352,13 @@ class TestCompletionAppRunner:
 
         retrieval_calls: list[dict[str, object]] = []
 
-        def retrieve_external(**kwargs: object) -> list[dict[str, object]]:
-            retrieval_calls.append(kwargs)
+        def retrieve_external(
+            session: Session, dataset_id: str, query: str, **kwargs: object
+        ) -> list[dict[str, object]]:
+            retrieval_calls.append({**kwargs, "session": session, "dataset_id": dataset_id, "query": query})
             return [{"content": "ctx", "metadata": {}, "score": 1.0, "title": "Document"}]
 
-        monkeypatch.setattr(ExternalDatasetService, "fetch_external_knowledge_retrieval", retrieve_external)
+        monkeypatch.setattr(RetrievalService, "external_retrieve", retrieve_external)
 
         runner.run(app_generate_entity, queue_manager, message, sqlite_session)
 

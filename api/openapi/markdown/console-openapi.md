@@ -6761,7 +6761,8 @@ Test dataset knowledge retrieval
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Hit testing completed successfully | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | Invalid parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[DatasetNotInitializedError](#datasetnotinitializederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -20131,6 +20132,14 @@ The dataset name already exists. Please modify your dataset name.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | DatasetNameDuplicateError |  | The dataset name already exists. Please modify your dataset name. |  |
+
+#### DatasetNotInitializedError
+
+The dataset is still being initialized or indexing. Please wait a moment.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetNotInitializedError |  | The dataset is still being initialized or indexing. Please wait a moment. |  |
 
 #### DatasetQueryContentResponse
 

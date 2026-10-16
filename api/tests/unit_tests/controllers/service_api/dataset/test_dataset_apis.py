@@ -17,6 +17,7 @@ from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 import services.errors.base
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
+from extensions.ext_application_services import ApplicationServices
 from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import AppDatasetJoin, Dataset, DatasetMetadata, Document
 from models.enums import PermissionEnum
@@ -43,6 +44,16 @@ pytestmark = pytest.mark.parametrize("sqlite_session", [DATASET_MODEL_TABLES], i
 def controller_session(sqlite_session: Session) -> Session:
     """Expose the shared SQLite session under the controller-focused fixture name."""
     return sqlite_session
+
+
+@pytest.fixture
+def dataset_application_services(
+    monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
+) -> ApplicationServices:
+    from controllers.service_api.dataset import dataset as dataset_module
+
+    monkeypatch.setattr(dataset_module, "application_services", lambda: account_application_services)
+    return account_application_services
 
 
 @pytest.fixture
@@ -443,6 +454,7 @@ class TestDatasetListApiPost:
         account: Account,
         tenant: Tenant,
         controller_session: Session,
+        dataset_application_services: ApplicationServices,
     ) -> None:
         from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
 
@@ -465,6 +477,9 @@ class TestDatasetListApiPost:
         assert_dataset_detail_shape(response)
         assert response["name"] == "New Dataset"
         mock_dataset_svc.create_empty_dataset.assert_called_once()
+        kwargs = mock_dataset_svc.create_empty_dataset.call_args.kwargs
+        assert kwargs["session"] is controller_session
+        assert kwargs["external_templates"] is dataset_application_services.knowledge.external_templates
 
     @pytest.mark.usefixtures("account")
     @patch("controllers.service_api.dataset.dataset.DatasetService")
@@ -474,6 +489,7 @@ class TestDatasetListApiPost:
         app: Flask,
         tenant: Tenant,
         controller_session: Session,
+        dataset_application_services: ApplicationServices,
     ) -> None:
         from controllers.service_api.dataset.dataset import DatasetCreatePayload, DatasetListApi
 
@@ -488,6 +504,11 @@ class TestDatasetListApiPost:
             validated_payload = DatasetCreatePayload.model_validate(request.get_json() or {})
             with pytest.raises(DatasetNameDuplicateError):
                 unwrap(api.post)(api, validated_payload, controller_session, tenant_id=tenant.id)
+
+        assert (
+            mock_dataset_svc.create_empty_dataset.call_args.kwargs["external_templates"]
+            is dataset_application_services.knowledge.external_templates
+        )
 
     @pytest.mark.usefixtures("account")
     @patch("controllers.service_api.wraps.FeatureService")
@@ -660,6 +681,7 @@ class TestDatasetApiPatch:
         app: Flask,
         dataset: Dataset,
         controller_session: Session,
+        dataset_application_services: ApplicationServices,
     ) -> None:
         from controllers.service_api.dataset.dataset import DatasetApi, DatasetUpdatePayload
 
@@ -699,6 +721,10 @@ class TestDatasetApiPatch:
         _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
         session = mock_dataset_svc.update_dataset.call_args.kwargs["session"]
         assert session is controller_session
+        assert (
+            mock_dataset_svc.update_dataset.call_args.kwargs["external_templates"]
+            is dataset_application_services.knowledge.external_templates
+        )
         assert update_data["name"] == "Updated Dataset"
         assert update_data["permission"] == "partial_members"
         mock_perm_svc.update_partial_member_list.assert_called_once_with(

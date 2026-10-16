@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from services.knowledge.resource_scope import SegmentRef
+from services.knowledge.entities.resource_scope import SegmentRef
 
 logger = logging.getLogger(__name__)
 

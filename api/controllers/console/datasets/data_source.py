@@ -38,7 +38,7 @@ from services.data_source.notion_import_application_service import (
     DatasetIsNotNotionSourceError,
     NotionImportCredentialUnavailableError,
 )
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.document_sync import SyncDocumentNotFoundError, SyncDocumentSourceError
 from services.knowledge.entities.indexing_estimate import NewSourcesEstimateCommand, NotionEstimateSource
 from services.knowledge.indexing.estimate import (

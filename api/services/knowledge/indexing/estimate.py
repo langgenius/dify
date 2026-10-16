@@ -8,7 +8,8 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from machinery.context import RequestContext
 from services.data_source.credential_gateway import DatasourceCredentialError
 from services.data_source.entities.notion_import import NotionPageType
-from services.knowledge.dataset_access import DatasetAccess, DatasetNotFoundError
+from services.errors.dataset import DatasetNotFoundError
+from services.knowledge.dataset_access import DatasetAccess
 from services.knowledge.entities.indexing_estimate import (
     NewEstimateSource,
     NewSourcesEstimateCommand,
@@ -17,12 +18,12 @@ from services.knowledge.entities.indexing_estimate import (
     WebsiteEstimateSource,
     normalize_process_rule,
 )
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.indexing.errors import (
     IndexingInputSourceError,
     SourceCredentialUnavailableError,
     UnsupportedStoredSourceError,
 )
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
 
 
 class DatasetEstimateRecord(NamedTuple):

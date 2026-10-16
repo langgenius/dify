@@ -12,7 +12,7 @@ from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.knowledge.dataset_service import DocumentService
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 

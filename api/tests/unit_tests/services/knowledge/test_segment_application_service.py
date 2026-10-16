@@ -7,15 +7,20 @@ import pytest
 
 from libs.helper import generate_text_hash
 from machinery.context import RequestContext
+from services.errors.dataset import DatasetAccessDeniedError
 from services.knowledge.dataset_access import (
     AccessibleDataset,
     DatasetAccess,
-    DatasetAccessDeniedError,
     DatasetAccessRecord,
     DatasetAccessSnapshot,
 )
-from services.knowledge.entities.segments import SegmentRecord, SegmentUpdateArgs
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
+from services.knowledge.entities.segments import (
+    SegmentFileAccess,
+    SegmentReadSnapshot,
+    SegmentRecord,
+    SegmentUpdateArgs,
+)
 from services.knowledge.segments.application import (
     ChildChunkNotFoundError,
     DatasetSegmentApplicationService,
@@ -40,6 +45,7 @@ from services.knowledge.segments.application import (
     SegmentNotFoundError,
     SegmentPage,
     SegmentPermissionDeniedError,
+    SegmentPresenter,
     SegmentScope,
     SegmentScopeReader,
     SegmentStatusUpdateError,
@@ -107,7 +113,12 @@ def _scope(
 type ServiceFixture = tuple[DatasetSegmentApplicationService, Mock, Mock, Mock, Mock, Mock, Mock]
 
 
-def _service(scope: SegmentScope | None = None, *, uploads: SegmentUploadCatalog | None = None) -> ServiceFixture:
+def _service(
+    scope: SegmentScope | None = None,
+    *,
+    uploads: SegmentUploadCatalog | None = None,
+    presenter: SegmentPresenter | None = None,
+) -> ServiceFixture:
     dataset_access = create_autospec(DatasetAccess, instance=True, spec_set=True)
     dataset_access.check_access.return_value = AccessibleDataset(id="dataset-1", workspace_id="workspace-1")
     store = create_autospec(SegmentStore, instance=True, spec_set=True)
@@ -118,9 +129,16 @@ def _service(scope: SegmentScope | None = None, *, uploads: SegmentUploadCatalog
     indexing_state.is_document_indexing.return_value = False
     indexing_state.is_segment_indexing.return_value = False
     dispatcher = create_autospec(SegmentBatchImportDispatcher, instance=True, spec_set=True)
+    if presenter is None:
+        default_presenter = create_autospec(SegmentPresenter, instance=True, spec_set=True)
+        default_presenter.present.return_value = ()
+        resolved_presenter: SegmentPresenter = default_presenter
+    else:
+        resolved_presenter = presenter
     service = DatasetSegmentApplicationService(
         dataset_access=dataset_access,
         store=store,
+        presenter=resolved_presenter,
         limits=SegmentLimitsStub(),
         text_hash=generate_text_hash,
         index=create_autospec(SegmentIndex, instance=True, spec_set=True),
@@ -146,7 +164,7 @@ def test_list_segments_uses_complete_owner_scope() -> None:
         query=SegmentListFilter(keyword="needle"),
     )
 
-    assert result is expected
+    assert result == expected
     assert scopes.get_segment_scope.call_args.kwargs == {
         "dataset_ref": DatasetRef("workspace-1", "dataset-1"),
         "document_id": "document-1",
@@ -437,9 +455,18 @@ def _segment_detail(*, enabled: bool = True) -> SegmentDetail:
 
 
 def test_create_segment_returns_store_detail() -> None:
-    service, _, store, scopes, _, _, _ = _service()
     detail = _segment_detail()
-    store.get_segment.return_value = detail
+    snapshot = SegmentReadSnapshot(
+        file_access=SegmentFileAccess(frozenset(), frozenset()),
+        values=detail.data.model_dump(exclude={"sign_content", "child_chunks", "attachments", "summary"}),
+        child_chunks=(),
+        attachments=(),
+        summary=None,
+    )
+    presenter = create_autospec(SegmentPresenter, instance=True, spec_set=True)
+    presenter.present.return_value = (detail.data,)
+    service, _, store, scopes, _, _, _ = _service(presenter=presenter)
+    store.get_segment.return_value = SegmentDetail(data=snapshot, doc_form=detail.doc_form)
 
     result = service.create_segment(
         _context(),
@@ -448,7 +475,8 @@ def test_create_segment_returns_store_detail() -> None:
         values={"content": "content"},
     )
 
-    assert result is detail
+    assert result == detail
+    presenter.present.assert_called_once_with((snapshot,))
     assert store.save_segment.call_args.args[1]["created_by"] == _context().account_id
 
 

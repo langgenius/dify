@@ -68,13 +68,13 @@ ignore_imports =
     core.mcp.auth_client -> services
     core.provider_manager -> services.credit_pool_service
     core.provider_manager -> services.feature_service
-    core.rag.datasource.retrieval_service -> services.knowledge.external.service
+    core.rag.datasource.retrieval_service -> repositories.knowledge.external_repository
+    core.rag.datasource.retrieval_service -> services.knowledge.external.adapters
     core.rag.index_processor.index_processor -> services.vector_space_admission_service
     core.rag.index_processor.index_processor_base -> services.file_service
     core.rag.index_processor.processor.paragraph_index_processor -> services.knowledge.summaries.adapters
     core.rag.index_processor.processor.parent_child_index_processor -> services.knowledge.summaries.adapters
     core.rag.index_processor.processor.qa_index_processor -> services.knowledge.summaries.adapters
-    core.rag.retrieval.dataset_retrieval -> services.knowledge.external.service
     core.rag.retrieval.dataset_retrieval -> services.knowledge.retrieval.attachments
     core.rag.retrieval.dataset_retrieval -> services.feature_service
     core.rag.summary_index.summary_index -> services.knowledge.summaries.adapters
@@ -184,16 +184,25 @@ source_modules =
     services.data_source.entities.credential
     services.data_source.entities.notion_import
     services.knowledge.entities.indexing_estimate
+    services.knowledge.entities.hit_testing
+    services.knowledge.entities.external
+    services.knowledge.entities.resource_scope
+    services.knowledge.entities.inner_retrieval
+    services.errors.base
+    services.errors.dataset
+    services.errors.knowledge_retrieval
+    services.errors.metadata
     services.knowledge.dataset_access
     services.knowledge.datasets.application
     services.knowledge.datasets.retrieval
     services.knowledge.document_sync
     services.knowledge.documents.application
     services.knowledge.external.application
+    services.knowledge.hit_testing.application
+    services.knowledge.retrieval.application
     services.knowledge.indexing.errors
     services.knowledge.indexing.estimate
     services.knowledge.indexing.execution
-    services.knowledge.resource_scope
     services.knowledge.segments.application
     services.knowledge.metadata.application
     services.knowledge.summaries.application
@@ -209,6 +218,10 @@ forbidden_modules =
     tasks
     werkzeug
     services.knowledge.dataset_service
+    services.knowledge.external.adapters
+    services.knowledge.hit_testing.adapters
+    services.knowledge.retrieval.adapters
+    core.rag.retrieval.dataset_retrieval
     services.data_source.provider_service
     services.knowledge.indexing.adapters
     services.knowledge.segments.adapters
@@ -217,18 +230,65 @@ forbidden_modules =
     core.rag.extractor.notion_extractor
 
 [importlinter:contract:knowledge-repository-boundary]
-name = Knowledge persistence adapters only depend on their consumer-owned application contracts
+name = Knowledge persistence adapters use shared data and consumer-owned contracts
 type = forbidden
 source_modules =
     repositories.knowledge
+    repositories.knowledge.**
 forbidden_modules =
     controllers
+    controllers.**
     extensions
+    extensions.**
     flask
     services
+    services.*
+    services.**.service
+    services.**.application
+    services.**.adapters
+    services.**.gateways
+    services.account.**
+    services.agent.**
+    services.annotation.**
+    services.api_keys.**
+    services.app.**
+    services.auth.**
+    services.credentials.**
+    services.data_migration.**
+    services.data_source.**
+    services.document_indexing_proxy.**
+    services.enterprise.**
+    services.files.**
+    services.human_input.**
+    services.knowledge.*
+    services.knowledge.datasets.**
+    services.knowledge.documents.**
+    services.knowledge.external.**
+    services.knowledge.hit_testing.**
+    services.knowledge.indexing.**
+    services.knowledge.metadata.**
+    services.knowledge.retrieval.**
+    services.knowledge.segments.**
+    services.knowledge.summaries.**
+    services.model_provider.**
+    services.openapi.**
+    services.plugin.**
+    services.rag_pipeline.**
+    services.rbac.**
+    services.recommend_app.**
+    services.retention.**
+    services.tools.**
+    services.trigger.**
+    services.workflow.**
+    services.workspace.**
     tasks
+    tasks.**
     werkzeug
+as_packages = False
 allow_indirect_imports = True
+# Knowledge data contracts and shared error modules are guarded by
+# dataset-application-boundary above.
+# Match implementation modules explicitly so pure contracts need no per-import exceptions.
 ignore_imports =
     repositories.knowledge.dataset_api_key_repository -> services.auth.api_key_contracts
     repositories.knowledge.dataset_api_key_repository -> services.knowledge.api_key_service
@@ -236,20 +296,38 @@ ignore_imports =
     repositories.knowledge.dataset_repository -> services.knowledge.dataset_access
     repositories.knowledge.dataset_repository -> services.knowledge.entities.datasets
     repositories.knowledge.dataset_repository -> services.knowledge.indexing.estimate
-    repositories.knowledge.dataset_repository -> services.knowledge.resource_scope
     repositories.knowledge.document_repository -> services.knowledge.document_sync
     repositories.knowledge.document_repository -> services.knowledge.indexing.estimate
     repositories.knowledge.document_repository -> services.knowledge.indexing.errors
     repositories.knowledge.document_repository -> services.knowledge.indexing.execution
-    repositories.knowledge.document_repository -> services.knowledge.resource_scope
-    repositories.knowledge.segment_repository -> services.knowledge.resource_scope
     repositories.knowledge.segment_repository -> services.knowledge.indexing.execution
     repositories.knowledge.segment_repository -> services.knowledge.segments.application
-    repositories.knowledge.segment_repository -> services.knowledge.entities.segments
-    repositories.knowledge.metadata_repository -> services.errors.metadata
     repositories.knowledge.metadata_repository -> services.knowledge.metadata.application
-    repositories.knowledge.metadata_repository -> services.knowledge.resource_scope
     repositories.knowledge.summary_repository -> services.knowledge.summaries.application
+
+[importlinter:contract:knowledge-external-template-boundary]
+name = Dataset service accesses external templates through its injected port
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    services.knowledge.dataset_service
+forbidden_modules =
+    repositories.knowledge.external_repository
+
+[importlinter:contract:knowledge-retrieval-persistence-boundary]
+name = Knowledge retrieval repositories do not import execution or file presentation adapters
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    repositories.knowledge.document_repository
+    repositories.knowledge.segment_repository
+    repositories.knowledge.metadata_filter
+forbidden_modules =
+    repositories.knowledge.segment_read_adapter
+    core.rag.datasource.retrieval_service
+    core.rag.retrieval.dataset_retrieval
+    core.tools.signature
+    core.app.file_access
 
 [importlinter:contract:datasource-credential-repository-boundary]
 name = Data source credential persistence does not depend on SQLAlchemy service helpers
@@ -1032,6 +1110,7 @@ source_modules =
     services.knowledge.documents
     services.knowledge.datasets
     services.knowledge.external
+    services.knowledge.hit_testing
 forbidden_modules =
     controllers
     fields
@@ -1165,3 +1244,15 @@ forbidden_modules =
     services.account.adapters
     sqlalchemy
     werkzeug
+
+[importlinter:contract:knowledge-external-persistence-boundary]
+name = External knowledge application and HTTP adapters delegate persistence to ports
+type = forbidden
+source_modules =
+    services.knowledge.external.application
+    services.knowledge.external.adapters
+forbidden_modules =
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True

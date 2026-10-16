@@ -4,7 +4,7 @@ from typing import NamedTuple, Protocol
 
 from machinery.context import RequestContext
 from services.knowledge.dataset_access import DatasetAccess
-from services.knowledge.resource_scope import DatasetRef, DocumentRef
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 
 
 class SyncDocumentRecord(NamedTuple):

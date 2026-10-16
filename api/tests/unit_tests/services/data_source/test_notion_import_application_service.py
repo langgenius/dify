@@ -12,7 +12,7 @@ from services.data_source.notion_import_application_service import (
     NotionSourceGateway,
 )
 from services.knowledge.dataset_access import AccessibleDataset, DatasetAccess
-from services.knowledge.resource_scope import DatasetRef
+from services.knowledge.entities.resource_scope import DatasetRef
 
 CONTEXT = RequestContext("request-1", None, "account-1", "workspace-1")
 DATASET = DatasetRef("workspace-1", "dataset-1")

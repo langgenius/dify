@@ -20,8 +20,8 @@ from fields.dataset_fields import (
 )
 from libs.helper import dump_response
 from machinery.context import RequestContext
+from services.errors.dataset import DatasetAccessDeniedError, DatasetNotFoundError
 from services.errors.metadata import MetadataResourceNotFoundError
-from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.entities.knowledge_entities import (
     DocumentMetadataOperation,
     MetadataArgs,

@@ -3,7 +3,7 @@ from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 from unittest.mock import create_autospec, patch
 
 import pytest
@@ -36,12 +36,13 @@ from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUpl
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.knowledge.dataset_access import DatasetAccessService
 from services.knowledge.dataset_service import SegmentService
+from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.entities.segments import ChildChunkUpdateArgs, SegmentUpdateArgs
-from services.knowledge.resource_scope import DatasetRef
 from services.knowledge.segments.adapters import (
     CelerySegmentBatchImportDispatcher,
     ModelManagerSegmentGuard,
     RedisSegmentIndexingState,
+    SegmentPresentationAdapter,
 )
 from services.knowledge.segments.application import (
     DatasetSegmentApplicationService,
@@ -270,6 +271,7 @@ def _application(
     state = create_autospec(SegmentIndexingState, instance=True, spec_set=True)
     state.is_segment_indexing.return_value = False
     state.is_document_indexing.return_value = False
+    segments = SQLAlchemySegmentRepository(session_factory=factory)
     return DatasetSegmentApplicationService(
         dataset_access=DatasetAccessService(
             datasets=datasets,
@@ -277,7 +279,8 @@ def _application(
             legacy_permissions_enabled=False,
         ),
         scopes=datasets,
-        store=SQLAlchemySegmentRepository(session_factory=factory),
+        store=segments,
+        presenter=SegmentPresentationAdapter(),
         limits=SegmentLimitsStub(),
         text_hash=generate_text_hash,
         index=indexing or index,
@@ -320,7 +323,7 @@ def test_mutations_use_request_actor_without_a_flask_request(
         assert segment.status == SegmentStatus.COMPLETED
 
 
-def test_list_reads_dataset_and_document_once(sqlite_session_factory: sessionmaker[Session]) -> None:
+def test_list_loads_dataset_and_document_records_once(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
         session.add(_document("document-1", "workspace-1", "dataset-1"))
@@ -341,8 +344,11 @@ def test_list_reads_dataset_and_document_once(sqlite_session_factory: sessionmak
     finally:
         event.remove(engine, "before_cursor_execute", record)
     assert page.items == ()
-    assert sum("FROM datasets" in statement for statement in statements) == 1
-    assert sum("JOIN documents" in statement or "FROM documents" in statement for statement in statements) == 1
+    owner_reads = [statement for statement in statements if "FROM datasets" in statement]
+    assert len(owner_reads) == 1
+    assert "JOIN documents" in owner_reads[0]
+    # The page and its count validate ownership in SQL without loading the owner records again.
+    assert len(statements) == 3
 
 
 @pytest.mark.parametrize(
@@ -597,7 +603,10 @@ def segment_update(
         ref = DatasetRef(context.active_workspace_id, dataset_id).document(document_id).segment(segment_id)
         detail = repository.get_segment(ref)
         assert detail is not None
-        return detail
+        return SegmentDetail(
+            data=SegmentPresentationAdapter().present((detail.data,))[0],
+            doc_form=detail.doc_form,
+        )
 
     return update
 
@@ -1813,3 +1822,159 @@ def test_batch_parent_child_index_uses_shared_splitter_without_open_transactions
         assert children is not None
         assert len(children) == 1
         assert children[0].data.content == segment_id
+
+
+@pytest.mark.parametrize("entry", ["detail", "list"])
+@pytest.mark.parametrize("delete_after_read", [False, True])
+def test_segment_presentation_signs_after_repository_connections_are_released(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    entry: str,
+    delete_after_read: bool,
+) -> None:
+    from uuid import uuid4
+
+    from repositories.knowledge import segment_read_adapter
+
+    file_id = str(uuid4())
+    with sqlite_session_factory.begin() as session:
+        segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
+        segment.content = f"![image](/files/{file_id}/image-preview?sign=old)"
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1"),
+                _document("document-1", "workspace-1", "dataset-1"),
+                segment,
+                _upload(file_id, "workspace-1", "image.png"),
+                SegmentAttachmentBinding(
+                    tenant_id="workspace-1",
+                    dataset_id="dataset-1",
+                    document_id="document-1",
+                    segment_id="segment-1",
+                    attachment_id=file_id,
+                ),
+            ]
+        )
+    engine = sqlite_session_factory.kw["bind"]
+    active: set[object] = set()
+    signed: list[str] = []
+    statements: list[str] = []
+    original_sign = segment_read_adapter._sign_upload_file_uri
+
+    def checkout(_connection: object, record: object, _proxy: object) -> None:
+        active.add(record)
+
+    def checkin(_connection: object, record: object) -> None:
+        active.discard(record)
+
+    def sign(upload_file_id: str, *, preview_kind: Literal["image", "file"] = "file") -> str:
+        assert not active
+        signed.append(upload_file_id)
+        return original_sign(upload_file_id, preview_kind=preview_kind)
+
+    def executed(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        statements.append(statement)
+
+    monkeypatch.setattr(segment_read_adapter, "_sign_upload_file_uri", sign)
+    event.listen(engine, "checkout", checkout)
+    event.listen(engine, "checkin", checkin)
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    try:
+        if entry == "detail":
+            detail = repository.get_segment(ref.segment("segment-1"))
+            assert detail is not None
+            snapshots = (detail.data,)
+        else:
+            snapshots = repository.list_segments(ref, SegmentListFilter()).items
+        assert not signed
+        assert not active
+        assert "sign_content" not in snapshots[0].values
+        assert not hasattr(snapshots[0].attachments[0], "source_url")
+        if delete_after_read:
+            with sqlite_session_factory.begin() as session:
+                session.delete(session.get(DocumentSegment, "segment-1"))
+        event.listen(engine, "before_cursor_execute", executed)
+        records = SegmentPresentationAdapter().present(snapshots)
+        assert not active
+        assert not statements
+    finally:
+        if event.contains(engine, "before_cursor_execute", executed):
+            event.remove(engine, "before_cursor_execute", executed)
+        event.remove(engine, "checkout", checkout)
+        event.remove(engine, "checkin", checkin)
+    assert signed == [file_id, file_id]
+    assert "sign=old" not in records[0].sign_content
+    assert "?timestamp=" in records[0].sign_content
+    assert "?timestamp=" in records[0].attachments[0].source_url
+
+
+def test_segment_list_batches_content_file_authorization(sqlite_session_factory: sessionmaker[Session]) -> None:
+    from uuid import uuid4
+
+    file_ids = [str(uuid4()) for _ in range(100)]
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), _document("document-1", "workspace-1", "dataset-1")])
+        for index, file_id in enumerate(file_ids):
+            segment = _segment(f"segment-{index}", "workspace-1", "dataset-1", "document-1")
+            segment.position = index
+            session.add_all([segment, _upload(file_id, "workspace-1", "image.png")])
+
+    engine = sqlite_session_factory.kw["bind"]
+    statements: list[str] = []
+
+    def executed(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
+        if statement.lstrip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    event.listen(engine, "before_cursor_execute", executed)
+    try:
+        repository.list_segments(ref, SegmentListFilter(limit=100))
+        without_links = len(statements)
+        with sqlite_session_factory.begin() as session:
+            for index, file_id in enumerate(file_ids):
+                segment = session.get(DocumentSegment, f"segment-{index}")
+                assert segment is not None
+                segment.content = f"![image](/files/{file_id}/image-preview?sign=old)"
+        statements.clear()
+        page = repository.list_segments(ref, SegmentListFilter(limit=100))
+        with_links = len(statements)
+        records = SegmentPresentationAdapter().present(page.items)
+        assert len(statements) == with_links
+    finally:
+        event.remove(engine, "before_cursor_execute", executed)
+
+    assert with_links == without_links + 1
+    assert len(records) == 100
+    assert all("?timestamp=" in record.sign_content for record in records)
+    assert all(
+        snapshot.file_access.uploads == frozenset([file_ids[index]]) for index, snapshot in enumerate(page.items)
+    )
+
+
+@pytest.mark.parametrize("owner_change", ["dataset_tenant", "document_tenant", "document_dataset", "deleted_document"])
+def test_segment_list_does_not_authorize_rows_with_changed_owners(
+    sqlite_session_factory: sessionmaker[Session], owner_change: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        dataset = _dataset("dataset-1", "workspace-1")
+        document = _document("document-1", "workspace-1", "dataset-1")
+        session.add_all([dataset, document, _segment("segment-1", "workspace-1", "dataset-1", "document-1")])
+        session.flush()
+        if owner_change == "dataset_tenant":
+            dataset.tenant_id = "other-workspace"
+        elif owner_change == "document_tenant":
+            document.tenant_id = "other-workspace"
+        elif owner_change == "document_dataset":
+            document.dataset_id = "other-dataset"
+        else:
+            session.delete(document)
+
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    page = repository.list_segments(ref, SegmentListFilter())
+
+    assert page.items == ()
+    assert page.total == 0

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import cast
 
-from sqlalchemy import String, case, delete, func, literal, or_, select, update
+from sqlalchemy import String, case, delete, func, literal, or_, select, tuple_, update
 from sqlalchemy import cast as sql_cast
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session, sessionmaker
@@ -32,14 +32,32 @@ from models.dataset import (
     SegmentAttachmentBinding,
 )
 from models.enums import IndexingStatus, SegmentStatus, SegmentType, SummaryStatus
-from repositories.knowledge.dataset_read_repository import get_dataset_keyword_table, get_segment_child_chunks
+from models.model import UploadFile
+from repositories.knowledge.dataset_read_repository import (
+    get_content_file_ids,
+    get_dataset_keyword_table,
+    get_segment_attachment_files,
+    get_segment_child_chunks,
+    retrieved_segment_statement,
+    segment_content_file_ids,
+)
 from repositories.knowledge.dataset_repository import _get_dataset
 from repositories.knowledge.document_repository import _get_document, require_indexing_document
 from repositories.knowledge.keyword_table_repository import persist_keyword_table
-from repositories.knowledge.segment_read_adapter import get_segment_attachments, sign_segment_content
-from services.knowledge.entities.segments import ChildChunkRecord, SegmentRecord
+from services.knowledge.entities.hit_testing import (
+    RetrievalAttachmentRecord,
+    RetrievalChildRecord,
+    RetrievalSegmentRecord,
+    RetrievalSnapshot,
+)
+from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef, SegmentRef
+from services.knowledge.entities.segments import (
+    ChildChunkRecord,
+    SegmentAttachmentFile,
+    SegmentFileAccess,
+    SegmentReadSnapshot,
+)
 from services.knowledge.indexing.execution import IndexingDocument
-from services.knowledge.resource_scope import DatasetRef, DocumentRef, SegmentRef
 from services.knowledge.segments.application import (
     ChildChunkListFilter,
     ChildChunkPage,
@@ -57,6 +75,116 @@ class SQLAlchemySegmentRepository:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_retrieval_snapshot(
+        self,
+        ref: DatasetRef,
+        *,
+        node_pairs: Sequence[tuple[str, str]],
+        summary_pairs: Sequence[tuple[str, str]],
+        attachment_pairs: Sequence[tuple[str, str]],
+    ) -> RetrievalSnapshot:
+        if not (node_pairs or summary_pairs or attachment_pairs):
+            return RetrievalSnapshot((), (), (), {})
+        owned_segments = retrieved_segment_statement(tenant_id=ref.tenant_id, dataset_ids=[ref.dataset_id]).where(
+            DocumentSegment.status == SegmentStatus.COMPLETED,
+            Document.indexing_status == "completed",
+        )
+        owned_ids = owned_segments.with_only_columns(DocumentSegment.id)
+        with self._session_factory() as session:
+            children = (
+                session.scalars(
+                    select(ChildChunk)
+                    .join(DocumentSegment, DocumentSegment.id == ChildChunk.segment_id)
+                    .where(
+                        ChildChunk.segment_id.in_(owned_ids),
+                        ChildChunk.tenant_id == ref.tenant_id,
+                        ChildChunk.dataset_id == ref.dataset_id,
+                        ChildChunk.document_id == DocumentSegment.document_id,
+                        tuple_(ChildChunk.document_id, ChildChunk.index_node_id).in_(node_pairs),
+                    )
+                ).all()
+                if node_pairs
+                else []
+            )
+            attachment_rows = (
+                session.execute(
+                    select(SegmentAttachmentBinding, UploadFile)
+                    .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+                    .join(DocumentSegment, DocumentSegment.id == SegmentAttachmentBinding.segment_id)
+                    .where(
+                        SegmentAttachmentBinding.segment_id.in_(owned_ids),
+                        SegmentAttachmentBinding.tenant_id == ref.tenant_id,
+                        SegmentAttachmentBinding.dataset_id == ref.dataset_id,
+                        SegmentAttachmentBinding.document_id == DocumentSegment.document_id,
+                        UploadFile.tenant_id == ref.tenant_id,
+                        tuple_(SegmentAttachmentBinding.document_id, UploadFile.id).in_(attachment_pairs),
+                    )
+                ).all()
+                if attachment_pairs
+                else []
+            )
+            segments = session.scalars(
+                owned_segments.where(
+                    or_(
+                        tuple_(DocumentSegment.document_id, DocumentSegment.index_node_id).in_(node_pairs),
+                        tuple_(DocumentSegment.document_id, DocumentSegment.id).in_(summary_pairs),
+                        DocumentSegment.id.in_([child.segment_id for child in children]),
+                        DocumentSegment.id.in_([binding.segment_id for binding, _ in attachment_rows]),
+                    )
+                )
+            ).all()
+            segment_ids = {segment.id for segment in segments}
+            summary_segment_ids = {segment_id for _, segment_id in summary_pairs} & segment_ids
+            summaries = (
+                session.scalars(
+                    select(DocumentSegmentSummary)
+                    .join(DocumentSegment, DocumentSegment.id == DocumentSegmentSummary.chunk_id)
+                    .where(
+                        DocumentSegmentSummary.chunk_id.in_(summary_segment_ids),
+                        DocumentSegmentSummary.dataset_id == DocumentSegment.dataset_id,
+                        DocumentSegmentSummary.document_id == DocumentSegment.document_id,
+                        DocumentSegmentSummary.enabled.is_(True),
+                        DocumentSegmentSummary.status == SummaryStatus.COMPLETED,
+                    )
+                ).all()
+                if summary_segment_ids
+                else []
+            )
+            return RetrievalSnapshot(
+                segments=tuple(
+                    RetrievalSegmentRecord(segment.id, segment.document_id, segment.index_node_id, asdict(segment))
+                    for segment in segments
+                ),
+                children=tuple(
+                    RetrievalChildRecord(
+                        child.id,
+                        child.segment_id,
+                        child.document_id,
+                        child.index_node_id,
+                        child.content,
+                        child.position,
+                    )
+                    for child in children
+                    if child.segment_id in segment_ids
+                ),
+                attachments=tuple(
+                    RetrievalAttachmentRecord(
+                        binding.segment_id,
+                        binding.document_id,
+                        file.id,
+                        file.name,
+                        file.extension,
+                        file.mime_type,
+                        file.size,
+                    )
+                    for binding, file in attachment_rows
+                    if binding.segment_id in segment_ids
+                ),
+                summaries={
+                    summary.chunk_id: summary.summary_content for summary in summaries if summary.summary_content
+                },
+            )
 
     def clear_for_indexing(self, document: IndexingDocument) -> None:
         ref = document.ref
@@ -157,11 +285,17 @@ class SQLAlchemySegmentRepository:
             DocumentSegment.document_id == ref.document_id,
         )
 
-    def list_segments(self, document_ref: DocumentRef, query: SegmentListFilter) -> SegmentPage:
+    def list_segments(self, document_ref: DocumentRef, query: SegmentListFilter) -> SegmentPage[SegmentReadSnapshot]:
         with self._session_factory() as session:
             statement = (
                 select(DocumentSegment)
+                .join(Document, Document.id == DocumentSegment.document_id)
+                .join(Dataset, Dataset.id == Document.dataset_id)
                 .where(
+                    Dataset.tenant_id == document_ref.dataset.tenant_id,
+                    Dataset.id == DocumentSegment.dataset_id,
+                    Document.tenant_id == DocumentSegment.tenant_id,
+                    Document.dataset_id == DocumentSegment.dataset_id,
                     DocumentSegment.tenant_id == document_ref.dataset.tenant_id,
                     DocumentSegment.dataset_id == document_ref.dataset.dataset_id,
                     DocumentSegment.document_id == document_ref.document_id,
@@ -206,6 +340,7 @@ class SQLAlchemySegmentRepository:
             limit = min(query.limit, 100)
             segments = paginate_query(statement, session=session, page=query.page, per_page=limit, max_per_page=100)
             items = list(segments.items)
+            file_access = _content_file_access(items, session)
             summaries = (
                 {
                     summary.chunk_id: summary
@@ -226,6 +361,7 @@ class SQLAlchemySegmentRepository:
                         segment,
                         summaries[segment.id].summary_content if segment.id in summaries else None,
                         session,
+                        file_access[segment.id],
                     )
                     for segment in items
                 ),
@@ -259,7 +395,7 @@ class SQLAlchemySegmentRepository:
                 limit=limit,
             )
 
-    def get_segment(self, segment_ref: SegmentRef) -> SegmentDetail | None:
+    def get_segment(self, segment_ref: SegmentRef) -> SegmentDetail[SegmentReadSnapshot] | None:
         with self._session_factory() as session:
             segment = _get_segment(session, segment_ref)
             if segment is None:
@@ -620,10 +756,15 @@ def _child_state(child: ChildChunk) -> ChildChunkState:
     )
 
 
-def _detail(session: Session, segment: DocumentSegment, document: Document) -> SegmentDetail:
+def _detail(session: Session, segment: DocumentSegment, document: Document) -> SegmentDetail[SegmentReadSnapshot]:
     summary = _summary(session, segment)
     return SegmentDetail(
-        data=_segment_data(segment, summary.summary_content if summary else None, session),
+        data=_segment_data(
+            segment,
+            summary.summary_content if summary else None,
+            session,
+            _content_file_access((segment,), session)[segment.id],
+        ),
         doc_form=str(document.doc_form),
     )
 
@@ -663,37 +804,37 @@ def _get_child_chunk(session: Session, segment_ref: SegmentRef, child_chunk_id: 
     )
 
 
-def _segment_data(segment: DocumentSegment, summary: str | None, session: Session) -> SegmentRecord:
-    return SegmentRecord.model_validate(
-        {
-            "id": segment.id,
-            "position": segment.position,
-            "document_id": segment.document_id,
-            "content": segment.content,
-            "answer": segment.answer,
-            "word_count": segment.word_count,
-            "tokens": segment.tokens,
-            "keywords": segment.keywords,
-            "index_node_id": segment.index_node_id,
-            "index_node_hash": segment.index_node_hash,
-            "hit_count": segment.hit_count,
-            "enabled": segment.enabled,
-            "disabled_at": segment.disabled_at,
-            "disabled_by": segment.disabled_by,
-            "status": segment.status,
-            "created_by": segment.created_by,
-            "created_at": segment.created_at,
-            "updated_at": segment.updated_at,
-            "updated_by": segment.updated_by,
-            "indexing_at": segment.indexing_at,
-            "completed_at": segment.completed_at,
-            "error": segment.error,
-            "stopped_at": segment.stopped_at,
-            "sign_content": sign_segment_content(segment, session=session),
-            "summary": summary,
-            "child_chunks": get_segment_child_chunks(segment, session=session, include_full_doc=False),
-            "attachments": get_segment_attachments(segment, session=session),
-        }
+def _content_file_access(segments: Sequence[DocumentSegment], session: Session) -> dict[str, SegmentFileAccess]:
+    """Materialize file access for already scoped rows within their original read transaction."""
+    if not segments:
+        return {}
+    references = {segment.id: segment_content_file_ids(segment.content) for segment in segments}
+    upload_ids = {file_id for uploads, _ in references.values() for file_id in uploads}
+    tool_ids = {file_id for _, tools in references.values() for file_id in tools}
+    uploads, tools = get_content_file_ids(
+        segments[0].tenant_id, upload_ids=upload_ids, tool_ids=tool_ids, session=session
+    )
+    return {
+        segment_id: SegmentFileAccess(frozenset(upload_ids & uploads), frozenset(tool_ids & tools))
+        for segment_id, (upload_ids, tool_ids) in references.items()
+    }
+
+
+def _segment_data(
+    segment: DocumentSegment, summary: str | None, session: Session, file_access: SegmentFileAccess
+) -> SegmentReadSnapshot:
+    return SegmentReadSnapshot(
+        values=asdict(segment),
+        summary=summary,
+        file_access=file_access,
+        child_chunks=tuple(
+            ChildChunkRecord.model_validate(child)
+            for child in get_segment_child_chunks(segment, session=session, include_full_doc=False)
+        ),
+        attachments=tuple(
+            SegmentAttachmentFile(file.id, file.name, file.size, file.extension, file.mime_type)
+            for file in get_segment_attachment_files(segment, session=session)
+        ),
     )
 
 

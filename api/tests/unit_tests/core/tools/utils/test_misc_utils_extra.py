@@ -230,8 +230,8 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
         return_value=metadata_filter_result,
     ):
         with patch.object(
-            single_retriever_module.ExternalDatasetService,
-            "fetch_external_knowledge_retrieval",
+            single_retriever_module.RetrievalService,
+            "external_retrieve",
             return_value=external_documents,
         ) as fetch_mock:
             result = tool.run(session=sqlite_session, query="hello")
@@ -243,7 +243,7 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].dataset_id == dataset.id
     fetch_mock.assert_called_once()
-    assert fetch_mock.call_args.kwargs["session"] is sqlite_session
+    assert fetch_mock.call_args.args[:3] == (sqlite_session, dataset.id, "hello")
 
 
 def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_documents(

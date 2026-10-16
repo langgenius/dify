@@ -67,6 +67,10 @@ def _stream_with_request_context(response: object) -> Any:
     return cast(Any, stream_with_context)(response)
 
 
+def escape_query_for_search(query: str) -> str:
+    return query.replace('"', '\\"')
+
+
 def escape_like_pattern(pattern: str) -> str:
     """
     Escape special characters in a string for safe use in SQL LIKE patterns.
