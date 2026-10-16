@@ -788,15 +788,14 @@ class TestPluginFetchDynamicSelectOptionsApi:
     def test_forwards_parameter_values(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsApi()
         method = unwrap(api.get)
-        service = MagicMock(return_value=[_dynamic_option()])
         raw = '{"region":"us"}'
 
         with (
             app.test_request_context("/"),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options",
-                service,
-            ),
+                return_value=[_dynamic_option()],
+            ) as service,
         ):
             result = method(
                 api,
@@ -886,7 +885,6 @@ class TestPluginFetchDynamicTreeSelectOptionsApi:
     def test_forwards_parameter_values(self, app, user):
         api = PluginFetchDynamicTreeSelectOptionsApi()
         method = unwrap(api.get)
-        service = MagicMock(return_value=[])
         raw = '{"region":"us"}'
 
         with (
@@ -894,8 +892,8 @@ class TestPluginFetchDynamicTreeSelectOptionsApi:
             patch("controllers.console.workspace.plugin.current_account_with_tenant", return_value=(user, "t1")),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_tree_select_options",
-                service,
-            ),
+                return_value=[],
+            ) as service,
         ):
             result = method(api)
 
@@ -1489,7 +1487,6 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
     def test_forwards_parameter_values(self, app: Flask, user):
         api = PluginFetchDynamicSelectOptionsWithCredentialsApi()
         method = unwrap(api.post)
-        service = MagicMock(return_value=[_dynamic_option()])
         payload = {
             "plugin_id": "p",
             "provider": "x",
@@ -1504,8 +1501,8 @@ class TestPluginFetchDynamicSelectOptionsWithCredentialsApi:
             app.test_request_context("/", json=payload),
             patch(
                 "controllers.console.workspace.plugin.PluginParameterService.get_dynamic_select_options_with_credentials",
-                service,
-            ),
+                return_value=[_dynamic_option()],
+            ) as service,
         ):
             result = method(api, ParserDynamicOptionsWithCredentials.model_validate(payload), "t1", user)
 

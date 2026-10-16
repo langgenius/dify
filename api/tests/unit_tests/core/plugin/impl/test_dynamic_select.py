@@ -26,7 +26,7 @@ def _fetch(
 
 def test_fetch_dynamic_select_options_includes_parameter_values(mocker: MockerFixture) -> None:
     client = DynamicSelectClient()
-    response = mocker.Mock()
+    response = PluginDynamicSelectOptionsResponse(options=[])
     stream = mocker.patch.object(
         client,
         "_request_with_plugin_daemon_response_stream",
@@ -47,7 +47,7 @@ def test_fetch_dynamic_select_options_omits_empty_parameter_values(mocker: Mocke
     stream = mocker.patch.object(
         client,
         "_request_with_plugin_daemon_response_stream",
-        return_value=iter([mocker.Mock()]),
+        return_value=iter([PluginDynamicSelectOptionsResponse(options=[])]),
     )
 
     _fetch(client, parameter_values={})
