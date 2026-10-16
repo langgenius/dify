@@ -9,6 +9,7 @@ trusted. No factory activation or production producer is supplied here.
 import base64
 import json
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Protocol
@@ -24,7 +25,6 @@ from libs.sensitive_http_telemetry import (
     sensitive_http_telemetry,
 )
 from services.dify_builder.execution_contracts import canonical_json
-from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.contracts import DispatchPermit, EffectIntent, JsonValue, NativeTestContextRef
 from services.dify_builder.native_testing.control import NativePolicyStop
 
@@ -88,6 +88,18 @@ class PreparedHttpRequest:
 class PreparedHttpBinding:
     request: PreparedHttpRequest = field(repr=False)
     intent: EffectIntent = field(repr=False)
+
+
+class ScalarCallPort(Protocol):
+    """Trusted scalar owner with the existing per-operation dispatch contract."""
+
+    def call(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        intent: EffectIntent,
+        dispatch: Callable[[DispatchPermit], JsonValue],
+    ) -> JsonValue: ...
 
 
 class NativeHttpIntentPort(Protocol):
@@ -193,7 +205,7 @@ class NativeHttpClient:
         self,
         *,
         ref: NativeTestContextRef,
-        calls: NativeCallAdapter,
+        calls: ScalarCallPort,
         intents: NativeHttpIntentPort,
         max_redirect_hops: int,
         max_response_bytes: int,

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 from importlib.metadata import version
-from typing import TYPE_CHECKING, Any, Literal, NoReturn
+from typing import TYPE_CHECKING, Any, Literal, NoReturn, Protocol
 
 import httpx
 from sqlalchemy import select
@@ -31,14 +31,19 @@ from models.dify_builder_native_tests import (
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest, canonical_json
 from services.dify_builder.execution_policy_service import check_execution_permission
 from services.dify_builder.native_testing.approval_contracts import NativeApprovalProposal, NativeApprovalTerms
-from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
+from services.dify_builder.native_testing.call_adapter import ScalarAuthorizationPort
 from services.dify_builder.native_testing.context_binding import NativeRuntimeProfile
 from services.dify_builder.native_testing.contracts import (
     EffectIntent,
     OperationKey,
     operation_digest,
 )
-from services.dify_builder.native_testing.http_adapter import NativeHttpClient, PreparedHttpBinding, PreparedHttpRequest
+from services.dify_builder.native_testing.http_adapter import (
+    NativeHttpClient,
+    PreparedHttpBinding,
+    PreparedHttpRequest,
+    ScalarCallPort,
+)
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal, OperationCursor
 from services.dify_builder.native_testing.private_reads import (
     PrivateReadOwner,
@@ -47,10 +52,11 @@ from services.dify_builder.native_testing.private_reads import (
 )
 from services.dify_builder.native_testing.public_contracts import PendingActionDisclosure
 from services.dify_builder.native_testing.repository import NativeBinding, OwnedNativeTest, native_workflow_revision
-from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
+from services.dify_builder.native_testing.runtime_contracts import NativeStatePort, ResolvedNativeTestContext
 from services.dify_builder.native_testing.transitions import require_ancestor_authority
 
 if TYPE_CHECKING:
+    from graphon.http import HttpResponse
     from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
     from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
     from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
@@ -588,11 +594,58 @@ class NativeHttpBindingProducer:
         self._cursor.finish()
 
 
-class DeferredNativeHttpClient:
-    """Defer all private work until real native entry, then reuse scalar/HTTP owners."""
+class NativeHttpCallsFactory(Protocol):
+    """Trusted server composition of the scalar owner; no added authority."""
 
-    def __init__(self, *, producer: NativeHttpBindingProducer, authorization):
+    def __call__(
+        self,
+        *,
+        state: NativeStatePort,
+        authorization: ScalarAuthorizationPort,
+        journal: NodeOperationJournal,
+        max_result_bytes: int,
+    ) -> ScalarCallPort: ...
+
+
+class NativeHttpPreparedObserver(Protocol):
+    """Acknowledge the exact prepared binding before scalar authorization."""
+
+    def __call__(self, *, binding: PreparedHttpBinding) -> None: ...
+
+
+class _ObservedHttpIntents:
+    """Observe the actual producer result once without taking preparation ownership."""
+
+    def __init__(self, *, producer: NativeHttpBindingProducer, on_prepared: NativeHttpPreparedObserver) -> None:
+        self._producer, self._on_prepared = producer, on_prepared
+
+    def prepare(
+        self, *, request: PreparedHttpRequest, hop: int, previous_response: HttpResponse | None
+    ) -> PreparedHttpBinding:
+        binding = self._producer.prepare(request=request, hop=hop, previous_response=previous_response)
+        if self._on_prepared(binding=binding) is not None:
+            raise ValueError("native_http_preparation_not_acknowledged")
+        return binding
+
+
+class DeferredNativeHttpClient:
+    """Defer private work until native entry, using required trusted host seams.
+
+    The factory and preparation observer are internal server composition. The
+    observer closes over the delivery ref when registering the exact binding
+    with its host; neither collaborator is client-provided approval authority.
+    """
+
+    def __init__(
+        self,
+        *,
+        producer: NativeHttpBindingProducer,
+        authorization: ScalarAuthorizationPort,
+        calls_factory: NativeHttpCallsFactory,
+        on_prepared: NativeHttpPreparedObserver,
+    ) -> None:
         self._producer, self._authorization = producer, authorization
+        self._calls_factory, self._on_prepared = calls_factory, on_prepared
 
     @property
     def request_error(self):
@@ -609,16 +662,25 @@ class DeferredNativeHttpClient:
     def _call(self, method: str, url: str, max_retries: int, kwargs: dict):
         self._producer.begin()
         policy = http_policy()
-        calls = NativeCallAdapter(
-            state=self._producer.store,
-            authorization=self._authorization,
-            journal=self._producer.journal,
-            max_result_bytes=policy["max_result_bytes"],
-        )
+        try:
+            calls = self._calls_factory(
+                state=self._producer.store,
+                authorization=self._authorization,
+                journal=self._producer.journal,
+                max_result_bytes=policy["max_result_bytes"],
+            )
+            if not callable(calls.call):
+                raise ValueError("native_http_calls_invalid")
+        except Exception:
+            from services.dify_builder.native_testing.control import NativePolicyStop
+
+            raise NativePolicyStop(
+                ref=self._producer.association.ref, reason_code="native_http_calls_unavailable"
+            ) from None
         client = NativeHttpClient(
             ref=self._producer.association.ref,
             calls=calls,
-            intents=self._producer,
+            intents=_ObservedHttpIntents(producer=self._producer, on_prepared=self._on_prepared),
             max_redirect_hops=policy["max_redirect_hops"],
             max_response_bytes=policy["max_response_bytes"],
         )

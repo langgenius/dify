@@ -285,7 +285,18 @@ def physical_http(concrete_case, monkeypatch):
     lower = httpx.Client(transport=httpx.MockTransport(transport))
     monkeypatch.setattr(ssrf_proxy, "_get_ssrf_client", lambda _verify: lower)
     monkeypatch.setattr(ssrf_proxy, "_inject_trace_headers", lambda headers: headers)
-    c.client = c.m.DeferredNativeHttpClient(producer=c.producer, authorization=c.auth)
+    # C02/C03 ports plus actual node/Executor/journal and offline MockTransport.
+    c.prepared = []
+
+    def on_prepared(*, binding):
+        c.prepared.append(binding)
+
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer,
+        authorization=c.auth,
+        calls_factory=NativeCallAdapter,
+        on_prepared=on_prepared,
+    )
     c.sent = sent
     yield c
     lower.close()
@@ -601,3 +612,179 @@ def test_identical_request_native_occurrences_have_independent_http_confirmation
     ]
     assert _scope_digest(first, classified[0]) != _scope_digest(repeated, classified[1])
     assert classified[0].approval_scope == classified[1].approval_scope == "operation"
+
+
+def test_host_seams_use_exact_factory_owners_and_actual_prepared_binding(physical_http, monkeypatch):
+    c = physical_http
+    created, produced, observed, called = [], [], [], []
+    prepare = c.producer.prepare
+
+    def actual_prepare(**kwargs):
+        binding = prepare(**kwargs)
+        produced.append(binding)
+        return binding
+
+    monkeypatch.setattr(c.producer, "prepare", actual_prepare)
+
+    def factory(**kwargs):
+        created.append(kwargs)
+        adapter = NativeCallAdapter(**kwargs)
+
+        class Calls:
+            def call(self, *, ref, intent, dispatch):
+                assert observed == [produced[0]]
+                assert not any(e[0] in {"authorize", "claim"} for e in c.events)
+                called.append((ref, intent))
+                return adapter.call(ref=ref, intent=intent, dispatch=dispatch)
+
+        return Calls()
+
+    def observe(*, binding):
+        assert binding is produced[0]
+        assert not any(e[0] in {"authorize", "claim"} for e in c.events)
+        assert c.sent == []
+        observed.append(binding)
+
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer, authorization=c.auth, calls_factory=factory, on_prepared=observe
+    )
+    assert invoke_native_executor(c).text == '{"ok":true}'
+    assert len(created) == len(produced) == len(observed) == len(called) == len(c.sent) == 1
+    assert set(created[0]) == {"state", "authorization", "journal", "max_result_bytes"}
+    assert created[0]["state"] is c.state
+    assert created[0]["authorization"] is c.auth
+    assert created[0]["journal"] is c.journal
+    assert created[0]["max_result_bytes"] == 8388608
+    assert called[0][0] == c.association.ref
+    assert called[0][1] == observed[0].intent
+    assert observed[0].request.content == c.sent[0].content
+    assert observed[0].request.timeout == tuple(observed[0].request.arguments()["timeout"])
+    assert all(value > 0 for value in observed[0].request.timeout)
+
+
+@pytest.mark.parametrize("ack", [False, True, 0, "accepted", object()], ids=["false", "true", "zero", "text", "object"])
+def test_host_seams_prepared_observer_requires_actual_none(physical_http, ack):
+    from services.dify_builder.native_testing.control import NativePolicyStop
+
+    c = physical_http
+    seen = []
+
+    def observe(*, binding):
+        seen.append(binding)
+        return ack
+
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=observe
+    )
+    with pytest.raises(NativePolicyStop) as stopped:
+        invoke_native_executor(c)
+    assert stopped.value.reason_code == "native_http_attestation_invalid"
+    assert len(seen) == 1
+    assert not any(e[0] in {"authorize", "claim"} for e in c.events)
+    assert c.sent == []
+
+
+def test_host_seams_observer_exception_refuses_before_scalar_authority(physical_http):
+    from services.dify_builder.native_testing.control import NativePolicyStop
+
+    c = physical_http
+
+    def observe(*, binding):
+        assert type(binding) is c.m.PreparedHttpBinding
+        raise RuntimeError("SENTINEL")
+
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=observe
+    )
+    with pytest.raises(NativePolicyStop) as stopped:
+        invoke_native_executor(c)
+    assert stopped.value.reason_code == "native_http_attestation_invalid"
+    assert "SENTINEL" not in str(stopped.value)
+    assert not any(e[0] in {"authorize", "claim"} for e in c.events)
+    assert c.sent == []
+
+
+@pytest.mark.parametrize("malformed", [None, object(), SimpleNamespace(call=None)], ids=["none", "object", "no-call"])
+def test_host_seams_invalid_factory_owner_has_no_fallback(physical_http, malformed):
+    from services.dify_builder.native_testing.control import NativePolicyStop
+
+    c = physical_http
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer,
+        authorization=c.auth,
+        calls_factory=lambda **_kwargs: malformed,
+        on_prepared=lambda **_kwargs: pytest.fail("invalid calls reached preparation"),
+    )
+    with pytest.raises(NativePolicyStop) as stopped:
+        invoke_native_executor(c)
+    assert stopped.value.reason_code == "native_http_calls_unavailable"
+    assert not any(e[0] in {"input_ack", "authorize", "claim"} for e in c.events)
+    assert c.sent == []
+
+
+def test_host_seams_factory_exception_has_no_fallback(physical_http):
+    from services.dify_builder.native_testing.control import NativePolicyStop
+
+    c = physical_http
+
+    def factory(**_kwargs):
+        raise RuntimeError("SENTINEL")
+
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer, authorization=c.auth, calls_factory=factory, on_prepared=lambda **_kwargs: None
+    )
+    with pytest.raises(NativePolicyStop) as stopped:
+        invoke_native_executor(c)
+    assert stopped.value.reason_code == "native_http_calls_unavailable"
+    assert "SENTINEL" not in str(stopped.value)
+    assert not any(e[0] in {"input_ack", "authorize", "claim"} for e in c.events)
+    assert c.sent == []
+
+
+@pytest.mark.parametrize("boundary", ["factory", "observer"])
+@pytest.mark.parametrize("category", ["wait", "stop"])
+def test_host_seams_preserve_typed_controls(physical_http, boundary, category):
+    from services.dify_builder.native_testing.control import NativeApprovalWait, NativePolicyStop
+
+    c = physical_http
+    control = (
+        NativeApprovalWait(ref=c.association.ref, pending_operation_id="pending", wait_reason="approval")
+        if category == "wait"
+        else NativePolicyStop(ref=c.association.ref, reason_code="native_generation_conflict")
+    )
+
+    def refuse(**_kwargs):
+        raise control
+
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer,
+        authorization=c.auth,
+        calls_factory=refuse if boundary == "factory" else NativeCallAdapter,
+        on_prepared=refuse if boundary == "observer" else lambda **_kwargs: None,
+    )
+    with pytest.raises(type(control)) as stopped:
+        invoke_native_executor(c)
+    assert stopped.value is control
+    assert not any(e[0] in {"authorize", "claim"} for e in c.events)
+    assert c.sent == []
+
+
+def test_host_seams_observer_refusal_blocks_actual_preparation_before_authority(concrete_case):
+    from services.dify_builder.native_testing.control import NativePolicyStop
+
+    c = concrete_case
+    c.node.bind_execution_id(c.uuid)
+    observed = []
+
+    def observe(*, binding):
+        observed.append(binding)
+        raise RuntimeError("SENTINEL")
+
+    c.client = c.m.DeferredNativeHttpClient(
+        producer=c.producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=observe
+    )
+    with pytest.raises(NativePolicyStop) as stopped:
+        invoke_native_executor(c)
+    assert stopped.value.reason_code == "native_http_attestation_invalid"
+    assert len(observed) == 1
+    assert not any(e[0] in {"authorize", "claim"} for e in c.events)
