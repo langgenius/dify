@@ -41,6 +41,7 @@ import { retrievalRuntimeBridgeAtom } from './state/runtime'
 import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
+  retrievalComposerUploadPendingAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
   retrievalRecordImagesAtom,
@@ -105,11 +106,11 @@ export function RetrievalRuntimeController() {
   const retainedImages = useAtomValueRawSync(retrievalRetainedImagesAtom)
   const mode = useAtomValueRawSync(retrievalComposerModeAtom)
   const localRun = useAtomValueRawSync(retrievalLocalRunAtom)
+  const composerUploadPending = useAtomValueRawSync(retrievalComposerUploadPendingAtom)
   const selected = useAtomValueRawSync(retrievalSelectedAtom)
   const selectedResearchTask = useAtomValueRawSync(retrievalSelectedResearchTaskAtom)
-  const { refetchResearchPartials, refetchResearchTasks, refetchTraces } = useAtomValueRawSync(
-    retrievalRuntimeQueryFactsAtom,
-  )
+  const { refetchResearchDetail, refetchResearchPartials, refetchResearchTasks, refetchTraces } =
+    useAtomValueRawSync(retrievalRuntimeQueryFactsAtom)
   const setRuntimeBridge = useSetAtom(retrievalRuntimeBridgeAtom)
   const setComposerDraft = useSetAtom(retrievalComposerDraftAtom)
   const setLocalRun = useSetAtom(retrievalLocalRunAtom)
@@ -145,6 +146,11 @@ export function RetrievalRuntimeController() {
   }, [])
 
   const isSelectedResearchActive = useEffectEvent(() => selectedResearchActive)
+  // A selected task outside the loaded history pages is not in the admitted or listed tasks, so
+  // only its detail query learns that the stream reached a terminal stage.
+  const refreshTerminalResearch = useEffectEvent(() =>
+    Promise.all([refetchResearchTasks(), refetchResearchPartials(), refetchResearchDetail?.()]),
+  )
 
   // Preview URLs are object URLs. Release one only once neither the composer nor any run in
   // this session references it any more, and release everything when the page goes away.
@@ -236,7 +242,7 @@ export function RetrievalRuntimeController() {
               if (!terminal || !isSelectedResearchActive()) return
               if (event.stage === 'completed')
                 refreshedTerminalPartialsTaskIdRef.current = selectedResearchTaskId
-              void Promise.all([refetchResearchTasks(), refetchResearchPartials()])
+              void refreshTerminalResearch()
             },
             signal: controller.signal,
           })
@@ -244,7 +250,7 @@ export function RetrievalRuntimeController() {
           cursor = stream.cursor
         }
       } catch {
-        // Task polling remains the fallback when capability streaming is unavailable.
+        // Task list and detail polling remain the fallback when capability streaming is unavailable.
       }
     })()
     return () => controller.abort()
@@ -487,14 +493,30 @@ export function RetrievalRuntimeController() {
   )
 
   const run = useCallback(() => {
-    if (!canQuery || selectedResearchActive || localRun?.status === 'running') return
+    // Images still uploading would be silently left out of the run, whichever control started it.
+    if (
+      !canQuery ||
+      composerUploadPending ||
+      selectedResearchActive ||
+      localRun?.status === 'running'
+    )
+      return
     if (mode === 'research') void startResearch()
     else void runFastQuery()
-  }, [canQuery, localRun?.status, mode, runFastQuery, selectedResearchActive, startResearch])
+  }, [
+    canQuery,
+    composerUploadPending,
+    localRun?.status,
+    mode,
+    runFastQuery,
+    selectedResearchActive,
+    startResearch,
+  ])
 
   const retry = useCallback(async () => {
     if (
       !canQuery ||
+      composerUploadPending ||
       runInFlightRef.current ||
       selectedResearchActive ||
       localRun?.status === 'running'
@@ -516,6 +538,7 @@ export function RetrievalRuntimeController() {
     else void runFastQuery()
   }, [
     canQuery,
+    composerUploadPending,
     localRun?.status,
     mode,
     runFastQuery,

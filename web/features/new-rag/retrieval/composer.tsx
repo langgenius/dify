@@ -13,12 +13,14 @@ import { consoleQuery } from '@/service/console'
 import { RetrievalModeSegmentedControl } from '../components/retrieval-mode-segmented-control'
 import { QueryImageThumbnail } from './query-image-thumbnail'
 import {
+  commitRetrievalComposerUploadAtom,
   retrievalComposerFactsAtom,
   updateRetrievalComposerImagesAtom,
   updateRetrievalComposerModeAtom,
   updateRetrievalComposerQueryAtom,
 } from './state/graph'
 import { runRetrievalAtom } from './state/runtime'
+import { retrievalComposerUploadPendingAtom } from './state/scoped'
 
 const runRetrievalHotkey = 'Mod+Enter' satisfies Hotkey
 const queryImageMaxBytes = 10 * 1024 * 1024
@@ -27,18 +29,20 @@ const queryImageTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/
 
 export function RetrievalComposer() {
   const { t } = useTranslation(['knowledgeRetrieval', 'knowledgeSpace'])
-  const { disabled, images, mode, query, runnable } = useAtomValueRawSync(
+  const { disabled, images, mode, query, runnable, selectionKey, uploading } = useAtomValueRawSync(
     retrievalComposerFactsAtom,
   )
   const updateQuery = useSetAtom(updateRetrievalComposerQueryAtom)
   const updateMode = useSetAtom(updateRetrievalComposerModeAtom)
   const updateImages = useSetAtom(updateRetrievalComposerImagesAtom)
+  const commitUpload = useSetAtom(commitRetrievalComposerUploadAtom)
+  const setUploading = useSetAtom(retrievalComposerUploadPendingAtom)
   const run = useSetAtom(runRetrievalAtom)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const upload = useMutation(consoleQuery.files.upload.post.mutationOptions())
 
   const selectImages = async (files: FileList | null) => {
-    if (!files?.length || disabled || upload.isPending) return
+    if (!files?.length || disabled || uploading) return
     const available = Math.max(0, 4 - images.length)
     const candidates = [...files].slice(0, available)
     if (candidates.length < files.length)
@@ -55,24 +59,19 @@ export function RetrievalComposer() {
     })
     if (accepted.length !== candidates.length)
       toast.error(t(($) => $['retrievalTest.imageInvalid'], { ns: 'knowledgeRetrieval' }))
-    const next = [...images]
+    // Preview URLs are only created once the result is known to belong to this record.
+    const uploaded: Array<{ file: File; uploadFileId: string }> = []
+    setUploading(true)
     try {
       for (const file of accepted) {
-        const uploaded = await upload.mutateAsync({ body: { file } })
-        next.push({
-          name: file.name,
-          previewUrl: URL.createObjectURL(file),
-          sizeBytes: file.size,
-          uploadFileId: uploaded.id,
-        })
+        const result = await upload.mutateAsync({ body: { file } })
+        uploaded.push({ file, uploadFileId: result.id })
       }
-      updateImages(next)
+      commitUpload({ baseImages: images, selectionKey, uploaded })
     } catch {
-      for (const image of next.slice(images.length)) {
-        if (image.previewUrl) URL.revokeObjectURL(image.previewUrl)
-      }
       toast.error(t(($) => $['retrievalTest.imageUploadFailed'], { ns: 'knowledgeRetrieval' }))
     } finally {
+      setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -118,7 +117,7 @@ export function RetrievalComposer() {
                     name: image.name,
                   })}
                   className="absolute -top-1 -right-1 shadow-xs"
-                  disabled={disabled || upload.isPending}
+                  disabled={disabled || uploading}
                   onClick={() => removeImage(image.uploadFileId)}
                 >
                   <span aria-hidden className="i-ri-close-line size-3.5" />
@@ -141,25 +140,20 @@ export function RetrievalComposer() {
               aria-label={t(($) => $['retrievalTest.addImages'], { ns: 'knowledgeRetrieval' })}
               accept="image/gif,image/jpeg,image/png,image/webp"
               className="sr-only"
-              disabled={disabled || upload.isPending || images.length >= 4}
+              disabled={disabled || uploading || images.length >= 4}
               multiple
               type="file"
               onChange={(event) => void selectImages(event.target.files)}
             />
             <Button
               variant="secondary"
-              disabled={disabled || upload.isPending || images.length >= 4}
+              disabled={disabled || uploading || images.length >= 4}
               onClick={() => fileInputRef.current?.click()}
             >
               <span aria-hidden className="i-ri-image-add-line size-4" />
               {t(($) => $['retrievalTest.addImages'], { ns: 'knowledgeRetrieval' })}
             </Button>
-            <Button
-              variant="primary"
-              className="px-3.25"
-              disabled={!runnable || upload.isPending}
-              onClick={run}
-            >
+            <Button variant="primary" className="px-3.25" disabled={!runnable} onClick={run}>
               <span aria-hidden className="i-ri-play-circle-line size-4" />
               {t(($) => $['retrievalTest.run'], { ns: 'knowledgeRetrieval' })}
             </Button>

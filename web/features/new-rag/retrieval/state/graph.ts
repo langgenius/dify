@@ -24,6 +24,7 @@ import {
   retrievalAdmittedResearchTasksAtom,
   retrievalComposerDraftAtom,
   retrievalComposerImagesAtom,
+  retrievalComposerUploadPendingAtom,
   retrievalHistorySourceFilterAtom,
   retrievalLocalRunAtom,
   retrievalLocalSelectedAtom,
@@ -187,6 +188,9 @@ const researchDetailQueryAtom = atomWithQuery((get) => {
   const selected = get(retrievalSelectedAtom)
   const needsDetail = get(needsResearchDetailAtom)
   return consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.get.queryOptions({
+    // A task outside the loaded history pages has no list polling; keep its detail fresh while it
+    // runs so it still settles when the event stream is unavailable.
+    refetchInterval: (current) => (researchTaskIsActive(current.state.data) ? 1000 : false),
     input:
       needsDetail && selected?.kind === 'research'
         ? {
@@ -417,12 +421,17 @@ export const retrievalRetainedImagesAtom = atom((get) => {
   return [...retained.values()]
 })
 
+function selectionKey(selected: { id: string; kind: string } | undefined) {
+  return selected ? `${selected.kind}:${selected.id}` : undefined
+}
+
 export const retrievalComposerFactsAtom = atom((get) => {
   const canQuery = get(retrievalCanQueryAtom)
   const localRun = get(retrievalLocalRunAtom)
   const selectedResearchActive = researchTaskIsActive(get(retrievalSelectedResearchTaskAtom))
   const query = get(retrievalComposerQueryAtom)
   const images = get(retrievalComposerQueryImagesAtom)
+  const uploading = get(retrievalComposerUploadPendingAtom)
   return {
     disabled: !canQuery || selectedResearchActive || localRun?.status === 'running',
     images,
@@ -431,8 +440,11 @@ export const retrievalComposerFactsAtom = atom((get) => {
     runnable:
       (Boolean(query.trim()) || images.length > 0) &&
       canQuery &&
+      !uploading &&
       !selectedResearchActive &&
       localRun?.status !== 'running',
+    selectionKey: selectionKey(get(retrievalSelectedAtom)),
+    uploading,
   }
 })
 
@@ -572,6 +584,42 @@ export const updateRetrievalComposerImagesAtom = atom(
   },
 )
 
+/**
+ * Attaches uploaded images to the composer of the record the upload started on. If the user has
+ * since selected another record or edited that record's images, the result is dropped instead of
+ * landing in the wrong draft.
+ */
+export const commitRetrievalComposerUploadAtom = atom(
+  null,
+  (
+    get,
+    set,
+    upload: {
+      baseImages: RetrievalComposerImage[]
+      selectionKey: string | undefined
+      uploaded: Array<{ file: File; uploadFileId: string }>
+    },
+  ) => {
+    const current = get(retrievalComposerQueryImagesAtom)
+    if (
+      selectionKey(get(retrievalSelectedAtom)) !== upload.selectionKey ||
+      current.length !== upload.baseImages.length ||
+      current.some((image, index) => image.uploadFileId !== upload.baseImages[index]?.uploadFileId)
+    )
+      return false
+    set(updateRetrievalComposerImagesAtom, [
+      ...current,
+      ...upload.uploaded.map(({ file, uploadFileId }) => ({
+        name: file.name,
+        previewUrl: URL.createObjectURL(file),
+        sizeBytes: file.size,
+        uploadFileId,
+      })),
+    ])
+    return true
+  },
+)
+
 export const selectRetrievalRecordAtom = atom(null, (get, set, record: RetrievalTestRecord) => {
   if (record.kind === 'local') {
     set(retrievalLocalSelectedAtom, { id: record.id, kind: record.kind })
@@ -648,6 +696,10 @@ export const loadMoreSelectedRetrievalEvidenceAtom = atom(null, (get) => {
 })
 
 export const retrievalRuntimeQueryFactsAtom = atom((get) => ({
+  // Only a task outside the loaded history pages is read through its detail query.
+  refetchResearchDetail: get(needsResearchDetailAtom)
+    ? get(researchDetailQueryAtom).refetch
+    : undefined,
   refetchResearchPartials: get(researchPartialsQueryAtom).refetch,
   refetchResearchTasks: get(researchTasksQueryAtom).refetch,
   refetchTraces: get(tracesQueryAtom).refetch,
