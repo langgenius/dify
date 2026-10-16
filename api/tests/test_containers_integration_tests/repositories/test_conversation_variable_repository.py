@@ -63,8 +63,16 @@ def test_postgres_filters_text_json_paginates_and_updates_with_row_lock(
                 is_deleted=False,
             )
         )
-        # Keep a nonmatching row between results to exercise filtering during pagination.
-        for index, name in enumerate(("Profile_%\\First", "ProfileXunescaped", "PROFILE_%\\Second")):
+        # Tied timestamps span pages, with a nonmatching row between their storage IDs.
+        # The newer matching row has the smallest ID, so timestamp ordering remains primary.
+        for index, (storage_id, name, seconds) in enumerate(
+            (
+                ("00000000-0000-0000-0000-000000000002", "Profile_%\\First", 0),
+                ("00000000-0000-0000-0000-000000000003", "ProfileXunescaped", 0),
+                ("00000000-0000-0000-0000-000000000004", "PROFILE_%\\Second", 0),
+                ("00000000-0000-0000-0000-000000000001", "Profile_%\\Newest", 1),
+            )
+        ):
             variable = variable_factory.build_conversation_variable_from_mapping(
                 {
                     "id": f"imported-variable-{index}",
@@ -77,10 +85,11 @@ def test_postgres_filters_text_json_paginates_and_updates_with_row_lock(
             row = ConversationVariable.from_variable(
                 app_id=ref.app_id, conversation_id=ref.conversation_id, variable=variable
             )
-            row.created_at = created_at + timedelta(seconds=index)
+            row.id = storage_id
+            row.created_at = created_at + timedelta(seconds=seconds)
             row.updated_at = row.created_at
             rows.append(row)
-            session.add(row)
+        session.add_all(reversed(rows))
 
     repository = ConversationVariableRepository(session_factory=sessions)
     first = repository.get_page(ref=ref, last_id=None, limit=1, variable_name="profile_%\\")
@@ -92,7 +101,14 @@ def test_postgres_filters_text_json_paginates_and_updates_with_row_lock(
 
     second = repository.get_page(ref=ref, last_id=first.data[0].id, limit=1, variable_name="profile_%\\")
     assert [record.id for record in second.data] == [rows[2].id]
-    assert second.has_more is False
+    assert second.data[0].created_at == first.data[0].created_at
+    assert second.has_more is True
+    third = repository.get_page(ref=ref, last_id=second.data[0].id, limit=1, variable_name="profile_%\\")
+    assert [record.id for record in third.data] == [rows[3].id]
+    assert third.has_more is False
+    empty = repository.get_page(ref=ref, last_id=third.data[0].id, limit=1, variable_name="profile_%\\")
+    assert empty.data == ()
+    assert empty.has_more is False
     with pytest.raises(ConversationVariableNotExistsError):
         repository.get_page(ref=ref, last_id=rows[1].id, limit=1, variable_name="profile_%\\")
 

@@ -87,9 +87,13 @@ class ConversationVariableRepository(ConversationVariableQuery):
                 cursor = session.scalar(stmt.where(ConversationVariable.id == last_id))
                 if cursor is None:
                     raise ConversationVariableNotExistsError()
-                # Keep the existing strict timestamp cursor, including its tie behavior.
-                stmt = stmt.where(ConversationVariable.created_at > cursor.created_at)
-            rows = session.scalars(stmt.order_by(ConversationVariable.created_at).limit(limit + 1)).all()
+                stmt = stmt.where(
+                    (ConversationVariable.created_at > cursor.created_at)
+                    | ((ConversationVariable.created_at == cursor.created_at) & (ConversationVariable.id > cursor.id))
+                )
+            rows = session.scalars(
+                stmt.order_by(ConversationVariable.created_at, ConversationVariable.id).limit(limit + 1)
+            ).all()
             return ConversationVariablePage(
                 limit=limit,
                 has_more=len(rows) > limit,
