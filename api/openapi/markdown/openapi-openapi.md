@@ -3539,7 +3539,7 @@ Page of published versions, newest first; there is no total, `hints` carries the
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_log | [ [WorkflowAgentLogResponse](#workflowagentlogresponse) ] |  | No |
+| agent_log | [ [WorkflowAgentLogResponse](#workflowagentlogresponse) ]<br>object |  | No |
 | currency | string |  | No |
 | error_strategy | string |  | No |
 | iteration_duration_map | object |  | No |

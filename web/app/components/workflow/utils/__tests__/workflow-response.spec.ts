@@ -171,6 +171,20 @@ describe('toNodeTracing', () => {
     })
   })
 
+  it('leaves the agent log tree empty for Agent V2 run metadata', () => {
+    const [tracing] = toNodeTracing(
+      execution({
+        node_type: BlockEnum.AgentV2,
+        execution_metadata: {
+          agent_log: { agent_backend: { run_id: 'run-1', status: 'succeeded' } },
+          total_tokens: 21,
+        },
+      }),
+    )
+
+    expect(tracing?.execution_metadata).toMatchObject({ total_tokens: 21, agent_log: undefined })
+  })
+
   it('skips executions of unknown block types', () => {
     expect(toNodeTracing(execution({ node_type: 'future-block' }))).toEqual([])
   })

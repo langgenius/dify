@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from clients.agent_backend import (
 )
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
+from fields.workflow_run_fields import WorkflowRunNodeExecutionListResponse
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
@@ -175,6 +177,38 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
     assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["session_snapshot"] == {
         "layer_count": 0
     }
+
+
+@pytest.mark.parametrize("terminal", ["succeeded", "failed"])
+def test_agent_log_metadata_loads_in_node_execution_list(terminal: str) -> None:
+    adapter = WorkflowAgentOutputAdapter()
+    if terminal == "succeeded":
+        result = adapter.build_success_result(
+            event=_succeeded({"summary": "ok"}), inputs={}, process_data={}, metadata={}
+        )
+    else:
+        result = adapter.build_failure_result(
+            event=AgentBackendRunFailedInternalEvent(
+                run_id="run-1",
+                source_event_id="2-0",
+                error="bad request",
+                reason="validation",
+                session_snapshot=SessionSnapshot(layers={}),
+                usage={"total_tokens": 21, "total_price": "0.000210", "currency": "USD"},
+            ),
+            inputs={},
+            process_data={},
+            metadata={},
+        )
+    stored_metadata = json.loads(json.dumps(result.metadata, default=str))
+
+    response = WorkflowRunNodeExecutionListResponse.model_validate(
+        {"data": [{"id": "execution-1", "execution_metadata_dict": stored_metadata}]}
+    ).model_dump(mode="json")
+
+    agent_log = response["data"][0]["execution_metadata"]["agent_log"]
+    assert agent_log["agent_backend"]["status"] == terminal
+    assert agent_log == stored_metadata["agent_log"]
 
 
 def test_failure_output_adapter_prefers_run_failure_type_over_reason():

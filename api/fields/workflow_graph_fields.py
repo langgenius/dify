@@ -151,7 +151,9 @@ class WorkflowNodeExecutionMetadataResponse(StoredJsonResponseModel):
     total_price: float | None = None
     currency: str | None = None
     tool_info: WorkflowNodeToolInfoResponse | None = None
-    agent_log: list[WorkflowAgentLogResponse] | None = None
+    # Agent nodes record a list of log items; Agent V2 nodes record their backend run metadata
+    # (`{"agent_backend": {...}, ...}`) under the same key.
+    agent_log: list[WorkflowAgentLogResponse] | dict[str, Any] | None = None
     iteration_id: str | None = None
     iteration_index: int | None = None
     loop_id: str | None = None

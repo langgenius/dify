@@ -344,7 +344,8 @@ const toExecutionMetadata = (
   error_strategy: isOneOf(ErrorHandleTypeEnum, metadata.error_strategy)
     ? metadata.error_strategy
     : undefined,
-  agent_log: metadata.agent_log?.map(toAgentLogItem),
+  // Agent V2 nodes store backend run metadata here instead of a log list; the trace has no tree for it.
+  agent_log: Array.isArray(metadata.agent_log) ? metadata.agent_log.map(toAgentLogItem) : undefined,
   tool_info: metadata.tool_info
     ? {
         agent_strategy: metadata.tool_info.agent_strategy ?? undefined,

@@ -602,7 +602,12 @@ export type ComposerValidationWarningResponse = {
 }
 
 export type WorkflowNodeExecutionMetadataResponse = {
-  agent_log?: Array<WorkflowAgentLogResponse> | null
+  agent_log?:
+    | Array<WorkflowAgentLogResponse>
+    | {
+        [key: string]: unknown
+      }
+    | null
   currency?: string | null
   error_strategy?: string | null
   iteration_duration_map?: {

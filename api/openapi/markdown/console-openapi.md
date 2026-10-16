@@ -29037,7 +29037,7 @@ tenant's default model. The underlying generator never raises — an empty
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_log | [ [WorkflowAgentLogResponse](#workflowagentlogresponse) ] |  | No |
+| agent_log | [ [WorkflowAgentLogResponse](#workflowagentlogresponse) ]<br>object |  | No |
 | currency | string |  | No |
 | error_strategy | string |  | No |
 | iteration_duration_map | object |  | No |

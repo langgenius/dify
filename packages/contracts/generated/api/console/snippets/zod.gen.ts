@@ -1365,7 +1365,9 @@ export const zWorkflowAgentLogResponse = z
  */
 export const zWorkflowNodeExecutionMetadataResponse = z
   .object({
-    agent_log: z.array(zWorkflowAgentLogResponse).nullish(),
+    agent_log: z
+      .union([z.array(zWorkflowAgentLogResponse), z.record(z.string(), z.unknown())])
+      .nullish(),
     currency: z.string().nullish(),
     error_strategy: z.string().nullish(),
     iteration_duration_map: z.record(z.string(), z.number()).nullish(),
