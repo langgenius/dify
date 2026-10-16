@@ -88,8 +88,8 @@ export function ProviderConfigModal({
   }
   const handleSave = (values: TraceConfigPayload['tracing_config']) => {
     if (pending) return
-    createConfig.reset()
-    updateConfig.reset()
+    if (isEdit) createConfig.reset()
+    else updateConfig.reset()
     const config: TraceConfigPayload['tracing_config'] = {}
     for (const [key, value] of Object.entries(values))
       config[key] = value === '' && payload?.[key] === null ? null : value
