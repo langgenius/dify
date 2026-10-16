@@ -12,7 +12,7 @@ import type {
 import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
-import type { FetchWorkflowDraftPageResponse, PublishWorkflowParams } from '@/types/workflow'
+import type { FetchWorkflowDraftPageResponse } from '@/types/workflow'
 import {
   skipToken,
   useInfiniteQuery,
@@ -450,30 +450,6 @@ export const useRestoreWorkflow = (resource: EditorResource) => {
           )
       }
     },
-  })
-}
-
-export const usePublishAppWorkflow = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: ({ appId, title, releaseNotes }: PublishWorkflowParams & { appId: string }) =>
-      consoleClient.apps.byAppId.workflows.publish.post({
-        params: { app_id: appId },
-        body: {
-          marked_name: title,
-          marked_comment: releaseNotes,
-        },
-      }),
-  })
-}
-
-export const usePublishPipelineWorkflow = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: (pipelineId: string) =>
-      consoleClient.rag.pipelines.byPipelineId.workflows.publish.post({
-        params: { pipeline_id: pipelineId },
-      }),
   })
 }
 

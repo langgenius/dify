@@ -22,7 +22,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { usePublishAppWorkflow, useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
+import { useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryKey,
@@ -30,7 +30,6 @@ import {
 } from '../workflow-queries'
 
 const mockPatch = vi.hoisted(() => vi.fn())
-const mockPost = vi.hoisted(() => vi.fn())
 const mockRequest = vi.hoisted(() => vi.fn())
 
 // Route the version mutations by method so each test can assert the console path and body.
@@ -40,8 +39,6 @@ vi.mock('../base', () => ({
     const path = new URL(options.request.url).pathname.replace(/^\/console\/api/, '')
     if (method === 'PATCH')
       return Response.json(await mockPatch(path, { body: await options.request.json() }))
-    if (method === 'POST' && path.endsWith('/workflows/publish'))
-      return Response.json(await mockPost(path, { body: await options.request.json() }))
     return mockRequest(url, init, options)
   },
   get: vi.fn(),
@@ -115,42 +112,6 @@ const createEnvironmentDeployment = ({
     id: environmentId,
     status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
   },
-})
-
-describe('usePublishAppWorkflow', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('returns the server warning with the publish result', async () => {
-    const published = {
-      result: 'success',
-      created_at: 1_710_000_100,
-      warning: '"Answer" ← "Producer"',
-    }
-    mockPost.mockResolvedValue(published)
-    const queryClient = createQueryClient()
-    const { result } = renderHook(() => usePublishAppWorkflow(), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    let response: unknown
-    await act(async () => {
-      response = await result.current.mutateAsync({
-        appId: 'app-1',
-        title: 'Release 1',
-        releaseNotes: 'Notes',
-      })
-    })
-
-    expect(response).toEqual(published)
-    expect(mockPost).toHaveBeenCalledWith('/apps/app-1/workflows/publish', {
-      body: {
-        marked_name: 'Release 1',
-        marked_comment: 'Notes',
-      },
-    })
-  })
 })
 
 describe('useUpdateWorkflow', () => {

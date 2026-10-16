@@ -161,11 +161,17 @@ const expectInvalidated = (...path: string[]) =>
     queryKey: expect.arrayContaining([['console', ...path]]),
   })
 
-vi.mock('@/service/use-workflow', () => ({
-  usePublishPipelineWorkflow: () => ({
-    mutateAsync: mockPublishWorkflow,
-  }),
-}))
+vi.mock('@/service/console/browser', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console/browser')>()
+  return {
+    consoleBrowserLink: {
+      call: (path: readonly string[], input: unknown, options: unknown) =>
+        path.join('.') === 'rag.pipelines.byPipelineId.workflows.publish.post'
+          ? mockPublishWorkflow(input)
+          : actual.consoleBrowserLink.call(path as never, input, options as never),
+    },
+  }
+})
 
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   default: ({
@@ -573,7 +579,9 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockPublishWorkflow).toHaveBeenCalledWith('test-pipeline-id')
+          expect(mockPublishWorkflow).toHaveBeenCalledWith({
+            params: { pipeline_id: 'test-pipeline-id' },
+          })
         })
       })
 

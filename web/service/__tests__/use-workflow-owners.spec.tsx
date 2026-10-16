@@ -8,7 +8,6 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useDeleteWorkflow,
   useInvalidateWorkflowRunHistory,
-  usePublishPipelineWorkflow,
   useUpdateWorkflow,
   useWorkflowRunHistory,
   useWorkflowVersionHistory,
@@ -213,17 +212,4 @@ describe('version mutations', () => {
       expect(setQueryData).not.toHaveBeenCalled()
     },
   )
-
-  it('publishes a knowledge pipeline', async () => {
-    mockCall.mockResolvedValue({ result: 'success', created_at: 1 })
-    const { result } = renderWithClient(() => usePublishPipelineWorkflow())
-
-    await act(() => result.current.mutateAsync('pipeline-1'))
-
-    expect(mockCall).toHaveBeenCalledWith(
-      ['rag', 'pipelines', 'byPipelineId', 'workflows', 'publish', 'post'],
-      { params: { pipeline_id: 'pipeline-1' } },
-      expect.any(Object),
-    )
-  })
 })

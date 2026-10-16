@@ -163,11 +163,17 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   })
 })
 
-vi.mock('@/service/use-workflow', () => ({
-  usePublishPipelineWorkflow: () => ({
-    mutateAsync: mockPublishWorkflow,
-  }),
-}))
+vi.mock('@/service/console/browser', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console/browser')>()
+  return {
+    consoleBrowserLink: {
+      call: (path: readonly string[], input: unknown, options: unknown) =>
+        path.join('.') === 'rag.pipelines.byPipelineId.workflows.publish.post'
+          ? mockPublishWorkflow(input)
+          : actual.consoleBrowserLink.call(path as never, input, options as never),
+    },
+  }
+})
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
   cn: (...args: string[]) => args.filter(Boolean).join(' '),

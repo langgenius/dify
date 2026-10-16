@@ -200,9 +200,20 @@ vi.mock('@/app/components/app/app-publisher', () => ({
   },
 }))
 
+vi.mock('@/service/console/browser', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console/browser')>()
+  return {
+    consoleBrowserLink: {
+      call: (path: readonly string[], input: unknown, options: unknown) =>
+        path.join('.') === 'apps.byAppId.workflows.publish.post'
+          ? mockPublishWorkflow(input)
+          : actual.consoleBrowserLink.call(path as never, input, options as never),
+    },
+  }
+})
+
 vi.mock('@/service/use-workflow', () => ({
   useInvalidateAppWorkflow: () => mockUpdatePublishedWorkflow,
-  usePublishAppWorkflow: () => ({ mutateAsync: mockPublishWorkflow }),
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 
@@ -603,9 +614,8 @@ describe('FeaturesTrigger', () => {
       // Assert
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          appId: 'app-id',
-          title: '',
-          releaseNotes: '',
+          params: { app_id: 'app-id' },
+          body: { marked_name: '', marked_comment: '' },
         })
         expect(mockUpdatePublishedWorkflow).toHaveBeenCalledWith('app-id')
         expect(mockInvalidateQueries).toHaveBeenCalledWith({
@@ -736,9 +746,8 @@ describe('FeaturesTrigger', () => {
       // Assert
       await waitFor(() => {
         expect(mockPublishWorkflow).toHaveBeenCalledWith({
-          appId: 'app-id',
-          title: 'Test title',
-          releaseNotes: 'Test notes',
+          params: { app_id: 'app-id' },
+          body: { marked_name: 'Test title', marked_comment: 'Test notes' },
         })
       })
     })
