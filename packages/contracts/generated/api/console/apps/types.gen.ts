@@ -4587,6 +4587,7 @@ export type PostAppsImportsByImportIdConfirmData = {
 
 export type PostAppsImportsByImportIdConfirmErrors = {
   400: Import | ErrorResponse
+  409: ErrorResponse
   default: ErrorResponse
 }
 
