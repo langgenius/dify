@@ -608,7 +608,7 @@ class TestPerformance:
         params = {"client_id": "test_id", "client_secret": "test_secret"}
 
         # Test multiple rounds of encryption/decryption
-        for i in range(100):
+        for _i in range(100):
             encrypted = encrypter.encrypt_params(params)
             decrypted = encrypter.decrypt_params(encrypted)
             assert decrypted == params
