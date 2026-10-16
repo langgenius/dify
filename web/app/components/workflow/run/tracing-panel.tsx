@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from './external-trace-row'
 import type { NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
@@ -13,6 +14,7 @@ import SpecialResultPanel from './special-result-panel'
 
 type TracingPanelProps = {
   list: NodeTracing[]
+  externalTraceRun?: ExternalTraceRun
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
@@ -20,6 +22,7 @@ type TracingPanelProps = {
 
 const TracingPanel: FC<TracingPanelProps> = ({
   list,
+  externalTraceRun,
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
@@ -144,6 +147,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
           <NodePanel
             nodeInfo={node!}
             allExecutions={list}
+            externalTraceRun={externalTraceRun}
             onShowIterationDetail={handleShowIterationResultList}
             onShowLoopDetail={handleShowLoopResultList}
             onShowRetryDetail={handleShowRetryResultList}
@@ -174,6 +178,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
         agentOrToolLogItemStack={agentOrToolLogItemStack}
         agentOrToolLogListMap={agentOrToolLogListMap}
         handleShowAgentOrToolLog={handleShowAgentOrToolLog}
+        externalTraceRun={externalTraceRun}
       />
     )
   }

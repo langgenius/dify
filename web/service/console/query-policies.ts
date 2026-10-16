@@ -593,6 +593,14 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          // Run trace status is supplementary; surfaces hide it when unavailable or forbidden.
+          traceRuns: {
+            bySourceKind: {
+              bySourceId: {
+                get: { queryOptions: { context: { silent: true }, retry: false } },
+              },
+            },
+          },
           trace: {
             post: {
               mutationOptions: {
