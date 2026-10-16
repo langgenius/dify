@@ -332,7 +332,7 @@ function SourcesTable({
                 variant="ghost"
                 size="small"
                 onClick={() => onSortChange(sort === 'name-asc' ? 'name-desc' : 'name-asc')}
-                className="h-auto gap-1 rounded px-0 text-[11px] leading-4 font-medium tracking-[0.3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="h-auto gap-1 rounded px-0 text-[11px] leading-4 font-medium tracking-[0.3px]"
               >
                 {t(($) => $.sourceColumn)}
                 {sort && (
