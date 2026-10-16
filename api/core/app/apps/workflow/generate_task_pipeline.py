@@ -2,8 +2,21 @@ import logging
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
+from extensions.ext_database import db
+from models import Account
+from models.enums import CreatorUserRole
+from models.model import EndUser
+from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
+from services.dify_builder.native_testing.observation_stream import (
+    project_native_queue_event,
+    require_native_observation,
+)
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -61,19 +74,9 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.system_variables import build_system_variables
-from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState
-from models import Account
-from models.enums import CreatorUserRole
-from models.model import EndUser
-from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
-from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
-from services.dify_builder.native_testing.observation_stream import (
-    project_native_queue_event,
-    require_native_observation,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +96,17 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         draft_var_saver_factory: DraftVariableSaverFactory,
         *,
         native_observation: NativeObservationGuard | None = None,
+        native_host: "NativeHostLaunch | None" = None,
     ):
         require_native_observation(guard=native_observation, entity=application_generate_entity)
+        if native_host is not None:
+            from services.dify_builder.native_testing.runtime import validate_projection_host
+
+            validate_projection_host(
+                host=native_host, guard=native_observation, entity=application_generate_entity, queue=queue_manager
+            )
+        self._native_host = native_host
+        self._native_queue = queue_manager
         self._native_observation = native_observation
         if native_observation is not None:
             with native_observation.persistence_scope():
@@ -139,6 +151,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             user=user,
             system_variables=self._workflow_system_variables,
             native_observation=native_observation,
+            native_host=native_host,
+            native_queue=queue_manager,
         )
         self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
@@ -348,7 +362,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[ErrorStreamResponse]:
         """Handle error events."""
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         err = self._base_task_pipeline.handle_error(event=event)
         yield self._base_task_pipeline.error_to_stream_response(err)
 
@@ -589,7 +605,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._native_observation is not None:
             if tts_publisher is not None:
                 self._native_observation.fail()
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         delta_text = event.text
         if delta_text is None:
             return
@@ -679,7 +697,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._native_observation is not None:
             if tts_publisher is not None or trace_manager is not None:
                 self._native_observation.fail()
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         handlers = self._get_event_handlers()
         event_type = type(event)
 
@@ -736,7 +756,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
             if self._native_observation is not None:
-                event = project_native_queue_event(guard=self._native_observation, event=event)
+                event = project_native_queue_event(
+                    guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+                )
 
             match event:
                 case QueueWorkflowStartedEvent():

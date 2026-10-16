@@ -6,8 +6,6 @@ No ordinary workflow limiter, physical host, provider I/O or default cleanup pro
 from contextlib import contextmanager
 from typing import Protocol
 
-from sqlalchemy import and_, select
-
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
 from models.dify_builder_native_tests import (
     NativeContinuation,
@@ -22,6 +20,8 @@ from models.dify_builder_native_tests import (
     NativeTestScope,
 )
 from models.model import App
+from sqlalchemy import and_, select
+
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
@@ -52,23 +52,8 @@ class NativeHostCapacity:
 
     @contextmanager
     def locked(self, *, ref: NativeTestContextRef, settlement: bool = False):
-        # Read just the persisted App identity before starting the App-first writer.
-        with self.loader.session_factory() as session:
-            owned, _ = self.loader._load(session, ref=ref, lock=False, settlement=settlement)
-            app_id, tenant_id = owned.app_id, owned.tenant_id
-        with self.loader.session_factory.begin() as session:
-            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
-            if app is None:
-                raise BuilderExecutionPolicyError("native_owner_mismatch")
-            owned, scope = self.loader._load(session, ref=ref, lock=True, settlement=settlement)
-            state = invocation_state(session, ref, owned.tenant_id)
-            if (
-                state.parent_invocation_id is not None
-                or (owned.app_id, owned.tenant_id) != (app_id, tenant_id)
-                or (state.app_id, state.workflow_id) != (owned.app_id, owned.workflow_id)
-            ):
-                raise BuilderExecutionPolicyError("native_capacity_root_required")
-            yield session, owned, scope
+        with locked_native_capacity(self.lifecycle, ref=ref, settlement=settlement) as result:
+            yield result
 
     def _occupants(self, session, owned):
         Q, D, R, Invocation, S = (
@@ -195,77 +180,7 @@ class NativeHostCapacity:
             raise BuilderExecutionPolicyError("native_cleanup_unproven")
 
     def _finish_unacquired_cancellation(self, *, ref: NativeTestContextRef) -> bool:
-        # Authoritative SQL history under App→request, never local handle absence.
-        with self.locked(ref=ref, settlement=True) as (session, owned, scope):
-            states = session.scalars(
-                select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
-            ).all()
-            invocations = session.scalars(
-                select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
-            ).all()
-            dispatches = session.scalars(
-                select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id)
-            ).all()
-            identities = {row.invocation_id for row in states}
-            if (
-                not scope.cancelled
-                or not states
-                or len(identities) != len(states)
-                or identities != {row.invocation_id for row in invocations}
-                or len(invocations) != len(states)
-                or any(
-                    (row.request_id, row.tenant_id) != (ref.request_id, owned.tenant_id)
-                    for row in (*states, *invocations, *dispatches)
-                )
-                or any(row.state != "cancelled" or not row.cancellation_key for row in states)
-                or any(row.active for row in invocations)
-                or any(row.invocation_id not in identities for row in dispatches)
-            ):
-                raise BuilderExecutionPolicyError("native_cleanup_unproven")
-            if any(row.state in {"claimed", "unknown", "completed"} for row in dispatches):
-                return False  # The exact retained-lifetime verifier remains mandatory.
-            # Only a complete genuine initial outbox proves never acquired here.
-            # Missing history, children, resumed/effectful work remain uncertain.
-            state = states[0]
-            if (
-                len(states) != 1
-                or state.invocation_id != ref.invocation_id
-                or state.parent_invocation_id is not None
-                or type(state.generation) is not int
-                or state.generation != 0
-                or scope.generation != 0
-                or state.checkpoint_id is not None
-                or state.pending_ids != []
-                or state.wait_reason is not None
-                or state.resolution != []
-                or state.outcome is not None
-                or len(dispatches) != 1
-                or dispatches[0].state != "cancelled"
-                or dispatches[0].generation != 0
-                or dispatches[0].checkpoint_id is not None
-                or dispatches[0].claim_expires_at is not None
-                or dispatches[0].idempotency_digest != canonical_digest({"initial": ref.model_dump(mode="json")})
-            ):
-                raise BuilderExecutionPolicyError("native_cleanup_unproven")
-            context = session.get(NativePayloadObject, state.context_object_id)
-            if context is None or (context.request_id, context.tenant_id, context.invocation_id, context.kind) != (
-                ref.request_id,
-                owned.tenant_id,
-                ref.invocation_id,
-                "context",
-            ):
-                raise BuilderExecutionPolicyError("native_cleanup_unproven")
-            for model in (
-                NativeContinuation,
-                NativeEffectOperation,
-                NativeEffectAttempt,
-                NativeEffectDispatchClaim,
-                NativeEffectOutcome,
-            ):
-                if session.scalar(select(model.id).where(model.request_id == ref.request_id)) is not None:
-                    raise BuilderExecutionPolicyError("native_cleanup_unproven")
-            state.cleanup_complete = True  # Logical cancellation; no physical acquisition was inferred.
-            return True
+        return finish_unacquired_cancellation(self.lifecycle, ref=ref)
 
     def record_cancelled_cleanup(self, *, ref: NativeTestContextRef) -> None:
         if self._finish_unacquired_cancellation(ref=ref):
@@ -277,3 +192,96 @@ class NativeHostCapacity:
                 return  # No physical claim is inferred from a cancelled queue row.
             identity, generation = selected.id, selected.generation
         self.record_cleanup(ref=ref, generation=generation, dispatch_id=identity)
+
+
+@contextmanager
+def locked_native_capacity(lifecycle, *, ref: NativeTestContextRef, settlement: bool = False):
+    # Read just the persisted App identity before starting the App-first writer.
+    with lifecycle.loader.session_factory() as session:
+        owned, _ = lifecycle.loader._load(session, ref=ref, lock=False, settlement=settlement)
+        app_id, tenant_id = owned.app_id, owned.tenant_id
+    with lifecycle.loader.session_factory.begin() as session:
+        app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id).with_for_update())
+        if app is None:
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
+        owned, scope = lifecycle.loader._load(session, ref=ref, lock=True, settlement=settlement)
+        state = invocation_state(session, ref, owned.tenant_id)
+        if (
+            state.parent_invocation_id is not None
+            or (owned.app_id, owned.tenant_id) != (app_id, tenant_id)
+            or (state.app_id, state.workflow_id) != (owned.app_id, owned.workflow_id)
+        ):
+            raise BuilderExecutionPolicyError("native_capacity_root_required")
+        yield session, owned, scope
+
+
+def finish_unacquired_cancellation(lifecycle, *, ref: NativeTestContextRef) -> bool:
+    # Authoritative SQL history under App→request, never local handle absence.
+    with locked_native_capacity(lifecycle, ref=ref, settlement=True) as (session, owned, scope):
+        states = session.scalars(
+            select(NativeInvocationState).where(NativeInvocationState.request_id == ref.request_id)
+        ).all()
+        invocations = session.scalars(
+            select(NativeTestInvocation).where(NativeTestInvocation.request_id == ref.request_id)
+        ).all()
+        dispatches = session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == ref.request_id)).all()
+        identities = {row.invocation_id for row in states}
+        if (
+            not scope.cancelled
+            or not states
+            or len(identities) != len(states)
+            or identities != {row.invocation_id for row in invocations}
+            or len(invocations) != len(states)
+            or any(
+                (row.request_id, row.tenant_id) != (ref.request_id, owned.tenant_id)
+                for row in (*states, *invocations, *dispatches)
+            )
+            or any(row.state != "cancelled" or not row.cancellation_key for row in states)
+            or any(row.active for row in invocations)
+            or any(row.invocation_id not in identities for row in dispatches)
+        ):
+            raise BuilderExecutionPolicyError("native_cleanup_unproven")
+        if any(row.state in {"claimed", "unknown", "completed"} for row in dispatches):
+            return False  # The exact retained-lifetime verifier remains mandatory.
+        # Only a complete genuine initial outbox proves never acquired here.
+        # Missing history, children, resumed/effectful work remain uncertain.
+        state = states[0]
+        if (
+            len(states) != 1
+            or state.invocation_id != ref.invocation_id
+            or state.parent_invocation_id is not None
+            or type(state.generation) is not int
+            or state.generation != 0
+            or scope.generation != 0
+            or state.checkpoint_id is not None
+            or state.pending_ids != []
+            or state.wait_reason is not None
+            or state.resolution != []
+            or state.outcome is not None
+            or len(dispatches) != 1
+            or dispatches[0].state != "cancelled"
+            or dispatches[0].generation != 0
+            or dispatches[0].checkpoint_id is not None
+            or dispatches[0].claim_expires_at is not None
+            or dispatches[0].idempotency_digest != canonical_digest({"initial": ref.model_dump(mode="json")})
+        ):
+            raise BuilderExecutionPolicyError("native_cleanup_unproven")
+        context = session.get(NativePayloadObject, state.context_object_id)
+        if context is None or (context.request_id, context.tenant_id, context.invocation_id, context.kind) != (
+            ref.request_id,
+            owned.tenant_id,
+            ref.invocation_id,
+            "context",
+        ):
+            raise BuilderExecutionPolicyError("native_cleanup_unproven")
+        for model in (
+            NativeContinuation,
+            NativeEffectOperation,
+            NativeEffectAttempt,
+            NativeEffectDispatchClaim,
+            NativeEffectOutcome,
+        ):
+            if session.scalar(select(model.id).where(model.request_id == ref.request_id)) is not None:
+                raise BuilderExecutionPolicyError("native_cleanup_unproven")
+        state.cleanup_complete = True  # Logical cancellation; no physical acquisition was inferred.
+        return True

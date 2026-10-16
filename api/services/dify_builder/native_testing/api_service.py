@@ -10,9 +10,6 @@ from datetime import datetime, timedelta
 from typing import Literal, Protocol, cast
 from uuid import uuid4
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
-
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession
 from models.dify_builder_native_tests import (
@@ -22,7 +19,11 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
     NativeTestScope,
 )
+from models.enums import CreatorUserRole
 from models.workflow import WorkflowRun
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.execution_policy_service import check_execution_permission, load_execution_owners
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
@@ -331,12 +332,15 @@ class NativeTestApiService:
             native_run = (
                 session.scalar(
                     select(WorkflowRun).where(
-                        WorkflowRun.id == request.native_run_id,
+                        WorkflowRun.id == (request.native_run_id or request.context.get("native_run_id")),
                         WorkflowRun.tenant_id == actor.tenant_id,
                         WorkflowRun.app_id == request.app_id,
+                        WorkflowRun.workflow_id == request.workflow_id,
+                        WorkflowRun.created_by == actor.account_id,
+                        WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
                     )
                 )
-                if request.native_run_id
+                if (request.native_run_id or request.context.get("native_run_id"))
                 else None
             )
             scope = session.get(NativeTestScope, request_id)

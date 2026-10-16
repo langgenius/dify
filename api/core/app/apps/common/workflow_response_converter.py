@@ -4,8 +4,24 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, TypedDict, Union
+from typing import TYPE_CHECKING, Any, NewType, TypedDict, Union
 
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
+from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
+from models import Account, EndUser
+from models.human_input import HumanInputForm
+from models.workflow import WorkflowRun
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
+from services.dify_builder.native_testing.observation_stream import (
+    observed_runtime_outputs,
+    observed_values,
+    project_native_queue_event,
+    require_native_observation,
+)
+from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -63,7 +79,6 @@ from core.workflow.human_input_policy import (
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -76,18 +91,6 @@ from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment
 from graphon.variables.variables import Variable
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from libs.datetime_utils import naive_utc_now, to_utc_timestamp
-from models import Account, EndUser
-from models.human_input import HumanInputForm
-from models.workflow import WorkflowRun
-from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
-from services.dify_builder.native_testing.observation_stream import (
-    observed_runtime_outputs,
-    observed_values,
-    project_native_queue_event,
-    require_native_observation,
-)
-from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
 # Maps the entry surface a workflow was invoked from to the HITL surface that
 # its resume tokens must be filtered for. Surfaces not in this map fall back to
@@ -138,8 +141,18 @@ class WorkflowResponseConverter:
         user: Union[Account, EndUser],
         system_variables: Sequence[Variable],
         native_observation: NativeObservationGuard | None = None,
+        native_host: "NativeHostLaunch | None" = None,
+        native_queue: Any = None,
     ):
         require_native_observation(guard=native_observation, entity=application_generate_entity)
+        if native_host is not None:
+            from services.dify_builder.native_testing.runtime import validate_projection_host
+
+            validate_projection_host(
+                host=native_host, guard=native_observation, entity=application_generate_entity, queue=native_queue
+            )
+        self._native_host = native_host
+        self._native_queue = native_queue
         self._native_observation = native_observation
         if native_observation is not None:
             with native_observation.persistence_scope():
@@ -269,7 +282,17 @@ class WorkflowResponseConverter:
     ) -> WorkflowStartStreamResponse:
         if self._native_observation is not None:
             self._native_observation.require_healthy()
-            if reason is not WorkflowStartReason.INITIAL:
+            if reason is WorkflowStartReason.RESUMPTION:
+                from services.dify_builder.native_testing.runtime import require_resume_projection
+
+                require_resume_projection(
+                    host=self._native_host,
+                    guard=self._native_observation,
+                    queue=self._native_queue,
+                    entity=self._application_generate_entity,
+                    workflow_run_id=workflow_run_id,
+                )
+            elif reason is not WorkflowStartReason.INITIAL:
                 self._native_observation.fail()
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
@@ -371,7 +394,9 @@ class WorkflowResponseConverter:
         paused_at = naive_utc_now()
         elapsed_time = (paused_at - started_at).total_seconds()
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
             outputs = observed_runtime_outputs(guard=self._native_observation, state=graph_runtime_state)
             event_outputs = observed_values(guard=self._native_observation, values=event.outputs)
             if event_outputs is not None and event_outputs["shape"]["fields"] > 0:
@@ -490,7 +515,9 @@ class WorkflowResponseConverter:
         self, *, event: QueueHumanInputFormFilledEvent, task_id: str
     ) -> HumanInputFormFilledResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         run_id = self._ensure_workflow_run_id()
         data = HumanInputFormFilledResponse.Data(
             node_id=event.node_id,
@@ -510,7 +537,9 @@ class WorkflowResponseConverter:
         self, *, event: QueueHumanInputFormTimeoutEvent, task_id: str
     ) -> HumanInputFormTimeoutResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         run_id = self._ensure_workflow_run_id()
         return HumanInputFormTimeoutResponse(
             task_id=task_id,
@@ -579,7 +608,9 @@ class WorkflowResponseConverter:
         task_id: str,
     ) -> NodeStartStreamResponse | None:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
@@ -635,7 +666,9 @@ class WorkflowResponseConverter:
         task_id: str,
     ) -> NodeFinishStreamResponse | None:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
@@ -698,7 +731,9 @@ class WorkflowResponseConverter:
         task_id: str,
     ) -> NodeRetryStreamResponse | None:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         if event.node_type in {BuiltinNodeTypes.ITERATION, BuiltinNodeTypes.LOOP}:
             return None
         run_id = self._ensure_workflow_run_id()
@@ -753,7 +788,9 @@ class WorkflowResponseConverter:
         event: QueueIterationStartEvent,
     ) -> IterationNodeStartStreamResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         new_inputs, truncated = (
             self._truncate_mapping(event.inputs or {})
             if self._native_observation is not None
@@ -783,7 +820,9 @@ class WorkflowResponseConverter:
         event: QueueIterationNextEvent,
     ) -> IterationNodeNextStreamResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         return IterationNodeNextStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -806,7 +845,9 @@ class WorkflowResponseConverter:
         event: QueueIterationCompletedEvent,
     ) -> IterationNodeCompletedStreamResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
 
         new_inputs, inputs_truncated = (
             self._truncate_mapping(event.inputs or {})
@@ -850,7 +891,9 @@ class WorkflowResponseConverter:
         self, *, task_id: str, workflow_execution_id: str, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         new_inputs, truncated = (
             self._truncate_mapping(event.inputs or {})
             if self._native_observation is not None
@@ -880,7 +923,9 @@ class WorkflowResponseConverter:
         event: QueueLoopNextEvent,
     ) -> LoopNodeNextStreamResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         return LoopNodeNextStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -906,7 +951,9 @@ class WorkflowResponseConverter:
         event: QueueLoopCompletedEvent,
     ) -> LoopNodeCompletedStreamResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         new_inputs, inputs_truncated = (
             self._truncate_mapping(event.inputs or {})
             if self._native_observation is not None
@@ -1019,7 +1066,9 @@ class WorkflowResponseConverter:
 
     def handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
         if self._native_observation is not None:
-            event = project_native_queue_event(guard=self._native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self._native_observation, event=event, native_host=self._native_host, queue=self._native_queue
+            )
         """
         Handle agent log
         :param task_id: task id

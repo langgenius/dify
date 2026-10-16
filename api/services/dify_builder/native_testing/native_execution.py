@@ -179,10 +179,55 @@ class DifyNativeWorkflowOwner:
             runtime=self._runtime,
             native_host=self._native_host,
         )
+        return self._consume(context=current, stream=stream, on_event=on_event)
+
+    def resume_claimed(self, *, context: ResolvedNativeTestContext) -> NativeWorkflowOutcome:
+        from models.account import Account
+        from models.model import App
+        from models.workflow import Workflow
+        from sqlalchemy import select
+
+        from services.app_generate_service import AppGenerateService
+        from services.dify_builder.native_testing.repository import native_workflow_revision
+
+        self._validate_host(context)
+        bindings = self._native_host.resume_bindings
+        self._native_host.require_resume_bindings(
+            entity=bindings.entity, runtime_state=bindings.runtime_state, response_filter=bindings.response_filter
+        )
+        with self._sessions() as session:
+            app = session.scalar(select(App).where(App.id == context.app_id, App.tenant_id == context.tenant_id))
+            workflow = session.scalar(
+                select(Workflow).where(
+                    Workflow.id == context.workflow_id,
+                    Workflow.app_id == context.app_id,
+                    Workflow.tenant_id == context.tenant_id,
+                )
+            )
+            account = session.get(Account, context.actor_id)
+            if app is None or workflow is None or account is None:
+                raise NativeContextUnavailable("native_context_mismatch")
+            if native_workflow_revision(workflow) != context.graph_revision or workflow.graph_dict != context.graph:
+                raise NativeContextUnavailable("native_revision_drift")
+            session.expunge_all()
+        stream = AppGenerateService.resume_admitted_native(
+            app_model=app,
+            workflow=workflow,
+            user=account,
+            runtime=self._runtime,
+            native_host=self._native_host,
+            sessions=self._sessions,
+        )
+        return self._consume(context=context, stream=stream)
+
+    def _consume(self, *, context, stream, on_event=lambda event: None):
         try:
-            return self._stream_owner.consume(context=current, stream=stream, on_event=on_event)
+            return self._stream_owner.consume(context=context, stream=stream, on_event=on_event)
         finally:
-            stream.close()
+            # The actual coordinator has already closed the source before its
+            # exact lifetime is consumed. Never signal that retired host again.
+            if not self._native_host.lifetime._consumed:
+                stream.close()
 
     def resume(self, *, context: ResolvedNativeTestContext, generation: int) -> NativeWorkflowOutcome:
         self._validate_host(context)

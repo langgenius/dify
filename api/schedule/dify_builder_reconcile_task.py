@@ -31,12 +31,11 @@ module must not push its own.
 """
 
 import logging
+from collections.abc import Callable
 from datetime import timedelta
+from typing import cast
 
 from celery import shared_task
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
-
 from configs import dify_config
 from core.dify_builder.state import PcState, is_working
 from extensions.ext_database import db
@@ -44,6 +43,8 @@ from libs.datetime_utils import naive_utc_now
 from models.dify_builder import DifyBuilderSession
 from services.dify_builder import progress_bus, session_lock
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
@@ -116,16 +117,12 @@ def reconcile_interrupted_sessions() -> int:
 
 def reconcile_native_tests(*, limit: int = 100) -> int:
     """V2 outbox recovery uses durable rows; ordinary v1 jobs remain unchanged."""
-    from flask import current_app
-
     from core.dify_builder.models import Actor
     from models.dify_builder import DifyBuilderExecutionRequest
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from services.dify_builder.wiring import build_native_test_api_service, native_runtime_owner
     from tasks.dify_builder_advance_task import advance_native_test
 
-    factory = current_app.extensions.get("builder_native_lifecycle_factory")
-    if factory is None:
-        return 0  # no qualified native runner configured; never fall back to v1
     with _session_factory()() as session:
         owners = session.execute(
             select(DifyBuilderExecutionRequest.tenant_id, DifyBuilderExecutionRequest.actor_id)
@@ -144,9 +141,12 @@ def reconcile_native_tests(*, limit: int = 100) -> int:
     recovered = 0
     for tenant_id, actor_id in owners:
         try:
-            service = factory(actor=Actor(account_id=actor_id, tenant_id=tenant_id))
+            service = build_native_test_api_service(actor=Actor(account_id=actor_id, tenant_id=tenant_id)).lifecycle
             recovered += service.reconcile(limit=limit)
-            recovered += service.publish_pending(publish=advance_native_test.delay, limit=limit)
+            recovered += service.publish_pending(
+                publish=cast(Callable[..., None], advance_native_test.delay), limit=limit
+            )
         except Exception:
             logger.warning("Dify Builder native continuation requires attention (tenant=%s)", tenant_id)
+    native_runtime_owner().retire_closed(sessions=_session_factory())
     return recovered

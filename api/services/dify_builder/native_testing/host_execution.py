@@ -123,6 +123,11 @@ class _HostCommandChannel:
         self._host.lifetime.observe_dispatcher()
         self._host._protect_dispatcher_logs()
         try:
+            if self._host._cancellation_fence is not None and self._host._cancellation_fence.poll():
+                from graphon.graph_engine.entities.commands import AbortCommand
+
+                self._host.request_close(reason="cancel")
+                return [AbortCommand(reason="native_cancelled")]
             return self._channel.fetch_commands()
         except BaseException:
             if self._host._observation is not None:
@@ -194,16 +199,18 @@ class _HostObservationLayer(GraphEngineLayer):
     @override
     def on_graph_end(self, error: Exception | None) -> None:
         with self._host._registration:
-            if current_thread() is self._host._worker:
-                self._host._graph_ended = True
-                self._host._graph_end_error |= error is not None
+            if current_thread() is not self._host._worker:
+                return  # A nested subgraph cannot end or assess the root's hooks.
+            self._host._graph_ended = True
+            self._host._graph_end_error |= error is not None
+        self._host._finish_paused_container_hooks(layer=self, error=error)
         if self._hooks:
             self._host._unknown()
 
     @override
     def on_node_run_start(self, node: Node) -> None:
         try:
-            scope = self._host.node_scope(node=node, phase="run")
+            scope = self._host._logical_node_scope(node=node)
             scope.__enter__()
             with self._host._registration:
                 self._hooks.append(_HookScope(node, current_thread(), node.execution_id, scope))
@@ -302,8 +309,10 @@ class NativeHostLaunch:
         self._calls: list[HostBoundScalarCalls] = []
         self._generation_bindings: NativeHostGenerationBindings | None = None
         self._channel: _HostCommandChannel | None = None
+        self._cancellation_fence = None
         self._exit_kind: str | None = None
         self._worker: Thread | None = None
+        self._physical_phases: list[_HookScope] = []
         self._engine_bindings: NativeHostEngineBindings | None = None
         self._layer: _HostObservationLayer | None = _HostObservationLayer(self)
         self._producers: list[NativeHttpBindingProducer] = []
@@ -318,6 +327,10 @@ class NativeHostLaunch:
         self._interrupted = False
         self._wait_snapshot: NativeCheckpointPayload | None = None
         self._observation: NativeObservationGuard | None = None
+        self._resume_bindings = None
+        self._resume_lifecycle = None
+        self._resume_attempted = False
+        self._resume_history = None
         self._observation_attempted = False
         self._observation_state: NativeStatePort | None = None
         self._dispatcher_log_leases: list[SensitiveThreadLogLease] = []
@@ -549,6 +562,34 @@ class NativeHostLaunch:
             self.mark_unknown()
             raise NativeObservationError() from None
 
+    def release_dead_dispatcher_logs(self) -> None:
+        """Cleanup-only release; never grants checkpoint/business qualification.
+
+        Sticky unknown is preserved. The original capacity verifier must still
+        consume actual physical cleanup and SQL-recheck after this returns.
+        """
+        lifetime = self.lifetime
+        with self._registration:
+            self._require_live()
+            leases = tuple(self._dispatcher_log_leases)
+            identity = lifetime.ref, lifetime.generation, lifetime.dispatch_id
+        with lifetime._condition:
+            lifetime._require_current()
+        for lease in leases:
+            lease.release_after_exit()  # The exact retained Thread must be dead.
+        with lifetime._condition:
+            lifetime._require_current()
+        with self._registration:
+            self._require_live()
+            if (
+                self.lifetime is not lifetime
+                or tuple(self._dispatcher_log_leases) != leases
+                or identity != (lifetime.ref, lifetime.generation, lifetime.dispatch_id)
+            ):
+                self.mark_unknown()
+                raise ValueError("native_dispatcher_cleanup_changed")
+            self._dispatcher_log_leases.clear()
+
     def _observe_root_event(self, *, event: GraphEngineEvent, layer: GraphEngineLayer) -> None:
         terminals: dict[type[GraphEngineEvent], RootTerminal] = {
             GraphRunSucceededEvent: "succeeded",
@@ -743,6 +784,8 @@ class NativeHostLaunch:
                 raise ValueError("native_host_cleanup_unconsumed")
             self._retired = True
             release, self._release = self._release, None
+            self._cancellation_fence = None
+            self._resume_bindings = self._resume_lifecycle = self._resume_history = None
             self._generation_bindings = None
             self._engine_bindings = None
             self._journal = self._checkpoints = self._authorization = None
@@ -828,6 +871,157 @@ class NativeHostLaunch:
                 entity, queue, response_filter, workflow_repository, node_repository
             )
 
+    def restore_claimed_resume(self, *, lifecycle, expected_payload):
+        """Reconstruct once through the actual same-store C03 claimed selector."""
+        from services.dify_builder.native_testing.runtime import restore_claimed_host
+
+        with self._registration:
+            self._require_live()
+            if self._resume_attempted or self._generation_bindings is not None:
+                raise ValueError("native_resume_replayed")
+            self._resume_attempted = True
+        # Checkpoint/private IO and public reconstruction run outside host locks.
+        bindings = restore_claimed_host(host=self, lifecycle=lifecycle, expected_payload=expected_payload)
+        with self._registration:
+            self._require_live()
+            if self.lifetime.unknown or self._generation_bindings is not None:
+                raise ValueError("native_resume_unavailable")
+            self._resume_bindings, self._resume_lifecycle = bindings, lifecycle
+        return bindings
+
+    @property
+    def resume_bindings(self):
+        self._require_live()
+        if self._resume_bindings is None:
+            raise ValueError("native_resume_unavailable")
+        return self._resume_bindings
+
+    def require_resume_bindings(self, *, entity, runtime_state, response_filter):
+        bindings = self.resume_bindings
+        if (
+            entity is not bindings.entity
+            or runtime_state is not bindings.runtime_state
+            or response_filter is not bindings.response_filter
+        ):
+            raise ValueError("native_resume_identity_mismatch")
+        lifecycle = self._resume_lifecycle
+        context = self.lifetime.context
+        if lifecycle is None or lifecycle.store.load_context(ref=context.ref) != context:
+            raise ValueError("native_resume_unavailable")
+        if (
+            lifecycle.claimed_resume_checkpoint(
+                ref=context.ref, generation=context.generation, dispatch_id=self.lifetime.dispatch_id
+            )
+            != bindings.checkpoint
+        ):
+            raise ValueError("native_resume_unavailable")
+        self._require_live()
+        return bindings
+
+    def bind_resume_history(self, *, workflow_repository, node_repository):
+        from services.dify_builder.native_testing.runtime import load_resume_history
+
+        if self._resume_history is not None or self._generation_bindings is not None:
+            raise ValueError("native_resume_history_rebound")
+        history = load_resume_history(
+            host=self, workflow_repository=workflow_repository, node_repository=node_repository
+        )
+        with self._registration:
+            self._require_live()
+            if self._resume_history is not None or self._generation_bindings is not None:
+                raise ValueError("native_resume_history_rebound")
+            self._resume_history = history
+        return history
+
+    def diagnostic_event(self, *, event):
+        """Detach only the official zero-price HTTP container diagnostic field."""
+        from decimal import Decimal
+
+        from core.app.entities import queue_entities as queue
+
+        from graphon.enums import WorkflowNodeExecutionMetadataKey as Metadata
+        from graphon.graph_events import (
+            NodeRunIterationSucceededEvent,
+            NodeRunLoopSucceededEvent,
+            NodeRunSucceededEvent,
+        )
+        from services.dify_builder.native_testing.http_binding import build_native_http_profile
+        from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
+
+        result = getattr(event, "node_run_result", None)
+        metadata = getattr(event, "metadata", None)
+        result_metadata = getattr(result, "metadata", None)
+        execution_metadata = getattr(event, "execution_metadata", None)
+        sources = [value for value in (metadata, result_metadata, execution_metadata) if type(value) is dict]
+        if not any(type(value.get(Metadata.TOTAL_PRICE)) is Decimal for value in sources):
+            return event
+        guard = self.native_observation
+        with guard.persistence_scope():
+            engine = self.engine_bindings
+            context = self.lifetime.context
+            NativeHttpObservationPolicy.qualify(context=context, profile=build_native_http_profile())
+            native_types = (NodeRunIterationSucceededEvent, NodeRunLoopSucceededEvent, NodeRunSucceededEvent)
+            queue_types = (
+                queue.QueueIterationCompletedEvent,
+                queue.QueueLoopCompletedEvent,
+                queue.QueueNodeSucceededEvent,
+            )
+            if type(event) not in (*native_types, *queue_types):
+                guard.fail()
+            node = engine.entry.graph_engine.graph.nodes.get(event.node_id)
+            execution_id = event.id if type(event) in native_types else event.node_execution_id
+            if (
+                not isinstance(node, (LoopNode, IterationNode))
+                or node.execution_id != execution_id
+                or node.node_type != event.node_type
+                or node.graph_runtime_state is not engine.runtime_state
+                or getattr(node, "_native_control_owner", None) is not self.boundary_owner
+                or getattr(node, "_native_control_sink", None) is not self.control_sink
+            ):
+                guard.fail()
+            updates = {}
+            for name, value in (
+                ("metadata", metadata),
+                ("node_run_result", result_metadata),
+                ("execution_metadata", execution_metadata),
+            ):
+                if type(value) is dict and type(value.get(Metadata.TOTAL_PRICE)) is Decimal:
+                    price = value[Metadata.TOTAL_PRICE]
+                    if not price.is_finite() or price != 0:
+                        guard.fail()
+                    copied = {**value, Metadata.TOTAL_PRICE: 0}
+                    if name == "node_run_result":
+                        if result is None:
+                            guard.fail()
+                        updates[name] = result.model_copy(update={"metadata": copied})
+                    else:
+                        updates[name] = copied
+            return event.model_copy(update=updates)
+
+    def require_resume_projection(self, *, guard, queue, entity=None, workflow_run_id=None):
+        restored = self.resume_bindings
+        self.require_resume_bindings(
+            entity=restored.entity, runtime_state=restored.runtime_state, response_filter=restored.response_filter
+        )
+        generation = self.generation_bindings
+        history = self._resume_history
+        if (
+            guard is not self.native_observation
+            or queue is not generation.queue
+            or getattr(queue, "native_host", None) is not self
+            or getattr(queue, "native_observation", None) is not guard
+            or generation.entity is not restored.entity
+            or (entity is not None and entity is not restored.entity)
+            or generation.response_filter is not restored.response_filter
+            or self.engine_bindings.runtime_state is not restored.runtime_state
+            or history is None
+            or history[0] is not generation.workflow_repository
+            or history[1] is not generation.node_repository
+            or history[2].id_ != self.lifetime.context.native_run_id
+            or (workflow_run_id is not None and workflow_run_id != history[2].id_)
+        ):
+            raise ValueError("native_resume_projection_unavailable")
+
     def start_worker(self, *, worker: Thread) -> None:
         # No external caller .start gap: lifetime owns the actual start attempt.
         _ = self.generation_bindings
@@ -846,6 +1040,21 @@ class NativeHostLaunch:
             self._exit_kind = exit_kind
         if exit_kind == "failed":
             self._unknown()
+
+    def bind_cancellation_fence(self, *, fence):
+        from services.dify_builder.native_testing.runtime import DifyNativeCancellationFence
+
+        if (
+            type(fence) is not DifyNativeCancellationFence
+            or fence.delivery.ref != self.lifetime.ref
+            or fence.delivery.dispatch_id != self.lifetime.dispatch_id
+            or fence.delivery.generation != self.lifetime.generation
+        ):
+            raise ValueError("native_cancellation_owner_mismatch")
+        with self._registration:
+            if self._cancellation_fence is not None:
+                raise ValueError("native_cancellation_owner_rebound")
+            self._cancellation_fence = fence
 
     def wrap_commands(self, *, channel: CommandChannel) -> CommandChannel:
         if not callable(getattr(channel, "fetch_commands", None)) or not callable(
@@ -909,10 +1118,87 @@ class NativeHostLaunch:
                 self._runtimes.append(runtime)
 
     @contextmanager
+    def _logical_node_scope(self, *, node: Node) -> Generator[None]:
+        self.bind_node_runtime(node=node)
+        with self.lifetime.node_scope(node=node, phase="run"):
+            yield
+
+    @contextmanager
     def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> Generator[None]:
         self.bind_node_runtime(node=node)
-        with self.lifetime.node_scope(node=node, phase=phase):
-            yield
+        manager = self.lifetime.node_scope(node=node, phase=phase)
+        actual = _HookScope(node, current_thread(), node.execution_id, manager)
+        with self._registration:
+            self._physical_phases.append(actual)
+        try:
+            with manager:
+                yield
+        finally:
+            with self._registration:
+                self._physical_phases.remove(actual)
+
+    def _finish_paused_container_hooks(self, *, layer: _HostObservationLayer, error: Exception | None) -> None:
+        # Graphon deliberately leaves a suspended container's logical hook open.
+        # Actual marked run/resume delegates have separate retained scopes.
+        with self._registration:
+            engine = self._engine_bindings
+            if (
+                layer is not self._layer
+                or current_thread() is not self._worker
+                or engine is None
+                or error is not None
+                or self._graph_end_error
+                or self._root_terminal != "paused"
+                or not self._root_started
+                or self._root_contradictory
+                or not engine.runtime_state.graph_execution.paused
+                or engine.runtime_state.graph_execution.error is not None
+                or engine.runtime_state.graph_execution.aborted
+                or self.boundary_owner.status != "WAIT_RECORDED"
+            ):
+                return
+            records, tracked = self.boundary_owner.records, self.lifetime.control_records
+            if (
+                not records
+                or len(records) != len(tracked)
+                or len(records) != len(self._controls_seen)
+                or any(a is not b for a, b in zip(records, tracked, strict=True))
+                or not any(type(record.control) is NativeApprovalWait for record in records)
+            ):
+                return
+            eligible = tuple(
+                hook
+                for hook in layer._hooks
+                if (
+                    isinstance(hook.node, (LoopNode, IterationNode))
+                    and getattr(hook.node, "_native_control_owner", None) is self.boundary_owner
+                    and getattr(hook.node, "_native_control_sink", None) is self.control_sink
+                    and hook.node.graph_runtime_state is engine.runtime_state
+                    and hook.execution_id == hook.node.execution_id
+                    and not any(
+                        phase.node is hook.node and phase.execution_id == hook.execution_id
+                        for phase in self._physical_phases
+                    )
+                )
+            )
+        for hook in eligible:
+            try:
+                hook.context.__exit__(None, None, None)
+            except BaseException:
+                self._unknown()
+                continue
+            with self._registration:
+                if (
+                    hook not in layer._hooks
+                    or hook.node.execution_id != hook.execution_id
+                    or any(
+                        phase.node is hook.node and phase.execution_id == hook.execution_id
+                        for phase in self._physical_phases
+                    )
+                ):
+                    self._unknown()
+                if hook in layer._hooks:
+                    layer._hooks.remove(hook)
 
     def _candidate_deadline(self) -> float:
         if self._deadline is not None:

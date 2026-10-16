@@ -1,7 +1,10 @@
 """Unit boundary failures; SQL lifecycle behavior is covered in normal CI."""
 
+from typing import cast
+
 import pytest
 from pydantic import ValidationError
+from services.dify_builder.native_testing.contracts import JsonValue
 
 
 def test_pending_resolution_cannot_claim_configuration_without_account():
@@ -77,7 +80,9 @@ def test_payload_codec_snapshots_caller_mutation():
     from services.dify_builder.native_testing.state_store import decode_payload, encode_payload
 
     payload = {"inputs": [True, 1, "1"]}
-    raw, digest = encode_payload(tenant_id="t", request_id="r", invocation_id="i", kind="result", payload=payload)
+    raw, digest = encode_payload(
+        tenant_id="t", request_id="r", invocation_id="i", kind="result", payload=cast(JsonValue, payload)
+    )
     payload["inputs"].clear()
     assert decode_payload(raw, tenant_id="t", request_id="r", invocation_id="i", kind="result", digest=digest) == {
         "inputs": [True, 1, "1"]

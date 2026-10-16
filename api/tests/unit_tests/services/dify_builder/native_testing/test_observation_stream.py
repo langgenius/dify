@@ -2,10 +2,10 @@
 
 from importlib import import_module, util
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import Mock
 
 import pytest
-
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
@@ -13,12 +13,14 @@ from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTas
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
 from core.workflow.system_variables import build_system_variables
-from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import NOW, SENTINEL, context
+
+from graphon.runtime import GraphRuntimeState, VariablePool
 
 
 def domain():
@@ -35,7 +37,8 @@ def guard():
     )
 
 
-def entity(**kwargs):
+def entity(**kwargs) -> Any:
+    """Structural constructor-refusal fixture; no native provenance claim."""
     return SimpleNamespace(
         task_id="task",
         app_config=SimpleNamespace(app_id="app", tenant_id="tenant"),
@@ -80,11 +83,11 @@ def test_marked_pipeline_requires_guard_before_any_initialization():
     with pytest.raises(NativeObservationError, match="native_observation_failed"):
         WorkflowAppGenerateTaskPipeline(
             application_generate_entity=entity(),
-            workflow=None,
-            queue_manager=None,
-            user=None,
+            workflow=cast(Any, None),
+            queue_manager=cast(Any, None),
+            user=cast(Any, None),
             stream=True,
-            draft_var_saver_factory=None,
+            draft_var_saver_factory=cast(Any, None),
         )
 
 
@@ -103,13 +106,16 @@ def test_queue_projects_before_base_model_dump_and_direct_publish(guard, monkeyp
     monkeypatch.setattr(QueueWorkflowSucceededEvent, "model_dump", checked)
     manager.publish(raw, PublishFrom.APPLICATION_MANAGER)
     message = manager._q.get_nowait()
+    assert message is not None
     assert SENTINEL not in message.model_dump_json()
     manager._q.get_nowait()  # terminal sentinel
     manager._publish(raw, PublishFrom.APPLICATION_MANAGER)
-    assert SENTINEL not in manager._q.get_nowait().model_dump_json()
+    direct = manager._q.get_nowait()
+    assert direct is not None
+    assert SENTINEL not in direct.model_dump_json()
 
 
-def converter(guard):
+def converter(guard) -> Any:
     return WorkflowResponseConverter(
         application_generate_entity=entity(),
         user=account(),
@@ -189,6 +195,7 @@ def test_unknown_object_fails_without_rendering_and_latches(guard):
 @pytest.mark.parametrize("kind", ["start", "success", "failed", "exception", "retry", "text", "pause", "stop", "error"])
 def test_supported_real_queue_dtos_are_fresh_and_safe(guard, kind):
     from core.app.entities import queue_entities as q
+
     from graphon.entities.pause_reason import SchedulingPause
     from graphon.enums import BuiltinNodeTypes
 
@@ -220,11 +227,13 @@ def test_supported_real_queue_dtos_are_fresh_and_safe(guard, kind):
     assert type(result) is type(event)
     assert SENTINEL not in result.model_dump_json()
     if kind == "retry":
+        assert isinstance(result, q.QueueNodeRetryEvent)
         assert result.retry_index == 2
 
 
 def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard):
     from core.app.entities.queue_entities import QueueNodeStartedEvent
+
     from graphon.enums import BuiltinNodeTypes
 
     event = QueueNodeStartedEvent(
@@ -240,7 +249,7 @@ def test_wrong_node_type_and_unqualified_hitl_fail_before_projection(guard):
         domain().project_native_queue_event(guard=guard, event=event)
 
 
-def make_pipeline(guard, monkeypatch, **updates):
+def make_pipeline(guard, monkeypatch, **updates) -> tuple[Any, Any, Mock]:
     from tests.unit_tests.core.app.apps.workflow.test_generate_task_pipeline_core import _make_pipeline
 
     ordinary = _make_pipeline()
@@ -264,6 +273,7 @@ def make_pipeline(guard, monkeypatch, **updates):
 
 def test_pipeline_projects_internal_events_and_noops_draft_saver(guard, monkeypatch):
     from core.app.entities.queue_entities import QueueNodeSucceededEvent
+
     from graphon.enums import BuiltinNodeTypes
 
     p, q, saver = make_pipeline(guard, monkeypatch)
@@ -299,6 +309,7 @@ def test_pipeline_refuses_tts_trace_and_files_before_actions(guard, monkeypatch)
 
 def test_pause_live_fallback_is_safe_without_hitl_resolution(guard, monkeypatch):
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+
     from graphon.entities import WorkflowStartReason
     from graphon.entities.pause_reason import SchedulingPause
 
@@ -359,9 +370,10 @@ def test_direct_native_text_handler_rejects_tts_before_publish(guard, monkeypatc
 @pytest.mark.parametrize("kind", ["iteration", "loop"])
 def test_real_container_queue_and_converter_preserve_counts_without_values(kind):
     from core.app.entities import queue_entities as q
+    from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import container_context
+
     from graphon.entities import WorkflowStartReason
     from graphon.enums import BuiltinNodeTypes
-    from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import container_context
 
     guard = NativeObservationGuard(
         policy=NativeHttpObservationPolicy.qualify(
@@ -394,6 +406,7 @@ def test_real_container_queue_and_converter_preserve_counts_without_values(kind)
             outputs={SENTINEL: SENTINEL},
         ),
     ]
+    response = None
     for event, method in zip(events, ["start", "next", "completed"], strict=True):
         projected = domain().project_native_queue_event(guard=guard, event=event)
         assert projected == domain().project_native_queue_event(guard=guard, event=projected)
@@ -401,11 +414,13 @@ def test_real_container_queue_and_converter_preserve_counts_without_values(kind)
             task_id="task", workflow_execution_id="run", event=event
         )
         assert SENTINEL not in response.model_dump_json()
+    assert response is not None
     assert response.data.steps == 4
 
 
 def test_retry_history_remains_safe_and_idempotent_in_queue_and_converter(guard):
     from core.app.entities.queue_entities import QueueNodeStartedEvent, QueueNodeSucceededEvent
+
     from graphon.entities import WorkflowStartReason
     from graphon.enums import BuiltinNodeTypes
 
@@ -549,6 +564,7 @@ def test_marked_converter_wrong_guard_refuses_before_inputs(bad):
 def test_native_no_hitl_or_history_resume(guard):
     from core.app.entities.queue_entities import QueueWorkflowPausedEvent, QueueWorkflowStartedEvent
     from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+
     from graphon.entities import WorkflowStartReason
 
     with pytest.raises(NativeObservationError):
@@ -564,3 +580,82 @@ def test_native_no_hitl_or_history_resume(guard):
                 reasons=[HumanInputRequired(form_id="form", form_content=SENTINEL, node_id="http", node_title=SENTINEL)]
             ),
         )
+
+
+@pytest.mark.parametrize("route", ["projector", "publish", "direct", "converter"])
+@pytest.mark.parametrize("supplied_host", [None, SimpleNamespace()])
+def test_resumption_requires_actual_host_not_a_caller_port(guard, monkeypatch, route, supplied_host):
+    from core.app.entities.queue_entities import QueueWorkflowStartedEvent
+
+    from graphon.entities import WorkflowStartReason
+
+    monkeypatch.setattr("core.app.apps.base_app_queue_manager.redis_client", Mock())
+    event = QueueWorkflowStartedEvent(reason=WorkflowStartReason.RESUMPTION)
+    if supplied_host is not None and route != "projector":
+
+        def construct():
+            if route == "converter":
+                return WorkflowResponseConverter(
+                    application_generate_entity=entity(),
+                    user=account(),
+                    system_variables=[],
+                    native_observation=guard,
+                    native_host=supplied_host,
+                )
+            return WorkflowAppQueueManager(
+                "task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard, native_host=supplied_host
+            )
+
+        with pytest.raises(BuilderExecutionPolicyError, match="native_resume_owner_mismatch"):
+            construct()
+        return
+    queue = None
+
+    def project():
+        nonlocal queue
+        if route == "projector":
+            return domain().project_native_queue_event(guard=guard, event=event, native_host=supplied_host)
+        if route == "converter":
+            return converter(guard).workflow_start_to_stream_response(
+                task_id="task", workflow_run_id="run", workflow_id="workflow", reason=WorkflowStartReason.RESUMPTION
+            )
+        queue = WorkflowAppQueueManager("task", "actor", InvokeFrom.DEBUGGER, "workflow", native_observation=guard)
+        if route == "publish":
+            return queue.publish(event, PublishFrom.APPLICATION_MANAGER)
+        return queue._publish(event, PublishFrom.APPLICATION_MANAGER)
+
+    with pytest.raises(NativeObservationError, match="native_observation_failed"):
+        project()
+    if queue is not None:
+        assert queue._q.empty()
+    assert guard.failed
+
+
+@pytest.mark.parametrize("price", ["0", "1", "NaN", "Infinity"])
+def test_generic_container_decimal_metadata_stays_refused_without_actual_host(price):
+    from decimal import Decimal
+
+    from core.app.entities.queue_entities import QueueLoopCompletedEvent
+    from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import container_context
+
+    guard = NativeObservationGuard(
+        policy=NativeHttpObservationPolicy.qualify(
+            context=container_context("loop"), profile=build_native_http_profile()
+        ),
+        on_failure=lambda: None,
+    )
+    event = QueueLoopCompletedEvent(
+        node_execution_id="container-execution",
+        node_id="container",
+        node_type="loop",
+        node_title="loop",
+        node_run_index=1,
+        start_at=NOW.replace(tzinfo=None),
+        metadata={"total_price": Decimal(price)},
+    )
+    metadata = event.metadata
+    with pytest.raises(NativeObservationError, match="native_observation_failed"):
+        domain().project_native_queue_event(guard=guard, event=event)
+    assert event.metadata is metadata
+    assert type(event.metadata["total_price"]) is Decimal
+    assert guard.failed

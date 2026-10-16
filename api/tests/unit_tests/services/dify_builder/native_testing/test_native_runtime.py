@@ -1,0 +1,1498 @@
+"""Actual lifecycle routing; SQL boundary doubles do not establish durability."""
+
+import json
+from contextlib import contextmanager
+from types import SimpleNamespace
+from typing import Any, cast, override
+
+import pytest
+from services.dify_builder.native_testing.lifecycle import NativeRuntimePort, NativeTestLifecycleService
+from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome
+from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import context as sample_context
+
+
+def test_initial_dispatch_uses_no_checkpoint_and_duplicate_delivery_never_runs_again(monkeypatch):
+    context = sample_context()
+    calls = []
+    claimed = False
+
+    class Runtime:
+        def run_initial(self, *, context):
+            calls.append(context)
+            return NativeWorkflowOutcome(
+                status="completed",
+                ref=context.ref,
+                native_run_id=context.native_run_id,
+                checkpoint_ref=None,
+                pending_operation_ids=(),
+                reason_code=None,
+                wait_reason=None,
+                native_status="succeeded",
+                output_result_ref=None,
+            )
+
+        def resume(self, **kwargs):
+            pytest.fail("initial delivery must not restore a checkpoint")
+
+    class Store:
+        def load_context(self, *, ref):
+            assert ref == context.ref
+            return context
+
+        def read_checkpoint(self, **kwargs):
+            pytest.fail("generation zero has no checkpoint")
+
+    @contextmanager
+    def locked(**kwargs):
+        yield None, None, None
+
+    lifecycle = NativeTestLifecycleService(
+        cast(
+            OwnedNativeTestLoader,
+            SimpleNamespace(locked=locked, session_factory=lambda: pytest.fail("initial checkpoint SQL")),
+        ),
+        state_store=cast(NativeExecutionStateStore, Store()),
+        runtime=cast(NativeRuntimePort, Runtime()),
+    )
+
+    def claim(**kwargs):
+        nonlocal claimed
+        if claimed:
+            return False
+        claimed = True
+        return True
+
+    monkeypatch.setattr(lifecycle, "claim_dispatch", claim)
+    monkeypatch.setattr(lifecycle, "finalize_dispatch_locked", lambda **kw: calls.append(kw["outcome"].status))
+    result = lifecycle.execute_dispatch(ref=context.ref, generation=0, dispatch_id="dispatch")
+    assert result is not None
+    assert result.status == "completed"
+    assert lifecycle.execute_dispatch(ref=context.ref, generation=0, dispatch_id="dispatch") is None
+    assert calls == [context, "completed"]
+
+
+@pytest.mark.parametrize(("dispatch_state", "cleaned"), [("claimed", True), ("completed", False), ("unknown", True)])
+def test_resume_settlement_refuses_committed_wait_before_actual_finalization(dispatch_state, cleaned):
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import NativeDispatch
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.contracts import CheckpointRef
+    from services.dify_builder.native_testing.http_binding import build_native_http_profile
+    from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
+
+    context = sample_context()
+    owned = SimpleNamespace(
+        ref=context.ref,
+        tenant_id=context.tenant_id,
+        actor_id=context.actor_id,
+        app_id=context.app_id,
+        workflow_id=context.workflow_id,
+    )
+    state = SimpleNamespace(generation=0, cleanup_complete=cleaned, checkpoint_id="checkpoint")
+    rows = {
+        DifyBuilderExecutionRequest: [
+            SimpleNamespace(
+                id=context.ref.request_id,
+                tenant_id=context.tenant_id,
+                actor_id=context.actor_id,
+                context={"profile": build_native_http_profile().model_dump(mode="json")},
+            )
+        ],
+        NativeDispatch: [
+            SimpleNamespace(
+                tenant_id=context.tenant_id,
+                request_id=context.ref.request_id,
+                invocation_id=context.ref.invocation_id,
+                generation=0,
+                state=dispatch_state,
+            )
+        ],
+    }
+    validator = DifyNativeResumeSettlement()
+    with pytest.raises(BuilderExecutionPolicyError, match="native_resume_unsettled"):
+        validator.validate(
+            session=SQL(rows, []),
+            owned=owned,
+            state=state,
+            checkpoint=CheckpointRef(checkpoint_id="checkpoint", payload_digest="a" * 64),
+        )
+
+
+def test_unrestored_host_cannot_authorize_arbitrary_snapshot_or_resume_history():
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
+
+    case = LaunchCase()
+    with pytest.raises(ValueError, match="native_resume_unavailable"):
+        case.host.require_resume_bindings(entity=object(), runtime_state=object(), response_filter=object())
+
+
+from tests.unit_tests.services.dify_builder.native_testing.test_observation_owner import case as case  # noqa: PLC0414
+
+
+def test_actual_delivery_capacity_is_bound_before_claim_but_lifetime_stays_inactive(case, monkeypatch):
+    from services.dify_builder.native_testing.host_lifetime import NativeHostLifetimeRegistry
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement, DifyNativeRuntime
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    lifecycle = NativeTestLifecycleService(
+        case.loader, state_store=case.store, resume_settlement=DifyNativeResumeSettlement()
+    )
+    runtime = DifyNativeRuntime(
+        delivery=NativeDispatchRef(case.context.ref, 0, "actual-delivery"),
+        lifecycle=lifecycle,
+        registry=NativeHostLifetimeRegistry(),
+    )
+    assert lifecycle._capacity is runtime.capacity
+    assert runtime.capacity._verifier is runtime.host.lifetime
+    with pytest.raises(ValueError, match="native_host_acquisition_not_current"):
+        runtime.host.lifetime.require_settled_root()
+    assert runtime.recovery_evidence(context=case.context, dispatch_id="actual-delivery") == "unknown"
+
+
+def test_broker_actor_hint_cannot_replace_persisted_request_owner(case):
+    from core.dify_builder.models import Actor
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
+
+    with pytest.raises(BuilderExecutionPolicyError, match="native_owner_mismatch"):
+        DifyNativeRuntimeOwner().delivery(
+            sessions=case.loader.session_factory,
+            delivery=NativeDispatchRef(case.context.ref, 0, "actual-delivery"),
+            actor_hint=Actor(account_id="foreign", tenant_id=case.context.tenant_id),
+        )
+
+
+@pytest.mark.parametrize("generation", [1, 7])
+def test_actual_wait_snapshot_restores_exact_objects_journal_and_generation_gap(monkeypatch, generation):
+    """Actual Graphon wait/snapshot/restore; C03 claim/readback/ACK are labeled doubles."""
+    from services.dify_builder.native_testing.checkpoint_bridge import NativeCheckpointBridge
+    from services.dify_builder.native_testing.contracts import CheckpointRef
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+    from services.dify_builder.native_testing.host_lifetime import NativeHostLifetime
+    from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
+    from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
+        bind_component_observation,
+    )
+    from tests.unit_tests.services.dify_builder.native_testing.test_stream_runtime import StreamCase
+
+    initial = StreamCase(monkeypatch, waiting=True)
+    initial.start()
+    assert initial.consume().status == "waiting"
+    payload = initial.saved
+    assert payload is not None
+    state, auth = initial.case.state, initial.case.authorization
+    state.context = state.context.model_copy(update={"generation": generation})
+    lifecycle = NativeTestLifecycleService(
+        cast(OwnedNativeTestLoader, SimpleNamespace(session_factory=initial.sessions)),
+        state_store=cast(NativeExecutionStateStore, state),
+        resume_settlement=DifyNativeResumeSettlement(),
+    )
+    checkpoint = CheckpointRef(checkpoint_id="checkpoint", payload_digest="c" * 64)
+
+    def claimed(**kwargs):
+        assert kwargs == {"ref": state.context.ref, "generation": generation, "dispatch_id": "resume-delivery"}
+        return checkpoint
+
+    monkeypatch.setattr(lifecycle, "claimed_resume_checkpoint", claimed)
+
+    def read_checkpoint(**kwargs):
+        assert kwargs == {"ref": state.context.ref, "checkpoint": checkpoint}
+        return payload.model_copy(deep=True)
+
+    monkeypatch.setattr(state, "read_checkpoint", read_checkpoint)
+    journal = NodeOperationJournal(state=state, authorization=auth)
+    life = NativeHostLifetime(context=state.context, dispatch_id="resume-delivery")
+    initial.case.registry.activate(lifetime=life)
+    host = NativeHostLaunch(
+        context=state.context,
+        dispatch_id=life.dispatch_id,
+        lifetime=life,
+        journal=journal,
+        checkpoints=NativeCheckpointBridge(state=state, lifecycle=lifecycle),
+        fence_pending=initial.case.ports.fence_pending,
+        stop_sealer=initial.case.ports,
+        authorization=auth,
+        http_baseline=(1, 1, 1),
+    )
+    bind_component_observation(SimpleNamespace(host=host), monkeypatch)
+    restored = host.restore_claimed_resume(lifecycle=lifecycle, expected_payload=payload)
+    assert restored.entity.workflow_execution_id == payload.native_run_id
+    assert restored.entity.native_test_ref == state.context.ref
+    assert restored.runtime_state.graph_execution.paused
+    assert journal.snapshot(ref=state.context.ref) == payload.node_journals
+    assert (
+        host.require_resume_bindings(
+            entity=restored.entity, runtime_state=restored.runtime_state, response_filter=restored.response_filter
+        )
+        is restored
+    )
+    with pytest.raises(ValueError, match="native_resume_identity_mismatch"):
+        host.require_resume_bindings(
+            entity=restored.entity.model_copy(),
+            runtime_state=restored.runtime_state,
+            response_filter=restored.response_filter,
+        )
+    with pytest.raises(ValueError, match="native_resume_replayed"):
+        host.restore_claimed_resume(lifecycle=lifecycle, expected_payload=payload)
+
+
+def test_actual_stream_cleanup_returns_without_signalling_retired_host(monkeypatch):
+    from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
+    from services.dify_builder.native_testing.native_execution import DifyNativeWorkflowOwner
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_generation_wiring import runtime_for
+    from tests.unit_tests.services.dify_builder.native_testing.test_stream_runtime import StreamCase
+
+    c = StreamCase(monkeypatch)
+    c.start()
+    owner = DifyNativeWorkflowOwner(
+        session_factory=cast(Any, c.sessions),
+        runtime=runtime_for(c.case),
+        stream_owner=c.owner(),
+        native_host=c.case.host,
+    )
+    stream = HostOwnedNativeGeneratorStream(source=c.source(), host=c.case.host)
+    result = owner._consume(context=c.case.state.context, stream=stream)
+    assert result.status == "completed"
+    assert c.case.lifetime._consumed
+    assert len(c.source_closed) == 1
+    assert c.events[-1] == "release"
+
+
+def test_unknown_joined_owner_can_release_only_actual_dead_dispatcher_lease(monkeypatch):
+    from tests.unit_tests.services.dify_builder.native_testing.test_stream_runtime import StreamCase
+
+    c = StreamCase(monkeypatch)
+    monkeypatch.setattr(c, "source_error", RuntimeError("private-reader-canary"))
+    c.start()
+    assert c.consume().status == "unknown"
+    assert c.case.lifetime.unknown
+    assert c.case.host._dispatcher_log_leases
+    c.case.host.release_dead_dispatcher_logs()
+    assert c.case.host._dispatcher_log_leases == []
+    assert c.case.lifetime.unknown
+    # Real physical verifier still owns the separate source/worker/ticket checks.
+    c.case.lifetime.consume_cleanup(
+        ref=c.case.lifetime.ref, generation=c.case.lifetime.generation, dispatch_id=c.case.lifetime.dispatch_id
+    )
+
+
+def test_cleanup_only_log_release_refuses_live_dispatcher_and_keeps_original_lease(monkeypatch):
+    from threading import Event, Thread
+
+    from libs.sensitive_http_telemetry import SensitiveHttpTelemetryUnavailable
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_execution import LaunchCase
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
+        bind_component_observation,
+    )
+
+    from graphon.graph_engine.command_channels import InMemoryChannel
+
+    c = LaunchCase(baseline=(1, 1, 1))
+    bind_component_observation(c, monkeypatch)
+    entered, leave = Event(), Event()
+    channel = InMemoryChannel()
+
+    def fetch():
+        entered.set()
+        assert leave.wait(3)
+        return []
+
+    monkeypatch.setattr(channel, "fetch_commands", fetch)
+    wrapped = c.host.wrap_commands(channel=channel)
+    thread = Thread(target=wrapped.fetch_commands)
+    thread.start()
+    try:
+        assert entered.wait(2)
+        original = tuple(c.host._dispatcher_log_leases)
+        c.host.mark_unknown()
+        with pytest.raises(SensitiveHttpTelemetryUnavailable):
+            c.host.release_dead_dispatcher_logs()
+        assert tuple(c.host._dispatcher_log_leases) == original
+        assert thread.is_alive()
+    finally:
+        leave.set()
+        thread.join(3)
+    c.host.release_dead_dispatcher_logs()
+    assert c.lifetime.unknown
+    # No worker/source existed, but observed dispatcher history disqualifies
+    # the genuine never-started alternative and physical consumption still fails.
+    with pytest.raises(ValueError):
+        c.host.confirm_never_started()
+    with pytest.raises(ValueError):
+        c.lifetime.consume_cleanup(
+            ref=c.lifetime.ref, generation=c.lifetime.generation, dispatch_id=c.lifetime.dispatch_id
+        )
+
+
+def test_resume_history_refuses_fake_host_before_any_repository_cache_or_io():
+    from unittest.mock import Mock
+
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.runtime import read_claimed_history
+
+    repository = Mock(side_effect=AssertionError("history IO before actual host"))
+    with pytest.raises(BuilderExecutionPolicyError, match="native_resume_owner_mismatch"):
+        read_claimed_history(
+            host=SimpleNamespace(require_resume_bindings=lambda **kw: True),
+            entity=object(),
+            workflow_repository=repository,
+            node_repository=repository,
+        )
+    assert repository.mock_calls == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "history_fault"),
+    [
+        ("root", None),
+        ("loop", None),
+        ("iteration", None),
+        ("root", "missing"),
+        ("root", "foreign"),
+        ("loop", "price-nonzero"),
+        ("loop", "price-nan"),
+        ("iteration", "price-inf"),
+        ("loop", "price-foreign"),
+    ],
+)
+def test_real_dify_initial_http_wait_and_claimed_resume_keep_same_run(case, monkeypatch, kind, history_fault):
+    """Actual Dify generator/runner/Graphon; SQL/storage/C02/quota/HTTP doubles.
+
+    This proves the composition, never database durability or grant authority.
+    The separate CI witness runs the actual SQL owners and operation approval.
+    """
+    from copy import deepcopy
+    from unittest.mock import Mock
+
+    import httpx
+    from core.app.apps.workflow import app_generator as generator_module
+    from core.app.features.rate_limiting import RateLimit
+    from core.repositories.factory import DifyCoreRepositoryFactory
+    from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+    from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+        SQLAlchemyWorkflowNodeExecutionRepository,
+    )
+    from flask import Flask
+    from models.account import Account, AccountStatus
+    from models.model import App
+    from models.workflow import Workflow, WorkflowRun
+    from services.dify_builder.native_testing import authorization as authorization_module
+    from services.dify_builder.native_testing.contracts import ApprovalWait, CheckpointRef, WaitingReceipt
+    from services.dify_builder.native_testing.host_lifetime import NativeHostLifetimeRegistry
+    from services.dify_builder.native_testing.http_binding import NativeHttpBindingProducer
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement, DifyNativeRuntime
+    from sqlalchemy.orm import sessionmaker
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    import threading
+    from decimal import Decimal
+
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+    from services.dify_builder.native_testing.observation_adapters import NativeObservationError
+
+    thread_errors = []
+    monkeypatch.setattr(threading, "excepthook", lambda args: thread_errors.append(args.exc_value))
+    normalized = []
+    original_diagnostic = NativeHostLaunch.diagnostic_event
+
+    def diagnostic(host, *, event):
+        maps = [(name, getattr(event, name, None)) for name in ("metadata", "execution_metadata")]
+        for name, values in maps:
+            if type(values) is dict and type(values.get("total_price")) is Decimal:
+                before = event.model_copy(deep=True)
+                if history_fault and history_fault.startswith("price-") and host.lifetime.generation == 1:
+                    bad = {
+                        "price-nonzero": Decimal(1),
+                        "price-nan": Decimal("NaN"),
+                        "price-inf": Decimal("Infinity"),
+                        "price-foreign": Decimal(0),
+                    }[history_fault]
+                    changed: dict[str, Any] = {name: {**values, "total_price": bad}}
+                    if history_fault == "price-foreign":
+                        changed["id"] = "foreign-occurrence"
+                    candidate = event.model_copy(update=changed)
+                    with pytest.raises(NativeObservationError, match="native_observation_failed"):
+                        original_diagnostic(host, event=candidate)
+                    assert event == before
+                    raise NativeObservationError()
+                observed = original_diagnostic(host, event=event)
+                assert event == before
+                assert type(values["total_price"]) is Decimal
+                assert type(getattr(observed, name)["total_price"]) is int
+                assert getattr(observed, name)["total_price"] == 0
+                assert {k: v for k, v in getattr(observed, name).items() if k != "total_price"} == {
+                    k: v for k, v in values.items() if k != "total_price"
+                }
+                normalized.append(kind)
+                return observed
+        return original_diagnostic(host, event=event)
+
+    monkeypatch.setattr(NativeHostLaunch, "diagnostic_event", diagnostic)
+    original_finish = NativeHostLaunch._finish_paused_container_hooks
+    checked_live_phase = []
+
+    def finish(host, *, layer, error):
+        if (
+            kind != "root"
+            and host._root_terminal == "paused"
+            and layer._hooks
+            and host.boundary_owner.status == "WAIT_RECORDED"
+        ):
+            hook = layer._hooks[0]
+            original_finish(host, layer=cast(Any, object()), error=None)
+            assert hook in layer._hooks
+            original_finish(host, layer=layer, error=RuntimeError("private-end-canary"))
+            assert hook in layer._hooks
+            actual_id = hook.node.execution_id
+            hook.node.bind_execution_id("foreign-occurrence")
+            original_finish(host, layer=layer, error=None)
+            assert hook in layer._hooks
+            hook.node.bind_execution_id(actual_id)
+            terminal = host._root_terminal
+            host._root_terminal = None
+            original_finish(host, layer=layer, error=None)
+            assert hook in layer._hooks
+            host._root_terminal = terminal
+            with host.node_scope(node=hook.node, phase="resume_container"):
+                original_finish(host, layer=layer, error=None)
+                assert hook in layer._hooks
+                assert host.lifetime.active_node_scopes
+            # A scalar logical callback cannot be retired by a root pause.
+            scalar = host.engine_bindings.entry.graph_engine.graph.nodes["start"]
+            layer.on_node_run_start(scalar)
+            scalar_hook = next(item for item in layer._hooks if item.node is scalar)
+            original_finish(host, layer=layer, error=None)
+            assert scalar_hook in layer._hooks
+            layer.on_node_run_end(scalar, None)
+            assert scalar_hook not in layer._hooks
+            checked_live_phase.append(kind)
+        return original_finish(host, layer=layer, error=error)
+
+    monkeypatch.setattr(NativeHostLaunch, "_finish_paused_container_hooks", finish)
+    from models.dify_builder import DifyBuilderTestInput
+    from services.dify_builder.execution_contracts import canonical_digest
+    from services.dify_builder.native_testing.context_binding import native_workflow_revision
+    from services.dify_builder.native_testing.http_binding import describe_http_resource
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import supported_graph
+
+    context = case.context
+    if kind != "root":
+        graph = supported_graph(kind)
+        inputs = {**context.inputs, "items": ["one", "two"]}
+        case.workflow.graph = json.dumps(graph)
+        revision = native_workflow_revision(case.workflow)
+        manifest = tuple(
+            describe_http_resource(
+                node_id=node["id"],
+                raw=node["data"],
+                workflow_revision=revision,
+                app_id=context.app_id,
+                workflow_id=context.workflow_id,
+            )
+            for node in graph["nodes"]
+            if node["data"]["type"] == "http-request"
+        )
+        case.request.context.update(
+            execution_revision=revision,
+            input_revision=canonical_digest(inputs),
+            resource_manifest_digest=canonical_digest(list(manifest)),
+        )
+        case.context = context.model_copy(
+            update={
+                "graph": graph,
+                "graph_revision": revision,
+                "resource_manifest": manifest,
+                "inputs": inputs,
+                "input_revision": canonical_digest(inputs),
+            },
+            deep=True,
+        )
+        case.rows[DifyBuilderTestInput][0].inputs = inputs
+        case.rebind()
+        context = case.context
+    workflow = Workflow(
+        id=context.workflow_id,
+        tenant_id=context.tenant_id,
+        app_id=context.app_id,
+        type="workflow",
+        version="draft",
+        kind="standard",
+        graph=json.dumps(context.graph),
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
+        created_by=context.actor_id,
+    )
+    app = App(id=context.app_id, tenant_id=context.tenant_id, mode="workflow", status="normal", name="Component")
+    account = Account(name="Component", email="component@example.invalid")
+    account.id, account.status = context.actor_id, AccountStatus.ACTIVE
+    case.rows[Workflow], case.rows[App], case.rows[Account] = [workflow], [app], [account]
+
+    class HistorySQL(SQL):
+        """Actual SQL-repository protocol boundary, including pre-cache owner reads."""
+
+        writing = False
+
+        def __call__(self, **kw):
+            return self
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.writing = False
+
+        def begin(self):
+            self.writing = True
+            return self
+
+        @override
+        def get(self, model, identity, **kw):
+            if kw.get("with_for_update"):
+                self.writing = True
+            return super().get(model, identity)
+
+        def merge(self, row):
+            previous = self.get(type(row), row.id)
+            if previous is not None:
+                self.rows[type(row)].remove(previous)
+            self.rows.setdefault(type(row), []).append(row)
+            return row
+
+        def commit(self):
+            pass
+
+        def close(self):
+            pass
+
+        def expunge_all(self):
+            pass
+
+        @override
+        def execute(self, _query) -> Any:
+            values = self.scalars(_query)
+            return SimpleNamespace(scalars=lambda: SimpleNamespace(first=lambda: values[0] if values else None))
+
+    history = HistorySQL(case.rows, [])
+    # The reused single-reader fixture's global SQL depth is unsuitable for
+    # actual concurrent workers. This boundary retains per-thread no-IO-in-SQL
+    # assertions; it does not replace the production ownership reads.
+    from threading import local
+
+    sql_depth = local()
+
+    @contextmanager
+    def concurrent_sessions():
+        sql_depth.value = getattr(sql_depth, "value", 0) + 1
+        try:
+            yield SQL(case.rows, case.events)
+        finally:
+            sql_depth.value -= 1
+
+    case.loader.session_factory = cast(Any, concurrent_sessions)
+
+    def permission(actor, app_id, sessions):
+        assert getattr(sql_depth, "value", 0) == 0
+        assert actor == case.loader.actor
+        assert app_id == context.app_id
+        assert sessions is concurrent_sessions
+
+    for permission_path in (
+        "services.dify_builder.execution_policy_service.check_execution_permission",
+        "services.dify_builder.native_testing.private_reads.check_execution_permission",
+        "services.dify_builder.native_testing.http_binding.check_execution_permission",
+    ):
+        monkeypatch.setattr(permission_path, permission)
+
+    def protected_context(row):
+        assert getattr(sql_depth, "value", 0) == 0
+        assert row.id == "context"
+        return deepcopy(case.context.model_dump(mode="json"))
+
+    monkeypatch.setattr(NativeExecutionStateStore, "_read_object", staticmethod(protected_context))
+    monkeypatch.setattr(SQL, "expunge_all", lambda self: None, raising=False)
+    # The loader's SQL boundary is a function fixture, while actual repository
+    # constructors require a nominal sessionmaker. Retain their real setup,
+    # replacing only that constructor's SQL session boundary in both deliveries.
+
+    def repository_constructor(original):
+        def initialize(repo, session_factory, *args, **kwargs):
+            original(repo, sessionmaker(), *args, **kwargs)
+            repo._session_factory = history
+
+        return initialize
+
+    for cls in (SQLAlchemyWorkflowExecutionRepository, SQLAlchemyWorkflowNodeExecutionRepository):
+        monkeypatch.setattr(cls, "__init__", repository_constructor(cls.__init__))
+
+    def repositories(*, node=False, **kwargs):
+        cls = SQLAlchemyWorkflowNodeExecutionRepository if node else SQLAlchemyWorkflowExecutionRepository
+        repo = cls(sessionmaker(), context.tenant_id, account, context.app_id, kwargs["triggered_from"])
+        repo._session_factory = cast(Any, history)
+        return repo
+
+    monkeypatch.setattr(DifyCoreRepositoryFactory, "create_workflow_execution_repository", repositories)
+    monkeypatch.setattr(
+        DifyCoreRepositoryFactory,
+        "create_workflow_node_execution_repository",
+        lambda **kw: repositories(node=True, **kw),
+    )
+    monkeypatch.setattr(generator_module.session_factory, "create_session", lambda: history)
+    monkeypatch.setattr(
+        generator_module, "db", SimpleNamespace(engine=object(), session=SimpleNamespace(close=lambda: None))
+    )
+    monkeypatch.setattr(generator_module, "sessionmaker", lambda **kw: sessionmaker())
+    from core.app.apps import base_app_queue_manager
+
+    monkeypatch.setattr(base_app_queue_manager, "redis_client", Mock())
+    monkeypatch.setattr(base_app_queue_manager.AppQueueManager, "_is_stopped", lambda self: False)
+    monkeypatch.setattr(RateLimit, "flush_cache", lambda *args, **kw: None)
+    for name in ("enter", "exit"):
+        monkeypatch.setattr(RateLimit, name, lambda self, request_id: request_id)
+    monkeypatch.setattr(RateLimit, "_get_max_active_requests", lambda *args: 10, raising=False)
+
+    class ComponentAuthorization:
+        """C02 boundary keyed by full operation, including parallel occurrences."""
+
+        def __init__(self):
+            from threading import RLock
+
+            self.lock = RLock()
+            self.decisions = {0: True}
+            self.permits, self.outcomes, self.claimed = {}, {}, set()
+
+        def before_call(self, *, ref, intent):
+            from services.dify_builder.native_testing.contracts import DispatchPermit, RecordedResult, operation_digest
+
+            assert ref == context.ref
+            key = operation_digest(intent.key)
+            with self.lock:
+                if self.decisions:
+                    return ApprovalWait(pending_operation_id="pending-" + key, wait_reason="approval")
+                if key in self.outcomes:
+                    return RecordedResult(operation_id=key, result_ref=self.outcomes[key])
+                return self.permits.setdefault(
+                    key,
+                    DispatchPermit(permit_id=key, attempt_id=key, operation_id=key, expires_at="2030-01-01T00:00:00Z"),
+                )
+
+        def claim_dispatch(self, *, ref, intent, permit):
+            from services.dify_builder.native_testing.contracts import operation_digest
+
+            assert ref == context.ref
+            key = operation_digest(intent.key)
+            with self.lock:
+                assert permit is self.permits[key]
+                assert key not in self.claimed
+                self.claimed.add(key)
+
+        def record_outcome(self, *, permit, outcome, result_ref):
+            from services.dify_builder.native_testing.contracts import EffectReceipt
+
+            with self.lock:
+                assert permit is self.permits[permit.operation_id]
+                assert outcome == "completed"
+                self.outcomes[permit.operation_id] = result_ref
+            return EffectReceipt(
+                operation_id=permit.operation_id, attempt_id=permit.attempt_id, outcome=outcome, result_ref=result_ref
+            )
+
+    auth = ComponentAuthorization()
+    monkeypatch.setattr(authorization_module, "EffectAuthorizationService", lambda loader: auth)
+    private, checkpoints, sends = {}, {}, []
+
+    def store_inputs(**kw):
+        key = "input-" + kw["native_execution_id"]
+        private[key] = deepcopy(kw["inputs"])
+        return key
+
+    def store_result(**kw):
+        from uuid import uuid4
+
+        key = "result-" + str(uuid4())
+        private[key] = deepcopy(kw["result"])
+        return key
+
+    monkeypatch.setattr(case.store, "store_node_inputs", store_inputs)
+    monkeypatch.setattr(case.store, "store_result", store_result)
+    monkeypatch.setattr(case.store, "load_result", lambda **kw: deepcopy(private[kw["result_ref"]]))
+    monkeypatch.setattr(NativeHttpBindingProducer, "_install", lambda *args, **kw: None)
+    checkpoint_ref = CheckpointRef(checkpoint_id="component-checkpoint", payload_digest="c" * 64)
+    monkeypatch.setattr(
+        case.store,
+        "commit_checkpoint",
+        lambda **kw: checkpoints.setdefault("payload", kw["payload"]) and checkpoint_ref,
+    )
+    monkeypatch.setattr(case.store, "read_checkpoint", lambda **kw: checkpoints["payload"].model_copy(deep=True))
+
+    def transport(method, url, **kw):
+        sends.append((method, url))
+        return httpx.Response(
+            200,
+            content=b'{"ok":true}',
+            headers={"content-type": "application/json"},
+            request=httpx.Request(method, url),
+        )
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.make_request", transport)
+    registry = NativeHostLifetimeRegistry()
+
+    def prepare(generation):
+        from models.dify_builder_native_tests import NativeDispatch
+
+        lifecycle = NativeTestLifecycleService(
+            case.loader, state_store=case.store, resume_settlement=DifyNativeResumeSettlement()
+        )
+        monkeypatch.setattr(lifecycle, "fence_pending", lambda **kw: None)
+
+        def pause(**kw):
+            return WaitingReceipt(
+                request_id=context.ref.request_id,
+                invocation_id=context.ref.invocation_id,
+                generation=generation,
+                checkpoint=kw["checkpoint"],
+                pending_operation_ids=kw["pending_operation_ids"],
+                wait_reason="approval",
+            )
+
+        monkeypatch.setattr(lifecycle, "pause", pause)
+        runtime = DifyNativeRuntime(
+            delivery=NativeDispatchRef(context.ref, generation, f"delivery-{generation}"),
+            lifecycle=lifecycle,
+            registry=registry,
+        )
+        case.rows[NativeDispatch] = [
+            SimpleNamespace(
+                id=f"delivery-{generation}",
+                request_id=context.ref.request_id,
+                invocation_id=context.ref.invocation_id,
+                tenant_id=context.tenant_id,
+                generation=generation,
+                state="claimed",
+            )
+        ]
+
+        def cleanup(**kw):
+            runtime.host.lifetime.consume_cleanup(**kw)
+
+        monkeypatch.setattr(runtime.capacity, "record_cleanup", cleanup)
+        monkeypatch.setattr(lifecycle, "claimed_resume_checkpoint", lambda **kw: checkpoint_ref)
+        # Only durable cancellation-fence selection is replaced in this unit.
+        monkeypatch.setattr(runtime.host._cancellation_fence, "poll", lambda: False)
+        return runtime
+
+    application = Flask(__name__)
+    with application.app_context():
+        initial = prepare(0)
+        waiting = initial.run_initial(context=context)
+        assert waiting.status == "waiting"
+        assert sends == []
+        payload = checkpoints["payload"]
+        assert len(payload.node_journals) == len(payload.approval_proposals)
+        assert 1 <= len(payload.node_journals) <= (2 if kind == "iteration" else 1)
+        assert all(journal.intents for journal in payload.node_journals)
+        assert case.rows[WorkflowRun][0].status == "paused"
+        original_started = case.rows[WorkflowRun][0].created_at
+        assert initial.host.lifetime._consumed
+        case.local.generation = 1
+        case.context = case.store.load_context(ref=context.ref)
+        context = case.context
+        # Current C02 decision boundary now permits the exact restored key;
+        # SQL confirmation itself is exercised only in the CI-only witness.
+        auth.decisions.clear()
+        resumed = prepare(1)
+        if history_fault in ("missing", "foreign"):
+            if history_fault == "missing":
+                case.rows[WorkflowRun].clear()
+            else:
+                case.rows[WorkflowRun][0].app_id = "foreign-app"
+            with pytest.raises(NativeObservationError, match="native_observation_failed"):
+                resumed.resume(context=context, checkpoint=checkpoints["payload"], resolutions=())
+            assert sends == []
+            assert resumed.host.lifetime.unknown
+            assert resumed.host._worker is None
+            return
+        result = resumed.resume(context=context, checkpoint=checkpoints["payload"], resolutions=())
+        if history_fault is not None and history_fault.startswith("price-"):
+            assert result.status == "unknown"
+            assert resumed.host.lifetime.unknown
+            assert not resumed.host.lifetime._consumed
+            for tracked in resumed.host.lifetime._threads:
+                tracked.thread.join(2)
+                assert not tracked.thread.is_alive()
+            assert all(type(error) is NativeObservationError for error in thread_errors)
+            resumed.host.release_dead_dispatcher_logs()
+            return
+        assert result.status == "completed"
+        assert result.native_status == "succeeded"
+        assert thread_errors == []
+        assert result.native_run_id == waiting.native_run_id
+        assert len(sends) == (2 if kind == "iteration" else 1)
+        assert len(case.rows[WorkflowRun]) == 1
+        assert case.rows[WorkflowRun][0].created_at == original_started
+        assert case.rows[WorkflowRun][0].status == "succeeded"
+        if kind != "root":
+            from models.workflow import WorkflowNodeExecutionModel
+
+            assert checked_live_phase
+            assert normalized
+            rows = case.rows[WorkflowNodeExecutionModel]
+            assert any(row.node_id == "http" and row.execution_metadata_dict.get(kind + "_id") for row in rows)
+
+
+def install_owner_join_boundary(case, monkeypatch):
+    context = case.context
+    from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
+    from models.model import App
+    from models.workflow import Workflow
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
+
+    ordinary_scalar = SQL.scalar
+
+    def scoped_owner_join(sql, query):
+        if query.column_descriptions[0]["entity"] is DifyBuilderSession and query._setup_joins:
+            # This SQL boundary double does not implement joins. Check every
+            # modeled joined owner before returning its selected session ID.
+            builder = case.rows[DifyBuilderSession][0]
+            app, workflow = case.rows[App][0], case.rows[Workflow][0]
+            inputs = case.rows[DifyBuilderTestInput][0]
+            assert (builder.id, builder.tenant_id, builder.owner_account_id, builder.app_id) == (
+                case.request.session_id,
+                context.tenant_id,
+                context.actor_id,
+                context.app_id,
+            )
+            assert (app.id, app.tenant_id, workflow.id, workflow.app_id, workflow.tenant_id) == (
+                context.app_id,
+                context.tenant_id,
+                context.workflow_id,
+                context.app_id,
+                context.tenant_id,
+            )
+            assert (inputs.id, inputs.session_id) == (case.request.test_input_id, builder.id)
+            return builder.id
+        return ordinary_scalar(sql, query)
+
+    monkeypatch.setattr(SQL, "scalar", scoped_owner_join)
+
+
+def test_actual_inactive_retained_delivery_and_missing_cancel_handles_grant_no_cleanup(case, monkeypatch):
+    from models.dify_builder_native_tests import NativeDispatch
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    context = case.context
+    case.rows[NativeDispatch] = [
+        SimpleNamespace(
+            id="inactive",
+            tenant_id=context.tenant_id,
+            request_id=context.ref.request_id,
+            invocation_id=context.ref.invocation_id,
+            generation=0,
+            state="queued",
+        )
+    ]
+    install_owner_join_boundary(case, monkeypatch)
+    owner = DifyNativeRuntimeOwner()
+    lifecycle = owner.delivery(
+        sessions=case.loader.session_factory, delivery=NativeDispatchRef(context.ref, 0, "inactive")
+    )
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntime
+
+    assert isinstance(lifecycle.runtime, DifyNativeRuntime)
+    host = lifecycle.runtime.host
+    assert owner.cancel(refs=(context.ref,)) == ()
+    assert host.lifetime._registry is None
+    assert not host.lifetime._consumed
+    assert lifecycle._capacity is not None
+    assert not lifecycle._capacity._used
+    with pytest.raises(ValueError, match="native_host_acquisition_not_current"):
+        host.lifetime.consume_cleanup(ref=context.ref, generation=0, dispatch_id="inactive")
+    assert owner.cancel(refs=(context.ref.model_copy(update={"invocation_id": "foreign"}),)) == ()
+    assert owner.recovery_evidence(context=context, dispatch_id="inactive") == "unknown"
+
+
+def test_actual_activated_startup_failure_consumes_only_original_zero_activity_verifier(case, monkeypatch):
+    from models.dify_builder_native_tests import NativeDispatch
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.host_lifetime import NativeHostLifetimeRegistry
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from services.dify_builder.native_testing.runtime import DifyNativeResumeSettlement, DifyNativeRuntime
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    context = case.context
+    lifecycle = NativeTestLifecycleService(
+        case.loader, state_store=case.store, resume_settlement=DifyNativeResumeSettlement()
+    )
+    runtime = DifyNativeRuntime(
+        delivery=NativeDispatchRef(context.ref, 0, "start-failed"),
+        lifecycle=lifecycle,
+        registry=NativeHostLifetimeRegistry(),
+    )
+    case.rows[NativeDispatch] = [
+        SimpleNamespace(
+            id="start-failed",
+            tenant_id=context.tenant_id,
+            request_id=context.ref.request_id,
+            invocation_id=context.ref.invocation_id,
+            generation=0,
+            state="claimed",
+        )
+    ]
+    receipts = []
+
+    def cleanup(**identity):
+        # Only the SQL ACK is doubled; actual original zero-activity proof is consumed.
+        runtime.capacity._verifier.consume_cleanup(**identity)
+        receipts.append(identity)
+
+    def unavailable(**kwargs):
+        raise BuilderExecutionPolicyError("native_capability_unavailable")
+
+    monkeypatch.setattr(runtime.capacity, "record_cleanup", cleanup)
+    monkeypatch.setattr("services.dify_builder.native_testing.runtime.build_delivery_bridge", unavailable)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable"):
+        runtime.run_initial(context=context)
+    assert runtime.host.lifetime._consumed
+    assert len(receipts) == 1
+    assert runtime.host.lifetime._threads == []
+    assert runtime.host.lifetime._node_scopes == []
+
+
+def test_same_worker_reclaims_over_128_closed_consumed_requests_but_keeps_unknown_live(case, monkeypatch):
+    """Actual owner/runtime/registry/verifiers; SQL/claim/object ACK boundaries only."""
+    from copy import deepcopy
+    from threading import Event, Thread, current_thread
+
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import (
+        NativeDispatch,
+        NativeInvocationState,
+        NativePayloadObject,
+        NativeTestInvocation,
+        NativeTestScope,
+    )
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
+    from services.dify_builder.native_testing import runtime as runtime_module
+    from services.dify_builder.native_testing.contracts import NativeTestContextRef
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    install_owner_join_boundary(case, monkeypatch)
+    owner = runtime_module.DifyNativeRuntimeOwner()
+    original_read = NativeExecutionStateStore._read_object
+    original_bridge = runtime_module.build_delivery_bridge
+    objects = {}
+
+    def protected_read(row):
+        original_read(case.rows[NativePayloadObject][0])  # Preserve fixture's outside-SQL assertion.
+        return deepcopy(objects[row.id]) if row.id in objects else case.context.model_dump(mode="json")
+
+    monkeypatch.setattr(NativeExecutionStateStore, "_read_object", staticmethod(protected_read))
+
+    def bridge(*, runtime):
+        if runtime.context.ref.request_id == "retained-live":
+            return original_bridge(runtime=runtime)
+        raise BuilderExecutionPolicyError("native_capability_unavailable")
+
+    monkeypatch.setattr(runtime_module, "build_delivery_bridge", bridge)
+
+    def acquisition(identity):
+        stored = {**case.request.context, "request_id": identity, "native_run_id": "run-" + identity}
+        ref = NativeTestContextRef(
+            request_id=identity, invocation_id=case.context.ref.invocation_id, context_digest=canonical_digest(stored)
+        )
+        context = case.context.model_copy(
+            update={
+                "ref": ref,
+                "native_run_id": "run-" + identity,
+                "root_native_run_id": "run-" + identity,
+                "budget_ref": identity,
+                "cancellation_ref": identity,
+            },
+            deep=True,
+        )
+        request = deepcopy(case.request)
+        request.id, request.context, request.context_digest = identity, stored, ref.context_digest
+        case.rows[DifyBuilderExecutionRequest].append(request)
+        for model in (NativeInvocationState, NativePayloadObject, NativeTestInvocation, NativeTestScope):
+            row = deepcopy(case.rows[model][0])
+            row.request_id = identity
+            if model is NativeInvocationState:
+                row.id, row.context_object_id = "state-" + identity, "context-" + identity
+            if model is NativePayloadObject:
+                row.id = "context-" + identity
+                objects[row.id] = context.model_dump(mode="json")
+            case.rows[model].append(row)
+        dispatch = SimpleNamespace(
+            id="delivery-" + identity,
+            request_id=identity,
+            invocation_id=ref.invocation_id,
+            tenant_id=context.tenant_id,
+            generation=0,
+            state="queued",
+        )
+        case.rows.setdefault(NativeDispatch, []).append(dispatch)
+        lifecycle = owner.delivery(
+            sessions=case.loader.session_factory, delivery=NativeDispatchRef(ref, 0, dispatch.id)
+        )
+        runtime = lifecycle.runtime
+        assert isinstance(runtime, runtime_module.DifyNativeRuntime)
+        dispatch.state = "claimed"  # Explicit SQL claim ACK boundary.
+
+        def cleanup(**actual):
+            runtime.capacity._verifier.consume_cleanup(**actual)
+
+        monkeypatch.setattr(runtime.capacity, "record_cleanup", cleanup)
+        return runtime, request
+
+    live, live_request = acquisition("retained-live")
+    live._start(live.context)  # Actual claimed-row selection and registry activation.
+    entered, release = Event(), Event()
+
+    def background():
+        entered.set()
+        try:
+            assert release.wait(15)
+        finally:
+            live.host.lifetime.thread_finished(thread=current_thread())
+
+    worker = Thread(target=background)
+    live.host.lifetime.register_thread(thread=worker, role="worker")
+    live.host.lifetime.start_thread(thread=worker)
+    try:
+        assert entered.wait(2)
+        live.host.mark_unknown()
+        live_request.state = "sealed"  # Even durable closure cannot substitute for physical cleanup.
+        for index in range(130):
+            runtime, request = acquisition("closed-" + str(index))
+            with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable"):
+                runtime.run_initial(context=runtime.context)
+            assert runtime.host.lifetime._consumed
+            request.state = "sealed"  # Durable finalization boundary, after actual zero-activity consumption.
+        from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL
+
+        actual_scalar, last_closed = SQL.scalar, request
+        reentered = []
+
+        def retire_during_read(sql, query):
+            row = actual_scalar(sql, query)
+            if row is last_closed and not reentered:
+                reentered.append(True)
+                owner.retire_closed(sessions=case.loader.session_factory)
+            return row
+
+        with monkeypatch.context() as racing:
+            racing.setattr(SQL, "scalar", retire_during_read)
+            owner.retire_closed(sessions=case.loader.session_factory)
+        assert reentered == [True]
+        assert runtime.registry._disposed
+        waiting, waiting_request = acquisition("durable-waiting")
+        with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable"):
+            waiting.run_initial(context=waiting.context)
+        assert waiting.host.lifetime._consumed
+        waiting_request.state = "waiting"  # Open durable admission is never evicted by physical consumption.
+        owner.retire_closed(sessions=case.loader.session_factory)
+        assert len(owner._requests) == 2
+        assert len(owner._current) == 2
+        assert live in owner._current.values()
+        assert waiting in owner._current.values()
+        assert worker.is_alive()
+        assert live.host.lifetime.unknown
+        assert not live.host.lifetime._consumed
+    finally:
+        release.set()
+        worker.join(2)
+    assert not worker.is_alive()
+
+
+@pytest.fixture
+def cancel_composition(case, monkeypatch):
+    """Real API/compiler/C03/runtime owners; mutable SQL and protected bytes are boundaries."""
+    from copy import deepcopy
+    from threading import local
+    from uuid import uuid4
+
+    from core.dify_builder.models import Actor
+    from models.dify_builder import DifyBuilderSession
+    from models.model import App
+    from models.workflow import Workflow
+    from services.dify_builder.native_testing import state_store as state_module
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner, build_native_api
+    from tests.unit_tests.services.dify_builder.native_testing.test_host_capacity import SQL, Rows
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    original = case.context
+    workflow = Workflow(
+        id=original.workflow_id,
+        tenant_id=original.tenant_id,
+        app_id=original.app_id,
+        type="workflow",
+        version="draft",
+        kind="standard",
+        graph=json.dumps(original.graph),
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
+        created_by=original.actor_id,
+    )
+    case.rows[Workflow] = [workflow]
+    case.rows[App][0].mode = "workflow"
+    case.rows[DifyBuilderSession][0].version = 1
+    for model in tuple(case.rows):
+        if model.__module__ == "models.dify_builder_native_tests" or model.__name__ == "DifyBuilderExecutionRequest":
+            case.rows[model] = []
+    depth = local()
+
+    class MutableSQL(SQL):
+        @override
+        def get(self, model, identity):
+            key = next(iter(model.__table__.primary_key.columns)).key
+            return next((row for row in self.rows.get(model, []) if getattr(row, key) == identity), None)
+
+        @override
+        def add(self, row):
+            for column in row.__table__.columns:
+                if getattr(row, column.key) is None and column.default is not None:
+                    value = column.default.arg
+                    setattr(row, column.key, value(None) if callable(value) else deepcopy(value))
+            self.rows.setdefault(type(row), []).append(row)
+
+        @override
+        def flush(self):
+            pass
+
+        @override
+        def execute(self, _query):
+            query = _query
+            # Reconcile's expired-claim query returns tuples. No claim in this
+            # boundary is expired; cancellation scans still use actual scalars.
+            if len(query.column_descriptions) > 1:
+                from models.dify_builder import DifyBuilderExecutionRequest
+                from services.dify_builder.native_testing.repository import utc_now
+
+                dispatches = list(self.scalars(query))
+                expiring = any(
+                    getattr(clause.left, "key", None) == "claim_expires_at"
+                    for clause in query._where_criteria
+                    if hasattr(clause, "left")
+                )
+                if expiring:
+                    dispatches = [
+                        row
+                        for row in dispatches
+                        if row.claim_expires_at is not None and row.claim_expires_at <= utc_now()
+                    ]
+                result = Rows()
+                for row in dispatches:
+                    request = self.get(DifyBuilderExecutionRequest, row.request_id)
+                    assert request is not None
+                    result.append((row, request.context_digest))
+                return result
+            return super().execute(query)
+
+    sql = MutableSQL(case.rows, [])
+
+    class Sessions:
+        @contextmanager
+        def __call__(self):
+            yield sql
+
+        @contextmanager
+        def begin(self):
+            depth.writers = getattr(depth, "writers", 0) + 1
+            try:
+                yield sql
+            finally:
+                depth.writers -= 1
+
+    sessions = Sessions()
+    actor = Actor(account_id=original.actor_id, tenant_id=original.tenant_id)
+
+    def permission(actual, app_id, source):
+        assert not getattr(depth, "writers", 0)
+        assert (actual, app_id, source) == (actor, original.app_id, sessions)
+
+    for path in (
+        "services.dify_builder.execution_policy_service.check_execution_permission",
+        "services.dify_builder.native_testing.private_reads.check_execution_permission",
+        "services.dify_builder.native_testing.http_binding.check_execution_permission",
+        "services.dify_builder.native_testing.api_service.check_execution_permission",
+        "services.dify_builder.native_testing.context_binding.check_execution_permission",
+    ):
+        monkeypatch.setattr(path, permission)
+    objects = {}
+
+    def prepare(store, *, ref, tenant_id, kind, logical_key, payload):
+        assert not getattr(depth, "writers", 0)
+        raw, digest = state_module.encode_payload(
+            tenant_id=tenant_id, request_id=ref.request_id, invocation_id=ref.invocation_id, kind=kind, payload=payload
+        )
+        identity = str(uuid4())
+        objects[identity] = raw
+        return state_module.ObjectReceipt(
+            identity,
+            tenant_id,
+            ref.request_id,
+            ref.invocation_id,
+            kind,
+            logical_key,
+            identity,
+            digest,
+            state_module.canonical_digest(payload),
+        )
+
+    def read(row):
+        assert not getattr(depth, "writers", 0)
+        return state_module.decode_payload(
+            objects[row.id],
+            tenant_id=row.tenant_id,
+            request_id=row.request_id,
+            invocation_id=row.invocation_id,
+            kind=row.kind,
+            digest=row.payload_digest,
+        )
+
+    monkeypatch.setattr(NativeExecutionStateStore, "prepare_object", prepare)
+    monkeypatch.setattr(NativeExecutionStateStore, "_read_object", staticmethod(read))
+    # Model the actual fully scoped joined owner selection, which SQL's simple
+    # single-table fixture cannot evaluate across owner-table columns.
+    scalar = MutableSQL.scalar
+
+    def joined(sql, query):
+        if query.column_descriptions[0]["entity"] is DifyBuilderSession and query._setup_joins:
+            builder = case.rows[DifyBuilderSession][0]
+            assert (builder.tenant_id, builder.owner_account_id, builder.app_id) == (
+                actor.tenant_id,
+                actor.account_id,
+                original.app_id,
+            )
+            assert workflow.app_id == builder.app_id
+            return builder.id
+        return scalar(sql, query)
+
+    monkeypatch.setattr(MutableSQL, "scalar", joined)
+    owner, published = DifyNativeRuntimeOwner(), []
+    api = build_native_api(sessions=sessions, actor=actor, owner=owner, publish=lambda **msg: published.append(msg))
+    started = api.start(
+        actor=actor,
+        session_id="session",
+        test_input_id="input",
+        expected_version=1,
+        mode="native",
+        idempotency_key="cancel-composed-start",
+    )
+    return SimpleNamespace(
+        api=api,
+        owner=owner,
+        published=published,
+        sql=sql,
+        sessions=sessions,
+        actor=actor,
+        started=started,
+        rows=case.rows,
+    )
+
+
+def test_composed_start_cancel_before_delivery_reconciles_without_physical_acquisition(cancel_composition):
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing.contracts import decode_native_ref
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+
+    c = cancel_composition
+    assert len(c.published) == 1
+    assert c.owner._requests == c.owner._current == {}
+    result = c.api.cancel(
+        actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="cancel"
+    )
+    assert result.cancellation.status == "cancelled"
+    assert result.status == "terminal"
+    assert c.rows[NativeInvocationState][0].cleanup_complete
+    assert c.rows[NativeDispatch][0].state == "cancelled"
+    assert c.api.lifecycle.reconcile() == 0
+    message = c.published[0]
+    ref = decode_native_ref(message["ref"])
+    late = c.owner.delivery(sessions=c.sessions, delivery=NativeDispatchRef(ref, 0, message["dispatch_id"]))
+    with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
+        late.execute_dispatch(ref=ref, generation=0, dispatch_id=message["dispatch_id"])
+    assert c.owner._requests == c.owner._current == {}
+    assert (
+        c.api.get(actor=c.actor, session_id="session", request_id=c.started.request_id).cancellation.status
+        == "cancelled"
+    )
+
+
+def test_consumed_generation_zero_in_other_owner_cannot_ack_live_generation_one(cancel_composition, monkeypatch):
+    """Real two retained owners and worker; SQL claim/resume publication are explicit boundaries."""
+    from threading import Event, Thread, current_thread
+
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+    from services.dify_builder.native_testing import runtime as module
+    from services.dify_builder.native_testing.contracts import decode_native_ref
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+
+    c = cancel_composition
+    message = c.published[0]
+    ref = decode_native_ref(message["ref"])
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    source = c.owner.delivery(sessions=c.sessions, delivery=NativeDispatchRef(ref, 0, message["dispatch_id"]))
+    old = source.runtime
+    dispatch = c.rows[NativeDispatch][0]
+    dispatch.state = "claimed"  # SQL claim ACK boundary, before actual activation.
+
+    def unavailable(**kwargs):
+        raise BuilderExecutionPolicyError("native_capability_unavailable")
+
+    with monkeypatch.context() as broken:
+        broken.setattr(module, "build_delivery_bridge", unavailable)
+        with pytest.raises(BuilderExecutionPolicyError, match="native_capability_unavailable"):
+            old.run_initial(context=old.context)
+    assert old.host.lifetime._consumed
+    dispatch.state = "completed"
+    state = c.rows[NativeInvocationState][0]
+    state.generation, state.cleanup_complete = 1, False
+    c.rows[NativeTestScope][0].generation = 1
+    resumed = NativeDispatch(
+        id="resumed-delivery",
+        request_id=ref.request_id,
+        tenant_id=c.actor.tenant_id,
+        invocation_id=ref.invocation_id,
+        generation=1,
+        state="queued",
+        idempotency_digest="resume-sql-boundary",
+    )
+    c.sql.add(resumed)
+    other = module.DifyNativeRuntimeOwner()
+    current = other.delivery(sessions=c.sessions, delivery=NativeDispatchRef(ref, 1, resumed.id)).runtime
+    assert isinstance(current, module.DifyNativeRuntime)
+    resumed.state = "claimed"  # C03 resume/claim boundary; not a checkpoint durability witness.
+    current._start(current.context)
+    entered, release = Event(), Event()
+
+    def work():
+        entered.set()
+        try:
+            assert release.wait(10)
+        finally:
+            current.host.lifetime.thread_finished(thread=current_thread())
+
+    worker = Thread(target=work)
+    current.host.lifetime.register_thread(thread=worker, role="worker")
+    current.host.lifetime.start_thread(thread=worker)
+    try:
+        assert entered.wait(2)
+        result = c.api.cancel(
+            actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="cancel-live"
+        )
+        assert result.cancellation.status == "cancelling"
+        assert not state.cleanup_complete
+        assert c.api.lifecycle.reconcile() == 1
+        assert not state.cleanup_complete
+        assert worker.is_alive()
+        assert not current.host.lifetime._consumed
+        assert old.host.lifetime._consumed
+    finally:
+        release.set()
+        worker.join(3)
+    assert not worker.is_alive()
+
+
+@pytest.mark.parametrize("replace_after_settlement", [False, True])
+def test_cancel_original_joined_owner_rechecks_retained_snapshot(
+    cancel_composition, monkeypatch, replace_after_settlement
+):
+    from threading import Thread, current_thread
+
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from services.dify_builder.native_testing import runtime as module
+    from services.dify_builder.native_testing.contracts import decode_native_ref
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import protect_logs
+
+    protect_logs(monkeypatch)
+    c = cancel_composition
+    message = c.published[0]
+    ref = decode_native_ref(message["ref"])
+    delivery = NativeDispatchRef(ref, 0, message["dispatch_id"])
+    runtime = c.owner.delivery(sessions=c.sessions, delivery=delivery).runtime
+    replacement = module.DifyNativeRuntimeOwner().delivery(sessions=c.sessions, delivery=delivery).runtime
+    assert isinstance(runtime, module.DifyNativeRuntime)
+    assert isinstance(replacement, module.DifyNativeRuntime)
+    c.rows[NativeDispatch][0].state = "claimed"  # SQL claim boundary.
+    runtime._start(runtime.context)
+    worker = Thread(target=lambda: runtime.host.lifetime.thread_finished(thread=current_thread()))
+    runtime.host.lifetime.register_thread(thread=worker, role="worker")
+    runtime.host.lifetime.start_thread(thread=worker)
+    worker.join(2)
+    assert not worker.is_alive()
+    actual_settle = runtime.host.lifetime.settle
+
+    def settle():
+        result = actual_settle()
+        if replace_after_settlement:
+            # Race at the actual unlocked physical settlement boundary. Both
+            # candidates are real acquisitions with the same delivery IDs.
+            identity = next(iter(c.owner._current))
+            with c.owner._lock:
+                c.owner._current[identity] = replacement
+        return result
+
+    monkeypatch.setattr(runtime.host.lifetime, "settle", settle)
+    result = c.api.cancel(
+        actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="cancel-joined"
+    )
+    assert result.cancellation.status == ("cancelling" if replace_after_settlement else "cancelled")
+    assert c.rows[NativeInvocationState][0].cleanup_complete is (not replace_after_settlement)
+    assert runtime.host.lifetime._consumed is (not replace_after_settlement)
+    assert not replacement.host.lifetime._consumed
+
+
+@pytest.mark.parametrize("history", ["missing-outbox", "prior-lease", "foreign-outbox", "missing-context", "resumed"])
+def test_composed_cancel_does_not_upgrade_incomplete_or_noninitial_history(cancel_composition, history):
+    from models.dify_builder_native_tests import (
+        NativeDispatch,
+        NativeInvocationState,
+        NativePayloadObject,
+        NativeTestScope,
+    )
+    from services.dify_builder.native_testing.repository import utc_now
+
+    c = cancel_composition
+    dispatch, state = c.rows[NativeDispatch][0], c.rows[NativeInvocationState][0]
+    if history == "missing-outbox":
+        c.rows[NativeDispatch].clear()
+    elif history == "prior-lease":
+        dispatch.claim_expires_at = utc_now()
+    elif history == "foreign-outbox":
+        dispatch.tenant_id = "foreign-tenant"
+    elif history == "missing-context":
+        c.rows[NativePayloadObject].clear()
+    elif history == "resumed":
+        state.generation = c.rows[NativeTestScope][0].generation = dispatch.generation = 1
+    result = c.api.cancel(
+        actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="unsafe-history"
+    )
+    assert result.cancellation.status == "cancelling"
+    assert not state.cleanup_complete
+    assert c.api.lifecycle.reconcile() == 1
+    assert not state.cleanup_complete
+    assert c.owner._requests == c.owner._current == {}

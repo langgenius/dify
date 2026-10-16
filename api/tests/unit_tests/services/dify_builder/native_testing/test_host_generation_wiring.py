@@ -62,6 +62,15 @@ def generate_fixture(case: LaunchCase, monkeypatch: pytest.MonkeyPatch):
 
     bind_component_observation(case, monkeypatch)
     entity, _, response_filter, workflow_repo, node_repo = generation_objects(case, monkeypatch)
+
+    def bind_repository_port(*, context, guard):
+        # Structural launch fixture only. No history SQL/cache is exercised;
+        # real bound repository provenance is covered by owned history tests.
+        assert context is case.state.context
+        assert guard is case.host.native_observation
+
+    monkeypatch.setattr(workflow_repo, "bind_native_observation", bind_repository_port)
+    monkeypatch.setattr(node_repo, "bind_native_observation", bind_repository_port)
     generator = WorkflowAppGenerator()
     monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **kwargs: nullcontext())
     monkeypatch.setattr(module, "db", SimpleNamespace(session=SimpleNamespace(close=lambda: None)))

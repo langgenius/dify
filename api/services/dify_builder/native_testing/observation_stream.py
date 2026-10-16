@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, cast
 
 from core.app.entities import queue_entities as q
+
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.runtime import GraphRuntimeState
@@ -134,12 +135,19 @@ def _process_data(guard: NativeObservationGuard, values: Any) -> dict[str, Any] 
     return observed_values(guard=guard, values=values)
 
 
-def project_native_queue_event[E: q.AppQueueEvent](*, guard: NativeObservationGuard, event: E) -> E:
+def project_native_queue_event[E: q.AppQueueEvent](
+    *, guard: NativeObservationGuard, event: E, native_host: Any = None, queue: Any = None
+) -> E:
     """Project BEFORE model_dump and produce a fresh exact supported DTO."""
     if type(guard) is not NativeObservationGuard:
         raise NativeObservationError() from None
     require_native_observation(guard=guard)
     with guard.persistence_scope():
+        if native_host is not None:
+            from services.dify_builder.native_testing.runtime import validate_projection_host
+
+            validate_projection_host(host=native_host, guard=guard)
+            event = native_host.diagnostic_event(event=event)
         cls: type[q.AppQueueEvent] = type(event)
         if cls not in _SUPPORTED or event.model_extra or event.event != cls.model_fields["event"].default:
             guard.fail()
@@ -191,8 +199,12 @@ def project_native_queue_event[E: q.AppQueueEvent](*, guard: NativeObservationGu
                 fields[name] = None
             elif name in {"error", "reason"}:
                 if name == "reason" and cls is q.QueueWorkflowStartedEvent:
-                    if value is not WorkflowStartReason.INITIAL:
-                        guard.fail()  # Resume/history provenance is not qualified here.
+                    if value is WorkflowStartReason.RESUMPTION:
+                        from services.dify_builder.native_testing.runtime import require_resume_projection
+
+                        require_resume_projection(host=native_host, guard=guard, queue=queue)
+                    elif value is not WorkflowStartReason.INITIAL:
+                        guard.fail()
                     fields[name] = value
                 else:
                     fields[name] = guard.error(value)

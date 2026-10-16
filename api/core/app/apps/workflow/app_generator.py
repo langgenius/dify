@@ -471,6 +471,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
+        native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Resume a paused workflow execution using the persisted runtime state.
@@ -481,10 +483,20 @@ class WorkflowAppGenerator(BaseAppGenerator):
         if application_generate_entity.native_test_required or application_generate_entity.native_test_ref is not None:
             if application_generate_entity.native_test_ref is None:
                 raise NativeContextUnavailable("native_context_missing")
-            raise NativeContextUnavailable("native_resume_adapter_unavailable")
+            from services.dify_builder.native_testing.generation_wiring import validate_native_host
+
+            validate_native_host(
+                required=True, ref=application_generate_entity.native_test_ref, runtime=native_runtime, host=native_host
+            )
+            assert native_host is not None
+            native_host.require_resume_bindings(
+                entity=application_generate_entity,
+                runtime_state=graph_runtime_state,
+                response_filter=response_stream_filter,
+            )
         if application_generate_entity.builder_execution is not None:
             raise BuilderExecutionPolicyError("unsupported_execution_transport")
-        if application_generate_entity.trace_manager is None:
+        if native_host is None and application_generate_entity.trace_manager is None:
             application_generate_entity = application_generate_entity.model_copy(
                 update={
                     "trace_manager": TraceQueueManager(
@@ -508,6 +520,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            native_runtime=native_runtime,
+            native_host=native_host,
         )
 
     def _generate(
@@ -554,10 +568,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
         )
         if native_host is not None and (graph_engine_layers or application_generate_entity.trace_manager is not None):
             raise NativeContextUnavailable("native_observation_unqualified")
-        if native_host is not None and (
-            not streaming or graph_runtime_state is not None or pause_state_config is not None
-        ):
-            raise NativeContextUnavailable("native_resume_unavailable")
+        if native_host is not None:
+            if not streaming or pause_state_config is not None:
+                raise NativeContextUnavailable("native_resume_unavailable")
+            if graph_runtime_state is not None:
+                native_host.require_resume_bindings(
+                    entity=application_generate_entity,
+                    runtime_state=graph_runtime_state,
+                    response_filter=response_stream_filter,
+                )
         native_observation = None
         if native_host is not None:
             from services.dify_builder.native_testing.generation_wiring import preflight_native_observation
@@ -578,6 +597,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 invoke_from=application_generate_entity.invoke_from,
                 app_mode=app_model.mode,
                 native_observation=native_observation,
+                native_host=native_host,
             )
 
             resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
@@ -655,6 +675,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     draft_var_saver_factory=draft_var_saver_factory,
                     stream=streaming,
                     native_observation=native_observation,
+                    native_host=native_host,
                 )
                 converted_response = WorkflowAppGenerateResponseConverter.convert(
                     response=response,
@@ -936,8 +957,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         if native_host.generation_bindings.entity is not application_generate_entity:
                             raise NativeContextUnavailable("native_host_identity_mismatch")
                         prepared = native_runtime.prepare_inputs(native_context)
-                        application_generate_entity.inputs = prepared.inputs
-                        application_generate_entity.files = list(prepared.files)
+                        if graph_runtime_state is None:
+                            application_generate_entity.inputs = prepared.inputs
+                            application_generate_entity.files = list(prepared.files)
+                        else:
+                            native_host.require_resume_bindings(
+                                entity=application_generate_entity,
+                                runtime_state=graph_runtime_state,
+                                response_filter=response_stream_filter,
+                            )
                         application_generate_entity.call_depth = native_context.call_depth
 
                     with session_factory.create_session() as session:
@@ -1114,6 +1142,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         stream: bool = False,
         *,
         native_observation: NativeObservationGuard | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Handle response.
@@ -1134,6 +1163,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             draft_var_saver_factory=draft_var_saver_factory,
             stream=stream,
             native_observation=native_observation,
+            native_host=native_host,
         )
 
         try:

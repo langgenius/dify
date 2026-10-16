@@ -107,6 +107,10 @@ def bind_native_generation(
         node_repository, SQLAlchemyWorkflowNodeExecutionRepository
     ):
         raise NativeContextUnavailable("native_host_repository_unqualified")
+    guard = host.native_observation
+    context = host.lifetime.context
+    workflow_repository.bind_native_observation(context=context, guard=guard)
+    node_repository.bind_native_observation(context=context, guard=guard)
     host.bind_generation(
         entity=entity,
         queue=queue,

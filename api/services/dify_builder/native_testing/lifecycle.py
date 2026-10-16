@@ -9,11 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from re import fullmatch
-from typing import TYPE_CHECKING, Literal, Protocol, Self
-
-from pydantic import StrictBool, model_validator
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from typing import TYPE_CHECKING, Literal, Protocol, Self, cast
 
 from core.dify_builder.models import Actor
 from models.dify_builder import DifyBuilderExecutionRequest
@@ -27,6 +23,10 @@ from models.dify_builder_native_tests import (
     NativeTestInvocation,
     NativeTestScope,
 )
+from pydantic import StrictBool, model_validator
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import (
     ID,
@@ -34,8 +34,10 @@ from services.dify_builder.native_testing.contracts import (
     CheckpointRef,
     FrozenDTO,
     NativeTestContextRef,
+    Outcome,
     ResumeReceipt,
     WaitingReceipt,
+    WaitReason,
 )
 from services.dify_builder.native_testing.private_reads import validate_invocation_workflow, validate_private_read
 from services.dify_builder.native_testing.repository import (
@@ -98,7 +100,16 @@ class NativePendingResolutionPort(Protocol):
         ...
 
 
+class NativeResumeSettlementPort(Protocol):
+    def validate(
+        self, *, session: Session, owned: OwnedNativeTest, state: NativeInvocationState, checkpoint: CheckpointRef
+    ) -> None:
+        """SQL-only proof of the completed source acquisition, inside the resume writer."""
+        ...
+
+
 class NativeRuntimePort(Protocol):
+    def run_initial(self, *, context: ResolvedNativeTestContext) -> NativeWorkflowOutcome: ...
     def resume(
         self,
         *,
@@ -107,7 +118,7 @@ class NativeRuntimePort(Protocol):
         resolutions: tuple[NativePendingResolution, ...],
     ) -> NativeWorkflowOutcome: ...
     def cancel(self, *, refs: tuple[NativeTestContextRef, ...]) -> tuple[str, ...]:
-        """Return only invocation IDs proven physically stopped by their native owners."""
+        """Legacy generic C03 receipt; production uses exact capacity SQL ACKs instead."""
         ...
 
     def recovery_evidence(
@@ -150,6 +161,12 @@ class PreparedNativeDispatchClaim:
     selected: dict[str, _ResumeCheckpoint]
 
 
+class NativeCancellationSettlementPort(Protocol):
+    def finish_unacquired(self, *, ref: NativeTestContextRef) -> None:
+        """SQL-only genuine initial-outbox cancellation; no physical ACK by ID."""
+        ...
+
+
 class NativeTestLifecycleService:
     def __init__(
         self,
@@ -158,6 +175,8 @@ class NativeTestLifecycleService:
         state_store: NativeExecutionStateStore,
         resolution: NativePendingResolutionPort | None = None,
         runtime: NativeRuntimePort | None = None,
+        resume_settlement: NativeResumeSettlementPort | None = None,
+        cancellation_settlement: NativeCancellationSettlementPort | None = None,
         clock: Callable[[], datetime] = utc_now,
     ):
         self.loader, self.store, self.resolution, self.runtime, self.clock = (
@@ -167,7 +186,17 @@ class NativeTestLifecycleService:
             runtime,
             clock,
         )
+        self._dispatch_ref: NativeDispatchRef | None = None
+        self.resume_settlement = resume_settlement
+        self.cancellation_settlement = cancellation_settlement
         self._capacity: NativeHostCapacity | None = None
+
+    @staticmethod
+    def _request_row(session: Session, request_id: str) -> DifyBuilderExecutionRequest:
+        request = session.get(DifyBuilderExecutionRequest, request_id)
+        if request is None:
+            raise BuilderExecutionPolicyError("native_owner_mismatch")
+        return request
 
     def _root_ref(self, actor: Actor, request_id: str) -> NativeTestContextRef:
         if actor != self.loader.actor:
@@ -410,10 +439,12 @@ class NativeTestLifecycleService:
             ):
                 raise BuilderExecutionPolicyError("native_wait_conflict")
             reasons = {row.category for row in rows}
-            reason = next(reason for reason in ("configuration", "interaction", "approval") if reason in reasons)
+            reason = cast(
+                WaitReason, next(reason for reason in ("configuration", "interaction", "approval") if reason in reasons)
+            )
             state.state, state.checkpoint_id = "waiting", checkpoint.checkpoint_id
             state.pending_ids, state.wait_reason = list(pending_operation_ids), reason
-            session.get(DifyBuilderExecutionRequest, ref.request_id).state = "waiting"
+            self._request_row(session, ref.request_id).state = "waiting"
             result = WaitingReceipt(
                 request_id=ref.request_id,
                 invocation_id=ref.invocation_id,
@@ -660,6 +691,8 @@ class NativeTestLifecycleService:
             generations = {identity: proof.payload.generation for identity, proof in selected.items()}
             if recovered.generation != state.generation:
                 raise BuilderExecutionPolicyError("native_generation_conflict")
+            if self.resume_settlement is not None:
+                self.resume_settlement.validate(session=session, owned=owned, state=state, checkpoint=checkpoint)
             resolutions = self._resolve_pending(session, owned, state, generations=generations)
             self._validate_resolution_results(session, owned, resolutions)
             scope.generation += 1
@@ -742,6 +775,8 @@ class NativeTestLifecycleService:
                 continue  # durable row remains available to the next sweep
             with self.loader.locked(ref=ref) as (session, _, _):
                 row = session.get(NativeDispatch, dispatch.id)
+                if row is None:
+                    raise BuilderExecutionPolicyError("native_dispatch_conflict")
                 if row.state == "queued":
                     row.state = "published"
             published += 1
@@ -1079,7 +1114,7 @@ class NativeTestLifecycleService:
                 now=self.clock(),
             )
         state.cleanup_complete = False
-        session.get(DifyBuilderExecutionRequest, ref.request_id).state = "running"
+        self._request_row(session, ref.request_id).state = "running"
         return True
 
     def execute_dispatch(
@@ -1087,29 +1122,42 @@ class NativeTestLifecycleService:
     ) -> NativeWorkflowOutcome | None:
         if self.runtime is None:
             raise BuilderExecutionPolicyError("native_runtime_unavailable")
+        if self._dispatch_ref is not None and self._dispatch_ref != NativeDispatchRef(ref, generation, dispatch_id):
+            raise BuilderExecutionPolicyError("native_dispatch_conflict")
+        if self._capacity is not None and self._capacity._used:
+            return None  # Exact already-used acquisition, including a terminal duplicate.
         # Validate/read recovery material before claiming. No fake completion or
         # ordinary-runtime fallback if a qualified collaborator is absent.
         context = self.store.load_context(ref=ref)
-        with self.loader.session_factory() as session:
-            state = invocation_state(session, ref, context.tenant_id)
-            row = session.scalar(
-                owner_query(NativeContinuation, ref, context.tenant_id).where(
-                    NativeContinuation.checkpoint_id == state.checkpoint_id
+        checkpoint = None
+        resolutions = ()
+        if generation != 0:
+            with self.loader.session_factory() as session:
+                state = invocation_state(session, ref, context.tenant_id)
+                row = session.scalar(
+                    owner_query(NativeContinuation, ref, context.tenant_id).where(
+                        NativeContinuation.checkpoint_id == state.checkpoint_id
+                    )
                 )
-            )
-            if row is None:
-                raise BuilderExecutionPolicyError("checkpoint_unavailable")
-            checkpoint_ref = CheckpointRef(checkpoint_id=row.checkpoint_id, payload_digest=row.payload_digest)
-            resolutions = tuple(NativePendingResolution.model_validate(raw) for raw in state.resolution)
-        checkpoint = self.store.read_checkpoint(ref=ref, checkpoint=checkpoint_ref)
+                if row is None:
+                    raise BuilderExecutionPolicyError("checkpoint_unavailable")
+                checkpoint_ref = CheckpointRef(checkpoint_id=row.checkpoint_id, payload_digest=row.payload_digest)
+                resolutions = tuple(NativePendingResolution.model_validate(raw) for raw in state.resolution)
+            checkpoint = self.store.read_checkpoint(ref=ref, checkpoint=checkpoint_ref)
         if not self.claim_dispatch(ref=ref, generation=generation, dispatch_id=dispatch_id):
             return None
         try:
-            outcome = self.runtime.resume(context=context, checkpoint=checkpoint, resolutions=resolutions)
+            if generation == 0:
+                outcome = self.runtime.run_initial(context=context)
+            else:
+                assert checkpoint is not None
+                outcome = self.runtime.resume(context=context, checkpoint=checkpoint, resolutions=resolutions)
             outcome = NativeWorkflowOutcome.model_validate(outcome.model_dump(mode="json"))
             if outcome.ref != ref or outcome.native_run_id != context.native_run_id:
                 raise BuilderExecutionPolicyError("native_outcome_mismatch")
             if outcome.status == "waiting":
+                if outcome.checkpoint_ref is None:
+                    raise BuilderExecutionPolicyError("native_outcome_mismatch")
                 self.pause(
                     ref=ref,
                     checkpoint=outcome.checkpoint_ref,
@@ -1214,7 +1262,7 @@ class NativeTestLifecycleService:
                 )
                 if remaining is not None:
                     raise BuilderExecutionPolicyError("native_children_running")
-                session.get(DifyBuilderExecutionRequest, ref.request_id).state = "sealed"
+                self._request_row(session, ref.request_id).state = "sealed"
 
     def _mark_unknown(self, *, ref: NativeTestContextRef, dispatch_id: str) -> None:
         with self.loader.locked(ref=ref, settlement=True) as (session, owned, _):
@@ -1364,7 +1412,7 @@ class NativeTestLifecycleService:
                 )
             ):
                 dispatch.state = "cancelled"
-            operation_states = {}
+            operation_states: dict[str, Outcome] = {}
             for operation in session.scalars(
                 select(NativeEffectOperation).where(
                     NativeEffectOperation.request_id == request_id, NativeEffectOperation.tenant_id == owned.tenant_id
@@ -1372,7 +1420,9 @@ class NativeTestLifecycleService:
             ):
                 if operation.state in {"pending", "denied", "cancelled"}:
                     operation.state = "not_dispatched"
-                operation_states[operation.id] = "unknown" if operation.state == "claimed" else operation.state
+                operation_states[operation.id] = cast(
+                    Outcome, "unknown" if operation.state == "claimed" else operation.state
+                )
             generation = scope.generation
         stopped = set()
         if self.runtime is not None:
@@ -1385,6 +1435,11 @@ class NativeTestLifecycleService:
                 self._capacity.record_cancelled_cleanup(ref=ref)
             except Exception:
                 stopped = set()  # No verified cleanup acknowledgement; keep its slot quarantined.
+        if self.cancellation_settlement is not None:
+            try:
+                self.cancellation_settlement.finish_unacquired(ref=ref)
+            except Exception:
+                stopped = set()  # Missing/ambiguous history grants no physical cleanup ACK.
         cleanup_lock = self._capacity.locked if self._capacity is not None else self.loader.locked
         with cleanup_lock(ref=ref, settlement=True) as (session, owned, _):
             states = session.scalars(
@@ -1393,11 +1448,11 @@ class NativeTestLifecycleService:
                 )
             ).all()
             for state in states:
-                if self._capacity is None and state.invocation_id in stopped:
+                if self._capacity is None and self.cancellation_settlement is None and state.invocation_id in stopped:
                     state.cleanup_complete = True
             cleaned = all(state.cleanup_complete for state in states)
             if cleaned and "unknown" not in operation_states.values():
-                session.get(DifyBuilderExecutionRequest, request_id).state = "sealed"
+                self._request_row(session, request_id).state = "sealed"
         status = "unknown" if "unknown" in operation_states.values() else "cancelled" if cleaned else "cancelling"
         return CancellationReceipt(
             request_id=request_id, generation=generation, status=status, operation_states=operation_states

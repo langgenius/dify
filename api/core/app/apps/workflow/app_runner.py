@@ -162,10 +162,15 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             if self._native_host is None or self._native_host.generation_bindings.entity is not entity:
                 raise NativeContextUnavailable("native_host_identity_mismatch")
             if self._resume_graph_runtime_state is not None:
-                raise NativeContextUnavailable("native_resume_adapter_unavailable")
+                self._native_host.require_resume_bindings(
+                    entity=entity,
+                    runtime_state=self._resume_graph_runtime_state,
+                    response_filter=self._response_stream_filter,
+                )
             native_prepared = self._native_runtime.prepare_inputs(resolved)
-            entity.inputs = native_prepared.inputs
-            entity.files = list(native_prepared.files)
+            if self._resume_graph_runtime_state is None:
+                entity.inputs = native_prepared.inputs
+                entity.files = list(native_prepared.files)
         context = entity.builder_execution
 
         if context is not None:
@@ -364,6 +369,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             workflow_node_execution_repository=self._workflow_node_execution_repository,
             trace_manager=self.application_generate_entity.trace_manager,
             native_observation=self._native_host.native_observation if self._native_host is not None else None,
+            native_host=self._native_host,
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)

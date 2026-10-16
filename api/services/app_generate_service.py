@@ -4,7 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -232,6 +232,25 @@ class AppGenerateService:
         return cls._run_with_guardrails(app_model=app_model, streaming=True, action=start, native_host=native_host)
 
     @classmethod
+    def resume_admitted_native(cls, *, app_model, workflow, user, runtime, native_host, sessions):
+        """Use the same native guardrails with exact claimed checkpoint objects."""
+        from services.dify_builder.native_testing.runtime import resume_native_generator
+
+        return cls._run_with_guardrails(
+            app_model=app_model,
+            streaming=True,
+            native_host=native_host,
+            action=lambda rate_limit, request_id: resume_native_generator(
+                app_model=app_model,
+                workflow=workflow,
+                user=user,
+                runtime=runtime,
+                native_host=native_host,
+                sessions=sessions,
+            ),
+        )
+
+    @classmethod
     def _run_with_guardrails(
         cls,
         *,
@@ -388,7 +407,7 @@ class AppGenerateService:
                         payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        workflow_based_app_execution_task.delay(payload_json)
+                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     generator = AdvancedChatAppGenerator()
@@ -452,7 +471,7 @@ class AppGenerateService:
                         payload_json = payload.model_dump_json()
 
                     def on_subscribe():
-                        workflow_based_app_execution_task.delay(payload_json)
+                        cast(Callable[..., Any], workflow_based_app_execution_task.delay)(payload_json)
 
                     on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                     return rate_limit.generate(

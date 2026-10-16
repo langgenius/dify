@@ -31,8 +31,6 @@ from collections.abc import Mapping
 from dataclasses import asdict, replace
 
 from celery import shared_task
-from sqlalchemy.orm import sessionmaker
-
 from configs import dify_config
 from core.dify_builder.contract import (
     AgentMessageEventData,
@@ -66,6 +64,7 @@ from services.dify_builder.real_call_consent_service import BuilderRealCallConse
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import DifyBuilderService
+from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 
@@ -568,12 +567,14 @@ def advance_native_test(*, ref: dict, generation: int, dispatch_id: str, actor: 
     The application composition owner supplies qualified native collaborators.
     Queue arguments are references, not approval flags or serialized state.
     """
-    from flask import current_app
-
     from services.dify_builder.native_testing.contracts import decode_native_ref
+    from services.dify_builder.wiring import build_native_dispatch_lifecycle
 
-    factory = current_app.extensions.get("builder_native_lifecycle_factory")
-    if factory is None:
-        raise BuilderExecutionPolicyError("native_runtime_unavailable")
-    service = factory(actor=Actor(**actor))
-    service.execute_dispatch(ref=decode_native_ref(ref), generation=generation, dispatch_id=dispatch_id)
+    actual_ref = decode_native_ref(ref)
+    service = build_native_dispatch_lifecycle(
+        ref=actual_ref,
+        generation=generation,
+        dispatch_id=dispatch_id,
+        actor_hint=Actor(**actor),
+    )
+    service.execute_dispatch(ref=actual_ref, generation=generation, dispatch_id=dispatch_id)

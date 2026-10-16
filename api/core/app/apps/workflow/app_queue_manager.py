@@ -1,4 +1,13 @@
-from typing import override
+from typing import TYPE_CHECKING, override
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
+from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
+from services.dify_builder.native_testing.observation_stream import (
+    project_native_queue_event,
+    require_native_observation,
+)
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.execution_coordinator import AppExecutionState
@@ -14,11 +23,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
 )
-from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
-from services.dify_builder.native_testing.observation_stream import (
-    project_native_queue_event,
-    require_native_observation,
-)
 
 
 class WorkflowAppQueueManager(AppQueueManager):
@@ -30,8 +34,14 @@ class WorkflowAppQueueManager(AppQueueManager):
         app_mode: str,
         *,
         native_observation: NativeObservationGuard | None = None,
+        native_host: "NativeHostLaunch | None" = None,
     ):
         require_native_observation(guard=native_observation)
+        if native_host is not None:
+            from services.dify_builder.native_testing.runtime import validate_projection_host
+
+            validate_projection_host(host=native_host, guard=native_observation, task_id=task_id, user_id=user_id)
+        self.native_host = native_host
         self.native_observation = native_observation
         super().__init__(task_id, user_id, invoke_from)
 
@@ -42,7 +52,9 @@ class WorkflowAppQueueManager(AppQueueManager):
         if self.native_observation is None:
             return super().publish(event, pub_from)
         with self.native_observation.persistence_scope():
-            event = project_native_queue_event(guard=self.native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self.native_observation, event=event, native_host=self.native_host, queue=self
+            )
             super().publish(event, pub_from)
 
     @override
@@ -54,7 +66,9 @@ class WorkflowAppQueueManager(AppQueueManager):
         :return:
         """
         if self.native_observation is not None:
-            event = project_native_queue_event(guard=self.native_observation, event=event)
+            event = project_native_queue_event(
+                guard=self.native_observation, event=event, native_host=self.native_host, queue=self
+            )
         message = WorkflowQueueMessage(task_id=self._task_id, app_mode=self._app_mode, event=event)
 
         self._q.put(message)

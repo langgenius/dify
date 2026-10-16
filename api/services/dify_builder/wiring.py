@@ -10,12 +10,7 @@ import logging
 import re
 import time
 from collections.abc import Callable, Generator, Iterator, Sequence
-from typing import Any
-
-from pydantic import TypeAdapter, ValidationError
-from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import Forbidden
+from typing import Any, cast
 
 from configs import dify_config
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
@@ -27,6 +22,12 @@ from extensions.ext_database import db
 from fields.workflow_stream_fields import WorkflowStreamPayload
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
+from pydantic import TypeAdapter, ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
+from tasks.dify_builder_advance_task import advance_session
+from werkzeug.exceptions import Forbidden
+
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_contracts import canonical_digest
@@ -37,7 +38,6 @@ from services.dify_builder.real_call_consent_service import BuilderRealCallConse
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
-from tasks.dify_builder_advance_task import advance_session
 
 __all__ = [
     "REAL_CALL_REFUSAL_REASONS",
@@ -62,7 +62,9 @@ _WORKFLOW_PAYLOAD_ADAPTER = TypeAdapter(WorkflowStreamPayload)
 
 
 def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
-    advance_session.delay(session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token)
+    cast(Callable[..., Any], advance_session.delay)(
+        session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token
+    )
 
 
 def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
@@ -669,21 +671,36 @@ def stream_advance_frames(
     return _ClosingFrameStream(_frames(), subscription)
 
 
+def native_runtime_owner():
+    """One bounded process-local owner attached to the actual Flask application."""
+    from flask import current_app
+
+    from services.dify_builder.native_testing.runtime import DifyNativeRuntimeOwner
+
+    owner = current_app.extensions.setdefault("builder_native_runtime_owner", DifyNativeRuntimeOwner())
+    if type(owner) is not DifyNativeRuntimeOwner:
+        raise BuilderExecutionPolicyError("native_runtime_composition_mismatch")
+    return owner
+
+
 def build_native_test_api_service(*, actor: Actor):
-    """Real durable API owners; capability launch stays gated until qualified.
+    from tasks.dify_builder_advance_task import advance_native_test
 
-    NW3 and the capability lanes must supply admission, metadata, disclosure and
-    runtime owners here together. No unqualified adapter is selected by a public
-    body or silently substituted with the ordinary Workflow runtime.
-    """
-    from services.dify_builder.native_testing.api_service import NativeTestApiService
+    from services.dify_builder.native_testing.runtime import build_native_api
 
-    return NativeTestApiService(
-        session_factory=sessionmaker(bind=db.engine, expire_on_commit=False),
+    return build_native_api(
+        sessions=sessionmaker(bind=db.engine, expire_on_commit=False),
         actor=actor,
-        resolver=None,
-        admission=None,
-        resolution=None,
-        runtime=None,
-        disclosure=None,
+        owner=native_runtime_owner(),
+        publish=advance_native_test.delay,
+    )
+
+
+def build_native_dispatch_lifecycle(*, ref, generation, dispatch_id, actor_hint=None):
+    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
+
+    return native_runtime_owner().delivery(
+        sessions=sessionmaker(bind=db.engine, expire_on_commit=False),
+        delivery=NativeDispatchRef(ref=ref, generation=generation, dispatch_id=dispatch_id),
+        actor_hint=actor_hint,
     )
