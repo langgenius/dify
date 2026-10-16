@@ -3,7 +3,9 @@ import type { IterationNodeType } from './types'
 import type { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -11,7 +13,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { VarType } from '../../types'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
@@ -25,7 +27,7 @@ type SelectOption = {
 const useConfig = (id: string, payload: IterationNodeType) => {
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
@@ -70,7 +72,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   }
   const childrenNodeVars = toNodeOutputVars(
     iterationChildrenNodes,
-    isChatMode,
+    isChatflow,
     undefined,
     [],
     [],

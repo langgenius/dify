@@ -2,7 +2,6 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import { useImportDSL } from './use-import-dsl'
 
 const mockPush = vi.hoisted(() => vi.fn())
@@ -121,7 +120,7 @@ describe('useImportDSL', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-1',
-      app_mode: AppModeEnum.WORKFLOW,
+      app_mode: 'workflow',
       permission_keys: [],
       warnings: [
         {
@@ -161,7 +160,7 @@ describe('useImportDSL', () => {
     const pendingResponse = {
       id: 'import-1',
       status: DSLImportStatus.PENDING,
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       imported_dsl_version: '0.2.0',
       current_dsl_version: '0.1.0',
       permission_keys: [],
@@ -170,7 +169,7 @@ describe('useImportDSL', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-1',
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       permission_keys: ['app.acl.view_layout'],
       warnings: [
         {
@@ -235,7 +234,7 @@ describe('useImportDSL', () => {
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
       id: 'app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       permission_keys: ['app.acl.view_layout'],
     })
     expect(mockGetRedirection).toHaveBeenCalledTimes(1)

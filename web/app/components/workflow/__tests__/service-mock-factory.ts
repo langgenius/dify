@@ -6,33 +6,8 @@
  * vi.mock('@/service/use-tools', async () =>
  *   (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
  * )
- * vi.mock('@/app/components/app/store', async () =>
- *   (await import('../../__tests__/service-mock-factory')).createAppStoreMock(),
- * )
  * ```
  */
-
-// ---------------------------------------------------------------------------
-// App store
-// ---------------------------------------------------------------------------
-
-type AppStoreMockData = {
-  appId?: string
-  appMode?: string
-}
-
-export function createAppStoreMock(data?: AppStoreMockData) {
-  return {
-    useStore: {
-      getState: () => ({
-        appDetail: {
-          id: data?.appId ?? 'app-test-id',
-          mode: data?.appMode ?? 'workflow',
-        },
-      }),
-    },
-  }
-}
 
 // ---------------------------------------------------------------------------
 // SWR service hooks

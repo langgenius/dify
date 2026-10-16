@@ -1,4 +1,5 @@
 'use client'
+
 import type {
   AppDetailWithSite,
   AppPartial,
@@ -13,7 +14,7 @@ import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/component
 import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useAppWorkflow } from '@/service/use-workflow'
-import { AppModeEnum, Resolution } from '@/types/app'
+import { Resolution } from '@/types/app'
 
 const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
   paragraph: 'paragraph',
@@ -49,11 +50,11 @@ type WorkflowNodeWithVariables = {
 }
 
 function isBasicAppMode(mode: string): boolean {
-  return mode !== AppModeEnum.ADVANCED_CHAT && mode !== AppModeEnum.WORKFLOW
+  return mode !== 'advanced-chat' && mode !== 'workflow'
 }
 
 function supportsImageUpload(mode: string): boolean {
-  return mode === AppModeEnum.COMPLETION || mode === AppModeEnum.WORKFLOW
+  return mode === 'completion' || mode === 'workflow'
 }
 
 function buildFileConfig(fileConfig: FileUpload | undefined) {

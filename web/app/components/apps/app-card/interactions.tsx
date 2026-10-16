@@ -58,7 +58,6 @@ import { AccessMode } from '@/models/access-control'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
@@ -78,9 +77,9 @@ const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-
 
 const OPERATIONS_MENU_POPUP_CLASS_NAME = 'min-w-[216px]'
 const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppPartial['mode']>([
-  AppModeEnum.ADVANCED_CHAT,
-  AppModeEnum.WORKFLOW,
-])
+  'advanced-chat',
+  'workflow',
+] as const)
 
 function requiresPublishedWorkflowInExplore(app: AppPartial) {
   return APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE.has(app.mode)
@@ -477,8 +476,7 @@ export function AppCardInteractions({
     if (isExporting) return
 
     setIsOperationsMenuOpen(false)
-    const isWorkflowApp =
-      app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT
+    const isWorkflowApp = app.mode === 'workflow' || app.mode === 'advanced-chat'
     const result = isWorkflowApp
       ? await exportWorkflowAppDsl({ appId: app.id, appName: app.name })
       : await exportAppDsl({ appId: app.id, appName: app.name })
@@ -515,8 +513,7 @@ export function AppCardInteractions({
   const shouldShowDuplicateOption = canCreateApp
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
   const shouldShowSwitchOption =
-    appACLCapabilities.canEdit &&
-    (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
+    appACLCapabilities.canEdit && (app.mode === 'completion' || app.mode === 'chat')
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
   const shouldShowOperationsMenu =

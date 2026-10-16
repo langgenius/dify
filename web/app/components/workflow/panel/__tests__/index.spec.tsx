@@ -199,7 +199,6 @@ describe('Panel', () => {
         }}
         versionHistoryPanelProps={{
           latestVersionId: 'version-1',
-          restoreVersionUrl: (versionId) => `/apps/app-1/workflows/${versionId}/restore`,
         }}
       />,
     )

@@ -14,7 +14,6 @@ import { APP_PAGE_LIMIT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
-import { AppModeEnum } from '@/types/app'
 import PageTitle from '../log-annotation/page-title'
 import {
   resolveLogTimePeriod,
@@ -96,7 +95,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   }, [appDetail.id, currPage, limit, queryParams])
 
   // Get the app type first
-  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
+  const isChatMode = appDetail.mode !== 'completion'
 
   const query = {
     page: currPage + 1,

@@ -6,7 +6,7 @@ import * as React from 'react'
 import Log from '@/app/components/base/chat/chat/log'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
+import { ModelModeType, TransferMethod } from '@/types/app'
 import Debug from '../index'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
 
@@ -345,7 +345,7 @@ const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugCo
   appId: 'app-id',
   onOpenFeatures: vi.fn(),
   isTrailFinished: false,
-  mode: AppModeEnum.CHAT,
+  mode: 'chat',
   modelModeType: ModelModeType.chat,
   promptMode: 'simple' as DebugContextValue['promptMode'],
   setPromptMode: vi.fn(),
@@ -676,7 +676,7 @@ describe('Debug', () => {
       const { notify } = renderDebug({
         contextValue: {
           isAdvancedMode: true,
-          mode: AppModeEnum.CHAT,
+          mode: 'chat',
           modelModeType: ModelModeType.completion,
           hasSetBlockStatus: { context: false, history: false, query: true },
         },
@@ -693,7 +693,7 @@ describe('Debug', () => {
       const { notify } = renderDebug({
         contextValue: {
           isAdvancedMode: true,
-          mode: AppModeEnum.CHAT,
+          mode: 'chat',
           modelModeType: ModelModeType.completion,
           hasSetBlockStatus: { context: false, history: true, query: false },
         },
@@ -711,7 +711,7 @@ describe('Debug', () => {
     it('should render prompt value panel and no-result placeholder', () => {
       renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         },
       })
 
@@ -722,7 +722,7 @@ describe('Debug', () => {
     it('should notify when required input is missing', () => {
       const { notify } = renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           inputs: {},
           modelConfig: {
             ...createContextValue().modelConfig,
@@ -752,7 +752,7 @@ describe('Debug', () => {
     it('should notify when local file upload is still pending', () => {
       const { notify } = renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           modelConfig: {
             ...createContextValue().modelConfig,
             configs: {
@@ -776,7 +776,7 @@ describe('Debug', () => {
     it('should show cannot-query-dataset warning when dataset context variable is missing', () => {
       renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           dataSets: [{ id: 'dataset-1' }] as DebugContextValue['dataSets'],
           hasSetContextVar: false,
           modelConfig: {
@@ -800,7 +800,7 @@ describe('Debug', () => {
       const user = userEvent.setup()
       const { notify } = renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           isAdvancedMode: true,
           chatPromptConfig: { prompt: [{ text: 'Missing role' }] },
         },
@@ -817,7 +817,7 @@ describe('Debug', () => {
       const user = userEvent.setup()
       const file = { ...mockState.mockFeaturesState.file, enabled: true, number_limits: 1.5 }
       mockState.mockFeaturesState.file = file
-      const { notify } = renderDebug({ contextValue: { mode: AppModeEnum.COMPLETION } })
+      const { notify } = renderDebug({ contextValue: { mode: 'completion' as const } })
 
       await user.click(screen.getByRole('button', { name: 'Send' }))
 
@@ -870,7 +870,7 @@ describe('Debug', () => {
 
       renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           promptMode: 'simple' as DebugContextValue['promptMode'],
           textToSpeechConfig: { enabled: true, voice: 'alloy', language: 'en' },
           modelConfig: {
@@ -924,7 +924,7 @@ describe('Debug', () => {
       mockState.mockSendCompletionMessage.mockImplementation(() => undefined)
       const { notify } = renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           modelConfig: {
             ...createContextValue().modelConfig,
             configs: {
@@ -975,7 +975,7 @@ describe('Debug', () => {
 
       renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           modelConfig: {
             ...createContextValue().modelConfig,
             configs: {
@@ -999,7 +999,7 @@ describe('Debug', () => {
         handlers.onData('Completion answer', true, { messageId: 'completion-1' })
         handlers.onCompleted()
       })
-      renderDebug({ contextValue: { mode: AppModeEnum.COMPLETION } })
+      renderDebug({ contextValue: { mode: 'completion' as const } })
       await user.click(screen.getByRole('button', { name: 'Send' }))
       await user.click(
         within(screen.getByRole('region', { name: 'First answer' })).getByRole('button', {
@@ -1080,7 +1080,7 @@ describe('Debug', () => {
     it('should emit completion event in multiple-model completion mode', () => {
       renderDebug({
         contextValue: {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           modelConfig: {
             ...createContextValue().modelConfig,
             configs: {
@@ -1166,7 +1166,7 @@ describe('Debug', () => {
     it('should update feature store according to multiple-model vision support', () => {
       renderDebug({
         contextValue: {
-          mode: AppModeEnum.CHAT,
+          mode: 'chat',
         },
         props: {
           debugWithMultipleModel: true,
