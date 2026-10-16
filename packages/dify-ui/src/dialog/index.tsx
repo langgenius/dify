@@ -51,7 +51,7 @@ type DialogViewportProps = BaseDialog.Viewport.Props
 function DialogViewport({ className, ...props }: DialogViewportProps) {
   return (
     <BaseDialog.Viewport
-      className={(state) => cn('fixed inset-0 z-50', resolveClassName(className, state))}
+      className={(state) => cn('fixed inset-0', resolveClassName(className, state))}
       {...props}
     />
   )
@@ -64,7 +64,7 @@ function DialogPopup({ className, ...props }: DialogPopupProps) {
     <BaseDialog.Popup
       className={(state) =>
         cn(
-          'z-50 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl',
+          'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl',
           modalPopupAnimationClassName,
           resolveClassName(className, state),
         )
