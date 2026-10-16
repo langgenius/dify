@@ -10,13 +10,23 @@ import { describe, expect, it } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import {
+  ComparisonOperator,
+  LogicalOperator,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
   BlockEnum,
   EditionType,
   InputVarType,
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
-import { findUsedVarNodes, getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
+import {
+  findUsedVarNodes,
+  getNodeUsedVarPassToServerKey,
+  getNodeUsedVars,
+  toNodeAvailableVars,
+  updateNodeVars,
+} from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -329,6 +339,41 @@ describe('variable utils', () => {
         ['start', 'images'],
       ])
     })
+
+    it('reads variables referenced by KnowledgeFS metadata filter values', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: [],
+        top_n: 10,
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition-1',
+              name: 'department',
+              comparison_operator: ComparisonOperator.is,
+              value: '{{#start.department#}}',
+            },
+            {
+              id: 'condition-2',
+              name: 'region',
+              comparison_operator: ComparisonOperator.contains,
+              value: 'emea-{{#start.department#}}',
+            },
+          ],
+        },
+      })
+
+      expect(getNodeUsedVars(node)).toContainEqual(['start', 'department'])
+      expect(getNodeUsedVarPassToServerKey(node, ['start', 'department'])).toBe(
+        '#start.department#',
+      )
+      expect(getNodeUsedVarPassToServerKey(node, ['start', 'query'])).toBe('query')
+    })
   })
 
   describe('updateNodeVars', () => {
@@ -408,6 +453,84 @@ describe('variable utils', () => {
         query_variable_selector: ['start', 'query'],
         query_attachment_selector: ['start', 'screenshots'],
       })
+    })
+
+    it('renames KnowledgeFS metadata filter variable references', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: [],
+        top_n: 10,
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition-1',
+              name: 'department',
+              comparison_operator: ComparisonOperator.is,
+              value: '{{#start.department#}}',
+            },
+            {
+              id: 'condition-2',
+              name: 'region',
+              comparison_operator: ComparisonOperator.contains,
+              value: 'emea-{{#start.department#}}',
+            },
+          ],
+        },
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'department'], ['start', 'team'])
+
+      expect(
+        (updatedNode.data as KnowledgeRetrievalV2NodeType).metadata_filtering_conditions
+          ?.conditions,
+      ).toEqual([
+        expect.objectContaining({ value: '{{#start.team#}}' }),
+        expect.objectContaining({ value: 'emea-{{#start.team#}}' }),
+      ])
+    })
+
+    it('drops KnowledgeFS metadata filter references to a removed variable', () => {
+      const node = createNode<KnowledgeRetrievalV2NodeType>({
+        type: BlockEnum.KnowledgeRetrievalV2,
+        title: 'Knowledge Retrieval v2',
+        desc: '',
+        control_space_ids: ['space-1'],
+        query_variable_selector: ['start', 'query'],
+        query_attachment_selector: [],
+        top_n: 10,
+        metadata_filtering_conditions: {
+          logical_operator: LogicalOperator.and,
+          conditions: [
+            {
+              id: 'condition-1',
+              name: 'department',
+              comparison_operator: ComparisonOperator.is,
+              value: '{{#start.department#}}',
+            },
+            {
+              id: 'condition-2',
+              name: 'region',
+              comparison_operator: ComparisonOperator.contains,
+              value: 'emea-{{#start.department#}}',
+            },
+          ],
+        },
+      })
+
+      const updatedNode = updateNodeVars(node, ['start', 'department'], [])
+
+      expect(
+        (updatedNode.data as KnowledgeRetrievalV2NodeType).metadata_filtering_conditions
+          ?.conditions,
+      ).toEqual([
+        expect.objectContaining({ value: undefined }),
+        expect.objectContaining({ value: 'emea-' }),
+      ])
     })
 
     it('should replace human input email template references', () => {

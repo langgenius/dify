@@ -67,6 +67,10 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { VAR_REGEX } from '@/config'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
+import {
+  getKnowledgeRetrievalV2MetadataValueTexts,
+  replaceKnowledgeRetrievalV2MetadataVar,
+} from '../../../knowledge-retrieval-v2/metadata-filtering'
 import { Type } from '../../../llm/types'
 
 type WorkflowTranslate = TFunction<['workflow']>
@@ -1262,9 +1266,13 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       break
     }
     case BlockEnum.KnowledgeRetrievalV2: {
-      const { query_variable_selector, query_attachment_selector = [] } =
-        data as KnowledgeRetrievalV2NodeType
-      res = [query_variable_selector, query_attachment_selector]
+      const payload = data as KnowledgeRetrievalV2NodeType
+      const { query_variable_selector, query_attachment_selector = [] } = payload
+      res = [
+        query_variable_selector,
+        query_attachment_selector,
+        ...matchNotSystemVars(getKnowledgeRetrievalV2MetadataValueTexts(payload)),
+      ]
       break
     }
     case BlockEnum.IfElse: {
@@ -1464,7 +1472,11 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
     case BlockEnum.KnowledgeRetrievalV2: {
-      res = 'query'
+      const payload = data as KnowledgeRetrievalV2NodeType
+      const selectorKey = valueSelector.join('.')
+      if (payload.query_variable_selector.join('.') === selectorKey) res = 'query'
+      else if (payload.query_attachment_selector?.join('.') === selectorKey) res = 'queryAttachment'
+      else res = `#${selectorKey}#`
       break
     }
     case BlockEnum.IfElse: {
@@ -1630,6 +1642,7 @@ export const updateNodeVars = (
           payload.query_variable_selector = newVarSelector
         if (payload.query_attachment_selector?.join('.') === oldVarSelector.join('.'))
           payload.query_attachment_selector = newVarSelector
+        replaceKnowledgeRetrievalV2MetadataVar(payload, oldVarSelector, newVarSelector)
         break
       }
       case BlockEnum.IfElse: {

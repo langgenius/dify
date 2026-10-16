@@ -2,11 +2,16 @@ import type { RefObject } from 'react'
 import type { KnowledgeRetrievalV2NodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { findVariableWhenOnLLMVision } from '@/app/components/workflow/nodes/utils'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { getKnowledgeRetrievalV2MetadataValueTexts } from './metadata-filtering'
+
+const QUERY_INPUT_KEYS = ['query', 'queryAttachment']
+
+const inputVarToSelector = (inputVar: InputVar) => inputVar.variable.slice(1, -1).split('.')
 
 type Params = {
   id: string
@@ -23,6 +28,7 @@ const useSingleRunFormParams = ({
   payload,
   runInputData,
   runInputDataRef,
+  getInputVars,
   setRunInputData,
 }: Params) => {
   const { t } = useTranslation(['workflow', 'workflowModels'])
@@ -44,7 +50,21 @@ const useSingleRunFormParams = ({
     onlyLeafNodeVar: false,
     filterVar: filterFileVar,
   })
-  const forms = useMemo(() => {
+  const metadataVarInputs = getInputVars(getKnowledgeRetrievalV2MetadataValueTexts(payload))
+  // Same legacy string-typed Form value contract as the attachment field below.
+  const metadataVarValues = Object.fromEntries(
+    Object.entries(runInputData).filter(([key]) => !QUERY_INPUT_KEYS.includes(key)),
+  ) as Record<string, string>
+  const setMetadataVarValues = useCallback(
+    (values: Record<string, unknown>) =>
+      setRunInputData({
+        ...values,
+        query: runInputDataRef.current.query,
+        queryAttachment: runInputDataRef.current.queryAttachment,
+      }),
+    [runInputDataRef, setRunInputData],
+  )
+  const forms = (() => {
     const fields: FormProps[] = [
       {
         inputs: [
@@ -81,22 +101,23 @@ const useSingleRunFormParams = ({
         onChange: (values: Record<string, unknown>) => setQueryAttachment(values.queryAttachment),
       })
     }
+    if (metadataVarInputs.length > 0) {
+      fields.push({
+        label: t(($) => $['nodes.llm.singleRun.variable'], { ns: 'workflowModels' })!,
+        inputs: metadataVarInputs,
+        values: metadataVarValues,
+        onChange: setMetadataVarValues,
+      })
+    }
     return fields
-  }, [
-    availableFileVars,
-    payload.query_attachment_selector,
-    query,
-    queryAttachment,
-    setQuery,
-    setQueryAttachment,
-    t,
-  ])
+  })()
 
   return {
     forms,
     getDependentVars: () => [
       payload.query_variable_selector,
       payload.query_attachment_selector ?? [],
+      ...metadataVarInputs.map(inputVarToSelector),
     ],
     getDependentVar: (variable: string) => {
       if (variable === 'query') return payload.query_variable_selector

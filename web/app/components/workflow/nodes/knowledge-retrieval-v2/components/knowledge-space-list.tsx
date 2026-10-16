@@ -52,13 +52,15 @@ const KnowledgeSpaceList: FC<Props> = ({ list, onChange, readonly }) => {
               </span>
             </div>
             {!readonly && (
-              <div className="ml-2 hidden shrink-0 group-hover/knowledge-space:block">
+              <div className="ml-2 shrink-0 opacity-0 group-hover/knowledge-space:opacity-100 focus-within:opacity-100">
                 <IconButton
                   aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
                   tone="destructive"
                   onClick={() => remove(space.control_space_id)}
                   onMouseEnter={() => setRemoveHoveredId(space.control_space_id)}
                   onMouseLeave={() => setRemoveHoveredId(undefined)}
+                  onFocus={() => setRemoveHoveredId(space.control_space_id)}
+                  onBlur={() => setRemoveHoveredId(undefined)}
                 >
                   <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
                 </IconButton>

@@ -1,7 +1,7 @@
 import type { PrimitiveAtom } from 'jotai'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useHydrateAtoms } from 'jotai/utils'
 import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
@@ -13,6 +13,10 @@ import { useDatasetApiKeyMutations } from '../use-dataset-api-key-mutations'
 const apiMocks = vi.hoisted(() => ({
   datasetKeys: [] as Array<Record<string, unknown>>,
   knowledgeSpaces: [] as Array<{ control_space_id: string; technical_summary: { name: string } }>,
+  knowledgeSpacePages: null as null | Array<
+    Array<{ control_space_id: string; technical_summary: { name: string } }>
+  >,
+  knowledgeSpacesFailures: 0,
   knowledgeFsEnabled: false,
   createDataset: vi.fn(),
 }))
@@ -28,8 +32,21 @@ vi.mock('@/service/console/browser', () => ({
           return { id: 'new-key', token: 'new-dataset-token-123', type: 'dataset', created_at: 2 }
         case 'datasets.get':
           return { data: [], page: 1, limit: 20, has_more: false, total: 0 }
-        case 'knowledgeFs.spaces.get':
-          return { data: apiMocks.knowledgeSpaces, page: 1, limit: 20, has_more: false }
+        case 'knowledgeFs.spaces.get': {
+          if (apiMocks.knowledgeSpacesFailures > 0) {
+            apiMocks.knowledgeSpacesFailures -= 1
+            throw new Error('KnowledgeFS unavailable')
+          }
+          const page = (input as { query: { page: number } }).query.page
+          if (!apiMocks.knowledgeSpacePages)
+            return { data: apiMocks.knowledgeSpaces, page, limit: 20, has_more: false }
+          return {
+            data: apiMocks.knowledgeSpacePages[page - 1] ?? [],
+            page,
+            limit: 20,
+            has_more: page < apiMocks.knowledgeSpacePages.length,
+          }
+        }
         default:
           throw new Error(`Unexpected API call: ${path.join('.')}`)
       }
@@ -88,6 +105,8 @@ describe('DatasetApiKeyDialogContent', () => {
     vi.clearAllMocks()
     apiMocks.datasetKeys = []
     apiMocks.knowledgeSpaces = []
+    apiMocks.knowledgeSpacePages = null
+    apiMocks.knowledgeSpacesFailures = 0
     apiMocks.knowledgeFsEnabled = false
   })
 
@@ -152,5 +171,64 @@ describe('DatasetApiKeyDialogContent', () => {
         body: { dataset_ids: [], knowledge_space_ids: ['space-1'] },
       }),
     )
+  })
+
+  it('loads further KnowledgeFS pages so every matching space can be scoped', async () => {
+    apiMocks.knowledgeFsEnabled = true
+    apiMocks.knowledgeSpacePages = [
+      [{ control_space_id: 'space-1', technical_summary: { name: 'Space One' } }],
+      [{ control_space_id: 'space-21', technical_summary: { name: 'Space Twenty-One' } }],
+    ]
+    const user = userEvent.setup()
+    renderDialog()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+    )
+    await user.click(await screen.findByText('appApi.apiKeyModal.scopeSpecificDatasets'))
+    await user.click(screen.getByRole('combobox', { name: 'appApi.apiKeyModal.addKnowledgeBase' }))
+    expect(await screen.findByRole('option', { name: 'Space One' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Space Twenty-One' })).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'appApi.apiKeyModal.loadMoreKnowledgeSpaces' }),
+    )
+    await user.click(await screen.findByRole('option', { name: 'Space Twenty-One' }))
+    expect(
+      screen.queryByRole('button', { name: 'appApi.apiKeyModal.loadMoreKnowledgeSpaces' }),
+    ).not.toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    await waitFor(() =>
+      expect(apiMocks.createDataset).toHaveBeenCalledWith({
+        body: { dataset_ids: [], knowledge_space_ids: ['space-21'] },
+      }),
+    )
+  })
+
+  it('shows a retryable error instead of an empty result when the KnowledgeFS lookup fails', async () => {
+    apiMocks.knowledgeFsEnabled = true
+    apiMocks.knowledgeSpacesFailures = 1
+    apiMocks.knowledgeSpaces = [
+      { control_space_id: 'space-1', technical_summary: { name: 'Space One' } },
+    ]
+    const user = userEvent.setup()
+    renderDialog()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+    )
+    await user.click(await screen.findByText('appApi.apiKeyModal.scopeSpecificDatasets'))
+    await user.click(screen.getByRole('combobox', { name: 'appApi.apiKeyModal.addKnowledgeBase' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('appApi.apiKeyModal.loadKnowledgeSpacesError')
+    expect(screen.queryByText('common.noData')).not.toBeInTheDocument()
+
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByRole('option', { name: 'Space One' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
