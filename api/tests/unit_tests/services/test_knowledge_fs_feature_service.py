@@ -1,4 +1,4 @@
-"""Tests for the SystemFeatureService knowledge-filesystem policy."""
+"""Tests for the KnowledgeFS deployment availability policy."""
 
 from collections.abc import Callable
 
@@ -6,15 +6,15 @@ import pytest
 
 from enums import DeploymentEdition
 from services.entities.feature_entities import SystemFeatureModel
-from services.system_feature_service import SystemFeatureService
+from services.knowledge_fs.feature_service import KnowledgeFSFeatures, get_knowledge_fs_features
 
 
-def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
-    features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
+def test_system_features_do_not_expose_knowledge_fs_availability() -> None:
+    fields = SystemFeatureModel.model_fields
 
-    assert features.knowledge_fs_enabled is False
-    assert features.knowledge_fs_upload_enabled is False
-    assert features.agent_knowledge_fs_enabled is False
+    assert "knowledge_fs_enabled" not in fields
+    assert "knowledge_fs_upload_enabled" not in fields
+    assert "agent_knowledge_fs_enabled" not in fields
 
 
 @pytest.mark.parametrize(
@@ -27,7 +27,7 @@ def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
         (False, "https://knowledge-fs.test", True, True, False),
     ],
 )
-def test_get_system_features_reads_knowledge_fs_availability(
+def test_get_knowledge_fs_features_reads_upload_availability(
     config_overrides: Callable[..., None],
     enabled: bool,
     base_url: str | None,
@@ -44,13 +44,29 @@ def test_get_system_features_reads_knowledge_fs_availability(
         KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=object() if signing_ready else None,
         AGENT_SHELL_ENABLED=True,
     )
-    result = SystemFeatureService.get_public_system_features()
 
-    assert result.knowledge_fs_enabled is enabled
-    assert result.knowledge_fs_upload_enabled is upload_enabled
-    assert result.agent_knowledge_fs_enabled is upload_enabled
-    assert result.model_dump()["knowledge_fs_enabled"] is enabled
-    assert result.model_dump()["knowledge_fs_upload_enabled"] is upload_enabled
+    assert get_knowledge_fs_features() == KnowledgeFSFeatures(
+        enabled=enabled,
+        upload_enabled=upload_enabled,
+        agent_enabled=upload_enabled,
+    )
+
+
+def test_get_knowledge_fs_features_requires_agent_shell_for_agents(config_overrides: Callable[..., None]) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        KNOWLEDGE_FS_ENABLED=True,
+        KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
+        KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
+        KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="signing-key",
+        KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=object(),
+        AGENT_SHELL_ENABLED=False,
+    )
+
+    features = get_knowledge_fs_features()
+
+    assert features.upload_enabled is True
+    assert features.agent_enabled is False
 
 
 @pytest.mark.parametrize(
@@ -61,8 +77,7 @@ def test_get_system_features_reads_knowledge_fs_availability(
         (DeploymentEdition.COMMUNITY, True, True),
     ],
 )
-def test_get_system_features_controls_knowledge_fs_by_edition_or_development_flag(
-    monkeypatch: pytest.MonkeyPatch,
+def test_get_knowledge_fs_features_controls_availability_by_edition_or_development_flag(
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     community_dev_enabled: bool,
@@ -73,8 +88,5 @@ def test_get_system_features_controls_knowledge_fs_by_edition_or_development_fla
         KNOWLEDGE_FS_ENABLED=True,
         KNOWLEDGE_FS_COMMUNITY_DEV_ENABLED=community_dev_enabled,
     )
-    monkeypatch.setattr(SystemFeatureService, "_fulfill_params_from_enterprise", lambda _: None)
 
-    result = SystemFeatureService.get_public_system_features()
-
-    assert result.knowledge_fs_enabled is expected
+    assert get_knowledge_fs_features().enabled is expected

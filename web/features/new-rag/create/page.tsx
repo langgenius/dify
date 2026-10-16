@@ -30,11 +30,8 @@ import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
-import {
-  deploymentEditionAtom,
-  knowledgeFsUploadEnabledAtom,
-  rbacEnabledAtom,
-} from '@/features/system-features/state'
+import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
+import { deploymentEditionAtom, rbacEnabledAtom } from '@/features/system-features/state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'

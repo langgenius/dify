@@ -32,7 +32,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { consoleQuery } from '@/service/console'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 

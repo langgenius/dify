@@ -15,7 +15,7 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
-import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
 
 const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {

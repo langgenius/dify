@@ -9,10 +9,8 @@ import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import {
-  deploymentEditionAtom,
-  knowledgeFsUploadEnabledAtom,
-} from '@/features/system-features/state'
+import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'

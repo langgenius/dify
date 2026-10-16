@@ -3126,6 +3126,11 @@ export type KnowledgeFsTraceStageResponse = {
   status: 'error' | 'ok' | 'skipped'
 }
 
+export type KnowledgeFsAccessDeniedError = ErrorResponse & {
+  code: 'knowledge_fs_access_denied'
+  status: 403
+}
+
 export type KnowledgeFsCitation = {
   artifact_hash: string
   control_space_id: string
@@ -3140,6 +3145,51 @@ export type KnowledgeFsCitation = {
   section_path?: Array<string>
   space_name: string
   start_offset?: number | null
+}
+
+export type KnowledgeFsConflictError = ErrorResponse & {
+  code: 'knowledge_fs_conflict'
+  status: 409
+}
+
+export type KnowledgeFsInvalidCredentialError = ErrorResponse & {
+  code: 'knowledge_fs_invalid_credential'
+  status: 401
+}
+
+export type KnowledgeFsInvalidRequestError = ErrorResponse & {
+  code: 'knowledge_fs_invalid_request'
+  status: 400
+}
+
+export type KnowledgeFsOperationUnavailableError = ErrorResponse & {
+  code: 'knowledge_fs_operation_unavailable'
+  status: 503
+}
+
+export type KnowledgeFsRateLimitExceededError = ErrorResponse & {
+  code: 'knowledge_fs_rate_limit_exceeded'
+  status: 429
+}
+
+export type KnowledgeFsRequestRejectedError = ErrorResponse & {
+  code: 'knowledge_fs_request_rejected'
+  status: 422
+}
+
+export type KnowledgeFsRequestTooLargeError = ErrorResponse & {
+  code: 'knowledge_fs_request_too_large'
+  status: 413
+}
+
+export type KnowledgeFsResourceNotFoundError = ErrorResponse & {
+  code: 'knowledge_fs_resource_not_found'
+  status: 404
+}
+
+export type KnowledgeFsUpstreamUnavailableError = ErrorResponse & {
+  code: 'knowledge_fs_upstream_unavailable'
+  status: 502
 }
 
 export type KnowledgeTagListResponse = Array<KnowledgeTagResponse>
@@ -6501,6 +6551,10 @@ export type PostKnowledgeFsQueryStreamData = {
 }
 
 export type PostKnowledgeFsQueryStreamErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6528,6 +6582,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6552,6 +6613,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6576,6 +6643,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDeletionBatchesByBatchIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6600,6 +6673,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6627,6 +6706,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryData = 
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDeletionJobsByJobIdRetryErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6653,6 +6739,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveData = 
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6679,6 +6771,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6705,6 +6803,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkData = {
 }
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6731,6 +6836,14 @@ export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6758,6 +6871,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6782,6 +6902,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6806,6 +6932,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdData = {
 }
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6830,6 +6963,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineData
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6857,6 +6996,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsDa
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6888,6 +7033,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsBy
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors =
   {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -6917,6 +7068,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsBy
 
 export type GetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors =
   {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -6942,6 +7099,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdData = {
 }
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6966,6 +7130,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6990,6 +7160,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7016,6 +7193,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7040,6 +7223,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdData
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7068,6 +7257,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProc
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksErrors =
   {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -7096,6 +7291,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProc
 
 export type GetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdProcessingTasksByTaskIdErrors =
   {
+    400: KnowledgeFsInvalidRequestError | ErrorResponse
+    401: KnowledgeFsInvalidCredentialError | ErrorResponse
+    403: KnowledgeFsAccessDeniedError | ErrorResponse
+    404: KnowledgeFsResourceNotFoundError | ErrorResponse
+    502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+    503: KnowledgeFsOperationUnavailableError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -7120,6 +7321,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7145,6 +7353,12 @@ export type PostKnowledgeFsSpacesByControlSpaceIdQueryImagesData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdQueryImagesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7171,6 +7385,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7197,6 +7417,15 @@ export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7220,6 +7449,14 @@ export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  413: KnowledgeFsRequestTooLargeError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7244,6 +7481,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdData = {
 }
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7268,6 +7512,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7295,6 +7545,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsDat
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7319,6 +7575,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeData
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResumeErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7342,6 +7605,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSettingsData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSettingsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7365,6 +7634,14 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsData = {
 }
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdSettingsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  422: KnowledgeFsRequestRejectedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7390,6 +7667,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdD
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7416,6 +7699,11 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7439,6 +7727,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7463,6 +7758,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionId
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7486,6 +7788,11 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceProvidersErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7513,6 +7820,11 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7537,6 +7849,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7561,6 +7879,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelDat
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7588,6 +7913,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesData 
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7612,6 +7943,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryData
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7639,6 +7977,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelection
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7665,6 +8010,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7688,6 +8039,14 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  429: KnowledgeFsRateLimitExceededError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7717,6 +8076,13 @@ export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
 }
 
 export type DeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7741,6 +8107,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7765,6 +8137,13 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdData = {
 }
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7792,6 +8171,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7819,6 +8205,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportDat
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7846,6 +8239,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewDa
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7875,6 +8275,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7902,6 +8308,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7929,6 +8342,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesDat
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7956,6 +8376,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7983,6 +8409,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8007,6 +8440,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyData 
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8031,6 +8470,13 @@ export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyData 
 }
 
 export type PutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8055,6 +8501,12 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestData = {
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8082,6 +8534,13 @@ export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImport
 }
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8109,6 +8568,13 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8133,6 +8599,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8160,6 +8632,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8187,6 +8665,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8214,6 +8698,12 @@ export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingData = {
 }
 
 export type GetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  401: KnowledgeFsInvalidCredentialError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | ErrorResponse
+  502: KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

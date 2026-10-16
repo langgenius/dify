@@ -3,6 +3,18 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zKnowledgeFsAccessDeniedError,
+  zKnowledgeFsConflictError,
+  zKnowledgeFsInvalidRequestError,
+  zKnowledgeFsOperationUnavailableError,
+  zKnowledgeFsRateLimitExceededError,
+  zKnowledgeFsRequestRejectedError,
+  zKnowledgeFsRequestTooLargeError,
+  zKnowledgeFsResourceNotFoundError,
+  zKnowledgeFsSpaceNotFoundError,
+  zKnowledgeFsUpstreamUnavailableError,
+} from './zod.gen.ts'
+import {
   zDeleteKnowledgeFsSourceProviderPreviewJobsByJobIdPath,
   zDeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponse,
   zDeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdPath,
@@ -41,6 +53,7 @@ import {
   zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse,
   zDeleteKnowledgeFsUploadsByUploadIdPath,
   zDeleteKnowledgeFsUploadsByUploadIdResponse,
+  zGetKnowledgeFsFeaturesResponse,
   zGetKnowledgeFsResearchTasksByTaskIdEventsPath,
   zGetKnowledgeFsResearchTasksByTaskIdEventsQuery,
   zGetKnowledgeFsResearchTasksByTaskIdEventsResponse,
@@ -363,6 +376,24 @@ export const wellKnown = {
   jwksJson,
 }
 
+/**
+ * Get which Agent Knowledge Base surfaces this deployment offers
+ */
+export const get2 = oc
+  .route({
+    description: 'Get which Agent Knowledge Base surfaces this deployment offers',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeFsFeatures',
+    path: '/knowledge-fs/features',
+    tags: ['console'],
+  })
+  .output(zGetKnowledgeFsFeaturesResponse)
+
+export const features = {
+  get: get2,
+}
+
 export const post = oc
   .route({
     inputStructure: 'detailed',
@@ -373,12 +404,22 @@ export const post = oc
   })
   .input(z.object({ body: zPostKnowledgeFsQueryStreamBody }))
   .output(zPostKnowledgeFsQueryStreamResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const queryStream = {
   post,
 }
 
-export const get2 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -393,9 +434,19 @@ export const get2 = oc
     }),
   )
   .output(zGetKnowledgeFsResearchTasksByTaskIdEventsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const events = {
-  get: get2,
+  get: get3,
 }
 
 export const byTaskId = {
@@ -416,8 +467,17 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteKnowledgeFsSourceProviderPreviewJobsByJobIdPath }))
   .output(zDeleteKnowledgeFsSourceProviderPreviewJobsByJobIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
-export const get3 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -427,10 +487,19 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSourceProviderPreviewJobsByJobIdPath }))
   .output(zGetKnowledgeFsSourceProviderPreviewJobsByJobIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byJobId = {
   delete: delete_,
-  get: get3,
+  get: get4,
 }
 
 export const post2 = oc
@@ -444,6 +513,15 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostKnowledgeFsSourceProviderPreviewJobsBody }))
   .output(zPostKnowledgeFsSourceProviderPreviewJobsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const jobs = {
   post: post2,
@@ -460,6 +538,10 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostKnowledgeFsSourceProviderPreviewBody }))
   .output(zPostKnowledgeFsSourceProviderPreviewResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+  })
 
 export const sourceProviderPreview = {
   post: post3,
@@ -481,6 +563,15 @@ export const delete2 = oc
     }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdAppBindingsByCallerKindByAppIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const byAppId = {
   delete: delete2,
@@ -490,7 +581,7 @@ export const byCallerKind = {
   byAppId,
 }
 
-export const get4 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -500,6 +591,14 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdAppBindingsPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdAppBindingsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const put = oc
   .route({
@@ -516,9 +615,18 @@ export const put = oc
     }),
   )
   .output(zPutKnowledgeFsSpacesByControlSpaceIdAppBindingsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const appBindings = {
-  get: get4,
+  get: get5,
   put,
   byCallerKind,
 }
@@ -537,6 +645,18 @@ export const post4 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdCancelResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const cancel = {
   post: post4,
@@ -556,6 +676,18 @@ export const post5 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdBackgroundTasksByTaskKindByTaskIdRetryResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const retry = {
   post: post5,
@@ -570,7 +702,7 @@ export const byTaskKind = {
   byTaskId: byTaskId2,
 }
 
-export const get5 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -585,13 +717,25 @@ export const get5 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdBackgroundTasksResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const backgroundTasks = {
-  get: get5,
+  get: get6,
   byTaskKind,
 }
 
-export const get6 = oc
+export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -601,16 +745,27 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdBulkJobsByJobIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byJobId2 = {
-  get: get6,
+  get: get7,
 }
 
 export const bulkJobs = {
   byJobId: byJobId2,
 }
 
-export const get7 = oc
+export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -625,9 +780,20 @@ export const get7 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentReferencesResolveResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const resolve = {
-  get: get7,
+  get: get8,
 }
 
 export const documentReferences = {
@@ -651,6 +817,18 @@ export const delete3 = oc
     }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsBulkResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const bulk = {
   delete: delete3,
@@ -671,12 +849,25 @@ export const post6 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdDocumentsReindexResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const reindex = {
   post: post6,
 }
 
-export const get8 = oc
+export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -692,16 +883,27 @@ export const get8 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalByItemIdAssetResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const asset = {
-  get: get8,
+  get: get9,
 }
 
 export const byItemId = {
   asset,
 }
 
-export const get9 = oc
+export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -713,13 +915,24 @@ export const get9 = oc
     z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalPath }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdMultimodalResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const multimodal = {
-  get: get9,
+  get: get10,
   byItemId,
 }
 
-export const get10 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -731,12 +944,23 @@ export const get10 = oc
     z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlinePath }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdOutlineResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const outline = {
-  get: get10,
+  get: get11,
 }
 
-export const get11 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -754,12 +978,23 @@ export const get11 = oc
   .output(
     zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse,
   )
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byChunkId = {
-  get: get11,
+  get: get12,
 }
 
-export const get12 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -779,9 +1014,20 @@ export const get12 = oc
   .output(
     zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse,
   )
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const chunks = {
-  get: get12,
+  get: get13,
   byChunkId,
 }
 
@@ -789,7 +1035,7 @@ export const byRevision = {
   chunks,
 }
 
-export const get13 = oc
+export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -804,9 +1050,20 @@ export const get13 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdRevisionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const revisions = {
-  get: get13,
+  get: get14,
   byRevision,
 }
 
@@ -827,8 +1084,20 @@ export const delete4 = oc
     }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
-export const get14 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -838,6 +1107,17 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch = oc
   .route({
@@ -854,17 +1134,29 @@ export const patch = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdDocumentsByDocumentIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byDocumentId = {
   delete: delete4,
-  get: get14,
+  get: get15,
   patch,
   multimodal,
   outline,
   revisions,
 }
 
-export const get15 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -879,6 +1171,17 @@ export const get15 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdDocumentsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 /**
  * Claim a workspace-staged upload. Multipart file bodies remain accepted as a legacy compatibility path.
@@ -901,16 +1204,31 @@ export const post7 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdDocumentsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_rate_limit_exceeded: { status: 429, data: zKnowledgeFsRateLimitExceededError },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const documents = {
-  get: get15,
+  get: get16,
   post: post7,
   bulk,
   reindex,
   byDocumentId,
 }
 
-export const get16 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -920,6 +1238,14 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdExternalAccessPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const put2 = oc
   .route({
@@ -936,9 +1262,18 @@ export const put2 = oc
     }),
   )
   .output(zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const externalAccess = {
-  get: get16,
+  get: get17,
   put: put2,
 }
 
@@ -958,6 +1293,18 @@ export const post8 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsBulkImportResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_rate_limit_exceeded: { status: 429, data: zKnowledgeFsRateLimitExceededError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const bulkImport = {
   post: post8,
@@ -978,6 +1325,17 @@ export const post9 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsEvidenceMatchesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const evidenceMatches = {
   post: post9,
@@ -996,6 +1354,17 @@ export const delete5 = oc
     z.object({ params: zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdPath }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch2 = oc
   .route({
@@ -1012,13 +1381,24 @@ export const patch2 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsByQuestionIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byQuestionId = {
   delete: delete5,
   patch: patch2,
 }
 
-export const get17 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1033,6 +1413,17 @@ export const get17 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post10 = oc
   .route({
@@ -1050,9 +1441,21 @@ export const post10 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_rate_limit_exceeded: { status: 429, data: zKnowledgeFsRateLimitExceededError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const goldenQuestions = {
-  get: get17,
+  get: get18,
   post: post10,
   bulkImport,
   evidenceMatches,
@@ -1069,6 +1472,18 @@ export const post11 = oc
   })
   .input(z.object({ params: zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryPath }))
   .output(zPostKnowledgeFsSpacesByControlSpaceIdJobsByJobIdRetryResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const retry2 = {
   post: post11,
@@ -1084,8 +1499,20 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath }))
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
-export const get18 = oc
+export const get19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1095,10 +1522,21 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdJobsByJobIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byJobId3 = {
   delete: delete6,
-  get: get18,
+  get: get19,
   retry: retry2,
 }
 
@@ -1123,6 +1561,18 @@ export const delete7 = oc
     }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsBulkResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const bulk2 = {
   delete: delete7,
@@ -1143,12 +1593,23 @@ export const post12 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsDownloadZipResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const downloadZip = {
   post: post12,
 }
 
-export const get19 = oc
+export const get20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1162,9 +1623,20 @@ export const get19 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdDownloadResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const download = {
-  get: get19,
+  get: get20,
 }
 
 export const delete8 = oc
@@ -1184,8 +1656,20 @@ export const delete8 = oc
     }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
-export const get20 = oc
+export const get21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1197,6 +1681,17 @@ export const get20 = oc
     z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdPath }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch3 = oc
   .route({
@@ -1213,15 +1708,27 @@ export const patch3 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsByDocumentIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byDocumentId2 = {
   delete: delete8,
-  get: get20,
+  get: get21,
   patch: patch3,
   download,
 }
 
-export const get21 = oc
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1236,6 +1743,17 @@ export const get21 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch4 = oc
   .route({
@@ -1252,9 +1770,20 @@ export const patch4 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdLogicalDocumentsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const logicalDocuments = {
-  get: get21,
+  get: get22,
   patch: patch4,
   bulk: bulk2,
   downloadZip,
@@ -1276,6 +1805,15 @@ export const put3 = oc
     }),
   )
   .output(zPutKnowledgeFsSpacesByControlSpaceIdMembersResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const members = {
   put: put3,
@@ -1296,6 +1834,18 @@ export const delete9 = oc
     }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch5 = oc
   .route({
@@ -1312,13 +1862,25 @@ export const patch5 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdMetadataByFieldIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byFieldId = {
   delete: delete9,
   patch: patch5,
 }
 
-export const get22 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1333,6 +1895,18 @@ export const get22 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdMetadataResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post13 = oc
   .route({
@@ -1350,14 +1924,26 @@ export const post13 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdMetadataResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const metadata = {
-  get: get22,
+  get: get23,
   post: post13,
   byFieldId,
 }
 
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1372,12 +1958,23 @@ export const get23 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewActivityResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const activity = {
-  get: get23,
+  get: get24,
 }
 
-export const get24 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1392,12 +1989,23 @@ export const get24 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewAttentionResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const attention = {
-  get: get24,
+  get: get25,
 }
 
-export const get25 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1407,12 +2015,23 @@ export const get25 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewHealthResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const health = {
-  get: get25,
+  get: get26,
 }
 
-export const get26 = oc
+export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1422,12 +2041,23 @@ export const get26 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewInventoryResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const inventory = {
-  get: get26,
+  get: get27,
 }
 
-export const get27 = oc
+export const get28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1442,12 +2072,23 @@ export const get27 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewQueryOutcomesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const queryOutcomes = {
-  get: get27,
+  get: get28,
 }
 
-export const get28 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1462,9 +2103,20 @@ export const get28 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdOverviewStatsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const stats = {
-  get: get28,
+  get: get29,
 }
 
 export const overview = {
@@ -1476,7 +2128,7 @@ export const overview = {
   stats,
 }
 
-export const get29 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1486,12 +2138,20 @@ export const get29 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdPermissionsPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdPermissionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const permissions = {
-  get: get29,
+  get: get30,
 }
 
-export const get30 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1505,12 +2165,24 @@ export const get30 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdTraceReferenceResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const traceReference = {
-  get: get30,
+  get: get31,
 }
 
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1520,6 +2192,18 @@ export const get31 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch6 = oc
   .route({
@@ -1536,14 +2220,26 @@ export const patch6 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdQualityBadCasesByBadCaseIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byBadCaseId = {
-  get: get31,
+  get: get32,
   patch: patch6,
   traceReference,
 }
 
-export const get32 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1558,6 +2254,18 @@ export const get32 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post14 = oc
   .route({
@@ -1575,14 +2283,26 @@ export const post14 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQualityBadCasesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const badCases = {
-  get: get32,
+  get: get33,
   post: post14,
   byBadCaseId,
 }
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1597,12 +2317,24 @@ export const get33 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byRunId = {
-  get: get33,
+  get: get34,
 }
 
-export const get34 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1617,6 +2349,18 @@ export const get34 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post15 = oc
   .route({
@@ -1635,9 +2379,21 @@ export const post15 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const replayRuns = {
-  get: get34,
+  get: get35,
   post: post15,
   byRunId,
 }
@@ -1662,6 +2418,15 @@ export const post16 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQueriesAdmissionResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const admission = {
   post: post16,
@@ -1687,6 +2452,12 @@ export const post17 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQueriesResponse)
+  .errors({
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+  })
 
 export const queries = {
   post: post17,
@@ -1707,6 +2478,15 @@ export const post18 = oc
   })
   .input(z.object({ params: zPostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityPath }))
   .output(zPostKnowledgeFsSpacesByControlSpaceIdQueryStreamCapabilityResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const queryStreamCapability = {
   post: post18,
@@ -1727,12 +2507,23 @@ export const post19 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksPlanResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const plan = {
   post: post19,
 }
 
-export const get35 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1747,9 +2538,20 @@ export const get35 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPartialsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const partials = {
-  get: get35,
+  get: get36,
 }
 
 export const delete10 = oc
@@ -1762,8 +2564,20 @@ export const delete10 = oc
   })
   .input(z.object({ params: zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath }))
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
-export const get36 = oc
+export const get37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1773,14 +2587,25 @@ export const get36 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksByTaskIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byTaskId3 = {
   delete: delete10,
-  get: get36,
+  get: get37,
   partials,
 }
 
-export const get37 = oc
+export const get38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1795,6 +2620,17 @@ export const get37 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post20 = oc
   .route({
@@ -1812,15 +2648,28 @@ export const post20 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdResearchTasksResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const researchTasks2 = {
-  get: get37,
+  get: get38,
   post: post20,
   plan,
   byTaskId: byTaskId3,
 }
 
-export const get38 = oc
+export const get39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1832,16 +2681,27 @@ export const get38 = oc
     z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdPath }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSettingsMigrationsByMigrationIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byMigrationId = {
-  get: get38,
+  get: get39,
 }
 
 export const migrations = {
   byMigrationId,
 }
 
-export const get39 = oc
+export const get40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1851,6 +2711,17 @@ export const get39 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSettingsPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSettingsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch7 = oc
   .route({
@@ -1867,9 +2738,22 @@ export const patch7 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdSettingsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const settings = {
-  get: get39,
+  get: get40,
   patch: patch7,
   migrations,
 }
@@ -1889,6 +2773,18 @@ export const post21 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsByConnectionIdRefreshResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const refresh = {
   post: post21,
@@ -1898,7 +2794,7 @@ export const byConnectionId = {
   refresh,
 }
 
-export const get40 = oc
+export const get41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1913,6 +2809,16 @@ export const get40 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post22 = oc
   .route({
@@ -1930,14 +2836,26 @@ export const post22 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const sourceConnections = {
-  get: get40,
+  get: get41,
   post: post22,
   byConnectionId,
 }
 
-export const get41 = oc
+export const get42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1947,9 +2865,19 @@ export const get41 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourceProvidersResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const sourceProviders = {
-  get: get41,
+  get: get42,
 }
 
 export const post23 = oc
@@ -1967,12 +2895,24 @@ export const post23 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdCancelResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const cancel2 = {
   post: post23,
 }
 
-export const get42 = oc
+export const get43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1987,9 +2927,20 @@ export const get42 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPagesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const pages = {
-  get: get42,
+  get: get43,
 }
 
 export const post24 = oc
@@ -2004,6 +2955,18 @@ export const post24 = oc
     z.object({ params: zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryPath }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdRetryResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const retry3 = {
   post: post24,
@@ -2026,12 +2989,24 @@ export const post25 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdSelectionResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const selection = {
   post: post25,
 }
 
-export const get43 = oc
+export const get44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2041,9 +3016,20 @@ export const get43 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourceWorkflowsByRunIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byRunId2 = {
-  get: get43,
+  get: get44,
   cancel: cancel2,
   pages,
   retry: retry3,
@@ -2071,6 +3057,18 @@ export const post26 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const asyncImport = {
   post: post26,
@@ -2093,6 +3091,18 @@ export const post27 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const crawlImport = {
   post: post27,
@@ -2114,12 +3124,24 @@ export const post28 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const crawlPreview = {
   post: post28,
 }
 
-export const get44 = oc
+export const get45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2134,9 +3156,20 @@ export const get44 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdFilesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const files = {
-  get: get44,
+  get: get45,
 }
 
 export const post29 = oc
@@ -2154,6 +3187,18 @@ export const post29 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const import_ = {
   post: post29,
@@ -2174,12 +3219,24 @@ export const post30 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const importFiles = {
   post: post30,
 }
 
-export const get45 = oc
+export const get46 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2194,9 +3251,20 @@ export const get45 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const pages2 = {
-  get: get45,
+  get: get46,
 }
 
 export const post31 = oc
@@ -2215,12 +3283,24 @@ export const post31 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const sync = {
   post: post31,
 }
 
-export const get46 = oc
+export const get47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2230,6 +3310,17 @@ export const get46 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const put4 = oc
   .route({
@@ -2246,9 +3337,21 @@ export const put4 = oc
     }),
   )
   .output(zPutKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncPolicyResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const syncPolicy = {
-  get: get46,
+  get: get47,
   put: put4,
 }
 
@@ -2262,6 +3365,17 @@ export const post32 = oc
   })
   .input(z.object({ params: zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestPath }))
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const test = {
   post: post32,
@@ -2284,6 +3398,18 @@ export const post33 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const workflowImports = {
   post: post33,
@@ -2307,8 +3433,20 @@ export const delete11 = oc
     }),
   )
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
-export const get47 = oc
+export const get48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2318,6 +3456,17 @@ export const get47 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const patch8 = oc
   .route({
@@ -2334,10 +3483,22 @@ export const patch8 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const bySourceId = {
   delete: delete11,
-  get: get47,
+  get: get48,
   patch: patch8,
   asyncImport,
   crawlImport,
@@ -2352,7 +3513,7 @@ export const bySourceId = {
   workflowImports,
 }
 
-export const get48 = oc
+export const get49 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2367,6 +3528,17 @@ export const get48 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post34 = oc
   .route({
@@ -2384,14 +3556,27 @@ export const post34 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_rate_limit_exceeded: { status: 429, data: zKnowledgeFsRateLimitExceededError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const sources = {
-  get: get48,
+  get: get49,
   post: post34,
   bySourceId,
 }
 
-export const get49 = oc
+export const get50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2401,6 +3586,13 @@ export const get49 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdTagsPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTagsResponse)
+  .errors({
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const put5 = oc
   .route({
@@ -2417,13 +3609,22 @@ export const put5 = oc
     }),
   )
   .output(zPutKnowledgeFsSpacesByControlSpaceIdTagsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const tags = {
-  get: get49,
+  get: get50,
   put: put5,
 }
 
-export const get50 = oc
+export const get51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2438,12 +3639,23 @@ export const get50 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdConflictsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const conflicts = {
-  get: get50,
+  get: get51,
 }
 
-export const get51 = oc
+export const get52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2458,12 +3670,23 @@ export const get51 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdEvidenceResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const evidence = {
-  get: get51,
+  get: get52,
 }
 
-export const get52 = oc
+export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2478,12 +3701,23 @@ export const get52 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdMissingResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const missing = {
-  get: get52,
+  get: get53,
 }
 
-export const get53 = oc
+export const get54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2493,15 +3727,26 @@ export const get53 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesByTraceIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byTraceId = {
-  get: get53,
+  get: get54,
   conflicts,
   evidence,
   missing,
 }
 
-export const get54 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2516,9 +3761,21 @@ export const get54 = oc
     }),
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdTracesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const traces = {
-  get: get54,
+  get: get55,
   byTraceId,
 }
 
@@ -2537,6 +3794,20 @@ export const post35 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const abort = {
   post: post35,
@@ -2557,6 +3828,20 @@ export const post36 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const complete = {
   post: post36,
@@ -2581,6 +3866,20 @@ export const post37 = oc
   .output(
     zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdPartsByPartNumberPresignResponse,
   )
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const presign = {
   post: post37,
@@ -2609,6 +3908,20 @@ export const post38 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const smallFile = {
   post: post38,
@@ -2638,6 +3951,20 @@ export const post39 = oc
     }),
   )
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const uploadSessions = {
   post: post39,
@@ -2655,8 +3982,17 @@ export const delete12 = oc
   })
   .input(z.object({ params: zDeleteKnowledgeFsSpacesByControlSpaceIdPath }))
   .output(zDeleteKnowledgeFsSpacesByControlSpaceIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
-export const get55 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2666,6 +4002,13 @@ export const get55 = oc
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdPath }))
   .output(zGetKnowledgeFsSpacesByControlSpaceIdResponse)
+  .errors({
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const patch9 = oc
   .route({
@@ -2682,10 +4025,22 @@ export const patch9 = oc
     }),
   )
   .output(zPatchKnowledgeFsSpacesByControlSpaceIdResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const byControlSpaceId = {
   delete: delete12,
-  get: get55,
+  get: get56,
   patch: patch9,
   appBindings,
   backgroundTasks,
@@ -2714,7 +4069,7 @@ export const byControlSpaceId = {
   uploadSessions,
 }
 
-export const get56 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2724,6 +4079,14 @@ export const get56 = oc
   })
   .input(z.object({ query: zGetKnowledgeFsSpacesQuery.optional() }))
   .output(zGetKnowledgeFsSpacesResponse)
+  .errors({
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
 
 export const post40 = oc
   .route({
@@ -2736,9 +4099,18 @@ export const post40 = oc
   })
   .input(z.object({ body: zPostKnowledgeFsSpacesBody }))
   .output(zPostKnowledgeFsSpacesResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+  })
 
 export const spaces = {
-  get: get56,
+  get: get57,
   post: post40,
   byControlSpaceId,
 }
@@ -2758,6 +4130,15 @@ export const post41 = oc
     }),
   )
   .output(zPostKnowledgeFsTasksByTaskIdStreamCapabilityResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+  })
 
 export const streamCapability = {
   post: post41,
@@ -2782,6 +4163,12 @@ export const delete13 = oc
   })
   .input(z.object({ params: zDeleteKnowledgeFsUploadsByUploadIdPath }))
   .output(zDeleteKnowledgeFsUploadsByUploadIdResponse)
+  .errors({
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+  })
 
 export const byUploadId = {
   delete: delete13,
@@ -2798,6 +4185,14 @@ export const post42 = oc
   })
   .input(z.object({ body: zPostKnowledgeFsUploadsBody }))
   .output(zPostKnowledgeFsUploadsResponse)
+  .errors({
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_request_rejected: { status: 422, data: zKnowledgeFsRequestRejectedError },
+    knowledge_fs_request_too_large: { status: 413, data: zKnowledgeFsRequestTooLargeError },
+  })
 
 export const uploads = {
   post: post42,
@@ -2806,6 +4201,7 @@ export const uploads = {
 
 export const knowledgeFs = {
   wellKnown,
+  features,
   queryStream,
   researchTasks,
   sourceProviderPreview,

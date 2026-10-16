@@ -19,12 +19,117 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * KnowledgeFSFeaturesResponse
+ */
+export const zKnowledgeFsFeaturesResponse = z.object({
+  agent_enabled: z.boolean(),
+  enabled: z.boolean(),
+  upload_enabled: z.boolean(),
+})
+
+/**
+ * KnowledgeFsInvalidRequestError
+ *
+ * Agent Knowledge Base request is invalid.
+ */
+export const zKnowledgeFsInvalidRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_invalid_request'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * KnowledgeFsAccessDeniedError
+ *
+ * Agent Knowledge Base operation is not allowed.
+ */
+export const zKnowledgeFsAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * KnowledgeFsRequestRejectedError
+ *
+ * Agent Knowledge Base request was rejected.
+ */
+export const zKnowledgeFsRequestRejectedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_rejected'),
+    status: z.literal(422),
+  }),
+)
+
+/**
+ * KnowledgeFsOperationUnavailableError
+ *
+ * Agent Knowledge Base operation is not available.
+ */
+export const zKnowledgeFsOperationUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_operation_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * KnowledgeFsUpstreamUnavailableError
+ *
+ * Agent Knowledge Base is unavailable.
+ */
+export const zKnowledgeFsUpstreamUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_upstream_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * KnowledgeFSInitialSourcePreviewJobCreateResponse
  */
 export const zKnowledgeFsInitialSourcePreviewJobCreateResponse = z.object({
   job_id: z.string(),
   status: z.literal('pending').optional().default('pending'),
 })
+
+/**
+ * KnowledgeFsConflictError
+ *
+ * Agent Knowledge Base operation conflicts with the current resource state.
+ */
+export const zKnowledgeFsConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * KnowledgeFsSpaceNotFoundError
+ *
+ * Agent Knowledge Base was not found.
+ */
+export const zKnowledgeFsSpaceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_space_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * KnowledgeFsResourceNotFoundError
+ *
+ * Agent Knowledge Base resource was not found.
+ */
+export const zKnowledgeFsResourceNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_resource_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * KnowledgeFSResolvedDocumentReferenceResponse
@@ -40,6 +145,30 @@ export const zKnowledgeFsResolvedDocumentReferenceResponse = z.object({
 export const zKnowledgeFsDocumentStagedUploadPayload = z.object({
   upload_id: z.string().min(1).max(255),
 })
+
+/**
+ * KnowledgeFsRequestTooLargeError
+ *
+ * Agent Knowledge Base request is too large.
+ */
+export const zKnowledgeFsRequestTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_request_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * KnowledgeFsRateLimitExceededError
+ *
+ * Agent Knowledge Base request rate limit exceeded.
+ */
+export const zKnowledgeFsRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * KnowledgeFSDocumentReindexPayload
@@ -3368,6 +3497,11 @@ export const zKnowledgeFsQualityReplayListResponse = z.object({
  * Agent Knowledge Base Capability v2 public keys
  */
 export const zGetKnowledgeFsWellKnownJwksJsonResponse = zKnowledgeFsjwksResponse
+
+/**
+ * Agent Knowledge Base availability
+ */
+export const zGetKnowledgeFsFeaturesResponse = zKnowledgeFsFeaturesResponse
 
 export const zPostKnowledgeFsQueryStreamBody = zKnowledgeFsAdmittedQueryRequest
 

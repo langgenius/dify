@@ -10,7 +10,7 @@ import {
   agentComposerKnowledgeRetrievalsAtom,
   removeKnowledgeRetrievalAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
-import { agentKnowledgeFsEnabledAtom } from '@/features/system-features/state'
+import { agentKnowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionConfigurableItem } from '../common/configurable-item'

@@ -554,7 +554,10 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
         (method, path)
         for path, path_item in payload["paths"].items()
         for method, operation in path_item.items()
-        if isinstance(operation, dict) and "503" in operation.get("responses", {})
+        if isinstance(operation, dict)
+        and "503" in operation.get("responses", {})
+        # KnowledgeFS operations document their own 503 when KnowledgeFS is unavailable.
+        and not path.startswith("/knowledge-fs/")
     }
     assert vector_space_operations == {
         ("post", "/datasets/{dataset_id}/document/create-by-file"),
