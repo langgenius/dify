@@ -54,6 +54,10 @@ class TraceRunStatusResponse(ResponseModel):
     trace_id: str | None = None
     trace_url: str | None = None
     span_url: str | None = None
+    project_url: str | None = Field(
+        default=None,
+        description="Frozen destination project URL; null when unavailable, never resolved from current config",
+    )
     config_revision: str | None = Field(default=None, description="Frozen destination configuration revision")
     capture_content: bool | None = None
     capture_agent: bool | None = None

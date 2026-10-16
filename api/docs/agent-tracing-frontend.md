@@ -382,6 +382,7 @@ GET /apps/{app_id}/trace-runs/node/{node_execution_id}
   "trace_id": "1234567890abcdef1234567890abcdef",
   "trace_url": "https://example.com/project/demo/traces/1234567890abcdef1234567890abcdef",
   "span_url": null,
+  "project_url": "https://example.com/project/demo",
   "config_revision": "opaque-frozen-configuration-revision",
   "capture_content": true,
   "capture_agent": true,
@@ -424,9 +425,11 @@ API 没有 `pending` 和 `incomplete` 状态。若 UI 使用“处理中/pending
 
 长时间导出通过后台心跳续租。若心跳中断导致 `uncertain/export_lease_expired`，同一次投递稍后返回明确成功 ACK 时可恢复为 accepted；人工重投已撤销旧 token 时，旧 ACK 不能覆盖新尝试。前端在用户确认重投前刷新状态，并处理同时到达的 `tracing_already_accepted`。DB 不可用或进程暂停也可能导致租约过期，不能将它直接文案化为“worker 已死亡”。
 
-先使用非空 `span_url` 定位 Agent 调用；没有 span 深链时使用非空 `trace_url`。两者都为空时，当前运行详情隐藏跳转操作：运行 DTO 尚未提供冻结目的地的 `project_url`，当前配置中的项目链接可能与历史 run 不同，也可能需要用户没有的 Edit 权限。
+先使用非空 `span_url` 定位 Agent 调用；没有 span 深链时使用非空 `trace_url`；两者都为空时，可使用运行响应中的非空 `project_url` 展示“查看项目”。三个 URL 都为空时隐藏跳转操作。项目链接不证明本次运行已上报或可查询。
 
-配置面板可使用脱敏配置响应中的 `project_url` 展示“查看项目”，明确它对应当前配置，不把它当作历史运行的回退深链。运行详情只使用后端保存的执行 URL，不用 Dify message/workflow ID 自行拼供应商 URL。以后若运行接口补充冻结的项目 URL，再启用可信的项目级回退。
+运行 `project_url` 只读取运行开始时冻结的目的地元数据，不查询当前应用配置、不解密凭据、不调用第三方。配置创建和更新时会尝试保存项目链接；Langfuse、LangSmith、Arize、Phoenix、Opik、MLflow、Databricks 可提供，解析失败返回 null。Weave 当前写入链路未保存项目链接；Aliyun、Tencent 仅有平台控制台地址，运行接口不将其作为项目链接，均返回 null。旧运行快照缺少项目链接时也返回 null，不追溯补填。仅返回有效且不含 URL 用户名/密码的 HTTP(S) 链接。
+
+配置面板中的 `project_url` 对应当前配置，不能替代历史运行的回退链接，也不能要求仅有日志权限的用户读取配置凭据。运行详情只使用运行响应的 URL，不用 Dify message/workflow ID 自行拼供应商 URL。
 
 运行中的查询建议有限退避轮询，例如 2 秒起、上限 10 秒；页面不可见或进入终态时停止。该节奏是 UI 建议，不是后端保证的投递时延。
 

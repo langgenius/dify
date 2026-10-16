@@ -668,6 +668,7 @@ export type TraceRunStatusResponse = {
   capture_content?: boolean | null
   config_revision?: string | null
   error_code?: string | null
+  project_url?: string | null
   provider?: string | null
   queryable?: boolean | null
   source_id: string
