@@ -949,7 +949,9 @@ describe('usePreviewState', () => {
       const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       const items = result.current.getPreviewPickerItems()
-      expect(items).toEqual(defaultOptions.files)
+      expect(items).toEqual(
+        defaultOptions.files.map(({ id, name, extension }) => ({ id, name, extension })),
+      )
     })
 
     it('should return mapped notion pages for NOTION data source', () => {
@@ -994,7 +996,8 @@ describe('usePreviewState', () => {
       const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       const value = result.current.getPreviewPickerValue()
-      expect(value).toEqual(defaultOptions.files[0])
+      const [file] = defaultOptions.files
+      expect(value).toEqual({ id: file!.id, name: file!.name, extension: file!.extension })
     })
 
     it('should return mapped notion page value for NOTION data source', () => {
@@ -2192,7 +2195,7 @@ describe('Integration Scenarios', () => {
       )
 
       // Initial state
-      expect(result.current.getPreviewPickerValue().name).toBe('first.pdf')
+      expect(result.current.getPreviewPickerValue()?.name).toBe('first.pdf')
 
       // Change preview
       act(() => {

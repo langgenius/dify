@@ -1,19 +1,11 @@
+import type { AdvancedPromptTemplateResponse } from '@dify/contracts/api/console/app/types.gen'
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { PostInstructionGenerateData } from '@dify/contracts/api/console/instruction-generate/types.gen'
 import type { PostRuleGenerateData } from '@dify/contracts/api/console/rule-generate/types.gen'
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
-import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { Model, ModelModeType } from '@/types/app'
 import { ssePost } from './base'
 import { consoleClient } from './console'
-import { narrowResponse } from './console/narrow-response'
-
-type BasicAppFirstRes = {
-  prompt: string
-  variables: string[]
-  opening_statement: string
-  error?: string
-}
 
 export type GenRes = {
   modified: string
@@ -21,6 +13,33 @@ export type GenRes = {
   variables?: string[] // only for basic app first time rule
   opening_statement?: string // only for basic app first time rule
   error?: string
+}
+
+const getString = (record: Record<string, unknown>, key: string) => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+/**
+ * The instruction generator answers with the generated rule, generated code or an LLM-written
+ * JSON object, depending on what is being edited; read the fields the editors understand.
+ */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const toGenRes = (value: unknown): GenRes & { code?: string } => {
+  const fields = isRecord(value) ? value : {}
+  const variables = fields.variables
+  return {
+    modified: getString(fields, 'modified') ?? getString(fields, 'prompt') ?? '',
+    message: getString(fields, 'message'),
+    variables: Array.isArray(variables)
+      ? variables.filter((item): item is string => typeof item === 'string')
+      : undefined,
+    opening_statement: getString(fields, 'opening_statement'),
+    code: getString(fields, 'code'),
+    error: getString(fields, 'error') || undefined,
+  }
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
@@ -95,16 +114,33 @@ type InstructionGenerateRequest = Omit<
 }
 
 export const generateBasicAppFirstTimeRule = (body: RuleGenerateRequest) => {
-  return narrowResponse<BasicAppFirstRes>(
-    consoleClient.ruleGenerate.post({ body: body as PostRuleGenerateData['body'] }),
-  )
+  return consoleClient.ruleGenerate.post({ body: body as PostRuleGenerateData['body'] })
 }
 
 export const generateRule = (body: InstructionGenerateRequest) => {
-  return narrowResponse<GenRes>(
-    consoleClient.instructionGenerate.post({ body: body as PostInstructionGenerateData['body'] }),
-  )
+  return consoleClient.instructionGenerate
+    .post({ body: body as PostInstructionGenerateData['body'] })
+    .then(toGenRes)
 }
+
+// A completion template without history prefixes keeps them empty, as the console's default does.
+const toPromptTemplates = ({
+  chat_prompt_config,
+  completion_prompt_config,
+  stop,
+}: AdvancedPromptTemplateResponse) => ({
+  chat_prompt_config: chat_prompt_config ?? undefined,
+  completion_prompt_config: completion_prompt_config
+    ? {
+        prompt: completion_prompt_config.prompt,
+        conversation_histories_role: completion_prompt_config.conversation_histories_role ?? {
+          user_prefix: '',
+          assistant_prefix: '',
+        },
+      }
+    : undefined,
+  stop: stop ?? [],
+})
 
 export const fetchPromptTemplate = ({
   appMode,
@@ -117,20 +153,16 @@ export const fetchPromptTemplate = ({
   modelName: string
   hasSetDataSet: boolean
 }) => {
-  return narrowResponse<{
-    chat_prompt_config: ChatPromptConfig
-    completion_prompt_config: CompletionPromptConfig
-    stop: []
-  }>(
-    consoleClient.app.promptTemplates.get({
+  return consoleClient.app.promptTemplates
+    .get({
       query: {
         app_mode: appMode,
         model_mode: mode,
         model_name: modelName,
         has_context: String(hasSetDataSet),
       },
-    }),
-  )
+    })
+    .then(toPromptTemplates)
 }
 
 export const fetchTextGenerationMessage = ({

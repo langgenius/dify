@@ -9387,7 +9387,7 @@ Generate rule configuration using LLM
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Rule configuration generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 200 | Rule configuration generated successfully | **application/json**: [RuleGenerateResponse](#rulegenerateresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -15266,8 +15266,9 @@ Account not link tenant.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| chat_prompt_config | object |  | No |
-| completion_prompt_config | object |  | No |
+| chat_prompt_config | [ChatPromptTemplateResponse](#chatprompttemplateresponse) |  | No |
+| completion_prompt_config | [CompletionPromptTemplateResponse](#completionprompttemplateresponse) |  | No |
+| stop | [ string ] | Stop words for completion prompts. | No |
 
 #### AgentAccessMatrix
 
@@ -19115,6 +19116,12 @@ You cannot transfer ownership to yourself.
 | first_id | string | First message ID for pagination | No |
 | limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
 
+#### ChatPromptTemplateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| prompt | [ [PromptTemplateMessageResponse](#prompttemplatemessageresponse) ] |  | Yes |
+
 #### ChatRequest
 
 | Name | Type | Description | Required |
@@ -19295,6 +19302,19 @@ TEAM: Team collaboration paid plan
 | query | string | Query text | No |
 | response_mode | string, <br>**Available values:** "blocking", "streaming", <br>**Default:** blocking | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | No |
 | retriever_from | string, <br>**Default:** dev | Retriever source | No |
+
+#### CompletionPromptTemplateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_histories_role | [ConversationHistoriesRoleResponse](#conversationhistoriesroleresponse) |  | No |
+| prompt | [CompletionPromptTemplateTextResponse](#completionprompttemplatetextresponse) |  | Yes |
+
+#### CompletionPromptTemplateTextResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
 
 #### CompletionRequest
 
@@ -19541,6 +19561,13 @@ The conversation has no message from which to generate a name.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ConversationFirstMessageNotFoundError |  | The conversation has no message from which to generate a name. |  |
+
+#### ConversationHistoriesRoleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| assistant_prefix | string |  | Yes |
+| user_prefix | string |  | Yes |
 
 #### ConversationInfiniteScrollPagination
 
@@ -24930,6 +24957,13 @@ Dataset Process Rule Mode
 | mode | [ProcessRuleMode](#processrulemode) |  | Yes |
 | rules | [Rule](#rule) |  | No |
 
+#### PromptTemplateMessageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| role | string, <br>**Available values:** "assistant", "system", "user" | *Enum:* `"assistant"`, `"system"`, `"user"` | Yes |
+| text | string |  | Yes |
+
 #### PromptType
 
 Prompt configuration type
@@ -25851,6 +25885,15 @@ The Roster Agent package exceeds the size limit.
 | instruction | string | Rule generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 | no_variable | boolean | Whether to exclude variables | No |
+
+#### RuleGenerateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+| opening_statement | string |  | Yes |
+| prompt | string |  | Yes |
+| variables | [ string ] |  | Yes |
 
 #### RuleStructuredOutputPayload
 

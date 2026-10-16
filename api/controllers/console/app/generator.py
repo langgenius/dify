@@ -211,6 +211,13 @@ class GeneratorResponse(RootModel[Any]):
     root: Any
 
 
+class RuleGenerateResponse(ResponseModel):
+    prompt: str
+    variables: list[str]
+    opening_statement: str
+    error: str
+
+
 class StructuredOutputGenerateResponse(ResponseModel):
     output: str = Field(description="Generated JSON Schema, empty when generation failed")
     error: str = Field(description="Failure reason, empty on success")
@@ -231,6 +238,7 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     GeneratorResponse,
+    RuleGenerateResponse,
     StructuredOutputGenerateResponse,
     SimpleDataResponse,
     WorkflowGenerateResponse,
@@ -257,7 +265,7 @@ class RuleGenerateApi(Resource):
     @console_ns.response(
         200,
         "Rule configuration generated successfully",
-        console_ns.models[GeneratorResponse.__name__],
+        console_ns.models[RuleGenerateResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -278,7 +286,7 @@ class RuleGenerateApi(Resource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
 
-        return rules
+        return dump_response(RuleGenerateResponse, rules)
 
 
 @console_ns.route("/rule-code-generate")

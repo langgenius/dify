@@ -397,9 +397,7 @@ const StepTwo: FC<StepTwoProps> = ({
         estimate={estimateHook.estimate}
         parentChildConfig={segmentation.parentChildConfig}
         isSetting={isSetting}
-        pickerFiles={
-          preview.getPreviewPickerItems() as Array<{ id: string; name: string; extension: string }>
-        }
+        pickerFiles={preview.getPreviewPickerItems()}
         pickerValue={preview.getPreviewPickerValue()}
         isIdle={estimateHook.isIdle}
         isPending={estimateHook.isPending}

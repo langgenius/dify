@@ -36,7 +36,7 @@ type PreviewPanelProps = {
   isSetting?: boolean
   // Picker
   pickerFiles: Array<{ id: string; name: string; extension: string }>
-  pickerValue: { id: string; name: string; extension: string }
+  pickerValue?: { id: string; name: string; extension: string }
   // Mutation state
   isIdle: boolean
   isPending: boolean

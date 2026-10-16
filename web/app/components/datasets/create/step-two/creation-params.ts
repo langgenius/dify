@@ -1,18 +1,21 @@
 import type { IndexingEstimatePayload } from '@dify/contracts/api/console/datasets/types.gen'
 import type { IndexingType } from './hooks/use-indexing-config'
-import type { DataSourceProvider, NotionPage } from '@/models/common'
+import type { StepTwoFile, StepTwoNotionPage } from './types'
+import type { DataSourceProvider } from '@/models/common'
 import type {
   ChunkingMode,
   CrawlOptions,
   CrawlResultItem,
-  CustomFile,
   DataSourceType,
   NotionInfo,
   ProcessRule,
 } from '@/models/datasets'
 import { groupBy } from 'es-toolkit/compat'
 
-export const getNotionInfo = (notionPages: NotionPage[], credentialId: string): NotionInfo[] => {
+export const getNotionInfo = (
+  notionPages: StepTwoNotionPage[],
+  credentialId: string,
+): NotionInfo[] => {
   const workspacesMap = groupBy(notionPages, 'workspace_id')
   const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
     return {
@@ -63,7 +66,7 @@ type GetFileIndexingEstimateParamsOptionBase = {
 
 type GetFileIndexingEstimateParamsOptionFile = GetFileIndexingEstimateParamsOptionBase & {
   dataSourceType: typeof DataSourceType.FILE
-  files: CustomFile[]
+  files: StepTwoFile[]
 }
 
 export const getFileIndexingEstimateParamsForFile = ({
@@ -94,7 +97,7 @@ export const getFileIndexingEstimateParamsForFile = ({
 
 type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
   dataSourceType: typeof DataSourceType.NOTION
-  notionPages: NotionPage[]
+  notionPages: StepTwoNotionPage[]
   credential_id: string
 }
 

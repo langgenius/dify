@@ -1,17 +1,12 @@
-import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  DocumentItem,
-  FullDocumentDetail,
-} from '@/models/datasets'
+import type { StepTwoFile, StepTwoNotionPage } from '../types'
+import type { CrawlResultItem, DocumentItem, FullDocumentDetail } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 import { DataSourceType } from '@/models/datasets'
 
 type UsePreviewStateOptions = {
   dataSourceType: DataSourceType
-  files: CustomFile[]
-  notionPages: NotionPage[]
+  files: StepTwoFile[]
+  notionPages: StepTwoNotionPage[]
   websitePages: CrawlResultItem[]
   documentDetail?: FullDocumentDetail
   datasetId?: string
@@ -23,12 +18,12 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   // File preview state
   // Editing an existing document has no preview item until one is picked.
   const isEditing = !!datasetId && !!documentDetail
-  const [previewFile, setPreviewFile] = useState<CustomFile | DocumentItem | undefined>(
+  const [previewFile, setPreviewFile] = useState<StepTwoFile | DocumentItem | undefined>(
     isEditing ? undefined : files[0],
   )
 
   // Notion page preview state
-  const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage | undefined>(
+  const [previewNotionPage, setPreviewNotionPage] = useState<StepTwoNotionPage | undefined>(
     isEditing ? undefined : notionPages[0],
   )
 
@@ -40,7 +35,11 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   // Get preview items for document picker based on data source type
   const getPreviewPickerItems = useCallback(() => {
     if (dataSourceType === DataSourceType.FILE) {
-      return files as Array<Required<CustomFile>>
+      return files.map((file) => ({
+        id: file.id ?? '',
+        name: file.name,
+        extension: file.extension ?? '',
+      }))
     }
     if (dataSourceType === DataSourceType.NOTION) {
       return notionPages.map((page) => ({
@@ -62,7 +61,13 @@ export const usePreviewState = (options: UsePreviewStateOptions) => {
   // Get current preview value for picker
   const getPreviewPickerValue = useCallback(() => {
     if (dataSourceType === DataSourceType.FILE) {
-      return previewFile as Required<CustomFile>
+      return (
+        previewFile && {
+          id: previewFile.id ?? '',
+          name: previewFile.name,
+          extension: previewFile.extension ?? '',
+        }
+      )
     }
     if (dataSourceType === DataSourceType.NOTION) {
       return {

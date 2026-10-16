@@ -1,12 +1,6 @@
+import type { StepTwoFile, StepTwoNotionPage } from '../types'
 import type { IndexingType } from './use-indexing-config'
-import type { NotionPage } from '@/models/common'
-import type {
-  ChunkingMode,
-  CrawlOptions,
-  CrawlResultItem,
-  CustomFile,
-  ProcessRule,
-} from '@/models/datasets'
+import type { ChunkingMode, CrawlOptions, CrawlResultItem, ProcessRule } from '@/models/datasets'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { DataSourceProvider } from '@/models/common'
@@ -25,10 +19,10 @@ type UseIndexingEstimateOptions = {
   currentDocForm: ChunkingMode
   docLanguage: string
   // File data source
-  files: CustomFile[]
+  files: StepTwoFile[]
   previewFileName?: string
   // Notion data source
-  previewNotionPage?: NotionPage
+  previewNotionPage?: StepTwoNotionPage
   notionCredentialId: string
   // Website data source
   previewWebsitePage?: CrawlResultItem

@@ -1,13 +1,12 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { StepTwoFile, StepTwoNotionPage } from '../types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { NotionPage } from '@/models/common'
 import type {
   ChunkingMode,
   CrawlOptions,
   CrawlResultItem,
   CreateDocumentReq,
   createDocumentResponse,
-  CustomFile,
   FullDocumentDetail,
   ProcessRule,
   SummaryIndexSetting as SummaryIndexSettingType,
@@ -31,8 +30,8 @@ type UseDocumentCreationOptions = {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
   dataSourceType: DataSourceType
-  files: CustomFile[]
-  notionPages: NotionPage[]
+  files: StepTwoFile[]
+  notionPages: StepTwoNotionPage[]
   notionCredentialId: string
   websitePages: CrawlResultItem[]
   crawlOptions?: CrawlOptions
