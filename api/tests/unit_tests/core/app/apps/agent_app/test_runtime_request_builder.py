@@ -33,6 +33,7 @@ from core.app.apps.agent_app.runtime_request_builder import (
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig
@@ -147,7 +148,7 @@ def test_builder_carries_application_trace_context_but_redacts_it_from_request_l
     bind_application_tracing_hooks(app, hooks)
 
     with app.app_context():
-        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(context)
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
     layer = next(item for item in result.request.composition.layers if item.name == "execution_context")
     assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
     redacted = next(
