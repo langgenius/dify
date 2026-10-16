@@ -14,10 +14,41 @@ from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDatasourceProviderEntity,
 )
-from core.plugin.impl.base import BasePluginClient
+from core.plugin.impl.base import (
+    BasePluginClient,
+    keep_declaration_items_with_identity,
+    plugin_daemon_item_identity_hint,
+)
 from core.schemas.resolver import resolve_dify_schema_refs
 from models.provider_ids import DatasourceProviderID, GenericProviderID
 from services.tools.tools_transform_service import ToolTransformService
+
+
+def _resolve_output_schema_refs(item: dict[str, Any]) -> None:
+    if item.get("output_schema"):
+        item["output_schema"] = resolve_dify_schema_refs(item["output_schema"])
+
+
+def _datasource_providers_list_transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+    providers = json_response.get("data")
+    if not isinstance(providers, list):
+        return json_response
+    for provider in providers:
+        if not isinstance(provider, dict):
+            continue
+        declaration = provider.get("declaration")
+        if not isinstance(declaration, dict):
+            continue
+        identity = declaration.get("identity")
+        provider_name = identity.get("name") if isinstance(identity, dict) else None
+        declaration["datasources"] = keep_declaration_items_with_identity(
+            declaration.get("datasources"),
+            provider_name,
+            item_kind="datasource",
+            provider_hint=plugin_daemon_item_identity_hint(provider),
+            mutate_item=_resolve_output_schema_refs,
+        )
+    return json_response
 
 
 class PluginDatasourceManager(BasePluginClient):
@@ -26,25 +57,12 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            if json_response.get("data"):
-                for provider in json_response.get("data", []):
-                    declaration = provider.get("declaration", {}) or {}
-                    provider_name = declaration.get("identity", {}).get("name")
-                    for datasource in declaration.get("datasources", []):
-                        datasource["identity"]["provider"] = provider_name
-                        # resolve refs
-                        if datasource.get("output_schema"):
-                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
-
-            return json_response
-
         response = self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/datasources",
             list[PluginDatasourceProviderEntity],
             params={"page": 1, "page_size": 256},
-            transformer=transformer,
+            transformer=_datasource_providers_list_transformer,
         )
         local_file_datasource_provider = PluginDatasourceProviderEntity.model_validate(
             self._get_local_file_datasource_provider()
@@ -68,25 +86,12 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            if json_response.get("data"):
-                for provider in json_response.get("data", []):
-                    declaration = provider.get("declaration", {}) or {}
-                    provider_name = declaration.get("identity", {}).get("name")
-                    for datasource in declaration.get("datasources", []):
-                        datasource["identity"]["provider"] = provider_name
-                        # resolve refs
-                        if datasource.get("output_schema"):
-                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
-
-            return json_response
-
         response = self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/datasources",
             list[PluginDatasourceProviderEntity],
             params={"page": 1, "page_size": 256},
-            transformer=transformer,
+            transformer=_datasource_providers_list_transformer,
         )
 
         for provider in response:
