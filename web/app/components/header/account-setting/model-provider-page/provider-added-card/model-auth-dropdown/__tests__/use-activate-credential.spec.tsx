@@ -3,7 +3,8 @@ import { act, renderHook } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { useActivateCredential } from '../use-activate-credential'
 
-const mockMutate = vi.fn()
+const mockMutate =
+  vi.fn<(_variables: unknown, callbacks: { onSuccess: () => void; onError: () => void }) => void>()
 const mockUpdateModelProviders = vi.fn()
 const mockUpdateModelList = vi.fn()
 let mockIsPending = false
@@ -102,7 +103,7 @@ describe('useActivateCredential', () => {
       }),
     )
 
-    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
+    const [, callbacks] = mockMutate.mock.calls[0]!
 
     act(() => {
       callbacks.onSuccess()
@@ -122,7 +123,7 @@ describe('useActivateCredential', () => {
 
     expect(result.current.selectedCredentialId).toBe('cred-2')
 
-    const [, callbacks] = (mockMutate.mock.calls[0] ?? []) as [unknown, any]
+    const [, callbacks] = mockMutate.mock.calls[0]!
 
     act(() => {
       callbacks.onError()

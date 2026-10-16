@@ -4,6 +4,10 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
 import AdvancedPromptInput from '../advanced-prompt-input'
 
 const mockEmit = vi.fn()
@@ -80,20 +84,21 @@ vi.mock('../prompt-editor-height-resize-wrap', () => ({
 }))
 
 const createContextValue = () =>
-  ({
+  createDebugConfigurationFixture({
     mode: 'chat' as const,
     hasSetBlockStatus: {
       context: false,
       history: false,
       query: false,
     },
-    modelConfig: {
+    modelConfig: createModelConfigFixture({
       configs: {
+        prompt_template: '',
         prompt_variables: [
           { key: 'existing_var', name: 'Existing', type: 'string', required: true },
         ],
       },
-    },
+    }),
     setModelConfig: mockSetModelConfig,
     conversationHistoriesRole: {
       user_prefix: 'user',
@@ -103,7 +108,7 @@ const createContextValue = () =>
     dataSets: [],
     showSelectDataSet: vi.fn(),
     externalDataToolsConfig: [],
-  }) as any
+  })
 
 describe('AdvancedPromptInput', () => {
   beforeEach(() => {

@@ -1,8 +1,18 @@
+import type { useWorkflowRun } from '@/app/components/workflow/hooks/use-workflow-run'
+import type { VisionFile } from '@/types/app'
 import { act } from '@testing-library/react'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
-const mockHandleRun = vi.fn()
+type WorkflowRunCallbacks = NonNullable<
+  Parameters<ReturnType<typeof useWorkflowRun>['handleRun']>[1]
+>
+
+type WorkflowRunParams = Omit<Parameters<ReturnType<typeof useChat>['handleSend']>[0], 'files'> & {
+  files?: VisionFile[]
+}
+
+const mockHandleRun = vi.fn<(params: WorkflowRunParams, callbacks: WorkflowRunCallbacks) => void>()
 const mockNotify = vi.fn()
 const mockFetchInspectVars = vi.fn()
 const mockInvalidAllLastRun = vi.fn()
@@ -10,15 +20,15 @@ const mockSetIterTimes = vi.fn()
 const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
-const mockGetNodes = vi.fn((): any[] => [])
+const mockGetNodes = vi.fn((): { id: string; type: string; data: Record<string, unknown> }[] => [])
 const mockHooksStoreState = vi.hoisted(() => ({
   canRun: true,
 }))
 
-let mockWorkflowRunningData: any = null
+let mockWorkflowRunningData: { result: { status: string } } | null = null
 
 vi.mock('@/service/base', () => ({
-  sseGet: (...args: any[]) => mockSseGet(...args),
+  sseGet: (...args: unknown[]) => mockSseGet(...args),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -26,7 +36,7 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/workflow', () => ({
-  submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
+  submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -34,7 +44,7 @@ vi.mock('@/app/notifications', () => ({
     success: vi.fn(),
     error: vi.fn(),
     warning: vi.fn(),
-    info: (...args: any[]) => mockNotify(...args),
+    info: (...args: unknown[]) => mockNotify(...args),
   },
 }))
 
@@ -100,7 +110,7 @@ describe('useChat – handleSend', () => {
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = (mockHandleRun.mock.calls[0] ?? []) as [any]
+    const [bodyParams] = mockHandleRun.mock.calls[0]!
     expect(bodyParams.query).toBe('hello')
   })
 
@@ -200,25 +210,26 @@ describe('useChat – handleSend', () => {
               url: 'https://example.com/img.png',
               uploadedId: '',
             },
-          ] as any,
+          ],
         },
         {},
       )
     })
 
     expect(mockHandleRun).toHaveBeenCalledTimes(1)
-    const [bodyParams] = (mockHandleRun.mock.calls[0] ?? []) as [any]
-    const localFile = bodyParams.files.find((f: any) => f.transfer_method === 'local_file')
-    const remoteFile = bodyParams.files.find((f: any) => f.transfer_method === 'remote_url')
-    expect(localFile.url).toBe('')
-    expect(remoteFile.url).toBe('https://example.com/img.png')
+    const [bodyParams] = mockHandleRun.mock.calls[0]!
+    const localFile = bodyParams.files!.find((f) => f.transfer_method === 'local_file')
+    const remoteFile = bodyParams.files!.find((f) => f.transfer_method === 'remote_url')
+    expect(localFile!.url).toBe('')
+    expect(remoteFile!.url).toBe('https://example.com/img.png')
   })
 
   it('should abort previous workflowEventsAbortController before sending', () => {
-    const mockAbort = vi.fn()
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      callbacks.getAbortController({ abort: mockAbort } as any)
-      callbacks.onCompleted(false)
+    const controller = new AbortController()
+    const mockAbort = vi.spyOn(controller, 'abort')
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: WorkflowRunCallbacks) => {
+      callbacks.getAbortController!(controller)
+      callbacks.onCompleted!(false)
     })
 
     const { result } = renderHook(() => useChat({}), {
@@ -229,8 +240,8 @@ describe('useChat – handleSend', () => {
       result.current.handleSend({ query: 'first' }, {})
     })
 
-    mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
-      callbacks.getAbortController({ abort: vi.fn() } as any)
+    mockHandleRun.mockImplementation((_params: unknown, callbacks: WorkflowRunCallbacks) => {
+      callbacks.getAbortController!(new AbortController())
     })
 
     act(() => {

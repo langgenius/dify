@@ -13,7 +13,7 @@ vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...(typeof actual === 'object' && actual !== null ? actual : {}),
-    useInfiniteScroll: (...args: any[]) => mockUseInfiniteScroll(...args),
+    useInfiniteScroll: (...args: unknown[]) => mockUseInfiniteScroll(...args),
   }
 })
 
