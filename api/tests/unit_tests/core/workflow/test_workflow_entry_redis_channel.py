@@ -25,7 +25,7 @@ class TestWorkflowEntryRedisChannel:
 
         # Patch GraphEngine to verify it receives the Redis channel
         with patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as mock_graph_engine_type:
-            mock_graph_engine = mock_graph_engine_type.return_value  # Create WorkflowEntry with Redis channel
+            # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
                 app_id="test-app",
@@ -60,10 +60,8 @@ class TestWorkflowEntryRedisChannel:
             patch("core.workflow.workflow_entry.GraphEngine", autospec=True) as mock_graph_engine_type,
             patch("core.workflow.workflow_entry.InMemoryChannel", autospec=True) as mock_in_memory_channel,
         ):
-            mock_graph_engine = mock_graph_engine_type.return_value
-            mock_inmemory_channel = (
-                mock_in_memory_channel.return_value
-            )  # Create WorkflowEntry without providing a channel
+            mock_inmemory_channel = mock_in_memory_channel.return_value
+            # Create WorkflowEntry without providing a channel
             workflow_entry = WorkflowEntry(
                 tenant_id="test-tenant",
                 app_id="test-app",
