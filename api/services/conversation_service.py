@@ -3,7 +3,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy import and_, asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -250,7 +250,7 @@ class ConversationService:
         stmt = (
             select(ConversationVariable)
             .where(ConversationVariable.app_id == app_model.id, ConversationVariable.conversation_id == conversation.id)
-            .order_by(ConversationVariable.created_at)
+            .order_by(ConversationVariable.created_at, ConversationVariable.id)
         )
 
         # Apply variable_name filter if provided
@@ -278,8 +278,18 @@ class ConversationService:
             if not last_variable:
                 raise ConversationVariableNotExistsError()
 
-            # Filter for variables created after the last_id
-            stmt = stmt.where(ConversationVariable.created_at > last_variable.created_at)
+            # Keyset cursor on (created_at, id): variables of a conversation are usually
+            # inserted together and share the same created_at, so created_at alone
+            # would skip every row that ties with the cursor.
+            stmt = stmt.where(
+                or_(
+                    ConversationVariable.created_at > last_variable.created_at,
+                    and_(
+                        ConversationVariable.created_at == last_variable.created_at,
+                        ConversationVariable.id > last_variable.id,
+                    ),
+                )
+            )
 
         # Apply limit to query: fetch one extra row to determine has_more
         query_stmt = stmt.limit(limit + 1)

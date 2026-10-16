@@ -593,6 +593,39 @@ class TestConversationServiceConversationalVariable:
     """Test conversational variable operations."""
 
     @pytest.mark.parametrize("sqlite_session", [(Conversation, ConversationVariable)], indirect=True)
+    def test_pagination_returns_variables_sharing_created_at(self, sqlite_session: Session):
+        # Variables of a new conversation are inserted together and share one created_at.
+        conversation = ConversationServiceTestDataFactory.create_conversation()
+        created_at = naive_utc_now().replace(microsecond=0)
+        rows = [
+            _conversation_variable(variable_id=variable_id, name=name, value="")
+            for variable_id, name in (
+                (OTHER_VARIABLE_ID, "b"),
+                (VARIABLE_ID, "a"),
+                (OTHER_CONVERSATION_VARIABLE_ID, "c"),
+            )
+        ]
+        for row in rows:
+            row.created_at = created_at
+        sqlite_session.add_all([conversation, *rows])
+        sqlite_session.commit()
+        app_model = ConversationServiceTestDataFactory.create_app()
+        user = ConversationServiceTestDataFactory.create_account()
+
+        collected: list[str] = []
+        last_id = None
+        for _ in range(len(rows) + 1):
+            page = ConversationService.get_conversational_variable(
+                app_model, CONVERSATION_ID, user, limit=1, last_id=last_id, session=sqlite_session
+            )
+            collected.extend(item["id"] for item in page.data)
+            if not page.has_more:
+                break
+            last_id = page.data[-1]["id"]
+
+        assert collected == sorted(row.id for row in rows)
+
+    @pytest.mark.parametrize("sqlite_session", [(Conversation, ConversationVariable)], indirect=True)
     def test_imported_variable_id_can_be_used_for_pagination_and_update(self, sqlite_session: Session):
         app_model = ConversationServiceTestDataFactory.create_app()
         user = ConversationServiceTestDataFactory.create_account()
