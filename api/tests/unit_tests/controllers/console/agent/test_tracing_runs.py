@@ -98,6 +98,7 @@ def test_agent_status_resolves_owner_and_never_exposes_destination_secrets(
             "provider": "langfuse",
             "trace_id": "trace-id",
             "trace_url": "https://example.com/trace",
+            "project_url": "https://example.com/project/frozen",
             "accepted_at": accepted_at,
             "queryable": None,
             "provider_config": {"secret_key": "do-not-return"},
@@ -121,6 +122,7 @@ def test_agent_status_resolves_owner_and_never_exposes_destination_secrets(
     assert result["accepted_at"] == "2026-01-01T00:00:00Z"
     assert result["queryable"] is None
     assert result["config_revision"] == "frozen-revision"
+    assert result["project_url"] == "https://example.com/project/frozen"
     assert "provider_config" not in result
     assert "do-not-return" not in str(result)
 
@@ -134,6 +136,7 @@ def test_app_status_source_scope_and_not_collected(app: Flask, services: RunCase
         )
     assert services.owner_calls == []
     assert result["status"] == "not_collected"
+    assert result["project_url"] is None
     assert services.status_calls == [
         {
             "tenant_id": "tenant",
