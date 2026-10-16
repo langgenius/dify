@@ -354,7 +354,7 @@ export type ChildChunkResponse = {
   id: string
   position: number
   segment_id: string
-  type: string
+  type: SegmentType
   updated_at: number
   word_count: number
 }
@@ -2120,7 +2120,7 @@ export type SegmentResponse = {
   keywords: Array<string> | null
   position: number
   sign_content: string
-  status: string
+  status: SegmentStatus
   stopped_at: number | null
   summary: string | null
   tokens: number
@@ -2128,6 +2128,10 @@ export type SegmentResponse = {
   updated_by: string | null
   word_count: number
 }
+
+export type SegmentStatus = 'completed' | 'error' | 'indexing' | 'paused' | 're_segment' | 'waiting'
+
+export type SegmentType = 'automatic' | 'customized'
 
 export type SegmentUpdateArgs = {
   answer?: string | null

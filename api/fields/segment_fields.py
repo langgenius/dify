@@ -4,6 +4,7 @@ from pydantic import field_serializer
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
+from models.enums import SegmentStatus, SegmentType
 
 
 class SegmentAttachmentResponse(ResponseModel):
@@ -21,7 +22,7 @@ class ChildChunkResponse(ResponseModel):
     content: str
     position: int
     word_count: int
-    type: str
+    type: SegmentType
     created_at: datetime | int
     updated_at: datetime | int
 
@@ -46,7 +47,7 @@ class SegmentResponse(ResponseModel):
     enabled: bool
     disabled_at: datetime | int | None
     disabled_by: str | None
-    status: str
+    status: SegmentStatus
     created_by: str
     created_at: datetime | int
     updated_at: datetime | int

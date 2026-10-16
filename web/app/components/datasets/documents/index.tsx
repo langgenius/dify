@@ -11,8 +11,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
-import { useInvalid } from '@/service/use-base'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
 import DocumentsHeader from './components/documents-header'
@@ -103,8 +101,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       }),
     [queryClient, datasetId],
   )
-  const invalidChunkList = useInvalid(useSegmentListKey)
-  const invalidChildChunkList = useInvalid(useChildSegmentListKey)
 
   const handleUpdate = useCallback(() => {
     invalidDocumentList()
@@ -112,10 +108,20 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
     })
     setTimeout(() => {
-      invalidChunkList()
-      invalidChildChunkList()
+      const params = { dataset_id: datasetId }
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+          input: { params },
+        }),
+      })
+      queryClient.invalidateQueries({
+        queryKey:
+          consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+            { input: { params } },
+          ),
+      })
     }, 5000)
-  }, [queryClient, invalidDocumentList, invalidChunkList, invalidChildChunkList])
+  }, [queryClient, datasetId, invalidDocumentList])
 
   // Metadata editing hook
   const {

@@ -140,16 +140,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 // Mock segment service hooks
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useSegmentListKey: 'segment-list-key',
-  useChildSegmentListKey: 'child-segment-list-key',
-}))
-
-// Mock base service hooks
-vi.mock('@/service/use-base', () => ({
-  useInvalid: vi.fn(() => vi.fn()),
-}))
-
 // Mock metadata hook
 vi.mock('../../metadata/hooks/use-edit-dataset-metadata', () => ({
   default: vi.fn(() => ({

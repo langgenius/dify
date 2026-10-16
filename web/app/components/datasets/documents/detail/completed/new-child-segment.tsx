@@ -3,12 +3,13 @@ import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { ChunkingMode } from '@/models/datasets'
 import { useParams } from '@/next/navigation'
-import { useAddChildSegment } from '@/service/knowledge/use-segment'
+import { consoleQuery } from '@/service/console'
 import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../context'
 import { ActionButtons } from './common/action-buttons'
@@ -47,7 +48,9 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     if (actionType === 'esc' || !addAnother) onCancel()
   }
 
-  const { mutateAsync: addChildSegment } = useAddChildSegment()
+  const { mutateAsync: addChildSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.post.mutationOptions(),
+  )
 
   const handleSave = async () => {
     const params: SegmentUpdater = { content: '' }
@@ -59,7 +62,10 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
     setLoading(true)
     await addChildSegment(
-      { datasetId, documentId, segmentId: chunkId, body: params },
+      {
+        params: { dataset_id: datasetId, document_id: documentId, segment_id: chunkId },
+        body: params,
+      },
       {
         onSuccess(res) {
           toast.success(

@@ -1,5 +1,8 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type {
+  ChildChunkListResponse,
+  ChildChunkResponse,
+  ConsoleSegmentListResponse,
   DocumentDetailResponse as ContractDocumentDetailResponse,
   DocumentWithSegmentsListResponse,
   DocumentWithSegmentsResponse,
@@ -10,6 +13,7 @@ import type {
   HitTestingRecord as HitTestingRecordResponse,
   NotionInfo as NotionInfoPayload,
   PreProcessingRule as PreProcessingRulePayload,
+  SegmentResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
@@ -17,7 +21,6 @@ import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { AppIconType, RetrievalConfig, TransferMethod } from '@/types/app'
-import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { PermissionLevel } from './permission'
 
@@ -480,8 +483,6 @@ type CustomizableDocType =
 type FixedDocType = 'synced_from_github' | 'synced_from_notion' | 'wikipedia_entry'
 export type DocType = CustomizableDocType | FixedDocType
 
-type SegmentStatus = 'waiting' | 'completed' | 'error' | 'indexing'
-
 export type Attachment = {
   id: string
   name: string
@@ -491,43 +492,9 @@ export type Attachment = {
   source_url: string
 }
 
-export type SegmentDetailModel = {
-  id: string
-  position: number
-  document_id: string
-  content: string
-  sign_content: string
-  word_count: number
-  tokens: number
-  keywords: string[]
-  index_node_id: string
-  index_node_hash: string
-  hit_count: number
-  enabled: boolean
-  disabled_at: number
-  disabled_by: string
-  status: SegmentStatus
-  created_by: string
-  created_at: number
-  indexing_at: number
-  completed_at: number
-  error: string | null
-  stopped_at: number
-  answer?: string
-  summary?: string
-  child_chunks?: ChildChunkDetail[]
-  updated_at: number
-  attachments: Attachment[]
-}
+export type SegmentDetailModel = SegmentResponse
 
-export type SegmentsResponse = {
-  data: SegmentDetailModel[]
-  has_more: boolean
-  limit: number
-  total: number
-  total_pages: number
-  page: number
-}
+export type SegmentsResponse = ConsoleSegmentListResponse
 
 export type Query = {
   content: string
@@ -624,26 +591,9 @@ export const DEFAULT_WEIGHTED_SCORE = {
   },
 }
 
-type ChildChunkType = 'automatic' | 'customized'
+export type ChildChunkDetail = ChildChunkResponse
 
-export type ChildChunkDetail = {
-  id: string
-  position: number
-  segment_id: string
-  content: string
-  word_count: number
-  created_at: number
-  updated_at: number
-  type: ChildChunkType
-}
-
-export type ChildSegmentsResponse = {
-  data: ChildChunkDetail[]
-  total: number
-  total_pages: number
-  page: number
-  limit: number
-}
+export type ChildSegmentsResponse = ChildChunkListResponse
 
 // Used in api url
 export const DocumentActionType = {
@@ -656,11 +606,6 @@ export const DocumentActionType = {
 } as const
 
 export type DocumentActionType = (typeof DocumentActionType)[keyof typeof DocumentActionType]
-
-export type BatchImportResponse = {
-  job_id: string
-  job_status: SegmentImportStatus
-}
 
 export const DOC_FORM_ICON_CLASS_WITH_BG: Record<ChunkingMode | 'external', string> = {
   [ChunkingMode.text]: 'i-custom-public-knowledge-dataset-card-general',

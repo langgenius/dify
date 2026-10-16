@@ -6,7 +6,7 @@ import type { SegmentImportStatus } from '@/types/dataset'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -23,14 +23,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import {
-  useCheckSegmentBatchImportProgress,
-  useChildSegmentListKey,
-  useSegmentBatchImport,
-  useSegmentListKey,
-} from '@/service/knowledge/use-segment'
-import { useInvalid } from '@/service/use-base'
-import { segmentImportStatus } from '@/types/dataset'
+import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
 import StatusItem from '../status-item'
@@ -84,19 +77,19 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const hideBatchModal = () => setBatchModalVisible(false)
   const resetImportStatus = () => setImportStatus(undefined)
 
-  const { mutateAsync: checkSegmentBatchImportProgress } = useCheckSegmentBatchImportProgress()
+  const { mutateAsync: checkSegmentBatchImportProgress } = useMutation(
+    consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions(),
+  )
   const checkProcess = async (jobID: string) => {
     await checkSegmentBatchImportProgress(
-      { jobID },
+      { params: { job_id: jobID } },
       {
         onSuccess: (res) => {
-          setImportStatus(res.job_status)
-          if (
-            res.job_status === segmentImportStatus.waiting ||
-            res.job_status === segmentImportStatus.processing
-          )
+          const status = isSegmentImportStatus(res.job_status) ? res.job_status : undefined
+          setImportStatus(status)
+          if (status === segmentImportStatus.waiting || status === segmentImportStatus.processing)
             setTimeout(() => checkProcess(res.job_id), 2500)
-          if (res.job_status === segmentImportStatus.error)
+          if (status === segmentImportStatus.error)
             toast.error(`${t(($) => $['list.batchModal.runError'], { ns: 'datasetDocuments' })}`)
         },
         onError: (e) => {
@@ -109,17 +102,18 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     )
   }
 
-  const { mutateAsync: segmentBatchImport } = useSegmentBatchImport()
+  const { mutateAsync: segmentBatchImport } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(),
+  )
   const runBatch = async (csv: FileItem) => {
     await segmentBatchImport(
       {
-        datasetId,
-        documentId,
+        params: { dataset_id: datasetId, document_id: documentId },
         body: { upload_file_id: csv.file.id! },
       },
       {
         onSuccess: (res) => {
-          setImportStatus(res.job_status)
+          setImportStatus(isSegmentImportStatus(res.job_status) ? res.job_status : undefined)
           checkProcess(res.job_id)
         },
         onError: (e) => {
@@ -177,8 +171,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     : undefined
   const embedding = !!displayStatus && NON_TERMINAL_DISPLAY_STATUSES.has(displayStatus)
 
-  const invalidChunkList = useInvalid(useSegmentListKey)
-  const invalidChildChunkList = useInvalid(useChildSegmentListKey)
   const queryClient = useQueryClient()
   const invalidDocumentList = useCallback(
     () =>
@@ -200,13 +192,23 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
         // If operation is not rename, refresh the chunk list after 5 seconds
         if (operateName) {
           setTimeout(() => {
-            invalidChunkList()
-            invalidChildChunkList()
+            const params = { dataset_id: datasetId, document_id: documentId }
+            queryClient.invalidateQueries({
+              queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+                input: { params },
+              }),
+            })
+            queryClient.invalidateQueries({
+              queryKey:
+                consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.get.key(
+                  { input: { params } },
+                ),
+            })
           }, 5000)
         }
       }
     },
-    [invalidDocumentList, backToPrev, detailMutate, invalidChunkList, invalidChildChunkList],
+    [invalidDocumentList, backToPrev, detailMutate, queryClient, datasetId, documentId],
   )
 
   const parentMode = useMemo(() => {
