@@ -208,20 +208,26 @@ class EnterpriseAppRepository(EnterpriseAppStore):
         # TODO: move to the message domain repository once it exists.
         if not app_ids:
             return {}
-        # SUM(CASE) instead of COUNT FILTER, which MySQL does not support.
-        in_window = sa.func.sum(sa.case((Message.created_at >= created_since, 1), else_=0))
+        counts_stmt = (
+            sa.select(Message.app_id, Message.status, sa.func.count(Message.id))
+            .where(Message.app_id.in_(app_ids), _NON_DEBUGGER_MESSAGE, Message.created_at >= created_since)
+            .group_by(Message.app_id, Message.status)
+        )
+        # One LIMIT 1 lookup per app, so each stops at that app's newest message instead of scanning its history.
+        latest_messages = [
+            sa.select(Message.app_id, Message.created_at)
+            .where(Message.app_id == app_id, _NON_DEBUGGER_MESSAGE)
+            .order_by(Message.created_at.desc())
+            .limit(1)
+            .subquery()
+            for app_id in app_ids
+        ]
+        last_stmt = sa.union_all(*(sa.select(latest_message) for latest_message in latest_messages))
         status_counts: dict[str, dict[MessageStatus, int]] = {}
-        last_created_at: dict[str, datetime] = {}
         with self._session_factory() as session:
-            rows = session.execute(
-                sa.select(Message.app_id, Message.status, in_window, sa.func.max(Message.created_at))
-                .where(Message.app_id.in_(app_ids), _NON_DEBUGGER_MESSAGE)
-                .group_by(Message.app_id, Message.status)
-            )
-            for app_id, status, count, created_at in rows:
-                if count:
-                    status_counts.setdefault(app_id, {})[MessageStatus(status)] = int(count)
-                last_created_at[app_id] = max(created_at, last_created_at.get(app_id, created_at))
+            for app_id, status, count in session.execute(counts_stmt):
+                status_counts.setdefault(app_id, {})[MessageStatus(status)] = int(count)
+            last_created_at: dict[str, datetime] = dict(session.execute(last_stmt).tuples().all())
         return {
             app_id: EnterpriseAppMessageStats(status_counts=status_counts.get(app_id, {}), last_created_at=created_at)
             for app_id, created_at in last_created_at.items()

@@ -389,29 +389,35 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> dict[str, AppWorkflowRunStats]:
         if not tenant_id_by_app_id:
             return {}
-        # SUM(CASE) instead of COUNT FILTER, which MySQL does not support.
-        in_window = func.sum(sa.case((WorkflowRun.created_at >= created_since, 1), else_=0))
-        stmt = (
-            select(
-                WorkflowRun.tenant_id,
-                WorkflowRun.app_id,
-                WorkflowRun.status,
-                in_window,
-                func.max(WorkflowRun.created_at),
+        counts_stmt = (
+            select(WorkflowRun.tenant_id, WorkflowRun.app_id, WorkflowRun.status, func.count(WorkflowRun.id))
+            .where(
+                *self._app_run_conditions(tenant_id_by_app_id, triggered_from),
+                WorkflowRun.created_at >= created_since,
             )
-            .where(*self._app_run_conditions(tenant_id_by_app_id, triggered_from))
             .group_by(WorkflowRun.tenant_id, WorkflowRun.app_id, WorkflowRun.status)
         )
+        # One LIMIT 1 lookup per app, so each stops at that app's newest run instead of scanning its history.
+        latest_runs = [
+            select(WorkflowRun.app_id, WorkflowRun.created_at)
+            .where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.triggered_from.in_(triggered_from),
+            )
+            .order_by(WorkflowRun.created_at.desc())
+            .limit(1)
+            .subquery()
+            for app_id, tenant_id in tenant_id_by_app_id.items()
+        ]
+        last_stmt = sa.union_all(*(select(latest_run) for latest_run in latest_runs))
         status_counts: dict[str, dict[WorkflowExecutionStatus, int]] = {}
-        last_created_at: dict[str, datetime] = {}
         with self._session_maker() as session:
-            for tenant_id, app_id, status, count, created_at in session.execute(stmt):
+            for tenant_id, app_id, status, count in session.execute(counts_stmt):
                 # The IN filters match any tenant/app pairing, so keep only each app's own tenant.
-                if tenant_id_by_app_id[app_id] != tenant_id:
-                    continue
-                if count:
+                if tenant_id_by_app_id[app_id] == tenant_id:
                     status_counts.setdefault(app_id, {})[WorkflowExecutionStatus(status)] = int(count)
-                last_created_at[app_id] = max(created_at, last_created_at.get(app_id, created_at))
+            last_created_at: dict[str, datetime] = dict(session.execute(last_stmt).tuples().all())
         return {
             app_id: AppWorkflowRunStats(status_counts=status_counts.get(app_id, {}), last_created_at=created_at)
             for app_id, created_at in last_created_at.items()

@@ -356,6 +356,10 @@ def test_app_run_stats_scope_runs_by_app_tenant_source_and_window(
                 created_at=datetime(2026, 10, 14, 13),
                 triggered_from=WorkflowRunTriggeredFrom.WEBHOOK,
             ),
+            # Before the window: neither counted nor newer than a-1's windowed runs.
+            _app_run(
+                tenant_id="t-1", app_id="a-1", status=WorkflowExecutionStatus.FAILED, created_at=datetime(2026, 1, 1)
+            ),
             # Before the window: only the last-run lookup sees it.
             _app_run(
                 tenant_id="t-1", app_id="a-2", status=WorkflowExecutionStatus.SUCCEEDED, created_at=datetime(2026, 1, 1)
