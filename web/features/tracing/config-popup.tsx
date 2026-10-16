@@ -9,6 +9,7 @@ import type { ProviderConfigError } from './provider-panel'
 import type { ConfigurableTracingProvider } from './providers'
 import type { TracingResource } from './resource'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useRef } from 'react'
@@ -63,9 +64,9 @@ export default function ConfigPopup({
         <>
           <div className="max-h-[calc(100dvh-8rem)] w-105 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="title-2xl-semi-bold text-text-primary">
+              <PopoverTitle className="title-2xl-semi-bold text-text-primary">
                 {t(($) => $['tracing.tracing'])}
-              </h3>
+              </PopoverTitle>
               <Switch
                 aria-label={t(($) => $['tracing.tracing'])}
                 checked={enabled}
@@ -75,9 +76,9 @@ export default function ConfigPopup({
                 }
               />
             </div>
-            <p className="mt-2 system-xs-regular text-text-tertiary">
+            <PopoverDescription className="mt-2 system-xs-regular text-text-tertiary">
               {t(($) => $['tracing.tracingDescription'])}
-            </p>
+            </PopoverDescription>
             {policyError && (
               <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
                 {policyError}
@@ -100,20 +101,22 @@ export default function ConfigPopup({
                   : t(($) => $['tracing.configProviderTitle.notConfigured'])}
               </p>
             ) : (
-              groups.map(
-                (group, index) =>
-                  group.length > 0 && (
-                    <section key={index === 0 ? 'configured' : 'available'} className="mt-3">
-                      <h4 className="system-xs-medium-uppercase text-text-tertiary">
-                        {t(
-                          ($) =>
-                            $[
-                              `tracing.configProviderTitle.${index === 0 ? 'configured' : 'notConfigured'}`
-                            ],
-                        )}
-                      </h4>
-                      <div className="mt-2 space-y-2">
-                        {group.map((item) => (
+              <div className="space-y-2">
+                {groups.flatMap((group, index) =>
+                  group.length > 0
+                    ? [
+                        <h4
+                          key={index === 0 ? 'configured' : 'available'}
+                          className="mt-3 system-xs-medium-uppercase text-text-tertiary"
+                        >
+                          {t(
+                            ($) =>
+                              $[
+                                `tracing.configProviderTitle.${index === 0 ? 'configured' : 'notConfigured'}`
+                              ],
+                          )}
+                        </h4>,
+                        ...group.map((item) => (
                           <ProviderPanel
                             key={item}
                             type={item}
@@ -126,11 +129,11 @@ export default function ConfigPopup({
                               void onChooseProvider(item).catch(() => {})
                             }}
                           />
-                        ))}
-                      </div>
-                    </section>
-                  ),
-              )
+                        )),
+                      ]
+                    : [],
+                )}
+              </div>
             )}
           </div>
           {!readOnly && (
