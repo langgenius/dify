@@ -11,7 +11,7 @@ from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, Workfl
 from core.ops.base_trace_instance import bind_application_tracing_hooks
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -138,7 +138,9 @@ class TestWorkflowPersistenceLayer:
         ) -> None:
             assert workflow_repo.saved
             assert graph_data == {"nodes": [], "edges": []}
-            assert workflow_repo.saved[-1].id_ == workflow_run_id
+            saved_execution = workflow_repo.saved[-1]
+            assert isinstance(saved_execution, WorkflowExecution)
+            assert saved_execution.id_ == workflow_run_id
             calls.append(
                 (entity.app_config.app_id, entity.app_config.tenant_id, workflow_id, workflow_run_id, conversation_id)
             )
