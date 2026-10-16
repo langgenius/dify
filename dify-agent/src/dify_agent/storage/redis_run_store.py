@@ -1,6 +1,6 @@
 """Redis-backed run records, event streams, and private cancellation intents.
 
-The store writes status-only run records as JSON strings and events as Redis
+The store writes status and private identity records as JSON strings and events as Redis
 streams. HTTP event cursors are Redis stream ids; ``0-0`` means replay from the
 beginning for polling and SSE. Records, event streams, and intents share one retention window
 that is refreshed when status or event data is written. Execution is scheduled
@@ -9,16 +9,16 @@ create-run payloads are never persisted because layer config may include
 sensitive runtime configuration.
 """
 
-from collections.abc import AsyncIterator, Awaitable
 import hashlib
 import json
-from uuid import uuid4
-from pydantic import JsonValue
+from collections.abc import AsyncIterator, Awaitable
 from typing import cast, override
+from uuid import uuid4
 
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from pydantic import ValidationError
+
 from dify_agent.protocol.native_continuation import (
     MAX_CHECKPOINT_BYTES,
     MAX_CHECKPOINT_EVENT_BYTES,
@@ -27,26 +27,33 @@ from dify_agent.protocol.native_continuation import (
     ReadNativeCheckpointRequest,
     SelectedNativeCheckpoint,
 )
-
-from dify_agent.protocol.native_testing import AgentNativeTestRef, AgentOperationKey, ContinuationClaim
-from dify_agent.runtime.native_continuation import AgentCheckpoint, NativeContinuationConflict
-from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.protocol.native_testing import (
+    MAX_AGENT_CONTROL_BYTES,
+    AgentNativeTestRef,
+    AgentOperationKey,
+    AgentRuntimeIdentity,
+    AgentRuntimeIdentitySeed,
+    ContinuationClaim,
+    Counter,
+    ReadAgentRuntimeIdentity,
+)
 from dify_agent.protocol.schemas import (
-    AgentRunUsage,
     RUN_EVENT_ADAPTER,
+    AgentRunUsage,
     CancelRunRequest,
     RunCancelledEvent,
     RunCancelledEventData,
     RunEvent,
     RunEventsResponse,
-    RunStatus,
-    RunWaitingEvent,
-    RunResumedEvent,
-    RunResumedEventData,
     RunFailedEvent,
     RunFailedEventData,
+    RunResumedEvent,
+    RunResumedEventData,
+    RunStatus,
+    RunWaitingEvent,
     utc_now,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
@@ -55,6 +62,7 @@ from dify_agent.runtime.event_sink import (
     TerminalRunEvent,
     terminal_event_status_fields,
 )
+from dify_agent.runtime.native_continuation import AgentCheckpoint, NativeContinuationConflict
 from dify_agent.server.schemas import RunRecord, new_run_id
 from dify_agent.server.settings import DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH, DEFAULT_RUN_RETENTION_SECONDS
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
@@ -301,16 +309,54 @@ class RedisRunStore(RunEventSink):
         self.run_retention_seconds = run_retention_seconds
         self.run_event_stream_max_length = run_event_stream_max_length
 
-    async def create_run(self) -> RunRecord:
-        """Persist a running run record without storing the create request."""
+    async def create_run(self, *, identity: AgentRuntimeIdentitySeed | None = None) -> RunRecord:
+        """Persist status and immutable private identity in the same SET, never config."""
         run_id = new_run_id()
-        record = RunRecord(run_id=run_id, status="running")
+        record = RunRecord(
+            run_id=run_id,
+            status="running",
+            runtime_identity=(
+                AgentRuntimeIdentity(run_id=run_id, agent_generation=0, **identity.model_dump())
+                if identity is not None
+                else None
+            ),
+        )
         await self.redis.set(
             run_record_key(self.prefix, run_id),
             record.model_dump_json(),
             ex=self.run_retention_seconds,
         )
         return record
+
+    async def read_run_identity(self, *, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        """Only bounded immutable metadata is read; legacy/unknown records refuse."""
+        # Redis extracts just the bounded identity, never history/config/checkpoint.
+        reply = await cast(
+            Awaitable[object],
+            self.redis.eval(_READ_RUN_IDENTITY_SCRIPT, 1, run_record_key(self.prefix, run_id), MAX_AGENT_CONTROL_BYTES),
+        )
+        if not isinstance(reply, (list, tuple)):
+            raise NativeContinuationConflict("native identity unavailable")
+        try:
+            status, raw, generation = reply
+            if int(status) == -1:
+                raise RunNotFoundError(run_id)
+            if int(status) != 1 or not isinstance(raw, (str, bytes)) or len(raw) > MAX_AGENT_CONTROL_BYTES:
+                raise ValueError
+            identity = AgentRuntimeIdentity.model_validate_json(raw)
+            if (identity.run_id, identity.parent_node, identity.request_digest) != (
+                run_id,
+                selection.parent_node,
+                selection.request_digest,
+            ) or (identity.execution_mode == "builder_test") != (selection.parent_node is not None):
+                raise ValueError
+            return identity.model_copy(
+                update={"agent_generation": TypeAdapter(Counter).validate_python(int(generation))}
+            )
+        except RunNotFoundError:
+            raise
+        except (ValueError, TypeError):
+            raise NativeContinuationConflict("native identity unavailable") from None
 
     @override
     async def persist_waiting(self, *, run_id: str, checkpoint: AgentCheckpoint, event: RunWaitingEvent) -> str:
@@ -766,3 +812,16 @@ class RedisAgentResultStore:
         if AgentNativeTestRef.model_validate(payload["ref"]) != self.ref:
             raise NativeContinuationConflict("result owner mismatch")
         return payload["result"]
+
+
+_READ_RUN_IDENTITY_SCRIPT = """
+local raw = redis.call("GET", KEYS[1])
+if not raw then return {-1, "", 0} end
+local ok, r = pcall(cjson.decode, raw)
+if not ok or type(r.runtime_identity) ~= "table" or type(r.native_generation) ~= "number" then
+    return {-2, "", 0}
+end
+local identity = cjson.encode(r.runtime_identity)
+if #identity > tonumber(ARGV[1]) then return {-2, "", 0} end
+return {1, identity, r.native_generation}
+"""

@@ -13,7 +13,13 @@ from collections.abc import Callable, Generator, Iterator, Sequence
 from typing import Any, cast
 
 from configs import dify_config
-from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
+from core.dify_builder.errors import (
+    BadRequestError,
+    BusyError,
+    ConflictError,
+    ModelUnavailableError,
+    NotFoundError,
+)
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Action, Actor, ConversationItem
 from core.rbac import RBACPermission
@@ -32,9 +38,13 @@ from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_contracts import canonical_digest
 from services.dify_builder.execution_policy_service import check_app_permissions
-from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
+from services.dify_builder.native_testing.public_contracts import (
+    NativeTestPublicReceipt,
+)
 from services.dify_builder.progress_snapshot import ProgressSnapshot
-from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+from services.dify_builder.real_call_consent_service import (
+    BuilderRealCallConsentService,
+)
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
@@ -55,9 +65,19 @@ _HEARTBEAT_SECONDS = 15
 _MAX_STREAM_SECONDS = dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _HEARTBEAT_SECONDS
 _TERMINAL_KINDS = ("command_finished", "error")
 _PROGRESS_KINDS = frozenset(
-    {"workflow", "canvas", "agent_message", "conversation_item_appended", "reasoning", "progress", *_TERMINAL_KINDS}
+    {
+        "workflow",
+        "canvas",
+        "agent_message",
+        "conversation_item_appended",
+        "reasoning",
+        "progress",
+        *_TERMINAL_KINDS,
+    }
 )
-_IGNORED_WORKFLOW_EVENTS = frozenset({"message_end", "message_file", "tts_message", "tts_message_end"})
+_IGNORED_WORKFLOW_EVENTS = frozenset(
+    {"message_end", "message_file", "tts_message", "tts_message_end"}
+)
 _WORKFLOW_PAYLOAD_ADAPTER = TypeAdapter(WorkflowStreamPayload)
 
 
@@ -253,7 +273,10 @@ _REAL_CALL_REFUSAL_CODES: dict[str, str] = {
         "needs_setup",
     ),
     # The same answer for a missing or invisible credential: nothing foreign is disclosed.
-    **dict.fromkeys(("credential_reference_unavailable", "credential_policy_refused"), "needs_permission"),
+    **dict.fromkeys(
+        ("credential_reference_unavailable", "credential_policy_refused"),
+        "needs_permission",
+    ),
     **dict.fromkeys(
         (
             "unsupported_action",
@@ -279,7 +302,11 @@ _REAL_CALL_REFUSAL_CODES: dict[str, str] = {
         "unsupported_action",
     ),
     **dict.fromkeys(
-        ("installed_tool_unavailable", "invalid_graph_metadata", "session_state_unavailable"),
+        (
+            "installed_tool_unavailable",
+            "invalid_graph_metadata",
+            "session_state_unavailable",
+        ),
         "unavailable_metadata",
     ),
     **dict.fromkeys(
@@ -307,7 +334,12 @@ _REAL_CALL_REFUSAL_CODES: dict[str, str] = {
 # Missing and cross-owner sessions/consents/inputs are indistinguishable.
 _REAL_CALL_NOT_FOUND = frozenset({"consent_not_found", "execution_owner_mismatch"})
 _REAL_CALL_BAD_REQUEST = frozenset(
-    {"invalid_version", "invalid_scope_digest", "invalid_idempotency_key", "invalid_decision"}
+    {
+        "invalid_version",
+        "invalid_scope_digest",
+        "invalid_idempotency_key",
+        "invalid_decision",
+    }
 )
 # Raised only after ownership is established, so a 403 reveals nothing foreign.
 _REAL_CALL_PERMISSION_DENIED = "execution_permission_denied"
@@ -315,7 +347,12 @@ _REAL_CALL_UNAVAILABLE = "real_call_unavailable"
 _REASON_CODE = re.compile(r"[a-z][a-z0-9_]{0,127}\Z")
 # Every reason a 409 refusal can carry; the 403 permission refusal has its own fixed reason.
 REAL_CALL_REFUSAL_REASONS = frozenset(
-    {*_REAL_CALL_REFUSAL_CODES, _REAL_CALL_UNAVAILABLE, "session_busy", "session_conflict"}
+    {
+        *_REAL_CALL_REFUSAL_CODES,
+        _REAL_CALL_UNAVAILABLE,
+        "session_busy",
+        "session_conflict",
+    }
 )
 
 
@@ -703,4 +740,70 @@ def build_native_dispatch_lifecycle(*, ref, generation, dispatch_id, actor_hint=
         sessions=sessionmaker(bind=db.engine, expire_on_commit=False),
         delivery=NativeDispatchRef(ref=ref, generation=generation, dispatch_id=dispatch_id),
         actor_hint=actor_hint,
+    )
+
+
+class _NativeAgentIdentityReader:
+    """One short-lived authenticated SDK owner per private identity read."""
+
+    def read_run_identity_sync(self, run_id, selection):
+        from clients.agent_backend.factory import create_agent_backend_client
+        from configs import dify_config
+
+        if (
+            not dify_config.AGENT_BACKEND_BASE_URL
+            or not dify_config.AGENT_BACKEND_API_TOKEN
+            or dify_config.AGENT_BACKEND_USE_FAKE
+        ):
+            raise BuilderExecutionPolicyError("native_agent_identity_unavailable")
+        with create_agent_backend_client(
+            base_url=dify_config.AGENT_BACKEND_BASE_URL,
+            api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+            timeout=10.0,
+        ) as client:
+            return client.read_run_identity_sync(run_id, selection)
+
+
+def build_native_agent_preparation_service(*, actor: Actor, workspace_limits=None):
+    """S1 private config/bind owner; no native execution or continuation installation.
+
+    The later bound-node owner must supply its actual A7 limits to enable workspace
+    preparation. Callbacks need no workspace factory and can only bind a previously
+    protected reservation after authenticated persisted-Run readback.
+    """
+    from services.dify_builder.native_testing.agent_preparation import (
+        AgentPreparationService,
+    )
+    from services.dify_builder.native_testing.agent_runtime_config import (
+        NativeAgentRuntimeConfigBuilder,
+    )
+    from services.dify_builder.native_testing.agent_workspace import (
+        AgentTestWorkspaceService,
+    )
+    from services.dify_builder.native_testing.http_binding import (
+        NativeHttpBindingResolver,
+    )
+    from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+    from services.dify_builder.native_testing.state_store import (
+        NativeExecutionStateStore,
+    )
+
+    loader = OwnedNativeTestLoader(
+        sessionmaker(bind=db.engine, expire_on_commit=False),
+        actor=actor,
+        resolver=NativeHttpBindingResolver(),
+    )
+    store = NativeExecutionStateStore(loader)
+    workspace = (
+        None
+        if workspace_limits is None
+        else AgentTestWorkspaceService(
+            loader, state_store=store, limits=workspace_limits
+        )
+    )
+    return AgentPreparationService(
+        state_store=store,
+        backend=_NativeAgentIdentityReader(),
+        workspace=workspace,
+        config_builder=NativeAgentRuntimeConfigBuilder(loader=loader),
     )

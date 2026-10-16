@@ -638,6 +638,12 @@ def test_marked_runner_requires_real_effect_owner_before_loading(monkeypatch):
                     composition={"layers": []},
                     execution_mode="builder_test",
                     native_test_ref=REF,
+                    native_parent_node=dict(
+                        ref=REF,
+                        execution_id="4c959aea-9025-4db9-9361-eed1191c11c7",
+                        input_result_ref="input",
+                        input_digest="b" * 64,
+                    ),
                     native_test_protocol_version=1,
                 ),
                 native_continuation=NativeContinuation(

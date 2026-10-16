@@ -15,15 +15,38 @@ import pytest
 from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
 from libs.key_providers import generate_key_pair
 from models.account import Tenant
-from models.agent import AgentWorkingResourceStatus, AgentWorkspaceBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspaceBinding,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.dify_builder_native_tests import NativePayloadObject
 from models.workflow import Workflow
 from services.agent.workspace_service import AgentWorkspaceService
-from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
-from services.dify_builder.native_testing.agent_contracts import AgentNodeAssociation, AgentParentNodeRef
-from services.dify_builder.native_testing.agent_workspace import AgentTestWorkspaceService
-from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
+from services.dify_builder.execution_contracts import (
+    BuilderExecutionPolicyError,
+    canonical_digest,
+)
+from services.dify_builder.native_testing.agent_binding import native_node_data
+from services.dify_builder.native_testing.agent_contracts import (
+    AgentNodeAssociation,
+    AgentParentNodeRef,
+)
+from services.dify_builder.native_testing.agent_workspace import (
+    AgentTestWorkspaceService,
+)
+from services.dify_builder.native_testing.repository import (
+    OwnedNativeTestLoader,
+    native_workflow_revision,
+)
 from services.dify_builder.native_testing.runtime_contracts import (
     NativeCheckpointPayload,
     NodeJournalState,
@@ -41,11 +64,15 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_c
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import raw_ledger_case
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+    raw_ledger_case,
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as base_native_owner,  # noqa: F401 - shared pytest fixture dependency
 )
-from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import no_live as no_live  # noqa: PLC0414
+from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
+    no_live as no_live,  # noqa: PLC0414
+)
 
 CANARY = "PRIVATE_A5_PROTECTED_BYTES_CANARY_81ac"
 
@@ -55,6 +82,36 @@ def association_case(native_owner, no_live, migrated_continuation_tables, monkey
     from extensions.ext_database import db
 
     assert migrated_continuation_tables is None
+    # The workspace fixture supplies only allocation identities. S1 resource
+    # checks require real roster publication and complete native node data.
+    # Establish these rows before raw_ledger_case stamps graph/owner revisions.
+    _, actor, app, workflow, _, _ = native_owner
+    graph = json.loads(workflow.graph)
+    node = graph["nodes"][-1]
+    snapshot_id = node["data"]["agent_binding"]["current_snapshot_id"]
+    snapshot = db.session.get(AgentConfigSnapshot, snapshot_id)
+    agent_id = snapshot.agent_id
+    soul = AgentSoulConfig.model_validate({"model": {
+        "plugin_id": "langgenius/openai", "model_provider": "openai", "model": "ci-inert-model",
+    }})
+    snapshot.config_snapshot = soul
+    db.session.add(Agent(
+        id=agent_id, tenant_id=actor.tenant_id, name="S1 fixture " + agent_id,
+        scope=AgentScope.ROSTER, source=AgentSource.ROSTER, status=AgentStatus.ACTIVE,
+        active_config_snapshot_id=snapshot_id, active_config_has_model=True,
+        created_by=actor.account_id, updated_by=actor.account_id,
+    ))
+    job = WorkflowNodeJobConfig(workflow_prompt="Review typed fixture inputs")
+    node["data"] = native_node_data(agent_id=agent_id, snapshot_id=snapshot_id, node_job=job)
+    workflow.graph = json.dumps(graph)
+    db.session.add(WorkflowAgentNodeBinding(
+        tenant_id=actor.tenant_id, app_id=app.id, workflow_id=workflow.id,
+        workflow_version=workflow.version, node_id=node["id"],
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id=agent_id, current_snapshot_id=snapshot_id, node_job_config=job,
+        created_by=actor.account_id, updated_by=actor.account_id,
+    ))
+    db.session.commit()
     ledger = raw_ledger_case(native_owner, no_live)
     _, _, app, workflow, _, _ = native_owner
     assert app.id

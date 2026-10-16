@@ -42,7 +42,7 @@ def test_wait_reason_survives_wire_roundtrip(reason):
 
 
 def test_continue_cannot_supply_decisions_or_execution_arguments():
-    payload = dict(ref=REF, expected_generation=0, idempotency_key="schedule-1")
+    payload = {"ref": REF, "expected_generation": 0, "idempotency_key": "schedule-1"}
     assert ContinueRunRequest.model_validate(payload).expected_generation == 0
     for change in ({"approved": True}, {"composition": {}}, {"expected_generation": -1}, {"expected_generation": True}):
         with pytest.raises(ValidationError):
@@ -74,7 +74,7 @@ def test_all_features_are_required():
 
 
 def test_http_rejects_before_scheduler_or_any_execution_boundary():
-    counters = dict(model=0, tool=0, eager=0, config=0, bootstrap=0, lease=0)
+    counters = {"model": 0, "tool": 0, "eager": 0, "config": 0, "bootstrap": 0, "lease": 0}
 
     class Scheduler:
         async def create_run(self, request):
@@ -97,6 +97,12 @@ def test_http_rejects_before_scheduler_or_any_execution_boundary():
                     "execution_mode": "builder_test",
                     "native_test_ref": REF,
                     "native_test_protocol_version": 1,
+                    "native_parent_node": {
+                        "ref": REF,
+                        "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                        "input_result_ref": "input",
+                        "input_digest": "b" * 64,
+                    },
                 },
             )
             assert response.status_code == 409
@@ -128,6 +134,12 @@ def test_http_rejects_before_scheduler_or_any_execution_boundary():
                     "execution_mode": "builder_test",
                     "native_test_ref": REF,
                     "native_test_protocol_version": 1,
+                    "native_parent_node": {
+                        "ref": REF,
+                        "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                        "input_result_ref": "input",
+                        "input_digest": "b" * 64,
+                    },
                 },
             )
             assert response.status_code == 409
@@ -158,6 +170,12 @@ def test_client_refreshes_capabilities_and_never_falls_back():
                 composition={"layers": []},
                 execution_mode="builder_test",
                 native_test_ref=REF,
+                native_parent_node={
+                    "ref": REF,
+                    "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                    "input_result_ref": "input",
+                    "input_digest": "b" * 64,
+                },
                 native_test_protocol_version=1,
             )
             await client.create_run(request)
@@ -222,6 +240,7 @@ def test_executable_wire_rejects_non_finite_or_non_json_arguments(bad):
 )
 def test_exact_decision_wire_contract(payload):
     from pydantic import TypeAdapter
+
     from dify_agent.protocol.native_testing import AgentEffectDecision
 
     adapter = TypeAdapter(AgentEffectDecision)
@@ -248,8 +267,9 @@ def test_invalid_checkpoint_does_not_enter_public_status_or_events():
 @pytest.mark.parametrize("sync", [False, True])
 def test_ordinary_client_wire_remains_compatible_with_frozen_old_server(sync):
     """The old server forbids unknown fields; expectations are literal old JSON."""
-    from pydantic import BaseModel, ConfigDict, Field
     from fastapi.testclient import TestClient
+    from pydantic import BaseModel, ConfigDict, Field
+
     from dify_agent.client import Client
 
     class OldRequest(BaseModel):

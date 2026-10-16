@@ -5,13 +5,29 @@ verified terminal state before storing these records. Parsing or storing a
 reference does not authorize an effect, resume, or physical-capacity release.
 """
 
-from typing import Self
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal, Self
+
+if TYPE_CHECKING:
+    from dify_agent.protocol.schemas import CreateRunRequest
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, TypeAdapter, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 from services.dify_builder.execution_contracts import Digest
-from services.dify_builder.native_testing.contracts import ID, Counter, FiniteJSON, FrozenDTO, NativeTestContextRef
+from services.dify_builder.native_testing.contracts import (
+    ID,
+    Counter,
+    FiniteJSON,
+    FrozenDTO,
+    NativeTestContextRef,
+)
 
 
 class AgentTestWorkspaceRef(BaseModel):
@@ -93,3 +109,50 @@ class AgentProtectedState(FrozenDTO):
     checkpoint: FiniteJSON
     terminal_result_ref: ID | None
     terminal_result: FiniteJSON
+
+
+class AgentPreparedConfig(FrozenDTO):
+    parent_node: AgentParentNodeRef
+    workflow_native_run_id: ID
+    workspace: AgentTestWorkspaceRef
+    config_ref: ID
+    config_digest: Digest
+    config: FiniteJSON
+
+
+@dataclass(frozen=True, slots=True)
+class AgentDefinitionReceipt:
+    """Immutable receipt captured from the definition used to compose, never a wire grant."""
+
+    node_id: str
+    stamp: str
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCreateInserted:
+    """Local outcome of this exact successful SQL insertion, never a wire grant."""
+
+    config_ref: str
+    config_digest: str
+    kind: Literal["inserted"] = "inserted"
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCreateExisting:
+    """Discovery/unknown only. Identical immutable bytes never confer POST ownership."""
+
+    config_ref: str
+    config_digest: str
+    association_object_ref: str | None = None
+    kind: Literal["existing"] = "existing"
+
+
+type AgentCreateClaim = AgentCreateInserted | AgentCreateExisting
+
+
+@dataclass(frozen=True, slots=True)
+class AgentStartPreparation:
+    claim: AgentCreateClaim
+    parent_node: AgentParentNodeRef
+    # Kept out of this module's imports to preserve the existing API DTO dependency DAG.
+    request: "CreateRunRequest"

@@ -22,9 +22,32 @@ from typing import Any, Self, TypeVar, cast
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from pydantic_ai.messages import FunctionToolResultEvent
 
+from dify_agent.protocol import (
+    RUN_EVENT_ADAPTER,
+    BindingFileDownloadRequest,
+    BindingFileDownloadResponse,
+    BindingFileListRequest,
+    BindingFileListResponse,
+    BindingFileReadRequest,
+    BindingFileReadResponse,
+    CancelRunRequest,
+    CancelRunResponse,
+    CreateExecutionBindingRequest,
+    CreateExecutionBindingResponse,
+    CreateHomeSnapshotFromBindingRequest,
+    CreateRunRequest,
+    CreateRunResponse,
+    DeleteHomeSnapshotRequest,
+    DestroyExecutionBindingRequest,
+    HomeSnapshotResponse,
+    RunCancelledEvent,
+    RunEvent,
+    RunEventsResponse,
+    RunStatusResponse,
+)
 from dify_agent.protocol.native_continuation import (
     MAX_CHECKPOINT_REQUEST_BYTES,
     MAX_CHECKPOINT_RESPONSE_BYTES,
@@ -32,34 +55,15 @@ from dify_agent.protocol.native_continuation import (
     SelectedNativeCheckpoint,
 )
 from dify_agent.protocol.native_testing import (
+    ID,
+    MAX_AGENT_CONTROL_BYTES,
+    AgentRuntimeIdentity,
+    ContinuationClaim,
+    ContinueRunRequest,
     NativeTestCapabilities,
     NativeTestProtocolUnsupported,
+    ReadAgentRuntimeIdentity,
     require_native_test_capabilities,
-    ContinueRunRequest,
-    ContinuationClaim,
-)
-from dify_agent.protocol import (
-    CancelRunRequest,
-    CancelRunResponse,
-    BindingFileDownloadRequest,
-    BindingFileDownloadResponse,
-    BindingFileListRequest,
-    BindingFileListResponse,
-    BindingFileReadRequest,
-    BindingFileReadResponse,
-    CreateRunRequest,
-    CreateRunResponse,
-    CreateExecutionBindingRequest,
-    CreateExecutionBindingResponse,
-    CreateHomeSnapshotFromBindingRequest,
-    DeleteHomeSnapshotRequest,
-    DestroyExecutionBindingRequest,
-    HomeSnapshotResponse,
-    RUN_EVENT_ADAPTER,
-    RunCancelledEvent,
-    RunEvent,
-    RunEventsResponse,
-    RunStatusResponse,
 )
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
@@ -382,6 +386,53 @@ class Client:
             return capabilities
         except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
             raise NativeTestProtocolUnsupported() from exc
+
+    async def read_run_identity(self, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        """Private authenticated bounded read, one attempt, no status/history fallback."""
+        payload = _identity_selection_json(run_id, selection)
+        try:
+            async with self._get_async_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-identity"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _identity_response_status(response)
+                body = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=MAX_AGENT_CONTROL_BYTES + 1):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("native identity unavailable")
+                    body.extend(chunk)
+                return _identity_response(body, run_id, selection)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native identity unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native identity unavailable") from None
+
+    def read_run_identity_sync(self, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        payload = _identity_selection_json(run_id, selection)
+        try:
+            with self._get_sync_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-identity"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _identity_response_status(response)
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=MAX_AGENT_CONTROL_BYTES + 1):
+                    if len(body) + len(chunk) > MAX_AGENT_CONTROL_BYTES:
+                        raise DifyAgentValidationError("native identity unavailable")
+                    body.extend(chunk)
+                return _identity_response(body, run_id, selection)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native identity unavailable") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native identity unavailable") from None
 
     async def read_native_checkpoint(
         self, run_id: str, request: ReadNativeCheckpointRequest
@@ -1109,7 +1160,9 @@ def _parse_native_checkpoint_response(
 def _create_run_json(request: CreateRunRequest) -> str:
     """Preserve the strict pre-native ordinary wire, including its old defaults."""
     if request.execution_mode == "ordinary":
-        return request.model_dump_json(exclude={"execution_mode", "native_test_ref", "native_test_protocol_version"})
+        return request.model_dump_json(
+            exclude={"execution_mode", "native_test_ref", "native_test_protocol_version", "native_parent_node"}
+        )
     return request.model_dump_json()
 
 
@@ -1264,3 +1317,38 @@ __all__ = [
     "DifyAgentTimeoutError",
     "DifyAgentValidationError",
 ]
+
+
+def _identity_selection_json(run_id: str, selection: ReadAgentRuntimeIdentity) -> bytes:
+    try:
+        TypeAdapter(ID).validate_python(run_id)
+        selected = ReadAgentRuntimeIdentity.model_validate(selection.model_dump(mode="json"))
+        payload = selected.model_dump_json().encode()
+        if len(payload) > MAX_AGENT_CONTROL_BYTES:
+            raise ValueError
+        return payload
+    except (ValueError, AttributeError):
+        raise DifyAgentValidationError("native identity unavailable") from None
+
+
+def _identity_response_status(response: httpx.Response) -> None:
+    if response.status_code != 200:
+        raise DifyAgentHTTPError(status_code=response.status_code, detail="native identity unavailable")
+    if response.headers.get("content-encoding", "identity") != "identity":
+        raise DifyAgentValidationError("native identity unavailable")
+
+
+def _identity_response(
+    body: bytes | bytearray, run_id: str, selection: ReadAgentRuntimeIdentity
+) -> AgentRuntimeIdentity:
+    try:
+        identity = AgentRuntimeIdentity.model_validate_json(body)
+        if (identity.run_id, identity.parent_node, identity.request_digest) != (
+            run_id,
+            selection.parent_node,
+            selection.request_digest,
+        ) or (identity.execution_mode == "builder_test") != (selection.parent_node is not None):
+            raise ValueError
+        return identity
+    except ValueError:
+        raise DifyAgentValidationError("native identity unavailable") from None

@@ -4,12 +4,27 @@ This protocol is independent of composition/snapshot v2. Executable JSON is
 preserved; callers must use protected references in place of secret values.
 """
 
-from typing import Annotated, Literal
-from datetime import datetime, timedelta
+import hashlib
 import json
 import re
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Annotated, Literal
+from uuid import UUID
 
-from pydantic import AfterValidator, BeforeValidator, BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
+if TYPE_CHECKING:
+    from dify_agent.protocol.schemas import CreateRunRequest
+
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    JsonValue,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 
 class NativeDTO(BaseModel):
@@ -170,3 +185,76 @@ class AgentCancellationReceipt(NativeDTO):
     operation_states: Annotated[
         dict[ID, Literal["completed", "failed", "unknown", "not_dispatched"]], Field(max_length=4096)
     ]
+
+
+MAX_AGENT_CONTROL_BYTES = 4096
+MAX_AGENT_CONFIG_BYTES = 1024 * 1024
+
+
+class AgentParentNodeRef(NativeDTO):
+    """Bound native UUID and protected typed input identity; no dispatch authority."""
+
+    ref: AgentNativeTestRef
+    execution_id: ID
+    input_result_ref: ID
+    input_digest: Digest
+
+    @field_validator("execution_id")
+    @classmethod
+    def canonical_execution_uuid(cls, value: str) -> str:
+        if str(UUID(value)) != value:
+            raise ValueError("expected canonical execution UUID")
+        return value
+
+
+class AgentPrepareRunPayload(NativeDTO):
+    parent_node: AgentParentNodeRef
+    agent_run_id: ID
+    request_digest: Digest
+
+
+class AgentPrepareRunResponse(NativeDTO):
+    config_ref: ID
+    config_digest: Digest
+    association_object_ref: ID
+
+
+class AgentReadPreparedConfigPayload(NativeDTO):
+    parent_node: AgentParentNodeRef
+    config_ref: ID
+
+
+class ReadAgentRuntimeIdentity(NativeDTO):
+    parent_node: AgentParentNodeRef | None
+    request_digest: Digest
+
+
+class AgentRuntimeIdentitySeed(NativeDTO):
+    execution_mode: Literal["ordinary", "builder_test"]
+    parent_node: AgentParentNodeRef | None
+    request_digest: Digest
+
+    @model_validator(mode="after")
+    def exact_mode_parent(self):
+        if (self.execution_mode == "builder_test") != (self.parent_node is not None):
+            raise ValueError("runtime identity mode and parent must agree")
+        return self
+
+
+class AgentRuntimeIdentity(AgentRuntimeIdentitySeed):
+    run_id: ID
+    agent_generation: Counter
+
+
+class AgentPreparedConfigResponse(NativeDTO):
+    parent_node: AgentParentNodeRef
+    config_ref: ID
+    config_digest: Digest
+    config: FiniteJSON
+
+
+def executable_request_digest(request: "CreateRunRequest") -> str:
+    """Only executable config and state; mode/ref/parent are separately exact owned."""
+    value = request.model_dump(mode="json", include={"composition", "session_snapshot"})
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()

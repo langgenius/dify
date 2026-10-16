@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, field
 from pydantic_ai.messages import AgentStreamEvent
 
 from dify_agent.protocol.snapshot import SessionSnapshot
-from dify_agent.protocol.native_testing import AgentNativeTestRef, AgentApprovalWait, Counter
+from dify_agent.protocol.native_testing import AgentParentNodeRef, AgentNativeTestRef, AgentApprovalWait, Counter
 
 
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
@@ -78,6 +78,7 @@ class CreateRunRequest(BaseModel):
 
     execution_mode: Literal["ordinary", "builder_test"] = "ordinary"
     native_test_ref: AgentNativeTestRef | None = None
+    native_parent_node: AgentParentNodeRef | None = Field(default=None, exclude_if=lambda value: value is None)
     native_test_protocol_version: Literal[1] | None = None
     composition: RunComposition
     idempotency_key: str | None = None
@@ -97,6 +98,10 @@ class CreateRunRequest(BaseModel):
         marked = self.execution_mode == "builder_test"
         if marked != (self.native_test_ref is not None) or marked != (self.native_test_protocol_version is not None):
             raise ValueError("native test mode, reference and protocol version must agree")
+        if marked != (self.native_parent_node is not None):
+            raise ValueError("native mode and parent must agree")
+        if self.native_parent_node is not None and self.native_parent_node.ref != self.native_test_ref:
+            raise ValueError("native parent reference mismatch")
         return self
 
 

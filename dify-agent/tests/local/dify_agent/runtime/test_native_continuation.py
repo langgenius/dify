@@ -5,6 +5,11 @@ from types import ModuleType
 
 import httpx
 import pytest
+from pydantic_ai import Agent, DeferredToolRequests, DeferredToolResults, ToolApproved
+from pydantic_ai.capabilities import AbstractCapability
+from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+from pydantic_ai.models.function import FunctionModel
+
 from dify_agent.protocol.native_testing import AgentEffectIntent, AgentNativeTestRef, AgentOperationKey
 from dify_agent.protocol.schemas import RUN_EVENT_ADAPTER, CreateRunRequest
 from dify_agent.runtime.context import Deps, Services
@@ -17,10 +22,6 @@ from dify_agent.runtime.native_continuation import (
     defer_native_call,
     validate_deferred_results,
 )
-from pydantic_ai import Agent, DeferredToolRequests, DeferredToolResults, ToolApproved
-from pydantic_ai.capabilities import AbstractCapability
-from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
-from pydantic_ai.models.function import FunctionModel
 
 REF = AgentNativeTestRef(
     policy_version="builder-native-test-v1",
@@ -150,6 +151,12 @@ def test_direct_runner_rejects_marked_test_before_module_loading():
                     composition={"layers": []},
                     execution_mode="builder_test",
                     native_test_ref=REF,
+                    native_parent_node={
+                        "ref": REF,
+                        "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                        "input_result_ref": "input",
+                        "input_digest": "b" * 64,
+                    },
                     native_test_protocol_version=1,
                 ),
             )
@@ -164,7 +171,7 @@ def test_scheduler_rejects_native_before_persistence():
     from dify_agent.runtime.run_scheduler import RunScheduler
 
     class NoCallsStore:
-        async def create_run(self):
+        async def create_run(self, *, identity=None):
             raise AssertionError("capability check must precede persistence")
 
     async def exercise():
@@ -174,6 +181,12 @@ def test_scheduler_rejects_native_before_persistence():
                 composition={"layers": []},
                 execution_mode="builder_test",
                 native_test_ref=REF,
+                native_parent_node={
+                    "ref": REF,
+                    "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                    "input_result_ref": "input",
+                    "input_digest": "b" * 64,
+                },
                 native_test_protocol_version=1,
             )
             with pytest.raises(NativeTestProtocolUnsupported):
@@ -184,6 +197,10 @@ def test_scheduler_rejects_native_before_persistence():
 
 @pytest.mark.parametrize("stage", ["tool", "model"])
 def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_resumable(monkeypatch, stage):
+    from pydantic import BaseModel
+    from pydantic_ai.models.function import DeltaToolCall
+    from pydantic_ai.toolsets import FunctionToolset
+
     from dify_agent.layers.dify_plugin import llm_layer
     from dify_agent.protocol.native_testing import NativeTestCapabilities
     from dify_agent.runtime.event_sink import InMemoryRunEventSink
@@ -195,9 +212,6 @@ def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_r
         NativeToolBoundary,
     )
     from dify_agent.runtime.runner import AgentRunRunner
-    from pydantic import BaseModel
-    from pydantic_ai.models.function import DeltaToolCall
-    from pydantic_ai.toolsets import FunctionToolset
 
     async def arguments(args):
         return args
@@ -273,6 +287,12 @@ def test_runner_commits_wait_instead_of_success_and_persistence_failure_is_not_r
         },
         execution_mode="builder_test",
         native_test_ref=REF,
+        native_parent_node={
+            "ref": REF,
+            "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+            "input_result_ref": "input",
+            "input_digest": "b" * 64,
+        },
         native_test_protocol_version=1,
     )
 
@@ -381,6 +401,12 @@ def test_scheduler_restores_only_matching_pinned_snapshot_before_scheduling():
                 composition={"layers": []},
                 execution_mode="builder_test",
                 native_test_ref=REF,
+                native_parent_node={
+                    "ref": REF,
+                    "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                    "input_result_ref": "input",
+                    "input_digest": "b" * 64,
+                },
                 native_test_protocol_version=1,
                 session_snapshot={"schema_version": 2, "layers": {"history": {"messages": []}}},
             )
@@ -452,6 +478,12 @@ def test_scheduler_resume_keeps_run_and_claim_after_lost_acknowledgement(finishi
                 composition={"layers": []},
                 execution_mode="builder_test",
                 native_test_ref=REF,
+                native_parent_node={
+                    "ref": REF,
+                    "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                    "input_result_ref": "input",
+                    "input_digest": "b" * 64,
+                },
                 native_test_protocol_version=1,
                 session_snapshot=checkpoint.session_snapshot,
             )
@@ -506,7 +538,7 @@ def test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback(
     failed_reasons = []
 
     class Store:
-        async def create_run(self):
+        async def create_run(self, *, identity=None):
             from dify_agent.server.schemas import RunRecord
 
             return RunRecord(run_id="run-1", status="running")
@@ -552,6 +584,12 @@ def test_api_owner_denial_stops_waiting_run_instead_of_returning_model_feedback(
                         composition={"layers": []},
                         execution_mode="builder_test",
                         native_test_ref=REF,
+                        native_parent_node={
+                            "ref": REF,
+                            "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                            "input_result_ref": "input",
+                            "input_digest": "b" * 64,
+                        },
                         native_test_protocol_version=1,
                     )
                 )
@@ -608,7 +646,7 @@ def test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdo
                 self.started = True
                 return True
 
-            async def create_run(self):
+            async def create_run(self, *, identity=None):
                 return RunRecord(run_id="ordinary-1", status="running")
 
             async def wait_for_cancellation(self, run_id):
@@ -631,6 +669,12 @@ def test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdo
                     composition={"layers": []},
                     execution_mode="builder_test",
                     native_test_ref=REF,
+                    native_parent_node={
+                        "ref": REF,
+                        "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
+                        "input_result_ref": "input",
+                        "input_digest": "b" * 64,
+                    },
                     native_test_protocol_version=1,
                     session_snapshot=checkpoint.session_snapshot,
                 )

@@ -15,7 +15,7 @@ from redis.asyncio import Redis
 
 from dify_agent.protocol.schemas import CancelRunRequest
 from dify_agent.runtime.native_continuation import AgentCheckpoint, NativeContinuationConflict
-from dify_agent.storage.redis_run_store import RedisRunStore, RedisAgentResultStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import RedisAgentResultStore, RedisRunStore, RunNotFoundError
 
 
 def checkpoint(run_id="run-1", generation=0):
@@ -476,3 +476,86 @@ def test_real_redis_atomic_read_race_never_mixes_wait_and_execution_generation(a
             await _delete_selected_fixture(redis, prefix)
 
     asyncio.run(exercise())
+
+
+@pytest.mark.skipif(not os.environ.get("DIFY_AGENT_NATIVE_TEST_REDIS_URL"), reason="normal CI Redis only")
+def test_real_redis_initial_identity_persists_before_prepare_and_private_read_survives_restart():
+    """NORMAL CI ONLY: actual Redis SET + bounded Lua, legacy unknown never ordinary."""
+    from dify_agent.protocol.native_testing import AgentRuntimeIdentitySeed, ReadAgentRuntimeIdentity
+    from dify_agent.storage.redis_keys import run_record_key
+
+    async def exercise():
+        redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
+        prefix = "s1-identity-" + str(uuid4())
+        store = RedisRunStore(redis, prefix=prefix)
+        ref = {
+            "policy_version": "builder-native-test-v1",
+            "request_id": "request-1",
+            "invocation_id": "invocation-1",
+            "context_digest": "a" * 64,
+        }
+        parent = {"ref": ref, "execution_id": str(uuid4()), "input_result_ref": "input", "input_digest": "b" * 64}
+        seed = AgentRuntimeIdentitySeed(execution_mode="builder_test", parent_node=parent, request_digest="c" * 64)
+        record = await store.create_run(identity=seed)
+        selection = ReadAgentRuntimeIdentity(parent_node=parent, request_digest="c" * 64)
+        restarted = RedisRunStore(redis, prefix=prefix)
+        actual = await restarted.read_run_identity(run_id=record.run_id, selection=selection)
+        assert actual.run_id == record.run_id and actual.agent_generation == 0
+        assert actual.execution_mode == "builder_test" and actual.parent_node == selection.parent_node
+        # A fresh interpreter reads the same persisted producer identity. No owner
+        # object, scheduler task or in-process fixture state crosses this boundary.
+        import json
+        import subprocess
+
+        child = await asyncio.to_thread(
+            subprocess.run,
+            [sys.executable, "-c", _READ_INITIAL_IDENTITY_CHILD, prefix, record.run_id, selection.model_dump_json()],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert json.loads(child.stdout) == actual.model_dump(mode="json")
+        raw = await redis.get(run_record_key(prefix, record.run_id))
+        assert b"composition" not in raw and b"credentials" not in raw
+        for changed in [
+            selection.model_copy(update={"request_digest": "d" * 64}),
+            selection.model_copy(update={"parent_node": None}),
+        ]:
+            with pytest.raises(NativeContinuationConflict):
+                await restarted.read_run_identity(run_id=record.run_id, selection=changed)
+        legacy = await store.create_run()
+        with pytest.raises(NativeContinuationConflict):
+            await restarted.read_run_identity(
+                run_id=legacy.run_id, selection=ReadAgentRuntimeIdentity(parent_node=None, request_digest="c" * 64)
+            )
+        ordinary = await store.create_run(
+            identity=AgentRuntimeIdentitySeed(execution_mode="ordinary", parent_node=None, request_digest="e" * 64)
+        )
+        assert (
+            await restarted.read_run_identity(
+                run_id=ordinary.run_id, selection=ReadAgentRuntimeIdentity(parent_node=None, request_digest="e" * 64)
+            )
+        ).execution_mode == "ordinary"
+        await redis.delete(
+            run_record_key(prefix, record.run_id),
+            run_record_key(prefix, legacy.run_id),
+            run_record_key(prefix, ordinary.run_id),
+        )
+        await redis.aclose()
+
+    asyncio.run(exercise())
+
+
+_READ_INITIAL_IDENTITY_CHILD = """
+import asyncio, os, sys
+from redis.asyncio import Redis
+from dify_agent.protocol.native_testing import ReadAgentRuntimeIdentity
+from dify_agent.storage.redis_run_store import RedisRunStore
+async def main():
+    redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
+    store = RedisRunStore(redis, prefix=sys.argv[1])
+    selected = await store.read_run_identity(run_id=sys.argv[2], selection=ReadAgentRuntimeIdentity.model_validate_json(sys.argv[3]))
+    print(selected.model_dump_json())
+    await redis.aclose()
+asyncio.run(main())
+"""

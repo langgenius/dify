@@ -18,32 +18,33 @@ import logging
 from collections.abc import Callable
 from typing import Protocol
 
-
 from dify_agent.protocol.native_testing import (
     NATIVE_TEST_CAPABILITIES,
+    AgentRuntimeIdentitySeed,
+    ContinuationClaim,
+    ContinueRunRequest,
     NativeTestCapabilities,
     NativeTestProtocolUnsupported,
-    ContinueRunRequest,
-    ContinuationClaim,
+    executable_request_digest,
     require_native_test_capabilities,
 )
-from dify_agent.runtime.native_continuation import (
-    AgentCheckpoint,
-    NativeContinuationOwner,
-    NativeContinuationConflict,
-    PreparedContinuation,
-    validate_deferred_results,
-    NativePolicyStopped,
-)
-from dify_agent.protocol.snapshot import SessionSnapshot
-from dify_agent.runtime.context import Services
 from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.cancellation import RunCancellationIntent
+from dify_agent.runtime.context import Services
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
     DEFAULT_TEXT_DELTA_MAX_CHARS,
 )
 from dify_agent.runtime.event_sink import RunEventSink, RunFinalizationResult, emit_run_failed
+from dify_agent.runtime.native_continuation import (
+    AgentCheckpoint,
+    NativeContinuationConflict,
+    NativeContinuationOwner,
+    NativePolicyStopped,
+    PreparedContinuation,
+    validate_deferred_results,
+)
 from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
 from dify_agent.server.schemas import RunRecord
@@ -70,7 +71,7 @@ class RunStore(RunEventSink, Protocol):
     ) -> ContinuationClaim: ...
     async def start_continuation(self, claim: ContinuationClaim) -> bool: ...
 
-    async def create_run(self) -> RunRecord:
+    async def create_run(self, *, identity: AgentRuntimeIdentitySeed | None = None) -> RunRecord:
         """Persist a new run record and return it with status ``running``."""
         ...
 
@@ -265,7 +266,13 @@ class RunScheduler:
         async with self._lifecycle_lock:
             if self.stopping:
                 raise SchedulerStoppingError("run scheduler is shutting down")
-            record = await self.store.create_run()
+            record = await self.store.create_run(
+                identity=AgentRuntimeIdentitySeed(
+                    execution_mode=request.execution_mode,
+                    parent_node=request.native_parent_node,
+                    request_digest=executable_request_digest(request),
+                )
+            )
             prepared = None
             if request.execution_mode == "builder_test" and self.native_owner is not None:
                 try:

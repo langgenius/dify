@@ -8,12 +8,19 @@ from pydantic import Field, JsonValue, TypeAdapter
 
 from dify_agent.protocol.native_testing import (
     ID,
+    MAX_AGENT_CONFIG_BYTES,
+    MAX_AGENT_CONTROL_BYTES,
     AgentDispatchPermit,
     AgentEffectDecision,
     AgentEffectIntent,
     AgentEffectReceipt,
     AgentNativeTestRef,
+    AgentPreparedConfigResponse,
+    AgentPrepareRunPayload,
+    AgentPrepareRunResponse,
+    AgentReadPreparedConfigPayload,
     NativeDTO,
+    executable_request_digest,
 )
 
 
@@ -72,6 +79,78 @@ class HttpAgentPolicyClient:
             return response.json()
         except (httpx.HTTPError, ValueError):
             raise AgentPolicyTransportUnavailable("native_policy_transport_unavailable") from None
+
+    async def _post_preparation(self, path: str, payload: NativeDTO, *, response_limit: int) -> bytes:
+        body = payload.model_dump_json().encode()
+        if len(body) > MAX_AGENT_CONTROL_BYTES:
+            raise AgentPolicyTransportUnavailable("native_preparation_unavailable")
+        parent = getattr(payload, "parent_node", None)
+        if parent is None or (self.ref is not None and self.ref != parent.ref):
+            raise AgentPolicyTransportUnavailable("native_policy_owner_mismatch")
+        self.ref = parent.ref
+        try:
+            async with self.http_client.stream(
+                "POST",
+                f"{self.base_url.rstrip('/')}/inner/api/agent/native-testing/{path}",
+                headers={
+                    "X-Inner-Api-Key": self.api_key,
+                    "Content-Type": "application/json",
+                    "Accept-Encoding": "identity",
+                },
+                content=body,
+                timeout=httpx.Timeout(10.0),
+                follow_redirects=False,
+            ) as response:
+                if response.status_code != 200 or response.headers.get("content-encoding", "identity") != "identity":
+                    raise AgentPolicyTransportUnavailable("native_preparation_unavailable")
+                result = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=min(response_limit + 1, 65536)):
+                    if len(result) + len(chunk) > response_limit:
+                        raise AgentPolicyTransportUnavailable("native_preparation_unavailable")
+                    result.extend(chunk)
+                return bytes(result)
+        except httpx.HTTPError:
+            raise AgentPolicyTransportUnavailable("native_preparation_unavailable") from None
+
+    async def prepare_run(self, *, payload: AgentPrepareRunPayload) -> AgentPrepareRunResponse:
+        try:
+            result = AgentPrepareRunResponse.model_validate_json(
+                await self._post_preparation("prepare-run", payload, response_limit=MAX_AGENT_CONTROL_BYTES)
+            )
+            if result.config_digest != payload.request_digest:
+                raise ValueError
+            return result
+        except ValueError:
+            raise AgentPolicyTransportUnavailable("native_preparation_unavailable") from None
+
+    async def read_prepared_config(self, *, payload: AgentReadPreparedConfigPayload) -> AgentPreparedConfigResponse:
+        from dify_agent.protocol.schemas import CreateRunRequest
+
+        try:
+            result = AgentPreparedConfigResponse.model_validate_json(
+                await self._post_preparation("prepared-config", payload, response_limit=MAX_AGENT_CONFIG_BYTES)
+            )
+            if (
+                result.parent_node != payload.parent_node
+                or result.config_ref != payload.config_ref
+                or not isinstance(result.config, dict)
+                or set(result.config) != {"composition", "session_snapshot"}
+            ):
+                raise ValueError
+            request = CreateRunRequest.model_validate(
+                {
+                    **result.config,
+                    "execution_mode": "builder_test",
+                    "native_test_ref": payload.parent_node.ref,
+                    "native_test_protocol_version": 1,
+                    "native_parent_node": payload.parent_node,
+                }
+            )
+            if executable_request_digest(request) != result.config_digest:
+                raise ValueError
+            return result
+        except ValueError:
+            raise AgentPolicyTransportUnavailable("native_preparation_unavailable") from None
 
     async def before_call(self, *, ref: AgentNativeTestRef, intent: AgentEffectIntent) -> AgentEffectDecision:
         if self.ref is not None and self.ref != ref:

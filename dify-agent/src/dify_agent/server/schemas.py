@@ -13,7 +13,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dify_agent.protocol import schemas as _protocol_schemas
-from dify_agent.protocol.native_testing import ContinuationClaim
+from dify_agent.protocol.native_testing import AgentRuntimeIdentity, ContinuationClaim
 
 
 def new_run_id() -> str:
@@ -24,7 +24,7 @@ def new_run_id() -> str:
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads.
 
-    Only status metadata is persisted. Create-run requests can contain sensitive
+    Only status and immutable private identity are persisted. Create-run requests can contain sensitive
     layer configuration and must remain in scheduler memory rather than Redis.
     """
 
@@ -34,6 +34,8 @@ class RunRecord(BaseModel):
     updated_at: datetime = Field(default_factory=_protocol_schemas.utc_now)
     error: str | None = None
     error_type: _protocol_schemas.RunFailureType | None = None
+    # Unknown on legacy records; absence is never evidence of ordinary origin.
+    runtime_identity: AgentRuntimeIdentity | None = None
     native_checkpoint_json: str | None = None
     native_wait_event_id: str | None = None
     native_generation: int = 0

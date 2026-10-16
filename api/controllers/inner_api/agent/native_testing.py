@@ -7,20 +7,40 @@ from dify_agent.adapters.native_testing.client import (
     AgentOutcomePayload,
     AgentPhysicalDispatchPayload,
 )
-from dify_agent.protocol.native_testing import AgentEffectDecision, AgentEffectReceipt
-from flask import request
-from flask_restx import Resource
-from pydantic import RootModel, ValidationError
-
-from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import agent_inner_api_only
+from dify_agent.protocol.native_testing import (
+    MAX_AGENT_CONFIG_BYTES,
+    MAX_AGENT_CONTROL_BYTES,
+    AgentEffectDecision,
+    AgentEffectReceipt,
+    AgentPreparedConfigResponse,
+    AgentPrepareRunPayload,
+    AgentPrepareRunResponse,
+    AgentReadPreparedConfigPayload,
+)
 from fields.base import ResponseModel
+from flask import make_response, request
+from flask_restx import Resource
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
+from pydantic import RootModel, ValidationError
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
-from services.dify_builder.native_testing.agent_bridge import agent_bridge_for_ref, api_intent, api_permit, api_ref
+from services.dify_builder.native_testing.agent_bridge import (
+    agent_bridge_for_ref,
+    api_intent,
+    api_permit,
+    api_ref,
+)
+from services.dify_builder.native_testing.agent_preparation import (
+    agent_preparation_for_ref,
+)
+
+from controllers.common.schema import (
+    register_response_schema_models,
+    register_schema_models,
+)
+from controllers.inner_api import inner_api_ns
+from controllers.inner_api.wraps import agent_inner_api_only
 
 
 class AgentBeforeCallResponse(RootModel[AgentEffectDecision]):
@@ -45,8 +65,8 @@ class AgentNativeControlRefused(BaseHTTPException):
     code = 409
 
 
-def _parse(model):
-    request.max_content_length = 1024 * 1024
+def _parse(model, *, limit=1024 * 1024):
+    request.max_content_length = limit
     try:
         return model.model_validate(inner_api_ns.payload or {})
     except ValidationError:
@@ -54,10 +74,18 @@ def _parse(model):
 
 
 register_schema_models(
-    inner_api_ns, AgentBeforeCallPayload, AgentOutcomePayload, AgentMaterializePayload, AgentPhysicalDispatchPayload
+    inner_api_ns,
+    AgentBeforeCallPayload,
+    AgentOutcomePayload,
+    AgentMaterializePayload,
+    AgentPhysicalDispatchPayload,
 )
 register_response_schema_models(
-    inner_api_ns, AgentBeforeCallResponse, AgentOutcomeResponse, AgentMaterializeResponse, AgentDispatchClaimResponse
+    inner_api_ns,
+    AgentBeforeCallResponse,
+    AgentOutcomeResponse,
+    AgentMaterializeResponse,
+    AgentDispatchClaimResponse,
 )
 
 
@@ -134,3 +162,76 @@ class AgentNativeDispatchClaimApi(Resource):
         except BuilderExecutionPolicyError:
             raise AgentNativeControlRefused() from None
         return dump_response(AgentDispatchClaimResponse, AgentDispatchClaimResponse(claimed=True))
+
+
+class AgentInitialPrepareResponse(AgentPrepareRunResponse, ResponseModel):
+    pass
+
+
+class AgentCurrentConfigResponse(AgentPreparedConfigResponse, ResponseModel):
+    pass
+
+
+register_schema_models(
+    inner_api_ns, AgentPrepareRunPayload, AgentReadPreparedConfigPayload
+)
+register_response_schema_models(
+    inner_api_ns, AgentInitialPrepareResponse, AgentCurrentConfigResponse
+)
+
+
+def _bounded_private_response(model, result, limit):
+    value = model.model_validate(result, from_attributes=True)
+    body = value.model_dump_json().encode("utf-8")
+    if len(body) > limit:
+        raise AgentNativeControlRefused()
+    response = make_response(body)
+    response.headers["Content-Type"] = "application/json"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@inner_api_ns.route("/agent/native-testing/prepare-run")
+class AgentNativePrepareRunApi(Resource):
+    @agent_inner_api_only
+    @inner_api_ns.expect(inner_api_ns.models[AgentPrepareRunPayload.__name__])
+    @inner_api_ns.response(
+        200,
+        "Immutable actual Agent Run association",
+        inner_api_ns.models[AgentInitialPrepareResponse.__name__],
+    )
+    @error_responses(AgentNativeControlRefused)
+    def post(self):
+        payload = _parse(AgentPrepareRunPayload, limit=MAX_AGENT_CONTROL_BYTES)
+        try:
+            result = agent_preparation_for_ref(
+                payload.parent_node.ref
+            ).bind_created_run(payload=payload)
+        except BuilderExecutionPolicyError:
+            raise AgentNativeControlRefused() from None
+        return _bounded_private_response(
+            AgentInitialPrepareResponse, result, MAX_AGENT_CONTROL_BYTES
+        )
+
+
+@inner_api_ns.route("/agent/native-testing/prepared-config")
+class AgentNativePreparedConfigApi(Resource):
+    @agent_inner_api_only
+    @inner_api_ns.expect(inner_api_ns.models[AgentReadPreparedConfigPayload.__name__])
+    @inner_api_ns.response(
+        200,
+        "Current protected executable config",
+        inner_api_ns.models[AgentCurrentConfigResponse.__name__],
+    )
+    @error_responses(AgentNativeControlRefused)
+    def post(self):
+        payload = _parse(AgentReadPreparedConfigPayload, limit=MAX_AGENT_CONTROL_BYTES)
+        try:
+            result = agent_preparation_for_ref(
+                payload.parent_node.ref
+            ).read_prepared_config(payload=payload)
+        except BuilderExecutionPolicyError:
+            raise AgentNativeControlRefused() from None
+        return _bounded_private_response(
+            AgentCurrentConfigResponse, result, MAX_AGENT_CONFIG_BYTES
+        )
