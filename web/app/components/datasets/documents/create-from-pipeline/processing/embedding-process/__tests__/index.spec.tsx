@@ -1,7 +1,7 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
+import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -92,7 +92,7 @@ const createMockDocument = (
   data_source_info: {},
   enabled: true,
   error: '',
-  indexing_status: 'waiting' as DocumentIndexingStatus,
+  indexing_status: 'waiting' as IndexingStatusResponse['indexing_status'],
   position: 0,
   ...overrides,
 })
@@ -104,7 +104,7 @@ const createMockIndexingStatus = (
   overrides: Partial<IndexingStatusResponse> = {},
 ): IndexingStatusResponse => ({
   id: `doc-${Math.random().toString(36).slice(2, 9)}`,
-  indexing_status: 'waiting' as DocumentIndexingStatus,
+  indexing_status: 'waiting' as IndexingStatusResponse['indexing_status'],
   processing_started_at: Date.now(),
   parsing_completed_at: 0,
   cleaning_completed_at: 0,
@@ -897,7 +897,7 @@ describe('EmbeddingProcess', () => {
       mockIndexingStatusData = [
         createMockIndexingStatus({
           id: 'doc-1',
-          indexing_status: undefined as unknown as DocumentIndexingStatus,
+          indexing_status: undefined as unknown as IndexingStatusResponse['indexing_status'],
         }),
       ]
       const props = createDefaultProps({ documents: [doc1] })

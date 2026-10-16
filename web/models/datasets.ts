@@ -172,16 +172,6 @@ type Segmentation = {
   chunk_overlap?: number
 }
 
-export type DocumentIndexingStatus =
-  | 'waiting'
-  | 'parsing'
-  | 'cleaning'
-  | 'splitting'
-  | 'indexing'
-  | 'paused'
-  | 'error'
-  | 'completed'
-
 export const DisplayStatusList = [
   'queuing',
   'indexing',
@@ -253,13 +243,6 @@ export type OnlineDocumentInfo = {
 export type UploadFileIdInfo = {
   upload_file_id: string
 }
-
-export type DataSourceInfo =
-  | LegacyDataSourceInfo
-  | LocalFileInfo
-  | OnlineDocumentInfo
-  | WebsiteCrawlInfo
-  | UploadFileIdInfo
 
 export type InitialDocumentDetail = ContractDocumentResponse
 
