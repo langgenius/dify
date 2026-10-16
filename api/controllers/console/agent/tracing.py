@@ -38,6 +38,7 @@ from models.account import TenantAccountRole
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_tracing_config_service import (
+    AppTraceSettings,
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
     AppTracingConfigConflictError,
@@ -48,7 +49,6 @@ from services.app_tracing_config_service import (
     AppTracingConfigProviderUnavailableError,
     AppTracingConfigVerificationFailedError,
 )
-from services.entities.app_entities import AppTraceSettings
 
 _EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
 

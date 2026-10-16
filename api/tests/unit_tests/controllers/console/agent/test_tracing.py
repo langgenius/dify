@@ -19,8 +19,7 @@ from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus, TenantAccountRole
 from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.app_tracing_config_service import AppTracingConfigRecord
-from services.entities.app_entities import AppTraceSettings
+from services.app_tracing_config_service import AppTraceSettings, AppTracingConfigRecord
 from tests.unit_tests.config_override import apply_config_overrides
 
 AGENT_ID = UUID("1fbc2f02-f7e0-4910-9032-cbe5bf6c65d5")
