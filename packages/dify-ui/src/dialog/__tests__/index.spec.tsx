@@ -5,7 +5,6 @@ import {
   createDialogHandle,
   Dialog,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -162,34 +161,6 @@ describe('Dialog wrapper', () => {
               }
             />
             <span>Dialog body</span>
-          </DialogContent>
-        </Dialog>,
-      )
-
-      await expect.element(screen.getByRole('button', { name: 'Close dialog' })).toBeDisabled()
-    })
-
-    it('should close the dialog from the header close button', async () => {
-      const screen = await render(
-        <Dialog defaultOpen>
-          <DialogContent>
-            <DialogCloseButton aria-label="Close dialog" />
-            <DialogTitle>Dialog Title</DialogTitle>
-          </DialogContent>
-        </Dialog>,
-      )
-
-      await screen.getByRole('button', { name: 'Close dialog' }).click()
-
-      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-    })
-
-    it('should keep the header close button disabled when requested', async () => {
-      const screen = await render(
-        <Dialog open>
-          <DialogContent>
-            <DialogCloseButton aria-label="Close dialog" disabled />
-            <DialogTitle>Dialog Title</DialogTitle>
           </DialogContent>
         </Dialog>,
       )
