@@ -11,17 +11,19 @@ Feature: App access point automated WCAG checks
 
     @wcag-a @wcag-page-app-access-point
     Examples: Unpublished apps at Level A
-      | mode       | level |
-      | workflow   | A     |
-      | chat       | A     |
-      | completion | A     |
+      | mode          | level |
+      | workflow      | A     |
+      | advanced-chat | A     |
+      | chat          | A     |
+      | completion    | A     |
 
     @wcag-aa @wcag-page-app-access-point
     Examples: Unpublished apps at Level AA
-      | mode       | level |
-      | workflow   | AA    |
-      | chat       | AA    |
-      | completion | AA    |
+      | mode          | level |
+      | workflow      | AA    |
+      | advanced-chat | AA    |
+      | chat          | AA    |
+      | completion    | AA    |
 
   Scenario Outline: Published workflow access points have no automatically detectable WCAG Level <level> violations
     Given I am signed in as the default E2E admin
