@@ -1,18 +1,20 @@
 import type {
-  Collection,
   Credential,
   CustomCollectionBackend,
-  CustomParamSchema,
-  Tool,
   ToolCredential,
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
-  WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
+import {
+  selectApiSchemaParameters,
+  selectBuiltinProviderTools,
+  selectCustomCollection,
+  selectToolCollections,
+  selectWorkflowToolDetail,
+} from '@/app/components/tools/utils/query-select'
 // oxlint-disable-next-line no-restricted-imports -- legacy built-in credential flow, see below
 import { get, post } from './base'
 import { consoleClient } from './console'
-import { narrowResponse } from './console/narrow-response'
 
 const toolProvider = consoleClient.workspaces.current.toolProvider
 
@@ -32,23 +34,25 @@ const toWorkflowToolParameters = (parameters: WorkflowToolProviderParameter[]) =
 const toSchemaType = (schemaType: string) => schemaType as ApiToolSchemaType
 
 export const fetchCollectionList = () => {
-  return narrowResponse<Collection[]>(consoleClient.workspaces.current.toolProviders.get({}))
+  return consoleClient.workspaces.current.toolProviders.get({}).then(selectToolCollections)
 }
 
 export const fetchBuiltInToolList = (collectionName: string) => {
-  return narrowResponse<Tool[]>(
-    toolProvider.builtin.byProvider.tools.get({ params: { provider: collectionName } }),
-  )
+  return toolProvider.builtin.byProvider.tools
+    .get({ params: { provider: collectionName } })
+    .then(selectBuiltinProviderTools)
 }
 
 export const fetchCustomToolList = (collectionName: string) => {
-  return narrowResponse<Tool[]>(toolProvider.api.tools.get({ query: { provider: collectionName } }))
+  return toolProvider.api.tools
+    .get({ query: { provider: collectionName } })
+    .then(selectBuiltinProviderTools)
 }
 
 export const fetchWorkflowToolList = (appID: string) => {
-  return narrowResponse<Tool[]>(
-    toolProvider.workflow.tools.get({ query: { workflow_tool_id: appID } }),
-  )
+  return toolProvider.workflow.tools
+    .get({ query: { workflow_tool_id: appID } })
+    .then(selectBuiltinProviderTools)
 }
 
 // Not migrated to the console contract: this legacy built-in credential flow predates
@@ -86,15 +90,13 @@ export const removeBuiltInToolCredential = (collectionName: string) => {
 }
 
 export const parseParamsSchema = (schema: string) => {
-  return narrowResponse<{ parameters_schema: CustomParamSchema[]; schema_type: string }>(
-    toolProvider.api.schema.post({ body: { schema } }),
-  )
+  return toolProvider.api.schema.post({ body: { schema } }).then(selectApiSchemaParameters)
 }
 
 export const fetchCustomCollection = (collectionName: string) => {
-  return narrowResponse<CustomCollectionBackend>(
-    toolProvider.api.get.get({ query: { provider: collectionName } }),
-  )
+  return toolProvider.api.get
+    .get({ query: { provider: collectionName } })
+    .then(selectCustomCollection)
 }
 
 export const createCustomCollection = (collection: CustomCollectionBackend) => {
@@ -162,9 +164,9 @@ export const saveWorkflowToolProvider = (
 }
 
 export const fetchWorkflowToolDetail = (toolID: string) => {
-  return narrowResponse<WorkflowToolProviderResponse>(
-    toolProvider.workflow.get.get({ query: { workflow_tool_id: toolID } }),
-  )
+  return toolProvider.workflow.get
+    .get({ query: { workflow_tool_id: toolID } })
+    .then(selectWorkflowToolDetail)
 }
 
 export const deleteWorkflowTool = (toolID: string) => {

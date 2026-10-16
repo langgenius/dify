@@ -1,6 +1,9 @@
 import type { AppMcpServerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { RagPipelineRecommendedPluginsResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
+  ApiProviderDetailResponse,
+  ApiSchemaParseResponse,
+  ApiToolBundle,
   ToolParameter as ContractToolParameter,
   I18nObject,
   ToolApiEntity,
@@ -12,6 +15,8 @@ import type {
 import type { MarketplacePlugin } from '@dify/contracts/marketplace'
 import type {
   Collection,
+  Credential,
+  CustomParamSchema,
   Emoji,
   MCPServerDetail,
   Tool,
@@ -20,12 +25,21 @@ import type {
   WorkflowToolProviderResponse,
 } from '../types'
 import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
+import { AuthHeaderPrefix, AuthType } from '../types'
 
 type LocalizedText = Collection['label']
 type ProviderIcon = ToolProviderApiEntityResponse['icon']
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isOneOf = <T extends string>(values: Record<string, T>, value: unknown): value is T =>
+  typeof value === 'string' && Object.values<string>(values).includes(value)
+
+const getString = (record: Record<string, unknown>, key: string) => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
 
 // Untranslated locales fall back to en_US, matching renderI18nObject.
 const toLocalizedText = ({ en_US, ja_JP, pt_BR, zh_Hans }: I18nObject): LocalizedText => ({
@@ -179,4 +193,41 @@ export const selectRAGRecommendedPlugins = (
 ): RAGRecommendedPlugins => ({
   installed_recommended_plugins: data.installed_recommended_plugins.map(selectToolProvider),
   uninstalled_recommended_plugins: data.uninstalled_recommended_plugins.filter(isMarketplacePlugin),
+})
+
+// OpenAPI operations without an id or summary leave those labels empty in the editor.
+const toCustomParamSchema = (bundle: ApiToolBundle): CustomParamSchema => ({
+  operation_id: bundle.operation_id ?? '',
+  summary: bundle.summary ?? '',
+  server_url: bundle.server_url,
+  method: bundle.method,
+  parameters: (bundle.parameters ?? []).map(toToolParameter),
+})
+
+export const selectApiSchemaParameters = (data: ApiSchemaParseResponse) => ({
+  schema_type: data.schema_type,
+  parameters_schema: data.parameters_schema.map(toCustomParamSchema),
+})
+
+// Stored API tool credentials hold the fields of their auth type. A provider saved without an
+// auth type sends no credentials.
+const toCredential = (credentials: Record<string, unknown>): Credential => ({
+  auth_type: isOneOf(AuthType, credentials.auth_type) ? credentials.auth_type : AuthType.none,
+  api_key_header: getString(credentials, 'api_key_header'),
+  api_key_value: getString(credentials, 'api_key_value'),
+  api_key_header_prefix: isOneOf(AuthHeaderPrefix, credentials.api_key_header_prefix)
+    ? credentials.api_key_header_prefix
+    : undefined,
+  api_key_query_param: getString(credentials, 'api_key_query_param'),
+})
+
+/** The custom tool editor state for a stored API provider. */
+export const selectCustomCollection = (detail: ApiProviderDetailResponse) => ({
+  credentials: toCredential(detail.credentials ?? {}),
+  icon: detail.icon,
+  schema_type: detail.schema_type,
+  schema: detail.schema,
+  privacy_policy: detail.privacy_policy ?? '',
+  custom_disclaimer: detail.custom_disclaimer ?? '',
+  tools: detail.tools.map(toCustomParamSchema),
 })

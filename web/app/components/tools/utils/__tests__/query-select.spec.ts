@@ -1,6 +1,11 @@
-import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  ApiProviderDetailResponse,
+  ToolProviderApiEntityResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { describe, expect, it } from 'vite-plus/test'
 import {
+  selectApiSchemaParameters,
+  selectCustomCollection,
   selectMCPServerDetail,
   selectRAGRecommendedPlugins,
   selectToolsWithProvider,
@@ -153,5 +158,58 @@ describe('tool query selectors', () => {
 
     expect(recommendations.installed_recommended_plugins[0]!.tools).toEqual([])
     expect(recommendations.uninstalled_recommended_plugins).toEqual([plugin])
+  })
+
+  it('should label parsed operations without an id or summary as empty', () => {
+    expect(
+      selectApiSchemaParameters({
+        schema_type: 'openapi',
+        credentials_schema: [],
+        warning: {},
+        parameters_schema: [
+          { author: 'dify', method: 'get', openapi: {}, server_url: 'https://api.example.com' },
+        ],
+      }).parameters_schema,
+    ).toEqual([
+      {
+        operation_id: '',
+        summary: '',
+        server_url: 'https://api.example.com',
+        method: 'get',
+        parameters: [],
+      },
+    ])
+  })
+
+  it('should read stored API provider credentials by their auth type', () => {
+    const detail: ApiProviderDetailResponse = {
+      schema_type: 'openapi',
+      schema: '{}',
+      tools: [],
+      icon: { background: '#FFF', content: '🔧' },
+    }
+
+    expect(
+      selectCustomCollection({
+        ...detail,
+        credentials: {
+          auth_type: 'api_key_header',
+          api_key_header: 'Authorization',
+          api_key_header_prefix: 'bearer',
+          api_key_value: '[__HIDDEN__]',
+        },
+      }).credentials,
+    ).toEqual({
+      auth_type: 'api_key_header',
+      api_key_header: 'Authorization',
+      api_key_header_prefix: 'bearer',
+      api_key_value: '[__HIDDEN__]',
+      api_key_query_param: undefined,
+    })
+    expect(selectCustomCollection(detail)).toMatchObject({
+      credentials: { auth_type: 'none' },
+      privacy_policy: '',
+      custom_disclaimer: '',
+    })
   })
 })

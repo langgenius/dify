@@ -180,8 +180,7 @@ export type CustomCollectionBackend = {
   schema: string
   privacy_policy: string
   custom_disclaimer: string
-  tools?: ParamItem[]
-  id: string
+  tools?: CustomParamSchema[]
   labels: string[]
 }
 
