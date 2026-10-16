@@ -5,6 +5,7 @@ import {
   AlertDialogCancelButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
@@ -40,18 +41,18 @@ export function CreatedApiKeyDialog({
         initialFocus={copyButtonRef}
         finalFocus={finalFocus}
         backdropProps={{ forceRender: true }}
-        className="overflow-hidden p-0"
+        className="overflow-hidden"
       >
-        <div className="flex flex-col gap-1 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $['apiKeyModal.createdTitle'], { ns: 'appApi' })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+          <AlertDialogDescription>
             {revealOnce
               ? t(($) => $['apiKeyModal.revealOnceTips'], { ns: 'appApi' })
               : t(($) => $['apiKeyModal.generateTips'], { ns: 'appApi' })}
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <div className="px-6 pb-4">
           <InputGroup>
             <InputGroupInput

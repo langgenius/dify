@@ -7,6 +7,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -141,22 +142,16 @@ const EditAnnotationModal: FC<Props> = ({
                         </span>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                          <AlertDialogTitle
-                            title={t(($) => $['feature.annotation.removeConfirm'], {
-                              ns: 'appDebug',
-                            })}
-                            className="w-full truncate title-2xl-semi-bold text-text-primary"
-                          >
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
-                        </div>
+                        </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancelButton>
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
-                            tone="destructive"
                             onClick={() => {
                               onRemove()
                               removeActionsRef.current?.close()

@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { skipToken, useQuery } from '@tanstack/react-query'
@@ -130,16 +131,10 @@ export const CheckModal = () => {
       onOpenChange={(open) => !open && handleCancelShowPayStatusModal()}
     >
       <AlertDialogContent>
-        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-          <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-            {confirmInfo.title}
-          </AlertDialogTitle>
-          {description && (
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {description}
-            </AlertDialogDescription>
-          )}
-        </div>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{confirmInfo.title}</AlertDialogTitle>
+          {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
+        </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogConfirmButton
             tone={confirmInfo.type !== 'info' ? 'destructive' : 'default'}

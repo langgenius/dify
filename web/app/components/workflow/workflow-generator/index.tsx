@@ -17,6 +17,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -138,14 +139,10 @@ const RecoveryDialog = ({
 }: RecoveryDialogProps) => (
   <AlertDialog open={open} onOpenChange={(o) => !o && onOpenChange(false)}>
     <AlertDialogContent>
-      <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-        <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-          {title}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {description}
-        </AlertDialogDescription>
-      </div>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+        <AlertDialogDescription>{description}</AlertDialogDescription>
+      </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancelButton>{cancelLabel}</AlertDialogCancelButton>
         <AlertDialogConfirmButton onClick={onConfirm}>{confirmLabel}</AlertDialogConfirmButton>

@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -71,15 +72,12 @@ function SnippetDSLConfirmDialog({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="w-120 overflow-hidden! border-none text-left align-middle shadow-xl">
-        <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $.dslVersionMismatchTitle, { ns: 'snippet' })}
           </AlertDialogTitle>
-          <AlertDialogDescription
-            render={<div />}
-            className="flex grow flex-col system-md-regular text-text-secondary"
-          >
+          <AlertDialogDescription render={<div />}>
             <div>{t(($) => $.dslVersionMismatchDescription, { ns: 'snippet' })}</div>
             <div>{t(($) => $.dslVersionMismatchQuestion, { ns: 'snippet' })}</div>
             <br />
@@ -92,9 +90,9 @@ function SnippetDSLConfirmDialog({
               <span className="system-md-medium">{versions.systemVersion}</span>
             </div>
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancelButton variant="secondary">
+          <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>

@@ -7,7 +7,9 @@ import {
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -177,17 +179,16 @@ const Action: FC<Props> = ({
       )}
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $[`${i18nPrefix}.delete`], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $[`${i18nPrefix}.deleteContentLeft`], { ns: 'plugin' })}
               <span className="system-md-semibold">{pluginName}</span>
               {t(($) => $[`${i18nPrefix}.deleteContentRight`], { ns: 'plugin' })}
-              <br />
-            </div>
-          </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

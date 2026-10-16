@@ -15,6 +15,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -539,14 +540,14 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                   onOpenChange={(open) => !open && setShowConfirmDelete(false)}
                 >
                   <AlertDialogContent>
-                    <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                      <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
                         {t(($) => $['createTool.deleteToolConfirmTitle'], { ns: 'tools' })}
                       </AlertDialogTitle>
-                      <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                      <AlertDialogDescription>
                         {t(($) => $['createTool.deleteToolConfirmContent'], { ns: 'tools' })}
                       </AlertDialogDescription>
-                    </div>
+                    </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
