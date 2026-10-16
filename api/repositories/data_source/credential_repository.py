@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from typing import cast
 
 from pydantic import TypeAdapter
-from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import cast as sql_cast
 from sqlalchemy import select, update
 from sqlalchemy.engine import CursorResult
