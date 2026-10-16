@@ -1,8 +1,13 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHookWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
+import { createHttpError } from '@/service/http-error'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
 
@@ -18,19 +23,15 @@ const mockFetchNodesDefaultConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 
-const renderHook = <Result>(callback: () => Result) =>
-  renderHookWithConsoleState(callback, {
-    wrapper: createAccountProfileQueryWrapper({ id: 'user-1' }),
-  })
+let appDetail: AppDetailWithSite
 
-let appStoreState: {
-  appDetail: {
-    id: string
-    name: string
-    mode: string
-    permission_keys?: string[]
-    maintainer?: string
-  }
+const renderHook = <Result>(callback: () => Result) => {
+  const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
+  seedAppDetail(queryClient, appDetail)
+  return renderHookWithConsoleState(callback, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    wrapper: createQueryClientWrapper(queryClient),
+  })
 }
 
 let workflowConfigState: {
@@ -48,8 +49,9 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -63,7 +65,7 @@ vi.mock('@/context/permission-state', async () => {
 vi.mock('../use-workflow-template', () => ({
   useWorkflowTemplate: () => ({
     nodes:
-      appStoreState.appDetail.mode === 'workflow'
+      appDetail.mode === 'workflow'
         ? [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }]
         : [{ id: 'start', data: { type: BlockEnum.Start } }],
     edges: [],
@@ -92,10 +94,12 @@ vi.mock('@/service/workflow', () => ({
   fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
 }))
 
-const notExistError = () => ({
-  json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
-  bodyUsed: false,
-})
+const notExistError = () =>
+  createHttpError(new Response(null, { status: 404 }), {
+    code: 'draft_workflow_not_exist',
+    message: 'Draft workflow not exist.',
+    status: 404,
+  })
 
 const draftResponse = {
   id: 'draft-id',
@@ -120,14 +124,12 @@ const draftResponse = {
 describe('useWorkflowInit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        name: 'Test',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.Edit],
-      },
-    }
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test',
+      mode: 'workflow',
+      permission_keys: [AppACLPermission.Edit],
+    })
     workflowConfigState = { data: null, isLoading: false }
     mockWorkflowStoreGetState.mockReturnValue({
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
@@ -192,6 +194,7 @@ describe('useWorkflowInit', () => {
             nodes: [],
             edges: [],
           },
+          force: true,
         }),
       }),
     )
@@ -200,14 +203,12 @@ describe('useWorkflowInit', () => {
   })
 
   it('should keep creating the first backend draft for advanced chat apps', async () => {
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        name: 'Test',
-        mode: 'advanced-chat',
-        permission_keys: [AppACLPermission.Edit],
-      },
-    }
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test',
+      mode: 'advanced-chat',
+      permission_keys: [AppACLPermission.Edit],
+    })
     mockFetchWorkflowDraft
       .mockReset()
       .mockRejectedValueOnce(notExistError())
@@ -224,6 +225,7 @@ describe('useWorkflowInit', () => {
               nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
               edges: [],
             },
+            force: true,
           }),
         }),
       ),
@@ -239,14 +241,12 @@ describe('useWorkflowInit', () => {
   })
 
   it('should keep readonly users local when the first workflow draft does not exist', async () => {
-    appStoreState = {
-      appDetail: {
-        id: 'app-1',
-        name: 'Test',
-        mode: 'workflow',
-        permission_keys: [AppACLPermission.ViewLayout],
-      },
-    }
+    appDetail = createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test',
+      mode: 'workflow',
+      permission_keys: [AppACLPermission.ViewLayout],
+    })
     mockFetchWorkflowDraft.mockReset().mockRejectedValueOnce(notExistError())
 
     const { result } = renderHook(() => useWorkflowInit())
@@ -347,7 +347,6 @@ describe('useWorkflowInit', () => {
       expect(result.current.data?.hash).toBe('server-hash')
     })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appId: 'app-1', appName: 'Test' })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
       expect.objectContaining({
         envSecrets: { 'env-secret': 'top-secret' },

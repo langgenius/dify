@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -19,14 +20,17 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
 type SwitchAppModalProps = {
@@ -60,7 +64,6 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
     appQuota.limit > 0 &&
     appQuota.size >= appQuota.limit
 
-  const [showIconPicker, setShowIconPicker] = useState(false)
   const appIconType = zIconType.safeParse(sourceApp.icon_type).data
   const [appIcon, setAppIcon] = useState(
     appIconType === 'image'
@@ -95,7 +98,6 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
         },
       })
       onClose()
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       if (removeOriginal)
         await deleteOriginalApp({
           params: { app_id: sourceApp.id },
@@ -103,10 +105,7 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
       getRedirection(
         {
           id: newAppID,
-          mode:
-            sourceApp.mode === AppModeEnum.COMPLETION
-              ? AppModeEnum.WORKFLOW
-              : AppModeEnum.ADVANCED_CHAT,
+          mode: sourceApp.mode === 'completion' ? 'workflow' : 'advanced-chat',
           permission_keys,
         },
         removeOriginal ? replace : push,
@@ -165,21 +164,15 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
               {t(($) => $.switchLabel, { ns: 'app' })}
             </label>
             <div className="flex items-center justify-between space-x-2">
-              <button
-                type="button"
-                aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
-                className="shrink-0 cursor-pointer rounded-[10px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={() => setShowIconPicker(true)}
-              >
-                <AppIcon
-                  decorative
-                  size="large"
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                />
-              </button>
+              <IconPicker value={appIcon} onValueChange={setAppIcon}>
+                <IconPickerTrigger
+                  aria-label={t(($) => $['iconPicker.title'], { ns: 'app' })}
+                  className="shrink-0 cursor-pointer rounded-[10px]"
+                >
+                  <IconPickerIcon size="large" />
+                </IconPickerTrigger>
+                <IconPickerContent />
+              </IconPicker>
               <Input
                 id={nameInputId}
                 value={name}
@@ -188,14 +181,6 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
                 className="h-10 grow"
               />
             </div>
-            <IconPickerDialog
-              open={showIconPicker}
-              defaultValue={appIcon}
-              onOpenChange={setShowIconPicker}
-              onConfirm={(payload) => {
-                setAppIcon(payload)
-              }}
-            />
           </div>
           {isAppsFull && <AppsFull loc="app-switch" />}
           <div className="flex items-center justify-between pt-6">
@@ -233,14 +218,12 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
       </Dialog>
       <AlertDialog open={showConfirmDelete} onOpenChange={handleConfirmDeleteOpenChange}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

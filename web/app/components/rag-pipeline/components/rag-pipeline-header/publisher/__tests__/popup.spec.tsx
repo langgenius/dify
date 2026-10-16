@@ -1,8 +1,8 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
@@ -14,7 +14,10 @@ const renderWithoutPricing = (ui: React.ReactElement) => {
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
   })
-  return renderWithConsoleState(ui, { wrapper })
+  return renderWithConsoleState(ui, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    wrapper,
+  })
 }
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
@@ -48,10 +51,6 @@ vi.mock('@/app/notifications', () => ({
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockSetPublishedAt = vi.fn()
 const mockMutateDatasetRes = vi.fn()
-
-const mockInvalidPublishedPipelineInfo = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
 
 let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
@@ -155,21 +154,14 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidPublishedPipelineInfo,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  publishedPipelineInfoQueryKeyPrefix: ['published-pipeline'],
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline: () => ({
-    mutateAsync: mockPublishAsCustomizedPipeline,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.customized.publish.post': () => ({
+      mutateAsync: mockPublishAsCustomizedPipeline,
+    }),
+  })
+})
 
 vi.mock('@/service/use-workflow', () => ({
   usePublishWorkflow: () => ({

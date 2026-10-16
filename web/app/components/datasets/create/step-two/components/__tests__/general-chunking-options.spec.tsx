@@ -1,4 +1,4 @@
-import type { PreProcessingRule } from '@/models/datasets'
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'

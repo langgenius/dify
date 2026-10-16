@@ -3,7 +3,7 @@
 Unlike the legacy ``AgentChatAppRunner`` (which runs an in-process ReAct loop),
 this runner delegates to the Agent backend, consumes the streamed event flow,
 republishes the assistant answer through the existing EasyUI chat task
-pipeline, and saves the latest Agenton snapshot on the persistent Binding.
+pipeline, and saves the latest module state snapshot on the persistent Binding.
 """
 
 from __future__ import annotations
@@ -15,13 +15,10 @@ from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
-from dify_agent.layers.ask_human import AskHumanToolArgs
-from dify_agent.protocol import DeferredToolResultsPayload
 from pydantic import JsonValue
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
@@ -51,9 +48,6 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
-from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
-from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
-from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from extensions.ext_database import db
 from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -664,8 +658,6 @@ class AgentAppRunner:
             agent_config_version_kind=AgentConfigVersionKind(agent_config_version_kind),
             build_draft_id=build_draft_id,
         )
-        # ENG-638: if a prior turn paused on ask_human and the form is now answered,
-        # resume by threading the human's reply into this run as deferred_tool_results.
         stored = self._session_store.load_or_create(scope)
         runtime = self._build_runtime(
             dify_context=dify_context,
@@ -681,7 +673,6 @@ class AgentAppRunner:
             image_detail_config=image_detail_config,
             idempotency_key=message_id,
             stored=stored,
-            message_id=message_id,
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
@@ -695,23 +686,6 @@ class AgentAppRunner:
             session_scope=scope,
             binding_id=runtime.binding_id,
         )
-
-        if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
-            # ENG-635: the agent asked a human. End this turn with the question and
-            # a conversation-owned HITL form; a form submission resumes the run.
-            self._pause_for_ask_human(
-                terminal=terminal,
-                scope=scope,
-                dify_context=dify_context,
-                agent_soul=agent_soul,
-                conversation_id=conversation_id,
-                message_id=message_id,
-                model_name=model_name,
-                runtime=runtime,
-                queue_manager=queue_manager,
-                query=query,
-            )
-            return
 
         terminal_usage = None
         if isinstance(
@@ -810,14 +784,8 @@ class AgentAppRunner:
         image_detail_config: ImagePromptMessageContent.DETAIL | None,
         idempotency_key: str,
         stored: StoredAgentAppSession,
-        message_id: str | None,
     ) -> AgentAppRuntimeRequest:
         session_snapshot = stored.session_snapshot
-        deferred_tool_results = (
-            self._resolve_pending_ask_human(stored=stored, dify_context=dify_context, message_id=message_id)
-            if message_id is not None
-            else None
-        )
         return self._request_builder.build(
             AgentAppRuntimeBuildContext(
                 dify_context=dify_context,
@@ -833,98 +801,8 @@ class AgentAppRunner:
                 binding_id=binding_id,
                 backend_binding_ref=backend_binding_ref,
                 session_snapshot=session_snapshot,
-                deferred_tool_results=deferred_tool_results,
             )
         )
-
-    def _pause_for_ask_human(
-        self,
-        *,
-        terminal: AgentBackendDeferredToolCallInternalEvent,
-        scope: AgentAppSessionScope,
-        dify_context: DifyRunContext,
-        agent_soul: AgentSoulConfig,
-        conversation_id: str,
-        message_id: str,
-        model_name: str,
-        runtime: AgentAppRuntimeRequest,
-        queue_manager: AppQueueManager,
-        query: str,
-    ) -> None:
-        """End the chat turn on a dify.ask_human call: create a conversation-owned
-        HITL form, persist the pause correlation, and surface the question."""
-        try:
-            created = create_ask_human_form(
-                deferred_tool_call=terminal.deferred_tool_call,
-                # Chat forms have no workflow node; key by the turn's message id.
-                node_id=message_id,
-                default_node_title="Agent",
-                contacts=agent_soul.human.contacts,
-                repository=self._build_form_repository(dify_context),
-                conversation_id=conversation_id,
-            )
-        except AskHumanFormBuildError as error:
-            raise AgentBackendError(f"Failed to build ask_human form for Agent App chat: {error}") from error
-
-        # Persist the snapshot + correlation so a form submission can start the
-        # second run with the human's answer (ENG-637/638 columns, conversation owner).
-        self._save_session(
-            scope=scope,
-            binding_id=runtime.binding_id,
-            snapshot=terminal.session_snapshot,
-            pending_form_id=created.form_id,
-            pending_tool_call_id=terminal.deferred_tool_call.tool_call_id,
-        )
-
-        # The structured form is delivered via the HITL surface(s); the chat turn
-        # ends by echoing the agent's question so the conversation reflects the ask.
-        self._publish_answer(
-            queue_manager=queue_manager,
-            model_name=model_name,
-            answer=self._ask_human_message(created.args),
-            query=query,
-            usage=_llm_usage_from_agent_backend(terminal.usage),
-        )
-
-    def _resolve_pending_ask_human(
-        self,
-        *,
-        stored: StoredAgentAppSession,
-        dify_context: DifyRunContext,
-        message_id: str,
-    ) -> DeferredToolResultsPayload | None:
-        """Build deferred_tool_results when a pending ask_human form is answered."""
-        if stored.pending_form_id is None or stored.pending_tool_call_id is None:
-            return None
-        outcome = resolve_ask_human_form(
-            form_id=stored.pending_form_id,
-            tenant_id=dify_context.tenant_id,
-            node_id=message_id,
-        )
-        if outcome is None or outcome.deferred_result is None:
-            # Form missing or still waiting — run a normal turn, no resume.
-            return None
-        return build_deferred_tool_results(
-            tool_call_id=stored.pending_tool_call_id,
-            result=outcome.deferred_result,
-        )
-
-    def _build_form_repository(self, dify_context: DifyRunContext) -> HumanInputFormRepository:
-        invoke_source = dify_context.invoke_from.value
-        return HumanInputFormRepositoryImpl(
-            tenant_id=dify_context.tenant_id,
-            app_id=dify_context.app_id,
-            workflow_execution_id=None,
-            invoke_source=invoke_source,
-            submission_actor_id=dify_context.user_id if invoke_source in {"debugger", "explore"} else None,
-        )
-
-    @staticmethod
-    def _ask_human_message(args: AskHumanToolArgs) -> str:
-        parts = [args.question]
-        if args.markdown:
-            parts.append(args.markdown)
-        return "\n\n".join(parts)
 
     def _consume_stream(
         self,
@@ -1090,25 +968,6 @@ class AgentAppRunner:
                 exc_info=True,
             )
 
-    def _publish_answer(
-        self,
-        *,
-        queue_manager: AppQueueManager,
-        model_name: str,
-        answer: str,
-        query: str | None,
-        usage: LLMUsage | None = None,
-    ) -> None:
-        # MVP: emit the full answer as a single chunk + message-end. The chat
-        # task pipeline streams the chunk over SSE and persists the message.
-        publish_text_answer(
-            queue_manager=queue_manager,
-            model_name=model_name,
-            answer=answer,
-            user_query=query,
-            usage=usage,
-        )
-
     def _publish_terminal_answer(
         self,
         *,
@@ -1167,16 +1026,12 @@ class AgentAppRunner:
         scope: AgentAppSessionScope,
         binding_id: str,
         snapshot: Any,
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
     ) -> bool:
         try:
             self._session_store.save_active_snapshot(
                 scope=scope,
                 binding_id=binding_id,
                 snapshot=snapshot,
-                pending_form_id=pending_form_id,
-                pending_tool_call_id=pending_tool_call_id,
             )
             return True
         except Exception:

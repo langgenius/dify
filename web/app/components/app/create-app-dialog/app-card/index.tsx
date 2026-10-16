@@ -29,12 +29,7 @@ const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
   const { app: appBasicInfo } = app
   const appName = appBasicInfo?.name ?? ''
   const appMode = appBasicInfo?.mode ?? ''
-  const appIconType =
-    appBasicInfo?.icon_type === 'image' ||
-    appBasicInfo?.icon_type === 'emoji' ||
-    appBasicInfo?.icon_type === 'link'
-      ? appBasicInfo.icon_type
-      : null
+
   const canViewApp = deploymentEdition === 'CLOUD'
   const handleShowTryAppPanel = useCallback(() => {
     trackEvent('preview_template', {
@@ -54,13 +49,7 @@ const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
     >
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appIconType}
-            icon={appBasicInfo?.icon ?? ''}
-            background={appBasicInfo?.icon_background ?? ''}
-            imageUrl={appBasicInfo?.icon_url ?? ''}
-          />
+          <AppIcon size="large" icon={appBasicInfo} />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
             className="size-3"

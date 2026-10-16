@@ -59,11 +59,20 @@ const mockEnable = vi.fn()
 const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-}))
+const statusMocks: Record<string, (input: unknown) => unknown> = {
+  enable: (input) => mockEnable(input),
+  disable: (input) => mockDisable(input),
+}
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.status.byAction.batch.patch': () => ({
+      mutateAsync: (input: { params: { action: string } }) =>
+        statusMocks[input.params.action]!(input),
+    }),
+    'datasets.byDatasetId.documents.delete': () => ({ mutateAsync: mockDelete }),
+  })
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -274,7 +283,10 @@ describe('StatusItem', () => {
       await act(async () => {
         vi.advanceTimersByTime(600)
       })
-      expect(mockEnable).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+      expect(mockEnable).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', action: 'enable' },
+        query: { document_id: ['doc-1'] },
+      })
       vi.useRealTimers()
     })
 
@@ -302,7 +314,10 @@ describe('StatusItem', () => {
       await act(async () => {
         vi.advanceTimersByTime(600)
       })
-      expect(mockDisable).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+      expect(mockDisable).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', action: 'disable' },
+        query: { document_id: ['doc-1'] },
+      })
       vi.useRealTimers()
     })
 
@@ -332,38 +347,6 @@ describe('StatusItem', () => {
       // Should not call any operation because archived is true
       expect(mockEnable).not.toHaveBeenCalled()
       expect(mockDisable).not.toHaveBeenCalled()
-      vi.useRealTimers()
-    })
-
-    it('should show success notification after successful operation', async () => {
-      vi.useFakeTimers()
-      render(
-        <StatusItem
-          status="available"
-          scene="detail"
-          detail={{
-            enabled: false,
-            archived: false,
-            id: 'doc-1',
-          }}
-          datasetId="dataset-1"
-          canEdit
-          onUpdate={mockOnUpdate}
-        />,
-      )
-      const switchElement = document.querySelector('[role="switch"]')
-      await act(async () => {
-        fireEvent.click(switchElement!)
-      })
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-        // Flush promises
-        await Promise.resolve()
-      })
-      expect(toastMocks.record).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
       vi.useRealTimers()
     })
 

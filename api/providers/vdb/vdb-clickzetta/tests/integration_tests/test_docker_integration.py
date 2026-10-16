@@ -68,7 +68,7 @@ def test_dify_api():
             if response.status_code == 200:
                 logger.info("✓ Dify API is ready")
                 break
-        except:
+        except BaseException:
             if i == max_retries - 1:
                 logger.exception("✗ Dify API is not responding")
                 return False

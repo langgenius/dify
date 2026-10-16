@@ -4,20 +4,33 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { createHttpError } from '@/service/http-error'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { InviteModal } from '../index'
+
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+  })
+})
 
 const { fetchFeatures, inviteMember } = vi.hoisted(() => ({
   fetchFeatures: vi.fn(),
   inviteMember: vi.fn(),
 }))
 
-vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { workspaces } = await import('@dify/contracts/api/console/workspaces/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ workspaces })
   return {
     ...actual,
     consoleQuery: {
@@ -35,15 +48,26 @@ vi.mock('@/service/console', async (importOriginal) => {
           ...actual.consoleQuery.workspaces.current,
           summary: actual.consoleQuery.workspaces.current.summary,
           permission: actual.consoleQuery.workspaces.current.permission,
+          rbac: actual.consoleQuery.workspaces.current.rbac,
           members: {
-            ...actual.consoleQuery.workspaces.current.members,
+            get: actual.consoleQuery.workspaces.current.members.get,
             inviteEmail: {
               post: {
                 mutationOptions: (
                   options: Parameters<
                     typeof actual.consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions
                   >[0],
-                ) => ({ ...options, mutationFn: inviteMember }),
+                ) => ({
+                  ...options,
+                  // Rejections pass through the console link's contract validation, as in production.
+                  mutationFn: (input: unknown) =>
+                    validate({
+                      context: {},
+                      input,
+                      path: ['workspaces', 'current', 'members', 'inviteEmail', 'post'],
+                      next: () => inviteMember(input),
+                    }),
+                }),
               },
             },
           },
@@ -66,7 +90,7 @@ describe('InviteModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -109,7 +133,7 @@ describe('InviteModal', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   const renderModal = async ({
@@ -547,10 +571,13 @@ describe('InviteModal', () => {
     ['invalid_role', /members\.invalidRole/i, 'role', 'combobox'],
   ])('maps %s server validation to the owning field', async (code, message, fieldName, role) => {
     const user = userEvent.setup()
-    inviteMember.mockRejectedValue({
-      code: 'BAD_REQUEST',
-      data: { body: { code, message: 'Backend message' } },
-    })
+    inviteMember.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code,
+        message: 'Backend message',
+        status: 400,
+      }),
+    )
     await renderModal()
 
     await addRecipients(user, 'user@example.com, another@example.com')
@@ -569,10 +596,13 @@ describe('InviteModal', () => {
 
   it('keeps a role server error visible when the user only opens the selector', async () => {
     const user = userEvent.setup()
-    inviteMember.mockRejectedValue({
-      code: 'BAD_REQUEST',
-      data: { body: { code: 'invalid_role', message: 'Backend message' } },
-    })
+    inviteMember.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_role',
+        message: 'Backend message',
+        status: 400,
+      }),
+    )
     await renderModal()
 
     await addRecipients(user, 'user@example.com')
@@ -606,10 +636,13 @@ describe('InviteModal', () => {
     await waitFor(() => expect(input).toBeDisabled())
 
     await act(async () =>
-      rejectInvite({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      }),
+      rejectInvite(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+          status: 400,
+        }),
+      ),
     )
 
     expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
@@ -620,10 +653,13 @@ describe('InviteModal', () => {
   it('should clear an email server error when the user edits and successfully retries', async () => {
     const user = userEvent.setup()
     inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+          status: 400,
+        }),
+      )
       .mockResolvedValueOnce({
         result: 'success',
         invitation_results: [],
@@ -658,10 +694,13 @@ describe('InviteModal', () => {
   it('should clear an email server error when a recipient is removed before retrying', async () => {
     const user = userEvent.setup()
     inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+          status: 400,
+        }),
+      )
       .mockResolvedValueOnce({
         result: 'success',
         invitation_results: [],

@@ -13,7 +13,7 @@ describe('RosterReferenceBlockNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     editor = createEditor({
-      nodes: [RosterReferenceBlockNode as unknown as Klass<LexicalNode>],
+      nodes: [RosterReferenceBlockNode as Klass<LexicalNode>],
     })
   })
 

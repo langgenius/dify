@@ -9,12 +9,14 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -70,15 +72,12 @@ function SnippetDSLConfirmDialog({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="w-120 overflow-hidden! border-none text-left align-middle shadow-xl">
-        <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $.dslVersionMismatchTitle, { ns: 'snippet' })}
           </AlertDialogTitle>
-          <AlertDialogDescription
-            render={<div />}
-            className="flex grow flex-col system-md-regular text-text-secondary"
-          >
+          <AlertDialogDescription render={<div />}>
             <div>{t(($) => $.dslVersionMismatchDescription, { ns: 'snippet' })}</div>
             <div>{t(($) => $.dslVersionMismatchQuestion, { ns: 'snippet' })}</div>
             <br />
@@ -91,9 +90,9 @@ function SnippetDSLConfirmDialog({
               <span className="system-md-medium">{versions.systemVersion}</span>
             </div>
           </AlertDialogDescription>
-        </div>
+        </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancelButton variant="secondary">
+          <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
@@ -145,11 +144,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const snippetId = getImportedSnippetId(response)
 
       onClose()
-      toast.success(t(($) => $.importSuccess, { ns: 'snippet' }))
 
       if (snippetId) push(`/snippets/${snippetId}/orchestrate`)
     },
-    [onClose, push, t],
+    [onClose, push],
   )
 
   const handleImportResponse = useCallback(
@@ -189,7 +187,9 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
 
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      // HTTP error notifications are owned by the request layer.
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }, [
     canCreateAndModifySnippet,
@@ -207,7 +207,9 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const response = await confirmSnippetImportMutation.mutateAsync({ importId })
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      // HTTP error notifications are owned by the request layer.
+      if (!(error instanceof ORPCError) && error instanceof Error && error.message)
+        toast.error(error.message)
     }
   }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
 

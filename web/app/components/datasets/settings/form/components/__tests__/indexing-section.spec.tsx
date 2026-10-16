@@ -1,7 +1,8 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet, SummaryIndexSetting } from '@/models/datasets'
+import type { SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
 import {
@@ -9,8 +10,10 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import IndexingSection from '../indexing-section'
@@ -162,11 +165,12 @@ describe('IndexingSection', () => {
     score_threshold: 0.5,
   }
 
-  const mockDataset: DataSet = {
+  const mockDataset: DatasetDetailWithPartialMembersResponse = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     icon_info: {
       icon_type: 'emoji',
       icon: '📚',
@@ -174,7 +178,6 @@ describe('IndexingSection', () => {
       icon_url: '',
     },
     indexing_technique: IndexingType.QUALIFIED,
-    indexing_status: 'completed',
     data_source_type: DataSourceType.FILE,
     doc_form: ChunkingMode.text,
     embedding_model: 'text-embedding-ada-002',
@@ -182,7 +185,6 @@ describe('IndexingSection', () => {
     embedding_available: true,
     app_count: 0,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'vendor',
     tags: [],
@@ -199,7 +201,6 @@ describe('IndexingSection', () => {
       score_threshold_enabled: true,
     },
     retrieval_model_dict: mockRetrievalConfig,
-    retrieval_model: mockRetrievalConfig,
     built_in_field_enabled: false,
     keyword_number: 10,
     created_by: 'user-1',

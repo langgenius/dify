@@ -11,7 +11,7 @@ import { createFeaturesStore } from '@/app/components/base/features/store'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppModelConfigFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
@@ -50,14 +50,15 @@ let mockModelProvidersData: {
   refetch: vi.fn(),
 }
 
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => mockCodeBasedExtensions,
-  useModelProviderDetails: () => mockModelProvidersData,
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  CustomConfigurationStatusEnum: { active: 'active' },
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/declarations',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/header/account-setting/model-provider-page/declarations')
+    >()),
+    CustomConfigurationStatusEnum: { active: 'active' },
+  }),
+)
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
   ApiBasedExtensionSelector: ({ onChange }: { value: string; onChange: (v: string) => void }) => (
@@ -78,6 +79,14 @@ const defaultData: ModerationConfig = {
     outputs_config: { enabled: false, preset_response: '' },
   },
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => mockCodeBasedExtensions,
+    'workspaces.current.modelProviders.get': () => mockModelProvidersData,
+  })
+})
 
 describe('ModerationSettingModal', () => {
   const onSave = vi.fn()
@@ -1081,7 +1090,7 @@ describe('ModerationSettingModal', () => {
         backendModelConfig,
         collectionList: [],
         datasetConfigs: buildConfigurationDatasetConfigs({ backendModelConfig, nextDataSets: [] }),
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         nextDataSets: [],
       })
       const publish = createPublishHandler({
@@ -1096,7 +1105,7 @@ describe('ModerationSettingModal', () => {
         hasSetBlockStatus: { history: true, query: true },
         isAdvancedMode: false,
         isFunctionCall: false,
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         modelConfig: config.modelConfig,
         promptEmpty: false,
         promptMode: 'simple',

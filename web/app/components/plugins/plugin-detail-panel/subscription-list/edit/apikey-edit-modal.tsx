@@ -169,9 +169,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['modal.apiKey.verify.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
@@ -207,15 +207,12 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       },
       {
         onSuccess: () => {
-          toast.success(
-            t(($) => $['subscription.list.item.actions.edit.success'], { ns: 'pluginTrigger' }),
-          )
           refetch?.()
           onClose()
         },
-        onError: async (error: unknown) => {
+        onError: (error: unknown) => {
           const errorMessage =
-            (await parsePluginErrorMessage(error)) ||
+            parsePluginErrorMessage(error) ||
             t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' })
           toast.error(errorMessage)
         },
@@ -258,7 +255,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const credentialsFormSchemas: FormSchema[] = useMemo(() => {
     return apiKeyCredentialsSchema.map((schema) => ({
       ...schema,
-      type: normalizeFormType(schema.type as string),
+      type: normalizeFormType(schema.type),
       tooltip: schema.help,
       default: subscription.credentials?.[schema.name] || schema.default,
     }))
@@ -266,7 +263,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   const parametersFormSchemas: FormSchema[] = useMemo(() => {
     return parametersSchema.map((schema: ParametersSchema) => {
-      const normalizedType = normalizeFormType(schema.type as string)
+      const normalizedType = normalizeFormType(schema.type)
       return {
         ...schema,
         type: normalizedType,

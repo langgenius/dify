@@ -3,7 +3,6 @@ import type { TFunction } from 'i18next'
 import type { CommonNodeType, Node } from './types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
-import { AppModeEnum } from '@/types/app'
 import { loadYaml } from '@/utils/yaml'
 import { BlockEnum, SupportUploadFileTypes } from './types'
 
@@ -46,7 +45,7 @@ type ImportNotificationPayload = {
 }
 
 export const getInvalidNodeTypes = (mode?: AppMode): BlockEnum[] => {
-  if (mode === AppModeEnum.ADVANCED_CHAT) {
+  if (mode === 'advanced-chat') {
     return [
       BlockEnum.End,
       BlockEnum.TriggerWebhook,

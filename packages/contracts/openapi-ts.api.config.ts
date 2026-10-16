@@ -612,7 +612,84 @@ const createApiJobs = (spec: ApiSpec): ApiJob[] => {
   ]
 }
 
-const apiJobs = apiSpecs.flatMap(createApiJobs)
+export const apiJobs = apiSpecs.flatMap(createApiJobs)
+
+export type OrpcErrorEntry = {
+  code: string
+  schemaName: string
+  status: number
+}
+
+/**
+ * The fixed `code` and `status` a per-code error component (`{Code}Error`, an `allOf` over the
+ * error body) declares, or `undefined` for the open error body and other schemas.
+ */
+const errorComponentIdentity = (
+  schema: SwaggerSchema | undefined,
+): { code: string; status: number } | undefined => {
+  const parts = Array.isArray(schema?.allOf) ? schema.allOf : []
+  for (const part of parts) {
+    if (!isObject(part) || !isObject(part.properties)) continue
+    const code = part.properties.code
+    const status = part.properties.status
+    if (
+      isObject(code) &&
+      typeof code.const === 'string' &&
+      isObject(status) &&
+      typeof status.const === 'number'
+    )
+      return { code: code.const, status: status.const }
+  }
+  return undefined
+}
+
+/**
+ * The oRPC `errorMap` each operation declares, keyed by generated operationId: one
+ * `{ status, data }` entry per error component its 4xx/5xx responses reference. The
+ * backend documents each code as one component with one status per surface, so a code
+ * that still reaches an operation under two statuses fails generation.
+ */
+export const orpcErrorMaps = (document: SwaggerDocument): Map<string, OrpcErrorEntry[]> => {
+  const schemas = getDocumentSchemas(document)
+  const errorMaps = new Map<string, OrpcErrorEntry[]>()
+  for (const [pathKey, pathItem] of Object.entries(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation)) continue
+      const { operationId, responses } = operation as SwaggerOperation
+      if (!operationId) continue
+
+      const entries = new Map<string, OrpcErrorEntry>()
+      for (const [status, response] of Object.entries(responses ?? {})) {
+        if (!/^[45]\d\d$/.test(status) || !isObject(response) || !isObject(response.content))
+          continue
+        const media = response.content['application/json']
+        const schema = isObject(media) ? media.schema : undefined
+        const options = Array.isArray(schema?.anyOf) ? schema.anyOf : [schema]
+        for (const option of options) {
+          const schemaName =
+            isObject(option) && typeof option.$ref === 'string'
+              ? schemaNameFromRef(option.$ref)
+              : undefined
+          if (!schemaName) continue
+          const identity = errorComponentIdentity(schemas[schemaName])
+          if (!identity) continue
+          const known = entries.get(identity.code)
+          if (known && known.status !== identity.status)
+            throw new Error(
+              `${method.toUpperCase()} ${pathKey} documents ${identity.code} under ${known.status} and ${identity.status}; oRPC keys errors by code`,
+            )
+          entries.set(identity.code, { code: identity.code, schemaName, status: identity.status })
+        }
+      }
+      if (entries.size > 0)
+        errorMaps.set(
+          operationId,
+          [...entries.values()].sort((left, right) => left.code.localeCompare(right.code)),
+        )
+    }
+  }
+  return errorMaps
+}
 
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,

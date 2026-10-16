@@ -1,14 +1,14 @@
 'use client'
-import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
+import type {
+  WorkflowGenerateResponse as StreamResult,
+  WorkflowGenerateErrorResponse,
+  WorkflowGeneratePayload,
+  WorkflowGeneratePlanEventResponse,
+} from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type {
-  GenerateWorkflowBody,
-  GenerateWorkflowResponse as StreamResult,
-  WorkflowGenPlan,
-} from '@/service/workflow-generator'
 import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
@@ -17,6 +17,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -66,7 +67,7 @@ const WORKFLOW_GENERATOR_SUBMIT_HOTKEY = 'Mod+Enter' satisfies Hotkey
 // A single structured generation error. Mirrors the backend ``errors[]`` entry
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
 // can localise the message and point at the offending node.
-type GenError = WorkflowGenerateErrorResponse
+
 type WorkflowGeneratorErrorCode = WorkflowGenerateErrorResponse['code']
 
 const workflowGeneratorErrorSelectors: Record<
@@ -90,7 +91,10 @@ const workflowGeneratorErrorSelectors: Record<
   UNRESOLVED_REFERENCE: ($) => $['workflowGenerator.errors.UNRESOLVED_REFERENCE'],
 }
 
-function getWorkflowGeneratorErrorMessage(error: GenError, t: TFunction<['workflowGenerator']>) {
+function getWorkflowGeneratorErrorMessage(
+  error: WorkflowGenerateErrorResponse,
+  t: TFunction<['workflowGenerator']>,
+) {
   return t(workflowGeneratorErrorSelectors[error.code])
 }
 
@@ -135,14 +139,10 @@ const RecoveryDialog = ({
 }: RecoveryDialogProps) => (
   <AlertDialog open={open} onOpenChange={(o) => !o && onOpenChange(false)}>
     <AlertDialogContent>
-      <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-        <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-          {title}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {description}
-        </AlertDialogDescription>
-      </div>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+        <AlertDialogDescription>{description}</AlertDialogDescription>
+      </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancelButton>{cancelLabel}</AlertDialogCancelButton>
         <AlertDialogConfirmButton onClick={onConfirm}>{confirmLabel}</AlertDialogConfirmButton>
@@ -216,10 +216,10 @@ function WorkflowGeneratorModal() {
   const instructionRef = useRef<HTMLTextAreaElement>(null)
   const [instruction, setInstruction] = useState(initialInstruction || lastInstruction || '')
   // Planner result, streamed ahead of the graph (null until it lands).
-  const [plan, setPlan] = useState<WorkflowGenPlan | null>(null)
+  const [plan, setPlan] = useState<WorkflowGeneratePlanEventResponse | null>(null)
   // Structured generation errors (validation / model). Drives the actionable
   // error panel; null when the last attempt succeeded or hasn't run.
-  const [genError, setGenError] = useState<GenError[] | null>(null)
+  const [genError, setGenError] = useState<WorkflowGenerateErrorResponse[] | null>(null)
   // Refine base graph captured at Generate time, diffed against the result so
   // the user can see what "apply" changes before overwriting their draft.
   const [refineBaseGraph, setRefineBaseGraph] = useState<GeneratedGraph | null>(null)
@@ -380,14 +380,14 @@ function WorkflowGeneratorModal() {
     }
     setRefineBaseGraph(currentGraph ?? null)
 
-    const body: GenerateWorkflowBody = {
+    const body: WorkflowGeneratePayload = {
       // Auto-mode sends 'auto' so the planner picks Workflow vs Chatflow; the
       // resolved concrete mode comes back on the result and drives apply.
       mode: autoMode ? 'auto' : mode,
       instruction,
       model_config: { ...model, mode: model.mode || 'chat' },
       ...(currentGraph
-        ? { current_graph: currentGraph as unknown as GenerateWorkflowBody['current_graph'] }
+        ? { current_graph: currentGraph as unknown as WorkflowGeneratePayload['current_graph'] }
         : {}),
     }
 
@@ -517,8 +517,11 @@ function WorkflowGeneratorModal() {
     hideConfirmOverwrite()
     setApplyingTrue()
     try {
-      await applyToCurrentApp({ appId: currentAppId, graph: current.graph as GeneratedGraph })
-      toast.success(t(($) => $['workflowGenerator.applied'], { ns: 'workflowGenerator' }))
+      await applyToCurrentApp({
+        appId: currentAppId,
+        appMode: currentAppMode ?? undefined,
+        graph: current.graph as GeneratedGraph,
+      })
       closeGenerator()
       // Hard reload the workflow page so the canvas picks up the new draft —
       // ``router.refresh()`` only revalidates server-rendered route data, and
@@ -544,6 +547,7 @@ function WorkflowGeneratorModal() {
   }, [
     current,
     currentAppId,
+    currentAppMode,
     hideConfirmOverwrite,
     closeGenerator,
     t,

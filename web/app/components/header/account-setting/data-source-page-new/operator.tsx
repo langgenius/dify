@@ -1,5 +1,5 @@
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Ref } from 'react'
-import type { DataSourceCredential } from './types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +13,8 @@ import { useTranslation } from 'react-i18next'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {
-  credentialItem: DataSourceCredential
-  onAction: (action: string, credentialItem: DataSourceCredential) => void
+  credentialItem: DatasourceCredentialResponse
+  onAction: (action: string, credentialItem: DatasourceCredentialResponse) => void
   onRename?: () => void
   triggerRef?: Ref<HTMLButtonElement>
   canUseCredential?: boolean

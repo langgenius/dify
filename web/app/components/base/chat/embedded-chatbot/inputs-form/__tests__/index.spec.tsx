@@ -30,7 +30,7 @@ describe('InputsFormNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as any)
   })
 
   it('should return null if allInputsHidden is true', () => {

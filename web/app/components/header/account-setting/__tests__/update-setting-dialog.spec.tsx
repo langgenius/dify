@@ -17,10 +17,20 @@ const { getSettings, saveSettings } = vi.hoisted(() => ({
   saveSettings: vi.fn(),
 }))
 
+// The console client sends through `request`; adapt it back to path + params/body calls.
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: getSettings,
-  post: saveSettings,
+  request: async (url: string, _init: RequestInit, options: { request?: Request }) => {
+    const { pathname, searchParams } = new URL(url)
+    const path = pathname.replace('/console/api', '')
+    const data =
+      options.request?.method === 'POST'
+        ? await saveSettings(path, { body: await options.request.json() })
+        : await getSettings(path, { params: Object.fromEntries(searchParams) })
+    return new Response(JSON.stringify(data ?? {}), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  },
 }))
 
 const savedConfig: AutoUpdateConfig = {
@@ -157,6 +167,36 @@ it('keeps an earlier category rollback separate from the current category sessio
   await waitFor(() =>
     expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name'),
   )
+})
+
+it('blocks another save while one is pending and rolls back a failed save without losing the open draft', async () => {
+  const pendingSave = deferred<void>()
+  saveSettings.mockReturnValue(pendingSave.promise)
+  const user = userEvent.setup()
+  renderSettings()
+  await waitFor(() =>
+    expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name'),
+  )
+  await user.click(settingsTrigger())
+  await user.click(strategy('latest'))
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(settingsTrigger()).toHaveTextContent('plugin.autoUpdate.strategy.latest.name')
+  const trigger = settingsTrigger()
+  await user.click(trigger)
+  const save = screen.getByRole('button', { name: 'common.operation.save' })
+  expect(save).toBeDisabled()
+  await act(async () => {
+    pendingSave.reject(new Error('Save failed'))
+  })
+  await waitFor(() => expect(trigger).toHaveTextContent('plugin.autoUpdate.strategy.disabled.name'))
+  expect(save).toBeEnabled()
+  expect(strategy('latest')).toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(settingsTrigger())
+  expect(strategy('disabled')).toBeChecked()
+  expect(saveSettings).toHaveBeenCalledOnce()
 })
 
 it('reports success after the submitted form has closed', async () => {

@@ -4,7 +4,6 @@ import type { LLMNodeType } from '../../types'
 import { act, renderHook } from '@testing-library/react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { Type } from '../../types'
 import useLLMStructuredOutputConfig from '../use-llm-structured-output-config'
 
@@ -19,7 +18,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: [],

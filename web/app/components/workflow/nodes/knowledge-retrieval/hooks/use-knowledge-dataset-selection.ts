@@ -1,6 +1,6 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { MutableRefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../types'
-import type { DataSet } from '@/models/datasets'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchDatasets } from '@/service/datasets'
@@ -17,7 +17,7 @@ type Params = {
   inputRef: MutableRefObject<KnowledgeRetrievalNodeType>
   setInputs: (inputs: KnowledgeRetrievalNodeType) => void
   payloadRetrievalMode: RETRIEVE_TYPE
-  updateDatasetsDetail: (datasets: DataSet[]) => void
+  updateDatasetsDetail: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
   fallbackRerankModel: ModelIdentity
 }
 
@@ -29,7 +29,9 @@ const useKnowledgeDatasetSelection = ({
   updateDatasetsDetail,
   fallbackRerankModel,
 }: Params) => {
-  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
+  const [selectedDatasets, setSelectedDatasets] = useState<
+    DatasetDetailWithPartialMembersResponse[]
+  >([])
   const [selectedDatasetsLoaded, setSelectedDatasetsLoaded] = useState(false)
   const [rerankModelOpen, setRerankModelOpen] = useState(false)
 
@@ -39,7 +41,6 @@ const useKnowledgeDatasetSelection = ({
       const datasetIds = currentInputs.dataset_ids
       if (datasetIds.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({
-          url: '/datasets',
           params: {
             page: 1,
             ids: datasetIds,
@@ -57,7 +58,7 @@ const useKnowledgeDatasetSelection = ({
   }, [inputRef, setInputs])
 
   const handleOnDatasetsChange = useCallback(
-    (newDatasets: DataSet[]) => {
+    (newDatasets: DatasetDetailWithPartialMembersResponse[]) => {
       const {
         mixtureHighQualityAndEconomic,
         mixtureInternalAndExternal,

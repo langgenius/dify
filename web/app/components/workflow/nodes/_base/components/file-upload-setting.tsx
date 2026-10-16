@@ -5,13 +5,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { FieldItem, FieldLabel, Field as FormField } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
-import { useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { SupportUploadFileTypes } from '../../../types'
@@ -50,7 +51,7 @@ const FileUploadSetting: FC<Props> = ({
     allowed_file_types = [],
     allowed_file_extensions = [],
   } = payload
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit, maxFileUploadLimit } =
     useFileSizeLimit(fileUploadConfigResponse)
 

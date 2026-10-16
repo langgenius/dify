@@ -1,4 +1,5 @@
 'use client'
+
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
@@ -7,9 +8,11 @@ import { RiCloseLine } from '@remixicon/react'
 import { useMount } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { capitalize } from 'es-toolkit/string'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
@@ -26,7 +29,7 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
   const { t } = useTranslation(['appLog', 'common', 'workflow'])
   const { formatTime } = useTimestamp()
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
-  const appID = useStore((s) => s.appId)
+  const appID = useAtomValue(editorAppIdAtom)
   const [currentVar, setCurrentVar] = React.useState<ConversationVariable>(varList[0]!)
   const [latestValueMap, setLatestValueMap] = React.useState<Record<string, string>>({})
   const [latestValueTimestampMap, setLatestValueTimestampMap] = React.useState<

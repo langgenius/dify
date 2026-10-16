@@ -14,28 +14,6 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useCopyWorkspaceRole: () => ({
-    mutateAsync: vi.fn(),
-  }),
-  useDeleteWorkspaceRole: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
-  useGetMembersOfRole: () => ({
-    data: {
-      data: [],
-      pagination: {
-        total_count: 0,
-        per_page: 1,
-        current_page: 1,
-        total_pages: 1,
-      },
-    },
-    isPending: false,
-  }),
-}))
-
 const createRole = (overrides: Partial<Role> = {}): Role => ({
   id: 'role-1',
   tenant_id: 'tenant-1',
@@ -55,6 +33,31 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: [],
   }))
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.byRoleId.copy.post': () => ({
+      mutateAsync: vi.fn(),
+    }),
+    'workspaces.current.rbac.roles.byRoleId.delete': () => ({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    }),
+    'workspaces.current.rbac.roles.byRoleId.members.get': () => ({
+      data: {
+        data: [],
+        pagination: {
+          total_count: 0,
+          per_page: 1,
+          current_page: 1,
+          total_pages: 1,
+        },
+      },
+      isPending: false,
+    }),
+  })
 })
 
 describe('RoleList', () => {

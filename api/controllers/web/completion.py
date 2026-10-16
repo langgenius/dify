@@ -32,6 +32,7 @@ from core.errors.error import (
 )
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -97,6 +98,14 @@ register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultRespon
 # define completion api for user
 @web_ns.route("/completion-messages")
 class CompletionApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @web_ns.doc("Create Completion Message")
     @web_ns.doc(description="Create a completion message for text generation applications.")
     @web_ns.expect(web_ns.models[CompletionMessagePayload.__name__])
@@ -105,7 +114,6 @@ class CompletionApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found",
             500: "Internal Server Error",
         }
@@ -160,6 +168,7 @@ class CompletionApi(WebApiResource):
 
 @web_ns.route("/completion-messages/<string:task_id>/stop")
 class CompletionStopApi(WebApiResource):
+    @error_responses(NotCompletionAppError)
     @web_ns.doc("Stop Completion Message")
     @web_ns.doc(description="Stop a running completion message task.")
     @web_ns.doc(params={"task_id": {"description": "Task ID to stop", "type": "string", "required": True}})
@@ -168,7 +177,6 @@ class CompletionStopApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }
@@ -190,6 +198,16 @@ class CompletionStopApi(WebApiResource):
 
 @web_ns.route("/chat-messages")
 class ChatApi(WebApiResource):
+    @error_responses(
+        AgentNotPublishedError,
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @web_ns.doc("Create Chat Message")
     @web_ns.doc(description="Create a chat message for conversational applications.")
     @web_ns.expect(web_ns.models[ChatMessagePayload.__name__])
@@ -198,7 +216,6 @@ class ChatApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found",
             500: "Internal Server Error",
         }
@@ -265,6 +282,7 @@ class ChatApi(WebApiResource):
 
 @web_ns.route("/chat-messages/<string:task_id>/stop")
 class ChatStopApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Stop Chat Message")
     @web_ns.doc(description="Stop a running chat message task.")
     @web_ns.doc(params={"task_id": {"description": "Task ID to stop", "type": "string", "required": True}})
@@ -273,7 +291,6 @@ class ChatStopApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }

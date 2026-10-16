@@ -42,19 +42,41 @@ const mockResume = vi.fn()
 let isDownloadPending = false
 
 const mockGenerateSummary = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentArchive: () => ({ mutateAsync: mockArchive }),
-  useDocumentUnArchive: () => ({ mutateAsync: mockUnArchive }),
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-  useDocumentDownload: () => ({ mutateAsync: mockDownload, isPending: isDownloadPending }),
-  useSyncDocument: () => ({ mutateAsync: mockSync }),
-  useSyncWebsite: () => ({ mutateAsync: mockSyncWebsite }),
-  useDocumentPause: () => ({ mutateAsync: mockPause }),
-  useDocumentResume: () => ({ mutateAsync: mockResume }),
-  useDocumentSummary: () => ({ mutateAsync: mockGenerateSummary }),
-}))
+const statusMocks: Record<string, (input: unknown) => unknown> = {
+  archive: (input) => mockArchive(input),
+  un_archive: (input) => mockUnArchive(input),
+  enable: (input) => mockEnable(input),
+  disable: (input) => mockDisable(input),
+}
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.status.byAction.batch.patch': () => ({
+      mutateAsync: (input: { params: { action: string } }) =>
+        statusMocks[input.params.action]!(input),
+    }),
+    'datasets.byDatasetId.documents.delete': () => ({ mutateAsync: mockDelete }),
+    'datasets.byDatasetId.documents.byDocumentId.download.get': () => ({
+      mutateAsync: mockDownload,
+      isPending: isDownloadPending,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.notion.sync.get': () => ({
+      mutateAsync: mockSync,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.websiteSync.get': () => ({
+      mutateAsync: mockSyncWebsite,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.processing.pause.patch': () => ({
+      mutateAsync: mockPause,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.processing.resume.patch': () => ({
+      mutateAsync: mockResume,
+    }),
+    'datasets.byDatasetId.documents.generateSummary.post': () => ({
+      mutateAsync: mockGenerateSummary,
+    }),
+  })
+})
 
 // Mock downloadUrl utility
 const mockDownloadUrl = vi.fn()
@@ -229,7 +251,10 @@ describe('Operations', () => {
       await act(async () => {
         vi.advanceTimersByTime(600)
       })
-      expect(mockEnable).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+      expect(mockEnable).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', action: 'enable' },
+        query: { document_id: ['doc-1'] },
+      })
       vi.useRealTimers()
     })
 
@@ -246,7 +271,10 @@ describe('Operations', () => {
       await act(async () => {
         vi.advanceTimersByTime(600)
       })
-      expect(mockDisable).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+      expect(mockDisable).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', action: 'disable' },
+        query: { document_id: ['doc-1'] },
+      })
       vi.useRealTimers()
     })
 
@@ -351,7 +379,10 @@ describe('Operations', () => {
         fireEvent.click(archiveButton)
       })
       await waitFor(() => {
-        expect(mockArchive).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockArchive).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', action: 'archive' },
+          query: { document_id: ['doc-1'] },
+        })
       })
     })
 
@@ -363,7 +394,10 @@ describe('Operations', () => {
         fireEvent.click(unarchiveButton)
       })
       await waitFor(() => {
-        expect(mockUnArchive).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockUnArchive).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', action: 'un_archive' },
+          query: { document_id: ['doc-1'] },
+        })
       })
     })
 
@@ -391,7 +425,10 @@ describe('Operations', () => {
         fireEvent.click(confirmButton)
       })
       await waitFor(() => {
-        expect(mockDelete).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockDelete).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1' },
+          query: { document_id: ['doc-1'] },
+        })
       })
     })
 
@@ -463,7 +500,9 @@ describe('Operations', () => {
         fireEvent.click(syncButton)
       })
       await waitFor(() => {
-        expect(mockSync).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockSync).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+        })
       })
     })
 
@@ -481,8 +520,7 @@ describe('Operations', () => {
       })
       await waitFor(() => {
         expect(mockSyncWebsite).toHaveBeenCalledWith({
-          datasetId: 'dataset-1',
-          documentId: 'doc-1',
+          params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
         })
       })
     })
@@ -497,7 +535,9 @@ describe('Operations', () => {
         fireEvent.click(pauseButton)
       })
       await waitFor(() => {
-        expect(mockPause).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockPause).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+        })
       })
     })
 
@@ -511,7 +551,9 @@ describe('Operations', () => {
         fireEvent.click(resumeButton)
       })
       await waitFor(() => {
-        expect(mockResume).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockResume).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+        })
       })
     })
 
@@ -523,7 +565,9 @@ describe('Operations', () => {
         fireEvent.click(downloadButton)
       })
       await waitFor(() => {
-        expect(mockDownload).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockDownload).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+        })
         expect(mockDownloadUrl).toHaveBeenCalledWith({
           url: 'https://example.com/download',
           fileName: 'Test Document',
@@ -578,7 +622,9 @@ describe('Operations', () => {
         fireEvent.click(downloadButton)
       })
       await waitFor(() => {
-        expect(mockDownload).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockDownload).toHaveBeenCalledWith({
+          params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+        })
       })
     })
   })

@@ -132,7 +132,7 @@ const createPluginDeclaration = (
   resource: null,
   plugins: null,
   verified: false,
-  endpoint: undefined as unknown as PluginDeclaration['endpoint'],
+  endpoint: undefined as PluginDeclaration['endpoint'],
   model: null,
   tags: [],
   agent_strategy: null,
