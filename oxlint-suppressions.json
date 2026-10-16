@@ -42,11 +42,6 @@
       "count": 3
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-config-modal.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
   "web/app/(shareLayout)/webapp-signin/normalForm.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
