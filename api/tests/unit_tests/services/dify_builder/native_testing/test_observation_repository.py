@@ -6,19 +6,20 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy.orm import sessionmaker
-
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from graphon.entities import WorkflowExecution, WorkflowNodeExecution
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from models import Account, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionModel
+from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.observation_privacy import NativeHttpObservationPolicy
+from sqlalchemy.orm import sessionmaker
 from tests.unit_tests.services.dify_builder.native_testing.test_observation_privacy import SENTINEL, context
+
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 
 NOW = datetime(2026, 10, 16)
 
@@ -722,3 +723,144 @@ def test_test_owned_telemetry_initializes_and_restores_actual_logging_routes(cas
     assert route.handlers is original_route_handlers
     assert route.propagate is original_propagation
     assert all(handler.filters == expected for handler, expected in filters.items())
+
+
+@pytest.mark.parametrize("elapsed_time", [None, 0.0, 7.25])
+def test_timed_native_run_preserves_settled_duration_through_projection_and_owned_history(case, elapsed_time):
+    c = case
+    bind(c)
+    original = TimedWorkflowExecution(
+        **{
+            **run(c).model_dump(),
+            "status": WorkflowExecutionStatus.PAUSED,
+            "finished_at": None,
+            "accumulated_elapsed_time": elapsed_time,
+        }
+    )
+    c.runs.save(original)
+    saved = c.sql.rows[WorkflowRun, c.context.native_run_id]
+    expected = elapsed_time if elapsed_time is not None else 0.0
+    assert saved.elapsed_time == expected
+    assert saved.finished_at is None
+    assert SENTINEL not in (saved.inputs or "")
+    assert original.inputs == {SENTINEL: SENTINEL}
+    restored = c.runs.get_native_observation_run(workflow_run_id=c.context.native_run_id)
+    assert type(restored) is TimedWorkflowExecution
+    assert restored.accumulated_elapsed_time == expected
+    assert restored.elapsed_time == expected
+    assert restored.status is WorkflowExecutionStatus.PAUSED
+    assert not c.guard.failed
+
+
+def test_unrecognized_timed_run_subclass_still_refuses_before_writes(case):
+    class UntrustedRun(TimedWorkflowExecution):
+        pass
+
+    c = case
+    bind(c)
+    execution = UntrustedRun(**run(c).model_dump(), accumulated_elapsed_time=3.0)
+    with pytest.raises(NativeObservationError):
+        c.runs.save(execution)
+    assert c.sql.commits == 0
+    assert not c.runs._execution_cache
+    assert c.guard.failed
+
+
+@pytest.mark.parametrize("elapsed_time", [True, -1.0, float("nan"), float("inf")])
+def test_mutated_timed_native_run_refuses_invalid_duration_before_writes(case, elapsed_time):
+    c = case
+    bind(c)
+    execution = TimedWorkflowExecution(**run(c).model_dump(), accumulated_elapsed_time=0.0)
+    # The upstream DTO is mutable; the repository boundary must revalidate it.
+    execution.accumulated_elapsed_time = elapsed_time
+    with pytest.raises(NativeObservationError):
+        c.runs.save(execution)
+    assert c.sql.commits == 0
+    assert not c.runs._execution_cache
+    assert c.guard.failed
+
+
+def test_native_history_adoption_restores_active_duration_after_entity_json_roundtrip(case, monkeypatch):
+    """Timing callback/repository unit test; C03/claim authority is not qualified here."""
+    from core.app.app_config.entities import WorkflowUIBasedAppConfig
+    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+    from core.workflow.system_variables import build_system_variables
+    from models.model import AppMode
+
+    from graphon.entities import WorkflowStartReason
+    from graphon.graph_engine.command_channels import InMemoryChannel
+    from graphon.graph_events import GraphRunPausedEvent, GraphRunStartedEvent, GraphRunSucceededEvent
+    from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
+
+    c = case
+    bind(c)
+    clock = [100.0]
+    monkeypatch.setattr("repositories.entities.workflow_execution.perf_counter", lambda: clock[0])
+    monkeypatch.setattr("core.app.workflow.layers.persistence._inspector_publish_workflow_completed", lambda **_: None)
+    entity = WorkflowAppGenerateEntity(
+        task_id="task",
+        workflow_execution_id=c.context.native_run_id,
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id=c.context.tenant_id,
+            app_id=c.context.app_id,
+            workflow_id=c.context.workflow_id,
+            app_mode=AppMode.WORKFLOW,
+        ),
+        inputs={SENTINEL: SENTINEL},
+        files=[],
+        user_id=c.context.actor_id,
+        stream=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+        native_test_required=True,
+        native_test_ref=c.context.ref,
+    )
+    total = 0.0
+    for index, duration in enumerate((2.0, 3.0, 4.0)):
+        runtime = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id=c.context.native_run_id)
+            ),
+            start_at=clock[0],
+        )
+        layer = WorkflowPersistenceLayer(
+            application_generate_entity=entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=c.context.workflow_id,
+                workflow_type=WorkflowType.WORKFLOW,
+                version="draft",
+                graph_data=c.context.graph,
+            ),
+            workflow_execution_repository=c.runs,
+            workflow_node_execution_repository=c.nodes,
+            native_observation=c.guard,
+        )
+        layer.initialize(ReadOnlyGraphRuntimeStateWrapper(runtime), InMemoryChannel())
+        layer.on_graph_start()
+        if index == 0:
+            layer.on_event(GraphRunStartedEvent())
+        else:
+            # Supply actual checked history at the internal timing-adoption
+            # callback boundary. Public on_event still owns C03 host/claim checks.
+            layer._workflow_execution = c.runs.get_native_observation_run(workflow_run_id=c.context.native_run_id)
+            layer._handle_graph_run_started(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
+        row = c.sql.rows[WorkflowRun, c.context.native_run_id]
+        assert row.status is WorkflowExecutionStatus.RUNNING
+        assert row.elapsed_time == total
+        clock[0] += duration
+        total += duration
+        paused = index < 2
+        layer.on_event(GraphRunPausedEvent() if paused else GraphRunSucceededEvent())
+        row = c.sql.rows[WorkflowRun, c.context.native_run_id]
+        assert row.elapsed_time == total
+        assert row.status is (WorkflowExecutionStatus.PAUSED if paused else WorkflowExecutionStatus.SUCCEEDED)
+        clock[0] += 1000.0
+        assert entity.workflow_execution_timing.finish() == total
+        if paused:
+            # Same serialization as NativeHostLaunch.snapshot_wait/restore_claimed_host.
+            serialized = entity.model_dump_json()
+            assert "workflow_execution_timing" not in serialized
+            entity = WorkflowAppGenerateEntity.model_validate_json(serialized)
+            assert entity.workflow_execution_timing.elapsed_time == 0.0
+    assert c.sql.rows[WorkflowRun, c.context.native_run_id].elapsed_time == 9.0
+    assert not c.guard.failed

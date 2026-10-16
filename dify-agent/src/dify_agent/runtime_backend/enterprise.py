@@ -140,7 +140,14 @@ class EnterpriseHomeSnapshotBackend:
         return snapshot_ref
 
     async def delete(self, snapshot_ref: str) -> None:
-        """Delete one snapshot's artifacts."""
+        """Delete one snapshot's artifacts, treating a confirmed-missing snapshot as success.
+
+        ``HomeSnapshotBackend.delete`` must be safe to retry and must treat an
+        already absent snapshot as a successful outcome. The Gateway reports a
+        snapshot it no longer holds with a ``snapshot_not_found`` style reason, so
+        map that back to a no-op. An unrelated 4xx such as ``route_not_found`` is a
+        gateway fault rather than proof of absence, so it still raises.
+        """
         try:
             _ = await _gateway_request(
                 endpoint=self.gateway_endpoint,
@@ -149,7 +156,11 @@ class EnterpriseHomeSnapshotBackend:
                 method="DELETE",
                 path=f"/v1/home-snapshots/{quote(snapshot_ref, safe='/')}",
             )
-        except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
+        except _GatewayStatusError as exc:
+            if _is_missing_snapshot(exc):
+                return
+            raise BindingDestroyError(str(exc)) from exc
+        except (httpx.TimeoutException, httpx.RequestError) as exc:
             raise BindingDestroyError(str(exc)) from exc
 
 
@@ -360,6 +371,13 @@ def _is_missing_sandbox(exc: ShellProviderError) -> bool:
         "not_found",
         "sandbox_expired",
         "sandbox_not_found",
+    }
+
+
+def _is_missing_snapshot(exc: _GatewayStatusError) -> bool:
+    return exc.status_code == HTTPStatus.NOT_FOUND and exc.reason.casefold() in {
+        "not_found",
+        "snapshot_not_found",
     }
 
 

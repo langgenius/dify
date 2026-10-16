@@ -181,7 +181,7 @@ const createConfigResult = (
   readOnly: false,
   inputs: createData(),
   handleModelChanged: vi.fn(),
-  isChatMode: true,
+  isChatflow: true,
   isChatModel: true,
   handleCompletionParamsChange: vi.fn(),
   handleQueryVarChange: vi.fn(),

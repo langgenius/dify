@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import RenameDatasetModal from '../index'
 
 const { mockToast } = vi.hoisted(() => {
@@ -33,10 +34,10 @@ vi.mock('@/service/datasets', () => ({
 describe('RenameDatasetModal', () => {
   // Create a base dataset with emoji icon
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    indexing_status: 'completed',
     icon_info: {
       icon: '📊',
       icon_type: 'emoji',
@@ -52,14 +53,12 @@ describe('RenameDatasetModal', () => {
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'openai',
     embedding_model: 'text-embedding-ada-002',
     embedding_model_provider: 'openai',
     embedding_available: true,
     retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
-    retrieval_model: {} as DataSet['retrieval_model'],
     tags: [],
     external_knowledge_info: {
       external_knowledge_id: '',

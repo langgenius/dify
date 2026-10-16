@@ -22,7 +22,16 @@ const createIteration = (thought: string, tokens: number): AgentIteration => ({
   thought,
   tokens,
   tool_calls: [
-    { tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } },
+    {
+      tool_name: 'tool1',
+      status: 'success',
+      tool_icon: null,
+      tool_label: { 'en-US': 'Tool 1' },
+      time_cost: 0,
+      tool_input: {},
+      tool_output: {},
+      tool_parameters: {},
+    },
   ],
   tool_raw: { inputs: '', outputs: '' },
 })

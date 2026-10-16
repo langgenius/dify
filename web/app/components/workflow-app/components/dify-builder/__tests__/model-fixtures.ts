@@ -8,7 +8,6 @@ import type { consoleClient } from '@/service/console'
 import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 
 export const builderModel: SessionModel = {
@@ -74,9 +73,6 @@ export const createBuilderQueryClient = ({
   if (defaultLoading) {
     void client.query({ queryKey: defaultModelQueryKey, queryFn: () => new Promise(() => {}) })
   } else {
-    client.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
-      data: defaultModel,
-    })
     client.setQueryData(
       defaultModelQueryKey,
       zDefaultModelDataResponse.parse({ data: defaultModel }),
@@ -124,6 +120,11 @@ export const createBuilderQueryClient = ({
     remaining_credits: 100,
   })
   for (const model of ['gpt-4o', 'gpt-4.1'])
-    client.setQueryData(commonQueryKeys.modelParameterRules('openai', model), { data: [] })
+    client.setQueryData(
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.queryKey({
+        input: { params: { provider: 'openai' }, query: { model } },
+      }),
+      { data: [] },
+    )
   return client
 }

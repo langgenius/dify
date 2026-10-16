@@ -10,12 +10,19 @@ from types import GeneratorType
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import inspect
-from sqlalchemy.orm import selectinload
-
 from configs import dify_config
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
+from libs.sensitive_http_telemetry import sensitive_http_telemetry
+from models import CreatorUserRole, WorkflowRun
+from models.enums import ExecutionOffLoadType, WorkflowRunTriggeredFrom
+from models.model import UploadFile
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowType as ModelWorkflowType
+from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
+from sqlalchemy import inspect
+from sqlalchemy.orm import selectinload
+
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from graphon.enums import (
     WorkflowExecutionStatus,
@@ -23,12 +30,6 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
-from libs.sensitive_http_telemetry import sensitive_http_telemetry
-from models import CreatorUserRole, WorkflowRun
-from models.enums import ExecutionOffLoadType, WorkflowRunTriggeredFrom
-from models.model import UploadFile
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
-from models.workflow import WorkflowType as ModelWorkflowType
 from services.dify_builder.execution_contracts import canonical_json
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.dify_builder.native_testing.observation_owner import _checked_context
@@ -178,7 +179,7 @@ class NativeRepositoryObservation:
     def project_run(self, execution: WorkflowExecution) -> WorkflowExecution:
         context = self._context
         if (
-            type(execution) is not WorkflowExecution
+            type(execution) not in (WorkflowExecution, TimedWorkflowExecution)
             or execution.id_ != context.native_run_id
             or execution.workflow_id != context.workflow_id
         ):
@@ -191,11 +192,16 @@ class NativeRepositoryObservation:
         _identity(execution.workflow_version)
         _time(execution.started_at)
         _time(execution.finished_at, optional=True)
+        accumulated_elapsed_time = None
+        if type(execution) is TimedWorkflowExecution:
+            accumulated_elapsed_time = execution.accumulated_elapsed_time
+            if accumulated_elapsed_time is not None:
+                _elapsed(accumulated_elapsed_time)
         graph = execution.graph
         self.guard.values(graph)  # Validate plain content before canonical comparison.
         if canonical_json(graph) != canonical_json(self._graph):
             graph = self.guard.graph(graph)
-        return WorkflowExecution(
+        return TimedWorkflowExecution(
             id_=execution.id_,
             workflow_id=execution.workflow_id,
             workflow_type=execution.workflow_type,
@@ -210,6 +216,7 @@ class NativeRepositoryObservation:
             exceptions_count=_count(execution.exceptions_count),
             started_at=execution.started_at,
             finished_at=execution.finished_at,
+            accumulated_elapsed_time=accumulated_elapsed_time,
         )
 
     def run_row(self, row: WorkflowRun) -> WorkflowRun:

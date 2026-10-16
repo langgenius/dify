@@ -97,8 +97,8 @@ def get_number_cases() -> list[ValidationTestCase]:
         ValidationTestCase(SegmentType.NUMBER, 42, True, "Positive integer"),
         ValidationTestCase(SegmentType.NUMBER, -42, True, "Negative integer"),
         ValidationTestCase(SegmentType.NUMBER, 0, True, "Zero integer"),
-        ValidationTestCase(SegmentType.NUMBER, 3.14, True, "Positive float"),
-        ValidationTestCase(SegmentType.NUMBER, -3.14, True, "Negative float"),
+        ValidationTestCase(SegmentType.NUMBER, float("3.14"), True, "Positive float"),
+        ValidationTestCase(SegmentType.NUMBER, -float("3.14"), True, "Negative float"),
         ValidationTestCase(SegmentType.NUMBER, 0.0, True, "Zero float"),
         ValidationTestCase(SegmentType.NUMBER, float("inf"), True, "Positive infinity"),
         ValidationTestCase(SegmentType.NUMBER, float("-inf"), True, "Negative infinity"),
@@ -122,7 +122,7 @@ def get_string_cases() -> list[ValidationTestCase]:
         ValidationTestCase(SegmentType.STRING, "line1\nline2", True, "Multiline string"),
         # invalid values
         ValidationTestCase(SegmentType.STRING, 123, False, "Integer"),
-        ValidationTestCase(SegmentType.STRING, 3.14, False, "Float"),
+        ValidationTestCase(SegmentType.STRING, float("3.14"), False, "Float"),
         ValidationTestCase(SegmentType.STRING, True, False, "Boolean"),
         ValidationTestCase(SegmentType.STRING, None, False, "None value"),
         ValidationTestCase(SegmentType.STRING, [], False, "Empty list"),
@@ -143,7 +143,7 @@ def get_object_cases() -> list[ValidationTestCase]:
         # invalid cases
         ValidationTestCase(SegmentType.OBJECT, "not a dict", False, "String"),
         ValidationTestCase(SegmentType.OBJECT, 123, False, "Integer"),
-        ValidationTestCase(SegmentType.OBJECT, 3.14, False, "Float"),
+        ValidationTestCase(SegmentType.OBJECT, float("3.14"), False, "Float"),
         ValidationTestCase(SegmentType.OBJECT, True, False, "Boolean"),
         ValidationTestCase(SegmentType.OBJECT, None, False, "None value"),
         ValidationTestCase(SegmentType.OBJECT, [], False, "Empty list"),
@@ -161,7 +161,7 @@ def get_secret_cases() -> list[ValidationTestCase]:
         ValidationTestCase(SegmentType.SECRET, "very_long_secret_key_with_special_chars!@#", True, "Complex secret"),
         # invalid cases
         ValidationTestCase(SegmentType.SECRET, 123, False, "Integer"),
-        ValidationTestCase(SegmentType.SECRET, 3.14, False, "Float"),
+        ValidationTestCase(SegmentType.SECRET, float("3.14"), False, "Float"),
         ValidationTestCase(SegmentType.SECRET, True, False, "Boolean"),
         ValidationTestCase(SegmentType.SECRET, None, False, "None value"),
         ValidationTestCase(SegmentType.SECRET, [], False, "Empty list"),
@@ -254,21 +254,21 @@ def get_array_any_validation_cases() -> list[ArrayValidationTestCase]:
     return [
         ArrayValidationTestCase(
             SegmentType.ARRAY_ANY,
-            [1, "string", 3.14, {"key": "value"}, True],
+            [1, "string", float("3.14"), {"key": "value"}, True],
             ArrayValidation.NONE,
             True,
             "Mixed types with NONE validation",
         ),
         ArrayValidationTestCase(
             SegmentType.ARRAY_ANY,
-            [1, "string", 3.14, {"key": "value"}, True],
+            [1, "string", float("3.14"), {"key": "value"}, True],
             ArrayValidation.FIRST,
             True,
             "Mixed types with FIRST validation",
         ),
         ArrayValidationTestCase(
             SegmentType.ARRAY_ANY,
-            [1, "string", 3.14, {"key": "value"}, True],
+            [1, "string", float("3.14"), {"key": "value"}, True],
             ArrayValidation.ALL,
             True,
             "Mixed types with ALL validation",
@@ -366,7 +366,11 @@ def get_array_number_validation_cases() -> list[ArrayValidationTestCase]:
             SegmentType.ARRAY_NUMBER, ["not a number", 42], ArrayValidation.FIRST, False, "First invalid"
         ),
         ArrayValidationTestCase(
-            SegmentType.ARRAY_NUMBER, [3.14, 2.71, 1.41], ArrayValidation.FIRST, True, "All valid floats"
+            SegmentType.ARRAY_NUMBER,
+            [float("3.14"), float("2.71"), 1.41],
+            ArrayValidation.FIRST,
+            True,
+            "All valid floats",
         ),
         # ALL strategy
         ArrayValidationTestCase(
@@ -566,7 +570,7 @@ class TestSegmentTypeIsValid:
             elif segment_type in {SegmentType.NUMBER, SegmentType.INTEGER}:
                 test_value = 42
             elif segment_type == SegmentType.FLOAT:
-                test_value = 3.14
+                test_value = float("3.14")
             elif segment_type == SegmentType.BOOLEAN:
                 test_value = True
             elif segment_type == SegmentType.OBJECT:
@@ -614,7 +618,7 @@ class TestSegmentTypeArrayValidation:
         non_list_values = [
             "not a list",
             123,
-            3.14,
+            float("3.14"),
             True,
             None,
             {"key": "value"},
@@ -754,7 +758,7 @@ class TestSegmentTypeValidationIntegration:
             result_first = segment_type.is_valid(valid_value, ArrayValidation.FIRST)
             result_all = segment_type.is_valid(valid_value, ArrayValidation.ALL)
 
-            assert result_none == result_first == result_all == True, (
+            assert result_none == result_first == result_all is True, (
                 f"{segment_type} should ignore array_validation parameter"
             )
 
@@ -827,7 +831,7 @@ class TestSegmentTypeValidationIntegration:
 
         # Number type should accept both integers and floats, including booleans (since bool is subclass of int)
         assert SegmentType.NUMBER.is_valid(42) is True
-        assert SegmentType.NUMBER.is_valid(3.14) is True
+        assert SegmentType.NUMBER.is_valid(float("3.14")) is True
         assert SegmentType.NUMBER.is_valid(True) is True  # bool is subclass of int
         assert SegmentType.NUMBER.is_valid(False) is True  # bool is subclass of int
 

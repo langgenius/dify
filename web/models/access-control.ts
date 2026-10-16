@@ -102,24 +102,6 @@ export type RoleListResponse = {
   pagination: Pagination
 }
 
-export type CreateRoleRequest = {
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type UpdateRolesRequest = {
-  id: string
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type CopyWorkspaceRoleRequest = {
-  roleId: string
-  copy_member: boolean
-}
-
 export type AccessPolicyResourceType = 'app' | 'dataset' | 'agent'
 
 type AccessPolicyCategory = 'global_system_default' | 'global_custom'
@@ -169,20 +151,6 @@ export type GetDatasetAccessPolicyByDatasetIdResponse = {
   items: AccessPolicyWithBindings[]
 }
 
-export type RolesOfMemberResponse = {
-  account_id: string
-  roles: Role[]
-}
-
-export type UpdateRolesOfMemberRequest = {
-  memberId: string
-  roleIds: string[]
-}
-
-export type GetMembersOfRoleRequest = {
-  roleId: string
-} & PaginationParameters
-
 type Account = {
   account_id: string
   account_name: string
@@ -198,11 +166,6 @@ export type ResourceUserAccessSetting = {
 
 type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
-  pagination: Pagination
-}
-
-export type GetMembersOfRoleResponse = {
-  data: Account[]
   pagination: Pagination
 }
 

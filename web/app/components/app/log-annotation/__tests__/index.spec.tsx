@@ -6,7 +6,6 @@ import { PageType } from '@/app/components/base/features/new-feature-panel/annot
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import LogAnnotation from '../index'
 
 vi.mock('@/app/components/app/annotation', () => ({
@@ -75,7 +74,7 @@ describe('LogAnnotation', () => {
 
     it('should render log content without the old page tabs', () => {
       // Arrange
-      appDetail = createMockApp({ mode: AppModeEnum.CHAT })
+      appDetail = createMockApp({ mode: 'chat' })
 
       // Act
       render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
@@ -88,7 +87,7 @@ describe('LogAnnotation', () => {
 
     it('should render completion logs without the old page tabs', () => {
       // Arrange
-      appDetail = createMockApp({ mode: AppModeEnum.COMPLETION })
+      appDetail = createMockApp({ mode: 'completion' as const })
 
       // Act
       render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
@@ -101,7 +100,7 @@ describe('LogAnnotation', () => {
 
     it('should hide tabs and render workflow log in workflow mode', () => {
       // Arrange
-      appDetail = createMockApp({ mode: AppModeEnum.WORKFLOW })
+      appDetail = createMockApp({ mode: 'workflow' as const })
 
       // Act
       render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
@@ -116,7 +115,7 @@ describe('LogAnnotation', () => {
   describe('Props', () => {
     it('should render log content when page type is log', () => {
       // Arrange
-      appDetail = createMockApp({ mode: AppModeEnum.CHAT })
+      appDetail = createMockApp({ mode: 'chat' })
 
       // Act
       render(<LogAnnotation appId="app-123" pageType={PageType.log} />)
@@ -128,7 +127,7 @@ describe('LogAnnotation', () => {
 
     it('should render annotation content when page type is annotation', () => {
       // Arrange
-      appDetail = createMockApp({ mode: AppModeEnum.CHAT })
+      appDetail = createMockApp({ mode: 'chat' })
 
       // Act
       render(<LogAnnotation appId="app-123" pageType={PageType.annotation} />)

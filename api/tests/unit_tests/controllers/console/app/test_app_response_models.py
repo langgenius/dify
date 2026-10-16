@@ -284,11 +284,11 @@ def test_create_app_endpoint_rejects_agent_mode(app_module):
 
 
 def test_app_partial_serialization_uses_aliases(app_models, sqlite_session: Session):
-    AppPartial = app_models.AppPartial
+    app_partial = app_models.AppPartial
     app_obj = _persist_response_graph(sqlite_session)
     app_obj.description = "Prompt snippet"
 
-    serialized = AppPartial.model_validate(
+    serialized = app_partial.model_validate(
         replace(app_record(app_obj, session=sqlite_session), permission_keys=app_obj.permission_keys),
         from_attributes=True,
     ).model_dump(mode="json")
@@ -398,7 +398,7 @@ def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session: Session):
-    AppPagination = app_models.AppPagination
+    app_pagination = app_models.AppPagination
     item_one = _app(
         app_id="00000000-0000-0000-0000-000000000110",
         name="Paginated One",
@@ -421,7 +421,7 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session
         items=[app_record(item, session=sqlite_session) for item in (item_one, item_two)],
     )
 
-    serialized = AppPagination.model_validate(
+    serialized = app_pagination.model_validate(
         pagination,
         from_attributes=True,
     ).model_dump(mode="json")

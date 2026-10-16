@@ -22,6 +22,7 @@ from typing import Any
 from core.model_manager import ModelInstance
 from services.dify_builder.agent import build, chat, edit, fix, mock_inputs
 from services.dify_builder.agent.model_resolver import resolve_model_instance
+from services.dify_builder.plan import WorkflowPlan
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +135,7 @@ class LlmBuilderAgent:
             self._reasoning_for("propose-app-name"),
         )
 
-    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> list[str]:
+    def propose_plan_v1(self, requirements: dict[str, Any], *, goal_text: str) -> WorkflowPlan | None:
         return build.propose_plan_v1(
             self.model_or_none(),
             requirements,
@@ -195,7 +196,7 @@ class LlmBuilderAgent:
             self._reasoning_for("analyze-impact"),
         )
 
-    def propose_edit_plan(self, edit_rules, graph):
+    def propose_edit_plan(self, edit_rules, graph) -> WorkflowPlan | None:
         return edit.propose_edit_plan(
             self.model_or_none(),
             edit_rules,

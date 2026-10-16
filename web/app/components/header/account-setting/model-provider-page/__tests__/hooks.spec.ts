@@ -9,7 +9,6 @@ import type {
 } from '../declarations'
 import { act, renderHook } from '@testing-library/react'
 import { useLocale } from '#i18n'
-import { fetchDefaultModal } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import {
   ConfigurationMethodEnum,
@@ -47,18 +46,6 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: vi.fn(() => ({
     invalidateQueries: vi.fn(),
   })),
-}))
-
-vi.mock('@/service/common', () => ({
-  fetchDefaultModal: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  commonQueryKeys: {
-    modelProviders: ['model-providers'],
-    modelProviderDetails: ['model-provider-details'],
-    defaultModel: (type: string) => ['default-model', type],
-  },
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -166,6 +153,9 @@ describe('hooks', () => {
       provider: {
         provider: 'openai',
         icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+        label: { en_US: 'Provider', zh_Hans: 'Provider' },
+        supported_model_types: [],
+        tenant_id: 'tenant-1',
       },
       model,
       model_type: ModelTypeEnum.textGeneration,
@@ -193,6 +183,9 @@ describe('hooks', () => {
         provider: {
           provider: 'anthropic',
           icon_small: { en_US: 'icon', zh_Hans: 'icon' },
+          label: { en_US: 'Provider', zh_Hans: 'Provider' },
+          supported_model_types: [],
+          tenant_id: 'tenant-1',
         },
         model: 'claude-3',
         model_type: ModelTypeEnum.textGeneration,
@@ -290,15 +283,6 @@ describe('hooks', () => {
 
       expect(result.current.data).toEqual(mockDefaultModel)
       expect(result.current.isLoading).toBe(false)
-
-      // Coverage for queryFn
-      const queryCall = (useQuery as Mock).mock.calls.find(
-        (call) => Array.isArray(call[0].queryKey) && call[0].queryKey[0] === 'default-model',
-      )
-      if (queryCall) {
-        await queryCall[0].queryFn()
-        expect(fetchDefaultModal).toHaveBeenCalled()
-      }
     })
 
     it('should return undefined when data is not available', () => {
@@ -327,7 +311,9 @@ describe('hooks', () => {
       expect(useQuery).toHaveBeenCalledWith(
         expect.objectContaining({
           enabled: false,
-          queryKey: ['default-model', ModelTypeEnum.textEmbedding],
+          queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+            input: { query: { model_type: ModelTypeEnum.textEmbedding } },
+          }),
         }),
       )
       expect(result.current.isLoading).toBe(false)
@@ -676,7 +662,7 @@ describe('hooks', () => {
 
   describe('useInvalidateDefaultModel', () => {
     it.each([ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank])(
-      'invalidates both default model query consumers for %s',
+      'invalidates the default model query for %s',
       (type) => {
         const invalidateQueries = vi.fn()
         ;(useQueryClient as Mock).mockReturnValue({ invalidateQueries })
@@ -687,9 +673,6 @@ describe('hooks', () => {
           result.current(type)
         })
 
-        expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['default-model', type],
-        })
         expect(invalidateQueries).toHaveBeenCalledWith({
           queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
             input: { query: { model_type: type } },
@@ -714,7 +697,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
     })
 
@@ -1017,7 +1000,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),
@@ -1026,7 +1009,11 @@ describe('hooks', () => {
         queryKey: getModelListQueryKey(ModelTypeEnum.textEmbedding),
       })
       for (const type of provider.supported_model_types)
-        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['default-model', type] })
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.workspaces.current.defaultModel.get.queryKey({
+            input: { query: { model_type: type } },
+          }),
+        })
     })
 
     it('should expand target provider list when refreshModelList is true and custom config is active', () => {
@@ -1167,7 +1154,7 @@ describe('hooks', () => {
         queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-provider-details'],
+        queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: getModelListQueryKey(ModelTypeEnum.textGeneration),

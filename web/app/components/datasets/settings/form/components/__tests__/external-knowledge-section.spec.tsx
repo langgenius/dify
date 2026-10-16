@@ -2,6 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import ExternalKnowledgeSection from '../external-knowledge-section'
@@ -20,6 +21,7 @@ describe('ExternalKnowledgeSection', () => {
   }
 
   const mockDataset: DataSet = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'External Dataset',
     description: 'External dataset description',
@@ -31,7 +33,6 @@ describe('ExternalKnowledgeSection', () => {
       icon_url: '',
     },
     indexing_technique: IndexingType.QUALIFIED,
-    indexing_status: 'completed',
     data_source_type: DataSourceType.FILE,
     doc_form: ChunkingMode.text,
     embedding_model: 'text-embedding-ada-002',
@@ -39,7 +40,6 @@ describe('ExternalKnowledgeSection', () => {
     embedding_available: true,
     app_count: 0,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'external',
     tags: [],
@@ -56,7 +56,6 @@ describe('ExternalKnowledgeSection', () => {
       score_threshold_enabled: true,
     },
     retrieval_model_dict: mockRetrievalConfig,
-    retrieval_model: mockRetrievalConfig,
     built_in_field_enabled: false,
     keyword_number: 10,
     created_by: 'user-1',

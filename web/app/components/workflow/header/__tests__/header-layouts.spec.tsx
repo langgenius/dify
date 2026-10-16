@@ -3,14 +3,13 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
-import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInNormal from '../header-in-normal'
 import HeaderInRestoring from '../header-in-restoring'
 import HeaderInHistory from '../header-in-view-history'
 
-const mockUseNodes = vi.fn()
+const mockGetNodes = vi.fn()
 const mockHandleBackupDraft = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleNodeSelect = vi.fn()
@@ -29,7 +28,7 @@ const mockViewHistory = vi.fn()
 let mockNodesReadOnly = false
 let mockTheme: 'light' | 'dark' = 'light'
 vi.mock('reactflow', () => ({
-  useNodes: () => mockUseNodes(),
+  useStoreApi: () => ({ getState: () => ({ getNodes: mockGetNodes }) }),
 }))
 
 vi.mock('../../hooks/use-workflow', () => ({
@@ -72,7 +71,7 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
   useRestoreWorkflow: () => ({
     mutateAsync: mockRestoreWorkflow,
@@ -197,14 +196,14 @@ describe('Header layout components', () => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
     mockTheme = 'light'
-    mockUseNodes.mockReturnValue([])
+    mockGetNodes.mockReturnValue([])
     mockRestoreWorkflow.mockResolvedValue({})
   })
 
   describe('HeaderInNormal', () => {
     it('should render slots, pass read-only state to action buttons, and start restoring mode', () => {
       mockNodesReadOnly = true
-      mockUseNodes.mockReturnValue([createSelectedNode()])
+      mockGetNodes.mockReturnValue([createSelectedNode()])
 
       const { store } = renderWorkflowComponent(
         <HeaderInNormal
@@ -246,6 +245,17 @@ describe('Header layout components', () => {
       expect(store.getState().showVariableInspectPanel).toBe(false)
       expect(store.getState().showChatVariablePanel).toBe(false)
       expect(store.getState().showGlobalVariablePanel).toBe(false)
+    })
+
+    it('clears the node selected when version history is opened', async () => {
+      const user = userEvent.setup()
+      renderWorkflowComponent(<HeaderInNormal />)
+
+      mockGetNodes.mockReturnValue([{ ...createSelectedNode(), id: 'newly-selected-node' }])
+      await user.click(screen.getByRole('button', { name: 'version-history' }))
+
+      expect(mockHandleNodeSelect).toHaveBeenCalledExactlyOnceWith('newly-selected-node', true)
+      expect(mockHandleBackupDraft).toHaveBeenCalledOnce()
     })
 
     it('should hide env and global variable buttons when the controls are disabled', () => {
@@ -372,12 +382,9 @@ describe('Header layout components', () => {
           isRestoring: true,
           showWorkflowVersionHistoryPanel: true,
         },
+        resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.appFlow,
-            flowId: 'flow-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
@@ -406,12 +413,9 @@ describe('Header layout components', () => {
             currentVersion,
             deleteAllInspectVars,
           },
+          resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
           hooksStoreProps: {
-            configsMap: {
-              flowType: FlowType.appFlow,
-              flowId: 'flow-1',
-              fileSettings: {},
-            },
+            fileSettings: {},
           },
           queryClient,
         },
@@ -420,7 +424,7 @@ describe('Header layout components', () => {
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/flow-1/workflows/version-1/restore')
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
         expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
         expect(store.getState().isRestoring).toBe(false)
         expect(store.getState().backupDraft).toBeUndefined()
@@ -457,21 +461,16 @@ describe('Header layout components', () => {
           backupDraft: createBackupDraft(),
           currentVersion,
         },
+        resource: { kind: 'knowledge-pipeline' as const, pipelineId: 'pipeline-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.ragPipeline,
-            flowId: 'pipeline-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-          '/rag/pipelines/pipeline-1/workflows/version-1/restore',
-        )
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
@@ -489,21 +488,16 @@ describe('Header layout components', () => {
           backupDraft: createBackupDraft(),
           currentVersion,
         },
+        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.snippet,
-            flowId: 'snippet-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-          '/snippets/snippet-1/workflows/version-1/restore',
-        )
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()

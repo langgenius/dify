@@ -1,15 +1,28 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { StrictMode } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDetail } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import WorkflowApp from '../index'
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(),
+const render = (ui: ReactElement) => {
+  const queryClient = createAccountProfileQueryClient()
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({
+      id: 'app-1',
+      name: 'Workflow App',
+      mode: 'workflow' as const,
+      permission_keys: [],
+    }),
+  )
+  return renderWithConsoleState(ui, {
+    wrapper: createQueryClientWrapper(queryClient),
   })
+}
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -26,16 +39,17 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
   useSearchParams: () => ({ get: () => null }),
 }))
 
-vi.mock('@/service/use-tools', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-tools')>()
-  return {
-    ...actual,
-    useAppTriggers: () => ({}),
-  }
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'apps.byAppId.triggers.get': () => ({}),
+  })
 })
 
 vi.mock('../hooks/use-get-run-and-trace-url', () => ({
@@ -50,11 +64,11 @@ vi.mock('../hooks/use-workflow-init', async () => {
 
   return {
     useWorkflowInit: () => {
-      useStore((state) => state.appId)
+      useStore((state) => state.syncWorkflowDraftHash)
       const workflowStore = useWorkflowStore()
 
       React.useEffect(() => {
-        workflowStore.setState({ appId: 'initialized-app' })
+        workflowStore.setState({ syncWorkflowDraftHash: 'initialized-draft' })
       }, [workflowStore])
 
       return {
@@ -99,7 +113,7 @@ vi.mock('../components/workflow-main', async () => {
     await import('@/app/components/workflow/workflow-history-store')
 
   const WorkflowMainProbe = () => {
-    const appId = useStore((state) => state.appId)
+    const appId = useStore((state) => state.syncWorkflowDraftHash)
     const hasWorkflowSlice = useStore((state) => typeof state.setNotInitialWorkflow === 'function')
     const { store } = useWorkflowHistoryStore()
 
@@ -116,17 +130,6 @@ vi.mock('../components/workflow-main', async () => {
 })
 
 describe('WorkflowApp provider contract', () => {
-  beforeEach(() => {
-    useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        name: 'Workflow App',
-        mode: 'workflow',
-        permission_keys: [],
-      } as never,
-    })
-  })
-
   it('shares one workflow store between initialization and the initialized canvas', async () => {
     render(
       <StrictMode>
@@ -134,6 +137,8 @@ describe('WorkflowApp provider contract', () => {
       </StrictMode>,
     )
 
-    expect(await screen.findByText('app:initialized-app history:1 slice:true')).toBeInTheDocument()
+    expect(
+      await screen.findByText('app:initialized-draft history:1 slice:true'),
+    ).toBeInTheDocument()
   })
 })

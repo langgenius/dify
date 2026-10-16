@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { changePasswordWithToken } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import ChangePasswordForm from './ChangePasswordForm'
 
@@ -15,8 +15,15 @@ vi.mock('@/service/use-common', () => ({
   useVerifyForgotPasswordToken: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  changePasswordWithToken: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    forgotPassword: {
+      resets: {
+        post: vi.fn(),
+      },
+    },
+  },
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -28,7 +35,7 @@ vi.mock('@/utils/var', () => ({ basePath: '' }))
 
 type UseVerifyResult = ReturnType<typeof useVerifyForgotPasswordToken>
 const mockUseVerify = vi.mocked(useVerifyForgotPasswordToken)
-const mockChangePassword = vi.mocked(changePasswordWithToken)
+const mockChangePassword = vi.mocked(consoleClient.forgotPassword.resets.post)
 const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const VALID_PASSWORD = 'ValidPass123!'
@@ -79,7 +86,6 @@ describe('ChangePasswordForm', () => {
 
       await waitFor(() => {
         expect(mockChangePassword).toHaveBeenCalledWith({
-          url: '/forgot-password/resets',
           body: {
             token: T2,
             new_password: VALID_PASSWORD,
@@ -165,7 +171,7 @@ describe('ChangePasswordForm', () => {
     it('prevents duplicate submissions while the password is changing', async () => {
       const user = userEvent.setup()
       let resolveRequest:
-        | ((value: Awaited<ReturnType<typeof changePasswordWithToken>>) => void)
+        | ((value: Awaited<ReturnType<typeof consoleClient.forgotPassword.resets.post>>) => void)
         | undefined
       mockChangePassword.mockReturnValue(
         new Promise((resolve) => {

@@ -1,6 +1,8 @@
+import type { Node } from '../../types'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useStoreApi } from 'reactflow'
 import { VarInInspectType } from '@/types/workflow'
 import { createNode } from '../../__tests__/fixtures'
 import { baseRunningData, renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
@@ -192,5 +194,51 @@ describe('VariableInspectTrigger', () => {
       screen.queryByText('workflowDebug.debug.variableInspect.trigger.clear'),
     ).not.toBeInTheDocument()
     expect(store.getState().showVariableInspectPanel).toBe(true)
+  })
+
+  it('tracks single-node execution start and completion', async () => {
+    const user = userEvent.setup()
+    const ExecutionControls = () => {
+      const store = useStoreApi()
+      const updateNode = (status: NodeRunningStatus) => {
+        const { getNodes, setNodes } = store.getState()
+        setNodes(
+          (getNodes() as Node[]).map((node) => ({
+            ...node,
+            data: { ...node.data, _singleRunningStatus: status },
+          })),
+        )
+      }
+      return (
+        <>
+          <button type="button" onClick={() => updateNode(NodeRunningStatus.Running)}>
+            Start node
+          </button>
+          <button type="button" onClick={() => updateNode(NodeRunningStatus.Succeeded)}>
+            Finish node
+          </button>
+        </>
+      )
+    }
+    renderWorkflowFlowComponent(
+      <>
+        <ExecutionControls />
+        <VariableInspectTrigger />
+      </>,
+      { nodes: [createNode()] },
+    )
+    expect(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.normal' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Start node' }))
+    expect(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.running' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Finish node' }))
+    expect(
+      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.trigger.normal' }),
+    ).toBeInTheDocument()
   })
 })

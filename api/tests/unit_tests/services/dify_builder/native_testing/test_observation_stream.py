@@ -14,6 +14,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowSucceededEvent
 from core.workflow.system_variables import build_system_variables
 from models.account import Account
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
 from services.dify_builder.native_testing.http_binding import build_native_http_profile
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
@@ -46,6 +47,7 @@ def entity(**kwargs) -> Any:
         files=[],
         inputs={SENTINEL: SENTINEL},
         workflow_execution_id="run",
+        workflow_execution_timing=WorkflowExecutionTiming(),
         call_depth=0,
         native_test_required=True,
         native_test_ref=None,
@@ -659,3 +661,36 @@ def test_generic_container_decimal_metadata_stays_refused_without_actual_host(pr
     assert event.metadata is metadata
     assert type(event.metadata["total_price"]) is Decimal
     assert guard.failed
+
+
+def test_native_pause_response_reuses_cumulative_settled_duration_after_queue_delay(guard, monkeypatch):
+    from core.app.entities.queue_entities import QueueWorkflowPausedEvent
+    from core.app.entities.task_entities import WorkflowPauseStreamResponse
+
+    from graphon.entities import WorkflowStartReason
+    from graphon.entities.pause_reason import SchedulingPause
+
+    clock = [100.0]
+    monkeypatch.setattr("repositories.entities.workflow_execution.perf_counter", lambda: clock[0])
+    c = converter(guard)
+    timing = c._application_generate_entity.workflow_execution_timing
+    timing.elapsed_time = 7.0
+    c.workflow_start_to_stream_response(
+        task_id="task", workflow_run_id="run", workflow_id="workflow", reason=WorkflowStartReason.INITIAL
+    )
+    clock[0] += 2.0
+    assert timing.finish() == 9.0
+    clock[0] += 1000.0
+    event = QueueWorkflowPausedEvent(
+        reasons=[SchedulingPause(message=SENTINEL)], outputs={SENTINEL: SENTINEL}, paused_nodes=["http"]
+    )
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    responses = c.workflow_pause_to_stream_response(event=event, task_id="task", graph_runtime_state=state)
+    assert len(responses) == 1
+    response = responses[0]
+    assert isinstance(response, WorkflowPauseStreamResponse)
+    assert response.data.elapsed_time == 9.0
+    assert response.data.outputs["redacted"] is True
+    assert SENTINEL not in response.model_dump_json()
+    assert event.outputs == {SENTINEL: SENTINEL}
+    assert not guard.failed

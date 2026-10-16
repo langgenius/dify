@@ -1,24 +1,19 @@
 import type { DefaultModelResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SessionModel } from '../types'
 import type { consoleClient } from '@/service/console'
+import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyBuilderComposer from '../composer'
 import { createSessionView } from '../session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../session/state'
 import { difyBuilderDraftAtom, difyBuilderSelectedModelAtom } from '../store'
-
-vi.mock('@/service/common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/common')>()),
-  fetchDefaultModal: vi.fn(() => new Promise(() => {})),
-}))
 
 const defaultModel: DefaultModelResponse = {
   model: 'gpt-4.1',
@@ -89,10 +84,16 @@ const renderSelector = ({
         canvas_read_only: false,
       }),
     )
-  if (!defaultLoading)
-    queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
-      data: configuredDefault,
-    })
+  const defaultModelQueryKey = consoleQuery.workspaces.current.defaultModel.get.queryKey({
+    input: { query: { model_type: ModelTypeEnum.textGeneration } },
+  })
+  if (defaultLoading)
+    void queryClient.query({ queryKey: defaultModelQueryKey, queryFn: () => new Promise(() => {}) })
+  else
+    queryClient.setQueryData(
+      defaultModelQueryKey,
+      zDefaultModelDataResponse.parse({ data: configuredDefault }),
+    )
   queryClient.setQueryData(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
       input: { params: { model_type: 'llm' } },
@@ -114,7 +115,12 @@ const renderSelector = ({
     remaining_credits: 100,
   })
   for (const model of ['gpt-4o', 'gpt-4.1'])
-    queryClient.setQueryData(commonQueryKeys.modelParameterRules('openai', model), { data: [] })
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.queryKey({
+        input: { params: { provider: 'openai' }, query: { model } },
+      }),
+      { data: [] },
+    )
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
   return renderWithConsoleQuery(
     <Provider store={store}>
@@ -184,9 +190,12 @@ describe('DifyBuilderModelSelector', () => {
     ).toBeInTheDocument()
 
     await act(async () => {
-      queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
-        data: defaultModel,
-      })
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: ModelTypeEnum.textGeneration } },
+        }),
+        zDefaultModelDataResponse.parse({ data: defaultModel }),
+      )
     })
 
     expect(await screen.findByRole('button', { name: 'gpt-4.1' })).toBeInTheDocument()
@@ -196,9 +205,12 @@ describe('DifyBuilderModelSelector', () => {
     const { queryClient } = renderSelector({ defaultLoading: true, selectedModel: userModel })
 
     await act(async () => {
-      queryClient.setQueryData(commonQueryKeys.defaultModel(ModelTypeEnum.textGeneration), {
-        data: defaultModel,
-      })
+      queryClient.setQueryData(
+        consoleQuery.workspaces.current.defaultModel.get.queryKey({
+          input: { query: { model_type: ModelTypeEnum.textGeneration } },
+        }),
+        zDefaultModelDataResponse.parse({ data: defaultModel }),
+      )
     })
 
     expect(screen.getByRole('button', { name: userModel.name })).toBeInTheDocument()

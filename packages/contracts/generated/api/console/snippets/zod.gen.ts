@@ -223,11 +223,11 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
 })
 
 /**
- * PublishWorkflowPayload
+ * SnippetPublishWorkflowPayload
  *
  * Payload for publishing snippet workflow.
  */
-export const zPublishWorkflowPayload = z.object({
+export const zSnippetPublishWorkflowPayload = z.object({
   knowledge_base_setting: z.record(z.string(), z.unknown()).nullish(),
   marked_comment: z.string().max(100).nullish(),
   marked_name: z.string().max(20).nullish(),
@@ -451,7 +451,7 @@ export const zEnvironmentVariableListResponse = z.object({
   items: z.array(zEnvironmentVariableItemResponse),
 })
 
-export const zJsonValue = z
+export const zShallowJsonValue = z
   .union([
     z.string(),
     z.int(),
@@ -465,7 +465,7 @@ export const zJsonValue = z
 /**
  * GeneratedAppResponse
  */
-export const zGeneratedAppResponse = zJsonValue
+export const zGeneratedAppResponse = zShallowJsonValue
 
 /**
  * AgentConfigSnapshotSummaryResponse
@@ -626,6 +626,20 @@ export const zWorkflowDraftVariableFullContentResponse = z.object({
   value_type: z.string(),
 })
 
+export const zRecursiveJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(
+      z.string(),
+      z.lazy((): any => zRecursiveJsonValue),
+    ),
+    z.array(z.lazy((): any => zRecursiveJsonValue)),
+  ])
+  .nullable()
+
 /**
  * WorkflowDraftVariableResponse
  */
@@ -638,7 +652,7 @@ export const zWorkflowDraftVariableResponse = z.object({
   name: z.string(),
   selector: z.array(z.string()),
   type: z.string(),
-  value: zJsonValue,
+  value: zRecursiveJsonValue,
   value_type: z.string(),
   visible: z.boolean(),
 })
@@ -2137,7 +2151,7 @@ export const zGetSnippetsBySnippetIdWorkflowsPublishPath = z.object({
  */
 export const zGetSnippetsBySnippetIdWorkflowsPublishResponse = zSnippetWorkflowResponse
 
-export const zPostSnippetsBySnippetIdWorkflowsPublishBody = zPublishWorkflowPayload
+export const zPostSnippetsBySnippetIdWorkflowsPublishBody = zSnippetPublishWorkflowPayload
 
 export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
   snippet_id: z.uuid(),

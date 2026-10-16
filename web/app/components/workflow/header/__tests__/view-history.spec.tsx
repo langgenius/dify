@@ -17,9 +17,7 @@ const mockFormatWorkflowRunIdentifier = vi.fn(
 
 let mockIsChatMode = false
 
-vi.mock('../../hooks/use-workflow', () => ({
-  useIsChatMode: () => mockIsChatMode,
-}))
+vi.mock('../../hooks/use-workflow', () => ({}))
 
 vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
@@ -255,4 +253,11 @@ describe('ViewHistory', () => {
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

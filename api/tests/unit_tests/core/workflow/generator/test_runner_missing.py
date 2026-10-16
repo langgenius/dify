@@ -34,7 +34,7 @@ def test_declares_variable():
     # time and accepting it only let a broken graph reach the canvas silently.
     # See TestLlmNodeDeclaresTheEngineOutputs in test_runner.py for the full
     # truth table.
-    assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") is True
     llm_so = {
         "data": {
             "type": "llm",
@@ -42,38 +42,38 @@ def test_declares_variable():
             "structured_output": {"schema": {"properties": {"json_var": {}}}},
         }
     }
-    assert WorkflowGenerator._declares_variable(llm_so, "structured_output") == True
-    assert WorkflowGenerator._declares_variable(llm_so, "json_var") == False
-    assert WorkflowGenerator._declares_variable(llm_so, "other_var") == False
+    assert WorkflowGenerator._declares_variable(llm_so, "structured_output") is True
+    assert WorkflowGenerator._declares_variable(llm_so, "json_var") is False
+    assert WorkflowGenerator._declares_variable(llm_so, "other_var") is False
 
     # Code node
     assert (
         WorkflowGenerator._declares_variable({"data": {"type": "code", "outputs": {"code_var": "str"}}}, "code_var")
-        == True
+        is True
     )
 
     # Knowledge retrieval
-    assert WorkflowGenerator._declares_variable({"data": {"type": "knowledge-retrieval"}}, "result") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "knowledge-retrieval"}}, "result") is True
 
     # Parameter extractor
     assert (
         WorkflowGenerator._declares_variable(
             {"data": {"type": "parameter-extractor", "parameters": [{"name": "param1"}]}}, "param1"
         )
-        == True
+        is True
     )
 
     # HTTP request
-    assert WorkflowGenerator._declares_variable({"data": {"type": "http-request"}}, "body") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "http-request"}}, "body") is True
 
     # Template transform
-    assert WorkflowGenerator._declares_variable({"data": {"type": "template-transform"}}, "output") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "template-transform"}}, "output") is True
 
     # Tool
-    assert WorkflowGenerator._declares_variable({"data": {"type": "tool"}}, "anything") == True
+    assert WorkflowGenerator._declares_variable({"data": {"type": "tool"}}, "anything") is True
 
     # Other node (default false)
-    assert WorkflowGenerator._declares_variable({"data": {"type": "unknown"}}, "anything") == False
+    assert WorkflowGenerator._declares_variable({"data": {"type": "unknown"}}, "anything") is False
 
 
 def test_collect_container_errors():

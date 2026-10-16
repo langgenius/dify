@@ -30,7 +30,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
-import { fetchHitHistoryList } from '@/service/annotation'
+import { consoleClient } from '@/service/console'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import HitHistoryNoData from './hit-history-no-data'
 
@@ -51,7 +51,9 @@ const TabType = {
 type TabType = (typeof TabType)[keyof typeof TabType]
 
 const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, onRemove }) => {
-  const { id, question, answer, created_at: createdAt } = item
+  const { id, created_at: createdAt } = item
+  const question = item.question ?? ''
+  const answer = item.answer ?? ''
   const [newQuestion, setNewQuery] = useState(question)
   const [newAnswer, setNewAnswer] = useState(answer)
   const { t } = useTranslation(['appAnnotation', 'appDebug', 'appLog', 'common'])
@@ -72,11 +74,12 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
 
   const fetchHitHistory = async (page = 1) => {
     try {
-      const { data, total }: any = await fetchHitHistoryList(appId, id, {
-        page,
-        limit: 10,
-      })
-      setHitHistoryList(data as HitHistoryItem[])
+      const { data, total } =
+        await consoleClient.apps.byAppId.annotations.byAnnotationId.hitHistories.get({
+          params: { app_id: appId, annotation_id: id },
+          query: { page, limit: 10 },
+        })
+      setHitHistoryList(data)
       setTotal(total)
     } catch {}
   }
@@ -158,29 +161,31 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
               >
                 <td
                   className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.question}
+                  title={item.question ?? undefined}
                 >
                   {item.question}
                 </td>
                 <td
                   className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.match}
+                  title={item.match ?? undefined}
                 >
                   {item.match}
                 </td>
                 <td
                   className="max-w-62.5 overflow-hidden p-3 pr-2 text-ellipsis whitespace-nowrap"
-                  title={item.response}
+                  title={item.response ?? undefined}
                 >
                   {item.response}
                 </td>
                 <td className="p-3 pr-2">{item.source}</td>
                 <td className="p-3 pr-2">{item.score ? item.score.toFixed(2) : '-'}</td>
                 <td className="p-3 pr-2">
-                  {formatTime(
-                    item.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
+                  {item.created_at
+                    ? formatTime(
+                        item.created_at,
+                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                      )
+                    : '-'}
                 </td>
               </tr>
             ))}
@@ -305,10 +310,12 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                     <div>
                       {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}
                       &nbsp;
-                      {formatTime(
-                        createdAt,
-                        t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                      )}
+                      {createdAt
+                        ? formatTime(
+                            createdAt,
+                            t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                          )
+                        : '-'}
                     </div>
                   </div>
                 )}

@@ -32,7 +32,6 @@ from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_application_services import application_services
 from fields.app_fields import (
     AppDetail,
-    AppDetailSiteResponse,
     AppDetailWithSite,
     AppExportResponse,
     AppImportResponse,
@@ -41,7 +40,6 @@ from fields.app_fields import (
     AppPartial,
     AppTraceResponse,
     DeletedTool,
-    ModelConfigPartial,
     RecentAppListResponse,
     RecentAppResponse,
     Tag,
@@ -275,8 +273,6 @@ register_schema_models(
     AppTracePayload,
     Tag,
     WorkflowPartial,
-    ModelConfigPartial,
-    AppDetailSiteResponse,
     DeletedTool,
     AppExportResponse,
     Segmentation,

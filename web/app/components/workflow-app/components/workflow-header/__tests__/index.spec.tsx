@@ -3,6 +3,7 @@ import type { HeaderProps } from '@/app/components/workflow/header'
 import { screen } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { difyBuilderSessionViewAtom } from '../../dify-builder/session/state'
@@ -11,11 +12,6 @@ import WorkflowHeader from '../index'
 const mocks = vi.hoisted(() => ({
   header: vi.fn(),
   resetWorkflowVersionHistory: vi.fn(),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: { id: string } }) => T) =>
-    selector({ appDetail: { id: 'app-1' } }),
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({
@@ -29,10 +25,6 @@ vi.mock('@/app/components/workflow/header', () => ({
 
 vi.mock('@/service/use-workflow', () => ({
   useResetWorkflowVersionHistory: () => mocks.resetWorkflowVersionHistory,
-}))
-
-vi.mock('../../../hooks/use-is-chat-mode', () => ({
-  useIsChatMode: () => false,
 }))
 
 vi.mock('../chat-variable-trigger', () => ({
@@ -51,7 +43,9 @@ const renderHeader = (difyBuilderEnabled: boolean, sessionView: SessionView | nu
   return renderWithConsoleQuery(
     <Provider store={store}>
       <WorkflowContext value={workflowStore}>
-        <WorkflowHeader />
+        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+          <WorkflowHeader />
+        </EditorResourceScope>
       </WorkflowContext>
     </Provider>,
     { features: { dify_builder_enabled: difyBuilderEnabled } },

@@ -787,7 +787,7 @@ def repair_branch_edge_handles(nodes: list[Any], edges: list[Any]) -> list[dict[
                 edge["sourceHandle"] = unused[0]
             continue
         if defaulted and not named and len(defaulted) <= len(unused):
-            for edge, handle in zip(defaulted, unused):
+            for edge, handle in zip(defaulted, unused, strict=False):
                 edge["sourceHandle"] = handle
             continue
         for edge in unknown:

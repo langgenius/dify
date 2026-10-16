@@ -12,13 +12,15 @@ vi.mock('@/context/modal-context', () => ({
 
 let mockAnnotatedResponseUsage = 5
 
-const mockAddAnnotation = vi.fn().mockResolvedValue({
-  id: 'annotation-1',
-  account: { name: 'Test User' },
-})
+const mockAddAnnotation = vi.fn().mockResolvedValue({ id: 'annotation-1' })
 
-vi.mock('@/service/annotation', () => ({
-  addAnnotation: (...args: unknown[]) => mockAddAnnotation(...args),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: { annotations: { post: (...args: unknown[]) => mockAddAnnotation(...args) } },
+    },
+  },
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -128,12 +130,11 @@ describe('AnnotationCtrlButton', () => {
     fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
-      expect(mockAddAnnotation).toHaveBeenCalledWith('test-app', {
-        message_id: 'msg-1',
-        question: 'test query',
-        answer: 'test answer',
+      expect(mockAddAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'test-app' },
+        body: { message_id: 'msg-1', question: 'test query', answer: 'test answer' },
       })
-      expect(onAdded).toHaveBeenCalledWith('annotation-1', 'Test User')
+      expect(onAdded).toHaveBeenCalledWith('annotation-1', '')
     })
   })
 
@@ -155,31 +156,5 @@ describe('AnnotationCtrlButton', () => {
 
     expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
     expect(mockAddAnnotation).not.toHaveBeenCalled()
-  })
-
-  it('should fallback author name to empty string when account name is missing', async () => {
-    const onAdded = vi.fn()
-    mockAddAnnotation.mockResolvedValueOnce({
-      id: 'annotation-2',
-      account: undefined,
-    })
-
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        messageId="msg-2"
-        cached={false}
-        query="test query"
-        answer="test answer"
-        onAdded={onAdded}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
-
-    await waitFor(() => {
-      expect(onAdded).toHaveBeenCalledWith('annotation-2', '')
-    })
   })
 })

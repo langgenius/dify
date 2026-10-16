@@ -45,6 +45,7 @@ func run() error {
 	mediators := serveCmd.String("native-mediators", "", "deployment-owned exact private IP:port broker destinations")
 	inputRoot := serveCmd.String("native-input-root", "", "trusted immutable input-file root")
 	token := serveCmd.String("token", "", "bearer auth token")
+	requireAuthToken := serveCmd.Bool("require-auth-token", false, "require a nonblank bearer auth token")
 
 	if len(os.Args) < 2 || os.Args[1] != "serve" {
 		fmt.Fprintf(os.Stderr, "Usage: shellctl serve [flags]\n")
@@ -67,6 +68,9 @@ func run() error {
 	}
 	if *token != "" {
 		config.AuthToken = *token
+	}
+	if *requireAuthToken && strings.TrimSpace(config.AuthToken) == "" {
+		return fmt.Errorf("auth token is required: set SHELLCTL_AUTH_TOKEN or --token")
 	}
 
 	if *native {

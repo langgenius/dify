@@ -26,6 +26,10 @@ const mockIterationInfo: AgentIteration = {
       tool_name: 'test_tool',
       tool_label: { en: 'Test Tool', 'en-US': 'Test Tool' },
       tool_icon: null,
+      time_cost: 0,
+      tool_input: {},
+      tool_output: {},
+      tool_parameters: {},
     },
   ],
   tool_raw: {

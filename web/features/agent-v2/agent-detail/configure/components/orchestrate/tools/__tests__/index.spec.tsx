@@ -15,6 +15,7 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
   AgentOrchestrateReadOnlyContext,
@@ -45,7 +46,6 @@ const pluginInstallState = vi.hoisted(() => ({
         latest_package_identifier: string
       }
     | undefined,
-  invalidateBuiltInTools: vi.fn(),
   invalidateInstalledPluginList: vi.fn(),
 }))
 
@@ -158,14 +158,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
   ),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
-  useAllCustomTools: () => ({ data: toolProviderState.customTools }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => pluginInstallState.invalidateBuiltInTools,
-  useInvalidToolsByType: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: toolProviderState.builtInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: toolProviderState.customTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 const agentToolsDraft = {
   ...defaultAgentSoulConfigFormState,
@@ -452,13 +453,14 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentTools />
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
+  return { ...view, queryClient }
 }
 
 function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
@@ -531,7 +533,6 @@ describe('AgentTools', () => {
     pluginAuthState.notAllowCustomCredential = false
     pluginInstallState.manifest = undefined
     pluginInstallState.fallbackManifest = undefined
-    pluginInstallState.invalidateBuiltInTools.mockResolvedValue(undefined)
     pluginInstallState.invalidateInstalledPluginList.mockResolvedValue(undefined)
   })
 
@@ -727,7 +728,9 @@ describe('AgentTools', () => {
         },
         latest_package_identifier: 'langgenius/google:1.0.0@checksum',
       }
-      renderAgentTools(reflectedUninstalledPluginDraft)
+      const { queryClient } = renderAgentTools(reflectedUninstalledPluginDraft)
+      const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+      queryClient.setQueryData(builtInToolsKey, [])
 
       expect(screen.getByRole('button', { name: 'Google Tools' })).toBeInTheDocument()
       expect(
@@ -750,7 +753,7 @@ describe('AgentTools', () => {
       await user.click(installButton)
 
       await waitFor(() => {
-        expect(pluginInstallState.invalidateBuiltInTools).toHaveBeenCalledTimes(1)
+        expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
         expect(pluginInstallState.invalidateInstalledPluginList).toHaveBeenCalledTimes(1)
       })
     })

@@ -143,6 +143,19 @@ const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
 const toLoroRecord = (value: unknown): Record<string, Value> =>
   cloneDeep(value) as Record<string, Value>
 
+const reuseNodeReferences = (node: Node, previousNode?: Node): Node => {
+  if (!previousNode) return node
+
+  if (isEqual(node.data, previousNode.data)) node.data = previousNode.data
+
+  // ReactFlow's symbol properties are internal; compare the imported node's string fields.
+  const keys = new Set([...Object.keys(node), ...Object.keys(previousNode)]) as Set<keyof Node>
+  for (const key of keys) {
+    if (!isEqual(node[key], previousNode[key])) return node
+  }
+  return previousNode
+}
+
 const toUint8Array = (value: unknown): Uint8Array | null => {
   if (value instanceof Uint8Array) return value
   if (value instanceof ArrayBuffer) return new Uint8Array(value)
@@ -237,8 +250,19 @@ export class CollaborationManager {
       'user_connect',
       { workflow_id: this.currentAppId },
       {
-        onAck: () => {
+        onAck: (response) => {
           this.rejoinInProgress = false
+          if (
+            response &&
+            typeof response === 'object' &&
+            'msg' in response &&
+            response.msg === 'connected' &&
+            this.doc &&
+            this.getActiveSocket() === socket
+          ) {
+            // Rejected deltas were not relayed. Restore their dependencies after rejoining.
+            this.sendGraphEvent(this.doc.export({ mode: 'update' }))
+          }
         },
         onUnauthorized: () => {
           this.rejoinInProgress = false
@@ -1173,6 +1197,7 @@ export class CollaborationManager {
     return this.eventEmitter.on('syncRequest', callback)
   }
 
+  /** Imported graphs retain unchanged local node and data references for canvas subscribers. */
   onGraphImport(callback: (payload: { nodes: Node[]; edges: Edge[] }) => void): () => void {
     return this.eventEmitter.on('graphImport', callback)
   }
@@ -1492,8 +1517,10 @@ export class CollaborationManager {
           }
 
           if (selectedIds.has(clonedNode.id)) clonedNode.data.selected = true
+          else if (previousNode?.data.selected === false && clonedNode.data.selected === undefined)
+            clonedNode.data.selected = false
 
-          return clonedNode
+          return reuseNodeReferences(clonedNode, previousNode)
         })
 
         // Call ReactFlow's native setter directly to avoid triggering collaboration
@@ -1621,7 +1648,7 @@ export class CollaborationManager {
       const localNode = localNodesMap.get(node.id)
       if (!localNode) return node
 
-      const nextNode = cloneDeep(node)
+      const nextNode = { ...node }
       const nextData = { ...(nextNode.data || {}) } as Node['data']
       const nextDataRecord = nextData as Record<string, unknown>
       const localData = localNode.data as Record<string, unknown> | undefined
@@ -1639,7 +1666,7 @@ export class CollaborationManager {
         nextDataRecord.selected = localNode.selected
 
       nextNode.data = nextData
-      return nextNode
+      return reuseNodeReferences(nextNode, localNode)
     })
   }
 
@@ -2132,7 +2159,7 @@ export class CollaborationManager {
     // CRDT may still be empty when the canvas was initially loaded from HTTP draft data
     // before collaboration finished connecting, and no local mutation has been written yet.
     // Seed once from the current ReactFlow graph so leader resync can broadcast a full snapshot.
-    if (this.getNodes().length > 0 || this.getEdges().length > 0) return
+    if (this.nodesMap!.size > 0 || this.edgesMap!.size > 0) return
 
     const state = this.reactFlowStore.getState()
     const nodes = state.getNodes()

@@ -19,9 +19,11 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
+import { useAtomValue } from 'jotai'
 import {
   Fragment,
   memo,
@@ -40,20 +42,17 @@ import {
   ReactFlowProvider,
   SelectionMode,
   useEdgesState,
-  useNodes,
   useNodesState,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { fetchAllInspectVars } from '@/service/workflow'
 import CandidateNode from './candidate-node'
 import UserCursors from './collaboration/components/user-cursors'
@@ -69,7 +68,7 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { HooksStoreContextProvider } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
 import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
@@ -85,6 +84,7 @@ import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { useWorkflowViewport } from './hooks/use-workflow-viewport'
 import CustomNode from './nodes'
+import WorkflowNodesDataSync from './nodes-data-sync'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
 import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
@@ -119,6 +119,11 @@ const nodeTypes = {
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
+
+const WorkflowNodeSearch = memo(() => {
+  useWorkflowSearch()
+  return null
+})
 
 type WorkflowDataUpdatePayload = {
   nodes: Node[]
@@ -217,30 +222,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [setWorkflowCanvasHeight, setWorkflowCanvasWidth])
 
-    const {
-      setShowConfirm,
-      setControlPromptEditorRerenderKey,
-      setSyncWorkflowDraftHash,
-      setNodes: setNodesInStore,
-    } = workflowStore.getState()
-    const currentNodes = useNodes()
-    const setNodesOnlyChangeWithData = useCallback(
-      (nodes: Node[]) => {
-        const nodesData = nodes.map((node) => ({
-          id: node.id,
-          data: node.data,
-        }))
-        const oldData = workflowStore.getState().nodes.map((node) => ({
-          id: node.id,
-          data: node.data,
-        }))
-        if (!isEqual(oldData, nodesData)) setNodesInStore(nodes)
-      },
-      [setNodesInStore, workflowStore],
-    )
-    useEffect(() => {
-      setNodesOnlyChangeWithData(currentNodes as Node[])
-    }, [currentNodes, setNodesOnlyChangeWithData])
+    const { setShowConfirm, setControlPromptEditorRerenderKey, setSyncWorkflowDraftHash } =
+      workflowStore.getState()
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
@@ -560,9 +543,6 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { handlePaneContextMenu } = usePanelInteractions()
     const { isValidConnection } = useWorkflow()
 
-    // Initialize workflow node search functionality
-    useWorkflowSearch()
-
     // Locate a node by ID from URL query parameter `node_id`
     useLocateNode(nodes)
 
@@ -573,23 +553,39 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const { schemaTypeDefinitions } = useMatchSchemaType()
     const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-    const { data: buildInTools } = useAllBuiltInTools()
-    const { data: customTools } = useAllCustomTools()
-    const { data: workflowTools } = useAllWorkflowTools()
-    const { data: mcpTools } = useAllMCPTools()
+    const { data: buildInTools } = useQuery(
+      consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: customTools } = useQuery(
+      consoleQuery.workspaces.current.tools.api.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: workflowTools } = useQuery(
+      consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
+    const { data: mcpTools } = useQuery(
+      consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+        select: selectToolsWithProvider,
+      }),
+    )
     const dataSourceList = useStore((s) => s.dataSourceList)
     // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
-    const configsMap = useHooksStore((s) => s.configsMap)
+    const resource = useAtomValue(editorResourceAtom)
     const [isLoadedVars, setIsLoadedVars] = useState(false)
     const [vars, setVars] = useState<VarInInspect[]>([])
     useEffect(() => {
       ;(async () => {
-        if (!configsMap?.flowType || !configsMap?.flowId) return
-        const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
+        if (!getEditorResourceId(resource)) return
+        const data = await fetchAllInspectVars(resource)
         setVars(data)
         setIsLoadedVars(true)
       })()
-    }, [configsMap?.flowType, configsMap?.flowId])
+    }, [resource])
     useEffect(() => {
       if (schemaTypeDefinitions && isLoadedVars) {
         fetchInspectVars({
@@ -635,6 +631,8 @@ export const Workflow: FC<WorkflowProps> = memo(
         )}
         ref={workflowContainerRef}
       >
+        <WorkflowNodesDataSync />
+        <WorkflowNodeSearch />
         <CandidateNode />
         <CommentManager />
         <div

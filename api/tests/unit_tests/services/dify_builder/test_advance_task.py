@@ -14,6 +14,7 @@ exception detail leaked).
 """
 
 from collections.abc import Iterator
+from dataclasses import asdict
 
 import pytest
 from sqlalchemy import create_engine
@@ -22,6 +23,7 @@ from sqlalchemy.orm import sessionmaker
 
 import tasks.dify_builder_advance_task as mod
 from core.dify_builder.models import (
+    Action,
     Actor,
     ConversationItem,
     DifyBuilderContext,
@@ -33,6 +35,7 @@ from core.dify_builder.models import (
 from core.dify_builder.state import PcState
 from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
+from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, StubAgent, saved_test_context
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text, english_tree
 
@@ -41,6 +44,8 @@ APP_ID = "22222222-2222-2222-2222-222222222222"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 _ACTOR_DICT = {"account_id": ACCOUNT_ID, "tenant_id": TENANT_ID}
+_BASE_APP_REVISION = "a" * 64
+_CHANGED_APP_REVISION = "b" * 64
 
 
 def _act(kind: str, base_version: int, **payload) -> dict:
@@ -117,6 +122,206 @@ def wired(monkeypatch, repo: SqlDifyBuilderRepository):
     monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
     monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
     return events, released
+
+
+@pytest.fixture
+def queued_commands(monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, wired):
+    """Keep service admission and worker execution separate to exercise queued revision drift."""
+    events, released = wired
+    port = FakeDifyPort()
+    port.hash = _BASE_APP_REVISION
+    port.graph = {
+        "nodes": [
+            {
+                "id": "start",
+                "data": {
+                    "type": "start",
+                    "variables": [{"variable": "query", "type": "text-input", "required": True}],
+                },
+            }
+        ],
+        "edges": [],
+    }
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    monkeypatch.setattr(mod.session_lock, "acquire", lambda _sid: "queued-token")
+    monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
+    queued: list[Action] = []
+    service = DifyBuilderService(
+        repo,
+        mod.session_lock,
+        lambda _sid, action, _actor, _token: queued.append(action),
+        get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
+        stamp_http_fixtures_fn=port.stamp_http_fixtures,
+    )
+    return service, port, queued, events, released
+
+
+@pytest.mark.parametrize(
+    ("entry_mode", "waiting_state", "review_state"),
+    [
+        (EntryMode.FIX, PcState.FIX_AWAIT_TESTDATA, PcState.FIX_AWAIT_DECISION),
+        (EntryMode.BUILD, PcState.BUILD_AWAIT_TESTDATA, PcState.BUILD_REVIEW),
+        (EntryMode.EDIT, PcState.EDIT_AWAIT_TESTDATA, PcState.EDIT_REVIEW),
+    ],
+)
+@pytest.mark.parametrize("base_app_revision", [_BASE_APP_REVISION, ""], ids=["stale-revision", "missing-revision"])
+def test_input_only_testdata_survives_revision_drift_through_the_worker(
+    repo: SqlDifyBuilderRepository,
+    queued_commands,
+    entry_mode: EntryMode,
+    waiting_state: PcState,
+    review_state: PcState,
+    base_app_revision: str,
+) -> None:
+    service, port, queued, events, released = queued_commands
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=entry_mode,
+        current_state=waiting_state,
+    )
+    repo.create_session(session, DifyBuilderContext(last_snapshot_hash=_BASE_APP_REVISION), [])
+    # The draft changed while the user filled the form. Service admission must
+    # preserve the input-only exemption all the way through the actual worker.
+    port.hash = _CHANGED_APP_REVISION
+    inputs = {"query": "Keep the submitted input"}
+    service.submit_action(
+        session.id,
+        Actor(**_ACTOR_DICT),
+        Action(
+            kind="provide_testdata",
+            payload={"mode": "provide", "inputs": inputs},
+            base_version=session.version,
+            base_app_revision=base_app_revision,
+        ),
+    )
+    assert len(queued) == 1
+
+    mod.advance_session(session.id, asdict(queued[0]), _ACTOR_DICT, "queued-token")
+
+    stored, context = repo.get_session(session.id)
+    assert stored.current_state == review_state
+    test_input = repo.get_test_input(context.test_input_ref)
+    assert test_input.inputs == inputs
+    assert port.run_draft_inputs == inputs
+    assert repo.get_run(context.verify_run_id).status == "succeeded"
+    # Accepting inputs does not silently authorize a new repair baseline.
+    assert context.last_snapshot_hash == _BASE_APP_REVISION
+    assert events[-1][1]["kind"] == "command_finished"
+    assert events[-1][1]["app_revision"]["conflicted"] is True
+    assert not any(event["kind"] == "error" for _sid, event in events)
+    assert released == [(session.id, "queued-token")]
+
+
+@pytest.mark.parametrize(
+    ("kind", "waiting_state", "payload"),
+    [
+        ("run_verify", PcState.FIX_AWAIT_VERIFY, {}),
+        (
+            "provide_testdata",
+            PcState.FIX_AWAIT_TESTDATA,
+            {"mode": "provide", "inputs": {"query": "Test"}, "http_fixtures": []},
+        ),
+        (
+            "provide_testdata",
+            PcState.FIX_AWAIT_TESTDATA,
+            {
+                "mode": "provide",
+                "inputs": {"query": "Test"},
+                "http_fixtures": [
+                    {"node_id": "http", "status_code": 200, "content_type": "text/plain", "body": "sample"}
+                ],
+            },
+        ),
+    ],
+    ids=["workflow-action", "empty-http-fixtures", "http-fixtures"],
+)
+def test_revision_bound_commands_reject_draft_changes_while_queued(
+    repo: SqlDifyBuilderRepository,
+    queued_commands,
+    kind: str,
+    waiting_state: PcState,
+    payload: dict,
+) -> None:
+    service, port, queued, events, released = queued_commands
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=waiting_state,
+    )
+    repo.create_session(session, DifyBuilderContext(last_snapshot_hash=_BASE_APP_REVISION), [])
+    service.submit_action(
+        session.id,
+        Actor(**_ACTOR_DICT),
+        Action(kind=kind, payload=payload, base_version=session.version, base_app_revision=_BASE_APP_REVISION),
+    )
+    assert len(queued) == 1
+    # Fixture admission succeeded, but a later draft change must still fence
+    # its queued command before any input is stored or a test is launched.
+    port.hash = _CHANGED_APP_REVISION
+
+    mod.advance_session(session.id, asdict(queued[0]), _ACTOR_DICT, "queued-token")
+
+    stored, context = repo.get_session(session.id)
+    assert stored.current_state == waiting_state
+    assert stored.version == session.version
+    assert context.test_input_ref == ""
+    assert context.verify_run_id == ""
+    assert port.run_draft_inputs == {}
+    assert events == [
+        (
+            session.id,
+            {
+                "kind": "error",
+                "error": "conflict",
+                "session_id": session.id,
+                "command_id": queued[0].command_id,
+            },
+        )
+    ]
+    assert released == [(session.id, "queued-token")]
+
+
+def test_input_only_testdata_still_rejects_a_session_change_while_queued(
+    repo: SqlDifyBuilderRepository, queued_commands
+) -> None:
+    service, port, queued, events, released = queued_commands
+    session = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=PcState.FIX_AWAIT_TESTDATA,
+    )
+    repo.create_session(session, DifyBuilderContext(last_snapshot_hash=_BASE_APP_REVISION), [])
+    service.submit_action(
+        session.id,
+        Actor(**_ACTOR_DICT),
+        Action(
+            kind="provide_testdata",
+            payload={"mode": "provide", "inputs": {"query": "Test"}},
+            base_version=session.version,
+            base_app_revision=_BASE_APP_REVISION,
+        ),
+    )
+    assert len(queued) == 1
+    stored, context = repo.get_session(session.id)
+    new_version = repo.compare_and_advance(session.id, stored.version, stored.current_state, context, [])
+    port.hash = _CHANGED_APP_REVISION
+
+    mod.advance_session(session.id, asdict(queued[0]), _ACTOR_DICT, "queued-token")
+
+    stored, context = repo.get_session(session.id)
+    assert stored.current_state == PcState.FIX_AWAIT_TESTDATA
+    assert stored.version == new_version
+    assert context.test_input_ref == ""
+    assert context.verify_run_id == ""
+    assert port.run_draft_inputs == {}
+    assert events[-1][1]["error"] == "conflict"
+    assert released == [(session.id, "queued-token")]
 
 
 @pytest.mark.parametrize(

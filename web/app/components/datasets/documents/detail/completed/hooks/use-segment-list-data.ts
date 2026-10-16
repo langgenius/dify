@@ -1,25 +1,14 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel, SegmentsResponse, SegmentUpdater } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
 import { usePathname } from '@/next/navigation'
-import {
-  useChunkListAllKey,
-  useChunkListDisabledKey,
-  useChunkListEnabledKey,
-  useDeleteSegment,
-  useDisableSegment,
-  useEnableSegment,
-  useSegmentList,
-  useSegmentListKey,
-  useUpdateSegment,
-} from '@/service/knowledge/use-segment'
-import { useInvalid } from '@/service/use-base'
+import { consoleQuery } from '@/service/console'
 import { segmentImportStatus } from '@/types/dataset'
 import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../../context'
@@ -38,7 +27,7 @@ type UseSegmentListDataOptions = {
 type UseSegmentListDataReturn = {
   segments: SegmentDetailModel[]
   isLoadingSegmentList: boolean
-  segmentListData: ReturnType<typeof useSegmentList>['data']
+  segmentListData: SegmentsResponse | undefined
   totalText: string
   isFullDocMode: boolean
   segmentListRef: React.RefObject<HTMLDivElement | null>
@@ -58,6 +47,7 @@ type UseSegmentListDataReturn = {
   resetList: () => void
   viewNewlyAddedChunk: () => void
   invalidSegmentList: () => void
+  markOtherStatusListsStale: () => void
   updateSegmentInCache: (
     segmentId: string,
     updater: (seg: SegmentDetailModel) => SegmentDetailModel,
@@ -99,24 +89,35 @@ export const useSegmentListData = (
     }),
     [isFullDocMode, currentPage, limit, searchValue, selectedStatus],
   )
-  // Build query key for optimistic updates
-  const currentQueryKey = useMemo(
-    () => [...useSegmentListKey, datasetId, documentId, queryParams],
-    [datasetId, documentId, queryParams],
-  )
-  // Fetch segment list
-  const { isLoading: isLoadingSegmentList, data: segmentListData } = useSegmentList({
-    datasetId,
-    documentId,
-    params: queryParams,
-  })
+  const segmentListQuery =
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.queryOptions({
+      input: {
+        params: { dataset_id: datasetId, document_id: documentId },
+        query: { ...queryParams, enabled: String(queryParams.enabled) },
+      },
+    })
+  // Query key for optimistic updates
+  const currentQueryKey = segmentListQuery.queryKey
+  const { isLoading: isLoadingSegmentList, data: segmentListData } = useQuery(segmentListQuery)
   // Derive segments from query data
   const segments = useMemo(() => segmentListData?.data || [], [segmentListData])
-  // Invalidation hooks
-  const invalidSegmentList = useInvalid(useSegmentListKey)
-  const invalidChunkListAll = useInvalid(useChunkListAllKey)
-  const invalidChunkListEnabled = useInvalid(useChunkListEnabledKey)
-  const invalidChunkListDisabled = useInvalid(useChunkListDisabledKey)
+  const invalidSegmentList = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+        input: { params: { dataset_id: datasetId, document_id: documentId } },
+      }),
+    })
+  }, [queryClient, datasetId, documentId])
+  // After an optimistic edit, the lists under the other status filters are stale; the current
+  // list already shows the change, so it is not refetched.
+  const markOtherStatusListsStale = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+        input: { params: { dataset_id: datasetId, document_id: documentId } },
+      }),
+      refetchType: 'none',
+    })
+  }, [queryClient, datasetId, documentId])
   // Scroll to bottom when needed
   useEffect(() => {
     if (segmentListRef.current && needScrollToBottom.current) {
@@ -143,31 +144,11 @@ export const useSegmentListData = (
     clearSelection()
     invalidSegmentList()
   }, [clearSelection, invalidSegmentList])
+  // A toggled segment leaves a filtered list, so that list is refetched.
   const refreshChunkListWithStatusChanged = useCallback(() => {
-    if (selectedStatus === 'all') {
-      invalidChunkListDisabled()
-      invalidChunkListEnabled()
-    } else {
-      invalidSegmentList()
-    }
-  }, [selectedStatus, invalidChunkListDisabled, invalidChunkListEnabled, invalidSegmentList])
-  const refreshChunkListDataWithDetailChanged = useCallback(() => {
-    const refreshMap: Record<string, () => void> = {
-      all: () => {
-        invalidChunkListDisabled()
-        invalidChunkListEnabled()
-      },
-      true: () => {
-        invalidChunkListAll()
-        invalidChunkListDisabled()
-      },
-      false: () => {
-        invalidChunkListAll()
-        invalidChunkListEnabled()
-      },
-    }
-    refreshMap[String(selectedStatus)]?.()
-  }, [selectedStatus, invalidChunkListDisabled, invalidChunkListEnabled, invalidChunkListAll])
+    if (selectedStatus === 'all') markOtherStatusListsStale()
+    else invalidSegmentList()
+  }, [selectedStatus, markOtherStatusListsStale, invalidSegmentList])
   // Optimistic update helper using React Query's setQueryData
   const updateSegmentInCache = useCallback(
     (segmentId: string, updater: (seg: SegmentDetailModel) => SegmentDetailModel) => {
@@ -195,16 +176,27 @@ export const useSegmentListData = (
     [queryClient, currentQueryKey],
   )
   // Mutations
-  const { mutateAsync: enableSegment } = useEnableSegment()
-  const { mutateAsync: disableSegment } = useDisableSegment()
-  const { mutateAsync: deleteSegment } = useDeleteSegment()
-  const { mutateAsync: updateSegment } = useUpdateSegment()
+  const { mutateAsync: switchSegments } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch.mutationOptions(),
+  )
+  const { mutateAsync: deleteSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.delete.mutationOptions(),
+  )
+  const { mutateAsync: updateSegment } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.patch.mutationOptions(),
+  )
   const onChangeSwitch = useCallback(
     async (enable: boolean, segId?: string) => {
-      const operationApi = enable ? enableSegment : disableSegment
       const targetIds = segId ? [segId] : selectedSegmentIds
-      await operationApi(
-        { datasetId, documentId, segmentIds: targetIds },
+      await switchSegments(
+        {
+          params: {
+            dataset_id: datasetId,
+            document_id: documentId,
+            action: enable ? 'enable' : 'disable',
+          },
+          query: { segment_id: targetIds },
+        },
         {
           onSuccess: () => {
             // A single segment is toggled from its switch, which already shows the result.
@@ -223,8 +215,7 @@ export const useSegmentListData = (
       datasetId,
       documentId,
       selectedSegmentIds,
-      disableSegment,
-      enableSegment,
+      switchSegments,
       t,
       updateSegmentsInCache,
       refreshChunkListWithStatusChanged,
@@ -234,7 +225,10 @@ export const useSegmentListData = (
     async (segId?: string) => {
       const targetIds = segId ? [segId] : selectedSegmentIds
       await deleteSegment(
-        { datasetId, documentId, segmentIds: targetIds },
+        {
+          params: { dataset_id: datasetId, document_id: documentId },
+          query: { segment_id: targetIds },
+        },
         {
           onSuccess: () => {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -292,7 +286,10 @@ export const useSegmentListData = (
       if (needRegenerate) params.regenerate_child_chunks = needRegenerate
       eventEmitter?.emit('update-segment')
       await updateSegment(
-        { datasetId, documentId, segmentId, body: params },
+        {
+          params: { dataset_id: datasetId, document_id: documentId, segment_id: segmentId },
+          body: params,
+        },
         {
           onSuccess(res) {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -311,7 +308,7 @@ export const useSegmentListData = (
               updated_at: res.data.updated_at,
               child_chunks: res.data.child_chunks,
             }))
-            refreshChunkListDataWithDetailChanged()
+            markOtherStatusListsStale()
             eventEmitter?.emit('update-segment-success')
           },
           onSettled() {
@@ -328,7 +325,7 @@ export const useSegmentListData = (
       eventEmitter,
       onCloseSegmentDetail,
       updateSegmentInCache,
-      refreshChunkListDataWithDetailChanged,
+      markOtherStatusListsStale,
       t,
     ],
   )
@@ -371,6 +368,7 @@ export const useSegmentListData = (
     resetList,
     viewNewlyAddedChunk,
     invalidSegmentList,
+    markOtherStatusListsStale,
     updateSegmentInCache,
   }
 }

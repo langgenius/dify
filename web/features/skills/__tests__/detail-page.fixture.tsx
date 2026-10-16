@@ -96,10 +96,6 @@ vi.mock('@/app/components/base/markdown', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon }: { icon?: string }) => <span>{icon}</span>,
-}))
-
 vi.mock('@/app/components/main-nav/components/account-section', () => ({
   default: ({ compact = false }: { compact?: boolean }) => (
     <button type="button" aria-label={compact ? 'compact-account-section' : 'account-section'}>
@@ -213,6 +209,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       workspaces: {
         current: {
           models: actual.consoleQuery.workspaces.current.models,
+          modelProviders: actual.consoleQuery.workspaces.current.modelProviders,
           agents: {
             byAgentId: {
               skills: {
@@ -692,6 +689,8 @@ export function resetDetailPageFixture() {
   mocks.request.mockImplementation(async (_url, _init, options) => {
     const req = options.request
     const pathname = new URL(req.url).pathname
+    // Model parameter rules go through the console client and land on the fetch mock.
+    if (pathname.endsWith('/models/parameter-rules')) return mocks.modelParameterRulesFetch(req)
     if (req.method === 'POST' && /\/skills\/[^/]+\/restore$/.test(pathname))
       return Response.json(mocks.skillDetail)
     if (req.method === 'DELETE' && /\/skills\/[^/]+\/versions\/[^/]+$/.test(pathname))

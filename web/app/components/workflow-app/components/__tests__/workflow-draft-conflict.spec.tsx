@@ -10,6 +10,7 @@ import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/wor
 import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useNodesSyncDraftByCanEdit } from '../../hooks/use-nodes-sync-draft'
@@ -25,11 +26,6 @@ vi.mock('reactflow', async () =>
   ).createReactFlowModuleMock(),
 )
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: { mode: string } }) => T) =>
-    selector({ appDetail: { mode: 'workflow' } }),
-}))
-
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeaturesStore: () => ({ getState: () => ({ features: {} }) }),
 }))
@@ -40,9 +36,27 @@ vi.mock('@/context/event-emitter', () => ({
 
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  syncWorkflowDraft: (params: unknown) => mockSyncWorkflowDraft(params),
   fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { apps } = await import('@dify/contracts/api/console/apps/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ apps })
+  const post = (input: { params: { app_id: string }; body: unknown }) =>
+    validate({
+      context: {},
+      input,
+      path: ['apps', 'byAppId', 'workflows', 'draft', 'post'],
+      next: () =>
+        mockSyncWorkflowDraft({
+          url: `/apps/${input.params.app_id}/workflows/draft`,
+          params: input.body,
+        }),
+    })
+  return { ...actual, consoleClient: { apps: { byAppId: { workflows: { draft: { post } } } } } }
+})
 
 const DraftEditor = () => {
   const hasConflict = useStore((s) => s.hasWorkflowDraftConflict)
@@ -69,7 +83,6 @@ const renderDraftEditor = () => {
   return renderWorkflowComponent(<DraftEditor />, {
     queryClient,
     initialStoreState: {
-      appId: 'app-1',
       isWorkflowDataLoaded: true,
       syncWorkflowDraftHash: 'local-hash',
     },
@@ -97,7 +110,11 @@ describe('workflow draft conflict recovery', () => {
     rfState.nodes = [createStartNode({ id: 'local-start', data: { title: 'Unsaved local draft' } })]
     mockSyncWorkflowDraft
       .mockRejectedValueOnce(
-        new Response(JSON.stringify({ code: 'draft_workflow_not_sync' }), { status: 409 }),
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'draft_workflow_not_sync',
+          message: 'Workflow not synced.',
+          status: 409,
+        }),
       )
       .mockResolvedValue({ hash: 'saved-hash', updated_at: 1235 })
     mockFetchWorkflowDraft.mockResolvedValue(latestDraft)

@@ -2,7 +2,7 @@
  * Test suite for app redirection utility functions
  * Tests navigation path generation based on user permissions and app modes
  */
-import { AppModeEnum } from '@/types/app'
+
 import { AppACLPermission } from '@/utils/permission'
 import { getRedirection, getRedirectionPath } from './app-redirection'
 
@@ -17,7 +17,7 @@ describe('app-redirection', () => {
     it('returns access point path when it is the only accessible app page', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.AccessPointView],
       }
       const result = getRedirectionPath(app)
@@ -25,7 +25,7 @@ describe('app-redirection', () => {
     })
 
     it('returns the app list when no app page is accessible', () => {
-      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+      const app = { id: 'app-123', mode: 'chat' as const, permission_keys: [] }
 
       expect(getRedirectionPath(app)).toBe('/apps')
     })
@@ -33,7 +33,7 @@ describe('app-redirection', () => {
     it('does not redirect Access Point managers to a page they cannot view', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.AccessPointManage],
       }
 
@@ -43,7 +43,7 @@ describe('app-redirection', () => {
     it('returns workflow path for workflow mode when app ACL can access layout', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
       const result = getRedirectionPath(app)
@@ -53,7 +53,7 @@ describe('app-redirection', () => {
     it('returns workflow path for advanced-chat mode when app ACL can access layout', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.ADVANCED_CHAT,
+        mode: 'advanced-chat' as const,
         permission_keys: [AppACLPermission.TestAndRun],
       }
       const result = getRedirectionPath(app)
@@ -63,7 +63,7 @@ describe('app-redirection', () => {
     it('returns configuration path for chat mode when app ACL can access layout', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.Edit],
       }
       const result = getRedirectionPath(app)
@@ -73,7 +73,7 @@ describe('app-redirection', () => {
     it('returns configuration path for completion mode when app ACL can access layout', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
       const result = getRedirectionPath(app)
@@ -83,7 +83,7 @@ describe('app-redirection', () => {
     it('returns configuration path for agent-chat mode when app ACL can access layout', () => {
       const app = {
         id: 'app-456',
-        mode: AppModeEnum.AGENT_CHAT,
+        mode: 'agent-chat' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
       const result = getRedirectionPath(app)
@@ -93,7 +93,7 @@ describe('app-redirection', () => {
     it('returns the Agent configure path when the backing Agent ID is available', () => {
       const app = {
         id: 'app-1',
-        mode: AppModeEnum.AGENT,
+        mode: 'agent' as const,
         permission_keys: [AppACLPermission.ViewLayout],
         bound_agent_id: 'agent-1',
       }
@@ -104,7 +104,7 @@ describe('app-redirection', () => {
     it('falls back to the Agent roster when the backing Agent ID is unavailable', () => {
       const app = {
         id: 'app-1',
-        mode: AppModeEnum.AGENT,
+        mode: 'agent' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
 
@@ -114,12 +114,12 @@ describe('app-redirection', () => {
     it('handles different app IDs', () => {
       const app1 = {
         id: 'abc-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.AccessPointView],
       }
       const app2 = {
         id: 'xyz-789',
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
 
@@ -128,7 +128,7 @@ describe('app-redirection', () => {
     })
 
     it('returns layout path when the app maintainer has app.create_and_management permission without app ACL keys', () => {
-      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [] }
+      const app = { id: 'app-123', mode: 'chat' as const, permission_keys: [] }
 
       expect(
         getRedirectionPath(app, {
@@ -142,7 +142,7 @@ describe('app-redirection', () => {
     it('returns access config path when app ACL can only configure access', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.AccessConfig],
       }
 
@@ -152,7 +152,7 @@ describe('app-redirection', () => {
     it('returns access point path when RBAC is disabled and Access Point remains accessible', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.AccessPointView],
       }
 
@@ -162,7 +162,7 @@ describe('app-redirection', () => {
     it('returns overview path when app ACL can only monitor the app', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.Monitor],
       }
 
@@ -172,7 +172,7 @@ describe('app-redirection', () => {
     it('returns logs path when app ACL can only access logs and annotations', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.LogAndAnnotation],
       }
 
@@ -182,7 +182,7 @@ describe('app-redirection', () => {
     it('returns deploy path when a workflow app ACL can only deploy', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         permission_keys: [AppACLPermission.Deploy],
       }
 
@@ -200,7 +200,7 @@ describe('app-redirection', () => {
     it('calls redirection function with access point path when it is accessible', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.AccessPointView],
       }
       const mockRedirect = vi.fn()
@@ -214,7 +214,7 @@ describe('app-redirection', () => {
     it('calls redirection function with workflow path when app ACL can access layout', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
       const mockRedirect = vi.fn()
@@ -228,7 +228,7 @@ describe('app-redirection', () => {
     it('calls redirection function with configuration path for chat mode with layout access', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
       const mockRedirect = vi.fn()
@@ -242,7 +242,7 @@ describe('app-redirection', () => {
     it('works with different redirection functions', () => {
       const app = {
         id: 'app-123',
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         permission_keys: [AppACLPermission.ViewLayout],
       }
       const paths: string[] = []

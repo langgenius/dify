@@ -5,7 +5,6 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAllWorkflowTools } from '@/service/use-tools'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
@@ -38,9 +37,14 @@ vi.mock('../../hooks/use-workflow', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllWorkflowTools: vi.fn(),
-}))
+const { mockUseAllWorkflowTools } = vi.hoisted(() => ({ mockUseAllWorkflowTools: vi.fn() }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
+  })
+})
 
 vi.mock('../change-block-popup', () => ({
   ChangeBlockPopup: () => <div data-testid="node-actions-change-block" />,
@@ -49,7 +53,6 @@ vi.mock('../change-block-popup', () => ({
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 
 const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
   ({

@@ -156,7 +156,7 @@ class _ReplaceMemberRolesRequest(BaseModel):
         return value
 
 
-register_schema_models(console_ns, _ReplaceMemberRolesRequest)
+register_schema_models(console_ns, _ReplaceMemberRolesRequest, _RoleUpsertRequest, CopyRoleParam)
 
 
 def pagination_options() -> dto.ListOption:

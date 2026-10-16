@@ -7,7 +7,8 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.common.rbac import PlainApp, RBACCheck, Workspace
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
-from controllers.console.app.error import AppNotFoundError
+from controllers.console import console_ns
+from controllers.console.app.error import AppNotFoundError, DraftWorkflowNotSync
 from controllers.console.explore.error import RecommendedAppNotFoundError as RecommendedAppNotFoundHttpError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, validate_request
@@ -24,10 +25,9 @@ from services.agent.errors import (
 )
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.dsl_entities import AppImportParams, CheckDependenciesResult, Import, ImportStatus
+from services.errors.app import DraftChangedError
 from services.errors.base import NoPermissionError
 from services.recommended_app_query_service import RecommendedAppNotFoundError
-
-from .. import console_ns
 
 
 class AppImportPayload(AppImportParams):
@@ -116,6 +116,7 @@ class AppImportApi(Resource):
 class AppImportConfirmApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Import confirmed", console_ns.models[Import.__name__])
     @console_ns.response(HTTPStatus.BAD_REQUEST, "Import failed", console_ns.models[Import.__name__])
+    @console_ns.response(HTTPStatus.CONFLICT, "The draft changed after the export the import is based on")
     @console_account_admission(
         allowed_roles=_EDIT_ROLES,
         rbac_checks=[RBACCheck(RBACPermission.APP_IMPORT_EXPORT_DSL, Workspace())],
@@ -125,6 +126,8 @@ class AppImportConfirmApi(Resource):
             result = application_services().apps.console.confirm_import(context, import_id)
         except NoPermissionError as exc:
             raise Forbidden(str(exc)) from exc
+        except DraftChangedError as exc:
+            raise DraftWorkflowNotSync() from exc
         status_code = HTTPStatus.BAD_REQUEST if result.status == ImportStatus.FAILED else HTTPStatus.OK
         return result.model_dump(mode="json"), status_code
 

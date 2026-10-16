@@ -14,11 +14,14 @@ import MultipleToolSelector from '../index'
 
 // Mock useAllMCPTools hook
 const mockMCPToolsData = vi.fn<() => ToolWithProvider[] | undefined>(() => undefined)
-vi.mock('@/service/use-tools', () => ({
-  useAllMCPTools: () => ({
-    data: mockMCPToolsData(),
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.mcp.get': () => ({
+      data: mockMCPToolsData(),
+    }),
+  })
+})
 
 // Track edit tool index for unique test IDs
 let editToolIndex = 0

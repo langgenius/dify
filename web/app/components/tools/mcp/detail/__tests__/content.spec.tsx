@@ -4,14 +4,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { render } from '@/test/console/render'
 import MCPDetailContent from '../content'
 
 // Mutable mock functions
 const mockUpdateTools = vi.fn().mockResolvedValue({})
 const mockAuthorizeMcp = vi.fn().mockResolvedValue({ result: 'success' })
-const mockInvalidateMCPTools = vi.fn()
-const mockInvalidateAllMCPTools = vi.fn()
+const mockInvalidateQueries = vi.fn()
+const mcpToolsKey = consoleQuery.workspaces.current.tools.mcp.get.queryKey()
+const mcpProviderToolsKey =
+  consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey({
+    input: { params: { provider_id: 'mcp-1' } },
+  })
 const mockOpenOAuthPopup = vi.fn()
 
 // Mutable mock state
@@ -27,22 +32,23 @@ let mockIsUpdating = false
 let mockIsAuthorizing = false
 
 // Mock the services
-vi.mock('@/service/use-tools', () => ({
-  useMCPTools: () => ({
-    data: mockToolsData,
-    isFetching: mockIsFetching,
-  }),
-  useInvalidateMCPTools: () => mockInvalidateMCPTools,
-  useInvalidateAllMCPTools: () => mockInvalidateAllMCPTools,
-  useUpdateMCPTools: () => ({
-    mutateAsync: mockUpdateTools,
-    isPending: mockIsUpdating,
-  }),
-  useAuthorizeMCP: () => ({
-    mutateAsync: mockAuthorizeMcp,
-    isPending: mockIsAuthorizing,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.toolProvider.mcp.tools.byProviderId.get': () => ({
+      data: mockToolsData,
+      isFetching: mockIsFetching,
+    }),
+    'workspaces.current.toolProvider.mcp.update.byProviderId.get': () => ({
+      mutateAsync: mockUpdateTools,
+      isPending: mockIsUpdating,
+    }),
+    'workspaces.current.toolProvider.mcp.auth.post': () => ({
+      mutateAsync: mockAuthorizeMcp,
+      isPending: mockIsAuthorizing,
+    }),
+  })
+})
 
 // Mock OAuth hook
 type OAuthArgs = readonly unknown[]
@@ -118,6 +124,7 @@ describe('MCPDetailContent', () => {
         },
       },
     })
+    vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
     return ({ children }: { children: ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
@@ -151,8 +158,7 @@ describe('MCPDetailContent', () => {
     // Reset mocks
     mockUpdateTools.mockClear()
     mockAuthorizeMcp.mockClear()
-    mockInvalidateMCPTools.mockClear()
-    mockInvalidateAllMCPTools.mockClear()
+    mockInvalidateQueries.mockReset().mockResolvedValue(undefined)
     mockOpenOAuthPopup.mockClear()
 
     // Reset mock return values
@@ -349,7 +355,7 @@ describe('MCPDetailContent', () => {
 
       await waitFor(() => {
         expect(onFirstCreate).toHaveBeenCalled()
-        expect(mockAuthorizeMcp).toHaveBeenCalledWith({ provider_id: 'mcp-1' })
+        expect(mockAuthorizeMcp).toHaveBeenCalledWith({ body: { provider_id: 'mcp-1' } })
       })
     })
 
@@ -435,9 +441,9 @@ describe('MCPDetailContent', () => {
       fireEvent.click(getConfirmButton())
 
       await waitFor(() => {
-        expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
-        expect(mockInvalidateMCPTools).toHaveBeenCalledWith('mcp-1')
-        expect(mockInvalidateAllMCPTools).toHaveBeenCalled()
+        expect(mockUpdateTools).toHaveBeenCalledWith({ params: { provider_id: 'mcp-1' } })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: mcpProviderToolsKey })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: mcpToolsKey })
         expect(onUpdate).toHaveBeenCalled()
       })
     })
@@ -453,8 +459,8 @@ describe('MCPDetailContent', () => {
       fireEvent.click(getToolsBtn)
 
       await waitFor(() => {
-        expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
-        expect(mockInvalidateAllMCPTools).toHaveBeenCalled()
+        expect(mockUpdateTools).toHaveBeenCalledWith({ params: { provider_id: 'mcp-1' } })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: mcpToolsKey })
       })
     })
   })
@@ -533,7 +539,7 @@ describe('MCPDetailContent', () => {
       oauthCallback()
 
       await waitFor(() => {
-        expect(mockUpdateTools).toHaveBeenCalledWith('mcp-1')
+        expect(mockUpdateTools).toHaveBeenCalledWith({ params: { provider_id: 'mcp-1' } })
       })
     })
 

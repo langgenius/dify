@@ -1,3 +1,4 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
 import CommonLayoutError from '@/app/(commonLayout)/error'
@@ -7,16 +8,48 @@ import { consoleClient, consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { seedAppDetail } from '@/test/console/query-data'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
 
-const renderHook = (callback: () => ReturnType<typeof useConfiguration>) => {
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: undefined,
+    }),
+  })
+})
+
+let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
+
+const createRouteAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
+  createAppDetailFixture({
+    id: 'app-1',
+    model_config: createAppModelConfigFixture({
+      updated_at: 1710000000,
+    }),
+    mode: 'chat' as const,
+    permission_keys: mockAppPermissionKeys,
+    ...overrides,
+  })
+
+const createSeededQueryClient = (appDetail: Partial<AppDetailWithSite> = {}) => {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  seedAppDetail(queryClient, createRouteAppDetail(appDetail))
+  return queryClient
+}
+
+const renderHook = (
+  callback: () => ReturnType<typeof useConfiguration>,
+  appDetail?: Partial<AppDetailWithSite>,
+) => {
+  const queryClient = createSeededQueryClient(appDetail)
   return {
     ...renderHookWithConsoleState(callback, {
       wrapper: createQueryClientWrapper(queryClient),
@@ -47,7 +80,6 @@ let latestAdvancedPromptConfigOptions: AdvancedPromptConfigOptions | undefined
 let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
-let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<any>('ahooks')
 
@@ -87,26 +119,6 @@ vi.mock('nuqs', async (importOriginal) => {
   return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        model_config: createAppModelConfigFixture({
-          updated_at: 1710000000,
-        }),
-        mode: AppModeEnum.CHAT,
-        permission_keys: mockAppPermissionKeys,
-      },
-    }),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: undefined,
-  }),
-}))
-
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   default: () => 'desktop',
@@ -115,8 +127,10 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/next/navigation', () => ({
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
   usePathname: () => '/app/app-1/configuration',
+  useParams: () => ({ appId: 'app-1' }),
 }))
 
 vi.mock('@/app/components/app/configuration/debug/hooks', () => ({
@@ -180,10 +194,19 @@ vi.mock('@/service/console', async () => {
     ...actual,
     consoleQuery: {
       ...actual.consoleQuery,
+      files: actual.consoleQuery.files,
       account: actual.consoleQuery.account,
       apps: {
         byAppId: {
-          get: actual.consoleQuery.apps.byAppId.get,
+          get: {
+            queryKey: actual.consoleQuery.apps.byAppId.get.queryKey,
+            queryOptions: (
+              options: Parameters<typeof actual.consoleQuery.apps.byAppId.get.queryOptions>[0],
+            ) => ({
+              ...actual.consoleQuery.apps.byAppId.get.queryOptions(options),
+              queryFn: async () => createRouteAppDetail(),
+            }),
+          },
           modelConfig: {
             post: {
               mutationOptions: (options: Record<string, unknown>) => ({
@@ -233,7 +256,7 @@ describe('useConfiguration', () => {
     vi.mocked(consoleClient.apps.byAppId.modelConfig.post).mockResolvedValue(undefined as never)
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'advanced',
         chat_prompt_config: {
@@ -287,8 +310,7 @@ describe('useConfiguration', () => {
 
   it('should leave loading through the error boundary when the app has no model configuration', async () => {
     mockFetchAppDetailDirect.mockResolvedValueOnce(createAppDetailFixture({ model_config: null }))
-    const queryClient = createTestQueryClient()
-    seedAccountProfileQuery(queryClient, { id: 'user-1' })
+    const queryClient = createSeededQueryClient()
     const QueryWrapper = createQueryClientWrapper(queryClient)
     const report = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
@@ -312,8 +334,7 @@ describe('useConfiguration', () => {
   it('should retain unauthorized ORPCError for the redirect loading fallback', async () => {
     const response = createHttpError(new Response(null, { status: 401 }))
     mockFetchCollectionList.mockRejectedValueOnce(response)
-    const queryClient = createTestQueryClient()
-    seedAccountProfileQuery(queryClient, { id: 'user-1' })
+    const queryClient = createSeededQueryClient()
     const QueryWrapper = createQueryClientWrapper(queryClient)
     const onError = vi.fn()
     const report = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -353,21 +374,16 @@ describe('useConfiguration', () => {
   })
 
   it('should update model parameters and publish the current configuration', async () => {
-    const { result, queryClient } = renderHook(() => useConfiguration())
+    const { result, queryClient } = renderHook(() => useConfiguration(), {
+      enable_api: false,
+      enable_site: false,
+      icon_url: null,
+      name: 'Cached app',
+    })
     const detailQueryKey = consoleQuery.apps.byAppId.get.queryKey({
       input: { params: { app_id: 'app-1' } },
     })
-    queryClient.setQueryData(
-      detailQueryKey,
-      createAppDetailFixture({
-        enable_api: false,
-        enable_site: false,
-        icon_url: null,
-        id: 'app-1',
-        mode: 'chat',
-        name: 'Cached app',
-      }),
-    )
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
     await waitFor(() => {
       expect(result.current.showLoading).toBe(false)
@@ -399,7 +415,7 @@ describe('useConfiguration', () => {
         params: { app_id: 'app-1' },
       }),
     )
-    expect(queryClient.getQueryState(detailQueryKey)?.isInvalidated).toBe(true)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: detailQueryKey })
   })
 
   it('should publish and restore the complete configuration snapshot', async () => {
@@ -663,7 +679,7 @@ describe('useConfiguration', () => {
     mockCurrentModelFeatures = ['vision', 'document', 'audio', 'video']
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
@@ -776,7 +792,7 @@ describe('useConfiguration', () => {
     })
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },

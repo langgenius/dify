@@ -17,7 +17,6 @@ from typing import Any
 from core.dify_builder.contract import (
     DecisionItem,
     FormCard,
-    PlanCard,
     ResourceSelectCard,
     TestResultCard,
 )
@@ -78,6 +77,7 @@ from core.dify_builder.state import PcState
 from core.dify_builder.testdata import stamp_testdata_http_fixtures
 from core.dify_builder.verification import SUCCESS_REPLY, has_output_blocker, is_execution_policy_blocker, result_card
 from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.plan import make_plan_card, store_plan
 from services.dify_builder.presentation import BuilderText, copy_text, text_parts
 
 logger = logging.getLogger(__name__)
@@ -209,7 +209,7 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-draft-plan", PcState.BUILD_GOAL_ANALYSIS)
-    fc.plan_items = plan
+    store_plan(fc, plan)
 
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_SUBMITTED_REQUIREMENTS)))
     # Pass the live reporter through: this is still the SAME operation as the
@@ -382,7 +382,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     mint_checkpoint(env, s, fc, graph, graph_hash, PcState.BUILD_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_CONFIRMED_RESOURCES)))
-    plan_items = append_card(fc, PlanCard(title=copy_text(BuilderCopyId.LABELS_BUILD_PLAN), items=list(fc.plan_items)))
+    plan_items = append_card(fc, make_plan_card(fc))
     execution = progress.finish()
     turn_items = append_assistant(
         env,
@@ -1271,7 +1271,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
         if not plan:
             return _planning_failed(env, s, fc, progress, "build-revise-plan", PcState.BUILD_REVIEW)
-        fc.plan_items = plan
+        store_plan(fc, plan)
         fc.test_input_ref = ""
         fc.verify_run_id = ""
         fc.repair_attempts = 0
@@ -1363,7 +1363,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
     if not plan:
         return _planning_failed(env, s, fc, progress, "build-restart-plan", PcState.BUILD_REVERTED)
-    fc.plan_items = plan
+    store_plan(fc, plan)
     fc.test_input_ref = ""
     fc.verify_run_id = ""
     fc.repair_attempts = 0

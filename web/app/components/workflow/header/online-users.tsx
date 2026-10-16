@@ -7,9 +7,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -17,7 +19,6 @@ import { collaborationManager } from '../collaboration/core/collaboration-manage
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
-import { useStore } from '../store'
 
 const useAvatarUrls = (users: OnlineUser[]) => {
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({})
@@ -51,12 +52,9 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 
 const OnlineUsers = () => {
   const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
-  const appId = useStore((s) => s.appId)
+  const appId = useAtomValue(editorAppIdAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
-  const { onlineUsers, isEnabled: isCollaborationEnabled } = useCollaboration(
-    appId as string,
-    canEdit,
-  )
+  const { onlineUsers, isEnabled: isCollaborationEnabled } = useCollaboration(appId, canEdit)
   const cursorsRef = useRef<Record<string, CursorPosition>>({})
   useEffect(() => {
     if (!isCollaborationEnabled) {

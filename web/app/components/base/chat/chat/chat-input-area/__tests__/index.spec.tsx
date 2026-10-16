@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import ChatInputArea from '../index'
 
@@ -174,7 +175,7 @@ vi.mock('@/next/navigation', () => ({
 // ---------------------------------------------------------------------------
 const mockVisionConfig: FileUpload = {
   enabled: true,
-  fileUploadConfig: {
+  fileUploadConfig: createFileUploadConfigFixture({
     image_file_size_limit: 10,
     file_size_limit: 10,
     audio_file_size_limit: 10,
@@ -185,7 +186,7 @@ const mockVisionConfig: FileUpload = {
     single_chunk_attachment_limit: 0,
     attachment_image_file_size_limit: 0,
     file_upload_limit: 0,
-  },
+  }),
   allowed_file_types: [],
   allowed_file_extensions: [],
   number_limits: 3,

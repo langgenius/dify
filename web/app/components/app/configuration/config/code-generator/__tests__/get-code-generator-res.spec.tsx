@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AppModeEnum } from '@/types/app'
 import GetCodeGeneratorResModal from '../get-code-generator-res'
 
 const mockGenerateRule = vi.fn()
@@ -52,7 +51,9 @@ vi.mock(
     }) => (
       <div>
         <button
-          onClick={() => setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' })}
+          onClick={() =>
+            setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' as const })
+          }
         >
           change-model
         </button>
@@ -119,7 +120,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -146,7 +147,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -173,7 +174,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -200,7 +201,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="completion"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -221,6 +222,7 @@ describe('GetCodeGeneratorResModal', () => {
           instruction: 'code instruction',
           ideal_output: 'code output',
           language: 'python',
+          model_config: expect.objectContaining({ mode: 'completion' }),
         }),
       )
     })
@@ -255,7 +257,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.python3}
         onClose={mockOnClose}
@@ -295,7 +297,7 @@ describe('GetCodeGeneratorResModal', () => {
         flowId="flow-1"
         nodeId="node-1"
         currentCode="print(1)"
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         codeLanguages={CodeLanguage.javascript}
         onClose={mockOnClose}

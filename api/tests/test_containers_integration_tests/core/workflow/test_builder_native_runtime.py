@@ -112,6 +112,7 @@ def runtime_case(
 ):
     kind = getattr(request, "param", "root")
     assert migrated_continuation_tables is migrated_dispatch_claims is no_live is None
+    from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
     from libs.sensitive_http_telemetry import SensitiveHttpLogFilter
 
@@ -121,6 +122,13 @@ def runtime_case(
         handler.addFilter(filtering)
     try:
         factory, actor, app, workflow, session_id, input_id = native_owner
+        # Preserve native_owner teardown IDs, then release its committed setup
+        # snapshot before the independent Session updates the tenant key.
+        assert app.id
+        assert workflow.id
+        db.session.expunge(app)
+        db.session.expunge(workflow)
+        db.session.close()
         public_key = generate_key_pair(actor.tenant_id)
         with factory.begin() as session:
             session.get(Tenant, actor.tenant_id).encrypt_public_key = public_key

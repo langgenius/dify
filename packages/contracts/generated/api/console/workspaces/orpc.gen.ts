@@ -93,6 +93,7 @@ import {
   zGetWorkspacesCurrentEndpointsListPluginResponse,
   zGetWorkspacesCurrentEndpointsListQuery,
   zGetWorkspacesCurrentEndpointsListResponse,
+  zGetWorkspacesCurrentMembersQuery,
   zGetWorkspacesCurrentMembersResponse,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse,
@@ -187,6 +188,7 @@ import {
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse,
   zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+  zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesQuery,
   zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
   zGetWorkspacesCurrentRbacMyPermissionsResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponse,
@@ -194,9 +196,12 @@ import {
   zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse,
   zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse,
   zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdMembersQuery,
   zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse,
   zGetWorkspacesCurrentRbacRolesByRoleIdPath,
+  zGetWorkspacesCurrentRbacRolesByRoleIdQuery,
   zGetWorkspacesCurrentRbacRolesByRoleIdResponse,
+  zGetWorkspacesCurrentRbacRolesQuery,
   zGetWorkspacesCurrentRbacRolesResponse,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsPath,
   zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse,
@@ -409,8 +414,12 @@ import {
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse,
   zPostWorkspacesCurrentRbacAccessPoliciesResponse,
+  zPostWorkspacesCurrentRbacRolesBody,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyBody,
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
+  zPostWorkspacesCurrentRbacRolesByRoleIdCopyQuery,
   zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse,
+  zPostWorkspacesCurrentRbacRolesQuery,
   zPostWorkspacesCurrentRbacRolesResponse,
   zPostWorkspacesCurrentSkillsBody,
   zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesBody,
@@ -537,7 +546,9 @@ import {
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesBody,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
+  zPutWorkspacesCurrentRbacRolesByRoleIdBody,
   zPutWorkspacesCurrentRbacRolesByRoleIdPath,
+  zPutWorkspacesCurrentRbacRolesByRoleIdQuery,
   zPutWorkspacesCurrentRbacRolesByRoleIdResponse,
   zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsBody,
   zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsPath,
@@ -1262,6 +1273,7 @@ export const get12 = oc
     path: '/workspaces/current/members',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetWorkspacesCurrentMembersQuery.optional() }))
   .output(zGetWorkspacesCurrentMembersResponse)
 
 export const members = {
@@ -3106,7 +3118,12 @@ export const get57 = oc
     path: '/workspaces/current/rbac/members/{member_id}/rbac-roles',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+      query: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
 
 export const put14 = oc
@@ -3224,7 +3241,13 @@ export const post46 = oc
     successStatus: 201,
     tags: ['console'],
   })
-  .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
+  .input(
+    z.object({
+      body: zPostWorkspacesCurrentRbacRolesByRoleIdCopyBody,
+      params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath,
+      query: zPostWorkspacesCurrentRbacRolesByRoleIdCopyQuery.optional(),
+    }),
+  )
   .output(zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse)
 
 export const copy2 = {
@@ -3239,7 +3262,12 @@ export const get63 = oc
     path: '/workspaces/current/rbac/roles/{role_id}/members',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath,
+      query: zGetWorkspacesCurrentRbacRolesByRoleIdMembersQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse)
 
 export const members3 = {
@@ -3265,7 +3293,12 @@ export const get64 = oc
     path: '/workspaces/current/rbac/roles/{role_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacRolesByRoleIdPath,
+      query: zGetWorkspacesCurrentRbacRolesByRoleIdQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdResponse)
 
 export const put15 = oc
@@ -3276,7 +3309,13 @@ export const put15 = oc
     path: '/workspaces/current/rbac/roles/{role_id}',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacRolesByRoleIdPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacRolesByRoleIdBody,
+      params: zPutWorkspacesCurrentRbacRolesByRoleIdPath,
+      query: zPutWorkspacesCurrentRbacRolesByRoleIdQuery.optional(),
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacRolesByRoleIdResponse)
 
 export const byRoleId = {
@@ -3295,6 +3334,7 @@ export const get65 = oc
     path: '/workspaces/current/rbac/roles',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetWorkspacesCurrentRbacRolesQuery.optional() }))
   .output(zGetWorkspacesCurrentRbacRolesResponse)
 
 export const post47 = oc
@@ -3306,6 +3346,12 @@ export const post47 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(
+    z.object({
+      body: zPostWorkspacesCurrentRbacRolesBody,
+      query: zPostWorkspacesCurrentRbacRolesQuery.optional(),
+    }),
+  )
   .output(zPostWorkspacesCurrentRbacRolesResponse)
 
 export const roles = {

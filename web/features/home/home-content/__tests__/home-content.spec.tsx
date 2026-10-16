@@ -1,4 +1,4 @@
-import type { RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppMode, RecentAppResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   BannerResponse,
   RecommendedAppDetailResponse,
@@ -28,7 +28,6 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { HomeContent } from '../home-content'
 
@@ -473,7 +472,7 @@ type AppFixtureOverrides = Omit<Partial<RecommendedAppResponse>, 'app'> & {
 const createApp = (overrides: AppFixtureOverrides = {}): AppFixture => ({
   app: {
     id: overrides.app?.id ?? 'app-basic-id',
-    mode: overrides.app?.mode ?? AppModeEnum.CHAT,
+    mode: overrides.app?.mode ?? 'chat',
     icon_type: overrides.app?.icon_type ?? 'emoji',
     icon: overrides.app?.icon ?? '😀',
     icon_background: overrides.app?.icon_background ?? '#fff',
@@ -1028,7 +1027,7 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml-content',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (_payload: unknown, options: { onSuccess?: () => void; onPending?: () => void }) => {
@@ -1036,8 +1035,8 @@ describe('HomeContent', () => {
         },
       )
       mockHandleImportDSLConfirm.mockImplementation(
-        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        async (options: { onSuccess?: (payload: { app_mode: AppMode }) => void }) => {
+          options.onSuccess?.({ app_mode: 'chat' })
         },
       )
 
@@ -1056,7 +1055,7 @@ describe('HomeContent', () => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
           source: 'explore_template_list',
-          appMode: AppModeEnum.CHAT,
+          appMode: 'chat' as const,
           templateId: 'app-1',
         })
       })
@@ -1073,7 +1072,7 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'latest-yaml',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockResolvedValue(undefined)
       const { queryClient } = renderHomeContent({ hasEditPermission: true })
@@ -1082,7 +1081,7 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'cached-yaml',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       await queryClient.invalidateQueries({
         queryKey: recommendedAppQueryKey('app-1'),
@@ -1131,14 +1130,14 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml-content',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (
           _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+          options: { onSuccess?: (payload: { app_mode: AppMode }) => void },
         ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+          options.onSuccess?.({ app_mode: 'chat' })
         },
       )
 
@@ -1272,14 +1271,14 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml-content',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (
           _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+          options: { onSuccess?: (payload: { app_mode: AppMode }) => void },
         ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+          options.onSuccess?.({ app_mode: 'chat' })
         },
       )
 
@@ -1332,14 +1331,14 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml-content',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (
           _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+          options: { onSuccess?: (payload: { app_mode: AppMode }) => void },
         ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+          options.onSuccess?.({ app_mode: 'chat' })
         },
       )
 
@@ -1400,7 +1399,7 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml-content',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (_payload: unknown, options: { onPending?: () => void }) => {
@@ -1408,8 +1407,8 @@ describe('HomeContent', () => {
         },
       )
       mockHandleImportDSLConfirm.mockImplementation(
-        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        async (options: { onSuccess?: (payload: { app_mode: AppMode }) => void }) => {
+          options.onSuccess?.({ app_mode: 'chat' })
         },
       )
 
@@ -1500,7 +1499,7 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
 
       renderHomeContent({ hasEditPermission: true })
@@ -1525,14 +1524,14 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (
           _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+          options: { onSuccess?: (payload: { app_mode: AppMode }) => void },
         ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+          options.onSuccess?.({ app_mode: 'chat' })
         },
       )
 
@@ -1556,7 +1555,7 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (_payload: unknown, options: { onPending?: () => void }) => {
@@ -1610,14 +1609,14 @@ describe('HomeContent', () => {
         name: 'Alpha',
         can_trial: true,
         export_data: 'yaml',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       mockHandleImportDSL.mockImplementation(
         async (
           _payload: unknown,
-          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+          options: { onSuccess?: (payload: { app_mode: AppMode }) => void },
         ) => {
-          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+          options.onSuccess?.({ app_mode: 'chat' })
         },
       )
 
@@ -1631,7 +1630,7 @@ describe('HomeContent', () => {
       await waitFor(() => {
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
           source: 'explore_template_preview',
-          appMode: AppModeEnum.CHAT,
+          appMode: 'chat' as const,
           templateId: 'app-1',
         })
       })

@@ -6,6 +6,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import Panel from '../panel'
 import {
@@ -23,9 +24,9 @@ const mockAddKnowledge = vi.hoisted(() => vi.fn())
 const mockMetadataFilter = vi.hoisted(() => vi.fn())
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -42,24 +43,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -93,7 +82,6 @@ const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc =
   id: 'meta-1',
   name: 'topic',
   type: MetadataFilteringVariableType.string,
-  value: 'topic',
   ...overrides,
 })
 

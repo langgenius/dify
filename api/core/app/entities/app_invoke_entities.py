@@ -2,9 +2,12 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
-
 from constants import UUID_NIL
+from models.model import AppMode
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
+
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.credit_usage import (
     CreditUsageAppType,
@@ -24,8 +27,6 @@ from core.dify_builder.execution_policy import (
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
-from models.model import AppMode
-from services.dify_builder.native_testing.contracts import NativeTestContextRef
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -349,6 +350,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
     workflow_run_id: str | None = None
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -380,6 +384,9 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
 
     class SingleIterationRunEntity(BaseModel):
         """

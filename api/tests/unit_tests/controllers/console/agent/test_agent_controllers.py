@@ -2229,7 +2229,7 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(
     with app.test_request_context(json={"message_id": message_id, "rating": "like"}):
         assert unwrap(AgentMessageFeedbackApi.post)(
             AgentMessageFeedbackApi(),
-            message_controller.MessageFeedbackPayload(message_id=message_id, rating="like"),
+            message_controller.AppMessageFeedbackPayload(message_id=message_id, rating="like"),
             unbound_session,
             "tenant-1",
             current_user,
@@ -2389,7 +2389,7 @@ def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
     with app.test_request_context(json={"message_id": message_id, "rating": None}):
         with pytest.raises(ValueError, match="rating cannot be None"):
             message_controller._update_message_feedback(
-                args=message_controller.MessageFeedbackPayload(message_id=message_id, rating=None),
+                args=message_controller.AppMessageFeedbackPayload(message_id=message_id, rating=None),
                 session=sqlite_session,
                 current_user=_account(),
                 app_model=_app_detail_obj(id=app_id),

@@ -32,6 +32,7 @@ import {
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse,
   zDeleteDatasetsByDatasetIdDocumentsPath,
+  zDeleteDatasetsByDatasetIdDocumentsQuery,
   zDeleteDatasetsByDatasetIdDocumentsResponse,
   zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath,
   zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse,
@@ -89,6 +90,7 @@ import {
   zGetDatasetsByDatasetIdPermissionPartUsersPath,
   zGetDatasetsByDatasetIdPermissionPartUsersResponse,
   zGetDatasetsByDatasetIdQueriesPath,
+  zGetDatasetsByDatasetIdQueriesQuery,
   zGetDatasetsByDatasetIdQueriesResponse,
   zGetDatasetsByDatasetIdRelatedAppsPath,
   zGetDatasetsByDatasetIdRelatedAppsResponse,
@@ -131,6 +133,7 @@ import {
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdPath,
   zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath,
+  zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchQuery,
   zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse,
   zPatchDatasetsByDatasetIdMetadataByMetadataIdBody,
   zPatchDatasetsByDatasetIdMetadataByMetadataIdPath,
@@ -737,7 +740,12 @@ export const patch2 = oc
     path: '/datasets/{dataset_id}/documents/status/{action}/batch',
     tags: ['console'],
   })
-  .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath }))
+  .input(
+    z.object({
+      params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath,
+      query: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchQuery.optional(),
+    }),
+  )
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse)
   .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
@@ -1331,7 +1339,12 @@ export const delete7 = oc
     successStatus: 204,
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsPath }))
+  .input(
+    z.object({
+      params: zDeleteDatasetsByDatasetIdDocumentsPath,
+      query: zDeleteDatasetsByDatasetIdDocumentsQuery.optional(),
+    }),
+  )
   .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
 
 /**
@@ -1618,7 +1631,12 @@ export const get30 = oc
     path: '/datasets/{dataset_id}/queries',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetDatasetsByDatasetIdQueriesPath }))
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdQueriesPath,
+      query: zGetDatasetsByDatasetIdQueriesQuery.optional(),
+    }),
+  )
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {

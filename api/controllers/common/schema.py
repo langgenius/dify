@@ -6,13 +6,16 @@ These helpers keep that translation centralized so models registered through
 `register_schema_models` emit resolvable OpenAPI 3 references.
 """
 
+import re
 from collections.abc import Iterable, Mapping
 from enum import StrEnum
-from typing import Any, Literal, NotRequired, Protocol, TypedDict
+from typing import Any, Literal, NotRequired, Protocol, TypedDict, override
+from weakref import WeakKeyDictionary
 
 from flask import request
 from flask_restx import Namespace
 from pydantic import BaseModel, TypeAdapter
+from pydantic.json_schema import CoreModeRef, DefsRef, GenerateJsonSchema
 
 from libs.flask_restx_compat import TYPED_EVENT_STREAM_RESPONSE_VENDOR_KEY
 
@@ -53,13 +56,117 @@ class QueryArgs(Protocol):
     def getlist(self, key: str) -> list[str]: ...
 
 
-def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None:
-    """Register a JSON schema and promote any nested Pydantic `$defs`."""
+class SchemaNameCollisionError(ValueError):
+    """Raised when two different schemas would be published under the same OpenAPI component name."""
+
+
+# Pydantic names `$defs` after the bare class name and only qualifies them when two
+# same-named types meet inside one schema, so the same type can surface under different
+# names depending on which model pulled it in. Types that share a class name with
+# another documented type get a fixed, unique component name here instead.
+SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
+    "graphon.model_runtime.entities.common_entities.I18nObject": "ModelRuntimeI18nObject",
+    "services.knowledge.entities.knowledge_entities.FileInfo": "KnowledgeFileInfo",
+    "core.plugin.entities.plugin.PluginDependency.Github": "PluginDependencyGithub",
+    "core.plugin.entities.plugin.PluginDependency.Marketplace": "PluginDependencyMarketplace",
+    "core.plugin.entities.plugin.PluginDependency.Package": "PluginDependencyPackage",
+    "core.plugin.entities.bundle.PluginBundleDependency.Github": "PluginBundleDependencyGithub",
+    "core.plugin.entities.bundle.PluginBundleDependency.Marketplace": "PluginBundleDependencyMarketplace",
+    "core.plugin.entities.bundle.PluginBundleDependency.Package": "PluginBundleDependencyPackage",
+    "core.app.entities.task_entities.AgentLogStreamResponse.Data": "AgentLogStreamResponseData",
+    "core.app.entities.task_entities.HumanInputFormFilledResponse.Data": "HumanInputFormFilledResponseData",
+    "core.app.entities.task_entities.HumanInputFormTimeoutResponse.Data": "HumanInputFormTimeoutResponseData",
+    "core.app.entities.task_entities.HumanInputRequiredResponse.Data": "HumanInputRequiredResponseData",
+    "core.app.entities.task_entities.IterationNodeCompletedStreamResponse.Data": (
+        "IterationNodeCompletedStreamResponseData"
+    ),
+    "core.app.entities.task_entities.IterationNodeNextStreamResponse.Data": "IterationNodeNextStreamResponseData",
+    "core.app.entities.task_entities.IterationNodeStartStreamResponse.Data": "IterationNodeStartStreamResponseData",
+    "core.app.entities.task_entities.LoopNodeCompletedStreamResponse.Data": "LoopNodeCompletedStreamResponseData",
+    "core.app.entities.task_entities.LoopNodeNextStreamResponse.Data": "LoopNodeNextStreamResponseData",
+    "core.app.entities.task_entities.LoopNodeStartStreamResponse.Data": "LoopNodeStartStreamResponseData",
+    "core.app.entities.task_entities.NodeFinishStreamResponse.Data": "NodeFinishStreamResponseData",
+    "core.app.entities.task_entities.NodeRetryStreamResponse.Data": "NodeRetryStreamResponseData",
+    "core.app.entities.task_entities.NodeStartStreamResponse.Data": "NodeStartStreamResponseData",
+    "core.app.entities.task_entities.ReasoningChunkStreamResponse.Data": "ReasoningChunkStreamResponseData",
+    "core.app.entities.task_entities.TextChunkStreamResponse.Data": "TextChunkStreamResponseData",
+    "core.app.entities.task_entities.TextReplaceStreamResponse.Data": "TextReplaceStreamResponseData",
+    "core.app.entities.task_entities.WorkflowAppBlockingResponse.Data": "WorkflowAppBlockingResponseData",
+    "core.app.entities.task_entities.WorkflowFinishStreamResponse.Data": "WorkflowFinishStreamResponseData",
+    "core.app.entities.task_entities.WorkflowPauseStreamResponse.Data": "WorkflowPauseStreamResponseData",
+    "core.app.entities.task_entities.WorkflowStartStreamResponse.Data": "WorkflowStartStreamResponseData",
+}
+
+_REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],])")
+_MODULE_PREFIX = re.compile(r"(?:[^.[\],]+\.)+([^.[\],]+)")
+
+# Normalized component name -> (component name, fully qualified source type, schema), per namespace.
+_registered_schemas: WeakKeyDictionary[Namespace, dict[str, tuple[str, str, dict]]] = WeakKeyDictionary()
+_NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]")
+
+
+def _normalized_schema_name(name: str) -> str:
+    """Fold names that client code generators turn into the same identifier (`JSONValue` / `JsonValue`)."""
+
+    return _NON_ALPHANUMERIC.sub("", name.lower())
+
+
+class _OpenApiJsonSchemaGenerator(GenerateJsonSchema):
+    """Emit stable component names and remember which type produced each of them."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.schema_sources: dict[str, str] = {}
+
+    @override
+    def get_defs_ref(self, core_mode_ref: CoreModeRef) -> DefsRef:
+        core_ref, _mode = core_mode_ref
+        source = _REF_ID_SUFFIX.sub("", core_ref)
+        name = SCHEMA_NAME_OVERRIDES.get(source) or self.normalize_name(_MODULE_PREFIX.sub(r"\1", source))
+        existing_source = self.schema_sources.setdefault(name, source)
+        if existing_source != source:
+            raise SchemaNameCollisionError(
+                f"OpenAPI schema name {name!r} is produced by both {existing_source} and {source}; "
+                "rename one of them or add it to SCHEMA_NAME_OVERRIDES."
+            )
+        defs_ref = DefsRef(name)
+        self._prioritized_defsref_choices[defs_ref] = [defs_ref]
+        return defs_ref
+
+
+def _register_json_schema(namespace: Namespace, name: str, schema: dict, sources: Mapping[str, str]) -> None:
+    """Register a JSON schema and promote any nested Pydantic `$defs`.
+
+    `sources` maps each component name to the type that produced it. Flask-RESTX keeps
+    one flat model namespace, so a second registration under an existing name would
+    silently replace the first. Re-registering the same type with the same schema is a
+    no-op; a different type, or the same type with a different shape (for example a
+    response model also registered in validation mode), raises instead.
+    """
 
     nested_definitions = schema.get("$defs")
     schema_to_register = dict(schema)
     if isinstance(nested_definitions, dict):
         schema_to_register.pop("$defs")
+
+    source = sources.get(name, name)
+    registered = _registered_schemas.setdefault(namespace, {})
+    normalized_name = _normalized_schema_name(name)
+    existing = registered.get(normalized_name)
+    if existing is not None and existing != (name, source, schema_to_register):
+        existing_name, existing_source, _ = existing
+        if existing_name != name:
+            reason = f"collides with {existing_name!r} from {existing_source} once normalized by client generators"
+        elif existing_source != source:
+            reason = f"is produced by both {existing_source} and {source}"
+        else:
+            reason = f"is registered by {source} with two different shapes (validation vs serialization mode?)"
+        raise SchemaNameCollisionError(
+            f"OpenAPI schema name {name!r} in namespace {namespace.name!r} {reason}; give each shape its own "
+            "class name, add it to SCHEMA_NAME_OVERRIDES, or register response models only with "
+            "register_response_schema_models."
+        )
+    registered[normalized_name] = (name, source, schema_to_register)
 
     namespace.schema_model(name, schema_to_register)
 
@@ -68,24 +175,27 @@ def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None
 
     for nested_name, nested_schema in nested_definitions.items():
         if isinstance(nested_schema, dict):
-            _register_json_schema(namespace, nested_name, nested_schema)
+            _register_json_schema(namespace, nested_name, nested_schema, sources)
 
 
 JsonSchemaMode = Literal["validation", "serialization"]
 
 
-def _register_schema_model(namespace: Namespace, model: type[BaseModel], *, mode: JsonSchemaMode) -> None:
+def _register_type_schema(namespace: Namespace, source_type: type, *, mode: JsonSchemaMode) -> None:
+    generator = _OpenApiJsonSchemaGenerator(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0)
+    schema = generator.generate(TypeAdapter(source_type).core_schema, mode=mode)
     _register_json_schema(
         namespace,
-        model.__name__,
-        model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0, mode=mode),
+        source_type.__name__,
+        schema,
+        {**generator.schema_sources, source_type.__name__: f"{source_type.__module__}.{source_type.__qualname__}"},
     )
 
 
 def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
     """Register a BaseModel and its nested component schemas for OpenAPI documentation."""
 
-    _register_schema_model(namespace, model, mode="validation")
+    _register_type_schema(namespace, model, mode="validation")
 
 
 def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> None:
@@ -98,7 +208,7 @@ def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> No
 def register_response_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
     """Register a BaseModel using its serialized response shape."""
 
-    _register_schema_model(namespace, model, mode="serialization")
+    _register_type_schema(namespace, model, mode="serialization")
 
 
 def register_response_schema_models(namespace: Namespace, *models: type[BaseModel]) -> None:
@@ -134,11 +244,7 @@ def get_or_create_model(model_name: str, field_def):
 def register_enum_models(namespace: Namespace, *models: type[StrEnum]) -> None:
     """Register multiple StrEnum with a namespace."""
     for model in models:
-        _register_json_schema(
-            namespace,
-            model.__name__,
-            TypeAdapter(model).json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
-        )
+        _register_type_schema(namespace, model, mode="validation")
 
 
 def query_params_from_model(model: type[BaseModel]) -> dict[str, QueryParamDoc]:
@@ -349,6 +455,8 @@ def _nullable_property_schema(property_schema: Mapping[str, Any]) -> Mapping[str
 
 __all__ = [
     "DEFAULT_REF_TEMPLATE_OPENAPI_3_0",
+    "SCHEMA_NAME_OVERRIDES",
+    "SchemaNameCollisionError",
     "get_or_create_model",
     "query_params_from_model",
     "query_params_from_request",

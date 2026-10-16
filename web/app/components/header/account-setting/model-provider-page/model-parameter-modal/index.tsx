@@ -17,14 +17,16 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Suspense, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
-import { useModelParameterRules } from '@/service/use-common'
 import { ModelStatusEnum } from '../declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import { ModelSelector, SplitModelSelector } from '../model-selector'
+import { modelParameterRulesQueryOptions } from '../utils'
 import { ModelSettingsTrigger } from './model-settings-trigger'
 import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
@@ -63,49 +65,58 @@ export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & 
   modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
 
-const ModelParameterModal: FC<ModelParameterModalProps> = ({
+type ModelParameterModalContentProps = ModelParameterModalProps & {
+  parameterRules: ModelParameterRule[]
+  isRulesLoading: boolean
+  selectableModelList: ModelSelectorProvider[]
+  onChangeModel: (model: ModelSelectorValue) => void
+  onClose: () => void
+}
+
+const ModelDebugToggle = ({
+  debugWithMultipleModel,
+  onDebugWithMultipleModelChange,
+}: Pick<ModelParameterModalProps, 'debugWithMultipleModel' | 'onDebugWithMultipleModelChange'>) => {
+  const { t } = useTranslation(['appDebug'])
+  return (
+    <button
+      type="button"
+      className="flex h-12.5 cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
+      onClick={() => onDebugWithMultipleModelChange?.()}
+    >
+      {debugWithMultipleModel
+        ? t(($) => $.debugAsSingleModel, { ns: 'appDebug' })
+        : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
+      <span
+        aria-hidden
+        className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
+      />
+    </button>
+  )
+}
+
+const ModelParameterModalContent: FC<ModelParameterModalContentProps> = ({
   trigger,
-  triggerContainerClassName,
-  popupClassName,
-  modelSelectorPopupClassName,
-  placement,
   isAdvancedMode,
   modelId,
   provider,
-  setModel,
   completionParams,
   onCompletionParamsChange,
   hideDebugWithMultipleModel,
   debugWithMultipleModel,
   onDebugWithMultipleModelChange,
-  readonly,
   modelSelectorReadonly,
   isInWorkflow,
   nodesOutputVars,
   availableNodes,
-  modelList,
   modelListLoading,
-  showModelMeta,
-  modelPredicate,
-  modelSuggestionPredicate,
+  parameterRules,
+  isRulesLoading,
+  selectableModelList,
+  onChangeModel,
+  onClose,
 }) => {
-  const { t } = useTranslation(['appDebug', 'common', 'modelProvider'])
-  const [open, setOpen] = useState(false)
-  const { currentProvider, currentModel, activeTextGenerationModelList } =
-    useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
-  const canFetchParameterRules =
-    !!currentProvider && currentModel?.status === ModelStatusEnum.active
-  const { data: parameterRulesData, isLoading } = useModelParameterRules(
-    provider,
-    modelId,
-    canFetchParameterRules,
-  )
-  const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
-  const selectableModelList = modelList ?? activeTextGenerationModelList
-
-  const parameterRules: ModelParameterRule[] = useMemo(() => {
-    return parameterRulesData?.data || []
-  }, [parameterRulesData])
+  const { t } = useTranslation(['common', 'modelProvider'])
   const supportedPresetParameterNames = useMemo(() => {
     return parameterRules.map((parameterRule) => parameterRule.name)
   }, [parameterRules])
@@ -114,18 +125,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     onCompletionParamsChange({
       ...completionParams,
       [key]: value,
-    })
-  }
-
-  const handleChangeModel = ({ provider, model, plugin_id }: ModelSelectorValue) => {
-    const targetProvider = selectableModelList.find((modelItem) => modelItem.provider === provider)
-    const targetModelItem = targetProvider?.models.find((modelItem) => modelItem.model === model)
-    setModel({
-      modelId: model,
-      provider,
-      plugin_id,
-      mode: targetModelItem?.model_properties.mode as string,
-      features: [...(targetModelItem?.features ?? [])],
     })
   }
 
@@ -152,6 +151,131 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const hasSelectedModel = !!provider && !!modelId
+
+  return (
+    <>
+      <div className="relative px-3 pt-3.5 pb-1">
+        <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
+          {t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
+        </PopoverTitle>
+        <PopoverClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              className="absolute top-2.5 right-2.5"
+              size="lg"
+              variant="default"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
+      </div>
+      <div className="relative max-h-105 overflow-x-hidden overflow-y-auto">
+        {trigger && (
+          <div className="px-4 pt-2 pb-4">
+            <ModelSelector
+              value={hasSelectedModel ? { provider, model: modelId } : undefined}
+              models={selectableModelList}
+              loading={modelListLoading}
+              disabled={modelSelectorReadonly}
+              onValueChange={onChangeModel}
+              onHide={onClose}
+            />
+          </div>
+        )}
+        {!!parameterRules.length && (
+          <div
+            className={cn(
+              'flex flex-col gap-2 px-4 pt-3 pb-4',
+              trigger && 'border-t border-divider-subtle',
+            )}
+          >
+            <div className="flex items-center gap-1">
+              <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">
+                {t(($) => $['modelProvider.parameters'], { ns: 'modelProvider' })}
+              </div>
+              {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
+                <PresetsParameter
+                  onSelect={handleSelectPresetParameter}
+                  supportedParameterNames={supportedPresetParameterNames}
+                />
+              )}
+            </div>
+            {isRulesLoading ? (
+              <div className="py-5">
+                <LoadingPlaceholder />
+              </div>
+            ) : (
+              [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
+                (parameter) => (
+                  <ParameterItem
+                    key={`${modelId}-${parameter.name}`}
+                    parameterRule={parameter}
+                    value={completionParams?.[parameter.name]}
+                    onChange={(v) => handleParamChange(parameter.name, v)}
+                    onSwitch={(checked, assignValue) =>
+                      handleSwitch(parameter.name, checked, assignValue)
+                    }
+                    isInWorkflow={isInWorkflow}
+                    nodesOutputVars={nodesOutputVars}
+                    availableNodes={availableNodes}
+                  />
+                ),
+              )
+            )}
+          </div>
+        )}
+        {!parameterRules.length && isRulesLoading && (
+          <div className="px-4 py-5">
+            <LoadingPlaceholder />
+          </div>
+        )}
+      </div>
+      {!hideDebugWithMultipleModel && (
+        <ModelDebugToggle
+          debugWithMultipleModel={debugWithMultipleModel}
+          onDebugWithMultipleModelChange={onDebugWithMultipleModelChange}
+        />
+      )}
+    </>
+  )
+}
+
+const ModelParameterModal: FC<ModelParameterModalProps> = (props) => {
+  const {
+    trigger,
+    triggerContainerClassName,
+    popupClassName,
+    modelSelectorPopupClassName,
+    placement,
+    modelId,
+    provider,
+    setModel,
+    readonly,
+    modelSelectorReadonly,
+    isInWorkflow,
+    modelList,
+    modelListLoading,
+    showModelMeta,
+    modelPredicate,
+    modelSuggestionPredicate,
+  } = props
+  const [open, setOpen] = useState(false)
+  const { currentProvider, currentModel, activeTextGenerationModelList } =
+    useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
+  const selectableModelList = modelList ?? activeTextGenerationModelList
+  const hasSelectedModel = !!provider && !!modelId
+  const canFetchParameterRules =
+    !!currentProvider && currentModel?.status === ModelStatusEnum.active
+  // Preload rules while the popup is closed, independently of its translation loading.
+  const { data: parameterRulesData, isLoading } = useQuery(
+    modelParameterRulesQueryOptions({ provider, model: modelId, enabled: canFetchParameterRules }),
+  )
+  const isRulesLoading = canFetchParameterRules && !!provider && !!modelId && isLoading
+  const parameterRules: ModelParameterRule[] = useMemo(() => {
+    return parameterRulesData?.data || []
+  }, [parameterRulesData])
   const canConfigureModelSettings =
     !readonly &&
     hasSelectedModel &&
@@ -159,6 +283,18 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     !!currentModel &&
     currentModel.status === ModelStatusEnum.active &&
     (modelPredicate?.(currentProvider, currentModel) ?? true)
+
+  const handleChangeModel = ({ provider, model, plugin_id }: ModelSelectorValue) => {
+    const targetProvider = selectableModelList.find((modelItem) => modelItem.provider === provider)
+    const targetModelItem = targetProvider?.models.find((modelItem) => modelItem.model === model)
+    setModel({
+      modelId: model,
+      provider,
+      plugin_id,
+      mode: targetModelItem?.model_properties.mode as string,
+      features: [...(targetModelItem?.features ?? [])],
+    })
+  }
 
   return (
     <Popover
@@ -200,99 +336,23 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         sideOffset={4}
         className={cn(popupClassName, 'w-100 rounded-2xl')}
       >
-        <div className="relative px-3 pt-3.5 pb-1">
-          <PopoverTitle className="pr-8 pl-1 system-xl-semibold text-text-primary">
-            {t(($) => $['modelProvider.modelSettings'], { ns: 'modelProvider' })}
-          </PopoverTitle>
-          <PopoverClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="absolute top-2.5 right-2.5"
-                size="lg"
-                variant="default"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
+        <Suspense
+          fallback={
+            <SkeletonContainer role="status" aria-busy="true" className="gap-3 p-4">
+              <SkeletonRectangle aria-hidden className="h-6 w-1/2" />
+              <SkeletonRectangle aria-hidden className="h-8 w-full" />
+            </SkeletonContainer>
+          }
+        >
+          <ModelParameterModalContent
+            {...props}
+            parameterRules={parameterRules}
+            isRulesLoading={isRulesLoading}
+            selectableModelList={selectableModelList}
+            onChangeModel={handleChangeModel}
+            onClose={() => setOpen(false)}
           />
-        </div>
-        <div className="relative max-h-105 overflow-x-hidden overflow-y-auto">
-          {trigger && (
-            <div className="px-4 pt-2 pb-4">
-              <ModelSelector
-                value={hasSelectedModel ? { provider, model: modelId } : undefined}
-                models={selectableModelList}
-                loading={modelListLoading}
-                disabled={modelSelectorReadonly}
-                onValueChange={handleChangeModel}
-                onHide={() => setOpen(false)}
-              />
-            </div>
-          )}
-          {!!parameterRules.length && (
-            <div
-              className={cn(
-                'flex flex-col gap-2 px-4 pt-3 pb-4',
-                trigger && 'border-t border-divider-subtle',
-              )}
-            >
-              <div className="flex items-center gap-1">
-                <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['modelProvider.parameters'], { ns: 'modelProvider' })}
-                </div>
-                {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-                  <PresetsParameter
-                    onSelect={handleSelectPresetParameter}
-                    supportedParameterNames={supportedPresetParameterNames}
-                  />
-                )}
-              </div>
-              {isRulesLoading ? (
-                <div className="py-5">
-                  <LoadingPlaceholder />
-                </div>
-              ) : (
-                [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
-                  (parameter) => (
-                    <ParameterItem
-                      key={`${modelId}-${parameter.name}`}
-                      parameterRule={parameter}
-                      value={completionParams?.[parameter.name]}
-                      onChange={(v) => handleParamChange(parameter.name, v)}
-                      onSwitch={(checked, assignValue) =>
-                        handleSwitch(parameter.name, checked, assignValue)
-                      }
-                      isInWorkflow={isInWorkflow}
-                      nodesOutputVars={nodesOutputVars}
-                      availableNodes={availableNodes}
-                    />
-                  ),
-                )
-              )}
-            </div>
-          )}
-          {!parameterRules.length && isRulesLoading && (
-            <div className="px-4 py-5">
-              <LoadingPlaceholder />
-            </div>
-          )}
-        </div>
-        {!hideDebugWithMultipleModel && (
-          <button
-            type="button"
-            className="flex h-12.5 cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
-            onClick={() => onDebugWithMultipleModelChange?.()}
-          >
-            {debugWithMultipleModel
-              ? t(($) => $.debugAsSingleModel, { ns: 'appDebug' })
-              : t(($) => $.debugAsMultipleModel, { ns: 'appDebug' })}
-            <span
-              aria-hidden
-              className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
-            />
-          </button>
-        )}
+        </Suspense>
       </PopoverContent>
     </Popover>
   )

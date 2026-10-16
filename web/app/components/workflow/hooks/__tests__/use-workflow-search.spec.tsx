@@ -8,8 +8,8 @@ import { useWorkflowSearch } from '../use-workflow-search'
 const mockHandleNodeSelect = vi.hoisted(() => vi.fn())
 const runtimeNodes = vi.hoisted(() => [] as Node[])
 
-vi.mock('reactflow', () => ({
-  useNodes: () => runtimeNodes,
+vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
+  default: () => runtimeNodes,
 }))
 
 vi.mock('../use-nodes-interactions', () => ({
@@ -18,20 +18,23 @@ vi.mock('../use-nodes-interactions', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({
-    data: [
-      {
-        id: 'provider-1',
-        icon: 'tool-icon',
-        tools: [],
-      },
-    ] satisfies Partial<ToolWithProvider>[],
-  }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({
+      data: [
+        {
+          id: 'provider-1',
+          icon: 'tool-icon',
+          tools: [],
+        },
+      ] satisfies Partial<ToolWithProvider>[],
+    }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 const createNode = (overrides: Partial<Node> = {}): Node => ({
   id: 'node-1',

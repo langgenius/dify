@@ -73,7 +73,6 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
               schema: '{}',
               privacy_policy: '',
               custom_disclaimer: '',
-              id: 'test-id',
               labels: [],
             })
           }}

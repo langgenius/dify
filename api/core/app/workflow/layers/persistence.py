@@ -15,9 +15,10 @@ from collections.abc import Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Union, override
+from typing import TYPE_CHECKING, Any, override
 
 from libs.datetime_utils import naive_utc_now
+from repositories.entities.workflow_execution import WorkflowExecution
 from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
@@ -36,7 +37,7 @@ from core.workflow.node_execution_process_data import preserve_workflow_agent_bi
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities import WorkflowExecution, WorkflowNodeExecution, WorkflowStartReason
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
@@ -101,7 +102,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def __init__(
         self,
         *,
-        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
+        application_generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
         workflow_info: PersistenceWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
@@ -217,6 +218,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # ------------------------------------------------------------------
     def _handle_graph_run_started(self, event: GraphRunStartedEvent | None = None) -> None:
         execution_id = self._get_execution_id()
+        timing = self._application_generate_entity.workflow_execution_timing
         if (
             self._native_observation is not None
             and event is not None
@@ -225,10 +227,15 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             execution = self._get_workflow_execution()
             if execution.id_ != execution_id or execution.status is not WorkflowExecutionStatus.PAUSED:
                 self._native_observation.fail()
+            # Native checkpoints exclude this process-local timer. Owned paused
+            # history carries the settled duration across the restored entity.
+            timing.elapsed_time = execution.elapsed_time
+            timing.start()
             execution.status = WorkflowExecutionStatus.RUNNING
             self._workflow_execution_repository.save(execution)
             return
-        workflow_execution = WorkflowExecution.new(
+        timing.start()
+        workflow_execution = WorkflowExecution(
             id_=execution_id,
             workflow_id=self._workflow_info.workflow_id,
             workflow_type=self._workflow_info.workflow_type,
@@ -236,6 +243,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             graph=self._workflow_info.graph_data,
             inputs=self._prepare_workflow_inputs(),
             started_at=naive_utc_now(),
+            accumulated_elapsed_time=timing.elapsed_time,
         )
 
         self._workflow_execution_repository.save(workflow_execution)
@@ -500,6 +508,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         return merged_process_data
 
     def _populate_completion_statistics(self, execution: WorkflowExecution, *, update_finished: bool = True) -> None:
+        execution.accumulated_elapsed_time = self._application_generate_entity.workflow_execution_timing.finish()
         if update_finished:
             execution.finished_at = naive_utc_now()
         runtime_state = self.graph_runtime_state

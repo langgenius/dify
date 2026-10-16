@@ -10,6 +10,7 @@ by opentelemetry.instrumentation.sqlcommenter_utils._add_framework_tags() when t
 SQLAlchemy instrumentor appends comments to SQL statements.
 """
 
+import contextlib
 import logging
 from typing import Any, TypedDict
 
@@ -105,10 +106,8 @@ def _on_task_postrun(*args: object, **kwargs: object) -> None:
     except Exception:
         logger.debug("Failed to detach SQL commenter context", exc_info=True)
     finally:
-        try:
+        with contextlib.suppress(AttributeError):
             delattr(task, _TOKEN_ATTR)
-        except AttributeError:
-            pass
 
 
 def setup_celery_sqlcommenter() -> None:

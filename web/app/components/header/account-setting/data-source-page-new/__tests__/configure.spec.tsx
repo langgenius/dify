@@ -1,5 +1,8 @@
+import type {
+  DatasourceOAuthSchemaResponse,
+  ProviderConfig,
+} from '@dify/contracts/api/console/auth/types.gen'
 import type { DataSourceAuth } from '../types'
-import type { FormSchema } from '@/app/components/base/form/types'
 import type {
   AddApiKeyButtonProps,
   AddOAuthButtonProps,
@@ -72,9 +75,23 @@ describe('Configure Component', () => {
     label: { en_US: 'Test Label', zh_Hans: 'zh_hans' },
     description: { en_US: 'Test Description', zh_Hans: 'zh_hans' },
     credentials_list: [],
+    credential_schema: [],
+    oauth_schema: null,
   }
 
-  const mockFormSchema: FormSchema = {
+  const createOAuthSchema = (
+    overrides: Partial<DatasourceOAuthSchemaResponse> = {},
+  ): DatasourceOAuthSchemaResponse => ({
+    client_schema: [],
+    credentials_schema: [],
+    is_oauth_custom_client_enabled: false,
+    is_system_oauth_params_exists: false,
+    oauth_custom_client_params: null,
+    redirect_uri: '',
+    ...overrides,
+  })
+
+  const mockFormSchema: ProviderConfig = {
     name: 'api_key',
     label: { en_US: 'API Key', zh_Hans: 'zh_hans' },
     type: FormTypeEnum.textInput,
@@ -133,9 +150,9 @@ describe('Configure Component', () => {
       // Arrange
       const itemWithOAuth: DataSourceAuth = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
 
       // Act
@@ -152,9 +169,9 @@ describe('Configure Component', () => {
       const itemWithBoth: DataSourceAuth = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
 
       // Act
@@ -172,9 +189,9 @@ describe('Configure Component', () => {
     it('should keep the permission dialog mounted after the OAuth menu closes', () => {
       const itemWithOAuth: DataSourceAuth = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
       render(
         <Configure
@@ -220,9 +237,9 @@ describe('Configure Component', () => {
       const itemWithBoth: DataSourceAuth = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
       render(<Configure item={itemWithBoth} pluginPayload={mockPluginPayload} />)
 
@@ -243,9 +260,9 @@ describe('Configure Component', () => {
       const itemWithBoth: DataSourceAuth = {
         ...mockItemBase,
         credential_schema: [mockFormSchema],
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           client_schema: [mockFormSchema],
-        },
+        }),
       }
 
       // Act: Open the configuration menu
@@ -270,7 +287,7 @@ describe('Configure Component', () => {
       const itemEmpty: DataSourceAuth = {
         ...mockItemBase,
         credential_schema: [],
-        oauth_schema: { client_schema: [] },
+        oauth_schema: createOAuthSchema({ client_schema: [] }),
       }
       // Act
       rerender(<Configure item={itemEmpty} pluginPayload={mockPluginPayload} />)
@@ -282,9 +299,9 @@ describe('Configure Component', () => {
       // Arrange (Partial OAuth schema)
       const itemPartialOAuth: DataSourceAuth = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           is_oauth_custom_client_enabled: true,
-        },
+        }),
       }
       // Act
       rerender(<Configure item={itemPartialOAuth} pluginPayload={mockPluginPayload} />)
@@ -297,7 +314,7 @@ describe('Configure Component', () => {
       let count = 0
       const itemWithGlitchedSchema = {
         ...mockItemBase,
-        oauth_schema: {
+        oauth_schema: createOAuthSchema({
           get client_schema() {
             count++
             if (count % 2 !== 0) return [mockFormSchema]
@@ -307,7 +324,7 @@ describe('Configure Component', () => {
           is_system_oauth_params_exists: false,
           oauth_custom_client_params: {},
           redirect_uri: '',
-        },
+        }),
       } as unknown as DataSourceAuth
 
       render(<Configure item={itemWithGlitchedSchema} pluginPayload={mockPluginPayload} />)

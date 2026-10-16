@@ -6,6 +6,7 @@ import ErrorBoundary from '@/app/components/base/error-boundary'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useStore } from '@/app/components/workflow/store'
 import { DifyBuilderConversation } from './conversation'
+import { DifyBuilderLocaleProvider } from './interactions/locale-provider'
 import { useDifyBuilderInteractionLocale } from './interactions/use-interaction-locale'
 import { DifyBuilderPanelBackground } from './panel/background'
 import { DifyBuilderPanelEmptyState } from './panel/empty-state'
@@ -30,7 +31,7 @@ import {
 } from './store'
 
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
-const DifyBuilderPanel = () => {
+const DifyBuilderPanelContent = () => {
   const locale = useDifyBuilderInteractionLocale()
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
   const setShowDifyBuilderPanel = useStore((state) => state.setShowDifyBuilderPanel)
@@ -96,7 +97,7 @@ const DifyBuilderPanel = () => {
       aria-label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}
       className="flex h-full w-100 shrink-0 bg-background-body py-1 pr-1"
     >
-      <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl bg-background-section shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
+      <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
         <DifyBuilderPanelBackground />
 
         <DifyBuilderPanelHeader
@@ -170,5 +171,11 @@ const DifyBuilderPanel = () => {
     </aside>
   )
 }
+
+const DifyBuilderPanel = () => (
+  <DifyBuilderLocaleProvider>
+    <DifyBuilderPanelContent />
+  </DifyBuilderLocaleProvider>
+)
 
 export default DifyBuilderPanel

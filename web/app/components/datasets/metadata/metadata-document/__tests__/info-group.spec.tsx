@@ -21,13 +21,16 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'test', type: DataType.string }],
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        doc_metadata: [{ id: '1', name: 'test', type: DataType.string }],
+      },
+    }),
+  })
+})
 
 // Mock useTimestamp
 vi.mock('@/hooks/use-timestamp', () => ({
