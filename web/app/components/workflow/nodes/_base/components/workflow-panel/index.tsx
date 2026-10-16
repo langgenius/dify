@@ -1,6 +1,6 @@
 import type { CSSProperties, FC, KeyboardEvent, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
-import type { Node } from '@/app/components/workflow/types'
+import type { Node, NodeDataType } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -44,9 +44,10 @@ import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persiste
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, isBlockType, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
+  getNodeBlockEntry,
   getNodeCatalogType,
   hasErrorHandleNode,
   hasRetryNode,
@@ -326,7 +327,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     id,
     resource,
     data,
-    defaultRunInputData: nodesMap?.[nodeMetaType]?.defaultRunInputData || {},
+    defaultRunInputData: getNodeBlockEntry(nodesMap, data)?.defaultRunInputData || {},
     isPaused,
   })
 
@@ -353,7 +354,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
 
   const logParams = useLogs()
   const passedLogParams = useMemo(() => {
-    const nestedLogBlockTypes: readonly BlockEnum[] = [
+    const nestedLogBlockTypes: readonly NodeDataType[] = [
       BlockEnum.Tool,
       BlockEnum.Agent,
       BlockEnum.Iteration,
@@ -676,7 +677,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   <TooltipContent>{runThisStepLabel}</TooltipContent>
                 </Tooltip>
               )}
-              <HelpLink nodeType={nodeMetaType} />
+              {isBlockType(nodeMetaType) && <HelpLink nodeType={nodeMetaType} />}
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <IconButton

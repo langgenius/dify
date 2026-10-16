@@ -1,14 +1,15 @@
 import type { FC } from 'react'
+import type { NodeDataType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { API_PREFIX } from '@/config'
-import { BlockEnum } from './types'
+import { BlockEnum, isBlockType } from './types'
 
 type BlockIconSize = 'xs' | 'sm' | 'md'
 
 type BlockIconProps = {
-  type: BlockEnum
+  type: NodeDataType
   size?: BlockIconSize
   className?: string
   iconClassName?: string
@@ -114,6 +115,9 @@ const BlockIcon: FC<BlockIconProps> = ({
   iconClassName,
   toolIcon,
 }) => {
+  // Note nodes are canvas annotations without a block icon.
+  if (!isBlockType(type)) return null
+
   const isStart = type === BlockEnum.Start
   const isStartPlaceholder = type === BlockEnum.StartPlaceholder
   const isToolOrDataSourceOrTriggerPlugin =
@@ -201,7 +205,7 @@ const BlockIcon: FC<BlockIconProps> = ({
 }
 
 export const VarBlockIcon: FC<BlockIconProps> = ({ type, className }) => {
-  return <>{getIcon(type, `w-3 h-3 ${className}`)}</>
+  return isBlockType(type) ? getIcon(type, `w-3 h-3 ${className}`) : null
 }
 
 export default memo(BlockIcon)

@@ -14,6 +14,7 @@ import type {
   EnvironmentVariable,
   InputVar,
   Node,
+  NodeDataType,
   Variable,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
@@ -440,7 +441,7 @@ export type VarInInspect = WorkflowDraftVariableWithoutValueResponse & {
 export type NodeWithVar = {
   nodeId: string
   nodePayload: CommonNodeType
-  nodeType: BlockEnum
+  nodeType: NodeDataType
   title: string
   vars: VarInInspect[]
   isSingRunRunning?: boolean

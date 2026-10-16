@@ -3,7 +3,7 @@ import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
 import type { ToolNodeType } from '../nodes/tool/types'
-import type { Edge, Node } from '../types'
+import type { Edge, Node, NodeDataType } from '../types'
 import { cloneDeep } from 'es-toolkit/object'
 import { getConnectedEdges } from 'reactflow'
 import {
@@ -23,7 +23,7 @@ import {
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import { BlockEnum, ErrorHandleMode } from '../types'
+import { BlockEnum, ErrorHandleMode, isBlockType } from '../types'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -145,38 +145,44 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     },
   )
 
-  const newEdges = [...iterationNodesWithStartNode, ...loopNodesWithStartNode].map((nodeItem) => {
-    const isIteration = nodeItem.data.type === BlockEnum.Iteration
-    const newNode = (isIteration ? newIterationStartNodesMap : newLoopStartNodesMap)[nodeItem.id]
-    const startNode = nodesMap[nodeItem.data.start_node_id]
-    const source = newNode!.id
-    const sourceHandle = 'source'
-    const target = startNode!.id
-    const targetHandle = 'target'
+  const newEdges = [...iterationNodesWithStartNode, ...loopNodesWithStartNode].flatMap(
+    (nodeItem): Edge[] => {
+      const isIteration = nodeItem.data.type === BlockEnum.Iteration
+      const newNode = (isIteration ? newIterationStartNodesMap : newLoopStartNodesMap)[nodeItem.id]
+      const startNode = nodesMap[nodeItem.data.start_node_id]
+      const startNodeType = startNode?.data.type
+      if (!startNodeType || !isBlockType(startNodeType)) return []
+      const source = newNode!.id
+      const sourceHandle = 'source'
+      const target = startNode!.id
+      const targetHandle = 'target'
 
-    const parentNode = nodes.find((node) => node.id === startNode!.parentId) || null
-    const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
-    const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
+      const parentNode = nodes.find((node) => node.id === startNode!.parentId) || null
+      const isInIteration = !!parentNode && parentNode.data.type === BlockEnum.Iteration
+      const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
 
-    return {
-      id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
-      type: 'custom',
-      source,
-      sourceHandle,
-      target,
-      targetHandle,
-      data: {
-        sourceType: newNode!.data.type,
-        targetType: startNode!.data.type,
-        isInIteration,
-        iteration_id: isInIteration ? startNode!.parentId : undefined,
-        isInLoop,
-        loop_id: isInLoop ? startNode!.parentId : undefined,
-        _connectedNodeIsSelected: true,
-      },
-      zIndex: NESTED_ELEMENT_Z_INDEX,
-    }
-  })
+      return [
+        {
+          id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
+          type: 'custom',
+          source,
+          sourceHandle,
+          target,
+          targetHandle,
+          data: {
+            sourceType: isIteration ? BlockEnum.IterationStart : BlockEnum.LoopStart,
+            targetType: startNodeType,
+            isInIteration,
+            iteration_id: isInIteration ? startNode!.parentId : undefined,
+            isInLoop,
+            loop_id: isInLoop ? startNode!.parentId : undefined,
+            _connectedNodeIsSelected: true,
+          },
+          zIndex: NESTED_ELEMENT_Z_INDEX,
+        },
+      ]
+    },
+  )
   nodes.forEach((node) => {
     if (node.data.type === BlockEnum.Iteration && newIterationStartNodesMap[node.id])
       (node.data as IterationNodeType).start_node_id = newIterationStartNodesMap[node.id]!.id
@@ -214,7 +220,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       }
       return acc
     },
-    {} as Record<string, { nodeId: string; nodeType: BlockEnum }[]>,
+    {} as Record<string, { nodeId: string; nodeType: NodeDataType }[]>,
   )
 
   return nodes.map((node) => {

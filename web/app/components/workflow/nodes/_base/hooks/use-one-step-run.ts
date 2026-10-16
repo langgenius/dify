@@ -46,6 +46,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
   BlockEnum,
   InputVarType,
+  isBlockType,
   NodeRunningStatus,
   VarType,
   WorkflowRunningStatus,
@@ -243,7 +244,7 @@ const useOneStepRun = <T>({
     return undefined
   }
 
-  const checkValid = checkValidFns[data.type]
+  const checkValid = isBlockType(data.type) ? checkValidFns[data.type] : undefined
 
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const runInputDataRef = useRef(runInputData)

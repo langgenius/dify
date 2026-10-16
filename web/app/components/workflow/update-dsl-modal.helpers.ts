@@ -1,6 +1,6 @@
 import type { AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
-import type { CommonNodeType, Node } from './types'
+import type { CommonNodeType, Node, NodeDataType } from './types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
 import { loadYaml } from '@/utils/yaml'
@@ -61,7 +61,7 @@ export const validateDSLContent = (content: string, mode?: AppMode) => {
   try {
     const data = loadYaml(content) as ParsedDSL | undefined
     const nodes = data?.workflow?.graph?.nodes ?? []
-    const invalidNodes = getInvalidNodeTypes(mode)
+    const invalidNodes: NodeDataType[] = getInvalidNodeTypes(mode)
     return !nodes.some((node: Node<CommonNodeType>) => invalidNodes.includes(node?.data?.type))
   } catch {
     return false

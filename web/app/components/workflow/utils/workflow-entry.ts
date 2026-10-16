@@ -1,4 +1,4 @@
-import type { Node } from '../types'
+import type { Node, NodeDataType } from '../types'
 import { BlockEnum, isTriggerNode } from '../types'
 
 /**
@@ -15,7 +15,7 @@ export function getWorkflowEntryNode(nodes: Node[]): Node | undefined {
 /**
  * Check if a node type is a workflow entry node
  */
-export function isWorkflowEntryNode(nodeType: BlockEnum): boolean {
+export function isWorkflowEntryNode(nodeType: NodeDataType): boolean {
   return nodeType === BlockEnum.Start || isTriggerNode(nodeType)
 }
 

@@ -11,7 +11,7 @@ import type { BlockDefaultValue } from '../block-selector/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
-import type { Edge, Node, OnNodeAdd } from '../types'
+import type { Edge, Node, NodeDataType, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -50,6 +50,7 @@ import {
   generateNewNode,
   genNewNodeTitleFromOld,
   getNestedNodePosition,
+  getNodeBlockEntry,
   getNodeCatalogType,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
@@ -693,7 +694,7 @@ export const useNodesInteractions = () => {
 
       if (!currentNode) return
 
-      if (nodesMetaDataMap?.[getNodeCatalogType(currentNode.data)]?.metaData.isUndeletable) {
+      if (getNodeBlockEntry(nodesMetaDataMap, currentNode.data)?.metaData.isUndeletable) {
         return
       }
 
@@ -1607,7 +1608,7 @@ export const useNodesInteractions = () => {
 
       if (node.type === CUSTOM_NOTE_NODE) return true
 
-      const nodeMeta = nodesMetaDataMap?.[getNodeCatalogType(node.data)]
+      const nodeMeta = getNodeBlockEntry(nodesMetaDataMap, node.data)
       if (!nodeMeta) return false
 
       const { metaData } = nodeMeta
@@ -1620,7 +1621,7 @@ export const useNodesInteractions = () => {
     (node: Node) => {
       if (node.type === CUSTOM_NOTE_NODE) return {}
 
-      const nodeMeta = nodesMetaDataMap?.[getNodeCatalogType(node.data)]
+      const nodeMeta = getNodeBlockEntry(nodesMetaDataMap, node.data)
       return nodeMeta?.defaultValue
     },
     [nodesMetaDataMap],
@@ -1787,11 +1788,12 @@ export const useNodesInteractions = () => {
     const offsetY = currentPosition.y - y
     let idMapping: Record<string, string> = {}
     const pastedNodesMap: Record<string, Node> = {}
-    const parentChildrenToAppend: { parentId: string; childId: string; childType: BlockEnum }[] = []
+    const parentChildrenToAppend: { parentId: string; childId: string; childType: NodeDataType }[] =
+      []
     const selectedNodes = nodes.filter((node) => node.selected)
     // Keep this list aligned with availableBlocksFilter(inContainer)
     // in use-available-blocks.ts.
-    const commonNestedDisallowPasteNodes: BlockEnum[] = [
+    const commonNestedDisallowPasteNodes: NodeDataType[] = [
       BlockEnum.End,
       BlockEnum.Iteration,
       BlockEnum.Loop,
@@ -2131,7 +2133,7 @@ export const useNodesInteractions = () => {
     })
 
     if (!isChatflow) {
-      const memoryNodeTypes: BlockEnum[] = [
+      const memoryNodeTypes: NodeDataType[] = [
         BlockEnum.LLM,
         BlockEnum.QuestionClassifier,
         BlockEnum.ParameterExtractor,

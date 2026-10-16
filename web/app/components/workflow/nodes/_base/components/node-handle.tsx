@@ -1,7 +1,7 @@
 import type { PopoverChangeEventDetails } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
 import type { BlockDefaultValue } from '../../../block-selector/types'
-import type { Node } from '../../../types'
+import type { Node, NodeDataType } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -28,7 +28,7 @@ type NodeHandleProps = {
 // React Flow measures the 16px handle box. Enlarge its hit area with ::before
 // and scale the button independently so zoom compensation cannot move edge endpoints.
 
-const canAutoOpenStartNodeSelector = (nodeType: BlockEnum, isChatflow: boolean) => {
+const canAutoOpenStartNodeSelector = (nodeType: NodeDataType, isChatflow: boolean) => {
   if (isChatflow) return false
 
   return (

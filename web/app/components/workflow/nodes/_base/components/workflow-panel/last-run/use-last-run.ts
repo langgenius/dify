@@ -1,7 +1,7 @@
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 // import
-import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, NodeDataType, ValueSelector } from '@/app/components/workflow/types'
 import { useCallback, useEffect, useState } from 'react'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
@@ -24,7 +24,7 @@ import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/hoo
 import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, isBlockType } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
@@ -69,9 +69,9 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerPlugin]: undefined,
 }
 
-const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
+const useSingleRunFormParamsHooks = (nodeType: NodeDataType) => {
   return (params: any) => {
-    return singleRunFormParamsHooks[nodeType]?.(params) || {}
+    return (isBlockType(nodeType) && singleRunFormParamsHooks[nodeType]?.(params)) || {}
   }
 }
 
@@ -110,10 +110,10 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerPlugin]: useTriggerPluginGetDataForCheckMore,
 }
 
-const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
+const useGetDataForCheckMoreHooks = <T>(nodeType: NodeDataType) => {
   return (id: string, payload: CommonNodeType<T>) => {
     return (
-      getDataForCheckMoreHooks[nodeType]?.({ id, payload }) || {
+      (isBlockType(nodeType) && getDataForCheckMoreHooks[nodeType]?.({ id, payload })) || {
         getData: () => {
           return {}
         },

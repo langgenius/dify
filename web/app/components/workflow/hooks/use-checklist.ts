@@ -61,7 +61,7 @@ import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
-  getNodeCatalogType,
+  getNodeBlockEntry,
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
@@ -112,7 +112,7 @@ const resolveNodeValidator = (
   data: CommonNodeType,
   nodesExtraData: ReturnType<typeof useNodesMetaData>['nodesMap'],
 ): NodeValidator | undefined => {
-  const validator = nodesExtraData?.[getNodeCatalogType(data)]?.checkValid
+  const validator = getNodeBlockEntry(nodesExtraData, data)?.checkValid
   if (validator) return validator
 
   if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data))

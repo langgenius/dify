@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Field, StructuredOutput, TypeWithArray } from '../../../llm/types'
+import type { NodeDataType } from '@/app/components/workflow/types'
 import * as React from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { PickerPanelMain as Panel } from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
@@ -11,7 +12,7 @@ type Props = Readonly<{
   nodeName: string
   path: string[]
   varType: TypeWithArray
-  nodeType?: BlockEnum
+  nodeType?: NodeDataType
 }>
 
 const VarFullPathPanel: FC<Props> = ({ nodeName, path, varType, nodeType = BlockEnum.LLM }) => {

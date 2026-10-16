@@ -1,4 +1,4 @@
-import type { BlockEnum, ValueSelector } from '../types'
+import type { NodeDataType, ValueSelector } from '../types'
 import { hasErrorHandleNode } from '.'
 
 export const variableTransformer = (v: ValueSelector | string) => {
@@ -9,6 +9,6 @@ export const variableTransformer = (v: ValueSelector | string) => {
 
 export const normalizeWorkflowOutputName = (name?: string) => name?.trim() ?? ''
 
-export const isExceptionVariable = (variable: string, nodeType?: BlockEnum) => {
+export const isExceptionVariable = (variable: string, nodeType?: NodeDataType) => {
   return (variable === 'error_message' || variable === 'error_type') && hasErrorHandleNode(nodeType)
 }

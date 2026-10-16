@@ -5,7 +5,7 @@ import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
-import { BlockEnum, ControlMode } from '../../types'
+import { BlockEnum, ControlMode, NOTE_NODE_DATA_TYPE } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
 const mockHandleSyncWorkflowDraft = vi.hoisted(() => vi.fn())
@@ -366,7 +366,7 @@ describe('useNodesInteractions', () => {
         id: 'note-1',
         type: CUSTOM_NOTE_NODE,
         data: {
-          type: '' as unknown as BlockEnum,
+          type: NOTE_NODE_DATA_TYPE,
           title: 'Note',
           desc: '',
           selected: false,

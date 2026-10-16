@@ -16,7 +16,7 @@ import {
 } from '../nodes/_base/components/variable/utils'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { useStore, useWorkflowStore } from '../store'
-import { WorkflowRunningStatus } from '../types'
+import { isBlockType, WorkflowRunningStatus } from '../types'
 import { getNodeCatalogType } from '../utils'
 import { getWorkflowEntryNode, isWorkflowEntryNode } from '../utils/workflow-entry'
 import { useAvailableBlocks } from './use-available-blocks'
@@ -80,7 +80,7 @@ export const useWorkflow = () => {
       list.push(...incomers)
 
       return uniqBy(list, 'id').filter((item: Node) => {
-        return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
+        return isBlockType(item.data.type) && SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
       })
     },
     [collaborativeWorkflow, nodesMap],
@@ -128,7 +128,7 @@ export const useWorkflow = () => {
         return uniqBy(list, 'id')
           .reverse()
           .filter((item: Node) => {
-            return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
+            return isBlockType(item.data.type) && SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
           })
       }
 
@@ -379,6 +379,8 @@ export const useWorkflow = () => {
           targetNodeCatalogType,
           !!targetNode.parentId,
         ).availablePrevBlocks
+
+        if (!isBlockType(sourceNodeCatalogType) || !isBlockType(targetNodeCatalogType)) return false
 
         if (!sourceNodeAvailableNextNodes.includes(targetNodeCatalogType)) return false
 

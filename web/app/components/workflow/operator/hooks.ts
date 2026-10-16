@@ -6,6 +6,7 @@ import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { NoteTheme } from '../note-node/types'
 import { useWorkflowNoteShowAuthorValue } from '../persistence/local-storage-options'
 import { useWorkflowStore } from '../store'
+import { NOTE_NODE_DATA_TYPE } from '../types'
 import { generateNewNode } from '../utils'
 
 export const useOperator = () => {
@@ -22,7 +23,7 @@ export const useOperator = () => {
       data: {
         title: '',
         desc: '',
-        type: '' as any,
+        type: NOTE_NODE_DATA_TYPE,
         text: '',
         theme: NoteTheme.blue,
         author: userProfile?.name || '',
