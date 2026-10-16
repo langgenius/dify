@@ -6,14 +6,10 @@ import logging
 from dataclasses import dataclass
 from typing import Literal
 
-from sqlalchemy import select
-
 from core.db.session_factory import session_factory
 from models.account import Account
-from models.credential_permission import CredentialType
 from models.knowledge_fs import KnowledgeFSControlSpaceState
-from models.oauth import DatasourceProvider
-from repositories.credentials.query_repository import apply_credential_visibility_filter_for_actor
+from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
 from repositories.sqlalchemy_knowledge_fs_control_space_repository import (
     SQLAlchemyKnowledgeFSControlSpaceRepository,
 )
@@ -137,32 +133,19 @@ def _find_initial_source(*, facade, tenant_id: str, account_id: str, control_spa
 
 
 def _find_credential(*, session_maker, tenant_id: str, account_id: str, binding: _DatasourceBinding) -> tuple[str, str]:
-    query = select(DatasourceProvider).where(
-        DatasourceProvider.tenant_id == tenant_id,
-        DatasourceProvider.provider == binding.provider,
-        DatasourceProvider.plugin_id == binding.plugin_id,
-    )
     with session_maker() as session:
-        account = session.get(Account, account_id)
-        if account is None:
+        if session.get(Account, account_id) is None:
             raise RuntimeError("Initial Source account was not found")
-        query = apply_credential_visibility_filter_for_actor(
-            query,
-            tenant_id=tenant_id,
-            model_id_column=DatasourceProvider.id,
-            model_user_id_column=DatasourceProvider.user_id,
-            model_visibility_column=DatasourceProvider.visibility,
-            credential_type=CredentialType.DATASOURCE_PROVIDER,
-            actor_id=account.id,
-        )
-        if binding.credential_id is not None:
-            query = query.where(DatasourceProvider.id == binding.credential_id)
-        credential = session.scalar(
-            query.order_by(DatasourceProvider.is_default.desc(), DatasourceProvider.created_at.asc()).limit(1)
-        )
+    credential = SQLAlchemyDatasourceCredentialRepository(session_factory=session_maker).get_visible_preferred(
+        workspace_id=tenant_id,
+        actor_id=account_id,
+        provider=binding.provider,
+        plugin_id=binding.plugin_id,
+        credential_id=binding.credential_id,
+    )
     if credential is None:
         raise RuntimeError("Datasource credential is unavailable")
-    return str(credential.id), credential.name or binding.provider
+    return credential.id, credential.name or binding.provider
 
 
 def _find_or_create_connection(
