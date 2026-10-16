@@ -1,4 +1,5 @@
 import type { GoldenQuestionDraft } from './types'
+import { consoleQuery } from '@/service/console'
 
 const goldenLinkPrefix = 'golden-question:'
 
@@ -10,6 +11,13 @@ export const emptyGoldenQuestionDraft: GoldenQuestionDraft = {
   matchPolicy: 'all',
   question: '',
   tags: [],
+}
+
+// Omits the operation type so infinite lists, plain pages and the derived active count all match.
+export function goldenQuestionQueriesKey(knowledgeSpaceId: string) {
+  return consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
+    input: { params: { control_space_id: knowledgeSpaceId } },
+  })
 }
 
 export function goldenQuestionPayload(draft: GoldenQuestionDraft) {

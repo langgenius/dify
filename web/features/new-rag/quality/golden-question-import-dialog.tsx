@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { useKnowledgeSpace } from '../space/context'
@@ -23,6 +23,7 @@ import {
   maxGoldenQuestionCsvRows,
   parseGoldenQuestionCsv,
 } from './golden-question-csv'
+import { goldenQuestionQueriesKey } from './quality-model'
 
 export function GoldenQuestionImportDialog({
   onOpenChange,
@@ -50,6 +51,9 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   const [fileName, setFileName] = useState('')
   const [csvError, setCsvError] = useState<GoldenQuestionCsvError>()
   const [submitError, setSubmitError] = useState(false)
+  const [reading, setReading] = useState(false)
+  // Only the latest file selection may publish rows; earlier reads can resolve later.
+  const readGenerationRef = useRef(0)
   const mutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.bulkImport.post.mutationOptions(),
   )
@@ -66,29 +70,33 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   const readFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file) return
+    if (!file || mutation.isPending) return
+    const generation = ++readGenerationRef.current
+    setRows([])
+    setFileName(file.name)
     setCsvError(undefined)
     setSubmitError(false)
     mutation.reset()
     if (file.size > maxGoldenQuestionCsvBytes) {
-      setRows([])
-      setFileName(file.name)
+      setReading(false)
       setCsvError('size')
       return
     }
+    setReading(true)
+    let nextRows: KnowledgeFsGoldenQuestionBulkImportRowPayload[] = []
+    let nextError: GoldenQuestionCsvError | undefined
     try {
-      setRows(parseGoldenQuestionCsv(await file.text()))
-      setFileName(file.name)
+      nextRows = parseGoldenQuestionCsv(await file.text())
     } catch (error) {
       const code = error instanceof Error ? error.message : 'parse'
-      setRows([])
-      setFileName(file.name)
-      setCsvError(
-        ['empty', 'headers', 'parse', 'required', 'tooManyRows'].includes(code)
-          ? (code as GoldenQuestionCsvError)
-          : 'parse',
-      )
+      nextError = ['empty', 'headers', 'parse', 'required', 'tooManyRows'].includes(code)
+        ? (code as GoldenQuestionCsvError)
+        : 'parse'
     }
+    if (generation !== readGenerationRef.current) return
+    setRows(nextRows)
+    setCsvError(nextError)
+    setReading(false)
   }
 
   const submit = async () => {
@@ -99,10 +107,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
         params: { control_space_id: knowledgeSpaceId },
       })
       await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
+        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
     } catch {
       setSubmitError(true)
@@ -163,6 +168,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
               type="file"
               accept=".csv,text/csv"
               className="sr-only"
+              disabled={mutation.isPending}
               onChange={readFile}
             />
             <span>
@@ -223,7 +229,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
               type="button"
               variant="primary"
               loading={mutation.isPending}
-              disabled={rows.length === 0}
+              disabled={rows.length === 0 || reading}
               onClick={() => void submit()}
             >
               {t(($) => $['qualityPage.importCsv'], { ns: 'knowledgeQuality' })}

@@ -23,6 +23,7 @@ import { GoldenQuestionDialog } from './golden-question-dialog'
 import {
   formatQualityUpdatedAt,
   goldenQuestionPayload,
+  goldenQuestionQueriesKey,
   qualityPageSize,
   visibleQualityTags,
 } from './quality-model'
@@ -163,10 +164,7 @@ function BadCasePromotionDialog({
       }
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
-            input: { params: { control_space_id: knowledgeSpaceId } },
-            type: 'infinite',
-          }),
+          queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
         }),
         queryClient.invalidateQueries({
           queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
@@ -276,72 +274,78 @@ function BadCaseRow({
   }
 
   return (
-    <div className="grid h-12 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 border-t border-divider-subtle">
-      <span className="truncate system-sm-medium text-text-primary">{item.question}</span>
-      <BadCaseStatus status={item.status} />
-      <span className="system-xs-regular text-text-secondary">
+    <tr className="h-12 border-t border-divider-subtle">
+      <th scope="row" className="truncate pr-3 text-left system-sm-medium text-text-primary">
+        {item.question}
+      </th>
+      <td className="pr-3">
+        <BadCaseStatus status={item.status} />
+      </td>
+      <td className="pr-3 system-xs-regular text-text-secondary">
         <BadCaseReason question={item.question} reason={item.reason} tags={item.tags} />
-      </span>
-      <span className="system-xs-regular text-text-secondary">
+      </td>
+      <td className="pr-3 system-xs-regular text-text-secondary">
         {formatQualityUpdatedAt(item.updated_at, i18n.language)}
-      </span>
-      <DropdownMenu modal={false}>
-        <QualityRowMenuTrigger
-          disabled={pending}
-          label={t(($) => $['qualityPage.questionActions'], {
-            ns: 'knowledgeQuality',
-            question: item.question ?? '',
-          })}
-        />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
-          {canEdit &&
-            (item.status === 'fixed' ? (
-              <DropdownMenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
+      </td>
+      <td>
+        <DropdownMenu modal={false}>
+          <QualityRowMenuTrigger
+            disabled={pending}
+            label={t(($) => $['qualityPage.questionActions'], {
+              ns: 'knowledgeQuality',
+              question: item.question ?? '',
+            })}
+          />
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-50">
+            {canEdit &&
+              (item.status === 'fixed' ? (
+                <DropdownMenuItem className="gap-2 px-3" onClick={() => onPromote(item)}>
+                  <span aria-hidden className="i-ri-star-line size-4" />
+                  {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="gap-2 px-3"
+                  disabled={item.status === 'replaying' || pending}
+                  onClick={() => void openTrace(true)}
+                >
+                  <span aria-hidden className="i-ri-restart-line size-4" />
+                  {t(($) => $['qualityPage.replay'], { ns: 'knowledgeQuality' })}
+                </DropdownMenuItem>
+              ))}
+            <DropdownMenuItem
+              className="gap-2 px-3"
+              disabled={pending}
+              onClick={() => void openTrace(false)}
+            >
+              <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
+              {t(($) => $['qualityPage.openTrace'], { ns: 'knowledgeQuality' })}
+            </DropdownMenuItem>
+            {canEdit && item.status !== 'fixed' && (
+              <DropdownMenuItem
+                className="gap-2 px-3"
+                disabled={pending}
+                onClick={() => onPromote(item)}
+              >
                 <span aria-hidden className="i-ri-star-line size-4" />
                 {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
               </DropdownMenuItem>
-            ) : (
+            )}
+            {canEdit && <DropdownMenuSeparator />}
+            {canEdit && (
               <DropdownMenuItem
                 className="gap-2 px-3"
-                disabled={item.status === 'replaying' || pending}
-                onClick={() => void openTrace(true)}
+                disabled={pending}
+                onClick={() => void ignore()}
               >
-                <span aria-hidden className="i-ri-restart-line size-4" />
-                {t(($) => $['qualityPage.replay'], { ns: 'knowledgeQuality' })}
+                <span aria-hidden className="i-ri-eye-off-line size-4" />
+                {t(($) => $['qualityPage.ignore'], { ns: 'knowledgeQuality' })}
               </DropdownMenuItem>
-            ))}
-          <DropdownMenuItem
-            className="gap-2 px-3"
-            disabled={pending}
-            onClick={() => void openTrace(false)}
-          >
-            <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
-            {t(($) => $['qualityPage.openTrace'], { ns: 'knowledgeQuality' })}
-          </DropdownMenuItem>
-          {canEdit && item.status !== 'fixed' && (
-            <DropdownMenuItem
-              className="gap-2 px-3"
-              disabled={pending}
-              onClick={() => onPromote(item)}
-            >
-              <span aria-hidden className="i-ri-star-line size-4" />
-              {t(($) => $['qualityPage.toGolden'], { ns: 'knowledgeQuality' })}
-            </DropdownMenuItem>
-          )}
-          {canEdit && <DropdownMenuSeparator />}
-          {canEdit && (
-            <DropdownMenuItem
-              className="gap-2 px-3"
-              disabled={pending}
-              onClick={() => void ignore()}
-            >
-              <span aria-hidden className="i-ri-eye-off-line size-4" />
-              {t(($) => $['qualityPage.ignore'], { ns: 'knowledgeQuality' })}
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </td>
+    </tr>
   )
 }
 
@@ -397,16 +401,40 @@ export function BadCasesPanel() {
         </div>
       ) : items.length ? (
         <div className="mt-2.5 w-full overflow-x-auto pt-3">
-          <div className="grid min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 py-2.5 text-[11px] leading-4 font-medium text-text-tertiary">
-            <span>{t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}</span>
-            <span>{t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}</span>
-            <span>{t(($) => $['qualityPage.reason'], { ns: 'knowledgeQuality' })}</span>
-            <span>{t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}</span>
-            <span />
-          </div>
-          {items.map((item) => (
-            <BadCaseRow key={item.id} item={item} onPromote={openPromotion} />
-          ))}
+          <table
+            aria-label={t(($) => $['qualityPage.badCasesTab'], { ns: 'knowledgeQuality' })}
+            className="w-full min-w-202 table-fixed border-collapse text-left"
+          >
+            <colgroup>
+              <col />
+              <col className="w-38" />
+              <col className="w-48" />
+              <col className="w-33" />
+              <col className="w-20" />
+            </colgroup>
+            <thead>
+              <tr className="h-9 text-[11px] leading-4 font-medium text-text-tertiary">
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.statusLabel'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.reason'], { ns: 'knowledgeQuality' })}
+                </th>
+                <th scope="col" className="pr-3 font-medium">
+                  {t(($) => $['qualityPage.updated'], { ns: 'knowledgeQuality' })}
+                </th>
+                <td />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <BadCaseRow key={item.id} item={item} onPromote={openPromotion} />
+              ))}
+            </tbody>
+          </table>
           {query.hasNextPage && (
             <div className="flex min-w-202 justify-center border-t border-divider-subtle py-4">
               <Button loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>

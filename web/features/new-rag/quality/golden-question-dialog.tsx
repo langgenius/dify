@@ -134,6 +134,7 @@ function GoldenQuestionDialogSession({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (pending) return
     const nextQuestionInvalid = !question.trim()
     setQuestionInvalid(nextQuestionInvalid)
     if (nextQuestionInvalid) return
@@ -191,7 +192,7 @@ function GoldenQuestionDialogSession({
         className="flex min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain px-6 pb-6"
         onSubmit={handleSubmit}
       >
-        <Field name="question" invalid={questionInvalid}>
+        <Field name="question" disabled={pending} invalid={questionInvalid}>
           <FieldLabel>
             {t(($) => $['qualityPage.question'], { ns: 'knowledgeSpace' })}
             <span className="ml-0.5 text-text-destructive">*</span>
@@ -212,7 +213,7 @@ function GoldenQuestionDialogSession({
             </FieldError>
           )}
         </Field>
-        <Field name="annotation" invalid={Boolean(error)}>
+        <Field name="annotation" disabled={pending} invalid={Boolean(error)}>
           <FieldLabel>
             {t(($) => $['qualityPage.annotation'], { ns: 'knowledgeQuality' })}
           </FieldLabel>
@@ -228,7 +229,7 @@ function GoldenQuestionDialogSession({
           {error && <FieldError match>{error}</FieldError>}
         </Field>
         <div className="grid min-w-0 gap-4">
-          <Field name="expectedEvidenceIds">
+          <Field name="expectedEvidenceIds" disabled={pending}>
             <div className="flex items-center justify-between gap-3">
               <FieldLabel>
                 {t(($) => $['qualityPage.evidence'], { ns: 'knowledgeSpace' })}
@@ -291,7 +292,7 @@ function GoldenQuestionDialogSession({
               </div>
             )}
           </Field>
-          <Field name="evidenceSearch">
+          <Field name="evidenceSearch" disabled={pending}>
             <FieldLabel>
               {t(($) => $['qualityPage.findEvidence'], { ns: 'knowledgeQuality' })}
             </FieldLabel>
@@ -335,11 +336,12 @@ function GoldenQuestionDialogSession({
             )}
           </Field>
           {searchCandidates.length > 0 && (
-            <Field name="evidenceSearchResults">
+            <Field name="evidenceSearchResults" disabled={pending}>
               <Fieldset
                 className="flex max-h-52 flex-col gap-2 overflow-y-auto rounded-lg border border-divider-subtle p-2"
                 render={
                   <CheckboxGroup
+                    disabled={pending}
                     value={expectedEvidenceIds}
                     onValueChange={setExpectedEvidenceIds}
                   />
@@ -378,11 +380,12 @@ function GoldenQuestionDialogSession({
           )}
         </div>
         {expectedEvidenceIds.length > 1 && (
-          <Field name="matchPolicy">
+          <Field name="matchPolicy" disabled={pending}>
             <Fieldset
               render={
                 <RadioGroup<MatchPolicy>
                   className="flex-col items-start gap-1"
+                  disabled={pending}
                   required
                   value={matchPolicy}
                   onValueChange={setMatchPolicy}
@@ -412,7 +415,7 @@ function GoldenQuestionDialogSession({
             </Fieldset>
           </Field>
         )}
-        <Field name="tags">
+        <Field name="tags" disabled={pending}>
           <FieldLabel>{t(($) => $['qualityPage.tags'], { ns: 'knowledgeQuality' })}</FieldLabel>
           <Input
             placeholder={t(($) => $['qualityPage.tagsPlaceholder'], { ns: 'knowledgeQuality' })}
@@ -424,7 +427,7 @@ function GoldenQuestionDialogSession({
           <Button type="button" disabled={pending} onClick={() => onOpenChange(false)}>
             {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
           </Button>
-          <Button type="submit" variant="primary" disabled={pending}>
+          <Button type="submit" variant="primary" loading={pending}>
             {submitLabel}
           </Button>
         </div>

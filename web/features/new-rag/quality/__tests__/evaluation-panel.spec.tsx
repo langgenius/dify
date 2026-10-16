@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
 import { render } from '@/test/console/render'
 import { EvaluationReport, QualityEvaluationPanel } from '../quality-evaluation-panel'
 
@@ -646,5 +647,107 @@ describe('QualityEvaluationPanel', () => {
         name: 'knowledgeQuality.qualityPage.evaluation.evidenceDetailsTitle',
       }),
     ).not.toBeInTheDocument()
+  })
+
+  it('reuses the idempotency key when retrying a start whose outcome is unknown', async () => {
+    serviceMock.createReplay
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(
+        createHttpError({ headers: new Headers(), status: 502, statusText: '' }),
+      )
+      .mockResolvedValueOnce({ ...completedRun, state: 'queued' })
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.run' }),
+    )
+    const start = screen.getByRole('button', {
+      name: 'knowledgeQuality.qualityPage.evaluation.start',
+    })
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(3))
+
+    const keys = serviceMock.createReplay.mock.calls.map(
+      ([request]) => request.headers['Idempotency-Key'],
+    )
+    expect(new Set(keys).size).toBe(1)
+  })
+
+  it('uses a new idempotency key after a definitive rejection or a changed mode', async () => {
+    serviceMock.createReplay
+      .mockRejectedValueOnce(
+        createHttpError({ headers: new Headers(), status: 409, statusText: '' }),
+      )
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.evaluation.run' }),
+    )
+    const start = screen.getByRole('button', {
+      name: 'knowledgeQuality.qualityPage.evaluation.start',
+    })
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(start).not.toHaveAttribute('aria-disabled', 'true'))
+    await user.click(
+      screen.getByRole('radio', { name: 'knowledgeSpace.settings.retrievalMode.deep' }),
+    )
+    await user.click(start)
+    await waitFor(() => expect(serviceMock.createReplay).toHaveBeenCalledTimes(3))
+
+    const [first, second, third] = serviceMock.createReplay.mock.calls.map(([request]) => request)
+    expect(second.headers['Idempotency-Key']).not.toBe(first.headers['Idempotency-Key'])
+    expect(third.body.mode).toBe('deep')
+    expect(third.headers['Idempotency-Key']).not.toBe(second.headers['Idempotency-Key'])
+  })
+
+  it('exposes evaluation runs and report items as tables with column headers', async () => {
+    serviceMock.listReplays.mockResolvedValue({ data: [completedRun], next_cursor: null })
+    const user = userEvent.setup()
+    renderPanel()
+
+    const runsTable = await screen.findByRole('table', {
+      name: 'knowledgeQuality.qualityPage.evaluationTab',
+    })
+    expect(
+      within(runsTable)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual([
+      'knowledgeQuality.qualityPage.evaluation.createdAt',
+      'knowledgeQuality.qualityPage.statusLabel',
+      'knowledgeQuality.qualityPage.evaluation.modeLabel',
+      'knowledgeQuality.qualityPage.evaluation.hitRate',
+      'knowledgeQuality.qualityPage.evaluation.progress',
+    ])
+    expect(within(runsTable).getAllByRole('row')).toHaveLength(2)
+
+    await user.click(
+      within(runsTable).getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.viewReport',
+      }),
+    )
+    const itemsTable = await screen.findByRole('table', {
+      name: 'knowledgeQuality.qualityPage.evaluation.reportTitle',
+    })
+    expect(
+      within(itemsTable).getByRole('rowheader', { name: 'Who can change workspace permissions?' }),
+    ).toBeVisible()
+    expect(within(itemsTable).getAllByRole('columnheader')).toHaveLength(4)
   })
 })
