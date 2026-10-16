@@ -780,6 +780,55 @@ def test_agent_node_discovery_scopes_agent_v2_to_native_metrics() -> None:
     }
 
 
+def test_knowledge_retrieval_v2_node_discovery_is_hidden_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
+        False,
+    )
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter(
+            [
+                ("retrieval-v1", {"type": "knowledge-retrieval", "title": "Legacy Retrieval"}),
+                ("retrieval-v2", {"type": "knowledge-retrieval-v2", "title": "Knowledge Retrieval V2"}),
+            ]
+        )
+    )
+
+    nodes = EvaluationService._nodes_for_metrics_from_workflow(workflow, ["context_precision"])
+
+    assert nodes == {
+        "context_precision": [{"node_id": "retrieval-v1", "type": "knowledge-retrieval", "title": "Legacy Retrieval"}]
+    }
+
+
+def test_knowledge_retrieval_v2_node_discovery_uses_retrieval_metrics_when_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
+        True,
+    )
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter(
+            [
+                ("retrieval-v1", {"type": "knowledge-retrieval", "title": "Legacy Retrieval"}),
+                ("retrieval-v2", {"type": "knowledge-retrieval-v2", "title": "Knowledge Retrieval V2"}),
+            ]
+        )
+    )
+
+    nodes = EvaluationService._nodes_for_metrics_from_workflow(workflow, ["context_precision"])
+
+    assert nodes == {
+        "context_precision": [
+            {"node_id": "retrieval-v1", "type": "knowledge-retrieval", "title": "Legacy Retrieval"},
+            {"node_id": "retrieval-v2", "type": "knowledge-retrieval-v2", "title": "Knowledge Retrieval V2"},
+        ]
+    }
+
+
 def test_validate_config_requires_default_embedding_for_embedding_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -955,6 +1004,49 @@ def test_validate_workflow_retrieval_metric_preserves_node_scope(monkeypatch: py
         target_id="app-1",
         data=config,
     )
+
+
+def test_validate_workflow_rejects_knowledge_retrieval_v2_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "services.evaluation_service.dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED",
+        False,
+    )
+    evaluation_instance = MagicMock()
+    evaluation_instance.metric_requires_embeddings.return_value = False
+    monkeypatch.setattr(
+        "services.evaluation_service.EvaluationManager.get_evaluation_instance",
+        MagicMock(return_value=evaluation_instance),
+    )
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(id="app-1", mode=AppMode.WORKFLOW.value)
+    workflow = SimpleNamespace(
+        walk_nodes=lambda: iter([("retrieval-v2", {"type": "knowledge-retrieval-v2"})]),
+        user_input_form=lambda: [],
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", MagicMock(return_value=workflow))
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="context_precision",
+                node_info_list=[
+                    NodeInfo(node_id="retrieval-v2", type="knowledge-retrieval-v2", title="Knowledge Retrieval V2")
+                ],
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="knowledge-retrieval-v2.*disabled"):
+        EvaluationService.validate_evaluation_config(
+            session=session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="app-1",
+            data=config,
+        )
 
 
 def test_validate_knowledge_base_config_rejects_customized_evaluator() -> None:

@@ -71,6 +71,8 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
+KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE = "knowledge-retrieval-v2"
+
 
 class EvaluationTemplateColumn(TypedDict):
     name: str
@@ -87,7 +89,14 @@ class EvaluationService:
 
     ALLOWED_APP_MODES = {AppMode.WORKFLOW}
     CONSOLE_DISABLED_CATEGORIES: set[str] = set()
-    SUPPORTED_NODE_TYPES = {"llm", "knowledge-retrieval", "knowledge_retrieval", "agent"}
+    NODE_TYPE_CATEGORY_MAPPING = {
+        "llm": EvaluationCategory.LLM,
+        "knowledge-retrieval": EvaluationCategory.RETRIEVAL,
+        "knowledge_retrieval": EvaluationCategory.RETRIEVAL,
+        KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE: EvaluationCategory.RETRIEVAL,
+        "agent": EvaluationCategory.AGENT,
+    }
+    SUPPORTED_NODE_TYPES = set(NODE_TYPE_CATEGORY_MAPPING)
     # Retain legacy Agent metric execution for saved runs and API compatibility,
     # but do not offer those metrics in console selectors or templates.
     CONSOLE_DISABLED_METRICS = {
@@ -747,19 +756,23 @@ class EvaluationService:
             if selector not in available_selectors:
                 raise ValueError(f"Judgment selector '{selector[0]}.{selector[1]}' is not configured for evaluation.")
 
-    @staticmethod
-    def category_for_node_type(node_type: str) -> EvaluationCategory:
+    @classmethod
+    def category_for_node_type(cls, node_type: str) -> EvaluationCategory:
         """Map graph node types explicitly instead of relying on enum string equality."""
-        mapping = {
-            "llm": EvaluationCategory.LLM,
-            "knowledge-retrieval": EvaluationCategory.RETRIEVAL,
-            "knowledge_retrieval": EvaluationCategory.RETRIEVAL,
-            "agent": EvaluationCategory.AGENT,
-        }
         try:
-            return mapping[node_type]
+            category = cls.NODE_TYPE_CATEGORY_MAPPING[node_type]
         except KeyError as exc:
             raise ValueError(f"Evaluation does not support node type '{node_type}'.") from exc
+        if node_type == KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE and not dify_config.EVALUATION_KNOWLEDGE_RETRIEVAL_V2_ENABLED:
+            raise ValueError(f"Evaluation support for node type '{node_type}' is disabled.")
+        return category
+
+    @classmethod
+    def validate_default_metric_node_types(cls, default_metrics: Sequence[DefaultMetric]) -> None:
+        """Reject task payloads that reference unsupported or disabled node types."""
+        for metric in default_metrics:
+            for node_info in metric.node_info_list:
+                cls.category_for_node_type(node_info.type)
 
     @classmethod
     def _pin_customized_evaluator(
@@ -2066,13 +2079,14 @@ class EvaluationService:
         workflow: Workflow,
         metrics: list[str],
     ) -> dict[str, list[dict[str, str]]]:
-        node_type_to_nodes: dict[str, list[dict[str, str]]] = {}
+        category_to_nodes: dict[EvaluationCategory, list[dict[str, str]]] = {}
         agent_v2_node_ids: set[str] = set()
         for node_id, node_data in workflow.walk_nodes():
             if not cls._is_supported_evaluation_node(node_data):
                 continue
             ntype = str(node_data.get("type", ""))
-            node_type_to_nodes.setdefault(ntype, []).append(
+            category = cls.category_for_node_type(ntype)
+            category_to_nodes.setdefault(category, []).append(
                 NodeInfo(node_id=node_id, type=ntype, title=node_data.get("title", "")).model_dump()
             )
             if is_dify_agent_node_data(node_data):
@@ -2085,8 +2099,9 @@ class EvaluationService:
             if required_node_type is None:
                 result[metric] = []
                 continue
-            matching_nodes = node_type_to_nodes.get(required_node_type, [])
-            if required_node_type == "agent" and metric not in native_agent_metrics:
+            required_category = cls.category_for_node_type(required_node_type)
+            matching_nodes = category_to_nodes.get(required_category, [])
+            if required_category == EvaluationCategory.AGENT and metric not in native_agent_metrics:
                 matching_nodes = [node for node in matching_nodes if node["node_id"] not in agent_v2_node_ids]
             result[metric] = matching_nodes
         return result
@@ -2095,7 +2110,11 @@ class EvaluationService:
     def _is_supported_evaluation_node(cls, node_data: Mapping[str, Any]) -> bool:
         """Return whether a published workflow node can be selected for evaluation."""
         node_type = str(node_data.get("type", ""))
-        return node_type in cls.SUPPORTED_NODE_TYPES
+        try:
+            cls.category_for_node_type(node_type)
+        except ValueError:
+            return False
+        return True
 
     @classmethod
     def _union_supported_metric_names(cls) -> list[str]:
