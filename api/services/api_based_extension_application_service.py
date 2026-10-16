@@ -40,7 +40,11 @@ class APIBasedExtensionUpdate(NamedTuple):
 
 
 class APIBasedExtensionStore(Protocol):
-    """Persistence for API-based extensions, always scoped by workspace."""
+    """Persistence for API-based extensions, always scoped by workspace.
+
+    Names are unique within a workspace. Adapters enforce that inside ``create_extension`` and ``update_extension``
+    so concurrent writers cannot both store one name; ``name_exists`` is only a pre-check.
+    """
 
     def list_extensions(self, workspace_id: str) -> Sequence[APIBasedExtensionRecord]: ...
 
@@ -49,13 +53,19 @@ class APIBasedExtensionStore(Protocol):
     def name_exists(self, workspace_id: str, name: str, *, exclude_id: str | None = None) -> bool: ...
 
     def create_extension(self, workspace_id: str, extension: APIBasedExtensionInput) -> APIBasedExtensionRecord:
-        """Insert a new extension; ``extension.api_key`` is already ciphertext."""
+        """Insert a new extension; ``extension.api_key`` is already ciphertext.
+
+        Raise ``APIBasedExtensionNameConflictError`` if the workspace already has an extension with this name.
+        """
         ...
 
     def update_extension(
         self, workspace_id: str, extension_id: str, extension: APIBasedExtensionInput
     ) -> APIBasedExtensionRecord:
-        """Overwrite all editable fields; raise ``APIBasedExtensionNotFoundError`` if absent from this scope."""
+        """Overwrite all editable fields; raise ``APIBasedExtensionNotFoundError`` if absent from this scope.
+
+        Raise ``APIBasedExtensionNameConflictError`` if another extension in the workspace has this name.
+        """
         ...
 
     def delete_extension(self, workspace_id: str, extension_id: str) -> None:
@@ -104,7 +114,10 @@ class APIBasedExtensionConnectionError(APIBasedExtensionError):
 
 class APIBasedExtensionApplicationService:
     """Owns the extension rules: non-empty fields, a workspace-unique name, a key of at least five
-    characters, an endpoint that answers ``ping``, and keys stored only as ciphertext."""
+    characters, an endpoint that answers ``ping``, and keys stored only as ciphertext.
+
+    The store enforces name uniqueness inside its writes; the service pre-checks it so a taken name is
+    reported before the endpoint and key checks, including the ping."""
 
     def __init__(
         self,

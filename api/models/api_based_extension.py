@@ -22,6 +22,7 @@ class APIBasedExtension(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="api_based_extension_pkey"),
         sa.Index("api_based_extension_tenant_idx", "tenant_id"),
+        sa.UniqueConstraint("tenant_id", "name", name="api_based_extension_tenant_name_key"),
     )
 
     id: Mapped[str] = mapped_column(
