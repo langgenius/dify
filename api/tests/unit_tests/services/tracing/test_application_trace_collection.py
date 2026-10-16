@@ -86,7 +86,11 @@ def seed(
             TraceAppConfig(
                 app_id=app_id,
                 tracing_provider="langfuse",
-                tracing_config={"host": "https://langfuse.test", "secret_key": "encrypted-original"},
+                tracing_config={
+                    "host": "https://langfuse.test",
+                    "secret_key": "encrypted-original",
+                    "project_url": "https://langfuse.test/project/original",
+                },
             )
         )
     repository = ApplicationTraceRepository(sessions)

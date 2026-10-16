@@ -25,7 +25,12 @@ from models.application_trace import ApplicationTraceRun
 from models.model import MessageDict
 from repositories.application_trace_repository import ApplicationTraceRepository, TraceCollectionError
 from services.tracing.normalization import normalize_agent_span, order_spans, remap_outer_trace, sanitize
-from services.tracing.provider_dispatch import TraceExportUncertainError, export_trace, provider_capabilities
+from services.tracing.provider_dispatch import (
+    TraceExportUncertainError,
+    export_trace,
+    frozen_project_url,
+    provider_capabilities,
+)
 from services.tracing.runtime_bridge import workflow_has_agent_v2
 
 logger = logging.getLogger(__name__)
@@ -606,6 +611,7 @@ class ApplicationTracingService:
             "trace_id": run.provider_trace_id or run.trace_id,
             "trace_url": run.trace_url,
             "span_url": run.span_urls.get(selected[-1].span_id) if selected else None,
+            "project_url": frozen_project_url(run.provider, run.provider_config),
             "config_revision": run.config_revision or None,
             "capture_content": run.capture_content,
             "capture_agent": run.capture_agent,

@@ -2140,6 +2140,7 @@ export const zTraceRunStatusResponse = z.object({
   capture_content: z.boolean().nullish(),
   config_revision: z.string().nullish(),
   error_code: z.string().nullish(),
+  project_url: z.string().nullish(),
   provider: z.string().nullish(),
   queryable: z.boolean().nullish(),
   source_id: z.string(),
