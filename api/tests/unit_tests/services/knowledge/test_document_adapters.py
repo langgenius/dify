@@ -8,10 +8,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.console.datasets.datasets_document import DocumentDetailResponse, DocumentWithSegmentsListResponse
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from machinery.context import RequestContext
+from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, DocumentSegment
 from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
+from services.errors.document import DocumentIndexingError
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.documents.application import DocumentListFilter, DocumentNotFoundError
+from services.knowledge.documents.application import (
+    DocumentInvalidActionError,
+    DocumentListFilter,
+    DocumentNotFoundError,
+)
 from services.knowledge.resource_scope import DatasetRef
 
 REF = DatasetRef("tenant-1", "dataset-1")
@@ -192,6 +199,26 @@ def test_status_counts_use_one_aggregate_and_complete_owner_chain(
 def test_unknown_batch_is_not_found(operations: SQLAlchemyDocumentOperations) -> None:
     with pytest.raises(DocumentNotFoundError):
         operations.get_batch_indexing_status(REF, "missing")
+
+
+@pytest.mark.parametrize("error_type", [ValueError, DocumentIndexingError])
+def test_change_status_translates_invalid_action_and_indexing_errors(
+    operations: SQLAlchemyDocumentOperations, error_type: type[ValueError]
+) -> None:
+    context = RequestContext(
+        request_id="request-1", trace_id=None, account_id="actor-1", active_workspace_id="tenant-1"
+    )
+    error = error_type("Cannot change document status")
+    with (
+        patch.object(operations, "_check_model"),
+        patch.object(operations, "_actor", return_value=Account(name="Actor", email="actor@example.com")),
+        patch("services.knowledge.documents.adapters.DocumentService.batch_update_document_status", side_effect=error),
+        pytest.raises(DocumentInvalidActionError) as raised,
+    ):
+        operations.change_status(context, REF, ["document-1"], "enable")
+
+    assert raised.value.__cause__ is error
+    assert str(raised.value) == str(error)
 
 
 @pytest.mark.parametrize("rules", [None, {"segmentation": {"delimiter": "\\n", "max_tokens": 500}}])

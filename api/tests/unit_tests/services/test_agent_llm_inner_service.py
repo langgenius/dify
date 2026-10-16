@@ -178,13 +178,14 @@ def test_prepare_defers_cached_quota_status_to_authoritative_reservation(
 def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     request = _request()
     _persist_app(sqlite_session, request=request, mode=AppMode.WORKFLOW)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
     model_instance, _ = _model_instance()
     reservation = MagicMock(commit_before_delivery=True)
-    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    mock_reserve_quota = mocker.patch.object(model_instance, "reserve_quota", return_value=reservation)
     prepared = _prepare(service, request, model_instance)
     provider_chunk = _chunk("done", usage=_usage())
 
@@ -195,7 +196,7 @@ def test_gateway_uses_quota_managed_instance_as_single_credit_owner(
         chunks = list(service.invoke(prepared))
 
     assert chunks == [provider_chunk]
-    model_instance.reserve_quota.assert_called_once_with(
+    mock_reserve_quota.assert_called_once_with(
         request_id=request.caller.invocation_id,
         app_type=CreditUsageAppType.WORKFLOW,
         created_by=CreditUsageCreatedBy.AGENT_NODE,
@@ -336,13 +337,14 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
 def test_gateway_releases_reservation_when_provider_fails_before_delivery(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     request = _request()
     _persist_app(sqlite_session, request=request)
     service = AgentLLMInnerService(session_factory=sqlite_session_factory)
     model_instance, _ = _model_instance()
     reservation = MagicMock(commit_before_delivery=True)
-    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    mocker.patch.object(model_instance, "reserve_quota", return_value=reservation)
     prepared = _prepare(service, request, model_instance)
 
     def failing_stream() -> Generator[LLMResultChunk]:
@@ -360,6 +362,7 @@ def test_gateway_releases_reservation_when_provider_fails_before_delivery(
 def test_gateway_buffers_usage_based_quota_until_terminal_usage(
     sqlite_session_factory: sessionmaker[Session],
     sqlite_session: Session,
+    mocker: MockerFixture,
 ) -> None:
     request = _request()
     _persist_app(sqlite_session, request=request)
@@ -368,7 +371,7 @@ def test_gateway_buffers_usage_based_quota_until_terminal_usage(
     events: list[str] = []
     reservation = MagicMock(commit_before_delivery=False)
     reservation.commit.side_effect = lambda _usage: events.append("commit")
-    model_instance.reserve_quota = MagicMock(return_value=reservation)
+    mocker.patch.object(model_instance, "reserve_quota", return_value=reservation)
     prepared = _prepare(service, request, model_instance)
     terminal_usage = _usage(total_tokens=21)
 
