@@ -480,8 +480,6 @@ type CustomizableDocType =
 type FixedDocType = 'synced_from_github' | 'synced_from_notion' | 'wikipedia_entry'
 export type DocType = CustomizableDocType | FixedDocType
 
-export type DocumentDetailResponse = FullDocumentDetail
-
 type SegmentStatus = 'waiting' | 'completed' | 'error' | 'indexing'
 
 export type Attachment = {

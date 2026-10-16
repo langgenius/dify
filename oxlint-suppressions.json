@@ -4071,11 +4071,6 @@
       "count": 8
     }
   },
-  "web/service/knowledge/use-metadata.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 7
-    }
-  },
   "web/service/knowledge/use-segment.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 2

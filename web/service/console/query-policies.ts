@@ -922,6 +922,117 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             byDocumentId: {
               pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },
             },
+            // Document metadata shows in the dataset fields, the document list and each
+            // document's detail.
+            metadata: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
+          metadata: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+            byMetadataId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            builtIn: {
+              byAction: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      return context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params: { dataset_id: variables.params.dataset_id } },
+                        }),
+                      })
+                    },
+                  },
+                },
+              },
+            },
           },
         },
         apiKeys: {

@@ -6,12 +6,15 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContext: () => ({ dataset: { embedding_available: true } }),
 }))
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useBatchUpdateDocMetadata: () => ({ mutateAsync: vi.fn() }),
-  useCreateMetaData: () => ({ mutateAsync: vi.fn() }),
-  useDocumentMetaData: () => ({ data: { doc_metadata: [] } }),
-  useDatasetMetaData: () => ({ data: { built_in_field_enabled: false } }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.metadata.post': () => ({ mutateAsync: vi.fn() }),
+    'datasets.byDatasetId.metadata.post': () => ({ mutateAsync: vi.fn() }),
+    'datasets.byDatasetId.documents.byDocumentId.get': () => ({ data: { doc_metadata: [] } }),
+    'datasets.byDatasetId.metadata.get': () => ({ data: { built_in_field_enabled: false } }),
+  })
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
