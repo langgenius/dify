@@ -1,8 +1,24 @@
 import type { CredentialTypeEnum, PluginPayload } from '../types'
+import { CollectionType } from '@/app/components/tools/types'
 import { AuthCategory } from '../types'
 
-export const useGetApi = ({ category = AuthCategory.tool, provider }: PluginPayload) => {
-  if (category === AuthCategory.tool) {
+// These providers are identified by a UUID rather than a plugin id and have no credential
+// endpoints, so the builtin routes 500 for them.
+const TOOL_PROVIDER_TYPES_WITHOUT_CREDENTIALS: string[] = [
+  CollectionType.custom,
+  CollectionType.workflow,
+  CollectionType.mcp,
+]
+
+export const useGetApi = ({
+  category = AuthCategory.tool,
+  provider,
+  providerType,
+}: PluginPayload) => {
+  const usesBuiltInCredentialRoutes =
+    providerType === undefined || !TOOL_PROVIDER_TYPES_WITHOUT_CREDENTIALS.includes(providerType)
+
+  if (category === AuthCategory.tool && usesBuiltInCredentialRoutes) {
     return {
       getCredentialInfo: `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
       setDefaultCredential: `/workspaces/current/tool-provider/builtin/${provider}/default-credential`,
