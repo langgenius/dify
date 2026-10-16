@@ -76,7 +76,9 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
                 splits = [s + separator for s in splits[:-1]] + splits[-1:]
         else:
             splits = list(text)
-        splits = [s for s in splits if s != ""] if separator == "\n" else [s for s in splits if s not in {"", "\n"}]
+        splits = (
+            [s for s in splits if s != ""] if separator in {"", "\n"} else [s for s in splits if s not in {"", "\n"}]
+        )
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator
