@@ -17,6 +17,7 @@ const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
 const mockRestoreWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
+const mockDeleteWorkflow = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
 const mockSetCurrentVersion = vi.fn()
 const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
@@ -75,6 +76,8 @@ type MockRestoreConfirmModalProps = {
 }
 type MockDeleteConfirmModalProps = {
   isOpen: boolean
+  versionInfo: VersionHistory
+  onDelete: (id: string) => void
 }
 type MockVersionHistoryItemProps = {
   item: VersionHistory
@@ -85,7 +88,7 @@ type MockVersionHistoryItemProps = {
 vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
+  useDeleteWorkflow: () => ({ mutateAsync: mockDeleteWorkflow }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidateAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
@@ -176,7 +179,12 @@ vi.mock('../../../store', () => ({
 }))
 
 vi.mock('../delete-confirm-modal', () => ({
-  default: ({ isOpen }: MockDeleteConfirmModalProps) => (isOpen ? <div>confirm delete</div> : null),
+  default: ({ isOpen, versionInfo, onDelete }: MockDeleteConfirmModalProps) =>
+    isOpen ? (
+      <button type="button" onClick={() => onDelete(versionInfo.id)}>
+        confirm delete
+      </button>
+    ) : null,
 }))
 
 vi.mock('../restore-confirm-modal', () => ({
@@ -413,6 +421,18 @@ describe('VersionHistoryPanel', () => {
 
     expect(screen.getByText('confirm delete')).toBeInTheDocument()
     expect(mockToast.error).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('confirm delete'))
+
+    await waitFor(() =>
+      expect(mockDeleteWorkflow).toHaveBeenCalledWith(
+        {
+          owner: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+          workflowId: 'published-version-id',
+        },
+        expect.any(Object),
+      ),
+    )
   })
 
   it('should keep restore mode backup state when restore request fails', async () => {
