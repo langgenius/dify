@@ -2,9 +2,9 @@
 
 更新日期：2026-10-16。面向 DIFY-2975 / DIFY-2983 / DIFY-2984 / DIFY-2985 的前端实现与联调。
 
-后端应用级 Agent tracing、Console API 与生成契约已实现。2026-10-15 的 Langfuse 验收与 2026-10-16 的 LangSmith 账号级验收分别记录于第 12 节；LangSmith 的配置深链和早期错误输入两处修复均已完成真实平台复验。Web 本次未改，本文用于后续前端接入，不代表新配置和运行状态 UI 已完成。
+后端应用级 Agent tracing、Console API 与生成契约已实现。Langfuse、LangSmith 与 Weave 的账号级证据分别记录于第 12 节；其中 Weave 的平台 API 核心场景已通过，供应商网页仍受账号试用状态限制，不能记为平台 UI 验收通过。本文定义后端契约；dev 新增前端页面的具体联调范围单独记录。
 
-Langfuse 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。LangSmith 的已通过范围单独列明；其余八家仍没有账号级收数和查询证据。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
+Langfuse、LangSmith 已有独立 Agent、内容策略与终态、mixed inline/reference Workflow、单节点 preview 和普通 Workflow legacy 兼容证据。Weave 的 API 与局部 Dify UI 已通过范围单独列明；其余七家仍没有账号级收数和查询证据。支持声明、供应商接收 ACK、独立查询和浏览器 UI 验收分别记载，跨 Workflow 内部节点不保证同树。
 
 ## 1. 接入位置与配置归属
 
@@ -285,6 +285,10 @@ await consoleClient.agent.byAgentId.traceConfig.post({
 | `aliyun` | `app_name`, `license_key`, `endpoint` |
 | `tencent` | `token`, `endpoint`, `service_name` |
 
+Weave Cloud 的 `host` 为 `https://api.wandb.ai`，`endpoint` 为 `https://trace.wandb.ai`。先在供应商创建项目，再填写明确的 `entity` 与项目裸名称；若不填写 `entity`，可填写 `entity/project`，或由当前凭据解析默认 entity，验证成功后服务端会保存解析结果。不能同时提供 `entity` 和带 entity 前缀的 `project`。
+
+Weave 的 POST/PATCH 只读校验账户、项目可写权限和 trace 查询端点，不隐式创建项目、不调用全局 SDK login/init。GET 不访问供应商。保存成功后持久化规范化的 entity/project 与项目链接；PATCH 保留未编辑密钥的实际脱敏回显值。校验通过不等于后续 ingestion 一定成功，继续按运行状态判断。
+
 ## 7. Capability 声明及版本边界
 
 ```http
@@ -346,6 +350,8 @@ SDK 依赖版本与第三方服务最低版本是不同概念：
 | MLflow | `mlflow-skinny >=3.11.1,<4` | 新 Agent 导出要求 **MLflow server ≥3.4** 的 `/v1/traces`；现有普通 App 旧路径未被替换 |
 | Databricks | 同 MLflow SDK | 使用 experiment V3 metadata + signed artifact 上传，保留 `experiment_id` 与 PAT/OAuth；不会把 experiment ID 当成 UC table 传给 UC-only OTLP |
 | 阿里云 / 腾讯云 | 仓库 OpenTelemetry 依赖 | 按 provider 的 OTLP 端点/认证协议；没有验证的服务版本不列最低版本保证 |
+
+Weave 将业务会话映射到原生 `thread_id`，没有写入 `turn_id`，不能据此承诺平台 Threads 页的完整 turn 展示。LLM 原生 usage 映射为 prompt/completion/total tokens；`native_cost=false`，供应商按自己的定价计算出的成本不是 Dify 原生成本导出。cache token 细分与首 token 时间也不因 `native_usage=true` 自动获得支持。
 
 ## 8. 运行状态、深链与轮询
 
@@ -423,7 +429,7 @@ API 没有 `pending` 和 `incomplete` 状态。若 UI 使用“处理中/pending
 
 先使用非空 `span_url` 定位 Agent 调用；没有 span 深链时使用非空 `trace_url`；两者都为空时，可使用运行响应中的非空 `project_url` 展示“查看项目”。三个 URL 都为空时隐藏跳转操作。项目链接不证明本次运行已上报或可查询。
 
-运行 `project_url` 只读取运行开始时冻结的目的地元数据，不查询当前应用配置、不解密凭据、不调用第三方。配置创建和更新时会尝试保存项目链接；Langfuse、LangSmith、Arize、Phoenix、Opik、MLflow、Databricks 可提供，解析失败返回 null。Weave 当前写入链路未保存项目链接；Aliyun、Tencent 仅有平台控制台地址，运行接口不将其作为项目链接，均返回 null。旧运行快照缺少项目链接时也返回 null，不追溯补填。仅返回有效且不含 URL 用户名/密码的 HTTP(S) 链接。
+运行 `project_url` 只读取运行开始时冻结的目的地元数据，不查询当前应用配置、不解密凭据、不调用第三方。配置创建和更新时会尝试保存项目链接；Langfuse、LangSmith、Arize、Phoenix、Opik、Weave、MLflow、Databricks 可提供，解析失败返回 null。Weave 自配置验证修复后保存项目链接；Aliyun、Tencent 仅有平台控制台地址，运行接口不将其作为项目链接，均返回 null。旧运行快照缺少项目链接时也返回 null，不追溯补填。仅返回有效且不含 URL 用户名/密码的 HTTP(S) 链接。
 
 配置面板中的 `project_url` 对应当前配置，不能替代历史运行的回退链接，也不能要求仅有日志权限的用户读取配置凭据。运行详情只使用运行响应的 URL，不用 Dify message/workflow ID 自行拼供应商 URL。
 
@@ -638,14 +644,43 @@ r3 项目链接验证只读取现有运行，没有重新执行业务或补发 t
 
 最初 probe 的读取失败来自验收脚本使用了不适合该查询 API 的 limit=10000；将小型 fixture 查询上限改为 100 后，复用同一条运行完成核对。该脚本问题不计为产品采集失败，也不替代上表两项实际产品缺陷。
 
-### 12.6 未验证范围与后续前端验收
+### 12.6 Weave 账号 API 验收（2026-10-16）
+
+使用独立的两个合成数据项目，通过真实 Console API、dev Agent 预览页面、持久化 canonical trace 和供应商 `/calls/stream_query` 独立查询核对。一次专门的连通性探针与实际业务运行分别记录，不将探针算作 Agent 端到端验收。
+
+| 场景 | 真实结果 |
+| --- | --- |
+| Agent UI 两轮 | 同一会话，每轮 6 calls：1 chain、2 agent、2 llm、1 tool；UI 工具计算返回 323，平台原生 tokens 分别为 4694、4894 |
+| 内容关闭 | 6 calls、4691 tokens；结构、状态和用量保留，输入输出与实际 canary 均不存在 |
+| tracing 关闭 | 业务成功、`not_collected`；45.178 秒内 4 次供应商查询均为 0 calls |
+| Agent 内部采集关闭 | 仅 1 个外层 call，0 内部 LLM/tool |
+| mixed inline / reference Workflow | 各 10 calls，包含普通 LLM、2 次 Agent LLM、1 次工具调用；分别 4768、4766 tokens，调用方冻结配置与节点归属一致 |
+| 单节点 preview | 6 calls、4742 tokens；独立 node source，trace/node 链接对应实际 call |
+| 真实模型错误，内容开启 / 关闭 | 各 4 calls / 1 LLM，错误状态一致；开启时 root 保留已知 query，关闭时无输入输出/canary；缺失用量不伪造为原生零用量 |
+| 取消并关闭 SSE | 6 calls，root 为 error/cancelled；底层调用的实际终态与 canonical 一致，已报告用量合计 2340 tokens |
+| 运行中关闭策略 | 6 calls、4737 tokens；仍按运行开始时冻结的内容开启策略导出，之后恢复原策略 |
+| 同 tenant、不同项目并发 | 两个 Workflow 实际重叠 6.422258 秒，各自项目 10 calls；双向查询另一项目均为 0；配置、凭据密文、策略和 graph 全部恢复/保持 |
+| 历史目的地 | 当前 reference 恢复原项目后，历史第二项目运行仍返回冻结的 project/trace/node 链接 |
+| 脱敏编辑与重投保护 | dev 页面保存现有脱敏 Key 后密文与项目 URL 不变，API 容器未生成 `.netrc`；accepted 重投返回 409，attempts 仍为 1 |
+
+每条通过的查询均核对稳定 call ID、parent、单 root、trace/project/thread 归属、开始结束时间、节点类型、错误状态、canonical 内容及 LLM 原生 token 用量。Weave trace ID 是 canonical UUID 的带连字符形式；call ID 为 `uuid5(trace_uuid, span_id)`。业务会话写入 `thread_id`，未写 `turn_id`。`native_cost=false`；保留的 Dify USD metadata 和供应商自行定价的费用不作为原生成本导出验收。
+
+配置修复 `836ede2984` 移除了 POST/PATCH/GET 中对 legacy exporter 构造的依赖，改用隔离认证的只读验证，并保存规范化 entity/project/project_url。该提交目标测试 109 项、更广单测 1784 项、完整 lint/type/guards 均通过；CI 结果按对应 PR head 核对。普通应用 legacy exporter 的 SDK 登录生命周期未在这次修复中重构，其既有单元测试通过，但没有本轮 Weave 账号的普通 Chat/Workflow 平台回归证据。
+
+后续审核修复 `58d236199e` 让 Workflow/preview 源记录、恢复及相关归属判断使用配置的存储 repository，支持 LogStore 关闭 SQL 双写；完整 tenant/app/source 校验保留，远端读取不占 SQL 事务，已存在的冻结快照重入不依赖 LogStore。163 项定向测试和 1829 项组合单测、lint/type/guards 通过，使用真实 LogStore repository/SDK 解码及传输边界替身验证无 SQL 源行场景。dev r2 对既有 Agent、Workflow、preview 状态与链接读回通过，跨应用/错误节点返回 404，accepted 重投仍为 409；dev 保持原 SQL 存储配置，没有声称真实 SLS 平台验收。
+
+查询验收脚本最初请求 `Accept: application/json`：非空结果是 JSON 数组，空结果在此平台返回了非法的单个 `]`。脚本改用供应商支持的 `application/jsonl`，严格区分合法空流与错误响应，并只读复验同一批运行；没有为消除查询错误重跑业务或重投 trace。这属于查询脚本/平台响应格式兼容记录，不是 Dify ingestion 失败。
+
+dev 的 Agent 监控页已实际显示 Weave 使用中、内容/Agent 开关开启、原生费用不支持及正确项目链接；配置表单回显脱敏 Key、entity/project 和两个端点，实际保存成功。Weave 的项目页和 trace 页仍需账号方案/访问权限处理；平台 UI 的树展示、Threads turns 和网页跳转未通过验收。跨 tenant、真实 ingestion 429/5xx、凭据撤销、普通 legacy 应用仍为后续专项。
+
+### 12.7 未验证范围与后续前端验收
 
 - 普通无 Agent Workflow legacy 已分别取得 Langfuse 与 LangSmith 平台证据；普通 Chatflow 未补独立真实平台证据。同 tenant 两应用不同项目并发、双向零串数和恢复配置后的历史深链已验证。
-- 除已列明证据的 Langfuse、LangSmith 外，Opik、Weave、Arize、Phoenix、MLflow、Databricks、阿里云和腾讯云八家仍没有账号级真实收数 / 查询验收；实现或协议测试不等于账号已验证。
+- 除已列明证据的 Langfuse、LangSmith 和 Weave 外，Opik、Arize、Phoenix、MLflow、Databricks、阿里云和腾讯云七家仍没有账号级真实收数 / 查询验收。Weave 平台 UI 与上一节专项仍待完成；实现或协议测试不等于账号已验证。
 - LangSmith 的原生 cache token breakdown 和 first-token-time 专项未验证，当前相关值仅在存在时保留 metadata；`native_usage=true` 不代表所有 usage 细项全支持。
 - 跨 tenant 隔离、ingestion 写入 429 和凭据撤销没有在本轮 LangSmith 账号上执行；本次遇到的查询 429 不替代投递限流验收。公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
 - Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
-- 本次未实现 Web 配置和运行状态 UI；新增前端页面的权限展示、交互、状态轮询及深链跳转需在前端接入后验收。
+- dev 新增 Web 页面中已核对上一节列出的 Agent 配置展示和保存；其他权限、状态轮询、Workflow 继承展示及供应商网页跳转需继续按前端任务验收，不将局部页面操作视为全部前端功能通过。
 
 ## 13. 定稿检查与代码定位
 
