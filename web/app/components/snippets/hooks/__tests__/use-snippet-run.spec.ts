@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useSnippetRun } from '../use-snippet-run'
 
@@ -104,7 +105,7 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mocks.mockInvalidateAllLastRun,
+  useInvalidateAllLastRun: () => mocks.mockInvalidateAllLastRun,
   useInvalidateWorkflowRunHistory: () => mocks.mockInvalidateRunHistory,
 }))
 
@@ -139,7 +140,9 @@ describe('useSnippetRun', () => {
 
   it('stops a snippet workflow with the provided task id', () => {
     mocks.workflowStoreState.workflowRunningData = createRunningData()
-    const { result } = renderHook(() => useSnippetRun('snippet-1'))
+    const { result } = renderHook(() => useSnippetRun(), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     act(() => {
       result.current.handleStopRun('task-1')
@@ -155,7 +158,9 @@ describe('useSnippetRun', () => {
 
   it('does not fall back to the workflow running task id when stop is called without one', () => {
     mocks.workflowStoreState.workflowRunningData = createRunningData('task-from-store')
-    const { result } = renderHook(() => useSnippetRun('snippet-1'))
+    const { result } = renderHook(() => useSnippetRun(), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     act(() => {
       result.current.handleStopRun('')
@@ -169,7 +174,9 @@ describe('useSnippetRun', () => {
 
   it('does not call the stop endpoint when task id is unavailable', () => {
     mocks.workflowStoreState.workflowRunningData = createRunningData()
-    const { result } = renderHook(() => useSnippetRun('snippet-1'))
+    const { result } = renderHook(() => useSnippetRun(), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     act(() => {
       result.current.handleStopRun('')

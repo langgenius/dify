@@ -2,17 +2,10 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { updateEnvironmentVariables } from './workflow'
 
-const mockPost = vi.hoisted(() => vi.fn())
+const mockRequest = vi.hoisted(() => vi.fn())
 
-vi.mock('./base', () => ({
-  get: vi.fn(),
-  post: vi.fn(),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    apps: { byAppId: { workflows: { draft: { environmentVariables: { post: mockPost } } } } },
-  },
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockRequest },
 }))
 
 describe('updateEnvironmentVariables', () => {
@@ -34,7 +27,7 @@ describe('updateEnvironmentVariables', () => {
         },
       },
     ] satisfies EnvironmentVariable[]
-    mockPost.mockResolvedValue({ result: 'success' })
+    mockRequest.mockResolvedValue({ result: 'success' })
 
     await updateEnvironmentVariables({
       appId: 'app-1',
@@ -42,13 +35,17 @@ describe('updateEnvironmentVariables', () => {
       deletedEnvironmentVariableIds: ['env-2'],
     })
 
-    expect(mockPost).toHaveBeenCalledWith({
-      params: { app_id: 'app-1' },
-      body: {
-        environment_variables: environmentVariables,
-        patch: true,
-        deleted_environment_variable_ids: ['env-2'],
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'workflows', 'draft', 'environmentVariables', 'post'],
+      {
+        params: { app_id: 'app-1' },
+        body: {
+          environment_variables: environmentVariables,
+          patch: true,
+          deleted_environment_variable_ids: ['env-2'],
+        },
       },
-    })
+      expect.any(Object),
+    )
   })
 })

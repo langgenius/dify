@@ -1,8 +1,6 @@
-import { skipToken, useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { useParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 
 export type AgentScope = (typeof AgentScope)[keyof typeof AgentScope]
 export const AgentScope = {
@@ -12,15 +10,9 @@ export const AgentScope = {
 } as const
 
 export const useInlineAgentScope = () => {
-  const { appId } = useParams<{ appId?: string }>()
-  const { data: appMode } = useQuery(
-    consoleQuery.apps.byAppId.get.queryOptions({
-      input: appId ? { params: { app_id: appId } } : skipToken,
-      select: (appDetail) => appDetail.mode,
-    }),
-  )
+  const isChatflow = useAtomValue(isChatflowAtom)
 
-  return appMode === AppModeEnum.ADVANCED_CHAT ? AgentScope.InChatflow : AgentScope.InWorkflow
+  return isChatflow ? AgentScope.InChatflow : AgentScope.InWorkflow
 }
 
 export const trackAgentBuildModeRun = (agentScope: AgentScope) => {

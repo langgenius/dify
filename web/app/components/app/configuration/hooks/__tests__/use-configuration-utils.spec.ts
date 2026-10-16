@@ -6,7 +6,6 @@ import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixt
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
   AgentStrategy,
-  AppModeEnum,
   ModelModeType,
   Resolution,
   RETRIEVE_TYPE,
@@ -133,7 +132,7 @@ describe('useConfiguration utils', () => {
     mockFetchCollectionList.mockResolvedValue([])
     mockFetchAppDetailDirect.mockResolvedValue(
       createAppDetailFixture({
-        mode: AppModeEnum.AGENT_CHAT,
+        mode: 'agent-chat' as const,
         model_config: createAppModelConfigFixture({
           model: {
             provider: 'langgenius/openai/openai',
@@ -277,7 +276,7 @@ describe('useConfiguration utils', () => {
         top_k: 4,
       } as any,
       deletedTools: [{ type: 'tool', provider_id: 'tool-1', tool_name: 'search' }],
-      mode: AppModeEnum.AGENT_CHAT,
+      mode: 'agent-chat' as const,
       nextDataSets: [{ id: 'dataset-1' }] as any,
     })
 
@@ -336,7 +335,7 @@ describe('useConfiguration utils', () => {
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
       } as any,
-      mode: AppModeEnum.COMPLETION,
+      mode: 'completion' as const,
       nextDataSets: [],
     })
 
@@ -369,7 +368,7 @@ describe('useConfiguration utils', () => {
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
       } as any,
-      mode: AppModeEnum.CHAT,
+      mode: 'chat',
       nextDataSets: [],
     })
 
@@ -496,7 +495,7 @@ describe('useConfiguration utils', () => {
     ])
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat',
       model_config: createAppModelConfigFixture({
         prompt_type: 'advanced',
         chat_prompt_config: {
@@ -580,7 +579,7 @@ describe('useConfiguration utils', () => {
     })
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
-      mode: AppModeEnum.AGENT_CHAT,
+      mode: 'agent-chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
@@ -640,7 +639,7 @@ describe('useConfiguration utils', () => {
     mockFetchCollectionList.mockResolvedValue([])
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat',
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
@@ -837,7 +836,7 @@ describe('useConfiguration utils', () => {
         backendModelConfig,
         collectionList: [],
         datasetConfigs: buildConfigurationDatasetConfigs({ backendModelConfig, nextDataSets: [] }),
-        mode: AppModeEnum.CHAT,
+        mode: 'chat',
         nextDataSets: [],
       })
       const setPublishedConfig = vi.fn()
@@ -860,7 +859,7 @@ describe('useConfiguration utils', () => {
         hasSetBlockStatus: { history: true, query: true },
         isAdvancedMode: true,
         isFunctionCall: false,
-        mode: AppModeEnum.CHAT,
+        mode: 'chat',
         modelConfig: config.modelConfig,
         promptEmpty: false,
         promptMode: 'advanced',
@@ -909,7 +908,7 @@ describe('useConfiguration utils', () => {
       },
       isAdvancedMode: true,
       isFunctionCall: true,
-      mode: AppModeEnum.CHAT,
+      mode: 'chat',
       modelConfig: {
         agentConfig: {
           enabled: true,
@@ -1017,7 +1016,7 @@ describe('useConfiguration utils', () => {
         },
         isAdvancedMode: true,
         isFunctionCall: false,
-        mode: AppModeEnum.CHAT,
+        mode: 'chat',
         modelConfig: {
           configs: {
             prompt_template: 'hello',
@@ -1078,7 +1077,7 @@ describe('useConfiguration utils', () => {
       handleSetVisionConfig,
       isAdvancedMode: true,
       migrateToDefaultPrompt,
-      mode: AppModeEnum.CHAT,
+      mode: 'chat',
       modelConfig: {
         model_id: 'gpt-4o-mini',
         provider: 'langgenius/openai/openai',
@@ -1135,7 +1134,7 @@ describe('useConfiguration utils', () => {
       handleSetVisionConfig,
       isAdvancedMode: true,
       migrateToDefaultPrompt,
-      mode: AppModeEnum.COMPLETION,
+      mode: 'completion' as const,
       modelConfig: {
         model_id: 'gpt-4o-mini',
         provider: 'langgenius/openai/openai',

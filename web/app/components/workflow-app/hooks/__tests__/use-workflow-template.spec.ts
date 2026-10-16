@@ -1,24 +1,24 @@
-import {
-  createConsoleQueryClient,
-  renderHookWithConsoleQuery,
-  seedAppDetail,
-} from '@/test/console/query-data'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { useWorkflowTemplate } from '../use-workflow-template'
 
 const mockUseIsChatMode = vi.fn()
 let generateNewNodeCalls: Array<Record<string, unknown>> = []
 
-const renderTemplateHook = (mode: AppModeEnum) => {
+const renderTemplateHook = (mode: AppMode) => {
   const queryClient = createConsoleQueryClient()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode }))
   return renderHookWithConsoleQuery(() => useWorkflowTemplate(), { queryClient })
 }
 
-vi.mock('../use-is-chat-mode', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
+})
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -55,7 +55,7 @@ describe('useWorkflowTemplate', () => {
   it('should return only the start placeholder template in workflow mode', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
-    const { result } = renderTemplateHook(AppModeEnum.WORKFLOW)
+    const { result } = renderTemplateHook('workflow')
 
     expect(result.current.nodes).toHaveLength(1)
     expect(result.current.edges).toEqual([])
@@ -71,7 +71,7 @@ describe('useWorkflowTemplate', () => {
   it('should return the start node template for non-workflow app modes', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
-    const { result } = renderTemplateHook(AppModeEnum.COMPLETION)
+    const { result } = renderTemplateHook('completion')
 
     expect(result.current.nodes).toHaveLength(1)
     expect(result.current.edges).toEqual([])
@@ -85,7 +85,7 @@ describe('useWorkflowTemplate', () => {
   it('should build start, llm, and answer templates with linked edges in chat mode', () => {
     mockUseIsChatMode.mockReturnValue(true)
 
-    const { result } = renderTemplateHook(AppModeEnum.ADVANCED_CHAT)
+    const { result } = renderTemplateHook('advanced-chat')
 
     expect(result.current.nodes).toHaveLength(3)
     expect(result.current.nodes.map((node) => node.id)).toEqual(['generated-1', 'llm', 'answer'])

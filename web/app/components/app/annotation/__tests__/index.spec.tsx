@@ -5,7 +5,6 @@ import * as React from 'react'
 import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
 
@@ -194,7 +193,7 @@ const updateAnnotationStatusMock = mocks.updateAnnotationStatus
 
 const appDetail = createAppDetailFixture({
   id: 'app-id',
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
 })
 
 const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({

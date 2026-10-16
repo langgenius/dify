@@ -10,11 +10,13 @@ import type {
   LoopNodeType,
 } from './types'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import {
@@ -37,7 +39,7 @@ import useIsVarFileAttribute from './use-is-var-file-attribute'
 
 const useConfig = (id: string, payload: LoopNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const conversationVariables = useStore((s) => s.conversationVariables)
 
   const { inputs, setInputs } = useNodeCrud<LoopNodeType>(id, payload)
@@ -84,7 +86,7 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   }
   const childrenNodeVars = toNodeOutputVars(
     loopChildrenNodes,
-    isChatMode,
+    isChatflow,
     undefined,
     [],
     conversationVariables,

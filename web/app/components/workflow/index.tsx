@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
+import { useAtomValue } from 'jotai'
 import {
   Fragment,
   memo,
@@ -48,6 +49,8 @@ import {
   useStoreApi,
 } from 'reactflow'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -67,7 +70,7 @@ import CustomConnectionLine from './custom-connection-line'
 import CustomEdge from './custom-edge'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import HelpLine from './help-line'
-import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { HooksStoreContextProvider } from './hooks-store'
 import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { useLocateNode } from './hooks/use-locate-node'
 import { useNodeKeyboardInteractions } from './hooks/use-node-keyboard-interactions'
@@ -586,17 +589,17 @@ export const Workflow: FC<WorkflowProps> = memo(
     )
     const dataSourceList = useStore((s) => s.dataSourceList)
     // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
-    const configsMap = useHooksStore((s) => s.configsMap)
+    const resource = useAtomValue(editorResourceAtom)
     const [isLoadedVars, setIsLoadedVars] = useState(false)
     const [vars, setVars] = useState<VarInInspect[]>([])
     useEffect(() => {
       ;(async () => {
-        if (!configsMap?.flowType || !configsMap?.flowId) return
-        const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
+        if (!getEditorResourceId(resource)) return
+        const data = await fetchAllInspectVars(resource)
         setVars(data)
         setIsLoadedVars(true)
       })()
-    }, [configsMap?.flowType, configsMap?.flowId])
+    }, [resource])
     useEffect(() => {
       if (schemaTypeDefinitions && isLoadedVars) {
         fetchInspectVars({

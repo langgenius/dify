@@ -6,7 +6,6 @@ import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { TriggerAccessPointCard } from '../built-in-access-points/trigger-card'
 
 const mocks = vi.hoisted(() => ({
@@ -77,7 +76,7 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 
 const appInfo = createAppDetailFixture({
   id: 'app-1',
-  mode: AppModeEnum.WORKFLOW,
+  mode: 'workflow' as const,
 })
 
 function createTrigger(id: string, status: AppTrigger['status']): AppTrigger {

@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { useSetAtom } from 'jotai'
@@ -6,8 +7,6 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { renderWorkflowHook } from '../../../__tests__/workflow-test-env'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { useCreateInlineAgentBinding, useWorkflowInlineAgentDetail } from '../hooks'
@@ -168,6 +167,9 @@ vi.mock('@/service/console', async (importOriginal) => {
           get: actual.consoleQuery.apps.byAppId.get,
           workflows: {
             draft: {
+              systemVariables: actual.consoleQuery.apps.byAppId.workflows.draft.systemVariables,
+              conversationVariables:
+                actual.consoleQuery.apps.byAppId.workflows.draft.conversationVariables,
               nodes: {
                 byNodeId: {
                   agentComposer: {
@@ -222,7 +224,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const createInlineAgentBindingQueryClient = (appMode: AppModeEnum = AppModeEnum.WORKFLOW) => {
+const createInlineAgentBindingQueryClient = (appMode: AppMode = 'workflow') => {
   const queryClient = createConsoleQueryClient()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: appMode }))
   return queryClient
@@ -249,12 +251,9 @@ describe('useWorkflowInlineAgentDetail', () => {
       () => useWorkflowInlineAgentDetail('node-1', 'snippet-agent'),
       {
         queryClient,
+        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'snippet-1',
-            flowType: FlowType.snippet,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )
@@ -288,12 +287,9 @@ describe('useWorkflowInlineAgentDetail', () => {
         }),
       {
         queryClient,
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'app-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )
@@ -321,12 +317,9 @@ describe('useWorkflowInlineAgentDetail', () => {
         }),
       {
         queryClient,
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'app-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )
@@ -361,12 +354,9 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -432,15 +422,12 @@ describe('useCreateInlineAgentBinding', () => {
   })
 
   it('tracks inline agent creation with the chatflow scope', async () => {
-    const queryClient = createInlineAgentBindingQueryClient(AppModeEnum.ADVANCED_CHAT)
+    const queryClient = createInlineAgentBindingQueryClient('advanced-chat')
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      resource: { kind: 'app' as const, appId: 'chatflow-1', mode: 'advanced-chat' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'chatflow-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -462,12 +449,9 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'snippet-1',
-          flowType: FlowType.snippet,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -515,12 +499,9 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -575,12 +556,9 @@ describe('useCreateInlineAgentBinding', () => {
     const queryClient = createInlineAgentBindingQueryClient()
     const { result, unmount } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
       queryClient,
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -651,12 +629,9 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'app-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )
@@ -728,12 +703,9 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
+        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'snippet-1',
-            flowType: FlowType.snippet,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )
@@ -802,12 +774,9 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
       {
         queryClient,
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'app-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )
@@ -866,12 +835,9 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       {
         queryClient,
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'app-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )
@@ -910,12 +876,9 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         }),
       {
         queryClient,
+        resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowId: 'app-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {} as never,
-          },
+          fileSettings: {} as never,
         },
       },
     )

@@ -1,7 +1,6 @@
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { httpErrorFromResponse } from '@/service/http-error'
-import { AppModeEnum } from '@/types/app'
 import {
   applyRunningStateForMode,
   applyStoppedState,
@@ -54,36 +53,32 @@ describe('useWorkflowRun utils', () => {
   })
 
   it('should resolve run history urls and run endpoints for workflow modes', () => {
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW })).toBe(
+    expect(buildRunHistoryUrl({ id: 'app-1', mode: 'workflow' as const })).toBe(
       '/apps/app-1/workflow-runs',
     )
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT })).toBe(
+    expect(buildRunHistoryUrl({ id: 'app-1', mode: 'advanced-chat' as const })).toBe(
       '/apps/app-1/advanced-chat/workflow-runs',
     )
 
     expect(
       resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+        { id: 'app-1', mode: 'workflow' as const },
         TriggerType.UserInput,
         true,
       ),
     ).toBe('/apps/app-1/workflows/draft/run')
     expect(
       resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
+        { id: 'app-1', mode: 'advanced-chat' as const },
         TriggerType.UserInput,
         false,
       ),
     ).toBe('/apps/app-1/advanced-chat/workflows/draft/run')
     expect(
-      resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
-        TriggerType.Schedule,
-        true,
-      ),
+      resolveWorkflowRunUrl({ id: 'app-1', mode: 'workflow' as const }, TriggerType.Schedule, true),
     ).toBe('/apps/app-1/workflows/draft/trigger/run')
     expect(
-      resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.All, true),
+      resolveWorkflowRunUrl({ id: 'app-1', mode: 'workflow' as const }, TriggerType.All, true),
     ).toBe('/apps/app-1/workflows/draft/trigger/run-all')
   })
 
@@ -124,7 +119,7 @@ describe('useWorkflowRun utils', () => {
     expect(resolveWorkflowRunUrl(undefined, TriggerType.All, true)).toBe('')
     expect(
       resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+        { id: 'app-1', mode: 'workflow' as const },
         TriggerType.UserInput,
         false,
       ),

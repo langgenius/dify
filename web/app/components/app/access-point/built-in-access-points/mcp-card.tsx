@@ -22,7 +22,6 @@ import { selectMCPServerDetail } from '@/app/components/tools/utils/query-select
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
@@ -46,7 +45,7 @@ export function MCPAccessPointCard({
   const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
-  const workflowApp = appInfo.mode === AppModeEnum.WORKFLOW
+  const workflowApp = appInfo.mode === 'workflow'
   const [showServerModal, setShowServerModal] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const basicConfig = appInfo.model_config

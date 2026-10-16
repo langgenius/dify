@@ -33,7 +33,6 @@ import {
   seedAppDetail,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
@@ -745,7 +744,7 @@ function render(
     queryClient,
     createAppDetailFixture({
       ...mockBuiltInEnvironment.appDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow',
       permission_keys: appPermissionKeys,
     }),
   )

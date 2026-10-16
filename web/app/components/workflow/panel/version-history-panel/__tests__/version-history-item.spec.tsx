@@ -1,7 +1,7 @@
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 

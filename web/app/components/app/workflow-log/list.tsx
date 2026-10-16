@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import { AppModeEnum } from '@/types/app'
 import DetailPanel from './detail'
 import TriggerByDisplay from './trigger-by-display'
 
@@ -67,7 +66,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
   }
 
-  const isWorkflow = appDetail?.mode === AppModeEnum.WORKFLOW
+  const isWorkflow = appDetail?.mode === 'workflow'
 
   const statusTdRender = (status?: string | null) => {
     if (status === 'succeeded') {

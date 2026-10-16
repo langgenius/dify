@@ -1,7 +1,6 @@
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { useWorkflowDraftGraphForCanvas } from '../use-workflow-draft-graph-for-canvas'
 
 let generateNewNodeCalls: Array<Record<string, unknown>> = []
@@ -34,7 +33,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
   })
 
   it('should restore a local start placeholder for workflow graphs without an entry node', () => {
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
       nodes: [],
@@ -64,7 +63,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     BlockEnum.StartPlaceholder,
   ])('should preserve existing %s entry nodes', (type) => {
     const node = { id: 'entry', data: { type } }
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
       nodes: [node] as never,
@@ -76,7 +75,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
   })
 
   it('should not restore a start placeholder for non-workflow app modes', () => {
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.ADVANCED_CHAT))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('advanced-chat'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
       nodes: [],
@@ -93,7 +92,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
       data: { type: BlockEnum.StartPlaceholder },
     }
     const draftNode = { id: 'llm', data: { type: BlockEnum.LLM } }
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas(
       {
@@ -141,7 +140,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
       },
     ]
     const originalNodes = structuredClone(nodes)
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({ nodes, edges: [] })
 
@@ -159,7 +158,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     expect(nodes).toEqual(originalNodes)
   })
 
-  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+  it.each(['advanced-chat', undefined] as const)(
     'preserves memory when app mode is %s',
     (appMode) => {
       const nodes: Node<{ memory: { window: { enabled: boolean; size: number } } }>[] = [

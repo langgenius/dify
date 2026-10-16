@@ -1,8 +1,8 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
@@ -14,7 +14,10 @@ const renderWithoutPricing = (ui: React.ReactElement) => {
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { knowledge_pipeline: { publish_enabled: mockIsAllowPublishAsCustom } },
   })
-  return renderWithConsoleState(ui, { wrapper })
+  return renderWithConsoleState(ui, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    wrapper,
+  })
 }
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })

@@ -1,8 +1,9 @@
 import type { Datasource, DataSourceOption } from '../../../test-run/types'
 import type { RAGPipelineVariable, RAGPipelineVariables } from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { PipelineInputVarType } from '@/models/pipeline'
 import DataSource from '../data-source'
 import Form from '../form'
@@ -221,7 +222,10 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => {
 }
 
 const renderWithProviders = (ui: React.ReactElement) => {
-  return render(ui, { wrapper: TestWrapper })
+  return render(ui, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    wrapper: TestWrapper,
+  })
 }
 
 describe('PreviewPanel', () => {

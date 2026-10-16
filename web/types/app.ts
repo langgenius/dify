@@ -45,24 +45,6 @@ export const RETRIEVE_METHOD = {
 } as const
 
 /**
- * App modes
- */
-export type AppModeEnum =
-  | 'completion'
-  | 'workflow'
-  | 'chat'
-  | 'advanced-chat'
-  | 'agent-chat'
-  | 'agent'
-export const AppModeEnum = {
-  COMPLETION: 'completion' as AppModeEnum,
-  WORKFLOW: 'workflow' as AppModeEnum,
-  CHAT: 'chat' as AppModeEnum,
-  ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
-  AGENT_CHAT: 'agent-chat' as AppModeEnum,
-  AGENT: 'agent' as AppModeEnum,
-} as const
-/**
  * Variable type
  */
 type VariableType = 'string' | 'number' | 'select'

@@ -24,15 +24,16 @@ import {
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { useIsChatMode } from '../../../../hooks/use-workflow'
 import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
 import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
 import { ComparisonOperator } from '../../types'
@@ -98,7 +99,7 @@ const ConditionItem = ({
   ]
 
   const { t } = useTranslation(['common', 'workflow', 'workflowLogic'])
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -266,7 +267,7 @@ const ConditionItem = ({
         valueSelector,
         conversationVariables,
         availableNodes,
-        isChatMode,
+        isChatflow,
         allPluginInfoList: {
           buildInTools: buildInTools || [],
           customTools: customTools || [],
@@ -294,7 +295,7 @@ const ConditionItem = ({
       condition,
       doUpdateCondition,
       availableNodes,
-      isChatMode,
+      isChatflow,
       schemaTypeDefinitions,
       buildInTools,
       customTools,

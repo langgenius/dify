@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   DocumentDetailResponse as ContractDocumentDetailResponse,
   DocumentWithSegmentsListResponse,
@@ -15,7 +16,7 @@ import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
+import type { AppIconType, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { SegmentImportStatus } from '@/types/dataset'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { PermissionLevel } from './permission'
@@ -557,7 +558,7 @@ export type HitTestingRecordsResponse = {
 export type RelatedApp = {
   id: string
   name: string
-  mode: AppModeEnum
+  mode: AppMode
   icon_type: AppIconType | null
   icon: string
   icon_background: string

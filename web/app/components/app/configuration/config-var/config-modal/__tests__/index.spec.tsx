@@ -12,7 +12,7 @@ import {
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
-import { AppModeEnum, TransferMethod } from '@/types/app'
+import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -33,7 +33,7 @@ vi.mock('@monaco-editor/react', async () => ({
 
 const render = (ui: React.ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: AppModeEnum.CHAT }))
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' as const }))
   // Upload limits stay pending unless a case seeds them.
   void queryClient.query({
     queryKey: consoleQuery.files.upload.get.queryKey(),

@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useInputVariables } from '../hooks'
 
 const mockUseDraftPipelineProcessingParams = vi.hoisted(() =>
@@ -33,7 +33,9 @@ describe('useInputVariables', () => {
   })
 
   it('should query processing params with the current pipeline id and datasource node id', () => {
-    const { result } = renderHook(() => useInputVariables('datasource-node'))
+    const { result } = renderHook(() => useInputVariables('datasource-node'), {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    })
 
     expect(mockUseDraftPipelineProcessingParams).toHaveBeenCalledWith({
       pipeline_id: 'pipeline-1',

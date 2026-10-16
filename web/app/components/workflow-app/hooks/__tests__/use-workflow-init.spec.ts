@@ -1,12 +1,12 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHookWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { seedAppDetail } from '@/test/console/query-data'
-import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useWorkflowInit } from '../use-workflow-init'
@@ -29,6 +29,7 @@ const renderHook = <Result>(callback: () => Result) => {
   const queryClient = createAccountProfileQueryClient({ id: 'user-1' })
   seedAppDetail(queryClient, appDetail)
   return renderHookWithConsoleState(callback, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     wrapper: createQueryClientWrapper(queryClient),
   })
 }
@@ -346,7 +347,6 @@ describe('useWorkflowInit', () => {
       expect(result.current.data?.hash).toBe('server-hash')
     })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appId: 'app-1', appName: 'Test' })
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
       expect.objectContaining({
         envSecrets: { 'env-secret': 'top-secret' },
