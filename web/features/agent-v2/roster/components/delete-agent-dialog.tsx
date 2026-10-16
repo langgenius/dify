@@ -58,7 +58,7 @@ export function DeleteAgentDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
-        <AlertDialogHeader className="pb-0">
+        <AlertDialogHeader>
           <AlertDialogTitle>
             {t(($) => $['roster.deleteDialog.title'], { ns: 'agentRoster', name: agentName })}
           </AlertDialogTitle>
@@ -70,11 +70,7 @@ export function DeleteAgentDialog({
           <AlertDialogCancelButton disabled={deleteAgentMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton
-            tone="destructive"
-            loading={deleteAgentMutation.isPending}
-            onClick={handleDelete}
-          >
+          <AlertDialogConfirmButton loading={deleteAgentMutation.isPending} onClick={handleDelete}>
             {tCommon(($) => $['operation.delete'])}
           </AlertDialogConfirmButton>
         </AlertDialogFooter>

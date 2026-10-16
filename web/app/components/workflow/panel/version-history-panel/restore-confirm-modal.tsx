@@ -49,7 +49,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancelButton variant="secondary">
+          <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton tone="default" onClick={onRestore.bind(null, versionInfo)}>

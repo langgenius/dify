@@ -328,7 +328,7 @@ function DeleteSkillDialog({
           <AlertDialogTitle>
             {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
           </AlertDialogTitle>
-          <AlertDialogDescription className="mt-2">{description}</AlertDialogDescription>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
           {referenceCount > 0 && (
             <div className="mt-4">
               {referencesQuery.isPending ? (
@@ -385,7 +385,6 @@ function DeleteSkillDialog({
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton
-            tone="destructive"
             loading={deleteMutation.isPending}
             disabled={isDeleteUnavailable}
             onClick={handleDelete}

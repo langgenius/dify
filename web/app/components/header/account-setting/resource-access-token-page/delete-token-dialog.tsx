@@ -22,7 +22,7 @@ export function DeleteTokenDialogContent({
 
   return (
     <AlertDialogContent backdropProps={{ forceRender: true }}>
-      <AlertDialogHeader className="pb-0">
+      <AlertDialogHeader>
         <AlertDialogTitle>
           {t(($) => $['resourceAccessToken.deleteTitle'], { ns: 'accountSettings' })}
         </AlertDialogTitle>

@@ -152,7 +152,6 @@ const EditAnnotationModal: FC<Props> = ({
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
-                            tone="destructive"
                             onClick={() => {
                               onRemove()
                               removeActionsRef.current?.close()

@@ -43,7 +43,7 @@ export function CreatedApiKeyDialog({
         backdropProps={{ forceRender: true }}
         className="overflow-hidden"
       >
-        <AlertDialogHeader className="gap-1">
+        <AlertDialogHeader>
           <AlertDialogTitle>
             {t(($) => $['apiKeyModal.createdTitle'], { ns: 'appApi' })}
           </AlertDialogTitle>

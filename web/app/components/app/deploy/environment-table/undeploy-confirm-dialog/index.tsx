@@ -52,7 +52,7 @@ export function UndeployConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancelButton variant="secondary" disabled={isPending}>
+          <AlertDialogCancelButton disabled={isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton loading={isPending} onClick={onConfirm}>

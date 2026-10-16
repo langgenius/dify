@@ -59,7 +59,7 @@ export function AgentConfigureClearSessionConfirmDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       {children && <AlertDialogTrigger render={children} />}
       <AlertDialogContent backdropProps={{ forceRender: true }} className="w-100">
-        <AlertDialogHeader className="gap-1 pb-0">
+        <AlertDialogHeader>
           <AlertDialogTitle>
             {title ?? t(($) => $['agentDetail.configure.clearSessionConfirm.title'])}
           </AlertDialogTitle>

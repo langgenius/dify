@@ -42,7 +42,7 @@ export const AppExportConfirmContent = ({
 
   return (
     <AlertDialogContent>
-      <AlertDialogHeader className="pb-6">
+      <AlertDialogHeader>
         <AlertDialogTitle>{t(($) => $['exportSecret.title'], { ns: 'app' })}</AlertDialogTitle>
         <AlertDialogDescription>
           {t(($) => $['exportSecret.description'], { ns: 'app' })}

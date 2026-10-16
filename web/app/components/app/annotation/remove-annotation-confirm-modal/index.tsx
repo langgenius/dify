@@ -27,7 +27,7 @@ export function RemoveAnnotationConfirmContent({ isPending, onRemove }: Props) {
         <AlertDialogCancelButton disabled={isPending}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
-        <AlertDialogConfirmButton tone="destructive" loading={isPending} onClick={onRemove}>
+        <AlertDialogConfirmButton loading={isPending} onClick={onRemove}>
           {t(($) => $['operation.confirm'], { ns: 'common' })}
         </AlertDialogConfirmButton>
       </AlertDialogFooter>

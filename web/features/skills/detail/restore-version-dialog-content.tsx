@@ -23,7 +23,7 @@ export function RestoreVersionDialogContent({
 
   return (
     <AlertDialogContent>
-      <AlertDialogHeader className="pb-0">
+      <AlertDialogHeader>
         <AlertDialogTitle>
           {t(($) => $['skillManagement.detail.restoreVersionConfirmTitle'])}
         </AlertDialogTitle>

@@ -41,7 +41,7 @@ const VersionMismatchModal = ({
           <AlertDialogTitle>
             {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
           </AlertDialogTitle>
-          <AlertDialogDescription render={<div />} className="flex flex-col">
+          <AlertDialogDescription render={<div />}>
             <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
             <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
             <br />
@@ -56,7 +56,7 @@ const VersionMismatchModal = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancelButton variant="secondary">
+          <AlertDialogCancelButton>
             {t(($) => $['newApp.Cancel'], { ns: 'app' })}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton onClick={onConfirm}>

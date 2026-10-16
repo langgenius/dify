@@ -41,7 +41,7 @@ const PipelineExportConfirmContent = ({
 
   return (
     <AlertDialogContent className="max-w-120">
-      <AlertDialogHeader className="pb-6">
+      <AlertDialogHeader>
         <AlertDialogTitle>{t(($) => $['env.export.title'], { ns: 'workflow' })}</AlertDialogTitle>
       </AlertDialogHeader>
       <div className="px-6">

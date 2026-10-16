@@ -106,7 +106,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton variant="secondary">
+            <AlertDialogCancelButton>
               {t(($) => $['stepTwo.cancel'], { ns: 'datasetCreation' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton tone="default" onClick={onQAConfirmDialogConfirm}>

@@ -251,7 +251,7 @@ const SnippetCard = ({
       )}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="w-100">
-          <AlertDialogHeader className="pb-0">
+          <AlertDialogHeader>
             <AlertDialogTitle>{t(($) => $.deleteConfirmTitle)}</AlertDialogTitle>
             <AlertDialogDescription>{t(($) => $.deleteConfirmContent)}</AlertDialogDescription>
           </AlertDialogHeader>

@@ -538,10 +538,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     )}
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancelButton
-                      variant="secondary"
-                      disabled={deleteArchiveMutation.isPending}
-                    >
+                    <AlertDialogCancelButton disabled={deleteArchiveMutation.isPending}>
                       {t(($) => $['operation.cancel'], { ns: 'common' })}
                     </AlertDialogCancelButton>
                     <AlertDialogConfirmButton

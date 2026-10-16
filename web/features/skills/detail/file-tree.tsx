@@ -1569,7 +1569,7 @@ export function FileTree({
             onOpenChange={(open) => !open && setDeleteNode(undefined)}
           >
             <AlertDialogContent>
-              <AlertDialogHeader className="pb-0">
+              <AlertDialogHeader>
                 <AlertDialogTitle>
                   {t(($) => $['skillManagement.detail.deleteFileConfirm'])}
                 </AlertDialogTitle>
@@ -1579,11 +1579,7 @@ export function FileTree({
                 <AlertDialogCancelButton disabled={fileMutation.isPending}>
                   {tCommon(($) => $['operation.cancel'])}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  tone="destructive"
-                  loading={fileMutation.isPending}
-                  onClick={handleDelete}
-                >
+                <AlertDialogConfirmButton loading={fileMutation.isPending} onClick={handleDelete}>
                   {tCommon(($) => $['operation.delete'])}
                 </AlertDialogConfirmButton>
               </AlertDialogFooter>

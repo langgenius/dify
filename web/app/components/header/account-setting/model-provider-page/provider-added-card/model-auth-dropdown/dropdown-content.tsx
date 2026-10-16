@@ -120,7 +120,7 @@ function DropdownContent({
         }}
       >
         <AlertDialogContent>
-          <AlertDialogHeader className="pb-1">
+          <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>

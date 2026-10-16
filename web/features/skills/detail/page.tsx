@@ -359,7 +359,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
         />
         <AlertDialog open={!!saveConflictConfirm}>
           <AlertDialogContent>
-            <AlertDialogHeader className="pb-0">
+            <AlertDialogHeader>
               <AlertDialogTitle>
                 {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
               </AlertDialogTitle>

@@ -211,14 +211,10 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancelButton tone="default">
+                <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  variant="primary"
-                  tone="default"
-                  onClick={onConfirmUseGPT4}
-                >
+                <AlertDialogConfirmButton tone="default" onClick={onConfirmUseGPT4}>
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogFooter>

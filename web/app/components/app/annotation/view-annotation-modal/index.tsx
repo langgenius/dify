@@ -291,7 +291,6 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
-                            tone="destructive"
                             onClick={async () => {
                               await onRemove()
                               removeActionsRef.current?.close()

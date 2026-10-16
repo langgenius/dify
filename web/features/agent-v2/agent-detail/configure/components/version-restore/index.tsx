@@ -142,7 +142,7 @@ export function AgentVersionRestore({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton variant="secondary" disabled={mutation.isPending}>
+            <AlertDialogCancelButton disabled={mutation.isPending}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton

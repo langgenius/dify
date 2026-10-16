@@ -428,7 +428,7 @@ function VersionRow({
         }}
       >
         <AlertDialogContent>
-          <AlertDialogHeader className="pb-0">
+          <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
             </AlertDialogTitle>
@@ -438,11 +438,7 @@ function VersionRow({
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              tone="destructive"
-              loading={deleteMutation.isPending}
-              onClick={handleDelete}
-            >
+            <AlertDialogConfirmButton loading={deleteMutation.isPending} onClick={handleDelete}>
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
