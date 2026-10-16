@@ -3,6 +3,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { BlockClassification } from '../../block-selector/types'
@@ -101,7 +102,7 @@ async function renderDropdownContent({
   const result = renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"
-      data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data } as any}
+      data={{ type: BlockEnum.Code, title: 'Code Node', desc: '', ...data }}
       onOpenChange={(open) => !open && onClose()}
       showHelpLink={showHelpLink}
     />,
@@ -150,32 +151,42 @@ describe('node actions menu details', () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false } as ReturnType<
       typeof useNodesReadOnly
     >)
-    mockUseHooksStore.mockImplementation((selector: any) =>
-      selector({
-        configsMap: { resourceKind: 'app' },
-        accessControl: { canRun: true },
-        availableNodesMetaData: {
-          nodes: [
-            {
-              metaData: {
-                type: BlockEnum.HttpRequest,
-                title: 'HTTP Request',
-                classification: BlockClassification.Default,
-                sort: 0,
-                author: 'Dify',
-                description: 'Send a request',
+    mockUseHooksStore.mockImplementation((selector) =>
+      selector(
+        createHooksStore({
+          accessControl: {
+            canEdit: true,
+            canRun: true,
+            canImportExportDSL: true,
+            canReleaseAndVersion: true,
+          },
+          availableNodesMetaData: {
+            nodes: [
+              {
+                metaData: {
+                  type: BlockEnum.HttpRequest,
+                  title: 'HTTP Request',
+                  classification: BlockClassification.Default,
+                  sort: 0,
+                  author: 'Dify',
+                  description: 'Send a request',
+                },
+                defaultValue: {},
+                checkValid: () => ({ isValid: true }),
               },
-              defaultValue: {},
-              checkValid: () => ({ isValid: true }),
-            },
-          ],
-        },
-      }),
+            ],
+          },
+        }).getState(),
+      ),
     )
     mockUseNodes.mockReturnValue([
-      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
-    ] as any)
-    mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
+      {
+        id: 'start',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+      },
+    ])
+    mockUseAllWorkflowTools.mockReturnValue({ data: [] })
   })
 
   it('keeps the menu after Escape and closes both surfaces after changing a node', async () => {
@@ -290,20 +301,18 @@ describe('node actions menu details', () => {
   it('should render workflow-tool and readonly variants', async () => {
     mockUseAllWorkflowTools.mockReturnValueOnce({
       data: [{ id: 'workflow-tool', workflow_app_id: 'app-123' }],
-    } as any)
+    })
 
     const { rerender } = renderWorkflowFlowComponent(
       <NodeActionsDropdown
         id="node-2"
-        data={
-          {
-            type: BlockEnum.Tool,
-            title: 'Workflow Tool',
-            desc: '',
-            provider_type: 'workflow',
-            provider_id: 'workflow-tool',
-          } as any
-        }
+        data={{
+          type: BlockEnum.Tool,
+          title: 'Workflow Tool',
+          desc: '',
+          provider_type: 'workflow',
+          provider_id: 'workflow-tool',
+        }}
         showHelpLink={false}
       />,
       {
@@ -332,7 +341,7 @@ describe('node actions menu details', () => {
     rerender(
       <NodeActionsDropdown
         id="node-3"
-        data={{ type: BlockEnum.End, title: 'Read only node', desc: '' } as any}
+        data={{ type: BlockEnum.End, title: 'Read only node', desc: '' }}
         showHelpLink={false}
       />,
     )

@@ -1,6 +1,16 @@
 import { act, renderHook } from '@testing-library/react'
 import { useAsyncWindowOpen } from './use-async-window-open'
 
+const createMockWindow = (opener: string | null, close = vi.fn()) => {
+  const iframe = document.createElement('iframe')
+  document.body.appendChild(iframe)
+  const popup = iframe.contentWindow!
+  Object.defineProperty(popup, 'opener', { value: opener, writable: true, configurable: true })
+  vi.spyOn(popup, 'close').mockImplementation(close)
+  Object.defineProperty(popup, 'location', { value: { href: '' }, configurable: true })
+  return popup
+}
+
 describe('useAsyncWindowOpen', () => {
   const originalOpen = window.open
 
@@ -8,12 +18,16 @@ describe('useAsyncWindowOpen', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    document.querySelectorAll('iframe').forEach((iframe) => iframe.remove())
+  })
+
   afterAll(() => {
     window.open = originalOpen
   })
 
   it('opens immediate url synchronously, clears opener, without calling async getter', async () => {
-    const mockWindow: any = { opener: 'should-clear' }
+    const mockWindow = createMockWindow('should-clear')
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const getUrl = vi.fn()
@@ -33,7 +47,7 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('appends noopener,noreferrer when immediate open passes custom features', async () => {
-    const mockWindow: any = { opener: 'should-clear' }
+    const mockWindow = createMockWindow('should-clear')
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const getUrl = vi.fn()
@@ -79,11 +93,7 @@ describe('useAsyncWindowOpen', () => {
 
   it('sets opener to null and redirects when async url resolves', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: 'should-be-cleared',
-    }
+    const mockWindow = createMockWindow('should-be-cleared', close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const { result } = renderHook(() => useAsyncWindowOpen())
@@ -100,11 +110,7 @@ describe('useAsyncWindowOpen', () => {
 
   it('closes placeholder and forwards error when async getter throws', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: null,
-    }
+    const mockWindow = createMockWindow(null, close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const onError = vi.fn()
@@ -127,11 +133,7 @@ describe('useAsyncWindowOpen', () => {
 
   it('preserves custom features as-is for async open', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: 'should-be-cleared',
-    }
+    const mockWindow = createMockWindow('should-be-cleared', close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const { result } = renderHook(() => useAsyncWindowOpen())
@@ -151,11 +153,7 @@ describe('useAsyncWindowOpen', () => {
 
   it('closes placeholder and reports when no url is returned', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: null,
-    }
+    const mockWindow = createMockWindow(null, close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const onError = vi.fn()

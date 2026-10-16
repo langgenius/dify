@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { InputVar } from '@/app/components/workflow/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -10,6 +11,10 @@ import {
   seedAppDetail,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import {
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
 import ConfigModal from '../index'
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -18,9 +23,9 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-let latestFormProps: Record<string, any> | null = null
+let latestFormProps: ComponentProps<typeof import('../form-fields').default> | null = null
 vi.mock('../form-fields', () => ({
-  default: (props: Record<string, any>) => {
+  default: (props: ComponentProps<typeof import('../form-fields').default>) => {
     latestFormProps = props
     return (
       <div data-testid="config-form-fields">
@@ -29,36 +34,9 @@ vi.mock('../form-fields', () => ({
         <div data-testid="payload-label">{String(props.tempPayload.label ?? '')}</div>
         <div data-testid="payload-schema">{String(props.tempPayload.json_schema ?? '')}</div>
         <div data-testid="payload-default">{String(props.tempPayload.default ?? '')}</div>
-        <button
-          type="button"
-          data-testid="invalid-key-blur"
-          onClick={() => props.onVarKeyBlur({ target: { value: 'invalid key' } })}
-        >
-          invalid-key-blur
-        </button>
-        <button
-          type="button"
-          data-testid="valid-key-blur"
-          onClick={() => props.onVarKeyBlur({ target: { value: 'auto_label' } })}
-        >
-          valid-key-blur
-        </button>
-        <button
-          type="button"
-          data-testid="invalid-name-change"
-          onClick={() =>
-            props.onVarNameChange({
-              target: {
-                value: 'invalid-key!',
-                selectionStart: 0,
-                selectionEnd: 0,
-                setSelectionRange: vi.fn(),
-              },
-            })
-          }
-        >
-          invalid-name-change
-        </button>
+        <input data-testid="invalid-key-blur" onBlur={props.onVarKeyBlur} />
+        <input data-testid="valid-key-blur" onBlur={props.onVarKeyBlur} />
+        <input data-testid="invalid-name-change" onChange={props.onVarNameChange} />
         <button
           type="button"
           data-testid="valid-json-change"
@@ -83,16 +61,23 @@ vi.mock('../form-fields', () => ({
         <button
           type="button"
           data-testid="type-change"
-          onClick={() => props.onTypeChange({ value: InputVarType.singleFile })}
+          onClick={() => props.onTypeChange({ value: InputVarType.singleFile, name: 'File' })}
         >
           type-change
         </button>
         <button
           type="button"
           data-testid="file-payload-change"
-          onClick={() =>
-            props.onFilePayloadChange({ ...props.tempPayload, default: 'file-default' })
-          }
+          onClick={() => {
+            const payload = {
+              ...props.tempPayload,
+              default: 'file-default',
+              max_length: props.tempPayload.max_length ?? 1,
+              allowed_file_types: props.tempPayload.allowed_file_types ?? [],
+              allowed_file_upload_methods: props.tempPayload.allowed_file_upload_methods ?? [],
+            }
+            props.onFilePayloadChange(payload)
+          }}
         >
           file-payload-change
         </button>
@@ -118,13 +103,11 @@ const renderConfigModal = (payload: InputVar = createPayload()) => {
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' as const }))
   return renderWithConsoleQuery(
     <DebugConfigurationContext.Provider
-      value={
-        {
-          mode: 'chat' as const,
-          dataSets: [],
-          modelConfig: { model_id: 'model-1' },
-        } as any
-      }
+      value={createDebugConfigurationFixture({
+        mode: 'chat' as const,
+        dataSets: [],
+        modelConfig: createModelConfigFixture({ model_id: 'model-1' }),
+      })}
     >
       <ConfigModal isCreate isShow payload={payload} onClose={vi.fn()} onConfirm={vi.fn()} />
     </DebugConfigurationContext.Provider>,
@@ -141,8 +124,10 @@ describe('ConfigModal logic', () => {
   it('should surface validation errors from invalid variable name callbacks', async () => {
     renderConfigModal()
 
-    fireEvent.click(screen.getByTestId('invalid-key-blur'))
-    fireEvent.click(screen.getByTestId('invalid-name-change'))
+    fireEvent.blur(screen.getByTestId('invalid-key-blur'), { target: { value: 'invalid key' } })
+    fireEvent.change(screen.getByTestId('invalid-name-change'), {
+      target: { value: 'invalid-key!', selectionStart: 0, selectionEnd: 0 },
+    })
 
     await waitFor(() => {
       expect(toastErrorSpy).toHaveBeenCalledTimes(2)
@@ -152,7 +137,7 @@ describe('ConfigModal logic', () => {
   it('should keep the existing label when blur runs on a payload that already has one', async () => {
     renderConfigModal(createPayload({ label: 'Existing label' }))
 
-    fireEvent.click(screen.getByTestId('valid-key-blur'))
+    fireEvent.blur(screen.getByTestId('valid-key-blur'), { target: { value: 'auto_label' } })
 
     await waitFor(() => {
       expect(screen.getByTestId('payload-label')).toHaveTextContent('Existing label')
@@ -162,7 +147,7 @@ describe('ConfigModal logic', () => {
   it('should derive payload fields from mocked form-field callbacks', async () => {
     renderConfigModal(createPayload({ hide: true }))
 
-    fireEvent.click(screen.getByTestId('valid-key-blur'))
+    fireEvent.blur(screen.getByTestId('valid-key-blur'), { target: { value: 'auto_label' } })
     await waitFor(() => {
       expect(screen.getByTestId('payload-label')).toHaveTextContent('auto_label')
     })

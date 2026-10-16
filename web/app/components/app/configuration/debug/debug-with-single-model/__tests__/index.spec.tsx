@@ -83,7 +83,7 @@ function createMockCollections(collections: Partial<Collection>[] = []): Collect
 
 // Mock service layer (API calls)
 const { mockSsePost, mockToastError } = vi.hoisted(() => ({
-  mockSsePost: vi.fn<(...args: any[]) => Promise<void>>(() => Promise.resolve()),
+  mockSsePost: vi.fn<typeof import('@/service/base').ssePost>(() => Promise.resolve()),
   mockToastError: vi.fn(),
 }))
 
@@ -725,8 +725,8 @@ describe('DebugWithSingleModel', () => {
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.model_config.opening_statement).toBe('Hello!')
-      expect(body.model_config.suggested_questions).toEqual(['Q1'])
+      expect(body).toHaveProperty('model_config.opening_statement', 'Hello!')
+      expect(body).toHaveProperty('model_config.suggested_questions', ['Q1'])
     })
 
     it('should omit opening statement when feature is disabled', async () => {
@@ -750,8 +750,8 @@ describe('DebugWithSingleModel', () => {
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.model_config.opening_statement).toBe('')
-      expect(body.model_config.suggested_questions).toEqual([])
+      expect(body).toHaveProperty('model_config.opening_statement', '')
+      expect(body).toHaveProperty('model_config.suggested_questions', [])
     })
 
     it('should handle model without vision support', () => {
@@ -883,7 +883,7 @@ describe('DebugWithSingleModel', () => {
     it('should handle empty inputs', () => {
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
-        inputs: {} as any,
+        inputs: {},
       })
 
       render(
@@ -914,7 +914,7 @@ describe('DebugWithSingleModel', () => {
     it('should handle null completion params', () => {
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
-        completionParams: {} as any,
+        completionParams: {},
       })
 
       render(
@@ -974,7 +974,7 @@ describe('DebugWithSingleModel', () => {
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.files).toEqual([
+      expect(body).toHaveProperty('files', [
         {
           type: SupportUploadFileTypes.document,
           transfer_method: TransferMethod.local_file,
@@ -1008,7 +1008,7 @@ describe('DebugWithSingleModel', () => {
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.files).toHaveLength(1)
+      expect(body).toHaveProperty('files.length', 1)
     })
   })
 })

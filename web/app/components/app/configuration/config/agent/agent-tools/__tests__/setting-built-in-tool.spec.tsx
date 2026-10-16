@@ -15,10 +15,10 @@ vi.mock('@/service/tools', () => ({
 }))
 
 type MockFormProps = {
-  value: Record<string, any>
-  onChange: (val: Record<string, any>) => void
+  value: Record<string, unknown>
+  onChange: (val: Record<string, unknown>) => void
 }
-let nextFormValue: Record<string, any> = {}
+let nextFormValue: Record<string, unknown> = {}
 const FormMock = ({ value, onChange }: MockFormProps) => {
   return (
     <div data-testid="mock-form">
@@ -129,7 +129,7 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuil
   const onAuthorizationItemClick = vi.fn()
   const utils = render(
     <SettingBuiltInTool
-      collection={baseCollection as any}
+      collection={baseCollection}
       toolName="search"
       setting={{ settingParam: 'value' }}
       onHide={onHide}
@@ -282,7 +282,7 @@ describe('SettingBuiltInTool', () => {
         type: CollectionType.workflow,
         tools: [],
         id: 'workflow-1',
-      } as any,
+      },
       isBuiltIn: false,
     })
 
