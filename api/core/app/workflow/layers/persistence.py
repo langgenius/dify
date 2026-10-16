@@ -10,7 +10,8 @@ state.
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from contextlib import nullcontext
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Union, override
 
@@ -50,6 +51,7 @@ from graphon.graph_events import (
 )
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
+from services.dify_builder.native_testing.observation_adapters import NativeObservationError, NativeObservationGuard
 from services.workflow.inspector_events import (
     publish_node_changed as _inspector_publish_node_changed,
 )
@@ -81,7 +83,14 @@ class _NodeRuntimeSnapshot:
 
 
 class WorkflowPersistenceLayer(GraphEngineLayer):
-    """GraphEngine layer that persists workflow and node execution state."""
+    """Persist native state, or independent redacted diagnostics when explicitly bound.
+
+    The optional guard is supplied only by trusted server composition. A failed
+    marked observer notifies that owner; Graphon swallowing its safe exception
+    is never persistence acknowledgment. Ordinary None behavior is unchanged.
+    """
+
+    _native_observation: NativeObservationGuard | None = None
 
     def __init__(
         self,
@@ -91,8 +100,17 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         trace_manager: TraceQueueManager | None = None,
+        native_observation: NativeObservationGuard | None = None,
     ) -> None:
         super().__init__()
+        if native_observation is not None and type(native_observation) is not NativeObservationGuard:
+            raise NativeObservationError() from None
+        self._native_observation = native_observation
+        if native_observation is not None:
+            with native_observation.persistence_scope():
+                if trace_manager is not None or application_generate_entity.trace_manager is not None:
+                    native_observation.fail()
+                workflow_info = replace(workflow_info, graph_data=native_observation.graph(workflow_info.graph_data))
         self._application_generate_entity = application_generate_entity
         self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
@@ -109,13 +127,32 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # ------------------------------------------------------------------
     @override
     def on_graph_start(self) -> None:
-        self._workflow_execution = None
-        self._node_execution_cache.clear()
-        self._node_snapshots.clear()
-        self._node_sequence = 0
+        guard = self._native_observation
+        with guard.persistence_scope() if guard is not None else nullcontext():
+            self._workflow_execution = None
+            self._node_execution_cache.clear()
+            self._node_snapshots.clear()
+            self._node_sequence = 0
 
     @override
     def on_event(self, event: GraphEngineEvent) -> None:
+        guard = self._native_observation
+        if guard is None:
+            self._persist_event(event)
+            return
+        with guard.persistence_scope():
+            observed = guard.persistence_event(event)
+            # Projection markers are truthy. Preserve the original empty-output
+            # fallback choice while projecting the real runtime value first.
+            if (
+                isinstance(event, (GraphRunSucceededEvent, GraphRunPartialSucceededEvent, GraphRunPausedEvent))
+                and not event.outputs
+            ):
+                if isinstance(observed, (GraphRunSucceededEvent, GraphRunPartialSucceededEvent, GraphRunPausedEvent)):
+                    observed.outputs = guard.values(self.graph_runtime_state.outputs)
+            self._persist_event(observed)
+
+    def _persist_event(self, event: GraphEngineEvent) -> None:
         match event:
             case GraphRunStartedEvent():
                 self._handle_graph_run_started(event)
@@ -144,7 +181,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:
-        return
+        if self._native_observation is not None:
+            self._native_observation.require_healthy()
 
     # ------------------------------------------------------------------
     # Graph-level handlers
@@ -334,12 +372,18 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # Helpers
     # ------------------------------------------------------------------
     def _get_execution_id(self) -> str:
+        if self._native_observation is not None:
+            return self._native_observation.workflow_execution_id(self._system_variables())
         workflow_execution_id = self._system_variables().get(SystemVariableKey.WORKFLOW_EXECUTION_ID)
         if not workflow_execution_id:
             raise ValueError("workflow_execution_id must be provided in system variables for pause/resume flows")
         return str(workflow_execution_id)
 
     def _prepare_workflow_inputs(self) -> Mapping[str, Any]:
+        if self._native_observation is not None:
+            return self._native_observation.workflow_inputs(
+                inputs=self._application_generate_entity.inputs, system_variables=self._system_variables()
+            )
         inputs = {**self._application_generate_entity.inputs}
         for field_name, value in self._system_variables().items():
             if field_name == SystemVariableKey.CONVERSATION_ID.value:
@@ -418,7 +462,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         runtime_state = self.graph_runtime_state
         execution.total_tokens = runtime_state.total_tokens
         execution.total_steps = runtime_state.node_run_steps
-        execution.outputs = execution.outputs or runtime_state.outputs
+        if self._native_observation is not None:
+            execution.outputs = execution.outputs or self._native_observation.values(runtime_state.outputs)
+        else:
+            execution.outputs = execution.outputs or runtime_state.outputs
         execution.exceptions_count = max(execution.exceptions_count, runtime_state.exceptions_count)
 
     def _update_node_execution(
@@ -474,6 +521,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 self._workflow_node_execution_repository.save(execution)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
+        if self._native_observation is not None:
+            if self._trace_manager is not None or self._application_generate_entity.trace_manager is not None:
+                self._native_observation.fail()
+            return
         if not self._trace_manager:
             return
 
