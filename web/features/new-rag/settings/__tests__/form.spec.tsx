@@ -2130,8 +2130,11 @@ describe('KnowledgeSettingsPage workflows', () => {
       },
       expect.anything(),
     )
-    expect(topK).toHaveValue('8')
-    expect(topK).toBeEnabled()
+    // The success toast fires when the save resolves; the form settles on the saved draft in a later render.
+    await waitFor(() => {
+      expect(topK).toHaveValue('8')
+      expect(topK).toBeEnabled()
+    })
     expect(
       screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }),
     ).toBeDisabled()
