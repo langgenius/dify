@@ -5,8 +5,10 @@ Graphon control and every effect adapter qualify; an absent driver never falls
 back to an ordinary generator or synthesizes a successful Run.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable, Generator, Iterator, Mapping
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -18,6 +20,9 @@ from services.dify_builder.native_testing.runtime_contracts import (
     NativeWorkflowOutcome,
     ResolvedNativeTestContext,
 )
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 
 
 class NativeWorkflowOwner(Protocol):
@@ -111,13 +116,30 @@ class DifyNativeWorkflowOwner:
     """
 
     def __init__(
-        self, *, session_factory: sessionmaker[Session], runtime: NativeRuntimeBridge, stream_owner: NativeStreamOwner
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        runtime: NativeRuntimeBridge,
+        stream_owner: NativeStreamOwner,
+        native_host: NativeHostLaunch,
     ):
+        from services.dify_builder.native_testing.host_execution import NativeHostLaunch
+
         if runtime is None or stream_owner is None:
             raise NativeContextUnavailable("native_runtime_unavailable")
+        if type(native_host) is not NativeHostLaunch:
+            raise NativeContextUnavailable("native_host_unavailable")
         self._sessions = session_factory
         self._runtime = runtime
         self._stream_owner = stream_owner
+        self._native_host = native_host
+
+    def _validate_host(self, context: ResolvedNativeTestContext) -> None:
+        from services.dify_builder.native_testing.generation_wiring import validate_native_host
+
+        validate_native_host(required=True, ref=context.ref, runtime=self._runtime, host=self._native_host)
+        if context != self._native_host.lifetime.context:
+            raise NativeContextUnavailable("native_context_mismatch")
 
     def run(
         self, *, context: ResolvedNativeTestContext, on_event: Callable[[Mapping[str, JsonValue]], None]
@@ -130,6 +152,7 @@ class DifyNativeWorkflowOwner:
         from services.app_generate_service import AppGenerateService
         from services.dify_builder.native_testing.repository import native_workflow_revision
 
+        self._validate_host(context)
         current = self._runtime.resolve(context.ref)
         if current != context:
             raise NativeContextUnavailable("native_context_mismatch")
@@ -154,6 +177,7 @@ class DifyNativeWorkflowOwner:
             user=account,
             ref=current.ref,
             runtime=self._runtime,
+            native_host=self._native_host,
         )
         try:
             return self._stream_owner.consume(context=current, stream=stream, on_event=on_event)
@@ -161,6 +185,7 @@ class DifyNativeWorkflowOwner:
             stream.close()
 
     def resume(self, *, context: ResolvedNativeTestContext, generation: int) -> NativeWorkflowOutcome:
+        self._validate_host(context)
         return self._stream_owner.resume(context=context, generation=generation)
 
 
