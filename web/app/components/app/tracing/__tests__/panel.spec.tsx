@@ -785,7 +785,11 @@ describe('Tracing overview panel', () => {
     const user = await openConfiguredPanel()
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.remove',
+      }),
+    )
     await waitFor(() => expect(writes).toEqual([{ method: 'DELETE', body: null }]))
     expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
     await waitFor(() =>
@@ -856,7 +860,7 @@ describe('Tracing overview panel', () => {
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     const confirmation = screen.getByRole('alertdialog')
-    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.remove' }))
 
     await waitFor(() =>
       expect(
