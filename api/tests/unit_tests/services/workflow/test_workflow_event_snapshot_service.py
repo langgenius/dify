@@ -1440,6 +1440,7 @@ def _build_paused_snapshot_events(
         pause_entity=pause_entity,
         resumption_context=_build_resumption_context("task-ctx"),
         session_maker=session_maker,
+        node_executions={},
     )
 
 
