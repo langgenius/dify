@@ -61,6 +61,21 @@ class TestToolTransformService:
         assert original_param is not None
         assert original_param.label.en_US == "Base Param 2"  # Should be base version
 
+    def test_convert_tool_preserves_reset_on_change_from_declaration(self):
+        """Runtime parameter overrides must retain declaration-only reset dependencies."""
+        base_parameter = _parameter("dependent", "Base Dependent")
+        base_parameter.reset_on_change = ["source"]
+        runtime_parameter = _parameter("dependent", "Runtime Dependent")
+
+        tool = make_runtime_tool(base_params=[base_parameter], runtime_params=[runtime_parameter])
+
+        result = ToolTransformService.convert_tool_entity_to_api_entity(tool, "test_tenant", None)
+
+        assert result.parameters is not None
+        assert result.parameters[0].label.en_US == "Runtime Dependent"
+        assert result.parameters[0].reset_on_change == ["source"]
+        assert runtime_parameter.reset_on_change == []
+
     def test_convert_tool_with_additional_runtime_parameters(self):
         """Test that additional runtime parameters are added to the final list"""
         base_param1 = _parameter("param1", "Base Param 1")
