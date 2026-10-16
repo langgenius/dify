@@ -6,10 +6,11 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common import workflow_response_converter
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.workflow.nodes.human_input.entities import (
@@ -27,6 +28,7 @@ from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.model import AppMode
 from models.workflow import Workflow, WorkflowType
 
 
@@ -158,12 +160,18 @@ def test_graph_run_paused_event_emits_queue_pause_event(monkeypatch: pytest.Monk
     assert queue_event.paused_nodes == ["node-human"]
 
 
-def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
-    application_generate_entity = SimpleNamespace(
+def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API) -> WorkflowResponseConverter:
+    application_generate_entity = WorkflowAppGenerateEntity(
+        task_id="task",
+        workflow_execution_id="run-id",
+        user_id="user",
+        stream=True,
         inputs={},
         files=[],
         invoke_from=invoke_from,
-        app_config=SimpleNamespace(app_id="app-id", tenant_id="tenant-id"),
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-id", tenant_id="tenant-id", workflow_id="workflow-id", app_mode=AppMode.WORKFLOW
+        ),
     )
     system_variables = build_system_variables(
         user_id="user",
