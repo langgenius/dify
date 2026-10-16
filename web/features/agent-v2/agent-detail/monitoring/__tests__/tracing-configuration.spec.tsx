@@ -397,7 +397,7 @@ describe('Agent tracing configuration', () => {
     expect(state.config?.secret_key).toBe('[__MASKED__]')
   })
 
-  it('refreshes a concurrently deleted provider without losing the draft or conflict error', async () => {
+  it('preserves the draft after concurrent deletion and clears the conflict when retrying creation', async () => {
     const { state } = setup()
     const user = await openPanel()
     await openProvider(user)
@@ -428,6 +428,29 @@ describe('Agent tracing configuration', () => {
     expect(
       screen.getByRole('switch', { name: 'app.tracing.tracing', hidden: true }),
     ).not.toBeChecked()
+
+    let finishRetry!: () => void
+    const retry = new Promise<void>((resolve) => {
+      finishRetry = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      if (args[2].request.method === 'POST') await retry
+      return server(...args)
+    })
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+      'secret',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(host).toHaveValue('https://draft.langfuse.com')
+    await act(async () => finishRetry())
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: /app.tracing.configProvider.title/ }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
   })
 
   it('preserves tracing after failed deletion and retries deletion without a policy request', async () => {
