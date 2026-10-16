@@ -71,12 +71,14 @@ export default function ConnectionsDemo() {
     serviceId: string,
     method: RequiredConnectionService['methods'][number],
   ) => {
-    const connection = {
+    const connection: RequiredConnectionService['availableConnections'][number] = {
       id: `${serviceId}-${method}-demo`,
       name:
         method === 'api-key'
           ? 'Demo API Key'
           : (demoAccountNames[serviceId] ?? 'Demo OAuth account'),
+      method,
+      status: 'active',
     }
     setServices((currentServices) =>
       currentServices.map((service) => {
@@ -86,7 +88,9 @@ export default function ConnectionsDemo() {
           availableConnections: service.availableConnections.some(
             (item) => item.id === connection.id,
           )
-            ? service.availableConnections
+            ? service.availableConnections.map((item) =>
+                item.id === connection.id ? connection : item,
+              )
             : [...service.availableConnections, connection],
           selectedConnectionId: connection.id,
         }
@@ -102,6 +106,43 @@ export default function ConnectionsDemo() {
     )
   }
 
+  const handleReconnect = (serviceId: string, connectionId: string) => {
+    setServices((currentServices) =>
+      currentServices.map((service) =>
+        service.id === serviceId
+          ? {
+              ...service,
+              availableConnections: service.availableConnections.map((connection) =>
+                connection.id === connectionId
+                  ? { ...connection, status: 'active' as const }
+                  : connection,
+              ),
+              selectedConnectionId: connectionId,
+            }
+          : service,
+      ),
+    )
+  }
+
+  const handleRemove = (serviceId: string, connectionId: string) => {
+    setServices((currentServices) =>
+      currentServices.map((service) => {
+        if (service.id !== serviceId) return service
+        const availableConnections = service.availableConnections.filter(
+          (connection) => connection.id !== connectionId,
+        )
+        return {
+          ...service,
+          availableConnections,
+          selectedConnectionId:
+            service.selectedConnectionId === connectionId
+              ? availableConnections.find((connection) => connection.status !== 'expired')?.id
+              : service.selectedConnectionId,
+        }
+      }),
+    )
+  }
+
   return (
     <main className="min-h-dvh bg-background-body p-6 sm:p-8">
       <div className="flex w-150 max-w-full flex-col gap-6">
@@ -111,6 +152,8 @@ export default function ConnectionsDemo() {
           services={services}
           onConnect={handleConnect}
           onConnectionChange={handleConnectionChange}
+          onReconnect={handleReconnect}
+          onRemove={handleRemove}
         />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />
         <ConfigureConnectionsDemo />

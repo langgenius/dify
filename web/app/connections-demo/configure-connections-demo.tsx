@@ -14,8 +14,9 @@ const initialServices: readonly RequiredConnectionService[] = [
     description: 'Send follow-up emails',
     iconClassName: 'i-custom-public-common-gmail',
     availableConnections: [
-      { id: 'gmail-evan', name: 'evan@dify.ai', method: 'oauth' },
-      { id: 'gmail-alex', name: 'alex@dify.ai', method: 'oauth' },
+      { id: 'gmail-evan', name: 'evan@dify.ai', method: 'oauth', status: 'expired' },
+      { id: 'gmail-alex', name: 'alex@example.com', method: 'oauth', status: 'expired' },
+      { id: 'gmail-sam', name: 'sam@dify.ai', method: 'oauth', status: 'active' },
     ],
     selectedConnectionId: 'gmail-evan',
     methods: ['oauth'],
@@ -62,10 +63,11 @@ export default function ConfigureConnectionsDemo() {
   const [services, setServices] = useState(initialServices)
 
   const handleConnect = (serviceId: string, method: ConnectionMethod) => {
-    const connection = {
+    const connection: RequiredConnectionService['availableConnections'][number] = {
       id: `${serviceId}-${method}-demo`,
       name: method === 'api-key' ? 'Demo API Key' : 'demo@dify.ai',
       method,
+      status: 'active',
     }
     setServices((currentServices) =>
       currentServices.map((service) => {
@@ -75,7 +77,9 @@ export default function ConfigureConnectionsDemo() {
           availableConnections: service.availableConnections.some(
             (item) => item.id === connection.id,
           )
-            ? service.availableConnections
+            ? service.availableConnections.map((item) =>
+                item.id === connection.id ? connection : item,
+              )
             : [...service.availableConnections, connection],
           selectedConnectionId: connection.id,
         }
@@ -91,12 +95,49 @@ export default function ConfigureConnectionsDemo() {
     )
   }
 
+  const handleReconnect = (serviceId: string, connectionId: string) => {
+    setServices((currentServices) =>
+      currentServices.map((service) => {
+        if (service.id !== serviceId) return service
+        return {
+          ...service,
+          availableConnections: service.availableConnections.map((connection) =>
+            connection.id === connectionId
+              ? { ...connection, status: 'active' as const }
+              : connection,
+          ),
+          selectedConnectionId: connectionId,
+        }
+      }),
+    )
+  }
+
+  const handleRemove = (serviceId: string, connectionId: string) => {
+    setServices((currentServices) =>
+      currentServices.map((service) => {
+        if (service.id !== serviceId) return service
+        const availableConnections = service.availableConnections.filter(
+          (connection) => connection.id !== connectionId,
+        )
+        return {
+          ...service,
+          availableConnections,
+          selectedConnectionId:
+            service.selectedConnectionId === connectionId
+              ? availableConnections.find((connection) => connection.status !== 'expired')?.id
+              : service.selectedConnectionId,
+        }
+      }),
+    )
+  }
+
   return (
     <ConfigureConnections
       services={services}
       onConnect={handleConnect}
       onConnectionChange={handleConnectionChange}
-      isResponding
+      onReconnect={handleReconnect}
+      onRemove={handleRemove}
       className="self-start"
     />
   )

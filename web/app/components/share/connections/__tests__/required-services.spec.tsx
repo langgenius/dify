@@ -109,10 +109,10 @@ describe('RequiredServices', () => {
       />,
     )
 
-    const select = screen.getByRole('combobox', { name: 'Gmail' })
+    const select = screen.getByRole('button', { name: 'Gmail' })
     expect(select).toHaveTextContent('alex@example.com')
     await user.click(select)
-    await user.click(await screen.findByRole('option', { name: 'alex@work.example' }))
+    await user.click(await screen.findByRole('button', { name: 'alex@work.example' }))
 
     expect(onConnectionChange).toHaveBeenCalledExactlyOnceWith('gmail', 'gmail-work')
     expect(onConnect).not.toHaveBeenCalled()
@@ -125,6 +125,6 @@ describe('RequiredServices', () => {
         onConnectionChange={onConnectionChange}
       />,
     )
-    expect(screen.getByRole('combobox', { name: 'Gmail' })).toHaveTextContent('alex@work.example')
+    expect(screen.getByRole('button', { name: 'Gmail' })).toHaveTextContent('alex@work.example')
   })
 })

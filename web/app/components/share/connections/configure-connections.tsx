@@ -22,6 +22,8 @@ export default function ConfigureConnections({
   services,
   onConnect,
   onConnectionChange,
+  onReconnect,
+  onRemove,
   isResponding = false,
   className,
 }: Props) {
@@ -61,6 +63,8 @@ export default function ConfigureConnections({
             onConnect={onConnect}
             onConnectionChange={onConnectionChange}
             disabled={isResponding}
+            onReconnect={onReconnect}
+            onRemove={onRemove}
           />
         </div>
       </DialogContent>

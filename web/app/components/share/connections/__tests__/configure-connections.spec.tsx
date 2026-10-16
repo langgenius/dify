@@ -43,7 +43,7 @@ describe('ConfigureConnections', () => {
     await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
     const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
     expect(dialog).toHaveAccessibleDescription('share.connections.configure.runningDescription')
-    const select = within(dialog).getByRole('combobox', { name: 'Gmail' })
+    const select = within(dialog).getByRole('button', { name: 'Gmail' })
     const notion = within(dialog).getByRole('listitem', { name: 'Notion' })
     const connect = within(notion).getByRole('button', { name: 'share.connections.setup.connect' })
     const addApiKey = within(notion).getByRole('button', {
@@ -55,7 +55,11 @@ describe('ConfigureConnections', () => {
     await user.click(select)
     await user.click(connect)
     await user.click(addApiKey)
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'share.connections.accounts.title:{"provider":"Gmail"}',
+      }),
+    ).not.toBeInTheDocument()
     expect(onConnect).not.toHaveBeenCalled()
     expect(onConnectionChange).not.toHaveBeenCalled()
 
@@ -105,10 +109,10 @@ describe('ConfigureConnections', () => {
     expect(
       within(dialog).queryByText('share.connections.configure.runningDescription'),
     ).not.toBeInTheDocument()
-    const select = within(dialog).getByRole('combobox', { name: 'Gmail' })
+    const select = within(dialog).getByRole('button', { name: 'Gmail' })
     expect(select).toHaveTextContent('alex@example.com')
     await user.click(select)
-    await user.click(await screen.findByRole('option', { name: /Personal key/ }))
+    await user.click(await screen.findByRole('button', { name: /Personal key/ }))
     expect(onConnectionChange).toHaveBeenCalledExactlyOnceWith('gmail', 'gmail-key')
     expect(select).toHaveTextContent('Personal key')
     expect(within(select).getByText('share.connections.setup.apiKey')).toBeVisible()
@@ -119,11 +123,90 @@ describe('ConfigureConnections', () => {
     const reopenedDialog = await screen.findByRole('dialog', {
       name: 'share.connections.configure.title',
     })
-    const reopenedSelect = within(reopenedDialog).getByRole('combobox', { name: 'Gmail' })
+    const reopenedSelect = within(reopenedDialog).getByRole('button', { name: 'Gmail' })
     expect(reopenedSelect).toHaveTextContent('Personal key')
     expect(within(reopenedSelect).getByText('share.connections.setup.apiKey')).toBeVisible()
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('dismisses a nested account menu and selector before closing the configuration dialog', async () => {
+    const user = userEvent.setup()
+    render(
+      <ConfigureConnections
+        services={services}
+        onConnect={vi.fn()}
+        onConnectionChange={vi.fn()}
+        onReconnect={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'share.connections.configure.title' })
+    await user.click(trigger)
+    const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
+    const accountTrigger = within(dialog).getByRole('button', { name: 'Gmail' })
+    await user.click(accountTrigger)
+    const popoverName = 'share.connections.accounts.title:{"provider":"Gmail"}'
+    const popover = await screen.findByRole('dialog', { name: popoverName })
+    const moreActions = within(popover).getByRole('button', {
+      name: 'share.connections.accounts.moreActions:{"account":"alex@example.com"}',
+    })
+    await user.click(moreActions)
+    expect(await screen.findByRole('menu')).toBeVisible()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    expect(popover).toBeVisible()
+    expect(dialog).toBeVisible()
+    await user.keyboard('{Escape}')
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: popoverName })).not.toBeInTheDocument(),
+    )
+    expect(dialog).toBeVisible()
+    await waitFor(() => expect(accountTrigger).toHaveFocus())
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
+  })
+
+  it('revokes open account management actions when a response starts', async () => {
+    const user = userEvent.setup()
+    const onConnect = vi.fn()
+    const onConnectionChange = vi.fn()
+    const onReconnect = vi.fn()
+    const onRemove = vi.fn()
+    const props = { services, onConnect, onConnectionChange, onReconnect, onRemove }
+    const { rerender } = render(<ConfigureConnections {...props} />)
+
+    await user.click(screen.getByRole('button', { name: 'share.connections.configure.title' }))
+    const dialog = await screen.findByRole('dialog', { name: 'share.connections.configure.title' })
+    const accountTrigger = within(dialog).getByRole('button', { name: 'Gmail' })
+    await user.click(accountTrigger)
+    const popover = await screen.findByRole('dialog', {
+      name: 'share.connections.accounts.title:{"provider":"Gmail"}',
+    })
+    await user.click(
+      within(popover).getByRole('button', {
+        name: 'share.connections.accounts.moreActions:{"account":"alex@example.com"}',
+      }),
+    )
+    expect(await screen.findByRole('menu')).toBeVisible()
+
+    const remove = screen.getByRole('menuitem', { name: 'share.connections.accounts.remove' })
+    rerender(<ConfigureConnections {...props} isResponding />)
+
+    expect(accountTrigger).toBeDisabled()
+    await waitFor(() => {
+      for (const action of screen.queryAllByRole('menuitem'))
+        expect(action).toHaveAttribute('aria-disabled', 'true')
+      for (const action of within(popover).queryAllByRole('button')) expect(action).toBeDisabled()
+    })
+    await user.click(remove)
+    expect(onConnect).not.toHaveBeenCalled()
+    expect(onConnectionChange).not.toHaveBeenCalled()
+    expect(onReconnect).not.toHaveBeenCalled()
+    expect(onRemove).not.toHaveBeenCalled()
   })
 })

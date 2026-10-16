@@ -10,6 +10,8 @@ export default function RequiredConnectionSetup({
   services,
   onConnect,
   onConnectionChange,
+  onReconnect,
+  onRemove,
   className,
 }: ComponentProps<typeof RequiredServices>) {
   const { t } = useTranslation(['share'])
@@ -31,6 +33,8 @@ export default function RequiredConnectionSetup({
         services={services}
         onConnect={onConnect}
         onConnectionChange={onConnectionChange}
+        onReconnect={onReconnect}
+        onRemove={onRemove}
       />
     </section>
   )
