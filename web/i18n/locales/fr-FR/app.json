@@ -282,6 +282,7 @@
   "tracing.configProvider.username": "Nom d'utilisateur",
   "tracing.configProvider.viewDocsLink": "Voir la documentation de {{key}}",
   "tracing.configProviderTitle.configured": "Configuré",
+  "tracing.configProviderTitle.moreProviders": "Autres fournisseurs",
   "tracing.configProviderTitle.notConfigured": "Configurez le fournisseur pour activer le traçage",
   "tracing.databricks.description": "Databricks propose MLflow entièrement géré avec une gouvernance et une sécurité robustes pour stocker les données de traçabilité.",
   "tracing.databricks.title": "Databricks",

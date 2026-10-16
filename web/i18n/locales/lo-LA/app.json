@@ -282,6 +282,7 @@
   "tracing.configProvider.username": "ຊື່ຜູ້ໃຊ້",
   "tracing.configProvider.viewDocsLink": "ເບິ່ງເອກະສານຂອງ {{key}}",
   "tracing.configProviderTitle.configured": "ຕັ້ງຄ່າແລ້ວ",
+  "tracing.configProviderTitle.moreProviders": "ຜູ້ໃຫ້ບໍລິການອື່ນໆ",
   "tracing.configProviderTitle.notConfigured": "ຕັ້ງຄ່າຜູ້ໃຫ້ບໍລິການເພື່ອເປີດໃຊ້ Tracing",
   "tracing.databricks.description": "Databricks ໃຫ້ບໍລິການ MLflow ທີ່ຄຸ້ມຄອງແບບເບັດເສັດ ພ້ອມລະບົບຄວາມປອດໄພທີ່ເຂັ້ມງວດສຳລັບເກັບຂໍ້ມູນການຕິດຕາມ.",
   "tracing.databricks.title": "Databricks",
