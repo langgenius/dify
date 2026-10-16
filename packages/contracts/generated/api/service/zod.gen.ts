@@ -324,6 +324,38 @@ export const zChildChunkListQuery = z.object({
 })
 
 /**
+ * ChildChunkResponse
+ */
+export const zChildChunkResponse = z.object({
+  content: z.string(),
+  created_at: z.int(),
+  id: z.string(),
+  position: z.int(),
+  segment_id: z.string(),
+  type: z.enum(['automatic', 'customized']),
+  updated_at: z.int(),
+  word_count: z.int(),
+})
+
+/**
+ * ChildChunkDetailResponse
+ */
+export const zChildChunkDetailResponse = z.object({
+  data: zChildChunkResponse,
+})
+
+/**
+ * ChildChunkListResponse
+ */
+export const zChildChunkListResponse = z.object({
+  data: z.array(zChildChunkResponse),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+  total_pages: z.int(),
+})
+
+/**
  * ChildChunkUpdatePayload
  */
 export const zChildChunkUpdatePayload = z.object({
@@ -2169,59 +2201,6 @@ export const zSegmentListQuery = z.object({
 })
 
 /**
- * SegmentStatus
- *
- * Document segment status
- */
-export const zSegmentStatus = z.enum([
-  'completed',
-  'error',
-  'indexing',
-  'paused',
-  're_segment',
-  'waiting',
-])
-
-/**
- * SegmentType
- *
- * Document segment type
- */
-export const zSegmentType = z.enum(['automatic', 'customized'])
-
-/**
- * ChildChunkResponse
- */
-export const zChildChunkResponse = z.object({
-  content: z.string(),
-  created_at: z.int(),
-  id: z.string(),
-  position: z.int(),
-  segment_id: z.string(),
-  type: zSegmentType,
-  updated_at: z.int(),
-  word_count: z.int(),
-})
-
-/**
- * ChildChunkDetailResponse
- */
-export const zChildChunkDetailResponse = z.object({
-  data: zChildChunkResponse,
-})
-
-/**
- * ChildChunkListResponse
- */
-export const zChildChunkListResponse = z.object({
-  data: z.array(zChildChunkResponse),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-  total_pages: z.int(),
-})
-
-/**
  * SegmentResponse
  */
 export const zSegmentResponse = z.object({
@@ -2245,7 +2224,7 @@ export const zSegmentResponse = z.object({
   keywords: z.array(z.string()).nullable(),
   position: z.int(),
   sign_content: z.string(),
-  status: zSegmentStatus,
+  status: z.enum(['completed', 'error', 'indexing', 'paused', 're_segment', 'waiting']),
   stopped_at: z.int().nullable(),
   summary: z.string().nullable(),
   tokens: z.int(),

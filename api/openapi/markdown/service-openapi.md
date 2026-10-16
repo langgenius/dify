@@ -2769,7 +2769,7 @@ Public pause reason emitted by a blocking Chatflow execution.
 | id | string |  | Yes |
 | position | integer |  | Yes |
 | segment_id | string |  | Yes |
-| type | [SegmentType](#segmenttype) |  | Yes |
+| type | string, <br>**Available values:** "automatic", "customized" | *Enum:* `"automatic"`, `"customized"` | Yes |
 | updated_at | integer |  | Yes |
 | word_count | integer |  | Yes |
 
@@ -4413,29 +4413,13 @@ Rate Limit Error
 | keywords | [ string ] |  | Yes |
 | position | integer |  | Yes |
 | sign_content | string |  | Yes |
-| status | [SegmentStatus](#segmentstatus) |  | Yes |
+| status | string, <br>**Available values:** "completed", "error", "indexing", "paused", "re_segment", "waiting" | *Enum:* `"completed"`, `"error"`, `"indexing"`, `"paused"`, `"re_segment"`, `"waiting"` | Yes |
 | stopped_at | integer |  | Yes |
 | summary | string |  | Yes |
 | tokens | integer |  | Yes |
 | updated_at | integer |  | Yes |
 | updated_by | string |  | Yes |
 | word_count | integer |  | Yes |
-
-#### SegmentStatus
-
-Document segment status
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| SegmentStatus | string | Document segment status |  |
-
-#### SegmentType
-
-Document segment type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| SegmentType | string | Document segment type |  |
 
 #### SegmentUpdateArgs
 
