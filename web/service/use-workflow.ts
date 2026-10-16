@@ -333,7 +333,7 @@ export type WorkflowVersionOwner =
   | Readonly<{ kind: 'knowledge-pipeline'; pipelineId: string }>
   | Readonly<{ kind: 'snippet'; snippetId: string }>
 
-export type UpdateWorkflowParams = {
+type UpdateWorkflowParams = {
   owner: WorkflowVersionOwner
   workflowId: string
   title: string
