@@ -67,7 +67,7 @@ const renderForm = ({
   mockUseSendMail.mockReturnValue({
     mutateAsync: mockSubmitMail,
     isPending,
-  } as UseSendMailResult)
+  } as unknown as UseSendMailResult)
   return renderWithConsoleQuery(<SignupEmailForm onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })

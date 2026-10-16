@@ -36,7 +36,7 @@ describe('template-transform/use-single-run-form-params', () => {
     mockUseNodeCrud.mockReturnValue({
       inputs: createData(),
       setInputs: vi.fn(),
-    } as ReturnType<typeof useNodeCrud>)
+    } as unknown as ReturnType<typeof useNodeCrud>)
   })
 
   it('exposes variable inputs and forwards single-run changes', () => {

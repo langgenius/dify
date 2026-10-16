@@ -68,7 +68,7 @@ describe('datasource-info-builder', () => {
       title: 'Example',
       markdown: '# Hello',
       description: 'desc',
-    } as CrawlResultItem
+    } as unknown as CrawlResultItem
 
     it('should spread crawl result and add credential_id', () => {
       const result = buildWebsiteCrawlDatasourceInfo(crawlResult, 'cred-3')

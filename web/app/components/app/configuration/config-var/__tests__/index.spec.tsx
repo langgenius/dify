@@ -81,7 +81,7 @@ const createDebugConfigValue = (
   ({
     ...defaultDebugConfigValue,
     ...overrides,
-  }) as DebugConfigurationState
+  }) as unknown as DebugConfigurationState
 
 let variableIndex = 0
 const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVariable => {

@@ -404,7 +404,7 @@ describe('ProviderAddedCard', () => {
     const providerWithoutQuota = {
       ...mockProvider,
       provider: 'custom/provider',
-    } as ModelProvider
+    } as unknown as ModelProvider
     renderWithQueryClient(<ProviderAddedCard provider={providerWithoutQuota} notConfigured />)
     expect(screen.getByText('modelProvider.modelProvider.configureTip')).toBeInTheDocument()
   })

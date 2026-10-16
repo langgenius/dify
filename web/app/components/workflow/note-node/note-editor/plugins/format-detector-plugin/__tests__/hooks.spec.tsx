@@ -68,7 +68,10 @@ vi.mock('@lexical/utils', () => ({
 vi.mock('@lexical/link', () => ({
   $isLinkNode: (node: unknown) =>
     Boolean(
-      node && typeof node === 'object' && 'isLink' in node && (node as { isLink?: boolean }).isLink,
+      node &&
+      typeof node === 'object' &&
+      'isLink' in (node as object) &&
+      (node as { isLink?: boolean }).isLink,
     ),
 }))
 
@@ -77,7 +80,7 @@ vi.mock('@lexical/list', () => ({
     Boolean(
       node &&
       typeof node === 'object' &&
-      'isListItem' in node &&
+      'isListItem' in (node as object) &&
       (node as { isListItem?: boolean }).isListItem,
     ),
 }))

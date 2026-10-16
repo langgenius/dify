@@ -607,7 +607,7 @@ describe('CheckCode', () => {
         ...window.location,
         origin: 'https://saas.dify.dev',
         replace: locationReplace,
-      } as Location)
+      } as unknown as Location)
 
       render(
         <QueryClientProvider client={queryClient}>

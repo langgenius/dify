@@ -102,7 +102,43 @@ describe('no-unnecessary-type-assertion', () => {
     expect(lint(code)).toEqual([])
   })
 
+  it('keeps an upcast whose assignment result is used', () => {
+    const prelude = [
+      'type A = { a: string }',
+      'type B = A & { b: number }',
+      'declare const value: B',
+      'declare let target: A',
+      'declare function classify(input: B): 1',
+      'declare function classify(input: A): 2',
+      '',
+    ].join('\n')
+    expect(lint(`${prelude}const kind: 2 = classify(target = value as A)\n`)).toEqual([])
+    expect(fixedLines(`${prelude}target = value as A\n`)).toEqual(['target = value'])
+  })
+
+  it('keeps an assertion that stops a reference from being narrowed', () => {
+    const prelude = 'declare let value: string | number\n'
+    const assertString =
+      'declare function assertString(input: string | number): asserts input is string\n'
+    expect(lint(`${prelude}${assertString}assertString(value as string | number)\n`)).toEqual([])
+    const isString = 'declare function isString(input: string | number): input is string\n'
+    expect(lint(`${prelude}${isString}if (isString(value as string | number)) {}\n`)).toEqual([])
+    expect(lint(`${prelude}if (typeof (value as string | number) === 'string') {}\n`)).toEqual([])
+    expect(lint(`${prelude}switch (value as string | number) {}\n`)).toEqual([])
+    expect(lint(`${prelude}if (value as string | number) {}\n`)).toEqual([])
+  })
+
   describe('double assertions', () => {
+    it('keeps the unknown step for a value typed by its context', () => {
+      const code = [
+        'declare function make<T>(callback: (value: T) => void): T',
+        'const result = make((value) => {',
+        "  if (typeof value === 'number') value.toFixed()",
+        '}) as unknown as string',
+      ].join('\n')
+      expect(lint(code)).toEqual([])
+    })
+
     it('removes the assertions when the value already has the target type', () => {
       const [result] = lint('declare const a: string[]\nconst b = a as unknown as string[]\n')
       expect(result?.fixed).toBe('declare const a: string[]\nconst b = a\n')

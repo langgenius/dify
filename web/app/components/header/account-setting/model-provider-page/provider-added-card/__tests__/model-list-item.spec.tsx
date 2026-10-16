@@ -227,7 +227,7 @@ describe('ModelListItem', () => {
   // Deprecated branches: opacity-60, disabled switch, no ConfigModel
   it('should show deprecated model with opacity and disabled switch', () => {
     // Arrange
-    const deprecatedModel = { ...mockModel, deprecated: true } as ModelItem
+    const deprecatedModel = { ...mockModel, deprecated: true } as unknown as ModelItem
     mockModelLoadBalancingEnabled = true
 
     // Act
@@ -251,7 +251,7 @@ describe('ModelListItem', () => {
       load_balancing_enabled: true,
       has_invalid_load_balancing_configs: false,
       deprecated: false,
-    } as ModelItem
+    } as unknown as ModelItem
 
     // Act
     render(<ModelListItem model={lbModel} provider={mockProvider} isConfigurable={false} />, {
@@ -299,7 +299,7 @@ describe('ModelListItem', () => {
     const removedModel = {
       ...mockModel,
       status: ModelStatusEnum.credentialRemoved,
-    } as ModelItem
+    } as unknown as ModelItem
     mockModelLoadBalancingEnabled = true
 
     // Act

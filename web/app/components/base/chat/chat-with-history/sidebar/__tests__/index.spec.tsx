@@ -166,7 +166,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         sidebarCollapseState: false,
         isMobile: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
@@ -185,7 +185,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         sidebarCollapseState: true,
         isMobile: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
@@ -203,7 +203,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         sidebarCollapseState: false,
         isMobile: true,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       // On mobile, the collapse/expand buttons should not be shown
@@ -216,7 +216,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         sidebarCollapseState: true,
         isMobile: true,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
@@ -231,7 +231,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         handleNewConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const newChatButton = screen.getByRole('button', { name: 'share.chat.newChat' })
@@ -244,7 +244,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         isResponding: true,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const newChatButton = screen.getByRole('button', { name: 'share.chat.newChat' })
@@ -255,7 +255,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         isResponding: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const newChatButton = screen.getByRole('button', { name: 'share.chat.newChat' })
@@ -269,7 +269,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         pinnedConversationList: [{ id: 'p1', name: 'Pinned 1', inputs: {}, introduction: '' }],
         conversationList: [{ id: '1', name: 'Conv 1', inputs: {}, introduction: '' }],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.getByTestId('pinned-list')).toBeInTheDocument()
@@ -281,7 +281,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         pinnedConversationList: [{ id: 'p1', name: 'Pinned 1', inputs: {}, introduction: '' }],
         conversationList: [],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.getByTestId('pinned-list')).toBeInTheDocument()
@@ -293,7 +293,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         pinnedConversationList: [],
         conversationList: [{ id: '1', name: 'Conv 1', inputs: {}, introduction: '' }],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.queryByTestId('pinned-list')).not.toBeInTheDocument()
@@ -305,7 +305,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         pinnedConversationList: [],
         conversationList: [],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.queryByTestId('pinned-list')).not.toBeInTheDocument()
@@ -317,7 +317,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         pinnedConversationList: [{ id: 'p1', name: 'Pinned 1', inputs: {}, introduction: '' }],
         conversationList: [{ id: '1', name: 'Conv 1', inputs: {}, introduction: '' }],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       // The unpinned list should have the title
@@ -330,7 +330,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         pinnedConversationList: [],
         conversationList: [{ id: '1', name: 'Conv 1', inputs: {}, introduction: '' }],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const conversationList = screen.getByTestId('conversation-list')
@@ -345,7 +345,7 @@ describe('Sidebar Index', () => {
           { id: 'p2', name: 'Pinned 2', inputs: {}, introduction: '' },
         ],
         conversationList: [],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.getByText('Pinned 1')).toBeInTheDocument()
@@ -361,7 +361,7 @@ describe('Sidebar Index', () => {
           { id: '2', name: 'Conv 2', inputs: {}, introduction: '' },
           { id: '3', name: 'Conv 3', inputs: {}, introduction: '' },
         ],
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.getByText('Conv 1')).toBeInTheDocument()
@@ -377,7 +377,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         handlePinConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       await user.click(screen.getByTestId('pin-1'))
@@ -390,7 +390,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         handleUnpinConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       await user.click(screen.getByTestId('unpin-1'))
@@ -410,7 +410,7 @@ describe('Sidebar Index', () => {
         ],
         handlePinConversation,
         handleUnpinConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
 
@@ -437,7 +437,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         handleDeleteConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
 
@@ -475,7 +475,7 @@ describe('Sidebar Index', () => {
           { id: '2', name: 'Conv 2', inputs: {}, introduction: '' },
         ],
         handleDeleteConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
 
@@ -513,7 +513,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         handleRenameConversation,
         conversationRenaming: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
 
@@ -550,7 +550,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         conversationRenaming: true,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       await user.click(screen.getByTestId('rename-1'))
@@ -568,7 +568,7 @@ describe('Sidebar Index', () => {
           { id: '2', name: 'Conv 2', inputs: {}, introduction: '' },
         ],
         handleRenameConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
 
@@ -652,7 +652,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         isInstalledApp: true,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       // MenuDropdown should be rendered with hideLogout=true when isInstalledApp
@@ -663,7 +663,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         isInstalledApp: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.getByText('Test App')).toBeInTheDocument()
@@ -699,7 +699,7 @@ describe('Sidebar Index', () => {
         pinnedConversationList: [{ id: 'p1', name: 'Pinned 1', inputs: {}, introduction: '' }],
         conversationList: [{ id: '1', name: 'Conv 1', inputs: {}, introduction: '' }],
         currentConversationId: '1',
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.getByText('Pinned 1')).toBeInTheDocument()
@@ -713,7 +713,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         isMobile: true,
         sidebarCollapseState: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const header = screen.getByText('Test App').parentElement as HTMLElement
@@ -725,7 +725,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         isMobile: false,
         sidebarCollapseState: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       expect(screen.getByRole('button', { name: 'share.chat.newChat' })).toBeInTheDocument()
@@ -737,7 +737,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         isResponding: true,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const newChatButton = screen.getByRole('button', { name: 'share.chat.newChat' })
@@ -748,7 +748,7 @@ describe('Sidebar Index', () => {
       vi.mocked(useChatWithHistoryContext).mockReturnValue({
         ...mockContextValue,
         isResponding: false,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       const newChatButton = screen.getByRole('button', { name: 'share.chat.newChat' })
@@ -768,7 +768,7 @@ describe('Sidebar Index', () => {
         handleNewConversation,
         handleRenameConversation,
         handleDeleteConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
 
@@ -801,7 +801,7 @@ describe('Sidebar Index', () => {
         ],
         handleChangeConversation,
         handlePinConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
 
@@ -831,7 +831,7 @@ describe('Sidebar Index', () => {
           ...mockContextValue,
           pinnedConversationList: [{ id: 'p1', name: 'Pinned 1', inputs: {}, introduction: '' }],
           conversationList: [],
-        } as ChatWithHistoryContextValue)
+        } as unknown as ChatWithHistoryContextValue)
 
         render(<Sidebar />)
         expect(screen.getByTestId('pinned-list')).toBeInTheDocument()
@@ -861,7 +861,7 @@ describe('Sidebar Index', () => {
         ...mockContextValue,
         conversationList: [{ id: '1', name: '', inputs: {}, introduction: '' }],
         handleRenameConversation,
-      } as ChatWithHistoryContextValue)
+      } as unknown as ChatWithHistoryContextValue)
 
       render(<Sidebar />)
       await user.click(screen.getByTestId('rename-1'))

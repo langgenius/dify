@@ -99,7 +99,7 @@ const defaultContextValue: ChatWithHistoryContextValue = {
     system_parameters: { vision_config: { enabled: true } },
     opening_statement: 'Default opening statement',
   } as unknown as ChatConfig,
-  appMeta: { tool_icons: {} } as AppMeta,
+  appMeta: { tool_icons: {} } as unknown as AppMeta,
   currentConversationId: '1',
   currentConversationItem: { id: '1', name: 'Conv 1' } as unknown as ConversationItem,
   appPrevChatTree: [],

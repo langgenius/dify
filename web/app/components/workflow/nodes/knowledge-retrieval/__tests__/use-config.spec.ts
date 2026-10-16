@@ -277,14 +277,14 @@ describe('knowledge-retrieval/use-config', () => {
           availableVars: stringVars,
           availableNodes: [],
           availableNodesWithParent: [],
-        } as ReturnType<typeof useAvailableVarList>
+        } as unknown as ReturnType<typeof useAvailableVarList>
       }
 
       return {
         availableVars: numberVars,
         availableNodes: [],
         availableNodesWithParent: [],
-      } as ReturnType<typeof useAvailableVarList>
+      } as unknown as ReturnType<typeof useAvailableVarList>
     })
     mockUseDatasetsDetailStore.mockImplementation((selector) => {
       return selector({ updateDatasetsDetail } as never)

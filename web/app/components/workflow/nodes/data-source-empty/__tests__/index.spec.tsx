@@ -25,7 +25,7 @@ const createNodeProps = (): DataSourceEmptyNodeProps =>
     yPos: 0,
     dragging: false,
     dragHandle: undefined,
-  }) as DataSourceEmptyNodeProps
+  }) as unknown as DataSourceEmptyNodeProps
 
 describe('DataSourceEmptyNode', () => {
   beforeEach(() => {

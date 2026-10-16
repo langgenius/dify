@@ -46,7 +46,7 @@ describe('InviteButton', () => {
     vi.clearAllMocks()
     mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { id: 'workspace-id' },
-    } as ConsoleStateFixture)
+    } as unknown as ConsoleStateFixture)
   })
 
   it('should show invite button when branding is disabled', () => {

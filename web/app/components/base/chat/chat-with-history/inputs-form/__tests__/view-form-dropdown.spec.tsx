@@ -39,7 +39,7 @@ const defaultContextValues: Partial<ChatWithHistoryContextValue> = {
   inputsForms: [{ variable: 'test_var', type: InputVarType.textInput, label: 'Test Label' }],
   currentConversationInputs: {},
   newConversationInputs: {},
-  newConversationInputsRef: { current: {} } as React.RefObject<Record<string, unknown>>,
+  newConversationInputsRef: { current: {} } as unknown as React.RefObject<Record<string, unknown>>,
   setCurrentConversationInputs: vi.fn(),
   handleNewConversationInputsChange: vi.fn(),
   appParams: { system_parameters: {} } as unknown as ChatWithHistoryContextValue['appParams'],

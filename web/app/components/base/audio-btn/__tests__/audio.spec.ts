@@ -737,7 +737,7 @@ describe('AudioPlayer', () => {
         status: 200,
         headers: { get: () => 'audio/wav' },
         body: { getReader },
-      } as AudioResponse)
+      } as unknown as AudioResponse)
       await Promise.resolve()
       await Promise.resolve()
 

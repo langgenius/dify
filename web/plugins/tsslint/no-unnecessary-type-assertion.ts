@@ -5,7 +5,7 @@ import type * as ts from 'typescript'
  * Reports `value as T` and `value as unknown as T` assertions that can be removed or
  * shortened without changing any type.
  *
- * Removing an assertion has two effects that must both be neutral:
+ * Removing an assertion has three effects that must all be neutral:
  *
  * - Inward: `as T` is the contextual type of `value`, so it can shape literals, object
  *   literals, functions and generic calls. Those values are skipped; only values whose
@@ -13,10 +13,15 @@ import type * as ts from 'typescript'
  * - Outward: the expression type changes from `T` to the value type. That is safe when both
  *   are the same non-literal type. For a literal type or an upcast it is only safe where the
  *   receiver type is fixed and does not narrow: a non-generic, non-overloaded call argument,
- *   an annotated return, or an annotated declaration or assignment whose type is not a union.
+ *   an annotated return, an annotated declaration whose type is not a union, or an assignment
+ *   statement whose target type is not a union.
+ * - Narrowing: `x as T` is not a reference, so control flow never narrows `x` through it.
+ *   References in narrowing positions (type predicates, `typeof`, comparisons, conditions,
+ *   `switch`) keep their assertion.
  *
  * For `value as unknown as T`, the `unknown` step is dropped when `value` and `T` are
  * assignable in one direction, which assignment guarantees to type-check as a single `as T`.
+ * Values typed by their context keep both steps, since `as T` would become their context.
  */
 const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, report }) => {
   const checker = program.getTypeChecker()
@@ -125,10 +130,12 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       if (!fn?.type || fn.typeParameters?.length) return undefined
       return checker.getContextualType(current)
     }
+    // The assignment expression itself has the assigned type, so its result must be unused.
     if (
       tsApi.isBinaryExpression(parent) &&
       parent.operatorToken.kind === tsApi.SyntaxKind.EqualsToken &&
       parent.right === current &&
+      tsApi.isExpressionStatement(parent.parent) &&
       !tsApi.isObjectLiteralExpression(parent.left) &&
       !tsApi.isArrayLiteralExpression(parent.left)
     ) {
@@ -136,6 +143,55 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       return targetType.isUnion() ? undefined : targetType
     }
     return undefined
+  }
+
+  const isNarrowableReference = (node: ts.Expression): boolean => {
+    const value = skipParentheses(node)
+    if (tsApi.isNonNullExpression(value)) return isNarrowableReference(value.expression)
+    return (
+      tsApi.isIdentifier(value) ||
+      value.kind === tsApi.SyntaxKind.ThisKeyword ||
+      tsApi.isPropertyAccessExpression(value) ||
+      tsApi.isElementAccessExpression(value)
+    )
+  }
+
+  const narrowingOperators = new Set([
+    tsApi.SyntaxKind.EqualsEqualsEqualsToken,
+    tsApi.SyntaxKind.ExclamationEqualsEqualsToken,
+    tsApi.SyntaxKind.EqualsEqualsToken,
+    tsApi.SyntaxKind.ExclamationEqualsToken,
+    tsApi.SyntaxKind.InstanceOfKeyword,
+    tsApi.SyntaxKind.InKeyword,
+    tsApi.SyntaxKind.AmpersandAmpersandToken,
+    tsApi.SyntaxKind.BarBarToken,
+    tsApi.SyntaxKind.QuestionQuestionToken,
+  ])
+
+  // Whether control flow narrows a reference at this position. An assertion turns the
+  // reference into an expression, so removing it would start narrowing the variable.
+  const isNarrowingPosition = (node: ts.Expression): boolean => {
+    let current = node
+    while (tsApi.isParenthesizedExpression(current.parent)) current = current.parent
+    const parent = current.parent
+    if (tsApi.isTypeOfExpression(parent)) return true
+    if (tsApi.isPrefixUnaryExpression(parent))
+      return parent.operator === tsApi.SyntaxKind.ExclamationToken
+    if (tsApi.isBinaryExpression(parent)) return narrowingOperators.has(parent.operatorToken.kind)
+    if (
+      tsApi.isIfStatement(parent) ||
+      tsApi.isWhileStatement(parent) ||
+      tsApi.isDoStatement(parent) ||
+      tsApi.isSwitchStatement(parent)
+    )
+      return parent.expression === current
+    if (tsApi.isForStatement(parent)) return parent.condition === current
+    if (tsApi.isConditionalExpression(parent)) return parent.condition === current
+    if (tsApi.isCallExpression(parent) && parent.arguments.includes(current)) {
+      const signature = checker.getResolvedSignature(parent)
+      return !signature || !!checker.getTypePredicateOfSignature(signature)
+    }
+    return false
   }
 
   const replaceNode = (node: ts.Node, newText: string) => {
@@ -160,9 +216,15 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     const targetType = checker.getTypeFromTypeNode(node.type)
     if (sourceType.flags & tsApi.TypeFlags.Any) return
 
+    // Even a one-way assignable `as T` would give the value a new contextual type.
+    if (isContextSensitive(value)) return
+
     const targetText = node.type.getText(file)
-    const contextSensitive = isContextSensitive(value)
-    if (sourceType === targetType && !contextSensitive && !hasLiteralType(sourceType)) {
+    if (
+      sourceType === targetType &&
+      !hasLiteralType(sourceType) &&
+      !(isNarrowableReference(value) && isNarrowingPosition(node))
+    ) {
       reportFix(
         node,
         `The value is already \`${targetText}\`; remove the \`as unknown as\` assertion.`,
@@ -171,12 +233,10 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       )
       return
     }
-    // A single `as T` makes `T` the contextual type of the value, which keeps literal types
-    // from widening, so only the widening-safe direction is reliable for those values.
     if (
       sourceType.flags & tsApi.TypeFlags.Unknown ||
       checker.isTypeAssignableTo(sourceType, targetType) ||
-      (!contextSensitive && checker.isTypeAssignableTo(targetType, sourceType))
+      checker.isTypeAssignableTo(targetType, sourceType)
     ) {
       reportFix(
         node,
@@ -190,6 +250,7 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
   const checkAssertion = (node: ts.AsExpression) => {
     const value = node.expression
     if (isContextSensitive(value)) return
+    if (isNarrowableReference(value) && isNarrowingPosition(node)) return
 
     const sourceType = checker.getTypeAtLocation(value)
     const targetType = checker.getTypeFromTypeNode(node.type)

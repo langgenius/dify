@@ -54,7 +54,7 @@ describe('datasets-detail-store provider', () => {
               desc: '',
               type: BlockEnum.Start,
             },
-          } as Node,
+          } as unknown as Node,
         ]}
       >
         <Consumer />

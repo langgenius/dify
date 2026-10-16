@@ -44,7 +44,7 @@ describe('useIndexingEstimate', () => {
     previewWebsitePage: { source_url: 'https://example.com' } as unknown as CrawlResultItem,
     websiteCrawlProvider: DataSourceProvider.jinaReader,
     websiteCrawlJobId: 'job-1',
-    indexingTechnique: 'high_quality' as IndexingType,
+    indexingTechnique: 'high_quality' as unknown as IndexingType,
     processRule: { mode: 'custom', rules: {} } as unknown as ProcessRule,
   }
 

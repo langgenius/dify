@@ -730,7 +730,7 @@ export const useChat = (
                 convertedFile,
               ]
             } else {
-              const currentFiles = responseItem.message_files ?? []
+              const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
               responseItem.message_files = [...currentFiles, convertedFile]
             }
           })
@@ -1409,7 +1409,7 @@ export const useChat = (
           }
           // For non-agent mode, add files directly to responseItem.message_files
           else {
-            const currentFiles = responseItem.message_files ?? []
+            const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
             responseItem.message_files = [...currentFiles, convertedFile]
           }
 

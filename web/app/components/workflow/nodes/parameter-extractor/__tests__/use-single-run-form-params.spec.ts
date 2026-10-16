@@ -67,7 +67,7 @@ describe('parameter-extractor/use-single-run-form-params', () => {
     mockUseNodeCrud.mockReturnValue({
       inputs: createData(),
       setInputs: vi.fn(),
-    } as ReturnType<typeof useNodeCrud>)
+    } as unknown as ReturnType<typeof useNodeCrud>)
     mockUseConfigVision.mockReturnValue({
       isVisionModel: true,
     } as ReturnType<typeof useConfigVision>)

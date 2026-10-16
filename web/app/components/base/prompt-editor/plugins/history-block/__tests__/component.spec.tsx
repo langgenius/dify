@@ -44,7 +44,9 @@ const createSelectHookReturn = (
 
 const createTriggerHookReturn = (
   open: boolean,
-  setOpen: Dispatch<SetStateAction<boolean>> = vi.fn() as Dispatch<SetStateAction<boolean>>,
+  setOpen: Dispatch<SetStateAction<boolean>> = vi.fn() as unknown as Dispatch<
+    SetStateAction<boolean>
+  >,
 ): [RefObject<HTMLDivElement | null>, boolean, Dispatch<SetStateAction<boolean>>] => {
   return [{ current: null }, open, setOpen]
 }

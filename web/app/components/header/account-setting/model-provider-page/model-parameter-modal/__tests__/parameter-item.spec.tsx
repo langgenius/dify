@@ -272,7 +272,10 @@ describe('ParameterItem', () => {
 
   it('should render no input for unsupported parameter type', () => {
     render(
-      <ParameterItem parameterRule={createRule({ type: 'unsupported' as string })} value={0.7} />,
+      <ParameterItem
+        parameterRule={createRule({ type: 'unsupported' as unknown as string })}
+        value={0.7}
+      />,
     )
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()

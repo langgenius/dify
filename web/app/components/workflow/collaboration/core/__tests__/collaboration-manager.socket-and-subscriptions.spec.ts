@@ -591,12 +591,12 @@ describe('CollaborationManager socket and subscription behavior', () => {
         versionId: 'v1',
         initiatorUserId: 'u-1',
         initiatorName: 'Alice',
-      } as Record<string, unknown>,
+      } as unknown as Record<string, unknown>,
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
       ...baseUpdate,
       type: 'workflow_restore_complete',
-      data: { versionId: 'v1', success: true } as Record<string, unknown>,
+      data: { versionId: 'v1', success: true } as unknown as Record<string, unknown>,
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
       ...baseUpdate,
@@ -1519,7 +1519,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
         title: 'Legacy',
         desc: '',
       },
-    } as Record<string, unknown>)
+    } as unknown as Record<string, unknown>)
     privateInternals.getNodeContainer('legacy-node')
 
     const modernContainer = privateInternals.getNodeContainer('modern-node')

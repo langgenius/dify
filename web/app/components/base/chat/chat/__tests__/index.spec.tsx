@@ -306,7 +306,7 @@ describe('Chat', () => {
       suggested_questions_after_answer: { enabled: true },
     } as ChatConfig
 
-    const mockOnSend = vi.fn() as OnSend
+    const mockOnSend = vi.fn() as unknown as OnSend
 
     it('should render the tryToAsk i18n key when all conditions are met', () => {
       renderChat({
@@ -329,7 +329,7 @@ describe('Chat', () => {
 
     it('should call onSend with the question text when a suggestion button is clicked', async () => {
       const user = userEvent.setup()
-      const onSend = vi.fn() as OnSend
+      const onSend = vi.fn() as unknown as OnSend
       renderChat({
         config: tryToAskConfig,
         suggestedQuestions: ['Ask this'],
@@ -701,7 +701,7 @@ describe('Chat', () => {
       renderChat({
         config: tryToAskConfig,
         suggestedQuestions: [],
-        onSend: vi.fn() as OnSend,
+        onSend: vi.fn() as unknown as OnSend,
       })
       expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
     })
@@ -710,7 +710,7 @@ describe('Chat', () => {
       renderChat({
         config: tryToAskConfig,
         suggestedQuestions: ['Single question'],
-        onSend: vi.fn() as OnSend,
+        onSend: vi.fn() as unknown as OnSend,
       })
       expect(screen.getByText(/tryToAsk/i)).toBeInTheDocument()
     })
@@ -719,7 +719,7 @@ describe('Chat', () => {
       renderChat({
         config: tryToAskConfig,
         suggestedQuestions: ['Q1', 'Q2', 'Q3'],
-        onSend: vi.fn() as OnSend,
+        onSend: vi.fn() as unknown as OnSend,
       })
       expect(screen.getByText(/tryToAsk/i)).toBeInTheDocument()
       expect(screen.getByText('Q1')).toBeInTheDocument()
@@ -731,7 +731,7 @@ describe('Chat', () => {
       renderChat({
         config: { suggested_questions_after_answer: { enabled: false } } as ChatConfig,
         suggestedQuestions: ['q1', 'q2'],
-        onSend: vi.fn() as OnSend,
+        onSend: vi.fn() as unknown as OnSend,
       })
       expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
     })
@@ -740,7 +740,7 @@ describe('Chat', () => {
       renderChat({
         config: {} as ChatConfig,
         suggestedQuestions: ['q1'],
-        onSend: vi.fn() as OnSend,
+        onSend: vi.fn() as unknown as OnSend,
       })
       expect(screen.queryByText(/tryToAsk/i)).not.toBeInTheDocument()
     })
@@ -873,7 +873,7 @@ describe('Chat', () => {
       renderChat({
         config: { suggested_questions_after_answer: { enabled: true } } as ChatConfig,
         suggestedQuestions: ['q1'],
-        onSend: vi.fn() as OnSend,
+        onSend: vi.fn() as unknown as OnSend,
       })
       expect(screen.getByTestId('chat-footer')).toBeInTheDocument()
     })

@@ -69,7 +69,7 @@ describe('if-else use-config helpers', () => {
     const sorted = sortCases(createInputs(), [
       { id: 'display-2', case_id: 'case-2', logical_operator: LogicalOperator.or, conditions: [] },
       { id: 'display-1', case_id: 'case-1', logical_operator: LogicalOperator.and, conditions: [] },
-    ] as Parameters<typeof sortCases>[1])
+    ] as unknown as Parameters<typeof sortCases>[1])
     expect(sorted.cases?.map((item) => item.case_id)).toEqual(['case-2', 'case-1'])
     expect(sorted._targetBranches?.map((branch) => branch.id)).toEqual([
       'case-2',

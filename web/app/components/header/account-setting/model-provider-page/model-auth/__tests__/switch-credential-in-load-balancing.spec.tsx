@@ -72,7 +72,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
   const mockModel = {
     model: 'gpt-4',
     model_type: ModelTypeEnum.textGeneration,
-  } as CustomModel
+  } as unknown as CustomModel
 
   const mockCredentials = [
     { credential_id: 'cred-1', credential_name: 'Key 1' },

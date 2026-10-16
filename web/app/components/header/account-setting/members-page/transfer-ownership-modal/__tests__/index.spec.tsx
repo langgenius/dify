@@ -81,7 +81,7 @@ describe('TransferOwnershipModal', () => {
     const consoleState = {
       currentWorkspace: { name: 'Test Workspace' },
       userProfile: { email: 'owner@example.com', id: 'owner-id' },
-    } as ConsoleStateFixture
+    } as unknown as ConsoleStateFixture
     mockConsoleState.current = consoleState
     mockConsoleStateReader.mockReturnValue(consoleState)
 

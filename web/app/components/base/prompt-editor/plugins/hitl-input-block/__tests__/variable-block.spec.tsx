@@ -45,7 +45,7 @@ const createSelectorWithTransientPrefix = (prefix: string, suffix: string): stri
       }
       return Reflect.get(target, property, receiver)
     },
-  }) as string[]
+  }) as unknown as string[]
 }
 
 const hasErrorIcon = (container: HTMLElement) => {

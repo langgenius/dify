@@ -453,7 +453,7 @@ describe('useFile', () => {
         ...defaultFileConfig,
         allowed_file_types: undefined,
         allowed_file_extensions: undefined,
-      } as FileUpload
+      } as unknown as FileUpload
 
       const { result } = renderHook(() => useFile(configWithUndefined))
       await act(async () => {
@@ -622,7 +622,7 @@ describe('useFile', () => {
         ...defaultFileConfig,
         allowed_file_types: undefined,
         allowed_file_extensions: undefined,
-      } as FileUpload
+      } as unknown as FileUpload
 
       const { result } = renderHook(() => useFile(configWithUndefined))
       result.current.handleLocalFileUpload(file)

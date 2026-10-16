@@ -139,7 +139,7 @@ describe('question-classifier/use-config', () => {
       availableVars: [],
       availableNodes: [],
       availableNodesWithParent: [],
-    } as ReturnType<typeof useAvailableVarList>)
+    } as unknown as ReturnType<typeof useAvailableVarList>)
   })
 
   it('preserves the selected model when the vision follow-up updates after model selection', async () => {

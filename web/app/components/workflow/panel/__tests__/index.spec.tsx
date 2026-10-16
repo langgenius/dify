@@ -47,7 +47,7 @@ const createResizeEntry = (mode: MockResizeMode): ResizeObserverEntry =>
       toJSON: () => ({}),
     } as DOMRectReadOnly,
     target: document.createElement('div'),
-  }) as ResizeObserverEntry
+  }) as unknown as ResizeObserverEntry
 
 class MockResizeObserver {
   callback: ResizeObserverCallback

@@ -92,7 +92,7 @@ describe('template-transform/use-config', () => {
     mockUseVarList.mockReturnValue({
       handleAddVariable: handleAddEmptyVariable,
       handleVarListChange: vi.fn(),
-    } as ReturnType<typeof useVarList>)
+    } as unknown as ReturnType<typeof useVarList>)
   })
 
   it('hydrates default config when the template is empty', async () => {

@@ -389,7 +389,7 @@ describe('HitTestingPage', () => {
 
     const useBreakpoints = await import('@/hooks/use-breakpoints')
     vi.mocked(useBreakpoints.default).mockReturnValue(
-      'pc' as ReturnType<typeof useBreakpoints.default>,
+      'pc' as unknown as ReturnType<typeof useBreakpoints.default>,
     )
   })
 
