@@ -590,6 +590,18 @@ export const zAppTracePayload = z.object({
 })
 
 /**
+ * InvalidTracingConfigError
+ *
+ * The tracing configuration is invalid.
+ */
+export const zInvalidTracingConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_tracing_config'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * TracingProviderUnavailableError
  *
  * The tracing provider is not available in this deployment.
@@ -598,6 +610,54 @@ export const zTracingProviderUnavailableError = zErrorResponse.and(
   z.object({
     code: z.literal('tracing_provider_unavailable'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * UnsupportedTracingProviderError
+ *
+ * The tracing provider is not supported.
+ */
+export const zUnsupportedTracingProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_tracing_provider'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TraceConfigNotFoundError
+ *
+ * Tracing configuration not found.
+ */
+export const zTraceConfigNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trace_config_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TracingConfigConflictError
+ *
+ * Tracing configuration changed. Refresh and try again.
+ */
+export const zTracingConfigConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_conflict'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * TracingConfigProcessingFailedError
+ *
+ * The tracing configuration could not be processed.
+ */
+export const zTracingConfigProcessingFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_processing_failed'),
+    status: z.literal(500),
   }),
 )
 
@@ -617,18 +677,6 @@ export const zTraceProviderCapabilitiesResponse = z.object({
 })
 
 /**
- * UnsupportedTracingProviderError
- *
- * The tracing provider is not supported.
- */
-export const zUnsupportedTracingProviderError = zErrorResponse.and(
-  z.object({
-    code: z.literal('unsupported_tracing_provider'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * AppNotFoundError
  *
  * App not found.
@@ -637,30 +685,6 @@ export const zAppNotFoundError = zErrorResponse.and(
   z.object({
     code: z.literal('app_not_found'),
     status: z.literal(404),
-  }),
-)
-
-/**
- * TraceConfigNotFoundError
- *
- * Tracing configuration not found.
- */
-export const zTraceConfigNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('trace_config_not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
- * TracingConfigProcessingFailedError
- *
- * The tracing configuration could not be processed.
- */
-export const zTracingConfigProcessingFailedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('tracing_config_processing_failed'),
-    status: z.literal(500),
   }),
 )
 
@@ -684,21 +708,10 @@ export const zTraceAppConfigResponse = z.object({
  * TraceConfigPayload
  */
 export const zTraceConfigPayload = z.object({
+  activate: z.boolean().optional().default(false),
   tracing_config: z.record(z.string(), z.string().nullable()),
   tracing_provider: z.string(),
 })
-
-/**
- * InvalidTracingConfigError
- *
- * The tracing configuration is invalid.
- */
-export const zInvalidTracingConfigError = zErrorResponse.and(
-  z.object({
-    code: z.literal('invalid_tracing_config'),
-    status: z.literal(400),
-  }),
-)
 
 /**
  * TracingConfigVerificationFailedError
