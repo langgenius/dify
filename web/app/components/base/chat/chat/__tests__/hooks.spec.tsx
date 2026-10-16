@@ -76,7 +76,6 @@ type HookCallbacks = {
     data: { message_id?: string; reasoning: string; node_id?: string; is_final?: boolean }
   }) => void
 }
-type UseChatFormSettings = NonNullable<Parameters<typeof useChat>[1]>
 
 describe('useChat', () => {
   beforeEach(() => {
@@ -138,9 +137,7 @@ describe('useChat', () => {
       },
     ]
 
-    const { result } = renderHook(() =>
-      useChat(config as ChatConfig, undefined, prevChatTree as ChatItemInTree[]),
-    )
+    const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
     expect(result.current.chatList).toHaveLength(1)
     expect(result.current.chatList[0]!.content).toBe('Hello updated')
   })
@@ -164,13 +161,7 @@ describe('useChat', () => {
       },
     ]
 
-    const { result } = renderHook(() =>
-      useChat(
-        config as ChatConfig,
-        formSettings as UseChatFormSettings,
-        prevChatTree as ChatItemInTree[],
-      ),
-    )
+    const { result } = renderHook(() => useChat(config as ChatConfig, formSettings, prevChatTree))
 
     expect(result.current.chatList[0]!.content).toBe('Hello Bob')
     expect(result.current.chatList[0]!.suggestedQuestions).toEqual(['Ask Bob'])
@@ -234,10 +225,9 @@ describe('useChat', () => {
         suggested_questions: ['Ask about {{name}}'],
       }
 
-      const { result, rerender } = renderHook(
-        ({ fs }) => useChat(config as ChatConfig, fs as UseChatFormSettings),
-        { initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } } },
-      )
+      const { result, rerender } = renderHook(({ fs }) => useChat(config as ChatConfig, fs), {
+        initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
+      })
 
       const openerBefore = result.current.chatList[0]
       expect(openerBefore!.content).toBe('Hello Alice')
@@ -254,10 +244,9 @@ describe('useChat', () => {
         suggested_questions: ['Ask {{name}}'],
       }
 
-      const { result, rerender } = renderHook(
-        ({ fs }) => useChat(config as ChatConfig, fs as UseChatFormSettings),
-        { initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } } },
-      )
+      const { result, rerender } = renderHook(({ fs }) => useChat(config as ChatConfig, fs), {
+        initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
+      })
 
       const before = result.current.chatList[0]
 
@@ -289,9 +278,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(config as ChatConfig, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
 
       const openerBefore = result.current.chatList[0]
       expect(openerBefore!.content).toBe('Hello updated')
@@ -1202,9 +1189,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleSend(
@@ -1486,9 +1471,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true, onNotifyError })
@@ -1749,9 +1732,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-2', 'wr-1', { isPublicAPI: true })
@@ -1790,9 +1771,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(config as ChatConfig, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-resume-error', 'wr-error', {
@@ -1833,9 +1812,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-resume-error', 'wr-error', {
@@ -1876,9 +1853,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
       const previousWorkflowAbort = createAbortControllerMock()
 
       act(() => {
@@ -1916,9 +1891,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-guard', 'wr-1', { isPublicAPI: true })
@@ -1966,9 +1939,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(config as ChatConfig, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-suggest-resume', 'wr-1', {
@@ -2015,9 +1986,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-human-resume', 'wr-1', { isPublicAPI: true })
@@ -2329,9 +2298,7 @@ describe('useChat', () => {
           children: [{ id: 'm-1', content: '', isAnswer: true, siblingIndex: 0 }],
         },
       ]
-      const { result, unmount } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result, unmount } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
@@ -2489,9 +2456,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, nestedTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, nestedTree))
       act(() => {
         result.current.handleSwitchSibling('a-deep', { isPublicAPI: true })
       })
@@ -3066,9 +3031,7 @@ describe('useChat', () => {
     ]
 
     // Render the chat with the nested tree
-    const { result } = renderHook(() =>
-      useChat(undefined, undefined, nestedTree as ChatItemInTree[]),
-    )
+    const { result } = renderHook(() => useChat(undefined, undefined, nestedTree))
 
     // Setting TargetNodeId triggers state update using produceChatTreeNode internally
     act(() => {
@@ -3111,9 +3074,7 @@ describe('useChat', () => {
         ],
       },
     ]
-    const { result: resumeResult } = renderHook(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
+    const { result: resumeResult } = renderHook(() => useChat(undefined, undefined, prevChatTree))
     act(() => {
       resumeResult.current.handleResume('m-resume', 'wr-1', { isPublicAPI: true })
     })
@@ -3236,9 +3197,7 @@ describe('useChat', () => {
         ],
       },
     ]
-    const { result } = renderHook(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
+    const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
     act(() => {
       result.current.handleResume('m-data', 'wr-1', { isPublicAPI: true })
     })
@@ -3297,9 +3256,7 @@ describe('useChat', () => {
         ],
       },
     ]
-    const { result } = renderHook(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
+    const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
     act(() => {
       result.current.handleResume('m-index', 'wr-1', { isPublicAPI: true })
     })
@@ -3476,9 +3433,7 @@ describe('useChat', () => {
     ]
 
     // Success branch
-    const { result } = renderHook(() =>
-      useChat(config as ChatConfig, undefined, prevChatTree as ChatItemInTree[]),
-    )
+    const { result } = renderHook(() => useChat(config as ChatConfig, undefined, prevChatTree))
     act(() => {
       result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true, onGetSuggestedQuestions })
     })
@@ -3632,9 +3587,7 @@ describe('useChat', () => {
         children: [{ id: 'a-1', content: 'a', isAnswer: true, siblingIndex: 0 }],
       },
     ]
-    const { result } = renderHook(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
+    const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
     await act(async () => {
       // (annotationId, authorName, query, answer, index)
       result.current.handleAnnotationAdded('anno-id', 'author', 'q-new', 'a-new', 1)
@@ -3654,9 +3607,7 @@ describe('useChat', () => {
         children: [{ id: 'a-1', content: 'a', isAnswer: true, siblingIndex: 0 }],
       },
     ]
-    const { result } = renderHook(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
+    const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
     await act(async () => {
       // (query, answer, index)
       result.current.handleAnnotationEdited('q-edit', 'a-edit', 1)
@@ -3778,9 +3729,7 @@ describe('useChat', () => {
         },
       ]
 
-      const { result } = renderHook(() =>
-        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-      )
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree))
 
       act(() => {
         result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })

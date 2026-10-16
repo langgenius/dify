@@ -223,7 +223,7 @@ describe('image-uploader utils', () => {
       name?: string
       file?: (callback: FileCallback) => void
       createReader?: () => { readEntries: (callback: EntriesCallback) => void }
-    }): FileSystemEntry => props as unknown as FileSystemEntry
+    }): FileSystemEntry => props as FileSystemEntry
 
     it('should resolve with file array for file entry', async () => {
       const mockFile: MockFile = { name: 'test.png' }

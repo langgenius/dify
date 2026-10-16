@@ -896,7 +896,7 @@ export const useChat = (
               )
             })
             if (currentIndex > -1)
-              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
+              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData
           })
         },
         onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
@@ -1627,7 +1627,7 @@ export const useChat = (
                 nodeFinishedData.execution_metadata?.parallel_id
             )
           })
-          responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
+          responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData
 
           updateCurrentQAOnTree({
             placeholderQuestionId,

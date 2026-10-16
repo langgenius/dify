@@ -28,13 +28,13 @@ type SnippetSidebarContentProps = SnippetSidebarProps & {
 
 const toWorkflowInputVar = (field: SnippetInputField): InputVar => ({
   ...field,
-  type: field.type as unknown as InputVar['type'],
+  type: field.type as InputVar['type'],
 })
 
 const toSnippetInputField = (field: InputVar): SnippetInputField => ({
   ...field,
   label: typeof field.label === 'string' ? field.label : field.label.variable,
-  type: field.type as unknown as SnippetInputField['type'],
+  type: field.type as SnippetInputField['type'],
 })
 
 export const SnippetSidebarContent = ({
@@ -63,7 +63,7 @@ export const SnippetSidebarContent = ({
       if (hasDuplicateStr(nextFields.map((item) => item.variable))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.varName'
-      } else if (hasDuplicateStr(nextFields.map((item) => item.label as string))) {
+      } else if (hasDuplicateStr(nextFields.map((item) => item.label))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.labelName'
       }

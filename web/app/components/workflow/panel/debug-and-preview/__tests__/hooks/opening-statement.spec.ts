@@ -1,4 +1,3 @@
-import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
@@ -156,13 +155,10 @@ describe('workflow debug useChat – opening statement stability', () => {
       },
     ]
 
-    const { result, rerender } = renderHook(
-      ({ cfg }) => useChat(cfg, undefined, prevChatTree as ChatItemInTree[]),
-      {
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-        initialProps: { cfg: config },
-      },
-    )
+    const { result, rerender } = renderHook(({ cfg }) => useChat(cfg, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      initialProps: { cfg: config },
+    })
 
     const openerBefore = result.current.chatList[0]
     expect(openerBefore!.content).toBe('Updated welcome')

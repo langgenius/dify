@@ -638,7 +638,7 @@ const formatItem = (
       res.vars = data.ragVariables.map((ragVar: RAGPipelineVariable) => {
         return {
           variable: `rag.shared.${ragVar.variable}`,
-          type: inputVarTypeToVarType(ragVar.type as any),
+          type: inputVarTypeToVarType(ragVar.type),
           des: ragVar.label,
           isRagVariable: true,
         }
@@ -824,7 +824,7 @@ export const toNodeOutputVars = (
           ragVariablesInDataSource.map((ragVariable: RAGPipelineVariable) => {
             return {
               variable: `rag.${node.id}.${ragVariable.variable}`,
-              type: inputVarTypeToVarType(ragVariable.type as any),
+              type: inputVarTypeToVarType(ragVariable.type),
               description: ragVariable.label,
               isRagVariable: true,
             } as Var
@@ -1043,7 +1043,7 @@ export const getVarType = ({
   let curr: any = targetVar.vars
 
   if (isInStartNodeSysVar || isEnv || isChatVar || isSharedRagVariable || isGlobal) {
-    return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
+    return curr.find((v: any) => v.variable === valueSelector.join('.'))?.type
   } else {
     const targetVar = curr.find((v: any) => {
       if (isInNodeRagVariable) return v.variable === valueSelector.join('.')
@@ -1060,7 +1060,7 @@ export const getVarType = ({
         return preferSchemaType && targetVar.schemaType ? targetVar.schemaType : VarType.object
       }
       let currProperties = targetVar.children.schema
-      ;(valueSelector as ValueSelector).slice(2).forEach((key, i) => {
+      valueSelector.slice(2).forEach((key, i) => {
         const isLast = i === valueSelector.length - 3
         if (!currProperties) return
 
@@ -1070,7 +1070,7 @@ export const getVarType = ({
       return type
     }
 
-    ;(valueSelector as ValueSelector).slice(1).forEach((key, i) => {
+    valueSelector.slice(1).forEach((key, i) => {
       const isLast = i === valueSelector.length - 2
       if (Array.isArray(curr)) curr = curr?.find((v: any) => v.variable === key)
 
@@ -1326,7 +1326,7 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
     }
     case BlockEnum.Agent: {
       if (isAgentV2NodeData(data)) {
-        const payload = data as AgentV2NodeType
+        const payload = data
         res = matchNotSystemVars([
           payload.agent_task || '',
           ...(!forExecution || payload.agent_output_routes?.enabled
@@ -1724,7 +1724,7 @@ export const updateNodeVars = (
       }
       case BlockEnum.Agent: {
         if (isAgentV2NodeData(data)) {
-          const payload = data as AgentV2NodeType
+          const payload = data
           payload.agent_task = replaceOldVarInText(
             payload.agent_task || '',
             oldVarSelector,

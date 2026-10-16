@@ -515,7 +515,7 @@ describe('CSVUploader', () => {
       const dropEvent = new Event('drop', {
         bubbles: true,
         cancelable: true,
-      }) as unknown as DragEvent
+      }) as DragEvent
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: {
           files: [testFile],
@@ -541,7 +541,7 @@ describe('CSVUploader', () => {
       const dropEvent = new Event('drop', {
         bubbles: true,
         cancelable: true,
-      }) as unknown as DragEvent
+      }) as DragEvent
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: {
           files: [file1, file2],

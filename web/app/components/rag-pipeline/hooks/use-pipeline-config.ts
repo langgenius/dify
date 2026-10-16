@@ -21,7 +21,7 @@ export const usePipelineConfig = () => {
           res[item.type] = item.config
         })
       } else {
-        res = nodesDefaultConfigs as Record<string, any>
+        res = nodesDefaultConfigs
       }
 
       setNodesDefaultConfigs!(res)

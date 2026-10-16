@@ -86,7 +86,7 @@ const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
       throw new Error(`Unhandled request: ${url}`)
     }
 
-    globalThis.fetch = handler as typeof globalThis.fetch
+    globalThis.fetch = handler
 
     return () => {
       if (originalFetchRef.current) globalThis.fetch = originalFetchRef.current
