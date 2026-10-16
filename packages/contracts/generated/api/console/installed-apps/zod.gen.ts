@@ -233,18 +233,15 @@ export const zUnsupportedAudioTypeError = zErrorResponse.and(
 )
 
 /**
- * ChatMessagePayload
+ * ChatMessageExplorePayload
  */
-export const zChatMessagePayload = z.object({
+export const zChatMessageExplorePayload = z.object({
   conversation_id: z.string().nullish(),
-  draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
-  files: z.array(z.unknown()).nullish(),
+  files: z.array(z.record(z.string(), z.unknown())).nullish(),
   inputs: z.record(z.string(), z.unknown()),
-  model_config: z.record(z.string(), z.unknown()).optional(),
   parent_message_id: z.string().nullish(),
   query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
-  retriever_from: z.string().optional().default('dev'),
+  retriever_from: z.string().optional().default('explore_app'),
 })
 
 /**
@@ -390,7 +387,6 @@ export const zMessageCursorNotFoundError = zErrorResponse.and(
  */
 export const zMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
-  message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })
 
@@ -551,16 +547,7 @@ export const zNotWorkflowAppError = zErrorResponse.and(
   }),
 )
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zAnyJsonValue = z.unknown()
 
 /**
  * SimpleConversation
@@ -568,7 +555,7 @@ export const zJsonValue = z
 export const zSimpleConversation = z.object({
   created_at: z.int().nullish(),
   id: z.uuid(),
-  inputs: z.record(z.string(), zJsonValue),
+  inputs: z.record(z.string(), zAnyJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
@@ -1007,7 +994,7 @@ export const zAgentThought = z.object({
   thought: z.string().nullish(),
   tool: z.string().nullish(),
   tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
+  tool_labels: zAnyJsonValue,
 })
 
 /**
@@ -1114,7 +1101,7 @@ export const zRetrieverResource = z.object({
   word_count: z.int().nullish(),
 })
 
-export const zJsonValue2 = z.unknown()
+export const zJsonValue = z.unknown()
 
 /**
  * HumanInputFormSubmissionData
@@ -1125,7 +1112,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
@@ -1422,7 +1409,7 @@ export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
  */
 export const zPostInstalledAppsByInstalledAppIdAudioToTextResponse = zAudioTranscriptResponse
 
-export const zPostInstalledAppsByInstalledAppIdChatMessagesBody = zChatMessagePayload
+export const zPostInstalledAppsByInstalledAppIdChatMessagesBody = zChatMessageExplorePayload
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesPath = z.object({
   installed_app_id: z.uuid(),

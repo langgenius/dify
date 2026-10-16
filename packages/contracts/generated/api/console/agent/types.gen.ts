@@ -428,7 +428,7 @@ export type AgentAppFeaturesPayload = {
   text_to_speech?: AgentTextToSpeechFeatureConfig | null
 }
 
-export type MessageFeedbackPayload = {
+export type AppMessageFeedbackPayload = {
   content?: string | null
   message_id: string
   rating?: 'dislike' | 'like' | null
@@ -471,12 +471,12 @@ export type MessageDetailResponse = {
   from_source: string
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
-  message: JsonValue
+  message: AnyJsonValue
   message_files: Array<MessageFile>
   message_tokens: number
-  metadata: JsonValue
+  metadata: AnyJsonValue
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
@@ -1050,7 +1050,7 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
 
 export type ConversationAnnotation = {
@@ -1083,16 +1083,7 @@ export type Feedback = {
   rating: string
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
+export type AnyJsonValue = unknown
 
 export type MessageFile = {
   belongs_to?: string | null
@@ -1270,7 +1261,7 @@ export type AppDatasetConfigsResponse = {
 
 export type AppEnabledExternalDataToolResponse = {
   config: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   enabled: true
   icon?: string
@@ -1283,7 +1274,7 @@ export type AppEnabledExternalDataToolResponse = {
 
 export type AppDisabledExternalDataToolResponse = {
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   enabled: false
   icon?: string
@@ -1305,7 +1296,7 @@ export type AppFileUploadResponse = {
 
 export type AppModelSelectionResponse = {
   completion_params?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   mode?: LlmMode | ''
   name?: string
@@ -1321,9 +1312,9 @@ export type PromptType = 'advanced' | 'simple'
 
 export type AppSensitiveWordAvoidanceResponse = {
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
-  configs?: Array<JsonValue2>
+  configs?: Array<JsonValue>
   enabled: boolean
   type?: string
   [key: string]: unknown
@@ -1663,7 +1654,7 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
@@ -1757,7 +1748,7 @@ export type AppProviderAgentToolResponse = {
   tool_label?: string
   tool_name: string
   tool_parameters: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
@@ -1769,28 +1760,28 @@ export type AppLegacyDatasetToolResponse = {
 
 export type AppLegacyGoogleSearchToolResponse = {
   google_search: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyWebReaderToolResponse = {
   web_reader: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyWikipediaToolResponse = {
   wikipedia: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
 
 export type AppLegacyCurrentDatetimeToolResponse = {
   current_datetime: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
   [key: string]: unknown
 }
@@ -1846,7 +1837,7 @@ export type AppWeightsResponse = {
   [key: string]: unknown
 }
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
@@ -1866,9 +1857,9 @@ export type AppUserInputFormConfigResponse = {
   allowed_file_types?: Array<FileType>
   allowed_file_upload_methods?: Array<FileTransferMethod>
   config?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
-  default?: JsonValue2
+  default?: JsonValue
   description?: string
   enabled?: boolean
   hide?: boolean
@@ -1877,7 +1868,7 @@ export type AppUserInputFormConfigResponse = {
   json_schema?:
     | string
     | {
-        [key: string]: JsonValue2
+        [key: string]: JsonValue
       }
     | null
   label: string
@@ -3624,7 +3615,7 @@ export type PostAgentByAgentIdFeaturesResponse =
   PostAgentByAgentIdFeaturesResponses[keyof PostAgentByAgentIdFeaturesResponses]
 
 export type PostAgentByAgentIdFeedbacksData = {
-  body: MessageFeedbackPayload
+  body: AppMessageFeedbackPayload
   path: {
     agent_id: string
   }

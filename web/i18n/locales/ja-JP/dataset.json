@@ -148,7 +148,6 @@
   "retrieval.full_text_search.title": "全文検索",
   "retrieval.hybrid_search.description": "全文検索とベクトル検索を同時に実行し、ユーザーのクエリに最適なマッチを選択するために Rerank 付けを行います。Rerank モデル API の設定が必要です。",
   "retrieval.hybrid_search.title": "ハイブリッド検索",
-  "retrieval.invertedIndex.title": "転置インデックス",
   "retrieval.keyword_search.description": "逆インデックスは効率的な検索のために使用される構造です。用語によって整理されており、各用語はそれを含む文書やウェブページを指し示します。",
   "retrieval.keyword_search.title": "逆インデックス",
   "retrieval.semantic_search.description": "クエリの埋め込みを生成し、そのベクトル表現に最も類似したテキストチャンクを検索します。",

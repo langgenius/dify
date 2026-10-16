@@ -148,7 +148,6 @@
   "retrieval.full_text_search.title": "Wyszukiwanie pełnotekstowe",
   "retrieval.hybrid_search.description": "Wykonaj jednocześnie pełnotekstowe wyszukiwanie i wyszukiwanie wektorowe, ponownie porządkuj, aby wybrać najlepsze dopasowanie dla zapytania użytkownika. Konieczna jest konfiguracja API Rerank model.",
   "retrieval.hybrid_search.title": "Wyszukiwanie hybrydowe",
-  "retrieval.invertedIndex.title": "Indeks odwrócony",
   "retrieval.keyword_search.description": "Inverted Index to struktura używana do efektywnego wyszukiwania. Uporządkowany według terminów, każdy termin wskazuje dokumenty lub strony internetowe, które go zawierają.",
   "retrieval.keyword_search.title": "Odwrócony indeks",
   "retrieval.semantic_search.description": "Generowanie osadzeń zapytań i wyszukiwanie fragmentów tekstu najbardziej podobnych do ich wektorowej reprezentacji.",

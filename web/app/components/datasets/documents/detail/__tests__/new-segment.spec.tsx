@@ -43,11 +43,14 @@ vi.mock('../completed', () => ({
 
 // Mock useAddSegment
 const mockAddSegment = vi.fn()
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useAddSegment: () => ({
-    mutateAsync: mockAddSegment,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.segment.post': () => ({
+      mutateAsync: mockAddSegment,
+    }),
+  })
+})
 
 vi.mock('../completed/common/action-buttons', () => ({
   ActionButtons: ({
@@ -333,8 +336,7 @@ describe('NewSegmentModal', () => {
       await waitFor(() => {
         expect(mockAddSegment).toHaveBeenCalledWith(
           expect.objectContaining({
-            datasetId: 'test-dataset-id',
-            documentId: 'test-document-id',
+            params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' },
             body: expect.objectContaining({
               content: 'Valid content',
             }),

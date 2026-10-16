@@ -24,6 +24,7 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-1',
       name: 'Chatbot App',
+      description: '',
       mode: 'chat' as const,
       icon_type: 'emoji' as const,
       icon: '🤖',
@@ -33,6 +34,7 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-2',
       name: 'Workflow App',
+      description: '',
       mode: 'workflow' as const,
       icon_type: 'image' as const,
       icon: 'file-id',
@@ -42,6 +44,7 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-3',
       name: '',
+      description: '',
       mode: 'agent-chat' as const,
       icon_type: 'emoji' as const,
       icon: '🕵️',

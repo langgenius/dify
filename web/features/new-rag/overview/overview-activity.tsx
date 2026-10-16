@@ -25,7 +25,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useAtomValue, useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -39,7 +39,6 @@ import {
 } from '@/app/components/base/date-time-picker/date-picker'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { useMembers } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { activityDatesForRange } from './overview-activity-types'
 import { EmptyInline, Panel, Skeleton } from './overview-panel'
@@ -185,7 +184,9 @@ function RecentActivity({ onOpenAll }: { onOpenAll: () => void }) {
   const loading = useAtomValueRawSync(overviewActivityPreviewPendingAtom)
   const retrying = useAtomValueRawSync(overviewActivityPreviewRefetchingAtom)
   const retry = useSetAtom(retryOverviewActivityPreviewAtom)
-  const members = useMembers().data?.accounts ?? []
+  const members =
+    useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} })).data
+      ?.accounts ?? []
   const formatWhen = (value: string) => {
     const timestamp = new Date(value)
     const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp.getTime()) / 60_000))
@@ -422,7 +423,9 @@ function ActivityDrawer({
   const { t: tActivityLog } = useTranslation(['appLog'])
   const isCloudEdition = useAtomValue(deploymentEditionAtom) === 'CLOUD'
   const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
-  const members = useMembers().data?.accounts ?? []
+  const members =
+    useQuery(consoleQuery.workspaces.current.members.get.queryOptions({ input: {} })).data
+      ?.accounts ?? []
   const [range, setRange] = useState<ActivityRange>('today')
   const [dates, setDates] = useState<ActivityDateRange>(() => activityDatesForRange('today'))
   const [operator, setOperator] = useState<ActivityOperator>('all')

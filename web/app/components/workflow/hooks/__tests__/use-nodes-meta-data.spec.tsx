@@ -19,11 +19,14 @@ const workflowToolsState = vi.hoisted(
   () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
 )
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: buildInToolsState }),
-  useAllCustomTools: () => ({ data: customToolsState }),
-  useAllWorkflowTools: () => ({ data: workflowToolsState }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: buildInToolsState }),
+    'workspaces.current.tools.api.get': () => ({ data: customToolsState }),
+    'workspaces.current.tools.workflow.get': () => ({ data: workflowToolsState }),
+  })
+})
 
 const createNode = (overrides: Partial<Node> = {}): Node =>
   ({

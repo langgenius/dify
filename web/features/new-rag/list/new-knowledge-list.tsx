@@ -21,7 +21,6 @@ import { TagManagementModal } from '@/features/tag-management/components/tag-man
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeUpgradeCard } from '../upgrade/knowledge-upgrade-card'
 import { useKnowledgeUpgrade } from '../upgrade/knowledge-upgrade-context-value'
@@ -96,7 +95,7 @@ export function NewKnowledgeList({
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+  const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [highlightedControlSpaceId, setHighlightedControlSpaceId] = useState<string>()

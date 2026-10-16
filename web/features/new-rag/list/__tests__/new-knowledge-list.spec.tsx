@@ -202,10 +202,6 @@ const systemFeaturesStateMock = vi.hoisted(() => ({
   knowledgeFsUploadEnabledAtom: Symbol('knowledgeFsUploadEnabledAtom'),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetApiBaseUrl: () => ({ data: { api_base_url: 'https://api.example.com' } }),
-}))
-
 vi.mock('@/app/components/datasets/extra-info/service-api', () => ({
   ServiceApi: () => <button type="button">dataset.serviceApi.title</button>,
 }))
@@ -364,6 +360,15 @@ vi.mock('@/service/console', () => ({
       },
     },
     datasets: {
+      apiBaseInfo: {
+        get: {
+          queryOptions: () => ({
+            initialData: { api_base_url: 'https://api.example.com' },
+            queryKey: ['console', 'datasets', 'api-base-info', 'get'],
+            queryFn: async () => ({ api_base_url: 'https://api.example.com' }),
+          }),
+        },
+      },
       get: {
         key: () => consoleQueryMock.datasetsKey,
         queryOptions: consoleQueryMock.datasetsQueryOptions,

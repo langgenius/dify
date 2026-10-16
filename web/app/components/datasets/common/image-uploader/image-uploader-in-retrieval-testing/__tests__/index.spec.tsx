@@ -3,15 +3,18 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import ImageUploaderInRetrievalTestingWrapper from '../index'
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      image_file_batch_limit: 10,
-      single_chunk_attachment_limit: 20,
-      attachment_image_file_size_limit: 15,
-    },
-  })),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': vi.fn(() => ({
+      data: {
+        image_file_batch_limit: 10,
+        single_chunk_attachment_limit: 20,
+        attachment_image_file_size_limit: 15,
+      },
+    })),
+  })
+})
 
 vi.mock('@/app/components/datasets/common/image-previewer', () => ({
   default: ({ onClose }: { onClose: () => void }) => (

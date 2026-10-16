@@ -30,7 +30,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
     select: (data) => data.profile.id,
   })
   const { data, isError, isPending, refetch } = useQuery(
-    consoleQuery.workspaces.current.members.get.queryOptions(),
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
   )
   const [keywords, setKeywords] = useState('')
   const label = t(($) => $['creatorFilter.creators'])

@@ -25,6 +25,9 @@ vi.mock('@/app/notifications', () => ({
 
 const mockRenameDocumentName = vi.mocked(renameDocumentName)
 
+// The rename endpoint answers with the renamed document.
+const renamedDocument = { id: 'doc-123', name: 'New Name', data_source_detail_dict: {} }
+
 describe('RenameModal', () => {
   const defaultProps = {
     datasetId: 'dataset-123',
@@ -95,7 +98,7 @@ describe('RenameModal', () => {
     })
 
     it('should call renameDocumentName with correct params when save is clicked', async () => {
-      mockRenameDocumentName.mockResolvedValueOnce({ result: 'success' })
+      mockRenameDocumentName.mockResolvedValueOnce(renamedDocument)
 
       render(<RenameModal {...defaultProps} />)
       const input = screen.getByRole('textbox')
@@ -114,7 +117,7 @@ describe('RenameModal', () => {
     })
 
     it('should call onSaved and onClose on successful save', async () => {
-      mockRenameDocumentName.mockResolvedValueOnce({ result: 'success' })
+      mockRenameDocumentName.mockResolvedValueOnce(renamedDocument)
       const handleSaved = vi.fn()
       const handleClose = vi.fn()
 
@@ -133,8 +136,8 @@ describe('RenameModal', () => {
   describe('Loading State', () => {
     it('should not submit again while saving', async () => {
       // Create a promise that we can resolve manually
-      let resolvePromise: (value: { result: 'success' | 'fail' }) => void
-      const pendingPromise = new Promise<{ result: 'success' | 'fail' }>((resolve) => {
+      let resolvePromise: (value: typeof renamedDocument) => void
+      const pendingPromise = new Promise<typeof renamedDocument>((resolve) => {
         resolvePromise = resolve
       })
       mockRenameDocumentName.mockReturnValueOnce(pendingPromise)
@@ -151,7 +154,7 @@ describe('RenameModal', () => {
       await user.keyboard('{Enter}')
       expect(mockRenameDocumentName).toHaveBeenCalledTimes(1)
 
-      resolvePromise!({ result: 'success' })
+      resolvePromise!(renamedDocument)
       await waitFor(() => {
         expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
       })

@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
+import { useQuery } from '@tanstack/react-query'
 // Libraries
 import { useBoolean } from 'ahooks'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
@@ -26,7 +27,7 @@ import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-u
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
@@ -67,7 +68,7 @@ function LegacyList({
     workspacePermissionKeys,
     'dataset.external.connect',
   )
-  const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+  const { data: apiBaseInfo } = useQuery(consoleQuery.datasets.apiBaseInfo.get.queryOptions())
   const datasetListQuery = useDatasetList({
     creatorIds: creatorIDs,
     includeAll,

@@ -7,7 +7,6 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
-import { fetchExportAnnotationList } from '@/service/annotation'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
 
@@ -22,8 +21,15 @@ vi.mock('react-papaparse', () => ({
   jsonToCSV: (data: unknown) => mockJsonToCSV(data),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  fetchExportAnnotationList: vi.fn(),
+const { mockedFetchAnnotations } = vi.hoisted(() => ({
+  mockedFetchAnnotations: vi.fn(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: { byAppId: { annotations: { export: { get: mockedFetchAnnotations } } } },
+  },
 }))
 
 const { mockedRequest } = vi.hoisted(() => ({
@@ -104,8 +110,6 @@ const mockAnnotations: AnnotationItemBasic[] = [
   },
 ]
 
-const mockedFetchAnnotations = vi.mocked(fetchExportAnnotationList)
-
 describe('HeaderOptions', () => {
   const originalUrl = window.location.href
 
@@ -128,7 +132,7 @@ describe('HeaderOptions', () => {
     renderComponent()
 
     await waitFor(() => {
-      expect(mockedFetchAnnotations).toHaveBeenCalledWith('test-app-id')
+      expect(mockedFetchAnnotations).toHaveBeenCalledWith({ params: { app_id: 'test-app-id' } })
     })
 
     await expandExportMenu(user)

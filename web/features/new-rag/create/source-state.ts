@@ -11,7 +11,6 @@ import { atom, useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleQuery } from '@/service/console'
-import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { connectedInitialSource } from '../sources/setup/connected-source-selection'
 import {
   datasourceIncludeSubpages,
@@ -79,7 +78,7 @@ export function useSourceSetupInputs(draft: NewKnowledgeSourceDraft, enabled = t
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({ enabled }),
   )
-  const datasourceAuthQuery = useGetDataSourceListAuth(enabled)
+  const datasourceAuthQuery = useQuery(consoleQuery.auth.plugin.datasource.list.get.queryOptions({ enabled, retry: 0 }))
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, draft.sourceType],

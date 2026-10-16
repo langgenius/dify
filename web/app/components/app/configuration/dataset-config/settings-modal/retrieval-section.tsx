@@ -75,11 +75,11 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
             className="i-custom-vender-solid-development-api-connection-mod size-4 text-text-secondary"
           />
           <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
-            {currentDataset?.external_knowledge_info.external_knowledge_api_name}
+            {currentDataset?.external_knowledge_info?.external_knowledge_api_name}
           </div>
           <div className="system-xs-regular text-text-tertiary">·</div>
           <div className="system-xs-regular text-text-tertiary">
-            {currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}
+            {currentDataset?.external_knowledge_info?.external_knowledge_api_endpoint}
           </div>
         </div>
       </div>
@@ -93,7 +93,7 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
       <div className="w-full max-w-120">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
           <div className="system-xs-regular text-text-tertiary">
-            {currentDataset?.external_knowledge_info.external_knowledge_id}
+            {currentDataset?.external_knowledge_info?.external_knowledge_id}
           </div>
         </div>
       </div>
@@ -105,7 +105,8 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
 )
 
 type InternalRetrievalSectionProps = CommonSectionProps & {
-  indexMethod: IndexingType
+  // Unset until the knowledge base indexes its first document.
+  indexMethod?: IndexingType
   retrievalConfig: RetrievalConfig
   showMultiModalTip: boolean
   onRetrievalConfigChange: (value: RetrievalConfig) => void

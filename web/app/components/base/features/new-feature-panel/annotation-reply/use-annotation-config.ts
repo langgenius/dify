@@ -8,8 +8,8 @@ import { useState } from 'react'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
-import { consoleQuery } from '@/service/console'
+import { updateAnnotationStatus } from '@/service/annotation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
 
 type Params = {
@@ -48,7 +48,9 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {
-      const res: any = await queryAnnotationJobStatus(appId, status, jobId)
+      const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get({
+        params: { app_id: appId, action: status, job_id: jobId },
+      })
       isCompleted = res.job_status === JobStatus.completed
       if (isCompleted) break
 
@@ -59,7 +61,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score?: number) => {
     if (!annotationConfig.enabled && (isAnnotationQuotaUnavailable || isAnnotationFull)) return
 
-    const { job_id: jobId }: any = await updateAnnotationStatus(
+    const { job_id: jobId } = await updateAnnotationStatus(
       appId,
       AnnotationEnableStatus.enable,
       embeddingModel,

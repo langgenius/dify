@@ -67,124 +67,131 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => membersQueryMock,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => membersQueryMock,
+  })
+})
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        models: {
-          modelTypes: {
-            byModelType: {
-              get: {
-                queryOptions: ({
-                  input,
-                  select,
-                }: {
-                  input: { params: { model_type: string } }
-                  select: (response: { data: never[] }) => never[]
-                }) => ({
-                  queryKey: ['models', input.params.model_type],
-                  queryFn: async () => ({ data: [] }),
-                  select,
-                }),
-              },
-            },
-          },
-        },
-      },
-    },
-    account: {
-      profile: {
-        get: { queryKey: () => queryKeys.accountProfile },
-      },
-    },
-    knowledgeFs: {
-      spaces: {
-        byControlSpaceId: {
-          delete: {
-            mutationOptions: () => ({ mutationFn: serviceMock.deleteSpace }),
-          },
-          externalAccess: {
-            get: {
-              key: () => queryKeys.externalAccess,
-              queryOptions: (options?: { staleTime?: number }) => ({
-                queryFn: () => Promise.resolve(knowledgeQueryMock.externalAccess),
-                queryKey: queryKeys.externalAccess,
-                staleTime: options?.staleTime ?? Infinity,
-              }),
-            },
-            put: {
-              mutationOptions: () => ({ mutationFn: serviceMock.patchExternalAccess }),
-            },
-          },
-          get: {
-            key: () => queryKeys.space,
-            queryOptions: (options?: { staleTime?: number }) => ({
-              queryFn: () => serviceMock.getSpace(),
-              queryKey: queryKeys.space,
-              staleTime: options?.staleTime ?? Infinity,
-            }),
-          },
-          members: {
-            put: {
-              mutationOptions: () => ({ mutationFn: serviceMock.replaceMembers }),
-            },
-          },
-          patch: {
-            mutationOptions: () => ({ mutationFn: serviceMock.patchSpace }),
-          },
-          permissions: {
-            get: {
-              key: () => queryKeys.permissions,
-              queryOptions: (options?: { staleTime?: number }) => ({
-                queryFn: () => Promise.resolve(knowledgeQueryMock.permissions),
-                queryKey: queryKeys.permissions,
-                staleTime: options?.staleTime ?? Infinity,
-              }),
-            },
-          },
-          settings: {
-            get: {
-              key: () => queryKeys.settings,
-              queryOptions: (options?: { staleTime?: number }) => ({
-                queryFn: () => Promise.resolve(knowledgeQueryMock.settings),
-                queryKey: queryKeys.settings,
-                staleTime: options?.staleTime ?? Infinity,
-              }),
-            },
-            migrations: {
-              byMigrationId: {
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      workspaces: {
+        current: {
+          members: { get: consoleOperationStub('workspaces.current.members.get') },
+          models: {
+            modelTypes: {
+              byModelType: {
                 get: {
                   queryOptions: ({
                     input,
+                    select,
                   }: {
-                    input: {
-                      params: { control_space_id: string; migration_id: string }
-                    }
+                    input: { params: { model_type: string } }
+                    select: (response: { data: never[] }) => never[]
                   }) => ({
-                    queryFn: () => serviceMock.getMigration(input),
-                    queryKey: ['knowledge-fs', 'settings-migration', input.params.migration_id],
+                    queryKey: ['models', input.params.model_type],
+                    queryFn: async () => ({ data: [] }),
+                    select,
                   }),
                 },
               },
             },
+          },
+        },
+      },
+      account: {
+        profile: {
+          get: { queryKey: () => queryKeys.accountProfile },
+        },
+      },
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            delete: {
+              mutationOptions: () => ({ mutationFn: serviceMock.deleteSpace }),
+            },
+            externalAccess: {
+              get: {
+                key: () => queryKeys.externalAccess,
+                queryOptions: (options?: { staleTime?: number }) => ({
+                  queryFn: () => Promise.resolve(knowledgeQueryMock.externalAccess),
+                  queryKey: queryKeys.externalAccess,
+                  staleTime: options?.staleTime ?? Infinity,
+                }),
+              },
+              put: {
+                mutationOptions: () => ({ mutationFn: serviceMock.patchExternalAccess }),
+              },
+            },
+            get: {
+              key: () => queryKeys.space,
+              queryOptions: (options?: { staleTime?: number }) => ({
+                queryFn: () => serviceMock.getSpace(),
+                queryKey: queryKeys.space,
+                staleTime: options?.staleTime ?? Infinity,
+              }),
+            },
+            members: {
+              put: {
+                mutationOptions: () => ({ mutationFn: serviceMock.replaceMembers }),
+              },
+            },
             patch: {
-              mutationOptions: () => ({ mutationFn: serviceMock.patchSettings }),
+              mutationOptions: () => ({ mutationFn: serviceMock.patchSpace }),
+            },
+            permissions: {
+              get: {
+                key: () => queryKeys.permissions,
+                queryOptions: (options?: { staleTime?: number }) => ({
+                  queryFn: () => Promise.resolve(knowledgeQueryMock.permissions),
+                  queryKey: queryKeys.permissions,
+                  staleTime: options?.staleTime ?? Infinity,
+                }),
+              },
+            },
+            settings: {
+              get: {
+                key: () => queryKeys.settings,
+                queryOptions: (options?: { staleTime?: number }) => ({
+                  queryFn: () => Promise.resolve(knowledgeQueryMock.settings),
+                  queryKey: queryKeys.settings,
+                  staleTime: options?.staleTime ?? Infinity,
+                }),
+              },
+              migrations: {
+                byMigrationId: {
+                  get: {
+                    queryOptions: ({
+                      input,
+                    }: {
+                      input: {
+                        params: { control_space_id: string; migration_id: string }
+                      }
+                    }) => ({
+                      queryFn: () => serviceMock.getMigration(input),
+                      queryKey: ['knowledge-fs', 'settings-migration', input.params.migration_id],
+                    }),
+                  },
+                },
+              },
+              patch: {
+                mutationOptions: () => ({ mutationFn: serviceMock.patchSettings }),
+              },
             },
           },
         },
       },
-    },
-    systemFeatures: {
-      get: {
-        queryOptions: () => ({ queryKey: queryKeys.systemFeatures }),
+      systemFeatures: {
+        get: {
+          queryOptions: () => ({ queryKey: queryKeys.systemFeatures }),
+        },
       },
     },
-  },
-}))
+  }
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: ({

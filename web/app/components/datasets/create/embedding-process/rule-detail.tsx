@@ -26,7 +26,6 @@ const RETRIEVAL_ICON_MAP: Partial<Record<RETRIEVE_METHOD, string>> = {
   [RETRIEVE_METHOD.fullText]: retrievalIcon.fullText,
   [RETRIEVE_METHOD.hybrid]: retrievalIcon.hybrid,
   [RETRIEVE_METHOD.semantic]: retrievalIcon.vector,
-  [RETRIEVE_METHOD.invertedIndex]: retrievalIcon.fullText,
   [RETRIEVE_METHOD.keywordSearch]: retrievalIcon.fullText,
 }
 

@@ -188,7 +188,6 @@ describe('knowledge-retrieval-v2/use-config', () => {
         id: 'knowledge-fs:number:priority',
         name: 'priority',
         type: MetadataFilteringVariableType.number,
-        value: 'priority',
       }),
     )
 
@@ -284,7 +283,6 @@ describe('knowledge-retrieval-v2/use-config', () => {
         id: 'knowledge-fs:time:reviewed_at',
         name: 'reviewed_at',
         type: MetadataFilteringVariableType.time,
-        value: 'reviewed_at',
       }),
     )
     expect(mockSetInputs).toHaveBeenLastCalledWith(

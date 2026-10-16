@@ -148,7 +148,6 @@
   "retrieval.full_text_search.title": "بحث النص الكامل",
   "retrieval.hybrid_search.description": "تنفيذ البحث بالنص الكامل والبحث المتجه في وقت واحد، وإعادة الترتيب لتحديد أفضل تطابق لاستعلام المستخدم. يمكن للمستخدمين اختيار تعيين الأوزان أو التكوين لنموذج إعادة الترتيب.",
   "retrieval.hybrid_search.title": "بحث هجين",
-  "retrieval.invertedIndex.title": "الفهرس المعكوس",
   "retrieval.keyword_search.description": "الفهرس المعكوس هو هيكل يستخدم للاسترجاع الفعال. منظم حسب المصطلحات، يشير كل مصطلح إلى المستندات أو صفحات الويب التي تحتوي عليه.",
   "retrieval.keyword_search.title": "فهرس معكوس",
   "retrieval.semantic_search.description": "إنشاء تضمينات الاستعلام والبحث عن قطعة النص الأكثر تشابهًا مع تمثيلها المتجه.",

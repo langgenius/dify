@@ -84,6 +84,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       },
       datasets: {
         ...original.consoleQuery.datasets,
+        apiBaseInfo: {
+          get: {
+            queryOptions: () => ({
+              initialData: { api_base_url: 'https://api.example.com' },
+              queryKey: ['console', 'datasets', 'api-base-info', 'get'],
+              queryFn: async () => ({ api_base_url: 'https://api.example.com' }),
+            }),
+          },
+        },
         knowledgeFsUpgradeJobs: {
           get: {
             queryOptions: () => ({
@@ -192,12 +201,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: () => 'High Quality',
-  }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetApiBaseUrl: () => ({
-    data: { api_base_url: 'https://api.example.com' },
   }),
 }))
 

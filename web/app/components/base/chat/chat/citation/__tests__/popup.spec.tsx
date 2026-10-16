@@ -2,7 +2,6 @@ import type { Resources } from '../index'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { resolveLogicalDocumentCitation } from '@/features/new-rag/documents/resolve-logical-document-id'
-import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import Popup from '../popup'
 
@@ -18,9 +17,13 @@ vi.mock('@/features/new-rag/documents/resolve-logical-document-id', () => ({
   resolveLogicalDocumentCitation: vi.fn(),
 }))
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDownload: vi.fn(),
-}))
+const { mockUseDocumentDownload } = vi.hoisted(() => ({ mockUseDocumentDownload: vi.fn() }))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.download.get': () => mockUseDocumentDownload(),
+  })
+})
 
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
@@ -44,7 +47,6 @@ vi.mock('../tooltip', () => ({
 
 const mockDownloadDocument = vi.fn()
 const mockResolveLogicalDocumentCitation = vi.mocked(resolveLogicalDocumentCitation)
-const mockUseDocumentDownload = vi.mocked(useDocumentDownload)
 const mockDownloadUrl = vi.mocked(downloadUrl)
 
 const makeSource = (
@@ -94,7 +96,7 @@ describe('Popup', () => {
     mockUseDocumentDownload.mockReturnValue({
       mutateAsync: mockDownloadDocument,
       isPending: false,
-    } as unknown as ReturnType<typeof useDocumentDownload>)
+    })
   })
 
   describe('Rendering – Trigger', () => {
@@ -228,7 +230,7 @@ describe('Popup', () => {
       mockUseDocumentDownload.mockReturnValue({
         mutateAsync: mockDownloadDocument,
         isPending: true,
-      } as unknown as ReturnType<typeof useDocumentDownload>)
+      })
       const user = userEvent.setup()
       render(<Popup data={makeData()} />)
 
@@ -588,8 +590,7 @@ describe('Popup', () => {
 
       await waitFor(() => {
         expect(mockDownloadDocument).toHaveBeenCalledWith({
-          datasetId: 'ds-1',
-          documentId: 'doc-1',
+          params: { dataset_id: 'ds-1', document_id: 'doc-1' },
         })
         expect(mockDownloadUrl).toHaveBeenCalledWith({
           url: 'https://example.com/file.pdf',
@@ -631,7 +632,7 @@ describe('Popup', () => {
       mockUseDocumentDownload.mockReturnValue({
         mutateAsync: mockDownloadDocument,
         isPending: true,
-      } as unknown as ReturnType<typeof useDocumentDownload>)
+      })
       const user = userEvent.setup()
       render(<Popup data={makeData({ dataSourceType: 'upload_file' })} />)
 
@@ -659,8 +660,7 @@ describe('Popup', () => {
 
       await waitFor(() => {
         expect(mockDownloadDocument).toHaveBeenCalledWith({
-          datasetId: 'ds-1',
-          documentId: 'primary-doc-id',
+          params: { dataset_id: 'ds-1', document_id: 'primary-doc-id' },
         })
       })
     })

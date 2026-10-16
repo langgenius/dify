@@ -25,7 +25,7 @@ from models.model import (
     Message as MessageModel,
 )
 
-type JSONValue = Any
+type AnyJSONValue = Any
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
 Int64 = Annotated[int, WithJsonSchema({"format": "int64", "type": "integer"})]
 URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
@@ -156,7 +156,7 @@ class MessageFile(ResponseModel):
 class SimpleConversation(ResponseModel):
     id: UUIDString
     name: str
-    inputs: dict[str, JSONValue]
+    inputs: dict[str, AnyJSONValue]
     status: str
     introduction: str | None = None
     created_at: Int64 | None = None
@@ -164,7 +164,7 @@ class SimpleConversation(ResponseModel):
 
     @field_validator("inputs", mode="before")
     @classmethod
-    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+    def _normalize_inputs(cls, value: AnyJSONValue) -> AnyJSONValue:
         return format_files_contained(value)
 
     @field_validator("created_at", "updated_at", mode="before")
@@ -234,7 +234,7 @@ class AgentThought(ResponseModel):
     thought: str | None = None
     answer: str | None = None
     tool: str | None = None
-    tool_labels: JSONValue = Field(description="Labels for tools used.")
+    tool_labels: AnyJSONValue = Field(description="Labels for tools used.")
     tool_input: str | None = None
     created_at: int | None = None
     observation: str | None = None
@@ -256,9 +256,9 @@ class MessageDetail(ResponseModel):
     retriever_resources: list[RetrievalSourceMetadata] = Field(default_factory=list)
     id: str
     conversation_id: str
-    inputs: dict[str, JSONValue]
+    inputs: dict[str, AnyJSONValue]
     query: str
-    message: JSONValue
+    message: AnyJSONValue
     message_tokens: int
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     answer_tokens: int
@@ -273,14 +273,14 @@ class MessageDetail(ResponseModel):
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
-    metadata: JSONValue = Field(validation_alias="message_metadata_dict")
+    metadata: AnyJSONValue = Field(validation_alias="message_metadata_dict")
     status: str
     error: str | None = None
     parent_message_id: str | None = None
 
     @field_validator("inputs", mode="before")
     @classmethod
-    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+    def _normalize_inputs(cls, value: AnyJSONValue) -> AnyJSONValue:
         return format_files_contained(value)
 
     @field_validator("created_at", mode="before")
@@ -301,17 +301,17 @@ class StatusCount(ResponseModel):
     paused: int
 
 
-class ModelConfig(ResponseModel):
+class ConversationModelConfig(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: JSONValue | None = Field(default=None)
-    model: JSONValue | None = Field(default=None)
-    user_input_form: JSONValue | None = Field(default=None)
+    suggested_questions: AnyJSONValue | None = Field(default=None)
+    model: AnyJSONValue | None = Field(default=None)
+    user_input_form: AnyJSONValue | None = Field(default=None)
     pre_prompt: str | None = None
-    agent_mode: JSONValue | None = Field(default=None)
+    agent_mode: AnyJSONValue | None = Field(default=None)
 
 
 class SimpleModelConfig(ResponseModel):
-    model: JSONValue | None = Field(
+    model: AnyJSONValue | None = Field(
         default=None,
         validation_alias="model_dict",
     )
@@ -319,19 +319,19 @@ class SimpleModelConfig(ResponseModel):
 
 
 class SimpleMessageDetail(ResponseModel):
-    inputs: dict[str, JSONValue]
+    inputs: dict[str, AnyJSONValue]
     query: str
     message: str
     answer: str
 
     @field_validator("inputs", mode="before")
     @classmethod
-    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+    def _normalize_inputs(cls, value: AnyJSONValue) -> AnyJSONValue:
         return format_files_contained(value)
 
     @field_validator("message", mode="before")
     @classmethod
-    def _normalize_message(cls, value: JSONValue) -> str:
+    def _normalize_message(cls, value: AnyJSONValue) -> str:
         return message_text(value)
 
 
@@ -373,7 +373,7 @@ class ConversationMessageDetail(ResponseModel):
     from_end_user_id: str | None = None
     from_account_id: str | None = None
     created_at: int | None = None
-    model_config_: ModelConfig | None = Field(default=None, alias="model_config")
+    model_config_: ConversationModelConfig | None = Field(default=None, alias="model_config")
     message: MessageDetail | None = Field(default=None, validation_alias="first_message")
 
     @field_validator("created_at", mode="before")
@@ -426,7 +426,7 @@ class ConversationDetail(ResponseModel):
     updated_at: int | None = None
     annotated: bool
     introduction: str | None = None
-    model_config_: ModelConfig | None = Field(default=None, alias="model_config")
+    model_config_: ConversationModelConfig | None = Field(default=None, alias="model_config")
     message_count: int
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
@@ -437,7 +437,7 @@ class ConversationDetail(ResponseModel):
         return to_timestamp(value)
 
 
-def format_files_contained(value: JSONValue) -> JSONValue:
+def format_files_contained(value: AnyJSONValue) -> AnyJSONValue:
     if isinstance(value, File):
         # Response payloads must preserve legacy file keys like `related_id`/`url`
         # while still exposing the new graph-layer `reference` field.
@@ -449,7 +449,7 @@ def format_files_contained(value: JSONValue) -> JSONValue:
     return value
 
 
-def message_text(value: JSONValue) -> str:
+def message_text(value: AnyJSONValue) -> str:
     if isinstance(value, list) and value:
         first = value[0]
         if isinstance(first, dict):
@@ -459,7 +459,7 @@ def message_text(value: JSONValue) -> str:
     return ""
 
 
-def extract_model_config(value: object | None) -> dict[str, JSONValue]:
+def extract_model_config(value: object | None) -> dict[str, AnyJSONValue]:
     if value is None:
         return {}
     if isinstance(value, dict):

@@ -26,6 +26,8 @@ vi.mock('@/service/console/browser', () => ({
         case 'datasets.apiKeys.post':
           apiMocks.createDataset(input)
           return { id: 'new-key', token: 'new-dataset-token-123', type: 'dataset', created_at: 2 }
+        case 'datasets.get':
+          return { data: [], page: 1, limit: 20, has_more: false, total: 0 }
         case 'knowledgeFs.spaces.get':
           return { data: apiMocks.knowledgeSpaces, page: 1, limit: 20, has_more: false }
         default:
@@ -42,10 +44,6 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({ formatTime: (value: number) => `Formatted: ${value}` }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInfiniteDatasets: () => ({ data: { pages: [{ data: [] }] }, isLoading: false }),
 }))
 
 // KnowledgeFS spaces only show up in the scope picker when the workspace has KnowledgeFS.

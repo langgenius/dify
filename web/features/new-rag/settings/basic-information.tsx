@@ -4,12 +4,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
 import { KNOWLEDGE_DESCRIPTION_MAX_LENGTH, KNOWLEDGE_NAME_MAX_LENGTH } from '../constants'
 import { KnowledgeSettingsMembers } from './members'
@@ -59,7 +60,9 @@ export function BasicInformationSection() {
   const { nameInvalid, descriptionInvalid, membersInvalid } = useAtomValue(
     knowledgeSettingsValidationAtom,
   )
-  const membersQuery = useMembers()
+  const membersQuery = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const [nameTouched, setNameTouched] = useState(false)
 
   if (!space || !current) return null

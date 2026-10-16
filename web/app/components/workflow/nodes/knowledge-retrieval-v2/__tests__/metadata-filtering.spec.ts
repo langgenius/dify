@@ -30,7 +30,6 @@ describe('intersectKnowledgeFsMetadataFields', () => {
         id: 'knowledge-fs:string:department',
         name: 'department',
         type: MetadataFilteringVariableType.string,
-        value: 'department',
       },
     ])
   })

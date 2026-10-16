@@ -115,7 +115,7 @@ def test_app_message_routes_pass_injected_session(
     ) == {"data": []}
     assert unwrap(message_module.MessageFeedbackApi.post)(
         message_module.MessageFeedbackApi(),
-        message_module.MessageFeedbackPayload(message_id=message_id, rating="like"),
+        message_module.AppMessageFeedbackPayload(message_id=message_id, rating="like"),
         session,
         current_user,
         app_model,
@@ -148,7 +148,7 @@ def test_update_message_feedback_commits_injected_session(app: Flask, sqlite_ses
 
     with app.test_request_context(json={"message_id": message_id, "rating": "like", "content": "helpful"}):
         result = message_module._update_message_feedback(
-            args=message_module.MessageFeedbackPayload(
+            args=message_module.AppMessageFeedbackPayload(
                 message_id=message_id,
                 rating="like",
                 content="helpful",
@@ -273,8 +273,8 @@ def test_chat_messages_query_empty_first_id(app: Flask, monkeypatch: pytest.Monk
 
 
 def test_message_feedback_payload_valid_like(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test MessageFeedbackPayload with like rating."""
-    payload = message_module.MessageFeedbackPayload(
+    """Test AppMessageFeedbackPayload with like rating."""
+    payload = message_module.AppMessageFeedbackPayload(
         message_id="550e8400-e29b-41d4-a716-446655440000",
         rating="like",
         content="Good answer",
@@ -284,8 +284,8 @@ def test_message_feedback_payload_valid_like(app: Flask, monkeypatch: pytest.Mon
 
 
 def test_message_feedback_payload_valid_dislike(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test MessageFeedbackPayload with dislike rating."""
-    payload = message_module.MessageFeedbackPayload(
+    """Test AppMessageFeedbackPayload with dislike rating."""
+    payload = message_module.AppMessageFeedbackPayload(
         message_id="550e8400-e29b-41d4-a716-446655440000",
         rating="dislike",
     )
@@ -293,8 +293,8 @@ def test_message_feedback_payload_valid_dislike(app: Flask, monkeypatch: pytest.
 
 
 def test_message_feedback_payload_no_rating(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test MessageFeedbackPayload without rating."""
-    payload = message_module.MessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
+    """Test AppMessageFeedbackPayload without rating."""
+    payload = message_module.AppMessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.rating is None
 
 

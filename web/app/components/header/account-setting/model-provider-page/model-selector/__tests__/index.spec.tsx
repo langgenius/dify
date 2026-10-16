@@ -293,7 +293,13 @@ describe('ModelSelector', () => {
           defaultModel={{
             model: 'missing-model',
             model_type: ModelTypeEnum.textGeneration,
-            provider: { provider, icon_small: { en_US: '', zh_Hans: '' } },
+            provider: {
+              provider,
+              icon_small: { en_US: '', zh_Hans: '' },
+              label: { en_US: provider, zh_Hans: provider },
+              supported_model_types: [],
+              tenant_id: 'tenant-1',
+            },
           }}
         />,
       )

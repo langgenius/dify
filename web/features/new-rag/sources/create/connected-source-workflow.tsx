@@ -33,7 +33,6 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { useGetDataSourceListAuth } from '@/service/use-datasource'
 import { formatFileSize } from '@/utils/format'
 import { createRequestId } from '../../request-id'
 import {
@@ -1517,7 +1516,7 @@ export function ConnectedSourceWorkflow(props: ConnectedSourceWorkflowProps) {
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
   )
-  const datasourceAuthQuery = useGetDataSourceListAuth()
+  const datasourceAuthQuery = useQuery(consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }))
   const providerOptions = useMemo(
     () => discoverSourceProviderOptions(draft.sourceType, datasourcePluginsQuery.data ?? []),
     [datasourcePluginsQuery.data, draft.sourceType],
@@ -1583,7 +1582,7 @@ function ConnectedSourceWorkflowSession({
   const datasourcePluginsQuery = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({}),
   )
-  const datasourceAuthQuery = useGetDataSourceListAuth()
+  const datasourceAuthQuery = useQuery(consoleQuery.auth.plugin.datasource.list.get.queryOptions({ retry: 0 }))
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       context: { silent: true },

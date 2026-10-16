@@ -41,9 +41,6 @@ const supportedFormats = {
   allowed_extensions: ['pdf', 'docx', 'txt', 'md'],
 }
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: mockFileUploadConfig }),
-}))
 vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
@@ -71,6 +68,13 @@ const render = (ui: ReactElement) =>
     queryClient: createQueryClient(),
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({ data: mockFileUploadConfig }),
+  })
+})
 
 describe('useFileUpload', () => {
   const defaultOptions = {

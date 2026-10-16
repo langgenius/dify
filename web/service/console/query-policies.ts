@@ -10,7 +10,7 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import { isNotFoundError } from '@/service/http-error'
+import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
@@ -75,11 +75,44 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      auth: {
+        plugin: {
+          datasource: {
+            list: { get: { queryOptions: { retry: false } } },
+            defaultList: { get: { queryOptions: { retry: false } } },
+            byProviderId: { get: { queryOptions: { retry: false } } },
+          },
+        },
+      },
       rag: {
+        pipeline: {
+          templates: {
+            byTemplateId: { get: { queryOptions: { staleTime: 0 } } },
+          },
+        },
         pipelines: {
           datasourcePlugins: {
             get: {
               queryOptions: { staleTime: 0, retry: false },
+            },
+          },
+          // DSL import failures are reported by the import flow.
+          imports: {
+            post: { mutationOptions: { context: { silent: true } } },
+            byImportId: {
+              confirm: { post: { mutationOptions: { context: { silent: true } } } },
+            },
+          },
+          byPipelineId: {
+            workflows: {
+              draft: {
+                processing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+                preProcessing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+              },
+              published: {
+                processing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+                preProcessing: { parameters: { get: { queryOptions: { staleTime: 0 } } } },
+              },
             },
           },
         },
@@ -241,7 +274,89 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          // Role writes refresh the role list; role assignment changes also refresh members.
           rbac: {
+            roles: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) =>
+                    error
+                      ? undefined
+                      : context.client.invalidateQueries({
+                          queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                        }),
+                },
+              },
+              byRoleId: {
+                put: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) =>
+                      error
+                        ? undefined
+                        : context.client.invalidateQueries({
+                            queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                          }),
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSettled: (_data, error, _variables, _result, context) =>
+                      error
+                        ? undefined
+                        : Promise.all([
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                            }),
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.workspaces.current.members.get.key(),
+                            }),
+                          ]),
+                  },
+                },
+                copy: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) =>
+                        error
+                          ? undefined
+                          : Promise.all([
+                              context.client.invalidateQueries({
+                                queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
+                              }),
+                              variables.body?.copy_member &&
+                                context.client.invalidateQueries({
+                                  queryKey: consoleQuery.workspaces.current.members.get.key(),
+                                }),
+                            ]),
+                    },
+                  },
+                },
+              },
+            },
+            members: {
+              byMemberId: {
+                rbacRoles: {
+                  put: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) =>
+                        error
+                          ? undefined
+                          : Promise.all([
+                              context.client.invalidateQueries({
+                                queryKey:
+                                  consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.key(
+                                    { input: { params: variables.params } },
+                                  ),
+                              }),
+                              context.client.invalidateQueries({
+                                queryKey: consoleQuery.workspaces.current.members.get.key(),
+                              }),
+                            ]),
+                    },
+                  },
+                },
+              },
+            },
             accessPolicies: {
               post: {
                 mutationOptions: {
@@ -802,6 +917,137 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       datasets: {
+        // Process rules are read once to describe a running import.
+        processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
+        byDatasetId: {
+          get: {
+            queryOptions: {
+              // A missing or inaccessible dataset sends the detail page back to the list.
+              retry: (failureCount, error) => {
+                const status = getHttpErrorStatus(error)
+                if (status === 403 || status === 404) return false
+
+                return failureCount < 3
+              },
+            },
+          },
+          documents: {
+            byDocumentId: {
+              pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },
+            },
+            // Document metadata shows in the dataset fields, the document list and each
+            // document's detail.
+            metadata: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
+          metadata: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+            byMetadataId: {
+              patch: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                    ])
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _result, context) => {
+                    if (error) return
+                    const params = { dataset_id: variables.params.dataset_id }
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+                          input: { params },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+            builtIn: {
+              byAction: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      return context.client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                          input: { params: { dataset_id: variables.params.dataset_id } },
+                        }),
+                      })
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         apiKeys: {
           post: {
             mutationOptions: {

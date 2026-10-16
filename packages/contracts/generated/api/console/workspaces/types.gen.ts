@@ -737,6 +737,12 @@ export type RbacRoleList = {
   pagination?: Pagination | null
 }
 
+export type RoleUpsertRequest = {
+  description?: string
+  name: string
+  permission_keys?: Array<string>
+}
+
 export type RbacRole = {
   category?: string
   description?: string
@@ -747,6 +753,10 @@ export type RbacRole = {
   role_tag?: string
   tenant_id?: string | null
   type: string
+}
+
+export type CopyRoleParam = {
+  copy_member?: boolean
 }
 
 export type MembersInRoleList = {
@@ -1516,7 +1526,7 @@ export type DslImportWarning = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
 }
 
 export type AccountWithRoleResponse = {
@@ -1529,9 +1539,7 @@ export type AccountWithRoleResponse = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -1586,11 +1594,11 @@ export type ProviderResponse = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
   custom_configuration: CustomConfigurationResponse
-  description?: I18nObject | null
+  description?: ModelRuntimeI18nObject | null
   help?: ProviderHelpEntity | null
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   model_credential_schema?: ModelCredentialSchema | null
   preferred_provider_type: ProviderType
   provider: string
@@ -1603,11 +1611,11 @@ export type ProviderResponse = {
 export type ModelProviderSummaryResponse = {
   configurate_methods: Array<ConfigurateMethod>
   custom_configuration: ModelProviderCustomConfigurationSummaryResponse
-  description?: I18nObject | null
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
+  description?: ModelRuntimeI18nObject | null
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
   is_configured: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   plugin_id: string
   preferred_provider_type: ProviderType
   provider: string
@@ -1629,7 +1637,7 @@ export type ModelWithProviderEntityResponse = {
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
   has_invalid_load_balancing_configs?: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   load_balancing_enabled?: boolean
   model: string
   model_properties: {
@@ -1661,8 +1669,8 @@ export type ModelLoadBalancingResponse = {
 
 export type ParameterRule = {
   default?: unknown | null
-  help?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  help?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   max?: number | null
   min?: number | null
   name: string
@@ -1674,9 +1682,9 @@ export type ParameterRule = {
 }
 
 export type ProviderWithModelsResponse = {
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   models: Array<ProviderModelWithStatusEntity>
   provider: string
   status: CustomConfigurationStatus
@@ -1713,11 +1721,11 @@ export type PluginDeclaration = {
   category: PluginCategory
   created_at: string
   datasource?: DatasourceProviderEntity | null
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   endpoint?: EndpointProviderDeclaration | null
   icon: string
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   meta: Meta
   model?: ProviderEntity | null
   name: string
@@ -1802,7 +1810,10 @@ export type TenantPluginInstallPermission = 'admins' | 'everyone' | 'noone'
 
 export type PluginBundleDependency = {
   type: PluginBundleDependencyType
-  value: Github | Marketplace | Package
+  value:
+    | PluginBundleDependencyGithub
+    | PluginBundleDependencyMarketplace
+    | PluginBundleDependencyPackage
 }
 
 export type PluginVerification = {
@@ -1812,7 +1823,7 @@ export type PluginVerification = {
 export type PluginCategoryBuiltinToolProviderResponse = {
   allow_delete: boolean
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon:
     | string
     | {
@@ -1826,7 +1837,7 @@ export type PluginCategoryBuiltinToolProviderResponse = {
     | null
   id: string
   is_team_authorization: boolean
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   labels: Array<string>
   name: string
   plugin_id: string | null
@@ -2209,10 +2220,10 @@ export type TenantInfoResponse = {
 
 export type AgentStrategyProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon: string
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
@@ -2230,27 +2241,32 @@ export type AgentStrategyEntity = {
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
-export type Github = {
+export type PluginDependencyGithub = {
   github_plugin_unique_identifier: string
   package: string
   repo: string
   version: string
 }
 
-export type Marketplace = {
+export type PluginDependencyMarketplace = {
   marketplace_plugin_unique_identifier: string
   version?: string | null
 }
 
-export type Package = {
+export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
 }
 
+export type MemberRoleSummaryResponse = {
+  id: string
+  name: string
+}
+
 export type SimpleProviderEntityResponse = {
-  icon_small?: I18nObject | null
-  icon_small_dark?: I18nObject | null
-  label: I18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   models?: Array<AiModelEntityResponse>
   provider: string
   provider_name?: string
@@ -2274,9 +2290,14 @@ export type CustomConfigurationResponse = {
   status: CustomConfigurationStatus
 }
 
+export type ModelRuntimeI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
+
 export type ProviderHelpEntity = {
-  title: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  url: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  title: ModelRuntimeI18nObject
+  url: ModelRuntimeI18nObject
 }
 
 export type ModelCredentialSchema = {
@@ -2358,11 +2379,6 @@ export type ModelLoadBalancingConfigResponse = {
   ttl: number
 }
 
-export type GraphonModelRuntimeEntitiesCommonEntitiesI18nObject = {
-  en_US: string
-  zh_Hans?: string | null
-}
-
 export type ParameterType = 'boolean' | 'float' | 'int' | 'string' | 'text'
 
 export type ProviderModelWithStatusEntity = {
@@ -2370,7 +2386,7 @@ export type ProviderModelWithStatusEntity = {
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
   has_invalid_load_balancing_configs?: boolean
-  label: I18nObject
+  label: ModelRuntimeI18nObject
   load_balancing_enabled?: boolean
   model: string
   model_properties: {
@@ -2406,13 +2422,6 @@ export type DatasourceProviderEntity = {
   provider_type: DatasourceProviderType
 }
 
-export type CoreToolsEntitiesCommonEntitiesI18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
-}
-
 export type EndpointProviderDeclaration = {
   endpoints?: Array<EndpointDeclaration> | null
   settings?: Array<ProviderConfig>
@@ -2421,11 +2430,11 @@ export type EndpointProviderDeclaration = {
 export type ProviderEntity = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
-  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  description?: ModelRuntimeI18nObject | null
   help?: ProviderHelpEntity | null
-  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   model_credential_schema?: ModelCredentialSchema | null
   models?: Array<AiModelEntity>
   position?: {
@@ -2486,13 +2495,13 @@ export type PluginDeclarationResponse = {
   datasource?: {
     [key: string]: unknown
   } | null
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   endpoint?: {
     [key: string]: unknown
   } | null
   icon: string
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   meta: {
     [key: string]: unknown
   }
@@ -2518,12 +2527,30 @@ export type PluginDeclarationResponse = {
 
 export type PluginBundleDependencyType = 'github' | 'marketplace' | 'package'
 
+export type PluginBundleDependencyGithub = {
+  packages: string
+  release: string
+  repo: string
+  repo_address: string
+}
+
+export type PluginBundleDependencyMarketplace = {
+  organization: string
+  plugin: string
+  version: string
+}
+
+export type PluginBundleDependencyPackage = {
+  manifest: PluginDeclaration
+  unique_identifier: string
+}
+
 export type AuthorizedCategory = 'community' | 'langgenius' | 'partner'
 
 export type PluginCategoryBuiltinToolResponse = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
+  label: I18nObject
   labels: Array<string>
   name: string
   output_schema: {
@@ -2711,7 +2738,7 @@ export type AiModelEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   model: string
   model_properties: {
     [key in ModelPropertyKey]?: unknown
@@ -2760,10 +2787,10 @@ export type CustomModelConfiguration = {
 
 export type CredentialFormSchema = {
   default?: string | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   max_length?: number
   options?: Array<FormOption> | null
-  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  placeholder?: ModelRuntimeI18nObject | null
   required?: boolean
   show_on?: Array<FormShowOnObject>
   type: FormType
@@ -2771,8 +2798,8 @@ export type CredentialFormSchema = {
 }
 
 export type FieldModelSchema = {
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  label: ModelRuntimeI18nObject
+  placeholder?: ModelRuntimeI18nObject | null
 }
 
 export type ProviderQuotaType = 'free' | 'paid' | 'trial'
@@ -2788,9 +2815,9 @@ export type QuotaConfiguration = {
 
 export type DatasourceProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon: string
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
@@ -2811,7 +2838,7 @@ export type AiModelEntity = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   model: string
   model_properties: {
     [key in ModelPropertyKey]?: unknown
@@ -2831,16 +2858,16 @@ export type Permission = {
 
 export type ToolProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon: string
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
 
 export type EventEntity = {
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   identity: EventIdentity
   output_schema?: {
     [key: string]: unknown
@@ -2850,10 +2877,10 @@ export type EventEntity = {
 
 export type TriggerProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon?: string | null
   icon_dark?: string | null
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<string>
 }
@@ -2861,11 +2888,11 @@ export type TriggerProviderIdentity = {
 export type ProviderEntityResponse = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
-  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  description?: ModelRuntimeI18nObject | null
   help?: ProviderHelpEntity | null
-  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  icon_small?: ModelRuntimeI18nObject | null
+  icon_small_dark?: ModelRuntimeI18nObject | null
+  label: ModelRuntimeI18nObject
   model_credential_schema?: ModelCredentialSchema | null
   models?: Array<AiModelEntityResponse>
   position?: {
@@ -2967,7 +2994,7 @@ export type EndpointProviderConfigScope =
   | 'workflow'
 
 export type FormOption = {
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  label: ModelRuntimeI18nObject
   show_on?: Array<FormShowOnObject>
   value: string
 }
@@ -3036,9 +3063,7 @@ export type AccountWithRoleResponseWritable = {
   last_login_at?: number | null
   name: string
   role: string
-  roles?: Array<{
-    [key: string]: string
-  }>
+  roles?: Array<MemberRoleSummaryResponse>
   status: string
 }
 
@@ -3694,7 +3719,9 @@ export type PatchWorkspacesCurrentEndpointsByIdResponse =
 export type GetWorkspacesCurrentMembersData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/members'
 }
 
@@ -6102,7 +6129,9 @@ export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
   path: {
     member_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
 }
 
@@ -6251,7 +6280,13 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse =
 export type GetWorkspacesCurrentRbacRolesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    include_owner?: number
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/roles'
 }
 
@@ -6270,9 +6305,11 @@ export type GetWorkspacesCurrentRbacRolesResponse =
   GetWorkspacesCurrentRbacRolesResponses[keyof GetWorkspacesCurrentRbacRolesResponses]
 
 export type PostWorkspacesCurrentRbacRolesData = {
-  body?: never
+  body: RoleUpsertRequest
   path?: never
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles'
 }
 
@@ -6318,7 +6355,9 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}'
 }
 
@@ -6337,11 +6376,13 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdResponse =
   GetWorkspacesCurrentRbacRolesByRoleIdResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdResponses]
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
-  body?: never
+  body: RoleUpsertRequest
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}'
 }
 
@@ -6360,11 +6401,13 @@ export type PutWorkspacesCurrentRbacRolesByRoleIdResponse =
   PutWorkspacesCurrentRbacRolesByRoleIdResponses[keyof PutWorkspacesCurrentRbacRolesByRoleIdResponses]
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
-  body?: never
+  body: CopyRoleParam
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
   url: '/workspaces/current/rbac/roles/{role_id}/copy'
 }
 
@@ -6387,7 +6430,12 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdMembersData = {
   path: {
     role_id: string
   }
-  query?: never
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
+  }
   url: '/workspaces/current/rbac/roles/{role_id}/members'
 }
 

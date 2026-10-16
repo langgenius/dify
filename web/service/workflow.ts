@@ -86,15 +86,19 @@ export const stopWorkflowRun = (url: string) => {
 }
 
 export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}) => {
-  return get(`apps/${appId}/workflows/default-workflow-block-configs/${blockType}`, {
-    params: { q: JSON.stringify(query) },
+  return consoleClient.apps.byAppId.workflows.defaultWorkflowBlockConfigs.byBlockType.get({
+    params: { app_id: appId, block_type: blockType },
+    query: { q: JSON.stringify(query) },
   })
 }
 
 export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnum, query = {}) => {
-  return get(`rag/pipelines/${pipelineId}/workflows/default-workflow-block-configs/${blockType}`, {
-    params: { q: JSON.stringify(query) },
-  })
+  return consoleClient.rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.byBlockType.get(
+    {
+      params: { pipeline_id: pipelineId, block_type: blockType },
+      query: { q: JSON.stringify(query) },
+    },
+  )
 }
 
 export const fetchCurrentValueOfConversationVariable = ({
@@ -218,7 +222,10 @@ export const submitHumanInputForm = (
     action: string
   },
 ) => {
-  return post(`/form/human_input/${token}`, { body: data })
+  return consoleClient.form.humanInput.byFormToken.post({
+    params: { form_token: token },
+    body: data,
+  })
 }
 
 export const fetchHumanInputNodeStepRunForm = (

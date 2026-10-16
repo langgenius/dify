@@ -9,7 +9,7 @@ import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
-import { updateWorkspaceInfo } from '@/service/common'
+import { consoleClient } from '@/service/console'
 
 type IEditWorkspaceModalProps = {
   onCancel: () => void
@@ -38,8 +38,7 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
     if (isSubmitting || isSaveUnavailable) return
     setIsSubmitting(true)
     try {
-      await updateWorkspaceInfo({
-        url: '/workspaces/info',
+      await consoleClient.workspaces.info.post({
         body: {
           name: normalizedName,
         },

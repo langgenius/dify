@@ -1016,7 +1016,13 @@ Agent has not been published. Please publish the Agent before using the web app.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
+| tool_labels | [AnyJSONValue](#anyjsonvalue) | Labels for tools used. | Yes |
+
+#### AnyJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnyJSONValue |  |  |  |
 
 #### AppAccessModeQuery
 
@@ -1490,12 +1496,6 @@ Upload token is invalid or expired.
 | ---- | ---- | ----------- | -------- |
 | InvalidUploadTokenError |  | Upload token is invalid or expired. |  |
 
-#### JSONValue
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
-
 #### JSONValueType
 
 | Name | Type | Description | Required |
@@ -1896,6 +1896,12 @@ The remote file URL is not allowed.
 | option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### ShallowJSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ShallowJSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
 
 #### SimpleConversation
 

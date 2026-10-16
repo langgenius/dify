@@ -148,7 +148,6 @@
   "retrieval.full_text_search.title": "Ricerca Full-Text",
   "retrieval.hybrid_search.description": "Esegui contemporaneamente la ricerca full-text e la ricerca vettoriale, riordina per selezionare la migliore corrispondenza per la query dell'utente. È necessaria la configurazione delle API del modello Rerank.",
   "retrieval.hybrid_search.title": "Ricerca Ibrida",
-  "retrieval.invertedIndex.title": "Indice Invertito",
   "retrieval.keyword_search.description": "L'indice invertito è una struttura utilizzata per un recupero efficiente. Organizzato per termini, ogni termine rimanda a documenti o pagine web che lo contengono.",
   "retrieval.keyword_search.title": "Indice invertito",
   "retrieval.semantic_search.description": "Genera embedding delle query e cerca il blocco di testo più simile alla sua rappresentazione vettoriale.",

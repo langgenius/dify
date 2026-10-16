@@ -58,7 +58,8 @@ export function SegmentDetail({
         id: uuid4(),
         name: item.name,
         size: item.size,
-        mimeType: item.mime_type,
+        // An unknown MIME type is empty, as in File.type.
+        mimeType: item.mime_type ?? '',
         extension: item.extension,
         sourceUrl: item.source_url,
         uploadedId: item.id,

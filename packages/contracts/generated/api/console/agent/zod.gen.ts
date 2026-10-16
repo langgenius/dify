@@ -439,9 +439,9 @@ export const zAgentDebugConversationRefreshResponse = z.object({
 })
 
 /**
- * MessageFeedbackPayload
+ * AppMessageFeedbackPayload
  */
-export const zMessageFeedbackPayload = z.object({
+export const zAppMessageFeedbackPayload = z.object({
   content: z.string().nullish(),
   message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
@@ -999,16 +999,7 @@ export const zAgentLogListResponse = z.object({
   total: z.int(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zAnyJsonValue = z.unknown()
 
 /**
  * AgentThought
@@ -1025,7 +1016,7 @@ export const zAgentThought = z.object({
   thought: z.string().nullish(),
   tool: z.string().nullish(),
   tool_input: z.string().nullish(),
-  tool_labels: zJsonValue,
+  tool_labels: zAnyJsonValue,
 })
 
 /**
@@ -1831,13 +1822,13 @@ export const zAppRerankingModelResponse = z.object({
   reranking_provider_name: z.string().optional(),
 })
 
-export const zJsonValue2 = z.unknown()
+export const zJsonValue = z.unknown()
 
 /**
  * AppEnabledExternalDataToolResponse
  */
 export const zAppEnabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue2),
+  config: z.record(z.string(), zJsonValue),
   enabled: z.literal(true),
   icon: z.string().optional(),
   icon_background: z.string().optional(),
@@ -1850,7 +1841,7 @@ export const zAppEnabledExternalDataToolResponse = z.object({
  * AppDisabledExternalDataToolResponse
  */
 export const zAppDisabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue2).optional(),
+  config: z.record(z.string(), zJsonValue).optional(),
   enabled: z.literal(false),
   icon: z.string().optional(),
   icon_background: z.string().optional(),
@@ -1863,8 +1854,8 @@ export const zAppDisabledExternalDataToolResponse = z.object({
  * AppSensitiveWordAvoidanceResponse
  */
 export const zAppSensitiveWordAvoidanceResponse = z.object({
-  config: z.record(z.string(), zJsonValue2).optional(),
-  configs: z.array(zJsonValue2).optional(),
+  config: z.record(z.string(), zJsonValue).optional(),
+  configs: z.array(zJsonValue).optional(),
   enabled: z.boolean(),
   type: z.string().optional(),
 })
@@ -1878,35 +1869,35 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
 })
 
 /**
  * AppLegacyGoogleSearchToolResponse
  */
 export const zAppLegacyGoogleSearchToolResponse = z.object({
-  google_search: z.record(z.string(), zJsonValue2),
+  google_search: z.record(z.string(), zJsonValue),
 })
 
 /**
  * AppLegacyWebReaderToolResponse
  */
 export const zAppLegacyWebReaderToolResponse = z.object({
-  web_reader: z.record(z.string(), zJsonValue2),
+  web_reader: z.record(z.string(), zJsonValue),
 })
 
 /**
  * AppLegacyWikipediaToolResponse
  */
 export const zAppLegacyWikipediaToolResponse = z.object({
-  wikipedia: z.record(z.string(), zJsonValue2),
+  wikipedia: z.record(z.string(), zJsonValue),
 })
 
 /**
  * AppLegacyCurrentDatetimeToolResponse
  */
 export const zAppLegacyCurrentDatetimeToolResponse = z.object({
-  current_datetime: z.record(z.string(), zJsonValue2),
+  current_datetime: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -1957,7 +1948,7 @@ export const zLlmMode = z.enum(['chat', 'completion'])
  * AppModelSelectionResponse
  */
 export const zAppModelSelectionResponse = z.object({
-  completion_params: z.record(z.string(), zJsonValue2).optional(),
+  completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
   name: z.string().optional(),
   provider: z.string().optional(),
@@ -2043,14 +2034,14 @@ export const zAppUserInputFormConfigResponse = z.object({
   allowed_file_extensions: z.array(z.string()).optional(),
   allowed_file_types: z.array(zFileType).optional(),
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  config: z.record(z.string(), zJsonValue2).optional(),
-  default: zJsonValue2.optional(),
+  config: z.record(z.string(), zJsonValue).optional(),
+  default: zJsonValue.optional(),
   description: z.string().optional(),
   enabled: z.boolean().optional(),
   hide: z.boolean().optional(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
-  json_schema: z.union([z.string(), z.record(z.string(), zJsonValue2)]).nullish(),
+  json_schema: z.union([z.string(), z.record(z.string(), zJsonValue)]).nullish(),
   label: z.string(),
   max_length: z.int().nullish(),
   options: z.array(z.string()).optional(),
@@ -2548,7 +2539,7 @@ export const zAppProviderAgentToolResponse = z.object({
   provider_type: zToolProviderType,
   tool_label: z.string().optional(),
   tool_name: z.string(),
-  tool_parameters: z.record(z.string(), zJsonValue2),
+  tool_parameters: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -3439,11 +3430,11 @@ export const zMessageDetailResponse = z.object({
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue,
+  inputs: z.record(z.string(), zAnyJsonValue),
+  message: zAnyJsonValue,
   message_files: z.array(zMessageFile),
   message_tokens: z.int(),
-  metadata: zJsonValue,
+  metadata: zAnyJsonValue,
   parent_message_id: z.string().nullish(),
   provider_response_latency: z.number(),
   query: z.string(),
@@ -4104,7 +4095,7 @@ export const zPostAgentByAgentIdFeaturesPath = z.object({
  */
 export const zPostAgentByAgentIdFeaturesResponse = zSimpleResultResponse
 
-export const zPostAgentByAgentIdFeedbacksBody = zMessageFeedbackPayload
+export const zPostAgentByAgentIdFeedbacksBody = zAppMessageFeedbackPayload
 
 export const zPostAgentByAgentIdFeedbacksPath = z.object({
   agent_id: z.uuid(),

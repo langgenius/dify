@@ -93,12 +93,15 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/service/use-workflow', () => ({
   useInvalidateLastRun: () => vi.fn(),
@@ -106,20 +109,33 @@ vi.mock('@/service/use-workflow', () => ({
 
 vi.mock('@/service/workflow', () => ({
   fetchNodeInspectVars: vi.fn(),
-  getIterationSingleNodeRunUrl: vi.fn(),
-  getLoopSingleNodeRunUrl: vi.fn(),
   singleNodeRun: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    apps: {
-      byAppId: {
-        workflows: { draft: { nodes: { byNodeId: { trigger: { run: { post: vi.fn() } } } } } },
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleClient: {
+      apps: {
+        byAppId: {
+          workflows: { draft: { nodes: { byNodeId: { trigger: { run: { post: vi.fn() } } } } } },
+        },
       },
     },
-  },
-}))
+    consoleQuery: {
+      workspaces: {
+        current: {
+          tools: {
+            builtin: { get: consoleOperationStub('workspaces.current.tools.builtin.get') },
+            api: { get: consoleOperationStub('workspaces.current.tools.api.get') },
+            workflow: { get: consoleOperationStub('workspaces.current.tools.workflow.get') },
+            mcp: { get: consoleOperationStub('workspaces.current.tools.mcp.get') },
+          },
+        },
+      },
+    },
+  }
+})
 
 vi.mock('@/service/base', () => ({
   ssePost: vi.fn(),

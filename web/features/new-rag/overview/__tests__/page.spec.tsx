@@ -261,19 +261,17 @@ vi.mock('jotai-tanstack-query', async () => {
   }
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          avatar_url: 'https://example.com/avatar.png',
-          email: 'ada@example.com',
-          id: 'member-1',
-          name: 'Ada',
-        },
-      ],
-    },
-  }),
+const membersQueryResult = vi.hoisted(() => ({
+  data: {
+    accounts: [
+      {
+        avatar_url: 'https://example.com/avatar.png',
+        email: 'ada@example.com',
+        id: 'member-1',
+        name: 'Ada',
+      },
+    ],
+  },
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -297,6 +295,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       refetch: options.queryKey[0] === 'activityInfinite' ? vi.fn() : tasksQueryState.refetch,
     }),
     useQuery: (options: { input?: unknown; queryKey: string[] }) => {
+      if (options.queryKey[0] === 'members') return membersQueryResult
       const name = options.queryKey[0] as keyof typeof overviewQueryState
       const state = overviewQueryState[name]
       return {
@@ -318,6 +317,13 @@ vi.mock('@/service/console', () => {
 
   return {
     consoleQuery: {
+      workspaces: {
+        current: {
+          members: {
+            get: { queryOptions: () => ({ queryKey: ['members'] }) },
+          },
+        },
+      },
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {

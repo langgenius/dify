@@ -11,6 +11,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import IndexingSection from '../indexing-section'
@@ -163,6 +164,7 @@ describe('IndexingSection', () => {
   }
 
   const mockDataset: DataSet = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
@@ -174,7 +176,6 @@ describe('IndexingSection', () => {
       icon_url: '',
     },
     indexing_technique: IndexingType.QUALIFIED,
-    indexing_status: 'completed',
     data_source_type: DataSourceType.FILE,
     doc_form: ChunkingMode.text,
     embedding_model: 'text-embedding-ada-002',
@@ -182,7 +183,6 @@ describe('IndexingSection', () => {
     embedding_available: true,
     app_count: 0,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'vendor',
     tags: [],
@@ -199,7 +199,6 @@ describe('IndexingSection', () => {
       score_threshold_enabled: true,
     },
     retrieval_model_dict: mockRetrievalConfig,
-    retrieval_model: mockRetrievalConfig,
     built_in_field_enabled: false,
     keyword_number: 10,
     created_by: 'user-1',

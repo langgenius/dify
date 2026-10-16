@@ -1,9 +1,11 @@
 import type { Datasource } from '../../test-run/types'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { selectPipelineStepParameters } from '@/app/components/rag-pipeline/utils/query-select'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
-import { useDraftPipelinePreProcessingParams } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import DataSourceOptions from '../../test-run/preparation/data-source-options'
 import Form from './form'
 
@@ -15,12 +17,14 @@ type DatasourceProps = {
 const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourceProps) => {
   const { t } = useTranslation(['datasetPipeline'])
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
-  const { data: paramsConfig } = useDraftPipelinePreProcessingParams(
-    {
-      pipeline_id: pipelineId!,
-      node_id: dataSourceNodeId,
-    },
-    !!pipelineId && !!dataSourceNodeId,
+  const { data: paramsConfig } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get.queryOptions(
+      {
+        input: { params: { pipeline_id: pipelineId! }, query: { node_id: dataSourceNodeId } },
+        enabled: !!pipelineId && !!dataSourceNodeId,
+        select: selectPipelineStepParameters,
+      },
+    ),
   )
 
   return (

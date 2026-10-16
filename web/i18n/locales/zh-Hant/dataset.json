@@ -148,7 +148,6 @@
   "retrieval.full_text_search.title": "全文檢索",
   "retrieval.hybrid_search.description": "同時執行全文檢索和向量檢索，並應用重排序步驟，從兩類查詢結果中選擇匹配使用者問題的最佳結果，需配置 Rerank 模型 API",
   "retrieval.hybrid_search.title": "混合檢索",
-  "retrieval.invertedIndex.title": "反向索引",
   "retrieval.keyword_search.description": "倒掛索引是一種用於高效檢索的結構。依字詞組織，每個字詞都指向包含它的文件或網頁。",
   "retrieval.keyword_search.title": "倒掛索引",
   "retrieval.semantic_search.description": "透過生成查詢嵌入並查詢與其向量表示最相似的文字分段",

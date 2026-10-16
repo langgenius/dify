@@ -67,19 +67,6 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-datasource', async () => {
-  const { useQuery } =
-    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
-  return {
-    useGetDataSourceListAuth: () =>
-      useQuery({
-        queryFn: () => clientMock.listDatasourceAuth(),
-        queryKey: ['data-source-auth', 'list'],
-        retry: false,
-      }),
-  }
-})
-
 vi.mock('@/service/console', () => ({
   consoleClient: {
     knowledgeFs: {
@@ -134,6 +121,22 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    auth: {
+      plugin: {
+        datasource: {
+          list: {
+            get: {
+              queryOptions: (options: { enabled?: boolean } = {}) => ({
+                ...options,
+                queryKey: ['data-source-auth', 'list'],
+                queryFn: () => clientMock.listDatasourceAuth(),
+                retry: false,
+              }),
+            },
+          },
+        },
+      },
+    },
     rag: {
       pipelines: {
         datasourcePlugins: {
@@ -379,11 +382,13 @@ const s3DatasourcePlugin: DataSourceItem = {
 
 const s3DatasourceAuth: DataSourceAuth = {
   author: 'langgenius',
+  credential_schema: [],
   credentials_list: [s3Credential],
   description: { en_US: 'Amazon S3', zh_Hans: 'Amazon S3' },
   icon: 'icon.svg',
   label: { en_US: 'Amazon S3', zh_Hans: 'Amazon S3' },
   name: 'aws_s3_storage',
+  oauth_schema: null,
   plugin_id: 'langgenius/aws_s3_storage',
   plugin_unique_identifier: 'langgenius/aws_s3_storage:1.0.0@local',
   provider: 'aws_s3_storage',
@@ -392,11 +397,13 @@ const s3DatasourceAuth: DataSourceAuth = {
 function notionDatasourceAuth(credentials: DataSourceCredential[] = []): DataSourceAuth {
   return {
     author: 'langgenius',
+    credential_schema: [],
     credentials_list: credentials,
     description: { en_US: 'Notion', zh_Hans: 'Notion' },
     icon: 'icon.svg',
     label: { en_US: 'Notion', zh_Hans: 'Notion' },
     name: 'notion',
+    oauth_schema: null,
     plugin_id: 'langgenius/notion_datasource',
     plugin_unique_identifier: 'langgenius/notion_datasource:1.0.0@local',
     provider: 'notion',

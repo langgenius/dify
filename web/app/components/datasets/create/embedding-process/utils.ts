@@ -1,19 +1,8 @@
-import type {
-  DataSourceInfo,
-  DataSourceType,
-  FullDocumentDetail,
-  IndexingStatusResponse,
-  LegacyDataSourceInfo,
-} from '@/models/datasets'
+import type { IndexingStatusResponse, InitialDocumentDetail } from '@/models/datasets'
+import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
+import { getNotionPageIcon } from '@/app/components/datasets/documents/document-source'
 
 const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
-
-/**
- * Type guard for legacy data source info with upload_file property
- */
-export const isLegacyDataSourceInfo = (info: DataSourceInfo): info is LegacyDataSourceInfo => {
-  return info != null && typeof (info as LegacyDataSourceInfo).upload_file === 'object'
-}
 
 /**
  * Check if a status indicates the source is being embedded
@@ -42,7 +31,7 @@ export const getFileType = (name?: string): string => name?.split('.').pop() || 
 /**
  * Document lookup utilities - provides document info by ID from a list
  */
-export const createDocumentLookup = (documents: FullDocumentDetail[]) => {
+export const createDocumentLookup = (documents: InitialDocumentDetail[]) => {
   const documentMap = new Map(documents.map((doc) => [doc.id, doc]))
 
   return {
@@ -50,13 +39,8 @@ export const createDocumentLookup = (documents: FullDocumentDetail[]) => {
 
     getName: (id: string) => documentMap.get(id)?.name,
 
-    getSourceType: (id: string) =>
-      documentMap.get(id)?.data_source_type as DataSourceType | undefined,
+    getSourceType: (id: string) => toCreationDataSourceType(documentMap.get(id)?.data_source_type),
 
-    getNotionIcon: (id: string) => {
-      const info = documentMap.get(id)?.data_source_info
-      if (info && isLegacyDataSourceInfo(info)) return info.notion_page_icon
-      return undefined
-    },
+    getNotionIcon: (id: string) => getNotionPageIcon(documentMap.get(id)?.data_source_info, false),
   }
 }

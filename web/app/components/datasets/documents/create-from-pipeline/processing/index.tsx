@@ -16,7 +16,9 @@ const Processing = ({ batchId, documents }: ProcessingProps) => {
   const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
   const datasetId = useDatasetDetailContextWithSelector((s) => s.dataset?.id)
-  const indexingType = useDatasetDetailContextWithSelector((s) => s.dataset?.indexing_technique)
+  const indexingType = useDatasetDetailContextWithSelector(
+    (s) => s.dataset?.indexing_technique ?? undefined,
+  )
   const retrievalMethod = useDatasetDetailContextWithSelector(
     (s) => s.dataset?.retrieval_model_dict?.search_method,
   )

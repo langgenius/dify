@@ -188,7 +188,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         ? { data: uploadPlanMock.plan }
         : options.queryKey[0] === 'datasource-plugins'
           ? datasourceQueryMock.plugins
-          : original.useQuery(options),
+          : options.queryKey[0] === 'data-source-auth'
+            ? datasourceQueryMock.auth
+            : original.useQuery(options),
   }
 })
 
@@ -255,6 +257,20 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    auth: {
+      plugin: {
+        datasource: {
+          list: {
+            get: {
+              queryOptions: (options: { enabled?: boolean } = {}) => ({
+                ...options,
+                queryKey: ['data-source-auth', 'list'],
+              }),
+            },
+          },
+        },
+      },
+    },
     features: {
       get: {
         key: () => ['features'],
@@ -335,10 +351,6 @@ vi.mock('@/service/datasets', () => ({
   createFirecrawlTask: serviceMock.createCrawl,
   createJinaReaderTask: serviceMock.createCrawl,
   createWatercrawlTask: serviceMock.createCrawl,
-}))
-
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceListAuth: () => datasourceQueryMock.auth,
 }))
 
 const firecrawlDatasourcePlugin = {

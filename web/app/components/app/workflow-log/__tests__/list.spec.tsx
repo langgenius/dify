@@ -1,5 +1,10 @@
-import type { AppDetailWithSite, AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type {
+  AppDetailWithSite,
+  AppMode,
+  WorkflowAppLogPaginationResponse,
+  WorkflowAppLogPartialResponse,
+  WorkflowRunForLogResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 /**
  * WorkflowAppLogList Component Tests
  *
@@ -98,14 +103,14 @@ const createMockApp = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWit
     ...overrides,
   })
 
-const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): WorkflowRunDetail => ({
+const createMockWorkflowRun = (
+  overrides: Partial<WorkflowRunForLogResponse> = {},
+): WorkflowRunForLogResponse => ({
   id: 'run-1',
   version: '1.0.0',
   status: 'succeeded',
   elapsed_time: 1.234,
   total_tokens: 100,
-  total_price: 0.001,
-  currency: 'USD',
   total_steps: 5,
   finished_at: Date.now(),
   triggered_from: WorkflowRunTriggeredFrom.APP_RUN,
@@ -113,8 +118,9 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
 })
 
 const createMockWorkflowLog = (
-  overrides: Partial<WorkflowAppLogDetail> = {},
-): WorkflowAppLogDetail => ({
+  // read_at is not declared by the console response yet; the list still honours it.
+  overrides: Partial<WorkflowAppLogPartialResponse> & { read_at?: number } = {},
+): WorkflowAppLogPartialResponse => ({
   id: 'log-1',
   workflow_run: createMockWorkflowRun(),
   created_from: 'web-app',
@@ -129,9 +135,9 @@ const createMockWorkflowLog = (
 })
 
 const createMockLogsResponse = (
-  data: WorkflowAppLogDetail[] = [],
+  data: WorkflowAppLogPartialResponse[] = [],
   total = data.length,
-): WorkflowLogsResponse => ({
+): WorkflowAppLogPaginationResponse => ({
   data,
   has_more: data.length < total,
   limit: APP_PAGE_LIMIT,

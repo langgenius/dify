@@ -148,7 +148,6 @@
   "retrieval.full_text_search.title": "전체 텍스트 검색",
   "retrieval.hybrid_search.description": "전체 텍스트 검색과 벡터 검색을 동시에 실행하고 사용자 쿼리에 가장 적합한 매치를 선택하기 위해 다시 랭크를 매깁니다. 재랭크 모델 API 설정이 필요합니다.",
   "retrieval.hybrid_search.title": "하이브리드 검색",
-  "retrieval.invertedIndex.title": "역인덱스",
   "retrieval.keyword_search.description": "역인덱스는 효율적인 검색을 위해 사용되는 구조입니다. 용어별로 구성된 각 용어는 해당 용어가 포함된 문서 또는 웹 페이지를 가리킵니다.",
   "retrieval.keyword_search.title": "반전 인덱스",
   "retrieval.semantic_search.description": "쿼리의 임베딩을 생성하고, 해당 벡터 표현에 가장 유사한 텍스트 청크를 검색합니다.",

@@ -560,13 +560,6 @@ export type FormSubmitResponse = {
   hints?: Array<Hint>
 }
 
-export type Github = {
-  github_plugin_unique_identifier: string
-  package: string
-  repo: string
-  version: string
-}
-
 export type HealthResponse = {
   ok: boolean
 }
@@ -852,11 +845,6 @@ export type LlmModelBlock = {
   provider: string
 }
 
-export type Marketplace = {
-  marketplace_plugin_unique_identifier: string
-  version?: string | null
-}
-
 export type MarketplacePluginListResponse = {
   data: Array<MarketplacePluginRow>
   has_more: boolean
@@ -1132,11 +1120,6 @@ export type OpenApiFormSubmitPayload = {
   }
 }
 
-export type Package = {
-  plugin_unique_identifier: string
-  version?: string | null
-}
-
 export type PermittedExternalAppsListQuery = {
   limit?: number
   mode?: SupportedAppType | null
@@ -1169,7 +1152,24 @@ export type PluginDeleteResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
+}
+
+export type PluginDependencyGithub = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
+export type PluginDependencyMarketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type PluginDependencyPackage = {
+  plugin_unique_identifier: string
+  version?: string | null
 }
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'

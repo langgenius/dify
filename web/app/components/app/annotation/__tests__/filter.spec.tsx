@@ -1,16 +1,33 @@
 import type { AnnotationCountResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
-import type { Mock } from 'vite-plus/test'
 import type { QueryParam } from '../filter'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import * as useLogModule from '@/service/use-log'
 import Filter from '../filter'
 
-vi.mock('@/service/use-log')
+const mockUseQuery = vi.fn()
 
-const mockUseAnnotationsCount = useLogModule.useAnnotationsCount as Mock
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (options: unknown) => mockUseQuery(options),
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        annotations: {
+          count: {
+            get: {
+              queryOptions: (options: unknown) => options,
+            },
+          },
+        },
+      },
+    },
+  },
+}))
 
 // ============================================================================
 // Test Utilities
@@ -65,7 +82,7 @@ describe('Filter', () => {
   describe('Rendering', () => {
     it('should render nothing when data is loading', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({ isLoading: true }),
       )
 
@@ -82,7 +99,7 @@ describe('Filter', () => {
 
     it('should render nothing when data is undefined', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({ data: undefined, isLoading: false }),
       )
 
@@ -99,7 +116,7 @@ describe('Filter', () => {
 
     it('should render filter and children when data is available', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
@@ -123,9 +140,9 @@ describe('Filter', () => {
   // Props Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Props', () => {
-    it('should call useAnnotationsCount with appId', () => {
+    it('should query the annotations count for appId', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 10 },
           isLoading: false,
@@ -140,12 +157,12 @@ describe('Filter', () => {
       )
 
       // Assert
-      expect(mockUseAnnotationsCount).toHaveBeenCalledWith(appId)
+      expect(mockUseQuery).toHaveBeenCalledWith({ input: { params: { app_id: appId } } })
     })
 
     it('should display keyword value in input', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 10 },
           isLoading: false,
@@ -173,7 +190,7 @@ describe('Filter', () => {
   describe('User Interactions', () => {
     it('should call setQueryParams when typing in search input', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
@@ -198,7 +215,7 @@ describe('Filter', () => {
 
     it('should call setQueryParams with empty keyword when clearing input', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 20 },
           isLoading: false,
@@ -227,7 +244,7 @@ describe('Filter', () => {
   describe('Edge Cases', () => {
     it('should handle empty keyword in queryParams', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 5 },
           isLoading: false,
@@ -247,7 +264,7 @@ describe('Filter', () => {
 
     it('should handle undefined keyword in queryParams', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 5 },
           isLoading: false,
@@ -267,7 +284,7 @@ describe('Filter', () => {
 
     it('should handle zero count', () => {
       // Arrange
-      mockUseAnnotationsCount.mockReturnValue(
+      mockUseQuery.mockReturnValue(
         createMockQueryResult<AnnotationCountResponse>({
           data: { count: 0 },
           isLoading: false,

@@ -31,12 +31,15 @@ let builtInTools: ToolWithProvider[] = []
 let customTools: ToolWithProvider[] = []
 let workflowTools: ToolWithProvider[] = []
 let mcpTools: ToolWithProvider[] = []
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: builtInTools }),
-  useAllCustomTools: () => ({ data: customTools }),
-  useAllWorkflowTools: () => ({ data: workflowTools }),
-  useAllMCPTools: () => ({ data: mcpTools }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: builtInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: customTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: workflowTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: mcpTools }),
+  })
+})
 
 type ToolPickerProps = React.ComponentProps<typeof ToolPickerType>
 let singleToolSelection: ToolDefaultValue | null = null

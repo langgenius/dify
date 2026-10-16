@@ -22,7 +22,9 @@ type ResultItemExternalProps = {
 export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExternalProps) => {
   const { t } = useTranslation(['common', 'datasetHitTesting'])
   const descriptionId = useId()
-  const { content, title, score } = payload
+  const content = payload.content ?? ''
+  const title = payload.title ?? ''
+  const score = payload.score ?? null
 
   return (
     <Dialog>

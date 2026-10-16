@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from flask_restx import Namespace, fields
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
 
 class UserModel(BaseModel):
@@ -130,6 +130,103 @@ def test_register_schema_model_promotes_nested_pydantic_definitions():
     assert "$defs" not in called_schemas["ParentModel"]
     assert called_schemas["ParentModel"]["properties"]["child"]["$ref"] == "#/components/schemas/ChildModel"
     assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
+
+
+def _make_same_named_model() -> type[BaseModel]:
+    """Build a model whose qualified name differs from UserModel but whose bare name matches."""
+
+    return create_model("UserModel", __module__="other_module", email=(str, ...))
+
+
+def test_register_schema_model_allows_reregistering_the_same_model():
+    from controllers.common.schema import register_schema_model
+
+    namespace = Namespace("test")
+
+    register_schema_model(namespace, UserModel)
+    register_schema_model(namespace, UserModel)
+
+    assert list(namespace.models) == ["UserModel"]
+
+
+def test_register_schema_model_rejects_different_model_with_same_name():
+    from controllers.common.schema import SchemaNameCollisionError, register_schema_model
+
+    namespace = Namespace("test")
+    register_schema_model(namespace, UserModel)
+
+    with pytest.raises(SchemaNameCollisionError, match="'UserModel'.*produced by both"):
+        register_schema_model(namespace, _make_same_named_model())
+
+
+def test_register_schema_model_rejects_nested_definition_with_same_name():
+    from controllers.common.schema import SchemaNameCollisionError, register_schema_model
+
+    other_child = create_model("ChildModel", __module__="other_module", other=(int, ...))
+    other_parent = create_model("OtherParentModel", child=(other_child, ...))
+    namespace = Namespace("test")
+    register_schema_model(namespace, ParentModel)
+
+    with pytest.raises(SchemaNameCollisionError, match="'ChildModel'"):
+        register_schema_model(namespace, other_parent)
+
+
+def test_register_schema_model_rejects_same_named_types_inside_one_schema():
+    from controllers.common.schema import SchemaNameCollisionError, register_schema_model
+
+    other_child = create_model("ChildModel", __module__="other_module", other=(int, ...))
+    both_children = create_model("BothChildrenModel", first=(ChildModel, ...), second=(other_child, ...))
+
+    with pytest.raises(SchemaNameCollisionError, match="'ChildModel'"):
+        register_schema_model(Namespace("test"), both_children)
+
+
+def test_register_schema_model_rejects_model_registered_in_both_modes_with_different_shapes():
+    from controllers.common.schema import (
+        SchemaNameCollisionError,
+        register_response_schema_model,
+        register_schema_model,
+    )
+
+    namespace = Namespace("test")
+    register_response_schema_model(namespace, ResponseAliasModel)
+
+    with pytest.raises(SchemaNameCollisionError, match="two different shapes"):
+        register_schema_model(namespace, ResponseAliasModel)
+
+
+def test_register_schema_model_rejects_names_that_collide_after_normalization():
+    from controllers.common.schema import SchemaNameCollisionError, register_schema_model
+
+    namespace = Namespace("test")
+    register_schema_model(namespace, create_model("JSONPayload", value=(str, ...)))
+
+    with pytest.raises(SchemaNameCollisionError, match="once normalized"):
+        register_schema_model(namespace, create_model("JsonPayload", value=(str, ...)))
+
+
+def test_register_schema_model_keeps_namespaces_independent():
+    from controllers.common.schema import register_schema_model
+
+    register_schema_model(Namespace("first"), UserModel)
+    register_schema_model(Namespace("second"), _make_same_named_model())
+
+
+def test_register_schema_model_applies_schema_name_overrides(monkeypatch: pytest.MonkeyPatch):
+    from controllers.common import schema as schema_module
+
+    monkeypatch.setattr(
+        schema_module,
+        "SCHEMA_NAME_OVERRIDES",
+        {f"{ChildModel.__module__}.{ChildModel.__qualname__}": "RenamedChildModel"},
+    )
+    namespace = Namespace("test")
+
+    schema_module.register_schema_model(namespace, ParentModel)
+
+    assert set(namespace.models) == {"ParentModel", "RenamedChildModel"}
+    parent_schema = namespace.models["ParentModel"].__schema__
+    assert parent_schema["properties"]["child"]["$ref"] == "#/components/schemas/RenamedChildModel"
 
 
 def test_register_schema_models_registers_multiple_models():

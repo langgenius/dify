@@ -39,7 +39,14 @@ export type DatasetDetailWithPartialMembersResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -52,18 +59,19 @@ export type DatasetDetailWithPartialMembersResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  keyword_number?: number | null
   maintainer?: string | null
   name: string
   partial_member_list?: Array<string> | null
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -128,7 +136,14 @@ export type DatasetDetailResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -141,17 +156,18 @@ export type DatasetDetailResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  keyword_number?: number | null
   maintainer?: string | null
   name: string
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -183,9 +199,7 @@ export type ExternalKnowledgeApiResponse = {
   description: string
   id: string
   name: string
-  settings: {
-    [key: string]: unknown
-  } | null
+  settings: ExternalKnowledgeApiSettingsResponse | null
   tenant_id: string
 }
 
@@ -292,9 +306,7 @@ export type IndexingEstimate = {
 }
 
 export type ProcessRuleResponse = {
-  limits: {
-    [key: string]: unknown
-  }
+  limits: ProcessRuleLimitsResponse
   mode: ProcessRuleMode
   rules?: Rule | null
 }
@@ -380,10 +392,12 @@ export type DocumentDetailResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict?: unknown
-  data_source_info?: unknown
+  data_source_detail_dict?: DocumentSourceDetailResponse | null
+  data_source_info?: {
+    [key: string]: JsonValue
+  } | null
   data_source_type?: string | null
-  dataset_process_rule?: unknown
+  dataset_process_rule?: DocumentProcessRuleResponse | null
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
   disabled_by?: string | null
@@ -392,7 +406,7 @@ export type DocumentDetailResponse = {
   doc_language?: string | null
   doc_metadata?: Array<DocumentMetadataResponse> | null
   doc_type?: string | null
-  document_process_rule?: unknown
+  document_process_rule?: DocumentProcessRuleResponse | null
   enabled?: boolean | null
   error?: string | null
   hit_count?: number | null
@@ -421,14 +435,25 @@ export type DocumentStatusResponse = {
   completed_at: number | null
   completed_segments?: number | null
   error: string | null
+  error_code?: 'vector_space_estimate_exceeded' | null
+  estimated_vector_space_mb?: number | null
   id: string
-  indexing_status: string
+  indexing_status:
+    | 'cleaning'
+    | 'completed'
+    | 'error'
+    | 'indexing'
+    | 'parsing'
+    | 'paused'
+    | 'splitting'
+    | 'waiting'
   parsing_completed_at: number | null
   paused_at: number | null
   processing_started_at: number | null
   splitting_completed_at: number | null
   stopped_at: number | null
   total_segments?: number | null
+  vector_space_limit_mb?: number | null
 }
 
 export type DocumentMetadataUpdatePayload = {
@@ -467,11 +492,9 @@ export type DocumentResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict: {
-    [key: string]: unknown
-  }
+  data_source_detail_dict: DocumentSourceDetailResponse
   data_source_info?: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
@@ -656,7 +679,7 @@ export type MetadataArgs = {
 export type DatasetMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type MetadataUpdatePayload = {
@@ -695,7 +718,14 @@ export type DatasetListItemResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -708,19 +738,20 @@ export type DatasetListItemResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  keyword_number?: number | null
   knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
   maintainer?: string | null
   name: string
   partial_member_list: Array<string>
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -735,7 +766,7 @@ export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 export type DatasetDocMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetExternalKnowledgeInfoResponse = {
@@ -758,13 +789,15 @@ export type DatasetIconInfoResponse = {
   icon_url?: string | null
 }
 
+export type IndexTechniqueType = 'economy' | 'high_quality'
+
 export type DatasetRetrievalModelResponse = {
   reranking_enable: boolean
   reranking_mode?: string | null
   reranking_model?: DatasetRerankingModelResponse
   score_threshold?: number | null
   score_threshold_enabled: boolean
-  search_method: string
+  search_method: RetrievalMethod
   top_k: number
   weights?: DatasetWeightedScoreResponse | null
 }
@@ -785,6 +818,11 @@ export type DatasetTagResponse = {
 export type ExternalKnowledgeApiBindingResponse = {
   id: string
   name: string
+}
+
+export type ExternalKnowledgeApiSettingsResponse = {
+  api_key?: string | null
+  endpoint?: string | null
 }
 
 export type PreviewDetail = {
@@ -832,13 +870,17 @@ export type DatasetResponse = {
 
 export type DatasetMetadataBuiltInFieldResponse = {
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type NotionEstimateWorkspacePayload = {
   credential_id: string
   pages: Array<NotionEstimatePagePayload>
   workspace_id: string
+}
+
+export type ProcessRuleLimitsResponse = {
+  indexing_max_segmentation_tokens_length: number
 }
 
 export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
@@ -856,11 +898,9 @@ export type DocumentWithSegmentsResponse = {
   created_at?: number | null
   created_by?: string | null
   created_from?: string | null
-  data_source_detail_dict: {
-    [key: string]: unknown
-  }
+  data_source_detail_dict: DocumentSourceDetailResponse
   data_source_info?: {
-    [key: string]: unknown
+    [key: string]: JsonValue
   } | null
   data_source_type?: string | null
   dataset_process_rule_id?: string | null
@@ -877,7 +917,7 @@ export type DocumentWithSegmentsResponse = {
   name: string
   need_summary?: boolean | null
   position?: number | null
-  process_rule_dict?: unknown
+  process_rule_dict?: DocumentProcessRuleResponse | null
   summary_index_status?: string | null
   tokens?: number | null
   total_segments?: number | null
@@ -890,14 +930,24 @@ export type DocumentMetadataOperation = {
   partial_update?: boolean
 }
 
-export type DocumentMetadataResponse = {
-  id: string
-  name: string
-  type: string
-  value?: string | number | number | boolean | null
+export type DocumentSourceDetailResponse = {
+  upload_file?: DocumentUploadFileDetailResponse | null
+  [key: string]: unknown
 }
 
 export type JsonValue = unknown
+
+export type DocumentProcessRuleResponse = {
+  mode: string
+  rules?: DocumentProcessRulesResponse | null
+}
+
+export type DocumentMetadataResponse = {
+  id: string
+  name: string
+  type: 'number' | 'string' | 'time'
+  value: string | number | number | null
+}
 
 export type SegmentResponse = {
   answer: string | null
@@ -920,7 +970,7 @@ export type SegmentResponse = {
   keywords: Array<string> | null
   position: number
   sign_content: string
-  status: string
+  status: 'completed' | 'error' | 'indexing' | 'paused' | 're_segment' | 'waiting'
   stopped_at: number | null
   summary: string | null
   tokens: number
@@ -935,7 +985,7 @@ export type ChildChunkResponse = {
   id: string
   position: number
   segment_id: string
-  type: string
+  type: 'automatic' | 'customized'
   updated_at: number
   word_count: number
 }
@@ -1011,16 +1061,16 @@ export type DatasetMetadataListItemResponse = {
   count?: number
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetQueryDetailResponse = {
   created_at: number
   created_by: string
-  created_by_role: string
+  created_by_role: CreatorUserRole
   id: string
   queries: Array<DatasetQueryContentResponse>
-  source: string
+  source: DatasetQuerySource
   source_app_id: string | null
 }
 
@@ -1028,10 +1078,10 @@ export type RelatedAppResponse = {
   description: string
   icon: string | null
   icon_background: string | null
-  icon_type: string | null
+  icon_type: IconType | null
   icon_url?: string | null
   id: string
-  mode: string
+  mode: AppMode
   name: string
 }
 
@@ -1039,6 +1089,12 @@ export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
 }
+
+export type RetrievalMethod =
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'keyword_search'
+  | 'semantic_search'
 
 export type DatasetWeightedScoreResponse = {
   keyword_setting?: DatasetKeywordSettingResponse
@@ -1048,7 +1104,7 @@ export type DatasetWeightedScoreResponse = {
 
 export type InfoList = {
   data_source_type: 'notion_import' | 'upload_file' | 'website_crawl'
-  file_info_list?: FileInfo | null
+  file_info_list?: KnowledgeFileInfo | null
   notion_info_list?: Array<NotionInfo> | null
   website_info_list?: WebsiteInfo | null
 }
@@ -1062,12 +1118,6 @@ export type RerankingModel = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
 }
-
-export type RetrievalMethod =
-  | 'full_text_search'
-  | 'hybrid_search'
-  | 'keyword_search'
-  | 'semantic_search'
 
 export type WeightModel = {
   keyword_setting?: WeightKeywordSetting | null
@@ -1095,6 +1145,23 @@ export type MetadataDetail = {
   id: string
   name: string
   value?: string | number | number | null
+}
+
+export type DocumentUploadFileDetailResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
+}
+
+export type DocumentProcessRulesResponse = {
+  parent_mode?: 'full-doc' | 'paragraph' | null
+  pre_processing_rules?: Array<DocumentPreProcessingRuleResponse> | null
+  segmentation?: DocumentSegmentationResponse | null
+  subchunk_segmentation?: DocumentSegmentationResponse | null
 }
 
 export type SegmentAttachmentResponse = {
@@ -1148,11 +1215,27 @@ export type HitTestingSegment = {
   word_count: number
 }
 
+export type CreatorUserRole = 'account' | 'dataset_api_key' | 'end_user'
+
 export type DatasetQueryContentResponse = {
   content: string
-  content_type: string
+  content_type: QueryType
   file_info?: DatasetQueryFileInfoResponse | null
 }
+
+export type DatasetQuerySource = 'app' | 'hit_testing'
+
+export type IconType = 'emoji' | 'image' | 'link'
+
+export type AppMode =
+  | 'advanced-chat'
+  | 'agent'
+  | 'agent-chat'
+  | 'channel'
+  | 'chat'
+  | 'completion'
+  | 'rag-pipeline'
+  | 'workflow'
 
 export type DatasetKeywordSettingResponse = {
   keyword_weight?: number | null
@@ -1164,7 +1247,7 @@ export type DatasetVectorSettingResponse = {
   vector_weight?: number | null
 }
 
-export type FileInfo = {
+export type KnowledgeFileInfo = {
   file_ids: Array<string>
 }
 
@@ -1219,6 +1302,17 @@ export type NotionPageType = 'database' | 'page'
 
 export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 
+export type DocumentPreProcessingRuleResponse = {
+  enabled: boolean
+  id: string
+}
+
+export type DocumentSegmentationResponse = {
+  chunk_overlap?: number
+  max_tokens: number
+  separator?: string
+}
+
 export type HitTestingDocument = {
   data_source_type: string
   doc_metadata: unknown | null
@@ -1226,6 +1320,8 @@ export type HitTestingDocument = {
   id: string
   name: string
 }
+
+export type QueryType = 'image_query' | 'text_query'
 
 export type DatasetQueryFileInfoResponse = {
   extension: string
@@ -1930,7 +2026,9 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    document_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents'
 }
 
@@ -1956,8 +2054,8 @@ export type GetDatasetsByDatasetIdDocumentsData = {
   query?: {
     fetch?: string
     keyword?: string
-    limit?: string
-    page?: string
+    limit?: number
+    page?: number
     sort?: string
     status?: string
   }
@@ -2087,7 +2185,9 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
     action: string
     dataset_id: string
   }
-  query?: never
+  query?: {
+    document_id?: Array<string>
+  }
   url: '/datasets/{dataset_id}/documents/status/{action}/batch'
 }
 
@@ -3163,7 +3263,10 @@ export type GetDatasetsByDatasetIdQueriesData = {
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    limit?: number
+    page?: number
+  }
   url: '/datasets/{dataset_id}/queries'
 }
 

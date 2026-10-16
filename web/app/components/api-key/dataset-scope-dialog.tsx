@@ -34,7 +34,6 @@ import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { consoleQuery } from '@/service/console'
-import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 
 type Scope = 'all' | 'specific'
 // Legacy knowledge bases (datasets) and KnowledgeFS spaces live in different tables, so
@@ -95,9 +94,15 @@ function DatasetScopeContent({
   const [selected, setSelected] = useState<SelectedKb[]>([])
   const [keyword, setKeyword] = useState('')
 
-  const { data: datasetsPages, isLoading: datasetsLoading } = useInfiniteDatasets(
-    { keyword },
-    { enabled: scope === 'specific' },
+  const { data: datasetsPages, isLoading: datasetsLoading } = useInfiniteQuery(
+    consoleQuery.datasets.get.infiniteOptions({
+      input: (page: number) => ({ query: { page, ...(keyword ? { keyword } : {}) } }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
+      enabled: scope === 'specific',
+      staleTime: 0,
+      refetchOnMount: 'always',
+    }),
   )
   const datasets = useMemo<SelectedKb[]>(
     () =>

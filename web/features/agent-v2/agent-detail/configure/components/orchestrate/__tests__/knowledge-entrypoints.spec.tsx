@@ -29,12 +29,16 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
     />
   ),
 }))
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const emptyToolList = () => ({ data: [] })
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': emptyToolList,
+    'workspaces.current.tools.api.get': emptyToolList,
+    'workspaces.current.tools.workflow.get': emptyToolList,
+    'workspaces.current.tools.mcp.get': emptyToolList,
+  })
+})
 vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',

@@ -3,7 +3,7 @@ import { renderEditor as render } from '@/app/components/workflow/editor-resourc
 import ProcessDocuments from '../process-documents'
 
 const mockUseDraftPipelineProcessingParams = vi.hoisted(() =>
-  vi.fn(() => ({
+  vi.fn((_params?: unknown, _enabled?: boolean) => ({
     data: {
       variables: [{ variable: 'chunkSize' }],
     },
@@ -15,9 +15,19 @@ vi.mock('@/app/components/workflow/store', () => ({
     selector({ pipelineId: 'pipeline-1' }),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelineProcessingParams: mockUseDraftPipelineProcessingParams,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUseDraftPipelineProcessingParams(
+        { pipeline_id: o.input.params.pipeline_id, node_id: o.input.query.node_id },
+        o.enabled,
+      ),
+  })
+})
 
 vi.mock('../form', () => ({
   default: ({ variables }: { variables: Array<{ variable: string }> }) => (

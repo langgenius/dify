@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { selectPublishedPipelineNodes } from '@/app/components/rag-pipeline/utils/query-select'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
@@ -21,8 +22,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { DatasourceType } from '@/models/pipeline'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useFileUploadConfig } from '@/service/use-common'
-import { usePublishedPipelineInfo } from '@/service/use-pipeline'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
 import DataSourceProvider from './data-source/store/provider'
@@ -50,7 +49,7 @@ const CreateFormPipeline = () => {
     }),
   )
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const pipelineId = dataset?.pipeline_id
+  const pipelineId = dataset?.pipeline_id ?? undefined
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -75,10 +74,14 @@ const CreateFormPipeline = () => {
   const [documents, setDocuments] = useState<InitialDocumentDetail[]>([])
 
   // Data fetching
-  const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(
-    pipelineId || '',
+  const { data: pipelineNodes, isFetching: isFetchingPipelineInfo } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryOptions({
+      input: { params: { pipeline_id: pipelineId || '' } },
+      enabled: !!pipelineId,
+      select: selectPublishedPipelineNodes,
+    }),
   )
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
 
   const fileUploadConfig = useMemo(
     () => ({
@@ -265,7 +268,7 @@ const CreateFormPipeline = () => {
               <StepOneContent
                 datasource={datasource}
                 datasourceType={datasourceType}
-                pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
+                pipelineNodes={(pipelineNodes || []) as Node<DataSourceNodeType>[]}
                 supportBatchUpload={supportBatchUpload}
                 showBatchUploadUpgrade={deploymentEdition === 'CLOUD' && plan === 'sandbox'}
                 isShowVectorSpaceFull={isShowVectorSpaceFull}

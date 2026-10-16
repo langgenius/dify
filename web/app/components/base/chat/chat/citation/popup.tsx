@@ -2,6 +2,7 @@ import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useMutation } from '@tanstack/react-query'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
@@ -10,7 +11,7 @@ import { resolveLogicalDocumentCitation } from '@/features/new-rag/documents/res
 import { newKnowledgeDocumentDetailPath } from '@/features/new-rag/routes'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { useDocumentDownload } from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
@@ -108,7 +109,9 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
-  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.download.get.mutationOptions(),
+  )
 
   const handleDownloadUploadFile = async (e: MouseEvent<HTMLElement>) => {
     e.preventDefault()
@@ -119,7 +122,9 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
     const documentId = data.documentId || data.sources?.[0]?.document_id
     if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
-    const res = await downloadDocument({ datasetId, documentId })
+    const res = await downloadDocument({
+      params: { dataset_id: datasetId, document_id: documentId },
+    })
     if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
   }
 

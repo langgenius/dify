@@ -18,9 +18,7 @@ export const normalizeKnowledgeFsMetadataFilterMode = (
     ? mode
     : MetadataFilteringModeEnum.disabled
 
-const metadataVariableType = (
-  type: KnowledgeFsMetadataField['type'],
-): MetadataFilteringVariableType => {
+const metadataVariableType = (type: KnowledgeFsMetadataField['type']): MetadataInDoc['type'] => {
   if (type === 'number') return MetadataFilteringVariableType.number
   if (type === 'time') return MetadataFilteringVariableType.time
   return MetadataFilteringVariableType.string
@@ -42,6 +40,5 @@ export const intersectKnowledgeFsMetadataFields = (
       id: `knowledge-fs:${field.type}:${field.name}`,
       name: field.name,
       type: metadataVariableType(field.type),
-      value: field.name,
     }))
 }

@@ -604,6 +604,17 @@ describe('normalizeConsoleOpenAPIURL', () => {
     expect(searchParams.getAll('tags')).toEqual(['search', 'rag'])
     expect(searchParams.has('tags[0]')).toBe(false)
   })
+
+  // Without repeated keys the API sees no IDs and clears every annotation of the app.
+  it('should serialize annotation batch delete IDs as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/apps/app-1/annotations?annotation_id%5B0%5D=a-1&annotation_id%5B1%5D=a-2',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('annotation_id')).toEqual(['a-1', 'a-2'])
+    expect(searchParams.has('annotation_id[0]')).toBe(false)
+  })
 })
 
 // Scenario: oRPC query defaults own shared Agent detail fetch behavior.

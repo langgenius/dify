@@ -148,7 +148,6 @@
   "retrieval.full_text_search.title": "Volltextsuche",
   "retrieval.hybrid_search.description": "Führe Volltextsuche und Vektorsuchen gleichzeitig aus, ordne neu, um die beste Übereinstimmung für die Abfrage des Benutzers auszuwählen. Konfiguration des Rerank-Modell-APIs ist notwendig.",
   "retrieval.hybrid_search.title": "Hybridsuche",
-  "retrieval.invertedIndex.title": "Invertierter Index",
   "retrieval.keyword_search.description": "Der invertierte Index ist eine Struktur, die für einen effizienten Abruf verwendet wird. Jeder Begriff ist nach Begriffen geordnet und verweist auf Dokumente oder Webseiten, die ihn enthalten.",
   "retrieval.keyword_search.title": "Invertierter Index",
   "retrieval.semantic_search.description": "Erzeuge Abfrage-Einbettungen und suche nach dem Textstück, das seiner Vektorrepräsentation am ähnlichsten ist.",

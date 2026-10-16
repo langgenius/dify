@@ -7,7 +7,7 @@ import Recipient from '../index'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
-const mockUseMembers = vi.hoisted(() => vi.fn())
+const mockMembersQuery = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { email: 'owner@example.com' },
   currentWorkspace: { name: "Dify's Lab" },
@@ -27,9 +27,12 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => mockUseMembers(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => mockMembersQuery(),
+  })
+})
 
 vi.mock('../member-selector', () => ({
   __esModule: true,
@@ -78,7 +81,7 @@ describe('Recipient', () => {
       ),
     })
     mockConsoleStateReader.mockReturnValue(mockConsoleState)
-    mockUseMembers.mockReturnValue({
+    mockMembersQuery.mockReturnValue({
       data: {
         accounts: [
           { id: 'member-1', email: 'member-1@example.com', name: 'Member One' },
