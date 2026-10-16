@@ -870,6 +870,79 @@ class NativeTestLifecycleService:
         with self.loader.locked(ref=ref) as (session, owned, scope):
             return self.consume_dispatch_claim(session=session, owned=owned, scope=scope, prepared=prepared)
 
+    def claimed_resume_checkpoint(
+        self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str
+    ) -> CheckpointRef:
+        """Metadata handoff for an already claimed resume, never new execution authority.
+
+        Permission checks precede the bounded SQL read; no writer or private I/O.
+        Runtime must still reread this C03 object and verify its actual native run.
+        """
+        from models.dify_builder_native_tests import NativePayloadObject
+
+        if type(generation) is not int or generation <= 0 or type(dispatch_id) is not str or not dispatch_id:
+            raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+        authority = validate_private_read(self.loader, ref)
+        if not authority.root_revision_matches:
+            raise BuilderExecutionPolicyError("native_revision_drift")
+        if authority.cancelled or not authority.active or authority.request_state not in {"running", "waiting"}:
+            raise BuilderExecutionPolicyError("native_invocation_mismatch")
+        with self.loader.session_factory() as session:
+            owned, _ = self.loader._load(session, ref=ref, lock=False)
+            state = invocation_state(session, ref, owned.tenant_id)
+            if (
+                owned.ref != ref
+                or (authority.tenant_id, authority.actor_id) != (owned.tenant_id, owned.actor_id)
+                or (state.generation, authority.generation) != (generation, generation)
+                or (state.app_id, state.workflow_id, state.context_object_id, state.parent_invocation_id)
+                != (
+                    authority.app_id,
+                    authority.workflow_id,
+                    authority.context_object_id,
+                    authority.parent_invocation_id,
+                )
+            ):
+                raise BuilderExecutionPolicyError("native_generation_conflict")
+            dispatch_readiness(session, ref=ref, tenant_id=owned.tenant_id, now=self.clock())
+            dispatch = session.scalar(
+                owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
+            )
+            if (
+                dispatch is None
+                or dispatch.state != "claimed"
+                or dispatch.generation != generation
+                or dispatch.claim_expires_at is None
+                or dispatch.claim_expires_at <= self.clock()
+                or not dispatch.checkpoint_id
+                or state.checkpoint_id != dispatch.checkpoint_id
+            ):
+                raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+            saved = session.scalar(
+                owner_query(NativeContinuation, ref, owned.tenant_id).where(
+                    NativeContinuation.checkpoint_id == dispatch.checkpoint_id
+                )
+            )
+            row = session.scalar(
+                owner_query(NativePayloadObject, ref, owned.tenant_id).where(
+                    NativePayloadObject.id == dispatch.checkpoint_id, NativePayloadObject.kind == "checkpoint"
+                )
+            )
+            if (
+                saved is None
+                or row is None
+                or type(saved.generation) is not int
+                or not 0 <= saved.generation < generation
+                or row.logical_key != str(saved.generation)
+                or row.payload_digest != saved.payload_digest
+                or not saved.payload_ref
+                or row.storage_key != saved.payload_ref
+            ):
+                raise BuilderExecutionPolicyError("checkpoint_unavailable")
+            try:
+                return CheckpointRef(checkpoint_id=saved.checkpoint_id, payload_digest=saved.payload_digest)
+            except ValueError:
+                raise BuilderExecutionPolicyError("checkpoint_unavailable") from None
+
     def prepare_dispatch_claim(
         self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str
     ) -> PreparedNativeDispatchClaim | None:
