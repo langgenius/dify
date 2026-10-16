@@ -12,9 +12,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from core.rag.entities import PreProcessingRuleKey
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from libs.datetime_utils import to_utc_timestamp
 from libs.uuid_utils import uuidv7
 from models.base import Base, TypeBase
 from models.enums import (
@@ -313,6 +314,29 @@ class DatasetProcessRule(TypeBase):
             return json.loads(self.rules) if self.rules else None
         except JSONDecodeError:
             return None
+
+
+def build_built_in_field_values(
+    *,
+    document_name: str,
+    uploader: str | None,
+    upload_date: datetime,
+    last_update_date: datetime,
+    data_source_type: str,
+) -> dict[str, str | int | None]:
+    """Return built-in metadata in the single format stored in ``Document.doc_metadata``.
+
+    Retrieval filters compare time fields numerically and ``source`` by exact string, so every
+    writer must store UTC epoch seconds and the ``MetadataDataSource`` label shown to users.
+    Naive datetimes are treated as UTC.
+    """
+    return {
+        BuiltInField.document_name: document_name,
+        BuiltInField.uploader: uploader,
+        BuiltInField.upload_date: to_utc_timestamp(upload_date),
+        BuiltInField.last_update_date: to_utc_timestamp(last_update_date),
+        BuiltInField.source: MetadataDataSource[data_source_type],
+    }
 
 
 class Document(Base):

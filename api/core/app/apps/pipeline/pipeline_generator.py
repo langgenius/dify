@@ -1,5 +1,4 @@
 import contextvars
-import datetime
 import json
 import logging
 import secrets
@@ -38,7 +37,6 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
-from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories.factory import (
     DifyCoreRepositoryFactory,
     WorkflowExecutionRepository,
@@ -47,9 +45,10 @@ from core.repositories.factory import (
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
+from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline, build_built_in_field_values
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.data_source.provider_service import DatasourceProviderService
@@ -736,17 +735,15 @@ class PipelineGenerator(BaseAppGenerator):
             created_by=account.id,
             doc_form=document_form,
         )
-        doc_metadata = {}
         if built_in_field_enabled:
-            doc_metadata = {
-                BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
-                BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: datasource_type,
-            }
-        if doc_metadata:
-            document.doc_metadata = doc_metadata
+            now = naive_utc_now()
+            document.doc_metadata = build_built_in_field_values(
+                document_name=name,
+                uploader=account.name,
+                upload_date=now,
+                last_update_date=now,
+                data_source_type=datasource_type,
+            )
         return document
 
     def _format_datasource_info_list(
