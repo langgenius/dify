@@ -108,6 +108,13 @@ def export_trace(provider: str, config: Mapping[str, Any], trace: CanonicalTrace
                 input=_content(root.inputs),
                 output=_content(root.outputs),
                 metadata={**root.metadata, "dify.trace_id": trace.trace_id},
+                error_info=ErrorInfoWrite(
+                    exception_type="DifyExecutionError",
+                    message=root.error or "Trace operation failed",
+                    traceback="",
+                )
+                if root.status is CanonicalSpanStatus.ERROR
+                else None,
                 thread_id=trace.session_id,
                 request_options={"max_retries": 0},
             )
