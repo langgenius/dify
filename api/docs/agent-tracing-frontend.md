@@ -511,7 +511,8 @@ await consoleClient.agent.byAgentId.traceRuns.byMessageId.retry.post({
 
 | 项目 | 当前记录 |
 | --- | --- |
-| main 基线 | 原功能基线 `69629bd7b719ab958be2b8a83d6cf13a1dcdbc0c`；已无冲突合并 `origin/main` 的 `36f9bb69e6c2ff629586d93ab463bd4da3d89af6` |
+| 原功能基线与 10/15 同步 | 原功能基线 `69629bd7b719ab958be2b8a83d6cf13a1dcdbc0c`；10/15 同步 main `36f9bb69e6c2ff629586d93ab463bd4da3d89af6` |
+| 10/16 合并基线 | 保留外部 `81b61d39762c3c1955c41ac737a0acbadacc4275` 及其 main `10285432d2259cc1c1ebf1512d9fbc09810976c9`；合并提交 `498309fe0f6eaae683ae073d8f11dba3c852182f`，包含冻结项目链接状态字段 |
 | 10/15 生产代码提交 | `5da59a08959823bd46296ff86e21bb019fa2d472` |
 | 10/15 测试类型补充提交 | `dba2ff735a62b30e52afef4b6b1e05aded29c2d4` |
 | 10/15 dev API 镜像 ID | `50b6dbbc82f135d4937714111e8e8616eda154095580535537856a449df239d1` |
@@ -519,6 +520,7 @@ await consoleClient.agent.byAgentId.traceRuns.byMessageId.retry.post({
 | 10/15 验收期间的部署更新 | 早期 mixed Workflow / Agent 策略使用 API `ca15a0a0…`；终态 handoff 验收使用中间 API `9205…`；最终 API 已包含 preview 两项修复及 app-scoped tracing port 注册；在最终镜像上又完成 Agent 与 inline Workflow 回归，Agent runtime 未变更 |
 | 10/16 LangSmith 修复提交 | 配置 PATCH 深链：`d85211e60179b0887fb4ba75de6f0654fe24138b`；早期 Agent 错误输入：`1c5303486eafc284b5ff1235f340b4cb2f654238` |
 | 10/16 dev r2 API 镜像 ID | `3d0569c5d2c07aa85cc78d6f4d4f378d295603caff7cc0374704e024fe533050`；Agent runtime 沿用上表镜像 |
+| 10/16 最终 dev r3 API / workers 镜像 ID | `bd4b2e1daab6fb633fce4c9548df10e07c76b8a9cb06175da5c9fe9a2468e689`；dev 提交 `cb24a11091`，仅回移必要生产路径并保留 dev 自身差异，Agent runtime 未变 |
 | 数据库迁移链 | main：`a17c2980f3e6`；dev：`a17c2980d3e6`。两条链不同，不把 revision 字符串不同误判为缺少本功能 |
 | dev 保留修改 | 保留 Tokener / node ID 补丁；没有以 main 覆盖 dev |
 | OpenAPI 适配差异 | dev 的 `libs.external_api` 缺少 `error_responses`，仅移除两个新 Console controller 的该纯文档注解；业务运行逻辑相同，前端类型以 main 生成契约为准 |
@@ -570,7 +572,8 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 | 检查范围 | 结果 |
 | --- | --- |
 | 10/15 API 基线回归 | 963 passed（包含完整 Agent App / core ops 回归） |
-| 10/16 当前 API 组合回归 | 在 `1c5303486e` 上 1052 passed；本地完整 `make lint`、`make type-check` 通过，formatter 未修改文件 |
+| 10/16 合并前 API 组合回归 | 在 `1c5303486e` 上 1052 passed；当时本地完整 lint/type 通过，属于合并前历史记录 |
+| 10/16 合并后 API 组合回归 | 在 `498309fe0f` 上 1070 passed；完整 `make lint`、`make type-check` 与 5 项 guards 均通过；source、lockfile、formatter 无额外改动 |
 | 10/15 Agent 完整本地测试集 | 932 passed / 5 skipped；本轮 runtime 代码未改，未声称 10/16 重跑该完整测试集 |
 | 10/15 preview scope 修复相关回归 | 143 passed；随后真实部署复验通过，见上表 |
 | 10/15 完整类型检查 | `make type-check` 通过；新增 strict unit tests 为 0 diagnostics |
@@ -579,7 +582,7 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 
 10/15 head `7c08debe42d55c6b3fe305e7105cd7fd97225049` 的 CI 为 61 项成功、5 项跳过、0 失败，Codecov patch 90.90%（目标 88.98%）。这是该历史 head 的结果；10/16 新增修复的最终 CI 结果尚待发布负责人确认，不能沿用上轮全绿结论。
 
-首次测试进程继承用户 SOCKS 代理环境时因缺少 `socksio` 失败；隔离测试进程的代理环境后上述测试全部通过，未修改用户代理配置。完整类型检查在本地虚拟环境中补充了实际 VDB 源码的搜索路径，没有添加 stub、ignore 或 suppression。测试通过不替代真实部署和供应商查询验收。
+这些结果分别对应表中列出的本地代码版本；最终 CI 以 PR 最新 head 为准。本地测试与类型检查通过不替代真实部署和供应商查询验收。
 
 ### 12.5 LangSmith 账号级验收（2026-10-16）
 
@@ -598,7 +601,7 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 
 #### 已通过范围
 
-除 disabled 外，下表运行均达到 accepted 并通过独立平台查询；所有有树的场景核对 mapped IDs、parents、dotted_order、session metadata、project ID、类型和错误状态。本轮原生 usage 验证限定 input/output/total tokens 和 USD cost，只比较实际存在的 LLM 指标；“深链校验通过”表示 URL 与 SDK 路径匹配且对应 run 存在，实际浏览器验证另列。
+下表中的 managed 业务运行均达到 accepted 并通过独立平台查询；disabled、重投保护和历史项目链接读回按各行单独列明证据。有树的业务场景核对 mapped IDs、parents、dotted_order、session metadata、project ID、类型和错误状态。本轮原生 usage 验证限定 input/output/total tokens 和 USD cost，只比较实际存在的 LLM 指标；“深链校验通过”表示 URL 与 SDK 路径匹配且对应 run 存在，实际浏览器验证另列。
 
 | 场景 | 平台结构与指标 | 策略 / 体验证据 |
 | --- | --- | --- |
@@ -616,6 +619,9 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 | 模型错误 r2，内容开启 | 4 runs / 1 root；3 chain、1 llm，错误状态与 canonical 一致 | root 保留真实已知 query、canary 存在，未制造 output；浏览器实际显示 query 与 Agent message failed |
 | 模型错误 r2，内容关闭 | 4 runs / 1 root；错误状态与结构保留 | input/output payload 与 canary 均不存在，错误输入回退没有绕过内容开关 |
 | accepted 重投保护 | Console 返回 409 / `tracing_already_accepted` | attempts 未增加；验收结束后三个测试 owner 的策略均恢复 |
+| r3 历史 `project_url` 读回 | 三条历史记录的真实 Console GET 全部通过 | 旧项目 A run 返回冻结 A 链接；reference 当前已恢复 A，但历史项目 B run 仍返回 B；旧快照缺 URL 的记录返回 `project_url=null` 且 `trace_url=null`，不取当前配置回填 |
+
+r3 项目链接验证只读取现有运行，没有重新执行业务或补发 trace；前端可按第 8 节使用 span → trace → frozen project 的回退顺序，三个字段均空时隐藏跳转。
 
 内容关闭时，inputs/outputs 仍可能包含 null 包装或 usage_metadata；检查实际业务 payload 和 canary，不能仅因对象非空就认定泄漏。表中的 token/cost 是这几次运行的事实，不要求未来运行固定返回相同数值。
 
