@@ -2303,11 +2303,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/setting/build-in/config-credentials.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/tools/types.ts": {
     "typescript/no-explicit-any": {
       "count": 4
@@ -3228,7 +3223,7 @@
   },
   "web/app/components/workflow/nodes/tool/hooks/use-config.ts": {
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/app/components/workflow/nodes/tool/hooks/use-single-run-form-params.ts": {

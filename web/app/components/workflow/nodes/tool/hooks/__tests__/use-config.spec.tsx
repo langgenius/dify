@@ -42,9 +42,7 @@ vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   toolParametersToFormSchemas: (...args: unknown[]) => mockToolParametersToFormSchemas(...args),
 }))
 
-vi.mock('@/service/tools', () => ({
-  updateBuiltInToolCredential: vi.fn(),
-}))
+vi.mock('@/service/tools', () => ({}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({
