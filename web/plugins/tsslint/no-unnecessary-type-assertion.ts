@@ -2,29 +2,21 @@ import type { Rule } from '@tsslint/config'
 import type * as ts from 'typescript'
 
 /**
- * Reports `value as T` and `value as unknown as T` assertions that can be removed or
- * shortened without changing any type.
+ * Migration rule: removes `value as T` assertions and shortens `value as unknown as T` where
+ * that does not change any type in this codebase. It is not part of the regular `lint:tss`
+ * run; enable it with `pnpm migrate:type-assertions` and verify the result with `tsc`.
  *
- * Removing an assertion has three effects that must all be neutral:
+ * The checks are limited to what the migration needed:
  *
- * - Inward: `as T` is the contextual type of `value`, so it can shape literals, object
- *   literals, functions and generic calls. Those values are skipped; only values whose
- *   type does not depend on their context are inspected.
- * - Outward: the expression type changes from `T` to the value type. That is safe when both
- *   are the same non-literal type. For a literal type or an upcast it is only safe where the
- *   receiver type is fixed and does not narrow: a non-generic, non-overloaded call argument,
- *   an annotated return, an annotated declaration whose type is not a union, or an assignment
- *   statement whose target type is not a union.
- * - Narrowing: `x as T` is not a reference, so control flow never narrows `x` through it.
- *   References in narrowing positions (type predicates, `typeof`, comparisons, conditions,
- *   `switch`), directly or through a property access chain, keep their assertion. So does a
- *   boolean assertion in the return value of an unannotated function or in a const
- *   initializer, which would otherwise let TypeScript infer a type predicate or narrow
- *   through the const alias, and an assertion destructured into const bindings.
- *
- * For `value as unknown as T`, the `unknown` step is dropped when `value` and `T` are
- * assignable in one direction, which assignment guarantees to type-check as a single `as T`.
- * Values typed by their context keep both steps, since `as T` would become their context.
+ * - Values typed by their context (literals, object/array literals, functions, generic calls)
+ *   are skipped, since `as T` shapes their type.
+ * - An assertion to the type the value already has is removed, unless it is a literal type
+ *   (which would widen), a reference in a narrowing position, or a destructured const.
+ * - An upcast is removed only where the receiver type is fixed: a non-generic,
+ *   non-overloaded call argument, an annotated non-generic return, or an assignment whose
+ *   target type is not a union.
+ * - For `value as unknown as T`, the `unknown` step is dropped when `value` and `T` are
+ *   assignable in one direction.
  */
 const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, report }) => {
   const checker = program.getTypeChecker()
@@ -35,12 +27,15 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     return current
   }
 
+  const getPositionNode = (node: ts.Expression): ts.Expression => {
+    let current = node
+    while (tsApi.isParenthesizedExpression(current.parent)) current = current.parent
+    return current
+  }
+
   const isGenericCall = (node: ts.CallLikeExpression): boolean => {
     const declaration = checker.getResolvedSignature(node)?.getDeclaration()
     if (!declaration || declaration.typeParameters?.length) return true
-    // A constructor's type parameters belong to its class, not to the constructor itself.
-    if (tsApi.isConstructorDeclaration(declaration) && declaration.parent.typeParameters?.length)
-      return true
     if (tsApi.isCallExpression(node) || tsApi.isNewExpression(node)) {
       const calleeType = checker.getTypeAtLocation(node.expression)
       const signatures = tsApi.isNewExpression(node)
@@ -51,11 +46,6 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     return false
   }
 
-  // Literal types widen to their base type in mutable or inferred positions (`let`, array
-  // elements, unannotated returns); an assertion to the literal type is what prevents that.
-  const hasLiteralType = (type: ts.Type): boolean => checker.getBaseTypeOfLiteralType(type) !== type
-
-  // Whether the type of `node` can depend on the contextual type provided by the assertion.
   const isContextSensitive = (node: ts.Expression): boolean => {
     const value = skipParentheses(node)
     if (
@@ -104,10 +94,8 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     return false
   }
 
-  // Whether the position of `node` has a receiver type that does not depend on `node` itself.
   const getFixedReceiverType = (node: ts.Expression): ts.Type | undefined => {
-    let current = node
-    while (tsApi.isParenthesizedExpression(current.parent)) current = current.parent
+    const current = getPositionNode(node)
     const parent = current.parent
 
     if (
@@ -122,23 +110,16 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       if (signatures.length !== 1) return undefined
       return checker.getContextualType(current)
     }
-    // Assigning to a union-typed binding narrows it to the assigned type, so an upcast there
-    // keeps later checks of the other union members valid.
-    if (tsApi.isVariableDeclaration(parent) && parent.initializer === current && parent.type) {
-      const declaredType = checker.getTypeFromTypeNode(parent.type)
-      return declaredType.isUnion() ? undefined : declaredType
-    }
     if (tsApi.isReturnStatement(parent)) {
       const fn = tsApi.findAncestor(parent, tsApi.isFunctionLike)
       if (!fn?.type || fn.typeParameters?.length) return undefined
       return checker.getContextualType(current)
     }
-    // The assignment expression itself has the assigned type, so its result must be unused.
+    // Assigning to a union-typed binding narrows it to the assigned type.
     if (
       tsApi.isBinaryExpression(parent) &&
       parent.operatorToken.kind === tsApi.SyntaxKind.EqualsToken &&
       parent.right === current &&
-      tsApi.isExpressionStatement(parent.parent) &&
       !tsApi.isObjectLiteralExpression(parent.left) &&
       !tsApi.isArrayLiteralExpression(parent.left)
     ) {
@@ -171,11 +152,8 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     tsApi.SyntaxKind.QuestionQuestionToken,
   ])
 
-  // Whether control flow narrows a reference at this position. An assertion turns the
-  // reference into an expression, so removing it would start narrowing the variable.
+  // An assertion turns a reference into an expression, so control flow does not narrow it.
   const isNarrowingPosition = (node: ts.Expression): boolean => {
-    // Walk up the access chain: a discriminant check like `(x as T).kind === 'a'` or a
-    // `this is` method guard like `(x as T).isFoo()` narrows `x` itself.
     let current: ts.Expression = node
     for (;;) {
       const parent = current.parent
@@ -212,144 +190,77 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     return false
   }
 
-  const isConstInitializer = (declaration: ts.VariableDeclaration, initializer: ts.Node) =>
-    declaration.initializer === initializer &&
-    !!(tsApi.getCombinedNodeFlags(declaration) & tsApi.NodeFlags.Const)
-
-  // A boolean assertion stops narrowing from flowing beyond the expression:
-  // - an unannotated function returning a boolean narrowing expression gets an inferred type
-  //   predicate;
-  // - a const alias of a condition (`const ok = typeof x === 'string'`) narrows `x` wherever
-  //   `ok` is checked or returned.
-  const blocksPredicateInference = (node: ts.Expression, targetType: ts.Type): boolean => {
-    if (!(targetType.flags & tsApi.TypeFlags.BooleanLike)) return false
-    for (let current: ts.Node = node; current.parent; current = current.parent) {
-      const parent = current.parent
-      if (tsApi.isReturnStatement(parent)) {
-        const fn = tsApi.findAncestor(parent, tsApi.isFunctionLike)
-        return !!fn && !fn.type
-      }
-      if (tsApi.isArrowFunction(parent)) return parent.body === current && !parent.type
-      if (tsApi.isVariableDeclaration(parent)) return isConstInitializer(parent, current)
-      if (
-        tsApi.isFunctionLike(parent) ||
-        tsApi.isBlock(parent) ||
-        tsApi.isSourceFile(parent) ||
-        tsApi.isCaseOrDefaultClause(parent)
-      )
-        return false
-    }
-    return false
-  }
-
-  // Destructuring a discriminated union into const bindings lets a check on one binding
-  // narrow the others, which the assertion prevents.
+  // Destructured discriminants narrow each other, which the assertion prevents.
   const isDestructuredConstInitializer = (node: ts.Expression): boolean => {
-    let current = node
-    while (tsApi.isParenthesizedExpression(current.parent)) current = current.parent
+    const current = getPositionNode(node)
     const parent = current.parent
     return (
       tsApi.isVariableDeclaration(parent) &&
       !tsApi.isIdentifier(parent.name) &&
-      isConstInitializer(parent, current)
+      parent.initializer === current &&
+      !!(tsApi.getCombinedNodeFlags(parent) & tsApi.NodeFlags.Const)
     )
   }
 
-  const replaceNode = (node: ts.Node, newText: string) => {
+  const reportFix = (node: ts.Node, message: string, newText: string) => {
     const start = node.getStart(file)
-    return [
-      {
-        fileName: file.fileName,
-        textChanges: [{ span: { start, length: node.end - start }, newText }],
-      },
-    ]
-  }
-
-  const reportFix = (node: ts.Node, message: string, title: string, newText: string) => {
-    report(message, node.getStart(file), node.end)
+    report(message, start, node.end)
       .asError()
-      .withFix(title, () => replaceNode(node, newText))
+      .withFix(message, () => [
+        {
+          fileName: file.fileName,
+          textChanges: [{ span: { start, length: node.end - start }, newText }],
+        },
+      ])
   }
 
   const checkDoubleAssertion = (node: ts.AsExpression, inner: ts.AsExpression) => {
     const value = inner.expression
+    if (isContextSensitive(value)) return
     const sourceType = checker.getTypeAtLocation(value)
     const targetType = checker.getTypeFromTypeNode(node.type)
     if (sourceType.flags & tsApi.TypeFlags.Any) return
-
-    // Even a one-way assignable `as T` would give the value a new contextual type.
-    if (isContextSensitive(value)) return
-
-    const targetText = node.type.getText(file)
-    if (
-      sourceType === targetType &&
-      !hasLiteralType(sourceType) &&
-      !(isNarrowableReference(value) && isNarrowingPosition(node)) &&
-      !blocksPredicateInference(node, targetType) &&
-      !isDestructuredConstInitializer(node)
-    ) {
-      reportFix(
-        node,
-        `The value is already \`${targetText}\`; remove the \`as unknown as\` assertion.`,
-        'Remove the type assertion',
-        value.getText(file),
-      )
-      return
-    }
     if (
       sourceType.flags & tsApi.TypeFlags.Unknown ||
       checker.isTypeAssignableTo(sourceType, targetType) ||
       checker.isTypeAssignableTo(targetType, sourceType)
-    ) {
+    )
       reportFix(
         node,
-        'A single `as` assertion is enough; remove the `as unknown` step.',
         'Use a single type assertion',
-        `${value.getText(file)} as ${targetText}`,
+        `${value.getText(file)} as ${node.type.getText(file)}`,
       )
-    }
   }
 
   const checkAssertion = (node: ts.AsExpression) => {
     const value = node.expression
     if (isContextSensitive(value)) return
     if (isNarrowableReference(value) && isNarrowingPosition(node)) return
+    if (isDestructuredConstInitializer(node)) return
 
     const sourceType = checker.getTypeAtLocation(value)
     const targetType = checker.getTypeFromTypeNode(node.type)
     if (sourceType.flags & tsApi.TypeFlags.Any) return
-    if (blocksPredicateInference(node, targetType) || isDestructuredConstInitializer(node)) return
 
-    if (sourceType === targetType && !hasLiteralType(sourceType)) {
-      reportFix(
-        node,
-        `The value is already \`${node.type.getText(file)}\`; remove the type assertion.`,
-        'Remove the type assertion',
-        value.getText(file),
+    const isSameType =
+      sourceType === targetType && checker.getBaseTypeOfLiteralType(sourceType) === sourceType
+    if (!isSameType) {
+      if (!checker.isTypeAssignableTo(sourceType, targetType)) return
+      const receiverType = getFixedReceiverType(node)
+      if (
+        !receiverType ||
+        receiverType.flags & tsApi.TypeFlags.Any ||
+        !checker.isTypeAssignableTo(sourceType, receiverType)
       )
-      return
+        return
     }
-    if (!checker.isTypeAssignableTo(sourceType, targetType)) return
-    const receiverType = getFixedReceiverType(node)
-    if (
-      receiverType &&
-      !(receiverType.flags & tsApi.TypeFlags.Any) &&
-      checker.isTypeAssignableTo(sourceType, receiverType)
-    ) {
-      reportFix(
-        node,
-        'The receiver already accepts the value; remove the type assertion.',
-        'Remove the type assertion',
-        value.getText(file),
-      )
-    }
+    reportFix(node, 'Remove the type assertion', value.getText(file))
   }
 
   const visit = (node: ts.Node): void => {
     tsApi.forEachChild(node, visit)
 
     if (!tsApi.isAsExpression(node) || tsApi.isConstTypeReference(node.type)) return
-    // The inner `as unknown` of a double assertion is handled together with its outer `as T`.
     let outer: ts.Node = node.parent
     while (tsApi.isParenthesizedExpression(outer)) outer = outer.parent
     if (node.type.kind === tsApi.SyntaxKind.UnknownKeyword && tsApi.isAsExpression(outer)) return
