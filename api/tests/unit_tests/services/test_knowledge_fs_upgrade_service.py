@@ -44,6 +44,10 @@ from services.dataset_knowledge_fs_upgrade_service import (
     KnowledgeFSUpgradeRunner,
     KnowledgeFSUpgradeSnapshotService,
 )
+from services.knowledge_fs.initial_source_import import (
+    KnowledgeFSInitialSourceNotReadyError,
+    KnowledgeFSInitialSourceSubmission,
+)
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingPayload,
     KnowledgeFSDocumentAvailabilityPayload,
@@ -58,7 +62,6 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSpaceCreateResponse,
     KnowledgeFSStagedUploadResponse,
 )
-from tasks.knowledge_fs_initial_source_tasks import KnowledgeFSInitialSourceSubmission
 from tests.unit_tests.services.knowledge_fs_services_a_fakes import CallRecorder, RecordedCall, UnusedSessionFactory
 
 _TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -1294,8 +1297,6 @@ def test_runner_creates_source_and_marks_its_documents_handed_off(
         ]
         session.add_all([source, *documents])
 
-    from tasks import knowledge_fs_initial_source_tasks as source_tasks
-
     submit = CallRecorder(
         result=KnowledgeFSInitialSourceSubmission(
             connection_id="connection-1",
@@ -1304,7 +1305,7 @@ def test_runner_creates_source_and_marks_its_documents_handed_off(
             workflow_error="initial-sync-failed",
         )
     )
-    monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", submit)
+    monkeypatch.setattr(upgrade_module, "submit_initial_source_for_upgrade", submit)
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
     assert runner._create_next_source(job) is True
     assert len(submit.calls) == 1
@@ -1353,12 +1354,8 @@ def test_runner_source_failure_is_retryable_or_persisted(
         )
         session.add(source)
 
-    from tasks import knowledge_fs_initial_source_tasks as source_tasks
-
-    error: Exception = (
-        source_tasks.KnowledgeFSInitialSourceNotReadyError("busy") if not_ready else RuntimeError("source failed")
-    )
-    monkeypatch.setattr(source_tasks, "submit_initial_source_for_upgrade", CallRecorder(error=error))
+    error: Exception = KnowledgeFSInitialSourceNotReadyError("busy") if not_ready else RuntimeError("source failed")
+    monkeypatch.setattr(upgrade_module, "submit_initial_source_for_upgrade", CallRecorder(error=error))
     runner = KnowledgeFSUpgradeRunner(sqlite_session_factory)
 
     expected_error = KnowledgeFSUpgradeNotReadyError if not_ready else RuntimeError
