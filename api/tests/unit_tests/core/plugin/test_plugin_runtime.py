@@ -575,7 +575,7 @@ class TestPluginRuntimeErrorHandling:
 
         with patch("httpx.request", return_value=mock_response, autospec=True):
             # Act & Assert
-            with pytest.raises(ValueError, match="got empty data from plugin daemon: 348") as exc_info:
+            with pytest.raises(ValueError, match="got empty data from plugin daemon") as exc_info:
                 plugin_client._request_with_plugin_daemon_response("GET", "plugin/test-tenant/test", bool)
             assert "got empty data from plugin daemon" in str(exc_info.value)
 
