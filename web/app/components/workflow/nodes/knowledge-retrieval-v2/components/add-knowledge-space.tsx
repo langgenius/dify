@@ -3,16 +3,17 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalV2SpaceSummary } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInfiniteScroll } from 'ahooks'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
-import { toControlSpaceSummary } from '../config-helpers'
+import { canBindControlSpace, toControlSpaceSummary } from '../config-helpers'
 
 const SPACE_PAGE_SIZE = 50
 const MAX_CONTROL_SPACES = 10
@@ -31,6 +32,7 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
     [selectedSpaces],
   )
   const [draftIds, setDraftIds] = useState(selectedIds)
+  const baseId = useId()
   const listRef = useRef<HTMLDivElement>(null)
   const spacesQuery = useInfiniteQuery({
     ...consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
@@ -139,48 +141,99 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
             </div>
           )}
 
-          {!spacesQuery.isLoading && spaces.length === 0 && (
+          {spacesQuery.isError && spaces.length === 0 && (
+            <div
+              role="alert"
+              className="mt-6 flex flex-col items-center justify-center gap-2 rounded-lg border border-divider-subtle bg-components-panel-on-panel-item-bg p-4 text-center text-[13px] text-text-destructive"
+            >
+              <p>{t(($) => $['nodes.knowledgeRetrievalV2.loadSpacesError'], { ns: 'workflow' })}</p>
+              <Button
+                size="small"
+                loading={spacesQuery.isFetching}
+                onClick={() => void spacesQuery.refetch()}
+              >
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          )}
+
+          {spacesQuery.isSuccess && spaces.length === 0 && (
             <div className="mt-6 flex h-32 items-center justify-center rounded-lg border border-divider-subtle bg-components-panel-on-panel-item-bg text-[13px] text-text-tertiary">
               {t(($) => $['nodes.knowledgeRetrievalV2.noSpaces'], { ns: 'workflow' })}
             </div>
           )}
 
           {spaces.length > 0 && (
-            <div ref={listRef} className="mt-7 max-h-71.5 space-y-1 overflow-y-auto">
-              {spaces.map((space) => {
-                const summary = toControlSpaceSummary(space)
-                const selected = draftIds.includes(summary.control_space_id)
-                const unavailable = space.technical_status !== 'available'
-                const disabled =
-                  (unavailable && !selected) || (!selected && draftIds.length >= MAX_CONTROL_SPACES)
-                return (
-                  <button
-                    key={summary.control_space_id}
-                    type="button"
-                    disabled={disabled}
-                    className={cn(
-                      'flex h-10 w-full cursor-pointer items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 text-left shadow-xs outline-hidden hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                      selected &&
-                        'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover',
-                      disabled && 'cursor-default opacity-40',
-                    )}
-                    onClick={() => toggleSpace(summary.control_space_id)}
-                  >
-                    <span aria-hidden className="mr-2 shrink-0">
-                      {summary.icon || '📗'}
-                    </span>
-                    <span className="w-0 grow truncate text-[13px] font-medium text-text-secondary">
-                      {summary.name}
-                    </span>
-                    {unavailable && (
-                      <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 text-text-tertiary">
-                        {t(($) => $['nodes.knowledgeRetrievalV2.unavailable'], { ns: 'workflow' })}
+            <div ref={listRef} className="mt-7 max-h-71.5 overflow-y-auto">
+              <fieldset className="min-w-0 space-y-1">
+                <legend className="sr-only">
+                  {t(($) => $['nodes.knowledgeRetrievalV2.selectTitle'], { ns: 'workflow' })}
+                </legend>
+                {spaces.map((space) => {
+                  const summary = toControlSpaceSummary(space)
+                  const selected = draftIds.includes(summary.control_space_id)
+                  const unavailable = !canBindControlSpace(space)
+                  // An existing ineligible selection stays enabled so it can be removed.
+                  const disabled =
+                    !selected && (unavailable || draftIds.length >= MAX_CONTROL_SPACES)
+                  const rowId = `${baseId}-${summary.control_space_id}`
+                  return (
+                    <label
+                      key={summary.control_space_id}
+                      htmlFor={rowId}
+                      className={cn(
+                        'flex h-10 w-full items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                        selected &&
+                          'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover',
+                        disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
+                      )}
+                    >
+                      <span aria-hidden className="mr-2 shrink-0">
+                        {summary.icon || '📗'}
                       </span>
-                    )}
-                  </button>
-                )
-              })}
+                      <span
+                        id={`${rowId}-name`}
+                        className="w-0 grow truncate text-[13px] font-medium text-text-secondary"
+                      >
+                        {summary.name}
+                      </span>
+                      {unavailable && (
+                        <span
+                          id={`${rowId}-status`}
+                          className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs leading-4.5 text-text-tertiary"
+                        >
+                          {t(($) => $['nodes.knowledgeRetrievalV2.unavailable'], {
+                            ns: 'workflow',
+                          })}
+                        </span>
+                      )}
+                      <Checkbox
+                        id={rowId}
+                        className="ml-2 shrink-0"
+                        aria-labelledby={`${rowId}-name`}
+                        aria-describedby={unavailable ? `${rowId}-status` : undefined}
+                        checked={selected}
+                        disabled={disabled}
+                        onCheckedChange={() => toggleSpace(summary.control_space_id)}
+                      />
+                    </label>
+                  )
+                })}
+              </fieldset>
               {spacesQuery.isFetchingNextPage && <LoadingPlaceholder />}
+              {spacesQuery.isFetchNextPageError && !spacesQuery.isFetchingNextPage && (
+                <div
+                  role="alert"
+                  className="mt-2 flex items-center justify-between gap-2 px-2 text-[13px] text-text-destructive"
+                >
+                  <p>
+                    {t(($) => $['nodes.knowledgeRetrievalV2.loadSpacesError'], { ns: 'workflow' })}
+                  </p>
+                  <Button size="small" onClick={() => void spacesQuery.fetchNextPage()}>
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

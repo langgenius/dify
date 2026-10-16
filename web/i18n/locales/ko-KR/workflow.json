@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "이 Agent 지식 베이스의 워크플로 액세스가 비활성화되어 있습니다. 워크스페이스 소유자에게 이 Agent 지식 베이스의 설정에서 활성화하도록 요청하세요.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent 지식 베이스",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "“+”를 클릭하여 Agent 지식 베이스를 추가하세요.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent 지식 베이스를 불러오지 못했습니다. 서비스 상태와 권한을 확인하세요.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

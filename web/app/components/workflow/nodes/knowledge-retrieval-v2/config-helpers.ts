@@ -1,3 +1,4 @@
+import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { KnowledgeRetrievalV2Mode, KnowledgeRetrievalV2SpaceSummary } from './types'
 
 const MAX_CONTROL_SPACES = 10
@@ -66,3 +67,13 @@ export const toControlSpaceSummary = (space: {
     rerank_enabled: typeof rerank?.enabled === 'boolean' ? rerank.enabled : undefined,
   }
 }
+
+/** Mirrors the published binding sync, which authorizes every selected space with these capabilities. */
+export const canBindControlSpace = (
+  space: Pick<KnowledgeFsSpaceListItemResponse, 'permission_keys' | 'state' | 'technical_status'>,
+) =>
+  space.state === 'active' &&
+  space.technical_status === 'available' &&
+  space.permission_keys.includes('knowledge_space_read') &&
+  space.permission_keys.includes('knowledge_space_query') &&
+  space.permission_keys.includes('knowledge_space_access_config')

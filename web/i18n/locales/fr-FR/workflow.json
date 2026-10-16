@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "L’accès des workflows est désactivé pour cette base de connaissances Agent. Demandez à un propriétaire de l’espace de travail de l’activer dans les paramètres de cette base de connaissances Agent.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Bases de connaissances Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Cliquez sur « + » pour ajouter une base de connaissances Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Impossible de charger les bases de connaissances Agent. Vérifiez le service et vos autorisations.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

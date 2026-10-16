@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "此 Agent 知識庫已停用工作流程存取。請工作區擁有者在此 Agent 知識庫的設定中啟用。",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent 知識庫",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "點擊「+」按鈕新增 Agent 知識庫",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent 知識庫清單載入失敗，請檢查服務可用性和存取權限。",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

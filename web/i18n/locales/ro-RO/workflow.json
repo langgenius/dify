@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Accesul fluxurilor de lucru este dezactivat pentru această bază de cunoștințe Agent. Cereți proprietarului spațiului de lucru să îl activeze în setările acestei baze de cunoștințe Agent.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Baze de cunoștințe Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Faceți clic pe „+” pentru a adăuga o bază de cunoștințe Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Bazele de cunoștințe Agent nu au putut fi încărcate. Verificați disponibilitatea serviciului și permisiunile.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

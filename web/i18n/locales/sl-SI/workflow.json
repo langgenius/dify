@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Dostop za delovne tokove je za to zbirko znanja Agent onemogočen. Prosite lastnika delovnega prostora, da ga omogoči v nastavitvah te zbirke znanja Agent.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Zbirke znanja Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Kliknite »+«, da dodate zbirko znanja Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Zbirk znanja Agent ni bilo mogoče naložiti. Preverite razpoložljivost storitve in dovoljenja.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

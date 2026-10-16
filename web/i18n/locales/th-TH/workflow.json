@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "การเข้าถึงเวิร์กโฟลว์ถูกปิดใช้งานสำหรับฐานความรู้ Agent นี้ โปรดขอให้เจ้าของพื้นที่ทำงานเปิดใช้งานในการตั้งค่าของฐานความรู้ Agent นี้",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "ฐานความรู้ Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "คลิก “+” เพื่อเพิ่มฐานความรู้ Agent",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "โหลดฐานความรู้ Agent ไม่ได้ โปรดตรวจสอบบริการและสิทธิ์ของคุณ",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

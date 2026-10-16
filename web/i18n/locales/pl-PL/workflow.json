@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Dostęp dla przepływów pracy jest wyłączony w tej bazie wiedzy Agent. Poproś właściciela obszaru roboczego o włączenie go w ustawieniach tej bazy wiedzy Agent.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Bazy wiedzy Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Kliknij „+”, aby dodać bazę wiedzy Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Nie udało się załadować baz wiedzy Agent. Sprawdź dostępność usługi i uprawnienia.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

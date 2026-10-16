@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "تم تعطيل وصول مسار العمل لقاعدة معرفة Agent هذه. اطلب من مالك مساحة العمل تفعيله في إعدادات قاعدة معرفة Agent هذه.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "قواعد معرفة Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "انقر على «+» لإضافة قاعدة معرفة Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "تعذّر تحميل قواعد معرفة Agent. تحقّق من الخدمة وصلاحياتك.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

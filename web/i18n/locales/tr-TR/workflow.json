@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Bu Agent bilgi tabanı için iş akışı erişimi devre dışı. Bir çalışma alanı sahibinden bu Agent bilgi tabanının ayarlarında erişimi etkinleştirmesini isteyin.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent bilgi tabanları",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Agent bilgi tabanı eklemek için “+” düğmesine tıklayın.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent bilgi tabanları yüklenemedi. Hizmeti ve izinlerinizi kontrol edin.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

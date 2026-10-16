@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -153,9 +154,6 @@ const RecallSettings: FC<Props> = ({
             </div>
 
             <div>
-              <div className="mb-1 system-sm-semibold text-text-secondary">
-                {t(($) => $[`${i18nPrefix}.mode.title`], { ns: 'workflow' })}
-              </div>
               <Select
                 value={selectedMode.value}
                 disabled={readonly}
@@ -166,6 +164,9 @@ const RecallSettings: FC<Props> = ({
                   )
                 }}
               >
+                <SelectLabel className="mb-1 block py-0 system-sm-semibold">
+                  {t(($) => $[`${i18nPrefix}.mode.title`], { ns: 'workflow' })}
+                </SelectLabel>
                 <SelectTrigger className="w-full">{selectedMode.label}</SelectTrigger>
                 <SelectContent>
                   {modes.map((item) => (

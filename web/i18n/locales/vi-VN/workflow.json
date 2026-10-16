@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Quyền truy cập quy trình làm việc đã bị tắt cho cơ sở tri thức Agent này. Hãy yêu cầu chủ sở hữu không gian làm việc bật quyền này trong phần cài đặt của cơ sở tri thức Agent này.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Cơ sở tri thức Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Nhấp vào “+” để thêm cơ sở tri thức Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Không thể tải cơ sở tri thức Agent. Kiểm tra dịch vụ và quyền truy cập.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",
