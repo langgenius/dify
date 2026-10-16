@@ -22,7 +22,9 @@ trap 'rm -f "$tmp_m" "${tmp_c:-}" "${tmp_b:-}"' EXIT INT TERM
 err() { printf '%s\n' "install-r2: $*" >&2; }
 die() { err "$*"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
+# print_skill_hint BIN: the hint names a v2 command, so a binary without it (any v1 build) gets none.
 print_skill_hint() {
+  "$1" install skills --help >/dev/null 2>&1 || return 0
   printf '%s\n' 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
 
@@ -114,7 +116,7 @@ fetch_verify_install() {
 
   printf 'difyctl %s (channel %s) installed: %s\n' "$3" "$4" "${install_dir}/difyctl"
   case ":${PATH}:" in
-    *":${install_dir}:"*) print_skill_hint ;;
+    *":${install_dir}:"*) print_skill_hint "${install_dir}/difyctl" ;;
     *) printf 'note: add %s to your PATH\n' "$install_dir" ;;
   esac
 }

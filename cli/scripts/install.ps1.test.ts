@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
@@ -326,5 +328,32 @@ describe.skipIf(!PWSH)('install.ps1 install location and PATH hint', () => {
       `"C:\\dify\\bin;" + [Environment]::GetEnvironmentVariable('PATH', 'User')`,
     )
     expect(hint).not.toContain('$env:PATH')
+  })
+})
+
+// A v2 binary answers `install skills --help`; a v1 one exits 1 with "unknown command".
+// The fakes are shell scripts, so this runs where pwsh runs outside Windows.
+describe.skipIf(!PWSH || process.platform === 'win32')('install.ps1 Write-SkillHint', () => {
+  const hint = (bin: string) => runPwsh(`Write-SkillHint '${bin}'`)
+
+  it('prints the hint for a binary that has install skills, and stays quiet otherwise', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'difyctl-hint-'))
+    try {
+      const v2 = join(dir, 'v2')
+      const v1 = join(dir, 'v1')
+      writeFileSync(v2, '#!/bin/sh\n[ "$*" = "install skills --help" ]\n', { mode: 0o755 })
+      writeFileSync(v1, '#!/bin/sh\necho "unknown command: $*" >&2\nexit 1\n', { mode: 0o755 })
+      expect(hint(v2)).toMatchObject({
+        code: 0,
+        stdout: expect.stringContaining('difyctl install skills <skills root>'),
+      })
+      expect(hint(v1)).toMatchObject({ code: 0, stdout: '' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('prints nothing when the binary cannot run', () => {
+    expect(hint('/nonexistent/difyctl')).toMatchObject({ code: 0, stdout: '' })
   })
 })

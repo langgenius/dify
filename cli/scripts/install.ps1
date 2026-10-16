@@ -127,7 +127,11 @@ function Get-PathHint([string]$Dir) {
     return "  [Environment]::SetEnvironmentVariable('PATH', `"$Dir;`" + [Environment]::GetEnvironmentVariable('PATH', 'User'), 'User')"
 }
 
-function Write-SkillHint {
+# The hint names a v2 command, so a binary without it (any v1 build) gets none. Under
+# Windows PowerShell 5.1 a redirected stderr line throws when errors stop, hence the catch.
+function Write-SkillHint([string]$Bin) {
+    try { & $Bin install skills --help *> $null } catch { return }
+    if ($LASTEXITCODE -ne 0) { return }
     Write-Host 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
 
@@ -182,7 +186,7 @@ function Invoke-Main {
         }
         else {
             Write-Host 'verify: run "difyctl version"'
-            Write-SkillHint
+            Write-SkillHint $targetBin
         }
     }
     finally {
