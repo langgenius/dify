@@ -3,7 +3,7 @@ import type {
   TraceAppConfigResponse,
   TraceConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { FC, RefObject } from 'react'
+import type { RefObject } from 'react'
 import type { ConfigurableTracingProvider } from './providers'
 import type { TracingResource } from './resource'
 import {
@@ -25,12 +25,11 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { tracingProviders } from './providers'
 
-type Props = Readonly<{
+type ProviderConfigModalProps = {
   resource: TracingResource
   type: ConfigurableTracingProvider
   payload?: TraceAppConfigResponse['tracing_config']
@@ -39,11 +38,11 @@ type Props = Readonly<{
   onSaved: () => void
   onChosen: (provider: ConfigurableTracingProvider) => Promise<void>
   onBeforeRemove: () => Promise<void>
-}>
+}
 
 const I18N_PREFIX = 'tracing.configProvider'
 
-const ProviderConfigModal: FC<Props> = ({
+export function ProviderConfigModal({
   resource,
   type,
   payload,
@@ -52,7 +51,7 @@ const ProviderConfigModal: FC<Props> = ({
   onSaved,
   onChosen,
   onBeforeRemove,
-}) => {
+}: ProviderConfigModalProps) {
   const { t } = useTranslation(['app', 'common', 'modelProvider'])
   const createAppConfig = useMutation(
     consoleQuery.apps.byAppId.traceConfig.post.mutationOptions({ context: { silent: true } }),
@@ -844,4 +843,3 @@ const ProviderConfigModal: FC<Props> = ({
     </>
   )
 }
-export default React.memo(ProviderConfigModal)
