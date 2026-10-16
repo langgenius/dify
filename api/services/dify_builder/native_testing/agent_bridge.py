@@ -9,7 +9,7 @@ import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Literal, Protocol, cast
 
 from dify_agent.adapters.native_testing.client import AgentMaterialization, AgentPhysicalDispatchPayload
 from dify_agent.protocol.native_testing import (
@@ -21,8 +21,10 @@ from dify_agent.protocol.native_testing import (
     AgentNativeTestRef,
     AgentPolicyStop,
     AgentRecordedResult,
+    AgentRunTransportSelection,
 )
 from flask import current_app
+from werkzeug.local import LocalProxy
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -30,6 +32,7 @@ from core.dify_builder.models import Actor
 from extensions.ext_database import db
 from models.dify_builder import DifyBuilderExecutionRequest
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest, canonical_json
+from services.dify_builder.native_testing.agent_lineage import AgentServicePrincipal, NativeAgentEndpointContext
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
 from services.dify_builder.native_testing.contracts import (
     ApprovalWait,
@@ -481,14 +484,20 @@ def agent_bridge_for_ref(ref: AgentNativeTestRef) -> AgentNativeTestingBridge:
 
 
 class AgentEndpointLineagePort(Protocol):
-    """A4/A5 resolves authenticated principal + stored run, never an input flag.
+    """Strict transport principal and exact private selection are mandatory.
 
-    None means a positively identified ordinary call. Missing/ambiguous native
-    identity must raise, not return None. This port must cover omission of an
-    envelope as well as the presence of one before native admission is enabled.
+    None denotes a positively verified ordinary Run, never missing identity.
+    Native contexts are validated admissions, never physical dispatch permits.
     """
 
-    def resolve(self, *, boundary: str, caller: dict) -> AgentNativeTestRef | None: ...
+    def resolve(
+        self,
+        *,
+        principal: AgentServicePrincipal,
+        selection: AgentRunTransportSelection,
+        boundary: str,
+        caller: dict,
+    ) -> NativeAgentEndpointContext | None: ...
 
 
 def claim_agent_endpoint(
@@ -499,22 +508,30 @@ def claim_agent_endpoint(
     target,
     parameters,
     kind: str,
-    physical_owner_ready: bool = True,
+    physical_owner_ready: bool = False,
 ) -> None:
-    lineage = current_app.extensions.get("native_agent_endpoint_lineage")
-    if lineage is None:
-        if envelope is not None:
-            raise BuilderExecutionPolicyError("native_endpoint_lineage_unavailable")
-        # Compatibility for ordinary deployments only. The native admission
-        # capability MUST remain disabled until the trusted lineage port covers
-        # every endpoint, including an omitted envelope. This is not native proof.
-        return
-    required = lineage.resolve(boundary=boundary, caller=caller)
-    if required is None:
+    """Compatibility service preflight; strict Resources already prove lineage.
+
+    Genuine legacy plugin paths retain their service authorization. S2a refuses
+    native effects before service work. A controller cannot spend a
+    permit, including when called with an explicit native envelope.
+    """
+    from flask import g, request
+
+    context = (
+        getattr(g, "agent_runtime_context", None)
+        if getattr(g, "agent_runtime_request", None) is cast(LocalProxy, request)._get_current_object()
+        else None
+    )
+    if context is None:
         if envelope is not None:
             raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
         return
-    if envelope is None or envelope.ref != required:
+    if (
+        not isinstance(context, NativeAgentEndpointContext)
+        or envelope is None
+        or envelope.ref != context.ref
+    ):
         raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
     effect = envelope.intent
     if (
@@ -523,17 +540,7 @@ def claim_agent_endpoint(
         or canonical_json(effect.parameters) != canonical_json(parameters)
     ):
         raise BuilderExecutionPolicyError("native_endpoint_arguments_mismatch")
-    if not physical_owner_ready:
-        raise BuilderExecutionPolicyError("native_endpoint_dependency_unavailable")
-    bridge = agent_bridge_for_ref(required)
-    owned = bridge.authorization.loader.load(ref=api_ref(required))
-    if (
-        caller.get("tenant_id") != owned.tenant_id
-        or caller.get("app_id") != owned.app_id
-        or caller.get("user_id") != owned.actor_id
-        or caller.get("user_from") != "account"
-    ):
-        raise BuilderExecutionPolicyError("native_endpoint_owner_mismatch")
-    bridge.authorization.claim_dispatch(
-        ref=api_ref(required), intent=api_intent(effect), permit=api_permit(envelope.permit)
-    )
+    # No implemented service/runtime owner consumes this permit adjacent to its
+    # physical call yet. Validation is not a dispatch claim, even if a caller
+    # supplies physical_owner_ready=True to this compatibility preflight.
+    raise BuilderExecutionPolicyError("native_endpoint_dependency_unavailable")

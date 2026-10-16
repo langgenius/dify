@@ -93,6 +93,12 @@ def test_generate_specs_writes_all_openapi_files(tmp_path: Path):
     inner_payload = json.loads(inner_path.read_text(encoding="utf-8"))
     assert inner_payload["security"] == [{"InnerApiKey": []}]
     assert inner_payload["components"]["securitySchemes"] == {
+        "AgentBearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Bearer AGENT_BACKEND_API_TOKEN; runtime routes also require X-Dify-Agent-Run.",
+        },
         "InnerApiKey": {
             "type": "apiKey",
             "in": "header",

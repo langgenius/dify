@@ -27,9 +27,6 @@ from pydantic import RootModel, ValidationError
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
 from services.dify_builder.native_testing.agent_bridge import (
     agent_bridge_for_ref,
-    api_intent,
-    api_permit,
-    api_ref,
 )
 from services.dify_builder.native_testing.agent_preparation import (
     agent_preparation_for_ref,
@@ -40,7 +37,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import agent_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 
 
 class AgentBeforeCallResponse(RootModel[AgentEffectDecision]):
@@ -91,7 +88,7 @@ register_response_schema_models(
 
 @inner_api_ns.route("/agent/native-testing/before-call")
 class AgentNativeBeforeCallApi(Resource):
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.expect(inner_api_ns.models[AgentBeforeCallPayload.__name__])
     @inner_api_ns.response(200, "Native effect decision", inner_api_ns.models[AgentBeforeCallResponse.__name__])
     @error_responses(AgentNativeControlRefused)
@@ -106,7 +103,7 @@ class AgentNativeBeforeCallApi(Resource):
 
 @inner_api_ns.route("/agent/native-testing/outcome")
 class AgentNativeOutcomeApi(Resource):
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.expect(inner_api_ns.models[AgentOutcomePayload.__name__])
     @inner_api_ns.response(200, "Effect outcome recorded", inner_api_ns.models[AgentOutcomeResponse.__name__])
     @error_responses(AgentNativeControlRefused)
@@ -123,7 +120,7 @@ class AgentNativeOutcomeApi(Resource):
 
 @inner_api_ns.route("/agent/native-testing/materialize")
 class AgentNativeMaterializeApi(Resource):
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.expect(inner_api_ns.models[AgentMaterializePayload.__name__])
     @inner_api_ns.response(
         200, "Operation-local materialization", inner_api_ns.models[AgentMaterializeResponse.__name__]
@@ -146,22 +143,15 @@ class AgentNativeMaterializeApi(Resource):
 
 @inner_api_ns.route("/agent/native-testing/claim-dispatch")
 class AgentNativeDispatchClaimApi(Resource):
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.expect(inner_api_ns.models[AgentPhysicalDispatchPayload.__name__])
     @inner_api_ns.response(200, "Physical dispatch claimed", inner_api_ns.models[AgentDispatchClaimResponse.__name__])
     @error_responses(AgentNativeControlRefused)
     def post(self):
-        payload = _parse(AgentPhysicalDispatchPayload)
-        try:
-            if payload.intent.kind != "tool":
-                raise BuilderExecutionPolicyError("native_materialization_phase_mismatch")
-            bridge = agent_bridge_for_ref(payload.ref)
-            bridge.authorization.claim_dispatch(
-                ref=api_ref(payload.ref), intent=api_intent(payload.intent), permit=api_permit(payload.permit)
-            )
-        except BuilderExecutionPolicyError:
-            raise AgentNativeControlRefused() from None
-        return dump_response(AgentDispatchClaimResponse, AgentDispatchClaimResponse(claimed=True))
+        _parse(AgentPhysicalDispatchPayload)
+        # Physical permits belong to the actual service/runtime dispatch owner.
+        # S2a installs no such owner, including for this historical control URL.
+        raise AgentNativeControlRefused()
 
 
 class AgentInitialPrepareResponse(AgentPrepareRunResponse, ResponseModel):
@@ -193,7 +183,7 @@ def _bounded_private_response(model, result, limit):
 
 @inner_api_ns.route("/agent/native-testing/prepare-run")
 class AgentNativePrepareRunApi(Resource):
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.expect(inner_api_ns.models[AgentPrepareRunPayload.__name__])
     @inner_api_ns.response(
         200,
@@ -216,7 +206,7 @@ class AgentNativePrepareRunApi(Resource):
 
 @inner_api_ns.route("/agent/native-testing/prepared-config")
 class AgentNativePreparedConfigApi(Resource):
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.expect(inner_api_ns.models[AgentReadPreparedConfigPayload.__name__])
     @inner_api_ns.response(
         200,

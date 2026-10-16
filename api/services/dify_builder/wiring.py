@@ -807,3 +807,18 @@ def build_native_agent_preparation_service(*, actor: Actor, workspace_limits=Non
         workspace=workspace,
         config_builder=NativeAgentRuntimeConfigBuilder(loader=loader),
     )
+
+
+def build_native_agent_endpoint_lineage():
+    """Install strict dormant API lineage without enabling an Agent capability."""
+    from services.dify_builder.native_testing.agent_lineage import (
+        NativeAgentEndpointLineage,
+    )
+    from services.dify_builder.native_testing.agent_preparation import (
+        agent_preparation_for_ref,
+    )
+
+    return NativeAgentEndpointLineage(
+        backend=_NativeAgentIdentityReader(),
+        preparation_for_ref=agent_preparation_for_ref,
+    )

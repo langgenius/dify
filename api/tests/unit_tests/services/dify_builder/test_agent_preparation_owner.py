@@ -631,8 +631,12 @@ def test_actual_flask_control_caps_and_validation_before_factory(
 ):
     import controllers.inner_api.agent.native_testing as controller
     from controllers.inner_api import bp
+    from dify_agent.protocol.native_testing import AgentRunTransportSelection
 
     from tests.unit_tests.config_override import config_overrides_context
+    from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
+        encoded,
+    )
 
     calls = []
     monkeypatch.setattr(
@@ -642,13 +646,25 @@ def test_actual_flask_control_caps_and_validation_before_factory(
     app.config["TESTING"] = True
     app.register_blueprint(bp)
     with config_overrides_context(
-        PLUGIN_DAEMON_KEY="synthetic", INNER_API_KEY_FOR_PLUGIN="key"
+        PLUGIN_DAEMON_KEY="synthetic",
+        INNER_API_KEY_FOR_PLUGIN="key",
+        AGENT_BACKEND_API_TOKEN="synthetic-backend",
     ):
         response = app.test_client().post(
-            "/inner/api/agent/native-testing/prepare-run",
+            "/inner/api/agent/runtime/native-testing/prepare-run",
             data=payload,
             content_type="application/json",
-            headers={"X-Inner-Api-Key": "key"},
+            headers={
+                "Authorization": "Bearer synthetic-backend",
+                "X-Dify-Agent-Run": encoded(
+                    AgentRunTransportSelection(
+                        agent_run_id="run",
+                        parent_node=PARENT.model_dump(mode="json"),
+                        request_digest=canonical_digest(CONFIG),
+                        agent_generation=0,
+                    )
+                ),
+            },
         )
     assert response.status_code == expected
     assert not calls
@@ -662,13 +678,19 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
     import httpx
     from controllers.inner_api import bp
     from dify_agent.client import Client
-    from dify_agent.protocol.native_testing import AgentPrepareRunPayload
+    from dify_agent.protocol.native_testing import (
+        AgentPrepareRunPayload,
+        AgentRunTransportSelection,
+    )
     from services.dify_builder.native_testing.agent_contracts import AgentPreparedConfig
     from services.dify_builder.native_testing.agent_preparation import (
         AgentPreparationService,
     )
 
     from tests.unit_tests.config_override import config_overrides_context
+    from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
+        encoded,
+    )
 
     owned = AgentPreparedConfig(
         parent_node=PARENT,
@@ -683,10 +705,19 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
 
     class Store:
         def load_context(self, **_kwargs):
-            return SimpleNamespace(generation=4)
+            return SimpleNamespace(
+                generation=4,
+                tenant_id="tenant",
+                actor_id="actor",
+                app_id="app",
+                native_run_id="workflow",
+            )
 
         def load_prepared_config(self, **_kwargs):
             return owned
+
+        def discover_agent_run(self, **_kwargs):
+            return bindings[0] if bindings else None
 
         def bind_agent_run(self, **_kwargs):
             selected = _kwargs["association"]
@@ -723,6 +754,13 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
         ) as sdk,
     ):
         service = AgentPreparationService(Store(), sdk, None, None)
+        from services.dify_builder.native_testing.agent_lineage import (
+            NativeAgentEndpointLineage,
+        )
+
+        app.extensions["native_agent_endpoint_lineage"] = NativeAgentEndpointLineage(
+            backend=sdk, preparation_for_ref=lambda _ref: service
+        )
         monkeypatch.setattr(
             controller, "agent_preparation_for_ref", lambda _ref: service
         )
@@ -732,29 +770,41 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
             request_digest=owned.config_digest,
         )
         with config_overrides_context(
-            PLUGIN_DAEMON_KEY="synthetic", INNER_API_KEY_FOR_PLUGIN="key"
+            PLUGIN_DAEMON_KEY="synthetic",
+            INNER_API_KEY_FOR_PLUGIN="key",
+            AGENT_BACKEND_API_TOKEN="synthetic-backend",
         ):
             client = app.test_client()
-            headers = {"X-Inner-Api-Key": "key"}
+            headers = {
+                "Authorization": "Bearer synthetic-backend",
+                "X-Dify-Agent-Run": encoded(
+                    AgentRunTransportSelection(
+                        agent_run_id="run",
+                        parent_node=PARENT.model_dump(mode="json"),
+                        request_digest=owned.config_digest,
+                        agent_generation=0,
+                    )
+                ),
+            }
             first = client.post(
-                "/inner/api/agent/native-testing/prepare-run",
+                "/inner/api/agent/runtime/native-testing/prepare-run",
                 json=payload.model_dump(mode="json"),
                 headers=headers,
             )
             repeated = client.post(
-                "/inner/api/agent/native-testing/prepare-run",
+                "/inner/api/agent/runtime/native-testing/prepare-run",
                 json=payload.model_dump(mode="json"),
                 headers=headers,
             )
             conflicting = client.post(
-                "/inner/api/agent/native-testing/prepare-run",
+                "/inner/api/agent/runtime/native-testing/prepare-run",
                 json=payload.model_copy(update={"agent_run_id": "other"}).model_dump(
                     mode="json"
                 ),
                 headers=headers,
             )
             config = client.post(
-                "/inner/api/agent/native-testing/prepared-config",
+                "/inner/api/agent/runtime/native-testing/prepared-config",
                 json={
                     "parent_node": PARENT.model_dump(mode="json"),
                     "config_ref": "cfg",
@@ -779,7 +829,7 @@ def test_authenticated_flask_callback_through_real_sdk_readback_is_idempotent_an
     assert config.json["config"] == CONFIG and config.json[
         "parent_node"
     ] == PARENT.model_dump(mode="json")
-    assert len(bindings) == 1 and len(reads) == 3
+    assert len(bindings) == 1 and len(reads) == 5
 
 
 def test_config_creation_readback_cap_precedes_decryption_and_sql(monkeypatch):

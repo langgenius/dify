@@ -15,7 +15,7 @@ from controllers.common.session import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user
-from controllers.inner_api.wraps import plugin_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from core.plugin.entities.request import RequestDownloadFileMapping, RequestRequestUploadFile
 from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from extensions.ext_application_services import application_services
@@ -93,7 +93,7 @@ class AgentFileUploadRequestApi(Resource):
     """Allocate an origin-free signed upload URI for the Agent CLI."""
 
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_file_upload_request")
     @inner_api_ns.expect(inner_api_ns.models[AgentFileUploadRequestPayload.__name__])
     @inner_api_ns.response(
@@ -164,7 +164,7 @@ class AgentFileDownloadRequestApi(Resource):
     """Allocate a transfer URI or frontend URL for one Agent CLI file."""
 
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_file_download_request")
     @inner_api_ns.expect(inner_api_ns.models[AgentFileDownloadRequestPayload.__name__])
     @inner_api_ns.response(

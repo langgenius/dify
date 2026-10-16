@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import plugin_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from models.agent_config_entities import validate_config_name, validate_config_skill_name
 from services.agent_config_service import (
     AgentConfigService,
@@ -103,7 +103,7 @@ def _error_response(exc: AgentConfigServiceError) -> tuple[dict[str, str], int]:
 @inner_api_ns.route("/agent-config/<string:agent_id>/manifest")
 class AgentConfigManifestApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_manifest")
     def get(self, agent_id: str):
         try:
@@ -124,7 +124,7 @@ class AgentConfigManifestApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/download-request")
 class AgentConfigDownloadRequestApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_download_request")
     def post(self, agent_id: str):
         try:
@@ -153,7 +153,7 @@ class AgentConfigDownloadRequestApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/skills/<string:name>/inspect")
 class AgentConfigSkillInspectApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_skill_inspect")
     def get(self, agent_id: str, name: str):
         try:
@@ -175,7 +175,7 @@ class AgentConfigSkillInspectApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/push")
 class AgentConfigPushApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_push")
     def post(self, agent_id: str):
         try:
@@ -197,7 +197,7 @@ class AgentConfigPushApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/env")
 class AgentConfigEnvApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_env")
     def patch(self, agent_id: str):
         try:
@@ -219,7 +219,7 @@ class AgentConfigEnvApi(Resource):
 @inner_api_ns.route("/agent-config/<string:agent_id>/note")
 class AgentConfigNoteApi(Resource):
     @setup_required
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("agent_config_note")
     def put(self, agent_id: str):
         try:

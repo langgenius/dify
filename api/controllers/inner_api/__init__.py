@@ -11,6 +11,8 @@ api = ExternalApi(
     title="Inner API",
     description="Internal APIs for enterprise features, billing, knowledge retrieval, and plugin communication",
     authorizations={
+        "AgentBearer": {"type": "apiKey", "in": "header", "name": "Authorization",
+                        "description": "Bearer AGENT_BACKEND_API_TOKEN; runtime routes also require X-Dify-Agent-Run."},
         "InnerApiKey": {
             "type": "apiKey",
             "in": "header",
@@ -28,6 +30,7 @@ from . import mail as _mail
 from . import runtime_credentials as _runtime_credentials
 from .agent import files as _agent_files
 from .agent import llm as _agent_llm
+from .agent import runtime as _agent_runtime
 from .agent import runtime_usage as _agent_runtime_usage
 from .agent import tools as _agent_tools
 from .app import dsl as _app_dsl
@@ -38,12 +41,21 @@ from .plugin import plugin as _plugin
 from .plugin import skills as _skills
 from .workspace import workspace as _workspace
 
+
+@bp.record_once
+def _install_agent_lineage(state):
+    from services.dify_builder.wiring import build_native_agent_endpoint_lineage
+
+    state.app.extensions["native_agent_endpoint_lineage"] = build_native_agent_endpoint_lineage()
+
+
 api.add_namespace(inner_api_ns)
 
 __all__ = [
     "_agent_config",
     "_agent_files",
     "_agent_llm",
+    "_agent_runtime",
     "_agent_runtime_usage",
     "_agent_tools",
     "_app_dsl",

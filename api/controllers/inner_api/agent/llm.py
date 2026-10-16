@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from controllers.common.schema import register_schema_models
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import agent_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from core.errors.error import QuotaExceededError
 from libs.exception import BaseHTTPException
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError
@@ -39,7 +39,7 @@ register_schema_models(inner_api_ns, AgentLLMInvokeRequest)
 class AgentLLMInvokeApi(Resource):
     """Resolve one dify-agent model request before proxying it."""
 
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_llm_invoke")
     @inner_api_ns.expect(inner_api_ns.models[AgentLLMInvokeRequest.__name__])
     @inner_api_ns.produces(["text/event-stream"])

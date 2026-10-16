@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import agent_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from libs.exception import BaseHTTPException
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
@@ -45,7 +45,7 @@ register_response_schema_models(inner_api_ns, AgentToolInvokeResponse)
 class AgentToolInvokeApi(Resource):
     """Invoke one Agent tool through the API-owned core tool runtime path."""
 
-    @agent_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_agent_tool_invoke")
     @inner_api_ns.expect(inner_api_ns.models[AgentToolInvokeRequest.__name__])
     @inner_api_ns.response(200, "Tool invoked successfully", inner_api_ns.models[AgentToolInvokeResponse.__name__])

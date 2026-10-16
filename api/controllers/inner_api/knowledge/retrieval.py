@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import plugin_inner_api_only
+from controllers.inner_api.wraps import agent_endpoint_api_only
 from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
 from libs.exception import BaseHTTPException
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
@@ -53,7 +53,7 @@ register_response_schema_models(inner_api_ns, InnerKnowledgeRetrieveResponse)
 class InnerKnowledgeRetrieveApi(Resource):
     """Retrieve knowledge from one or more datasets within the caller tenant."""
 
-    @plugin_inner_api_only
+    @agent_endpoint_api_only
     @inner_api_ns.doc("inner_knowledge_retrieve")
     @inner_api_ns.doc(description="Retrieve knowledge for trusted internal callers")
     @inner_api_ns.expect(inner_api_ns.models[InnerKnowledgeRetrieveRequest.__name__])

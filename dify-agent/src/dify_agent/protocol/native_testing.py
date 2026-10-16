@@ -229,6 +229,15 @@ class ReadAgentRuntimeIdentity(NativeDTO):
     request_digest: Digest
 
 
+class AgentRunTransportSelection(NativeDTO):
+    """Bounded lookup selection only; persisted identity supplies execution mode."""
+
+    agent_run_id: ID
+    parent_node: AgentParentNodeRef | None
+    request_digest: Digest
+    agent_generation: Counter
+
+
 class AgentRuntimeIdentitySeed(NativeDTO):
     execution_mode: Literal["ordinary", "builder_test"]
     parent_node: AgentParentNodeRef | None
