@@ -10,9 +10,9 @@ from sqlalchemy.engine import CursorResult
 from core.db.session_factory import session_factory
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
-from models.dataset import DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
+from models.dataset import DatasetMetadataBinding, DocumentSegment
 from models.model import UploadFile
-from services.knowledge.indexing.adapters.cleanup import clean_document_indexes
+from services.knowledge.indexing.adapters.cleanup import clean_document_indexes, release_document_attachments
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
@@ -65,17 +65,6 @@ def batch_clean_document_task(
                     image_upload_file_ids = get_image_upload_file_ids(segment.content)
                     total_image_upload_file_ids.extend(image_upload_file_ids)
 
-                total_image_upload_file_ids.extend(
-                    session.scalars(
-                        select(SegmentAttachmentBinding.attachment_id).where(
-                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
-                            SegmentAttachmentBinding.dataset_id == dataset_id,
-                            SegmentAttachmentBinding.document_id.in_(document_ids),
-                            SegmentAttachmentBinding.segment_id.in_(segment_ids),
-                        )
-                    ).all()
-                )
-
             # Query storage keys for image files
             if total_image_upload_file_ids:
                 image_files = session.scalars(
@@ -126,6 +115,23 @@ def batch_clean_document_task(
                 document_ids,
             )
 
+        # ============ Step 3.5: Release segment attachments ============
+        # Attachments are found through their bindings rather than through the segments
+        # deleted in Step 5, so a failure here stays discoverable by a later run.
+        try:
+            release_document_attachments(
+                dataset_id=dataset_id,
+                document_ids=document_ids,
+                new_session=session_factory.create_session,
+                delete_file=storage.delete,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to release segment attachments for dataset_id: %s, document_ids: %s",
+                dataset_id,
+                document_ids,
+            )
+
         # ============ Step 4: Batch delete UploadFile records (multiple short transactions) ============
         if total_image_upload_file_ids:
             failed_batches = 0
@@ -161,13 +167,6 @@ def batch_clean_document_task(
                 batch = segment_ids[i : i + BATCH_SIZE]
                 try:
                     with session_factory.create_session() as session:
-                        binding_delete_stmt = delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
-                            SegmentAttachmentBinding.dataset_id == dataset_id,
-                            SegmentAttachmentBinding.document_id.in_(document_ids),
-                            SegmentAttachmentBinding.segment_id.in_(batch),
-                        )
-                        session.execute(binding_delete_stmt)
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
                         session.execute(segment_delete_stmt)
                         session.commit()
