@@ -8,14 +8,16 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
+import { noop, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
+import { traceCapabilitiesQueryOptions } from './capabilities'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
 import { tracingQueryParamName, tracingQueryParser } from './query-params'
+import { usesAgentTracePipeline } from './resource'
 import { TracingIcon } from './tracing-icon'
 
 const I18N_PREFIX = 'tracing'
@@ -84,6 +86,14 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
   const enabled = tracingStatus?.enabled ?? false
   const inUseTracingProvider =
     providers.find((provider) => provider === tracingStatus?.tracing_provider) ?? null
+  const queryClient = useQueryClient()
+  // The popup's selected provider card shows these; start the request once the user aims at the trigger.
+  const prefetchCapabilities = () => {
+    if (!inUseTracingProvider || !usesAgentTracePipeline(resource)) return
+    void queryClient
+      .query(traceCapabilitiesQueryOptions(resource, inUseTracingProvider))
+      .catch(noop)
+  }
   const updatePolicy = async (changes: Partial<AppTracePayload>) => {
     if (!tracingStatus || readOnly) return
     const body: AppTracePayload = {
@@ -154,6 +164,8 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       }}
     >
       <PopoverTrigger
+        onPointerEnter={prefetchCapabilities}
+        onFocus={prefetchCapabilities}
         render={
           <Button className="h-auto gap-0 rounded-xl bg-background-default-lighter p-2 inset-ring-components-panel-border hover:bg-background-default-dodge" />
         }

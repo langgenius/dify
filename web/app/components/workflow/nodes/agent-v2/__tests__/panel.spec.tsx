@@ -4,8 +4,8 @@ import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plu
 import { createData, createPanelEnvironment } from './panel-test-env'
 
 vi.mock('@/app/components/app/tracing/inherited-tracing-summary', () => ({
-  InheritedTracingSummary: ({ appId }: { appId: string }) => (
-    <div data-testid="inherited-tracing">{appId}</div>
+  InheritedTracingSummary: ({ resource }: { resource: { appId: string } }) => (
+    <div data-testid="inherited-tracing">{resource.appId}</div>
   ),
 }))
 
