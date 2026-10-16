@@ -282,6 +282,7 @@
   "tracing.configProvider.username": "Nume de utilizator",
   "tracing.configProvider.viewDocsLink": "Vizualizați documentația {{key}}",
   "tracing.configProviderTitle.configured": "Configurat",
+  "tracing.configProviderTitle.moreProviders": "Mai mulți furnizori",
   "tracing.configProviderTitle.notConfigured": "Configurați furnizorul pentru a activa urmărirea",
   "tracing.databricks.description": "Databricks oferă MLflow complet gestionat cu o puternică guvernanță și securitate pentru stocarea datelor de urmărire.",
   "tracing.databricks.title": "Databricks",

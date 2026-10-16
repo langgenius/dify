@@ -82,11 +82,13 @@ describe('Tracing overview panel', () => {
     vi.clearAllMocks()
   })
 
-  it('keeps the tracing entry visible and disabled until configuration is ready', async () => {
+  it('shows a loading placeholder instead of an unconfigured trigger before status is known', () => {
     request.mockImplementation(() => new Promise<Response>(() => {}))
     renderPanel()
-    expect(screen.getByRole('button', { name: 'app.tracing.title' })).toBeDisabled()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'app.tracing.title' })).toHaveTextContent(
+      'common.loading',
+    )
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('offers retry when tracing cannot load instead of remaining in a loading state', async () => {
@@ -102,7 +104,7 @@ describe('Tracing overview panel', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('keeps one disabled entry when status arrives before provider configurations', async () => {
+  it('keeps the loading placeholder until configs are ready, then shows an enabled trigger', async () => {
     mockServer()
     const server = request.getMockImplementation()!
     let resolveConfigs!: () => void
@@ -121,9 +123,38 @@ describe('Tracing overview panel', () => {
         ),
       ).toEqual({ enabled: true, tracing_provider: 'langfuse' }),
     )
-    expect(screen.getByRole('button')).toBeDisabled()
+    expect(screen.getByRole('status', { name: 'app.tracing.title' })).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
     resolveConfigs()
-    await waitFor(() => expect(screen.getByRole('button')).toBeEnabled())
+    expect(await screen.findByRole('button', { name: 'app.tracing.enabled' })).toBeEnabled()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('waits for saved configs when no provider is selected instead of claiming tracing is unconfigured', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    let resolveConfigs!: () => void
+    const configsReady = new Promise<void>((resolve) => {
+      resolveConfigs = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      if (new URL(args[2].request.url).pathname.endsWith('/trace'))
+        return Response.json({ enabled: false, tracing_provider: null })
+      await configsReady
+      return server(...args)
+    })
+    const { client } = renderPanel()
+    await waitFor(() =>
+      expect(
+        client.getQueryData(
+          consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        ),
+      ).toEqual({ enabled: false, tracing_provider: null }),
+    )
+    expect(screen.getByRole('status', { name: 'app.tracing.title' })).toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    resolveConfigs()
+    expect(await screen.findByRole('button', { name: 'app.tracing.disabled' })).toBeEnabled()
   })
 
   it('keeps healthy providers usable and retries only the unavailable provider', async () => {
@@ -362,7 +393,9 @@ describe('Tracing overview panel', () => {
     const writes = mockServer(false)
     renderPanel()
     const user = userEvent.setup()
-    await user.click(await screen.findByText('app.tracing.title'))
+    const trigger = await screen.findByRole('button', { name: 'app.tracing.title' })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    await user.click(trigger)
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
     await user.type(
       screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
@@ -451,6 +484,78 @@ describe('Tracing overview panel', () => {
     )
   })
 
+  it('keeps the provider form open while a save is in flight, then closes it on success', async () => {
+    mockServer(false)
+    const server = request.getMockImplementation()!
+    let releaseSave!: () => void
+    const saveHeld = new Promise<void>((resolve) => {
+      releaseSave = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      const sent = args[2].request
+      if (sent.method === 'POST' && new URL(sent.url).pathname.endsWith('/trace-config'))
+        await saveHeld
+      return server(...args)
+    })
+    renderPanel()
+    const user = userEvent.setup()
+    const trigger = await screen.findByRole('button', { name: 'app.tracing.title' })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    await user.click(trigger)
+    await user.click(screen.getAllByText('app.tracing.config')[0]!)
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
+      'public-key',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+      'secret-key',
+    )
+    await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+
+    const form = screen.getByRole('dialog', { name: /app.tracing.configProvider.title/ })
+    await waitFor(() =>
+      expect(within(form).getByRole('button', { name: 'common.operation.close' })).toBeDisabled(),
+    )
+    expect(within(form).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(form).toBeInTheDocument()
+
+    releaseSave()
+    await waitFor(() => expect(form).not.toBeInTheDocument())
+  })
+
+  it('keeps the removal confirmation open until the deletion settles', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    let releaseDelete!: () => void
+    const deleteHeld = new Promise<void>((resolve) => {
+      releaseDelete = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      if (args[2].request.method === 'DELETE') await deleteHeld
+      return server(...args)
+    })
+    renderPanel()
+    const user = await openConfiguredPanel()
+    await user.click(screen.getAllByText('app.tracing.config')[0]!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    const confirmation = screen.getByRole('alertdialog')
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
+
+    await waitFor(() =>
+      expect(
+        within(confirmation).getByRole('button', { name: 'common.operation.cancel' }),
+      ).toBeDisabled(),
+    )
+    await user.keyboard('{Escape}')
+    expect(confirmation).toBeInTheDocument()
+
+    releaseDelete()
+    await waitFor(() => expect(confirmation).not.toBeInTheDocument())
+  })
+
   it('opens from the tracing URL destination once ready and clears it on close', async () => {
     mockServer()
     const { onUrlUpdate } = renderPanel(false, '?tracing=configure')
@@ -494,7 +599,7 @@ describe('Tracing overview panel', () => {
       expect(screen.queryByRole('textbox', { name: 'Host' })).not.toBeInTheDocument(),
     )
     // The URL destination still asks for configuration, so the new app's popover reopens once ready.
-    await user.click((await screen.findAllByText('app.tracing.config'))[0]!)
+    await user.click(screen.getAllByText('app.tracing.config')[0]!)
     expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue(langfuseConfig.host)
   })
 })
