@@ -2,13 +2,15 @@
 
 Never import, collect or run on the development host. No network transport is
 invoked. Native public node IDs are attached/bound by the actual preparation
-owner; SQL races and encrypted input ownership are exercised independently of
+owner. UUID values here are synthetic fixtures bound through the public Node API,
+not production worker-issued occurrence evidence; SQL races and encrypted input ownership are exercised independently of
 whole-run Graphon trace/privacy/driver activation.
 """
 
 import json
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from datetime import datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -44,8 +46,13 @@ from services.dify_builder.native_testing.http_binding import (
 )
 from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
 from services.dify_builder.native_testing.operation_journal import NodeOperationJournal
-from services.dify_builder.native_testing.pending_intents import ResolvedPendingIntent
+from services.dify_builder.native_testing.pending_intents import (
+    PendingDecisionGuard,
+    ProtectedPendingIntentReader,
+    ResolvedPendingIntent,
+)
 from services.dify_builder.native_testing.private_reads import validate_private_read
+from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision
 from services.dify_builder.native_testing.runtime_bridge import NativeCollaborators, NativeRuntimeBridge
 from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
@@ -225,6 +232,7 @@ def prepare(c, execution_id=None, *, ref=None):
         **association.arguments,
     )
     association.attach(node)
+    # Synthetic fixture UUID bound through the real public API; no worker/host execution claim.
     node.bind_execution_id(execution_id or str(uuid4()))
     producer = captured["producer"]
     producer.begin()
@@ -270,11 +278,16 @@ def test_real_http_snapshot_and_equal_install_preserve_other_entries(http_case):
     assert stored["invocation_digest"] == canonical_digest(first.binding.intent.model_dump(mode="json"))
     assert stored["cost_units"] == 1
     assert stored["budget"] == {}
+    assert stored["approval_scope"] == "operation"
     input_ref = first.journal.snapshot(ref=c.ref)[0].input_result_ref
     assert c.store.load_result(ref=c.ref, result_ref=input_ref) == first.binding.request.material()
 
 
 def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(http_case):
+    from threading import Barrier
+
+    from flask import current_app
+
     c = http_case
     first = prepare(c)
     before = bindings(c)
@@ -287,8 +300,17 @@ def test_real_http_conflict_is_immutable_and_concurrent_merge_preserves_entries(
             intent=conflict,
         )
     assert bindings(c) == before
+    app = current_app._get_current_object()
+    start = Barrier(2)
+
+    def prepare_in_worker(_):
+        # Flask's scoped RSA public-key lookup requires an independent worker app context.
+        with app.app_context():
+            start.wait(timeout=10)
+            return prepare(c)
+
     with ThreadPoolExecutor(max_workers=2) as pool:
-        prepared = list(pool.map(lambda _: prepare(c), range(2)))
+        prepared = list(pool.map(prepare_in_worker, range(2)))
     current = bindings(c)
     assert len(current) == len(before) + 2
     assert all(current[key] == value for key, value in before.items())
@@ -521,11 +543,32 @@ def test_real_http_one_accounting_unit_and_native_correlation_spent_once(http_ca
     permit = c.auth.before_call(ref=c.ref, intent=intent)
     assert isinstance(permit, DispatchPermit)
     c.auth.claim_dispatch(ref=c.ref, intent=intent, permit=permit)
+    with pytest.raises(BuilderExecutionPolicyError, match="dispatch_already_consumed"):
+        c.auth.claim_dispatch(ref=c.ref, intent=intent, permit=permit)
+    c.auth.decide(
+        ref=c.ref,
+        intent=intent,
+        decision="approved",
+        max_calls=1,
+        max_dispatches=1,
+        max_cost_units=1,
+        expires_at=c.loader.load(ref=c.ref).expires_at,
+    )
+    assert isinstance(c.auth.before_call(ref=c.ref, intent=intent), PolicyStop)
     # A bounded local result witness qualifies ledger settlement, not remote IO.
     result_ref = (
         c.store.store_result(ref=c.ref, key=intent.key, result={"closed": True}) if outcome == "completed" else None
     )
     c.auth.record_outcome(permit=permit, outcome=outcome, result_ref=result_ref)
+    c.auth.decide(
+        ref=c.ref,
+        intent=intent,
+        decision="approved",
+        max_calls=1,
+        max_dispatches=1,
+        max_cost_units=1,
+        expires_at=c.loader.load(ref=c.ref).expires_at,
+    )
     decision = c.auth.before_call(ref=c.ref, intent=intent)
     assert isinstance(decision, RecordedResult if outcome == "completed" else PolicyStop)
     with c.factory() as session:
@@ -536,57 +579,192 @@ def test_real_http_one_accounting_unit_and_native_correlation_spent_once(http_ca
         assert attempt.invocation_digest == canonical_digest(intent.model_dump(mode="json"))
 
 
-def test_real_identical_http_second_occurrence_cannot_reset_exhausted_one_call_grant(http_case):
-    """Known C02 renewal gate: identity correctness does not imply repeat-call acceptance."""
+def _confirmed_http_resume(c, prepared, lifecycle, *, prior_journals=()):
+    """Actual protected proposal/guard/resume, with explicit native snapshot fixture values."""
+    from models.dify_builder_native_tests import NativeEffectGrant
+
+    context = c.store.load_context(ref=c.ref)
+    cursor = prepared.journal.resolve_cursor(ref=c.ref, key=prepared.binding.intent.key)
+    wait = cursor.before_call(intent=prepared.binding.intent)
+    assert isinstance(wait, ApprovalWait)
+    proposals = prepared.producer.approval_proposals()
+    assert len(proposals) == 1
+    assert proposals[0].terms.max_calls == proposals[0].terms.max_dispatches == 1
+    assert proposals[0].terms.max_cost_units == 1
+    checkpoint = c.store.commit_checkpoint(
+        ref=c.ref,
+        generation=context.generation,
+        payload=NativeCheckpointPayload(
+            schema_version="1",
+            native_run_id=context.native_run_id,
+            generation=context.generation,
+            generate_entity_json="{}",
+            graph_runtime_state_json="{}",
+            response_stream_filter_json="{}",
+            node_journals=(*prior_journals, *prepared.journal.snapshot(ref=c.ref)),
+            child_refs=(),
+            input_result_refs=(),
+            approval_proposals=proposals,
+        ),
+    )
+    lifecycle.pause(
+        ref=c.ref,
+        checkpoint=checkpoint,
+        pending_operation_ids=(wait.pending_operation_id,),
+        expected_generation=context.generation,
+    )
+    reader = ProtectedPendingIntentReader(loader=c.loader, state_store=c.store)
+    resolved = reader.load(actor=c.actor, request_id=c.ref.request_id, pending_operation_id=wait.pending_operation_id)
+    assert resolved.intent == prepared.binding.intent
+    assert reader.load_terms(resolved=resolved) == proposals[0].terms
+    disclosure = NativeHttpDisclosure(loader=c.loader, state_store=c.store).describe(actor=c.actor, resolved=resolved)
+    assert disclosure.approval_limits == proposals[0].terms
+    receipt = NativeTestPublicReceipt(
+        request_id=c.ref.request_id,
+        generation=context.generation,
+        version=context.generation + 1,
+        status="waiting",
+        wait_reason="approval",
+        native_run_id=context.native_run_id,
+        native_status=None,
+        pending=(disclosure,),
+        outcome=None,
+        evidence_refs=(),
+    )
+    guard = PendingDecisionGuard(
+        resolved=resolved,
+        pending_operation_id=wait.pending_operation_id,
+        expected_version=context.generation + 1,
+        scope_digest=disclosure.scope_digest,
+        idempotency_digest=canonical_digest({"decision": wait.pending_operation_id}),
+        body_digest=canonical_digest(
+            {"decision": "confirm", "scope": disclosure.scope_digest, "version": context.generation + 1}
+        ),
+        receipt=receipt,
+        terms=reader.load_terms(resolved=resolved),
+        invocation_app_id=context.app_id,
+        invocation_workflow_id=context.workflow_id,
+        invocation_revision=context.graph_revision,
+    )
+    command = {
+        "ref": c.ref,
+        "intent": resolved.intent,
+        "decision": "approved",
+        "max_calls": guard.terms.max_calls,
+        "max_dispatches": guard.terms.max_dispatches,
+        "max_cost_units": guard.terms.max_cost_units,
+        "expires_at": datetime.fromisoformat(guard.terms.expires_at),
+        "pending_guard": guard,
+    }
+    assert c.auth.decide(**command) == receipt
+    assert c.auth.decide(**command) == receipt
+    # A duplicate authenticated command saved one receipt and still reserves no dispatch.
+    with c.factory() as session:
+        grants = session.scalars(
+            select(NativeEffectGrant).where(
+                NativeEffectGrant.request_id == c.ref.request_id,
+                NativeEffectGrant.scope_digest == disclosure.scope_digest,
+            )
+        ).all()
+        assert len(grants) == 1
+        assert grants[0].spent_calls == grants[0].spent_dispatches == grants[0].spent_cost_units == 0
+        grant_id = grants[0].id
+    resumed = lifecycle.resume(
+        actor=c.actor,
+        request_id=c.ref.request_id,
+        expected_generation=context.generation,
+        idempotency_key="resume-" + wait.pending_operation_id,
+    )
+    assert resumed.generation == context.generation + 1
+    assert lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
+    assert lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id) is False
+    return SimpleNamespace(
+        pending_id=wait.pending_operation_id,
+        scope=disclosure.scope_digest,
+        guard=guard,
+        command=command,
+        grant_id=grant_id,
+    )
+
+
+def _complete_confirmed_http(c, prepared):
+    """Manual fixture redelivery preserves the same bound public ID/key after real resume."""
+    from services.dify_builder.native_testing.contracts import RecordedResult
+
+    restored = prepare(c, prepared.association.execution_id)
+    assert restored.binding.intent == prepared.binding.intent
+    cursor = restored.journal.resolve_cursor(ref=c.ref, key=restored.binding.intent.key)
+    permit = cursor.before_call(intent=restored.binding.intent)
+    assert isinstance(permit, DispatchPermit)
+    c.auth.claim_dispatch(ref=c.ref, intent=restored.binding.intent, permit=permit)
+    with pytest.raises(BuilderExecutionPolicyError, match="dispatch_already_consumed"):
+        c.auth.claim_dispatch(ref=c.ref, intent=restored.binding.intent, permit=permit)
+    # Local complete result witness: this SQL test invokes no HTTP transport.
+    result_ref = c.store.store_result(ref=c.ref, key=restored.binding.intent.key, result={"closed": True})
+    c.auth.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    assert cursor.before_call(intent=restored.binding.intent) == RecordedResult(
+        operation_id=permit.operation_id, result_ref=result_ref
+    )
+    restored.producer.finish()
+    return restored
+
+
+def test_real_identical_http_occurrences_require_independent_guarded_one_call_confirmations(http_case):
     from sqlalchemy import func
 
-    from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectGrant
+    from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectDispatchClaim, NativeEffectGrant
     from services.dify_builder.native_testing.contracts import RecordedResult
 
     c = http_case
+    lifecycle = NativeTestLifecycleService(c.loader, state_store=c.store)
     first = prepare(c)
-    intent = first.binding.intent
-    expiry = c.loader.load(ref=c.ref).expires_at
-    assert isinstance(c.auth.before_call(ref=c.ref, intent=intent), ApprovalWait)
-    grant_id = c.auth.decide(
-        ref=c.ref,
-        intent=intent,
-        decision="approved",
-        max_calls=1,
-        max_dispatches=1,
-        max_cost_units=1,
-        expires_at=expiry,
-    )
-    permit = c.auth.before_call(ref=c.ref, intent=intent)
-    assert isinstance(permit, DispatchPermit)
-    c.auth.claim_dispatch(ref=c.ref, intent=intent, permit=permit)
-    result_ref = c.store.store_result(ref=c.ref, key=intent.key, result={"closed": True})
-    c.auth.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
-    assert isinstance(c.auth.before_call(ref=c.ref, intent=intent), RecordedResult)
+    approved_first = _confirmed_http_resume(c, first, lifecycle)
+    completed_first = _complete_confirmed_http(c, first)
+    first_intent = first.binding.intent
+    assert isinstance(c.auth.before_call(ref=c.ref, intent=first_intent), RecordedResult)
     second = prepare(c)
     assert second.association.execution_id != first.association.execution_id
-    assert isinstance(c.auth.before_call(ref=c.ref, intent=second.binding.intent), ApprovalWait)
-    assert (
-        c.auth.decide(
-            ref=c.ref,
-            intent=second.binding.intent,
-            decision="approved",
-            max_calls=1,
-            max_dispatches=1,
-            max_cost_units=1,
-            expires_at=expiry,
-        )
-        == grant_id
+    assert second.binding.intent.parameters == first_intent.parameters
+    assert second.binding.intent.input_digest == first_intent.input_digest
+    second_wait = c.auth.before_call(ref=c.ref, intent=second.binding.intent)
+    assert isinstance(second_wait, ApprovalWait)
+    assert second_wait.pending_operation_id != approved_first.pending_id
+    with pytest.raises(BuilderExecutionPolicyError, match="native_pending_conflict"):
+        c.auth.decide(**{**approved_first.command, "intent": second.binding.intent})
+    approved_second = _confirmed_http_resume(
+        c, second, lifecycle, prior_journals=completed_first.journal.snapshot(ref=c.ref)
     )
-    assert isinstance(c.auth.before_call(ref=c.ref, intent=second.binding.intent), ApprovalWait)
+    assert approved_second.pending_id == second_wait.pending_operation_id
+    assert approved_second.scope != approved_first.scope
+    assert approved_second.grant_id != approved_first.grant_id
+    _complete_confirmed_http(c, second)
+    # A trusted immutable reconfirmation never renews either completed operation.
+    for prepared, approved in ((first, approved_first), (second, approved_second)):
+        reconfirm = {key: value for key, value in approved.command.items() if key != "pending_guard"}
+        assert c.auth.decide(**reconfirm) == approved.grant_id
+        assert isinstance(c.auth.before_call(ref=c.ref, intent=prepared.binding.intent), RecordedResult)
     with c.factory() as session:
-        grant = session.get(NativeEffectGrant, grant_id)
-        assert (grant.spent_calls, grant.spent_dispatches, grant.spent_cost_units) == (1, 1, 1)
-        assert (
-            session.scalar(
-                select(func.count())
-                .select_from(NativeEffectAttempt)
-                .where(NativeEffectAttempt.request_id == c.ref.request_id)
+        scope = session.get(NativeTestScope, c.ref.request_id)
+        assert (scope.max_calls, scope.max_dispatches, scope.max_cost_units) == (16, 16, 16)
+        assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (2, 2, 2)
+        assert scope.generation == 2
+        grants = session.scalars(
+            select(NativeEffectGrant).where(NativeEffectGrant.request_id == c.ref.request_id)
+        ).all()
+        assert len(grants) == 2
+        assert all(
+            (
+                grant.max_calls,
+                grant.max_dispatches,
+                grant.max_cost_units,
+                grant.spent_calls,
+                grant.spent_dispatches,
+                grant.spent_cost_units,
             )
-            == 1
+            == (1, 1, 1, 1, 1, 1)
+            for grant in grants
         )
+        for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
+            assert (
+                session.scalar(select(func.count()).select_from(model).where(model.request_id == c.ref.request_id)) == 2
+            )

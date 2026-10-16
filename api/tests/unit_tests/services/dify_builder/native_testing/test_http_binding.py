@@ -366,7 +366,9 @@ def test_current_classification_does_not_echo_stored_flags(concrete_case, monkey
     frozen = c.m._classified_binding(
         intent_digest="b" * 64, execution_id=c.uuid, descriptor=desc, manifest_digest="c" * 64
     )
-    stored = frozen.model_copy(update={"isolated": True, "cost_units": 0, "destructive": True})
+    stored = frozen.model_copy(
+        update={"isolated": True, "cost_units": 0, "destructive": True, "approval_scope": "batch"}
+    )
     owned = SimpleNamespace(ref=c.association.ref, bindings={operation_digest(key): stored.model_dump(mode="json")})
     monkeypatch.setattr(c.m, "_current_metadata", lambda **_kw: (c.raw, desc, "c" * 64))
     current = c.m.NativeHttpBindingResolver().resolve_binding(session=object(), owned=owned, key=key)
@@ -515,3 +517,87 @@ def test_identical_graph_revision_in_another_workflow_is_a_different_qualificati
     assert first["workflow_id"] == "workflow"
     assert first["app_id"] == "app"
     assert canonical_digest(first) != canonical_digest(child)
+
+
+def test_qualified_http_manifest_selects_operation_consent_and_rejects_legacy_projection(concrete_case):
+    from copy import deepcopy
+
+    c = concrete_case
+    descriptor = c.state.context.resource_manifest[0]
+    assert descriptor["policy"].get("approval_scope") == "operation"
+    old_descriptor = deepcopy(descriptor)
+    old_descriptor["policy"].pop("approval_scope", None)
+    assert canonical_digest(old_descriptor) != canonical_digest(descriptor)
+    c.state.context = c.state.context.model_copy(update={"resource_manifest": (old_descriptor,)})
+    c.node.bind_execution_id(c.uuid)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_http_manifest_unavailable"):
+        c.producer.begin()
+
+
+def test_identical_request_native_occurrences_have_independent_http_confirmation_scopes(concrete_case, monkeypatch):
+    from uuid import uuid4
+
+    from graphon.entities.graph_init_params import GraphInitParams
+    from graphon.runtime import GraphRuntimeState
+    from services.dify_builder.native_testing.authorization import _scope_digest
+    from services.dify_builder.native_testing.runtime_bridge import NativeNodePreparation
+
+    c = concrete_case
+    c.node.bind_execution_id(c.uuid)
+
+    def intent_for(producer):
+        producer.begin()
+        arguments = c.m.native_http_request(raw=c.raw, variable_pool=producer.association.runtime_state.variable_pool)
+        from services.dify_builder.native_testing.http_adapter import NativeHttpClient
+
+        request = NativeHttpClient(
+            ref=c.association.ref,
+            calls=cast(NativeCallAdapter, object()),
+            intents=cast(NativeHttpIntentPort, object()),
+            max_redirect_hops=0,
+            max_response_bytes=1048576,
+        )._prepare("POST", arguments.pop("url"), arguments)
+        return producer.prepare(request=request, hop=0, previous_response=None).intent
+
+    first = intent_for(c.producer)
+    bridge = c.association._bridge
+    runtime = GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+    second = NativeNodePreparation(
+        bridge=bridge, ref=c.association.ref, node_id="http", node_class=c.association.node_class, runtime_state=runtime
+    )
+    node = cast(Callable[..., HttpRequestNode], second.node_class)(
+        native_control_owner=bridge._boundary_owner,
+        native_control_sink=bridge._control_sink,
+        node_id="http",
+        data=HttpRequestNodeData.model_validate(c.raw),
+        graph_init_params=GraphInitParams(
+            workflow_id="workflow", graph_config=c.state.context.graph, run_context={}, call_depth=0
+        ),
+        graph_runtime_state=runtime,
+        http_request_config=c.m.native_http_config(),
+        http_client=object(),
+        file_manager=c.m.RefusingNativeHttpFiles(),
+        tool_file_manager_factory=c.m.RefusingNativeHttpFiles(),
+        file_reference_factory=c.m.RefusingNativeHttpFiles(),
+    )
+    second.attach(node)
+    node.bind_execution_id(str(uuid4()))
+    producer = c.m.NativeHttpBindingProducer(
+        association=second, loader=c.producer.loader, state_store=c.state, journal=c.journal
+    )
+    monkeypatch.setattr(producer, "_install", c.producer._install)
+    repeated = intent_for(producer)
+    assert first.parameters == repeated.parameters
+    assert first.input_digest == repeated.input_digest
+    assert first.key != repeated.key
+    classified = [
+        c.m._classified_binding(
+            intent_digest=canonical_digest(effect.model_dump(mode="json")),
+            execution_id=effect.key.occurrence_path[0],
+            descriptor=c.state.context.resource_manifest[0],
+            manifest_digest=effect.capability_digest,
+        )
+        for effect in (first, repeated)
+    ]
+    assert _scope_digest(first, classified[0]) != _scope_digest(repeated, classified[1])
+    assert classified[0].approval_scope == classified[1].approval_scope == "operation"
