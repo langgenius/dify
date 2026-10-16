@@ -1,7 +1,6 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -147,10 +146,7 @@ const MultipleToolSelector = ({
               {required && <span className="text-red-500">*</span>}
               <span
                 aria-hidden
-                className={cn(
-                  'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary group-hover/collapse:text-text-secondary',
-                  !toolsOpen && 'rotate-270',
-                )}
+                className="i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-hover/collapse:text-text-secondary group-data-panel-open/collapse:rotate-0 motion-reduce:transition-none"
               />
             </CollapsibleTrigger>
           ) : (
