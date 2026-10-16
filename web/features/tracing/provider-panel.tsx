@@ -1,11 +1,9 @@
 'use client'
 import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { FC } from 'react'
 import type { ConfigurableTracingProvider } from './providers'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { tracingProviders } from './providers'
 
@@ -16,7 +14,7 @@ export type ProviderConfigError = {
   isRetrying: boolean
 }
 
-type Props = Readonly<{
+type ProviderPanelProps = {
   type: ConfigurableTracingProvider
   readOnly: boolean
   pending: boolean
@@ -24,9 +22,9 @@ type Props = Readonly<{
   config: TraceAppConfigResponse['tracing_config']
   configError?: ProviderConfigError
   onChoose: () => void
-}>
+}
 
-const ProviderPanel: FC<Props> = ({
+export function ProviderPanel({
   type,
   readOnly,
   pending,
@@ -34,7 +32,7 @@ const ProviderPanel: FC<Props> = ({
   config,
   configError,
   onChoose,
-}) => {
+}: ProviderPanelProps) {
   const { t } = useTranslation(['app', 'common'])
   const iconClassName = tracingProviders[type].panelIcon
   const hasConfigured = !!config
@@ -105,4 +103,3 @@ const ProviderPanel: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(ProviderPanel)

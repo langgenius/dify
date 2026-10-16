@@ -5,14 +5,15 @@ import type { ConfigurableTracingProvider } from './providers'
 import type { TracingResource } from './resource'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import ConfigButton from './config-button'
+import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
-import TracingIcon from './tracing-icon'
+import { TracingIcon } from './tracing-icon'
 
 const I18N_PREFIX = 'tracing'
 
@@ -85,15 +86,6 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
       await updateAgentTrace.mutateAsync({ params: { agent_id: resource.agentId }, body })
     else await updateAppTrace.mutateAsync({ params: { app_id: resource.appId }, body })
   }
-  const handleTracingEnabledChange = (enabled: boolean) => {
-    void updatePolicy({ enabled }).catch(() => {})
-  }
-  const handleChooseProvider = (provider: ConfigurableTracingProvider) =>
-    updatePolicy({ tracing_provider: provider, enabled: true })
-  const handleBeforeRemove = async (provider: ConfigurableTracingProvider) => {
-    if (provider === inUseTracingProvider)
-      await updatePolicy({ enabled: false, tracing_provider: null })
-  }
   const inUseProviderIconClassName = inUseTracingProvider
     ? tracingProviders[inUseTracingProvider].icon
     : undefined
@@ -132,25 +124,15 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
     statusQuery.isPending ||
     (!readOnly && configQueries.some((query) => query.isPending && !query.isFetched))
 
+  if (resource.kind === 'app' && readOnly && !hasConfiguredTracing) return null
+
   return (
-    <div className={cn('flex items-center justify-between')}>
-      <ConfigButton
-        key={resource.kind === 'agent' ? resource.agentId : resource.appId}
-        resource={resource}
-        readOnly={readOnly}
+    <Popover key={resource.kind === 'agent' ? resource.agentId : resource.appId}>
+      <PopoverTrigger
         disabled={isLoading}
-        hasConfigured={(resource.kind === 'agent' && readOnly) || hasConfiguredTracing}
-        enabled={enabled}
-        onStatusChange={handleTracingEnabledChange}
-        chosenProvider={inUseTracingProvider}
-        onChooseProvider={handleChooseProvider}
-        pending={updateTracingStatus.isPending}
-        policyError={updateTracingStatus.error?.message}
-        policy={tracingStatus}
-        onPolicyChange={updatePolicy}
-        configs={Object.fromEntries(configs)}
-        configErrors={configErrors}
-        onBeforeRemove={handleBeforeRemove}
+        render={
+          <Button className="h-auto gap-0 rounded-xl border-components-panel-border bg-background-default-dodge p-2 hover:bg-background-default-lighter" />
+        }
       >
         {!isLoading && hasConfiguredTracing ? (
           <>
@@ -183,7 +165,23 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
             </span>
           </>
         )}
-      </ConfigButton>
-    </div>
+      </PopoverTrigger>
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={12}
+        className="border-none bg-transparent shadow-none"
+      >
+        <ConfigPopup
+          resource={resource}
+          readOnly={readOnly}
+          pending={updateTracingStatus.isPending}
+          policyError={updateTracingStatus.error?.message}
+          policy={tracingStatus}
+          onPolicyChange={updatePolicy}
+          configs={Object.fromEntries(configs)}
+          configErrors={configErrors}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
