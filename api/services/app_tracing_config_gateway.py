@@ -53,7 +53,7 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         normalized_config = self._normalize_config(provider_config, tracing_config)
         self._verify_config(normalized_config, tracing_provider)
 
-        project_url = self._get_project_url_for_create(normalized_config, tracing_provider)
+        project_url = self._get_project_url(normalized_config, tracing_provider)
         try:
             encrypted_config = OpsTraceManager.encrypt_tracing_config(
                 workspace_id,
@@ -93,6 +93,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             raise AppTracingConfigProcessingError from error
 
         self._verify_config(decrypted_config, tracing_provider)
+        project_url = self._get_project_url(decrypted_config, tracing_provider)
+        if project_url:
+            encrypted_config["project_url"] = project_url
         return encrypted_config
 
     @override
@@ -180,7 +183,7 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             raise AppTracingConfigVerificationFailedError
 
     @staticmethod
-    def _get_project_url_for_create(tracing_config: dict[str, Any], tracing_provider: str) -> str | None:
+    def _get_project_url(tracing_config: dict[str, Any], tracing_provider: str) -> str | None:
         try:
             if tracing_provider in ("arize", "phoenix"):
                 return OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
