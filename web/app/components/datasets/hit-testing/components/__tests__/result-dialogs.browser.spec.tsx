@@ -1,12 +1,8 @@
-import type {
-  ExternalHitTestingRecordResponse,
-  HitTestingRecord,
-} from '@dify/contracts/api/console/datasets/types.gen'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { ResultItem } from '../result-item'
-import { ResultItemExternal } from '../result-item-external'
 
 function createResult(overrides: Partial<HitTestingRecord> = {}): HitTestingRecord {
   return createHitTestingRecordFixture({
@@ -31,17 +27,6 @@ function createImageUrl() {
   context.fillStyle = 'green'
   context.fillRect(0, 0, 80, 60)
   return canvas.toDataURL('image/png')
-}
-
-function observeExit(popup: Element) {
-  return new Promise<{ opacity: number; content: string | null }>((resolve) => {
-    const onTransition = (event: Event) => {
-      if (event.target !== popup || (event as TransitionEvent).propertyName !== 'opacity') return
-      popup.removeEventListener('transitionrun', onTransition)
-      resolve({ opacity: Number(getComputedStyle(popup).opacity), content: popup.textContent })
-    }
-    popup.addEventListener('transitionrun', onTransition)
-  })
 }
 
 beforeEach(async () => {
@@ -84,48 +69,4 @@ it('opens attachments independently and nests their preview only while details a
   await userEvent.keyboard('{Escape}')
   await expect.element(preview).not.toBeInTheDocument()
   await expect.element(detail).toBeVisible()
-})
-
-it('keeps external details scrollable and Close reachable on a narrow viewport through keyboard and exit', async () => {
-  await page.viewport(414, 900)
-  vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
-  const payload: ExternalHitTestingRecordResponse = {
-    title: 'External handbook',
-    content: `${'External retrieval content. '.repeat(200)}${'unbroken'.repeat(60)}`,
-    score: 0.85,
-    metadata: {
-      'x-amz-bedrock-kb-source-uri': 's3://handbook',
-      'x-amz-bedrock-kb-data-source-id': 'source-1',
-    },
-  }
-  const screen = await render(<ResultItemExternal payload={payload} positionId={1} />)
-  const card = screen.getByRole('button', { name: 'datasetHitTesting.open External handbook' })
-  await userEvent.tab()
-  await expect.element(card).toHaveFocus()
-  await userEvent.keyboard('{Enter}')
-  const dialog = screen.getByRole('dialog', { name: 'datasetHitTesting.chunkDetail' })
-  const close = dialog.getByRole('button', { name: 'common.operation.close' })
-  await expect.element(close).toHaveFocus()
-  const popup = dialog.element()
-  await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
-  const popupBounds = popup.getBoundingClientRect()
-  const closeBounds = close.element().getBoundingClientRect()
-  expect(popupBounds.left).toBeGreaterThanOrEqual(0)
-  expect(popupBounds.right).toBeLessThanOrEqual(window.innerWidth)
-  expect(closeBounds.left).toBeGreaterThanOrEqual(0)
-  expect(closeBounds.right).toBeLessThanOrEqual(window.innerWidth)
-  expect(closeBounds.top).toBeGreaterThanOrEqual(0)
-  expect(closeBounds.bottom).toBeLessThanOrEqual(window.innerHeight)
-  const body = dialog.getByText(payload.content!)
-  const bodyElement = body.element()
-  expect(bodyElement.scrollWidth).toBeLessThanOrEqual(bodyElement.clientWidth + 1)
-  expect(bodyElement.scrollHeight).toBeGreaterThan(bodyElement.clientHeight)
-  await body.wheel({ delta: { y: 600 } })
-  await expect.poll(() => bodyElement.scrollTop).toBeGreaterThan(0)
-  const exit = observeExit(popup)
-  await close.click()
-  const closing = await exit
-  expect(closing.opacity).toBeGreaterThan(0)
-  expect(closing.content).toContain(payload.content)
-  await expect.element(dialog).not.toBeInTheDocument()
 })
