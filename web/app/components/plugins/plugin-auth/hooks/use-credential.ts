@@ -1,4 +1,6 @@
 import type { CredentialTypeEnum, PluginPayload } from '../types'
+import { useQueryClient } from '@tanstack/react-query'
+import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
 import {
   useAddPluginCredential,
   useDeletePluginCredential,
@@ -13,7 +15,6 @@ import {
   useSetPluginOAuthCustomClient,
   useUpdatePluginCredential,
 } from '@/service/use-plugins-auth'
-import { useInvalidToolsByType } from '@/service/use-tools'
 import { useGetApi } from './use-get-api'
 
 export const useGetPluginCredentialInfoHook = (
@@ -41,12 +42,12 @@ export const useDeletePluginCredentialHook = (pluginPayload: PluginPayload) => {
 export const useInvalidPluginCredentialInfoHook = (pluginPayload: PluginPayload) => {
   const apiMap = useGetApi(pluginPayload)
   const invalidPluginCredentialInfo = useInvalidPluginCredentialInfo(apiMap.getCredentialInfo)
-  const providerType = pluginPayload.providerType
-  const invalidToolsByType = useInvalidToolsByType(providerType)
+  const queryClient = useQueryClient()
+  const toolListQueryKey = getToolListQueryKey(pluginPayload.providerType)
 
   return () => {
     invalidPluginCredentialInfo()
-    invalidToolsByType()
+    if (toolListQueryKey) queryClient.invalidateQueries({ queryKey: toolListQueryKey })
   }
 }
 

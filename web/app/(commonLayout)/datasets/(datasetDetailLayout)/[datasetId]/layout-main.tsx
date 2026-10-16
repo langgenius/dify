@@ -1,8 +1,9 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -18,7 +19,8 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
-import { useDatasetDetail } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
@@ -26,15 +28,8 @@ type IAppDetailLayoutProps = {
   datasetId: string
 }
 
-const getResponseStatus = (error: unknown) => {
-  if (error instanceof Response) return error.status
-
-  if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number')
-    return error.status
-}
-
 const shouldRedirectToDatasetList = (error: unknown) => {
-  const status = getResponseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === 403 || status === 404
 }
 
@@ -101,7 +96,16 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
+  const {
+    data: datasetRes,
+    error,
+    refetch: mutateDatasetRes,
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+      enabled: !!datasetId,
+    }),
+  )
   const shouldRedirect = shouldRedirectToDatasetList(error)
   const datasetACLCapabilities = React.useMemo(
     () =>
@@ -163,7 +167,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     >
       <DatasetDetailContext.Provider
         value={{
-          indexingTechnique: datasetRes?.indexing_technique,
+          indexingTechnique: datasetRes?.indexing_technique ?? undefined,
           dataset: datasetRes,
           mutateDatasetRes,
         }}

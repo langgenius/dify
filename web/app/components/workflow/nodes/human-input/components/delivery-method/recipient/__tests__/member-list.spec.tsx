@@ -13,9 +13,9 @@ const createMember = (overrides: Partial<Member>): Member => ({
   status: 'active',
   role: 'normal',
   roles: [],
-  created_at: '2026-01-01T00:00:00Z',
-  last_active_at: '2026-01-02T00:00:00Z',
-  last_login_at: '2026-01-03T00:00:00Z',
+  created_at: 1767225600,
+  last_active_at: 1767312000,
+  last_login_at: 1767398400,
   ...overrides,
 })
 

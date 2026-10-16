@@ -17,7 +17,7 @@ from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAcco
 from models.dataset import AppDatasetJoin, Dataset, DatasetPermissionEnum
 from models.enums import DataSourceType
 from models.model import App
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.dataset_service import DatasetService
 from services.knowledge.resource_scope import DatasetRef
 

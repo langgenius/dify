@@ -1,17 +1,24 @@
 import type { DataSet } from '@/models/datasets'
+import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import Dropdown from '../dropdown'
 
 let mockDataset: DataSet
 const mockReplace = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-const mockInvalidDatasetDetail = vi.fn()
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
+const datasetDetailKey = consoleQuery.datasets.byDatasetId.get.queryKey({
+  input: { params: { dataset_id: 'dataset-1' } },
+})
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
@@ -32,9 +39,9 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   })
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -51,21 +58,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
@@ -111,18 +109,12 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidDatasetDetail,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({ mutateAsync: mockExportPipeline }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.exports.get': () => ({ mutateAsync: mockExportPipeline }),
+  })
+})
 
 vi.mock('@/service/datasets', () => ({
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
@@ -180,8 +172,8 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByText('Success'))
 
     await waitFor(() => {
-      expect(mockInvalidDatasetList).toHaveBeenCalled()
-      expect(mockInvalidDatasetDetail).toHaveBeenCalled()
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetDetailKey })
     })
   })
 
@@ -269,9 +261,9 @@ describe('Dropdown callback coverage', () => {
 
   it('should surface the backend message when checking app usage fails', async () => {
     const user = userEvent.setup()
-    mockCheckIsUsedInApp.mockRejectedValueOnce({
-      json: vi.fn().mockResolvedValue({ message: 'check failed' }),
-    })
+    mockCheckIsUsedInApp.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'check failed' }),
+    )
 
     render(<Dropdown expand />)
 

@@ -230,12 +230,15 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: mockMCPTools.current }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: mockBuiltInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: mockMCPTools.current }),
+  })
+})
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -359,6 +362,30 @@ describe('AgentPromptEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
 
       expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
+    })
+
+    it('should keep copied feedback visible after clicking the copy control', async () => {
+      const user = userEvent.setup()
+      const { useClipboard } =
+        await vi.importActual<typeof import('foxact/use-clipboard')>('foxact/use-clipboard')
+      mockUseClipboard.mockImplementation(useClipboard)
+      renderAgentPromptEditor('Review these tenders')
+      const copyButton = screen.getByRole('button', {
+        name: /agentDetail\.configure\.prompt\.copy/i,
+      })
+
+      await user.hover(copyButton)
+      expect(await screen.findByText(/agentDetail\.configure\.prompt\.copy$/)).toBeVisible()
+      await user.click(copyButton)
+
+      expect(await screen.findByText(/agentDetail\.configure\.prompt\.copied$/)).toBeVisible()
+      expect(await navigator.clipboard.readText()).toBe('Review these tenders')
+      await user.unhover(copyButton)
+      await waitFor(() => {
+        expect(
+          screen.queryByText(/agentDetail\.configure\.prompt\.copied$/),
+        ).not.toBeInTheDocument()
+      })
     })
 
     it('should let clipboard timeout restore the copied state instead of resetting on mouse leave', () => {

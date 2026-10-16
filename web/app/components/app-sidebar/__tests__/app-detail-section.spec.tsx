@@ -1,8 +1,8 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
 
@@ -17,28 +17,25 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({
+      id: 'app-1',
+      name: 'Test App',
+      mode: mockAppMode,
+      permission_keys: mockAppPermissionKeys,
+    }),
+  )
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
       enable_app_deploy: false,
     },
   })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: createAppDetailFixture({
-        id: 'app-1',
-        name: 'Test App',
-        mode: mockAppMode,
-        icon: '🤖',
-        icon_type: 'emoji',
-        icon_background: '#fff',
-        permission_keys: mockAppPermissionKeys,
-      }),
-    }),
-}))
+}
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -223,18 +220,18 @@ describe('AppDetailSection', () => {
     it.each([
       {
         label: 'the app is not a workflow app',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         permissionKeys: [AppACLPermission.Deploy],
       },
       {
         label: 'app deploy ACL permission is missing',
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         permissionKeys: [AppACLPermission.Monitor],
       },
-    ])('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
+    ] as const)('should hide deploy navigation when $label', ({ mode, permissionKeys }) => {
       // Arrange
       mockAppMode = mode
-      mockAppPermissionKeys = permissionKeys
+      mockAppPermissionKeys = [...permissionKeys]
 
       // Act
       render(<AppDetailSection />)
@@ -243,7 +240,7 @@ describe('AppDetailSection', () => {
       expect(screen.queryByRole('link', { name: 'common.appMenus.deploy' })).not.toBeInTheDocument()
     })
 
-    it.each([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT])(
+    it.each(['chat', 'agent-chat'] as const)(
       'should render resource access navigation for %s apps when app access config permission is granted',
       (mode) => {
         // Arrange
@@ -265,7 +262,7 @@ describe('AppDetailSection', () => {
 
     it('should hide resource access navigation for Agent apps', () => {
       // Arrange
-      mockAppMode = AppModeEnum.AGENT
+      mockAppMode = 'agent'
       mockAppPermissionKeys = [AppACLPermission.AccessConfig]
 
       // Act

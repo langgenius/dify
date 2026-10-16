@@ -1,9 +1,7 @@
-import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem, HitHistoryItem } from '../../type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { fetchHitHistoryList } from '@/service/annotation'
 import ViewAnnotationModal from '../index'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
@@ -14,8 +12,18 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  fetchHitHistoryList: vi.fn(),
+const { fetchHitHistoryListMock } = vi.hoisted(() => ({
+  fetchHitHistoryListMock: vi.fn(),
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotations: { byAnnotationId: { hitHistories: { get: fetchHitHistoryListMock } } },
+      },
+    },
+  },
 }))
 
 vi.mock('../../edit-annotation-modal/edit-item', () => {
@@ -44,8 +52,6 @@ vi.mock('../../edit-annotation-modal/edit-item', () => {
     EditItemType,
   }
 })
-
-const fetchHitHistoryListMock = fetchHitHistoryList as Mock
 
 const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
   id: overrides.id ?? 'annotation-id',

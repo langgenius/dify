@@ -46,6 +46,7 @@
     "Hỗ trợ Email & Trò chuyện Ưu tiên"
   ],
   "plans.premium.includesTitle": "Mọi thứ từ Cộng đồng, cộng thêm:",
+  "plans.premium.marketplaceName": "AWS Marketplace",
   "plans.premium.name": "Cao cấp",
   "plans.premium.price": "Có thể mở rộng",
   "plans.premium.priceTip": "Dựa trên Thị trường Đám mây",
@@ -69,6 +70,7 @@
   "plansCommon.comparePlanAndFeatures": "So sánh các kế hoạch & tính năng",
   "plansCommon.currentPlan": "Kế hoạch Hiện tại",
   "plansCommon.days": "ngày",
+  "plansCommon.discountedAnnualPrice": "Giá hằng năm sau giảm giá: ",
   "plansCommon.documentProcessingPriority": "Ưu tiên Xử lý Tài liệu",
   "plansCommon.documentProcessingPriorityTip": "Để có mức độ ưu tiên xử lý tài liệu cao hơn, vui lòng nâng cấp gói của bạn.",
   "plansCommon.documentProcessingPriorityUpgrade": "Xử lý nhiều dữ liệu với độ chính xác cao và tốc độ nhanh hơn.",
@@ -87,6 +89,7 @@
   "plansCommon.modelProviders": "Nhà cung cấp Mô hình",
   "plansCommon.month": "tháng",
   "plansCommon.mostPopular": "Phổ biến nhất",
+  "plansCommon.originalAnnualPrice": "Giá hằng năm ban đầu: ",
   "plansCommon.priceTip": "mỗi không gian làm việc/",
   "plansCommon.priority.priority": "Ưu tiên",
   "plansCommon.priority.standard": "Tiêu chuẩn",

@@ -11,6 +11,7 @@ import {
 } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
@@ -54,9 +55,9 @@ const mockHasEditPermissionForDataset = vi.fn(
   ) => true,
 )
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -74,24 +75,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -125,7 +114,6 @@ const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc =
   id: 'meta-1',
   name: 'topic',
   type: MetadataFilteringVariableType.string,
-  value: 'topic',
   ...overrides,
 })
 
@@ -575,7 +563,7 @@ describe('knowledge-retrieval path', () => {
       expect(screen.getByText('metadata-panel')).toBeInTheDocument()
     })
 
-    it('should call handleAddCondition with the correct metadata item when clicking any part of the row', async () => {
+    it('should call handleAddCondition with the chosen metadata item', async () => {
       const user = userEvent.setup()
       const handleAddCondition = vi.fn()
       const permissionMetadata = createMetadata({
@@ -601,7 +589,7 @@ describe('knowledge-retrieval path', () => {
           name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.add/i,
         }),
       )
-      await user.click(screen.getAllByText('string', { selector: 'div.shrink-0' })[0]!)
+      await user.click(await screen.findByRole('menuitem', { name: /^permission/ }))
 
       expect(handleAddCondition).toHaveBeenCalledTimes(1)
       expect(handleAddCondition).toHaveBeenCalledWith(

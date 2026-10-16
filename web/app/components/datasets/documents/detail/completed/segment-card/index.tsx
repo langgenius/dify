@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -131,7 +131,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const images = useMemo(() => {
     return attachments.map((attachment) => ({
       name: attachment.name,
-      mimeType: attachment.mime_type,
+      // An unknown MIME type is empty, as in File.type.
+      mimeType: attachment.mime_type ?? '',
       sourceUrl: attachment.source_url,
       size: attachment.size,
       extension: attachment.extension,
@@ -276,7 +277,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       </div>
       <ChunkContent
         detail={{
-          answer,
+          answer: answer ?? undefined,
           content,
           sign_content,
         }}
@@ -319,7 +320,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               {t(($) => $['segment.delete'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -331,7 +332,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             >
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

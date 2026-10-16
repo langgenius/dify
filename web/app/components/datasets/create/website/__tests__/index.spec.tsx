@@ -92,6 +92,8 @@ const createMockDataSourceAuth = (provider: string, credentialsCount = 1): DataS
   name: provider,
   label: { en_US: provider, zh_Hans: provider },
   description: { en_US: `${provider} description`, zh_Hans: `${provider} description` },
+  credential_schema: [],
+  oauth_schema: null,
   credentials_list: Array.from({ length: credentialsCount }, (_, i) => ({
     credential: {},
     type: CredentialTypeEnum.API_KEY,

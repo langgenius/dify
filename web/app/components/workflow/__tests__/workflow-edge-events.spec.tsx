@@ -1,8 +1,8 @@
 import type { Edge, Node } from '../types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { BaseEdge, internalsSymbol, Position, ReactFlowProvider, useStoreApi } from 'reactflow'
-import { FlowType } from '@/types/common'
 import { WORKFLOW_DATA_UPDATE } from '../constants'
 import { Workflow } from '../index'
 import { ControlMode } from '../types'
@@ -181,12 +181,15 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchAllInspectVars: vi.fn().mockResolvedValue([]),
@@ -414,7 +417,7 @@ vi.mock('../hooks/use-workflow', () => ({
     nodesReadOnly: false,
     getNodesReadOnly: () => false,
   }),
-  useIsChatMode: () => false,
+
   useWorkflow: () => ({
     isValidConnection: workflowHookMocks.isValidConnection,
   }),
@@ -511,12 +514,9 @@ function renderSubject(options?: {
     </ReactFlowProvider>,
     {
       initialStoreState,
+      resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'flow-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {},
-        },
+        fileSettings: {},
       },
     },
   )
@@ -772,13 +772,16 @@ describe('Workflow edge event wiring', () => {
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {
+    const user = userEvent.setup()
     const onConfirm = vi.fn()
+    const onCancel = vi.fn()
     const { store } = renderSubject({
       initialStoreState: {
         showConfirm: {
           title: 'Confirm title',
           desc: 'Confirm description',
           onConfirm,
+          onCancel,
         },
       },
     })
@@ -787,13 +790,14 @@ describe('Workflow edge event wiring', () => {
     expect(screen.getByText('Confirm title')).toBeInTheDocument()
     expect(screen.getByText('Confirm description')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
     expect(store.getState().showConfirm).toBeUndefined()
     expect(onConfirm).not.toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
   it('should call showConfirm.onConfirm when confirm is clicked', () => {
@@ -933,4 +937,11 @@ describe('Workflow edge event wiring', () => {
       window.dispatchEvent(gestureEvent)
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

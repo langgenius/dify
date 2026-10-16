@@ -7,7 +7,6 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ProcessMode } from '@/models/datasets'
 import * as datasetsService from '@/service/datasets'
-import * as useDataset from '@/service/knowledge/use-dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import { DocumentContext } from '../../context'
@@ -27,7 +26,13 @@ const { mockToast } = vi.hoisted(() => {
 })
 
 vi.mock('@/service/datasets')
-vi.mock('@/service/knowledge/use-dataset')
+const { mockProcessRuleQuery } = vi.hoisted(() => ({ mockProcessRuleQuery: vi.fn() }))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.processRule.get': mockProcessRuleQuery,
+  })
+})
 vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
@@ -35,7 +40,6 @@ vi.mock('@/app/notifications', () => ({
 const mockFetchIndexingStatus = vi.mocked(datasetsService.fetchIndexingStatus)
 const mockPauseDocIndexing = vi.mocked(datasetsService.pauseDocIndexing)
 const mockResumeDocIndexing = vi.mocked(datasetsService.resumeDocIndexing)
-const mockUseProcessRule = vi.mocked(useDataset.useProcessRule)
 
 const createConsoleQueryClient = () =>
   new QueryClient({
@@ -98,11 +102,11 @@ describe('EmbeddingDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockUseProcessRule.mockReturnValue({
+    mockProcessRuleQuery.mockReturnValue({
       data: mockProcessRule(),
       isLoading: false,
       error: null,
-    } as ReturnType<typeof useDataset.useProcessRule>)
+    })
   })
 
   describe('Rendering', () => {

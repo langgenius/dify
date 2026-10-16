@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { ChunkingMode as ChunkingModeEnum } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import Completed from '../index'
 import { SegmentListContext, useSegmentListContext } from '../segment-list-context'
 
@@ -21,9 +22,6 @@ const {
   mockEventEmitter,
   mockSegmentListData,
   mockChildSegmentListData,
-  mockInvalidChunkListAll,
-  mockInvalidChunkListEnabled,
-  mockInvalidChunkListDisabled,
   mockOnChangeSwitch,
   mockOnDelete,
 } = vi.hoisted(() => ({
@@ -55,9 +53,6 @@ const {
     total: 0,
     total_pages: 0,
   },
-  mockInvalidChunkListAll: vi.fn(),
-  mockInvalidChunkListEnabled: vi.fn(),
-  mockInvalidChunkListDisabled: vi.fn(),
   mockOnChangeSwitch: vi.fn(),
   mockOnDelete: vi.fn(),
 }))
@@ -86,37 +81,28 @@ vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
 }))
 
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useSegmentList: () => ({
-    isLoading: false,
-    data: mockSegmentListData,
-  }),
-  useChildSegmentList: () => ({
-    isLoading: false,
-    data: mockChildSegmentListData,
-  }),
-  useSegmentListKey: ['segment', 'chunkList'],
-  useChunkListAllKey: ['segment', 'chunkList', { enabled: 'all' }],
-  useChunkListEnabledKey: ['segment', 'chunkList', { enabled: true }],
-  useChunkListDisabledKey: ['segment', 'chunkList', { enabled: false }],
-  useChildSegmentListKey: ['segment', 'childChunkList'],
-  useEnableSegment: () => ({ mutateAsync: mockOnChangeSwitch }),
-  useDisableSegment: () => ({ mutateAsync: mockOnChangeSwitch }),
-  useDeleteSegment: () => ({ mutateAsync: mockOnDelete }),
-  useUpdateSegment: () => ({ mutateAsync: vi.fn() }),
-  useDeleteChildSegment: () => ({ mutateAsync: vi.fn() }),
-  useUpdateChildSegment: () => ({ mutateAsync: vi.fn() }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.segments.get': () => ({
+      isLoading: false,
+      data: mockSegmentListData,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch': () => ({
+      mutateAsync: mockOnChangeSwitch,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.segments.delete': () => ({
+      mutateAsync: mockOnDelete,
+    }),
+    'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.patch': () => ({
+      mutateAsync: vi.fn(),
+    }),
+  })
+})
 
-vi.mock('@/service/use-base', () => ({
-  useInvalid: (key: unknown[]) => {
-    const keyStr = JSON.stringify(key)
-    if (keyStr.includes('"enabled":"all"')) return mockInvalidChunkListAll
-    if (keyStr.includes('"enabled":true')) return mockInvalidChunkListEnabled
-    if (keyStr.includes('"enabled":false')) return mockInvalidChunkListDisabled
-    return vi.fn()
-  },
-}))
+const segmentListsKey = consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.get.key({
+  input: { params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' } },
+})
 
 let capturedRefreshCallback: (() => void) | null = null
 vi.mock('../hooks/use-child-segment-data', () => ({
@@ -268,6 +254,9 @@ const createMockSegmentDetail = (
   completed_at: 1700000200,
   error: null,
   stopped_at: 0,
+  answer: null,
+  summary: null,
+  updated_by: null,
   updated_at: 1700000000,
   attachments: [],
   child_chunks: [],
@@ -728,6 +717,9 @@ describe('Batch Action Callbacks', () => {
         completed_at: 1700000002,
         error: null,
         stopped_at: 0,
+        answer: null,
+        summary: null,
+        updated_by: null,
         updated_at: 1700000003,
         attachments: [],
         child_chunks: [],
@@ -879,130 +871,39 @@ describe('refreshChunkListDataWithDetailChanged callback', () => {
     expect(capturedRefreshCallback).toBeDefined()
   })
 
-  it('should call invalidation functions when triggered with default status "all"', () => {
-    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-    // Call the captured callback - status is 'all' by default
-    if (capturedRefreshCallback) capturedRefreshCallback()
-
-    // With status 'all', should call both disabled and enabled invalidation
-    expect(mockInvalidChunkListDisabled).toHaveBeenCalled()
-    expect(mockInvalidChunkListEnabled).toHaveBeenCalled()
-  })
-
-  it('should handle multiple callback invocations', () => {
-    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-    // Call the captured callback multiple times
-    if (capturedRefreshCallback) {
-      capturedRefreshCallback()
-      capturedRefreshCallback()
-      capturedRefreshCallback()
-    }
-
-    // Should be called multiple times
-    expect(mockInvalidChunkListDisabled).toHaveBeenCalledTimes(3)
-    expect(mockInvalidChunkListEnabled).toHaveBeenCalledTimes(3)
-  })
-
-  it('should call correct invalidation functions when status is changed to enabled', async () => {
-    // Use general mode which has the status filter
-    mockDocForm.current = ChunkingModeEnum.text
-    mockParentMode.current = 'paragraph'
-
-    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-    // Change status to enabled
-    const statusEnabledButton = screen.getByTestId('status-enabled')
-    fireEvent.click(statusEnabledButton)
-
-    // Wait for state to update and re-render
-    await waitFor(() => {
-      // The callback should be re-captured with new status
-      expect(capturedRefreshCallback).toBeDefined()
+  const expectOtherStatusListsMarkedStale = () =>
+    expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: segmentListsKey,
+      refetchType: 'none',
     })
 
-    // Call the callback with status 'true'
-    if (capturedRefreshCallback) capturedRefreshCallback()
-
-    // With status true, should call all and disabled invalidation
-    expect(mockInvalidChunkListAll).toHaveBeenCalled()
-    expect(mockInvalidChunkListDisabled).toHaveBeenCalled()
-  })
-
-  it('should call correct invalidation functions when status is changed to disabled', async () => {
-    // Use general mode which has the status filter
-    mockDocForm.current = ChunkingModeEnum.text
-    mockParentMode.current = 'paragraph'
-
+  it('should mark the other status lists stale with the default status "all"', () => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    // Change status to disabled
-    const statusDisabledButton = screen.getByTestId('status-disabled')
-    fireEvent.click(statusDisabledButton)
+    capturedRefreshCallback?.()
 
-    // Wait for state to update and re-render
-    await waitFor(() => {
-      // The callback should be re-captured with new status
-      expect(capturedRefreshCallback).toBeDefined()
-    })
-
-    // Call the callback with status 'false'
-    if (capturedRefreshCallback) capturedRefreshCallback()
-
-    // With status false, should call all and enabled invalidation
-    expect(mockInvalidChunkListAll).toHaveBeenCalled()
-    expect(mockInvalidChunkListEnabled).toHaveBeenCalled()
-  })
-})
-
-// refreshChunkListDataWithDetailChanged Branch Coverage Tests
-
-describe('refreshChunkListDataWithDetailChanged branch coverage', () => {
-  // This test simulates the behavior of refreshChunkListDataWithDetailChanged
-  // with different selectedStatus values to ensure branch coverage
-
-  it('should handle status "true" branch correctly', () => {
-    // Simulate the behavior when selectedStatus is true
-    const mockInvalidAll = vi.fn()
-    const mockInvalidDisabled = vi.fn()
-
-    // Create a refreshMap similar to the component
-    const refreshMap: Record<string, () => void> = {
-      true: (() => {
-        mockInvalidAll()
-        mockInvalidDisabled()
-      })!,
-    }
-
-    // Execute the 'true' branch
-    // Execute the 'true' branch
-    refreshMap.true!()
-
-    expect(mockInvalidAll).toHaveBeenCalled()
-    expect(mockInvalidDisabled).toHaveBeenCalled()
+    expectOtherStatusListsMarkedStale()
   })
 
-  it('should handle status "false" branch correctly', () => {
-    // Simulate the behavior when selectedStatus is false
-    const mockInvalidAll = vi.fn()
-    const mockInvalidEnabled = vi.fn()
+  it.each(['status-enabled', 'status-disabled'])(
+    'should mark the other status lists stale after filtering by %s',
+    async (statusButton) => {
+      // General mode has the status filter
+      mockDocForm.current = ChunkingModeEnum.text
+      mockParentMode.current = 'paragraph'
+      vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+      render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
 
-    // Create a refreshMap similar to the component
-    const refreshMap: Record<string, () => void> = {
-      false: (() => {
-        mockInvalidAll()
-        mockInvalidEnabled()
-      })!,
-    }
+      fireEvent.click(screen.getByTestId(statusButton))
+      await waitFor(() => {
+        expect(capturedRefreshCallback).toBeDefined()
+      })
+      capturedRefreshCallback?.()
 
-    // Execute the 'false' branch
-    // Execute the 'false' branch
-    refreshMap.false!()
-
-    expect(mockInvalidAll).toHaveBeenCalled()
-    expect(mockInvalidEnabled).toHaveBeenCalled()
-  })
+      expectOtherStatusListsMarkedStale()
+    },
+  )
 })
 
 // Batch Action Callback Coverage Tests
@@ -1091,46 +992,6 @@ describe('Inline callback and hook initialization coverage', () => {
       wrapper: createWrapper(),
     })
     expect(screen.getByTestId('drawer-group'))!.toBeInTheDocument()
-  })
-
-  // Covers lines 74-90: refreshChunkListDataWithDetailChanged with status true
-  it('should invoke correct invalidation for enabled status', async () => {
-    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-    fireEvent.click(screen.getByTestId('status-enabled'))
-
-    await waitFor(() => {
-      expect(capturedRefreshCallback).toBeDefined()
-    })
-
-    mockInvalidChunkListAll.mockClear()
-    mockInvalidChunkListDisabled.mockClear()
-    mockInvalidChunkListEnabled.mockClear()
-
-    capturedRefreshCallback!()
-
-    expect(mockInvalidChunkListAll).toHaveBeenCalled()
-    expect(mockInvalidChunkListDisabled).toHaveBeenCalled()
-  })
-
-  // Covers lines 74-90: refreshChunkListDataWithDetailChanged with status false
-  it('should invoke correct invalidation for disabled status', async () => {
-    render(<Completed {...defaultProps} />, { wrapper: createWrapper() })
-
-    fireEvent.click(screen.getByTestId('status-disabled'))
-
-    await waitFor(() => {
-      expect(capturedRefreshCallback).toBeDefined()
-    })
-
-    mockInvalidChunkListAll.mockClear()
-    mockInvalidChunkListDisabled.mockClear()
-    mockInvalidChunkListEnabled.mockClear()
-
-    capturedRefreshCallback!()
-
-    expect(mockInvalidChunkListAll).toHaveBeenCalled()
-    expect(mockInvalidChunkListEnabled).toHaveBeenCalled()
   })
 
   // Covers line 101: clearSelection callback

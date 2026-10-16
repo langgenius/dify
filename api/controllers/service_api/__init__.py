@@ -1,6 +1,13 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.errors import (
+    InternalServerError,
+    InvalidArgumentError,
+    NotFoundError,
+    UnauthorizedError,
+    register_permission_error_handler,
+)
 from libs.external_api import ExternalApi
 
 bp = Blueprint("service_api", __name__, url_prefix="/v1")
@@ -12,6 +19,11 @@ api = ExternalApi(
     description="API for application services",
     register_default_root=False,
 )
+register_permission_error_handler(api)
+# ``invalid_param`` is what the surface's ValueError handler already emits on any operation;
+# ``not_found``, ``unauthorized`` and ``internal_server_error`` are the codes Werkzeug's own
+# exceptions already produce on every operation.
+api.document_generic_errors(InvalidArgumentError, NotFoundError, UnauthorizedError, InternalServerError)
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 

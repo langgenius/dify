@@ -1,6 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import Footer from '../footer'
+
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
 
 // Configurable mock for search params
 let mockSearchParams = new URLSearchParams()
@@ -9,11 +15,6 @@ const mockReplace = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
   useSearchParams: () => mockSearchParams,
-}))
-
-const mockInvalidDatasetList = vi.fn()
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
 // Mock CreateFromDSLModal to capture props
@@ -65,19 +66,19 @@ describe('Footer', () => {
 
   describe('Rendering', () => {
     it('should render import button with icon', () => {
-      const { container } = render(<Footer />)
+      const { container } = renderWithConsoleQuery(<Footer />)
       const button = screen.getByRole('button')
       expect(button).toBeInTheDocument()
       expect(container.querySelector('svg')).toBeInTheDocument()
     })
 
     it('should not show modal initially', () => {
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
       expect(screen.queryByTestId('dsl-modal')).not.toBeInTheDocument()
     })
 
     it('should render divider', () => {
-      const { container } = render(<Footer />)
+      const { container } = renderWithConsoleQuery(<Footer />)
       const divider = container.querySelector('[class*="w-8"]')
       expect(divider).toBeInTheDocument()
     })
@@ -85,7 +86,7 @@ describe('Footer', () => {
 
   describe('User Interactions', () => {
     it('should open modal when import button is clicked', () => {
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
 
       const importButton = screen.getByText(/importDSL/i)
       fireEvent.click(importButton)
@@ -94,7 +95,7 @@ describe('Footer', () => {
     })
 
     it('should close modal when onClose is called', () => {
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
 
       const importButton = screen.getByText(/importDSL/i)
       fireEvent.click(importButton)
@@ -106,7 +107,7 @@ describe('Footer', () => {
     })
 
     it('should call invalidDatasetList on success', () => {
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
 
       const importButton = screen.getByText(/importDSL/i)
       fireEvent.click(importButton)
@@ -115,13 +116,13 @@ describe('Footer', () => {
       const successButton = screen.getByTestId('success-modal')
       fireEvent.click(successButton)
 
-      expect(mockInvalidDatasetList).toHaveBeenCalled()
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
     })
   })
 
   describe('Layout', () => {
     it('should have backdrop blur-sm effect', () => {
-      const { container } = render(<Footer />)
+      const { container } = renderWithConsoleQuery(<Footer />)
       const footerDiv = container.firstChild as HTMLElement
       expect(footerDiv).toHaveClass('backdrop-blur-[6px]')
     })
@@ -132,7 +133,7 @@ describe('Footer', () => {
     it('should set activeTab to FROM_URL when dslUrl is present', () => {
       mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/dsl')
 
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
 
       // Open modal to trigger prop capture
       const importButton = screen.getByText(/importDSL/i)
@@ -145,7 +146,7 @@ describe('Footer', () => {
     it('should set activeTab to undefined when dslUrl is not present', () => {
       mockSearchParams = new URLSearchParams()
 
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
 
       // Open modal to trigger prop capture
       const importButton = screen.getByText(/importDSL/i)
@@ -158,7 +159,7 @@ describe('Footer', () => {
     it('should call replace when closing modal with dslUrl present', () => {
       mockSearchParams = new URLSearchParams('remoteInstallUrl=https://example.com/dsl')
 
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
 
       const importButton = screen.getByText(/importDSL/i)
       fireEvent.click(importButton)
@@ -173,7 +174,7 @@ describe('Footer', () => {
     it('should not call replace when closing modal without dslUrl', () => {
       mockSearchParams = new URLSearchParams()
 
-      render(<Footer />)
+      renderWithConsoleQuery(<Footer />)
 
       const importButton = screen.getByText(/importDSL/i)
       fireEvent.click(importButton)

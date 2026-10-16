@@ -37,7 +37,7 @@ from models.account import Account
 from models.dataset import Pipeline
 from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.knowledge.dataset_service import DatasetService
 from services.rag_pipeline.rag_pipeline import RagPipelineService

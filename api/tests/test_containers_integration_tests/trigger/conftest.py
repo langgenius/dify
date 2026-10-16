@@ -19,7 +19,7 @@ from models.model import App
 
 
 @pytest.fixture
-def tenant_and_account(db_session_with_containers: Session) -> Generator[tuple[Tenant, Account], None, None]:
+def tenant_and_account(db_session_with_containers: Session) -> Generator[tuple[Tenant, Account]]:
     """
     Create a tenant and account for testing.
 
@@ -48,9 +48,7 @@ def tenant_and_account(db_session_with_containers: Session) -> Generator[tuple[T
 
 
 @pytest.fixture
-def app_model(
-    db_session_with_containers: Session, tenant_and_account: tuple[Tenant, Account]
-) -> Generator[App, None, None]:
+def app_model(db_session_with_containers: Session, tenant_and_account: tuple[Tenant, Account]) -> Generator[App]:
     """
     Create an app for testing.
 

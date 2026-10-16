@@ -1,6 +1,7 @@
 import type { SiteInfo } from '@/models/share'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuDropdown from '../menu-dropdown'
 
@@ -25,6 +26,9 @@ vi.mock('../info-modal', () => ({
     )
   },
 }))
+
+const mockSetTheme = vi.fn()
+vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'system', setTheme: mockSetTheme }) }))
 
 const mockReplace = vi.fn()
 const mockPathname = '/test-path'
@@ -106,6 +110,23 @@ describe('MenuDropdown', () => {
         expect(screen.getByText('common.userProfile.about')).toBeInTheDocument()
       })
     })
+  })
+
+  it('exposes checked theme items and keeps the menu open after changing the theme', async () => {
+    const user = userEvent.setup()
+    render(<MenuDropdown data={baseSiteInfo} />)
+    const trigger = screen.getByRole('button')
+    await user.click(trigger)
+    expect(screen.getByRole('menuitemradio', { name: 'common.theme.auto' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    const light = screen.getByRole('menuitemradio', { name: 'common.theme.light' })
+    await user.click(light)
+    expect(mockSetTheme).toHaveBeenCalledWith('light', expect.anything())
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   describe('privacy policy link', () => {

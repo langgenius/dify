@@ -1,7 +1,7 @@
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 
@@ -158,14 +158,10 @@ describe('VersionHistoryItem', () => {
       expect(screen.getByText('version-1')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
 
-      const restoreItem = screen.getByText('workflow.common.restore').closest('.cursor-pointer')
-      if (!restoreItem) throw new Error('Expected restore menu item')
-
-      fireEvent.click(restoreItem)
+      await user.click(screen.getByRole('menuitem', { name: 'workflow.common.restore' }))
 
       expect(handleClickActionMenuItem).toHaveBeenCalledTimes(1)
       expect(handleClickActionMenuItem).toHaveBeenCalledWith(
-        VersionHistoryContextMenuOptions.restore,
         VersionHistoryContextMenuOptions.restore,
       )
     })

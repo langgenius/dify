@@ -2,14 +2,14 @@ import type { ReactNode } from 'react'
 import type { Var } from '../../../types'
 import type { Param, ParameterExtractorNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ChangeType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../../../types'
-import ExtractParameter from '../components/extract-parameter/list'
-import AddExtractParameter from '../components/extract-parameter/update'
+import { ExtractParameterList } from '../components/extract-parameter/list'
+import { ParameterDialog } from '../components/extract-parameter/update'
 import ReasoningModePicker from '../components/reasoning-mode-picker'
 import Node from '../node'
 import Panel from '../panel'
@@ -58,7 +58,7 @@ vi.mock(
             setModel({
               provider: 'anthropic',
               modelId: 'claude-3-7-sonnet',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             })
           }
         >
@@ -198,18 +198,6 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal/field', () =
   ),
 }))
 
-vi.mock('@/app/components/app/configuration/config-var/config-select', () => ({
-  __esModule: true,
-  default: ({ options, onChange }: { options: string[]; onChange: (value: string[]) => void }) => (
-    <div>
-      <div>{options.join(',')}</div>
-      <button type="button" onClick={() => onChange([...options, 'published'])}>
-        set-options
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('../use-config', () => ({
   __esModule: true,
   default: vi.fn(),
@@ -258,7 +246,7 @@ const createData = (
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   query: ['node-1', 'query'],
@@ -277,7 +265,7 @@ const createConfigResult = (
   readOnly: false,
   handleInputVarChange: vi.fn(),
   filterVar: (_varPayload: Var) => true,
-  isChatMode: true,
+  isChatflow: true,
   inputs: createData(),
   isChatModel: true,
   isCompletionModel: false,
@@ -323,7 +311,7 @@ describe('parameter-extractor path', () => {
 
   describe('Tool import and parameter editing', () => {
     it('should show the empty state for an empty parameter list', () => {
-      render(<ExtractParameter readonly={false} list={[]} onChange={vi.fn()} />)
+      render(<ExtractParameterList readonly={false} list={[]} onChange={vi.fn()} />)
 
       expect(
         screen.getByText('workflowModels.nodes.parameterExtractor.extractParametersNotSet'),
@@ -333,12 +321,11 @@ describe('parameter-extractor path', () => {
     it('should edit and delete parameters from the list', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const { container, rerender } = render(
-        <ExtractParameter readonly={false} list={[createParam()]} onChange={onChange} />,
+      const { rerender } = render(
+        <ExtractParameterList readonly={false} list={[createParam()]} onChange={onChange} />,
       )
 
-      const editAndDeleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
-      fireEvent.click(editAndDeleteButtons[0] as HTMLElement)
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit city' }))
       fireEvent.change(screen.getByDisplayValue('city'), { target: { value: 'city_name' } })
       fireEvent.change(screen.getByDisplayValue('City name'), {
         target: { value: 'Updated city description' },
@@ -354,21 +341,20 @@ describe('parameter-extractor path', () => {
             required: false,
           },
         ],
-        undefined,
+        { type: ChangeType.changeVarName, payload: { beforeKey: 'city', afterKey: 'city_name' } },
       )
 
       onChange.mockClear()
 
       rerender(
-        <ExtractParameter
+        <ExtractParameterList
           readonly={false}
           list={[createParam({ name: 'budget' })]}
           onChange={onChange}
         />,
       )
 
-      const deleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
-      fireEvent.click(deleteButtons[1] as HTMLElement)
+      await user.click(screen.getByRole('button', { name: 'common.operation.delete budget' }))
 
       expect(onChange).toHaveBeenCalledWith([])
     })
@@ -378,7 +364,7 @@ describe('parameter-extractor path', () => {
       const onSave = vi.fn()
 
       render(
-        <AddExtractParameter
+        <ParameterDialog
           type="edit"
           payload={createParam({
             name: '',
@@ -388,6 +374,8 @@ describe('parameter-extractor path', () => {
         />,
       )
 
+      await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
+
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).not.toHaveBeenCalled()
@@ -395,7 +383,7 @@ describe('parameter-extractor path', () => {
     })
 
     it('should render the add trigger for new parameters', () => {
-      render(<AddExtractParameter type="add" onSave={vi.fn()} />)
+      render(<ParameterDialog type="add" onSave={vi.fn()} />)
 
       expect(
         screen.getByRole('button', {
@@ -406,9 +394,8 @@ describe('parameter-extractor path', () => {
 
     it('should reject invalid names and reset add modal fields after canceling', async () => {
       const user = userEvent.setup()
-      const onCancel = vi.fn()
 
-      render(<AddExtractParameter type="add" onSave={vi.fn()} onCancel={onCancel} />)
+      render(<ParameterDialog type="add" onSave={vi.fn()} />)
 
       await user.click(
         screen.getByRole('button', {
@@ -431,8 +418,7 @@ describe('parameter-extractor path', () => {
       fireEvent.change(descriptionInput, { target: { value: 'Temporary description' } })
 
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-      expect(onCancel).toHaveBeenCalledTimes(1)
-      expect(screen.queryByTestId('base-modal')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
       await user.click(
         screen.getByRole('button', {
@@ -456,7 +442,7 @@ describe('parameter-extractor path', () => {
       const onSave = vi.fn()
 
       render(
-        <AddExtractParameter
+        <ParameterDialog
           type="edit"
           payload={createParam({
             name: 'status',
@@ -467,6 +453,8 @@ describe('parameter-extractor path', () => {
           onSave={onSave}
         />,
       )
+
+      await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
 
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
@@ -479,7 +467,7 @@ describe('parameter-extractor path', () => {
       const onSave = vi.fn()
 
       render(
-        <AddExtractParameter
+        <ParameterDialog
           type="edit"
           payload={createParam({
             name: 'status',
@@ -491,10 +479,16 @@ describe('parameter-extractor path', () => {
         />,
       )
 
+      await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
+
       fireEvent.change(screen.getByDisplayValue('status'), {
         target: { value: 'approval_status' },
       })
-      await user.click(screen.getByRole('button', { name: 'set-options' }))
+      await user.click(screen.getByRole('button', { name: 'appDebug.variableConfig.addOption' }))
+      await user.type(
+        screen.getByRole('textbox', { name: 'appDebug.variableConfig.options 2' }),
+        'published',
+      )
       await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
 
       expect(onSave).toHaveBeenCalledWith(
@@ -505,7 +499,10 @@ describe('parameter-extractor path', () => {
           options: ['draft', 'published'],
           required: false,
         },
-        undefined,
+        {
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: 'status', afterKey: 'approval_status' },
+        },
       )
     })
 
@@ -514,7 +511,7 @@ describe('parameter-extractor path', () => {
       const onSave = vi.fn()
 
       render(
-        <AddExtractParameter
+        <ParameterDialog
           type="edit"
           payload={createParam({
             name: 'status',
@@ -523,6 +520,8 @@ describe('parameter-extractor path', () => {
           onSave={onSave}
         />,
       )
+
+      await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
 
       fireEvent.change(screen.getByDisplayValue('status'), {
         target: { value: 'approval_status' },
@@ -537,7 +536,10 @@ describe('parameter-extractor path', () => {
           description: 'Status description',
           required: true,
         },
-        undefined,
+        {
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: 'status', afterKey: 'approval_status' },
+        },
       )
     })
   })
@@ -568,7 +570,7 @@ describe('parameter-extractor path', () => {
             model: {
               provider: '',
               name: '',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
               completion_params: {},
             },
           })}
@@ -631,7 +633,7 @@ describe('parameter-extractor path', () => {
       expect(handleModelChanged).toHaveBeenCalledWith({
         provider: 'anthropic',
         modelId: 'claude-3-7-sonnet',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
       expect(handleInputVarChange).toHaveBeenCalledWith(['node-1', 'query'])

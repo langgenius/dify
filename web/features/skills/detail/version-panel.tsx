@@ -1,13 +1,14 @@
 'use client'
 
 import type { SkillVersionResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -32,54 +33,15 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
 type VersionFilterValue = 'all' | 'onlyNamed'
-
-export function RestoreVersionDialog({
-  loading,
-  onConfirm,
-  onOpenChange,
-  open,
-  versionTitle,
-}: {
-  loading: boolean
-  onConfirm: () => void
-  onOpenChange: (open: boolean) => void
-  open: boolean
-  versionTitle: string
-}) {
-  const { t } = useTranslation(['skill'])
-  const { t: tCommon } = useTranslation(['common'])
-
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="p-6">
-        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['skillManagement.detail.restoreVersionConfirmTitle'])}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 system-md-regular whitespace-pre-line text-text-tertiary">
-          {t(($) => $['skillManagement.detail.restoreVersionConfirmDescription'], {
-            version: versionTitle,
-          })}
-        </AlertDialogDescription>
-        <AlertDialogActions className="p-0 pt-6">
-          <AlertDialogCancelButton disabled={loading}>
-            {tCommon(($) => $['operation.cancel'])}
-          </AlertDialogCancelButton>
-          <AlertDialogConfirmButton loading={loading} onClick={onConfirm}>
-            {t(($) => $['skillManagement.detail.restoreVersion'])}
-          </AlertDialogConfirmButton>
-        </AlertDialogActions>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-}
 
 function VersionTimelineDot({
   isActive,
@@ -166,7 +128,7 @@ function VersionFilter({
                   })
             }`}
             className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              'flex size-6 shrink-0 items-center justify-center rounded-md p-0.5',
               isFiltering
                 ? 'bg-state-accent-active-alt text-text-accent'
                 : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -233,16 +195,28 @@ function VersionRow({
   const [renameOpen, setRenameOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [restoreOpen, setRestoreOpen] = useState(false)
+  const restoreActionsRef = useRef<AlertDialogActions>(null)
+  const deleteActionsRef = useRef<AlertDialogActions>(null)
   const [versionName, setVersionName] = useState(version.version_name)
   const [publishNote, setPublishNote] = useState(version.publish_note)
   const renameMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(),
   )
   const restoreMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
+      onSuccess: () => {
+        restoreActionsRef.current?.close()
+        onSelect(null)
+      },
+    }),
   )
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions({
+      onSuccess: () => {
+        deleteActionsRef.current?.close()
+        onSelect(null)
+      },
+    }),
   )
   const publishedBy = version.published_by_name ?? version.published_by ?? '-'
   const versionTitle = getSkillVersionTitle(version)
@@ -268,7 +242,6 @@ function VersionRow({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.renameVersionSuccess']))
           setRenameOpen(false)
           invalidateVersions()
         },
@@ -280,50 +253,14 @@ function VersionRow({
   }
 
   const handleRestore = () => {
-    restoreMutation.mutate(
-      {
-        params: {
-          skill_id: skillId,
-        },
-        body: {
-          version_id: version.id,
-          version_name: version.version_name,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.restoreVersionSuccess']))
-          setRestoreOpen(false)
-          invalidateVersions()
-          onSelect(null)
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.restoreVersionFailed']))
-        },
-      },
-    )
+    restoreMutation.mutate({
+      params: { skill_id: skillId },
+      body: { version_id: version.id, version_name: version.version_name },
+    })
   }
 
   const handleDelete = () => {
-    deleteMutation.mutate(
-      {
-        params: {
-          skill_id: skillId,
-          version_id: version.id,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.detail.deleteVersionSuccess']))
-          setDeleteOpen(false)
-          invalidateVersions()
-          onSelect(null)
-        },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.detail.deleteVersionFailed']))
-        },
-      },
-    )
+    deleteMutation.mutate({ params: { skill_id: skillId, version_id: version.id } })
   }
 
   return (
@@ -377,7 +314,7 @@ function VersionRow({
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               aria-label={tCommon(($) => $['operation.more'])}
-              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs outline-hidden group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:opacity-100"
+              className="absolute top-1 right-1 flex size-6 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-1 opacity-0 shadow-xs group-hover:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100"
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
@@ -461,14 +398,34 @@ function VersionRow({
           </div>
         </DialogContent>
       </Dialog>
-      <RestoreVersionDialog
+      <AlertDialog
+        actionsRef={restoreActionsRef}
         open={restoreOpen}
-        loading={restoreMutation.isPending}
-        versionTitle={versionTitle}
-        onOpenChange={setRestoreOpen}
-        onConfirm={handleRestore}
-      />
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        onOpenChange={(open, details) => {
+          if (!open && restoreMutation.isPending && details.reason !== 'imperative-action') {
+            details.cancel()
+            return
+          }
+          setRestoreOpen(open)
+        }}
+      >
+        <RestoreVersionDialogContent
+          isPending={restoreMutation.isPending}
+          versionTitle={versionTitle}
+          onConfirm={handleRestore}
+        />
+      </AlertDialog>
+      <AlertDialog
+        actionsRef={deleteActionsRef}
+        open={deleteOpen}
+        onOpenChange={(open, details) => {
+          if (!open && deleteMutation.isPending && details.reason !== 'imperative-action') {
+            details.cancel()
+            return
+          }
+          setDeleteOpen(open)
+        }}
+      >
         <AlertDialogContent className="p-6">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['skillManagement.detail.deleteVersionConfirm'])}
@@ -476,7 +433,7 @@ function VersionRow({
           <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
             {versionTitle}
           </AlertDialogDescription>
-          <AlertDialogActions className="p-0 pt-6">
+          <AlertDialogFooter className="p-0 pt-6">
             <AlertDialogCancelButton disabled={deleteMutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
@@ -487,7 +444,7 @@ function VersionRow({
             >
               {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

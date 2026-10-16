@@ -84,6 +84,8 @@ describe('InstallFromMarketplace Component', () => {
       name: 'name',
       label: { en_US: 'Label', zh_Hans: '标签' },
       description: { en_US: 'Desc', zh_Hans: '描述' },
+      credential_schema: [],
+      oauth_schema: null,
       credentials_list: [],
     },
   ]

@@ -7,7 +7,6 @@ import {
   QUERY_PLACEHOLDER_TEXT,
 } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, EditionType, PromptRole, VarType } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import useLLMPromptConfig from '../use-llm-prompt-config'
 
 const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
@@ -17,7 +16,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: [
@@ -67,7 +66,7 @@ describe('use-llm-prompt-config', () => {
       useLLMPromptConfig({
         inputs: missingConfigRef.current,
         inputRef: missingConfigRef,
-        isChatMode: true,
+        isChatflow: true,
         isChatModel: true,
         setInputs: handleMissingConfigInputs,
       }),
@@ -109,7 +108,7 @@ describe('use-llm-prompt-config', () => {
       useLLMPromptConfig({
         inputs: missingVariablesRef.current,
         inputRef: missingVariablesRef,
-        isChatMode: true,
+        isChatflow: true,
         isChatModel: true,
         setInputs: handleMissingVariablesInputs,
       }),
@@ -163,7 +162,7 @@ describe('use-llm-prompt-config', () => {
       useLLMPromptConfig({
         inputs: inputRef.current,
         inputRef,
-        isChatMode: true,
+        isChatflow: true,
         isChatModel: true,
         setInputs: createSetInputs(inputRef),
       }),
@@ -211,7 +210,7 @@ describe('use-llm-prompt-config', () => {
       useLLMPromptConfig({
         inputs: inputRef.current,
         inputRef,
-        isChatMode: true,
+        isChatflow: true,
         isChatModel: true,
         setInputs: handleSetInputs,
       }),
@@ -317,7 +316,7 @@ describe('use-llm-prompt-config', () => {
         model: {
           provider: 'openai',
           name: 'gpt-4o-mini',
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           completion_params: {},
         },
         prompt_template: {
@@ -333,7 +332,7 @@ describe('use-llm-prompt-config', () => {
       useLLMPromptConfig({
         inputs: basicInputRef.current,
         inputRef: basicInputRef,
-        isChatMode: true,
+        isChatflow: true,
         isChatModel: false,
         setInputs: handleSetInputs,
       }),
@@ -364,7 +363,7 @@ describe('use-llm-prompt-config', () => {
         model: {
           provider: 'openai',
           name: 'gpt-4o-mini',
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           completion_params: {},
         },
         prompt_template: {
@@ -381,7 +380,7 @@ describe('use-llm-prompt-config', () => {
       useLLMPromptConfig({
         inputs: jinjaInputRef.current,
         inputRef: jinjaInputRef,
-        isChatMode: false,
+        isChatflow: false,
         isChatModel: false,
         setInputs: handleJinjaInputs,
       }),

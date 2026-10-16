@@ -226,7 +226,7 @@ def test_run_with_unknown_app_returns_404(flask_app: Flask, auth_headers):
 def test_run_streaming_returns_event_stream(
     flask_app: Flask, auth_headers, app_in_workspace, monkeypatch: pytest.MonkeyPatch
 ):
-    def _stream() -> Generator[str, None, None]:
+    def _stream() -> Generator[str]:
         yield 'event: message\ndata: {"x": 1}\n\n'
 
     monkeypatch.setattr(

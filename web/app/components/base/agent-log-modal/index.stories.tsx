@@ -14,7 +14,6 @@ const MOCK_RESPONSE: AgentLogDetailResponse = {
     total_tokens: 2589,
     agent_mode: 'ReACT',
     iterations: 2,
-    error: undefined,
   },
   iterations: [
     {
@@ -33,6 +32,7 @@ const MOCK_RESPONSE: AgentLogDetailResponse = {
             'en-US': 'Revenue Search',
           },
           time_cost: 1.8,
+          tool_parameters: {},
         },
       ],
       tool_raw: {

@@ -8,10 +8,10 @@ import type {
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -398,7 +398,7 @@ const ModelModal: FC<ModelModalProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-block align-middle system-xs-regular text-text-accent"
-              onClick={(e) => !provider.help.url && e.preventDefault()}
+              onClick={(e) => !provider.help?.url && e.preventDefault()}
             >
               {provider.help.title?.[language] ||
                 provider.help.url[language] ||
@@ -461,14 +461,14 @@ const ModelModal: FC<ModelModalProps> = ({
               {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteCredential}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </Dialog>

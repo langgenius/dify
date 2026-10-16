@@ -10,11 +10,27 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
 import services
 from configs import dify_config
 from controllers.common.audio_response import audio_binary_response
+from controllers.common.errors import (
+    BlockedFileExtensionError,
+    FilenameNotExistsError,
+    FileTooLargeError,
+    InternalServerError,
+    NoFileUploadedError,
+    NotFoundError,
+    RemoteFileAccessDeniedError,
+    RemoteFileInvalidResponseError,
+    RemoteFileInvalidUrlError,
+    RemoteFileNotFoundError,
+    RemoteFileUnavailableError,
+    RemoteFileUrlBlockedError,
+    TooManyFilesError,
+    UnauthorizedError,
+    UnsupportedFileTypeError,
+)
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
@@ -40,22 +56,24 @@ from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
+    ProviderNotSupportTextToSpeechError,
     ProviderQuotaExceededError,
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.preview_admission import get_preview_app
 from controllers.console.explore.error import (
-    AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
-)
-from controllers.console.explore.error import (
-    AppPreviewSiteUnavailableError as AppPreviewSiteUnavailableHttpError,
-)
-from controllers.console.explore.error import (
+    AgentVersionNotFoundHTTPError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
     NotCompletionAppError,
     NotWorkflowAppError,
+)
+from controllers.console.explore.error import (
+    AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
+)
+from controllers.console.explore.error import (
+    AppPreviewSiteUnavailableError as AppPreviewSiteUnavailableHttpError,
 )
 from controllers.console.explore.trial_app_admission import get_trial_app, get_trial_app_for_stop
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
@@ -82,6 +100,8 @@ from fields.message_fields import SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp, uuid_value
 from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
@@ -89,6 +109,7 @@ from machinery.context import RequestContext
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
     AppPreviewOwnerUnavailableError,
@@ -101,6 +122,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -465,6 +487,14 @@ simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
     endpoint="trial_app_file_upload",
 )
 class TrialAppFileUploadApi(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FilenameNotExistsError,
+        FileTooLargeError,
+        NoFileUploadedError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @console_account_admission()
@@ -484,6 +514,17 @@ class TrialAppFileUploadApi(Resource):
     endpoint="trial_app_remote_file_upload",
 )
 class TrialAppRemoteFileUploadApi(Resource):
+    @error_responses(
+        BlockedFileExtensionError,
+        FileTooLargeError,
+        RemoteFileAccessDeniedError,
+        RemoteFileInvalidResponseError,
+        RemoteFileInvalidUrlError,
+        RemoteFileNotFoundError,
+        RemoteFileUnavailableError,
+        RemoteFileUrlBlockedError,
+        UnsupportedFileTypeError,
+    )
     @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @console_ns.response(
         HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__]
@@ -509,6 +550,15 @@ class TrialAppRemoteFileUploadApi(Resource):
     endpoint="trial_app_workflow_run",
 )
 class TrialAppWorkflowRunApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotWorkflowAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -531,7 +581,7 @@ class TrialAppWorkflowRunApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except services.errors.app_model_config.AppModelConfigBrokenError as error:
             raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
@@ -553,6 +603,7 @@ class TrialAppWorkflowRunApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
 class TrialAppWorkflowTaskStopApi(Resource):
+    @error_responses(NotWorkflowAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_trial_app
@@ -573,6 +624,15 @@ class TrialAppWorkflowTaskStopApi(Resource):
     endpoint="trial_app_chat_completion",
 )
 class TrialChatApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -600,9 +660,9 @@ class TrialChatApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -632,6 +692,7 @@ class TrialChatApi(Resource):
     endpoint="trial_app_stop_chat_completion",
 )
 class TrialChatTaskStopApi(Resource):
+    @error_responses(NotChatAppError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_trial_app_for_stop
@@ -653,6 +714,15 @@ class TrialChatTaskStopApi(Resource):
     endpoint="trial_app_suggested_question",
 )
 class TrialMessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        NotChatAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_trial_app
@@ -671,11 +741,11 @@ class TrialMessageSuggestedQuestionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except SuggestedQuestionsActorNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFoundError("Message not found")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFoundError("Conversation not found")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -710,6 +780,8 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderNotSupportSpeechToTextError() from error
         except SpeechToTextDisabledServiceError as error:
             raise SpeechToTextDisabledError() from error
+        except ProviderNotSupportTextToSpeechServiceError as error:
+            raise ProviderNotSupportTextToSpeechError() from error
         except ProviderTokenNotInitError as error:
             raise ProviderNotInitializeError(error.description) from error
         except QuotaExceededError as error:
@@ -718,7 +790,9 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
+        except AgentVersionNotFoundError as error:
+            raise AgentVersionNotFoundHTTPError() from error
+        except (BaseHTTPException, ValueError):
             raise
         except Exception as error:
             logger.exception("Trial audio operation failed")
@@ -732,13 +806,33 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="trial_app_audio",
 )
 class TrialChatAudioApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundHTTPError,
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_trial_app
-    @_trial_audio_errors
     def post(self, request_context: RequestContext, trial_app: TrialAppRef) -> dict[str, object]:
+        # Let Flask handle multipart parsing errors before mapping audio operation failures.
         file = request.files.get("file")
         audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
+        return self._transcript_asr(request_context=request_context, trial_app=trial_app, audio=audio)
+
+    @_trial_audio_errors
+    def _transcript_asr(
+        self, *, request_context: RequestContext, trial_app: TrialAppRef, audio: AudioUpload | None
+    ) -> dict[str, object]:
+        """Transcribe an upload; None lets the audio service report a missing file."""
         transcript = application_services().app_audio.transcript_asr(
             app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
             audio=audio,
@@ -752,6 +846,15 @@ class TrialChatAudioApi(Resource):
     endpoint="trial_app_text",
 )
 class TrialChatTextApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundHTTPError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportTextToSpeechError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @console_account_admission()
@@ -788,6 +891,15 @@ class TrialChatTextApi(Resource):
     endpoint="trial_app_completion",
 )
 class TrialCompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InvokeRateLimitHttpError,
+        NotCompletionAppError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -807,9 +919,9 @@ class TrialCompletionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -836,6 +948,7 @@ class TrialCompletionApi(Resource):
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
+    @error_responses(AppPreviewOwnerUnavailableHttpError, AppPreviewSiteUnavailableHttpError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SiteResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
@@ -859,6 +972,7 @@ class TrialSitApi(Resource):
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
+    @error_responses(AppUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ParametersResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
@@ -874,6 +988,7 @@ class TrialAppParameterApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>", endpoint="trial_app")
 class AppApi(Resource):
+    @error_responses(AppNotFoundError, AppPreviewSiteUnavailableHttpError, AppUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @console_account_admission()
     @get_preview_app
@@ -890,7 +1005,7 @@ class AppApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except AppPreviewSiteUnavailableError as error:
             raise AppPreviewSiteUnavailableHttpError(str(error)) from error
 
@@ -905,6 +1020,7 @@ class AppApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/agent-composer")
 class TrialAgentComposerApi(Resource):
+    @error_responses(AppUnavailableError)
     @console_ns.response(200, "Published Agent configuration", console_ns.models[AgentAppComposerResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef):
@@ -920,6 +1036,7 @@ class TrialAgentComposerApi(Resource):
     endpoint="trial_app_workflow",
 )
 class AppWorkflowApi(Resource):
+    @error_responses(AppNotFoundError, AppUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_preview_app
     def get(self, app: AppPreviewRef) -> dict[str, object]:
@@ -938,6 +1055,7 @@ class AppWorkflowApi(Resource):
     endpoint="trial_app_datasets",
 )
 class DatasetListApi(Resource):
+    @error_responses(AppNotFoundError, NeedAddIdsError)
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_preview_app

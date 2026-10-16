@@ -4,7 +4,8 @@ import { noop, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import CheckCode from '../page'
 
@@ -75,9 +76,16 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/base', () => serviceBaseMocks)
 
-vi.mock('@/service/common', () => ({
-  emailLoginWithCode: vi.fn(),
-  sendEMailLoginCode: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    emailCodeLogin: {
+      validity: {
+        post: vi.fn(),
+      },
+      post: vi.fn(),
+    },
+  },
 }))
 
 vi.mock('@/utils/encryption', () => ({
@@ -138,8 +146,10 @@ const accountProfile: GetAccountProfileResponse = {
 describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(emailLoginWithCode).mockReset().mockResolvedValue({ result: 'success' })
-    vi.mocked(sendEMailLoginCode).mockReset()
+    vi.mocked(consoleClient.emailCodeLogin.validity.post)
+      .mockReset()
+      .mockResolvedValue({ result: 'success' })
+    vi.mocked(consoleClient.emailCodeLogin.post).mockReset()
     turnstileWidgets.clear()
     navigationMocks.searchParams = new URLSearchParams({
       email: 'user@example.com',
@@ -224,18 +234,13 @@ describe('CheckCode', () => {
     expect(codeInput).toHaveAttribute('aria-invalid', 'true')
     expect(codeInput).toHaveAccessibleDescription('login.checkCode.invalidCode')
     expect(codeInput).toHaveFocus()
-    expect(emailLoginWithCode).not.toHaveBeenCalled()
+    expect(consoleClient.emailCodeLogin.validity.post).not.toHaveBeenCalled()
   })
 
   it('keeps Community verification independent of Turnstile', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
-    vi.mocked(emailLoginWithCode).mockResolvedValue({
-      code: 'invalid_code',
-      data: '',
-      message: 'Invalid code',
-      result: 'fail',
-    })
+    vi.mocked(consoleClient.emailCodeLogin.validity.post).mockResolvedValue({ result: 'fail' })
     render(
       <QueryClientProvider client={queryClient}>
         <CheckCode />
@@ -245,12 +250,14 @@ describe('CheckCode', () => {
     await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
     await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
-    expect(emailLoginWithCode).toHaveBeenCalledWith({
-      code: '123456',
-      email: 'user@example.com',
-      language: expect.any(String),
-      timezone: 'Asia/Singapore',
-      token: 'email-login-token',
+    expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
+      body: {
+        code: '123456',
+        email: 'user@example.com',
+        language: expect.any(String),
+        timezone: 'Asia/Singapore',
+        token: 'email-login-token',
+      },
     })
     expect(turnstileMocks.render).not.toHaveBeenCalled()
   })
@@ -258,8 +265,11 @@ describe('CheckCode', () => {
   it('does not resend while verification is in progress', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
-    const verificationRequest = createDeferred<Awaited<ReturnType<typeof emailLoginWithCode>>>()
-    vi.mocked(emailLoginWithCode).mockReturnValue(verificationRequest.promise)
+    const verificationRequest =
+      createDeferred<Awaited<ReturnType<typeof consoleClient.emailCodeLogin.validity.post>>>()
+    vi.mocked(consoleClient.emailCodeLogin.validity.post).mockReturnValue(
+      verificationRequest.promise,
+    )
     render(
       <QueryClientProvider client={queryClient}>
         <CheckCode />
@@ -269,22 +279,17 @@ describe('CheckCode', () => {
     await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
     await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
     await waitFor(() => {
-      expect(emailLoginWithCode).toHaveBeenCalledOnce()
+      expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledOnce()
     })
 
     const resendButton = screen.getByRole('button', { name: 'resend-code' })
     expect(resendButton).toBeDisabled()
     resendButton.removeAttribute('disabled')
     fireEvent.click(resendButton)
-    expect(sendEMailLoginCode).not.toHaveBeenCalled()
+    expect(consoleClient.emailCodeLogin.post).not.toHaveBeenCalled()
 
     act(() => {
-      verificationRequest.resolve({
-        code: 'invalid_code',
-        data: '',
-        message: 'Invalid code',
-        result: 'fail',
-      })
+      verificationRequest.resolve({ result: 'fail' })
     })
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeEnabled()
@@ -294,8 +299,9 @@ describe('CheckCode', () => {
   it('does not verify while resend is in progress', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
-    const resendRequest = createDeferred<Awaited<ReturnType<typeof sendEMailLoginCode>>>()
-    vi.mocked(sendEMailLoginCode).mockReturnValue(resendRequest.promise)
+    const resendRequest =
+      createDeferred<Awaited<ReturnType<typeof consoleClient.emailCodeLogin.post>>>()
+    vi.mocked(consoleClient.emailCodeLogin.post).mockReturnValue(resendRequest.promise)
     render(
       <QueryClientProvider client={queryClient}>
         <CheckCode />
@@ -305,7 +311,7 @@ describe('CheckCode', () => {
     await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
     await user.click(screen.getByRole('button', { name: 'resend-code' }))
     await waitFor(() => {
-      expect(sendEMailLoginCode).toHaveBeenCalledOnce()
+      expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledOnce()
     })
 
     const verifyButton = screen.getByRole('button', { name: 'login.checkCode.verify' })
@@ -313,7 +319,7 @@ describe('CheckCode', () => {
     const form = verifyButton.closest('form')
     if (!form) throw new Error('Verification form is missing')
     fireEvent.submit(form)
-    expect(emailLoginWithCode).not.toHaveBeenCalled()
+    expect(consoleClient.emailCodeLogin.validity.post).not.toHaveBeenCalled()
 
     act(() => {
       resendRequest.resolve({ data: '', result: 'fail' })
@@ -329,14 +335,9 @@ describe('CheckCode', () => {
     turnstileMocks.siteKey = 'cloud-site-key'
     const queryClient = createQueryClient()
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.mocked(emailLoginWithCode)
+    vi.mocked(consoleClient.emailCodeLogin.validity.post)
       .mockRejectedValueOnce(new Error('invalid verification code'))
-      .mockResolvedValueOnce({
-        code: 'invalid_code',
-        data: '',
-        message: 'Invalid code',
-        result: 'fail',
-      })
+      .mockResolvedValueOnce({ result: 'fail' })
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -364,11 +365,11 @@ describe('CheckCode', () => {
     await user.click(verifyButton)
 
     await waitFor(() => {
-      expect(emailLoginWithCode).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenCalledWith({
+        body: expect.objectContaining({
           turnstile_token: 'signin_code_verify-token-1',
         }),
-      )
+      })
     })
     expect(codeInput).toHaveValue('123456')
     await waitFor(() => {
@@ -386,11 +387,11 @@ describe('CheckCode', () => {
     await user.click(verifyButton)
 
     await waitFor(() => {
-      expect(emailLoginWithCode).toHaveBeenLastCalledWith(
-        expect.objectContaining({
+      expect(consoleClient.emailCodeLogin.validity.post).toHaveBeenLastCalledWith({
+        body: expect.objectContaining({
           turnstile_token: 'signin_code_verify-token-2',
         }),
-      )
+      })
     })
     expect(codeInput).toHaveValue('123456')
   })
@@ -400,7 +401,10 @@ describe('CheckCode', () => {
     turnstileMocks.deploymentEdition = 'CLOUD'
     turnstileMocks.siteKey = 'cloud-site-key'
     const queryClient = createQueryClient()
-    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+    vi.mocked(consoleClient.emailCodeLogin.post).mockResolvedValue({
+      result: 'success',
+      data: 'new-login-token',
+    })
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -433,11 +437,13 @@ describe('CheckCode', () => {
     await user.click(await screen.findByRole('button', { name: 'verify-turnstile-signin_code' }))
 
     await waitFor(() => {
-      expect(sendEMailLoginCode).toHaveBeenCalledWith(
-        'user@example.com',
-        expect.any(String),
-        'signin_code-token-2',
-      )
+      expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: expect.any(String),
+          turnstile_token: 'signin_code-token-2',
+        },
+      })
     })
     await waitFor(() => {
       expect(
@@ -455,7 +461,10 @@ describe('CheckCode', () => {
     turnstileMocks.deploymentEdition = 'CLOUD'
     turnstileMocks.siteKey = 'cloud-site-key'
     const queryClient = createQueryClient()
-    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+    vi.mocked(consoleClient.emailCodeLogin.post).mockResolvedValue({
+      result: 'success',
+      data: 'new-login-token',
+    })
     Object.defineProperty(window, 'turnstile', {
       configurable: true,
       value: undefined,
@@ -490,11 +499,13 @@ describe('CheckCode', () => {
     await user.click(await screen.findByRole('button', { name: 'verify-turnstile-signin_code' }))
 
     await waitFor(() => {
-      expect(sendEMailLoginCode).toHaveBeenCalledWith(
-        'user@example.com',
-        expect.any(String),
-        'signin_code-token-1',
-      )
+      expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: expect.any(String),
+          turnstile_token: 'signin_code-token-1',
+        },
+      })
     })
   })
 
@@ -502,7 +513,10 @@ describe('CheckCode', () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
     turnstileMocks.siteKey = 'site-key-not-used-outside-cloud'
-    vi.mocked(sendEMailLoginCode).mockResolvedValue({ result: 'success', data: 'new-login-token' })
+    vi.mocked(consoleClient.emailCodeLogin.post).mockResolvedValue({
+      result: 'success',
+      data: 'new-login-token',
+    })
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -515,11 +529,9 @@ describe('CheckCode', () => {
     expect(resendButton).toBeEnabled()
     await user.click(resendButton)
 
-    expect(sendEMailLoginCode).toHaveBeenCalledWith(
-      'user@example.com',
-      expect.any(String),
-      undefined,
-    )
+    expect(consoleClient.emailCodeLogin.post).toHaveBeenCalledWith({
+      body: { email: 'user@example.com', language: expect.any(String) },
+    })
   })
 
   describe('Post-login profile bootstrap', () => {
@@ -533,7 +545,7 @@ describe('CheckCode', () => {
         resolveProfileResponse = resolve
       })
       serviceBaseMocks.get
-        .mockRejectedValueOnce(new Response(null, { status: 401 }))
+        .mockRejectedValueOnce(createHttpError(new Response(null, { status: 401 })))
         .mockReturnValueOnce(profileResponse)
       await queryClient.query(profileQueryOptions).catch(noop)
       expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('error')

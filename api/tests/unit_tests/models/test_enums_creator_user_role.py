@@ -3,7 +3,7 @@ import pytest
 from models.enums import CreatorUserRole
 
 
-def test_creator_user_role_missing_maps_hyphen_to_enum():
+def test_creator_user_role_missing_maps_hyphen_to_enum() -> None:
     # given an alias with hyphen
     value = "end-user"
 
@@ -14,6 +14,6 @@ def test_creator_user_role_missing_maps_hyphen_to_enum():
     assert role is CreatorUserRole.END_USER
 
 
-def test_creator_user_role_missing_raises_for_unknown():
+def test_creator_user_role_missing_raises_for_unknown() -> None:
     with pytest.raises(ValueError):
         CreatorUserRole("unknown")

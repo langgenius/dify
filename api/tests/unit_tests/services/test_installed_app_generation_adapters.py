@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 from sqlalchemy import event, inspect, update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,7 +18,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
 from enums import DeploymentEdition
 from extensions.ext_database import db
-from libs.broadcast_channel.channel import BroadcastChannel, Subscription, SupportsPreparedSubscription, Topic
+from extensions.ext_redis import RedisClientWrapper
+from libs.broadcast_channel.redis.streams_channel import (
+    StreamsBroadcastChannel,
+    _StreamsSubscriber,
+    _StreamsSubscription,
+)
 from models import Account, App, AppMode, AppModelConfig, Conversation, Message, Workflow
 from models.enums import ConversationFromSource
 from models.workflow import WorkflowType
@@ -84,7 +90,7 @@ def harness(sqlite_session_factory: sessionmaker[Session]) -> _RuntimeHarness:
 def _patch_generation(
     monkeypatch: pytest.MonkeyPatch,
     harness: _RuntimeHarness,
-    generate: Callable[[Session], GenerationResponse | Generator[Mapping[str, object] | str, None, None]],
+    generate: Callable[[Session], GenerationResponse | Generator[Mapping[str, object] | str]],
     *,
     streaming: bool,
     more_like_this: bool = False,
@@ -96,7 +102,7 @@ def _patch_generation(
         user: Account,
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+    ) -> GenerationResponse | Generator[Mapping[str, object] | str]:
         assert len(harness.closed_sessions) == 1
         read_session = harness.closed_sessions[0]
         assert not read_session.in_transaction()
@@ -119,7 +125,7 @@ def _patch_generation(
         args: Mapping[str, object],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+    ) -> GenerationResponse | Generator[Mapping[str, object] | str]:
         assert args == _ARGS
         return assert_context(
             session=session, app_model=app_model, user=user, invoke_from=invoke_from, streaming=streaming
@@ -133,7 +139,7 @@ def _patch_generation(
         message_id: str,
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> GenerationResponse | Generator[Mapping[str, object] | str, None, None]:
+    ) -> GenerationResponse | Generator[Mapping[str, object] | str]:
         assert message_id == _MESSAGE_ID
         return assert_context(
             session=session, app_model=app_model, user=user, invoke_from=invoke_from, streaming=streaming
@@ -176,7 +182,7 @@ class _RateLimitExit:
             raise self.failure
 
 
-def _rate_limited_stream(source: Generator[str, None, None], rate: _RateLimitExit) -> RateLimitGenerator:
+def _rate_limited_stream(source: Generator[str], rate: _RateLimitExit) -> RateLimitGenerator:
     return RateLimitGenerator(rate_limit=cast(RateLimit, rate), generator=source, request_id="request-1")
 
 
@@ -214,7 +220,7 @@ def test_runtime_preserves_stream_identity_and_original_close_lifecycle(
     failure = RuntimeError("stream failed")
     rate = _RateLimitExit()
 
-    def source() -> Generator[str, None, None]:
+    def source() -> Generator[str]:
         assert len(harness.closed_sessions) == 2
         events.append("start")
         try:
@@ -256,7 +262,7 @@ def test_more_like_this_serializes_raw_events_and_closes_source(
     events: list[str] = []
     failure = RuntimeError("more-like-this stream failed")
 
-    def source() -> Generator[Mapping[str, object] | str, None, None]:
+    def source() -> Generator[Mapping[str, object] | str]:
         assert len(harness.closed_sessions) == 2
         events.append("start")
         try:
@@ -353,7 +359,7 @@ def test_failure_before_stream_handoff_closes_stream_without_masking_primary_err
     failure = RuntimeError(f"runtime {failure_phase} failed")
     rate = _RateLimitExit(failure=ValueError("stream close failed") if stream_close_fails else None)
 
-    def source() -> Generator[str, None, None]:
+    def source() -> Generator[str]:
         pytest.fail("A response that failed before handoff must not be consumed")
         yield "unreachable"
 
@@ -633,7 +639,7 @@ def test_visible_conversation_uses_shared_chat_dispatch_after_preflight_session_
         args: Mapping[str, object],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> Generator[Mapping[str, object] | str, None, None]:
+    ) -> Generator[Mapping[str, object] | str]:
         assert len(harness.closed_sessions) == 1
         assert not harness.closed_sessions[0].in_transaction()
         assert session is not harness.closed_sessions[0]
@@ -645,7 +651,7 @@ def test_visible_conversation_uses_shared_chat_dispatch_after_preflight_session_
         assert streaming is True
         calls.append(type(generator).__name__)
 
-        def chunks() -> Generator[Mapping[str, object] | str, None, None]:
+        def chunks() -> Generator[Mapping[str, object] | str]:
             assert len(harness.closed_sessions) == 2
             assert not session.in_transaction()
             yield {"event": "message", "answer": mode.value}
@@ -701,6 +707,8 @@ def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_c
     config_overrides: Callable[..., None],
     mode: AppMode,
     trigger: bool,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    mocker: MockerFixture,
 ) -> None:
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
@@ -737,22 +745,24 @@ def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_c
         workflow_id, tenant_id = workflow.id, app.tenant_id
 
     transport_events: list[str] = []
-    subscription = MagicMock(spec=Subscription)
-    subscriber = MagicMock(spec=SupportsPreparedSubscription)
-    subscriber.prepare_subscription.return_value = subscription
-    topic = MagicMock(spec=Topic)
-    topic.as_subscriber.return_value = subscriber
-    channel = MagicMock(spec=BroadcastChannel)
-    channel.topic.return_value = topic
+    redis, commands = redis_transport
+    empty_stream: list[tuple[bytes, dict[bytes, bytes]]] = []
+    commands.return_value = empty_stream
+    channel = StreamsBroadcastChannel(redis._require_client())
+    prepare = mocker.spy(_StreamsSubscriber, "prepare_subscription")
+    close = mocker.spy(_StreamsSubscription, "close")
 
-    def activate_subscription() -> Subscription:
+    def activate_subscription(subscription: _StreamsSubscription) -> None:
         assert len(harness.closed_sessions) == 2
         assert all(not session.in_transaction() for session in harness.closed_sessions)
-        transport_events.append("subscribe")
-        return subscription
+        if not transport_events:
+            transport_events.append("subscribe")
+            subscription._queue.put_nowait(b'{"event":"workflow_finished"}')
 
-    subscription.__enter__.side_effect = activate_subscription
-    subscription.receive.return_value = b'{"event":"workflow_finished"}'
+    # Keep the real preparation, queue and lifecycle; replace only listener-thread startup.
+    start_listener = mocker.patch.object(
+        _StreamsSubscription, "_start_if_needed", autospec=True, side_effect=activate_subscription
+    )
     monkeypatch.setattr(message_based_app_generator, "get_pubsub_broadcast_channel", lambda: channel)
     submitted: list[generation_module.AppExecutionParams] = []
 
@@ -771,8 +781,12 @@ def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_c
     assert len(harness.closed_sessions) == 2
     assert harness.committed_sessions == [harness.closed_sessions[1]]
     assert submitted == []
-    subscriber.prepare_subscription.assert_called_once_with()
-    subscription.__enter__.assert_not_called()
+    prepare.assert_called_once()
+    subscription = prepare.spy_return
+    assert isinstance(subscription, _StreamsSubscription)
+    assert subscription._start_id == "0-0"
+    start_listener.assert_not_called()
+    assert commands.call_args.args[0] == "XREVRANGE"
     assert next(result) == "event: ping\n\n"
     assert submitted == []
     assert json.loads(next(result).removeprefix("data: ")) == {"event": "workflow_finished"}
@@ -786,12 +800,15 @@ def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_c
     assert payload.args == args
     assert payload.invoke_from == InvokeFrom.EXPLORE
     assert payload.streaming is True
-    subscription.__exit__.assert_called_once()
+    close.assert_called_once_with(subscription)
+    assert subscription._closed is True
     assert result.closed is True
 
 
 def test_unpublished_workflow_raises_before_subscription_or_task_creation(
     harness: _RuntimeHarness,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    mocker: MockerFixture,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
@@ -818,7 +835,9 @@ def test_unpublished_workflow_raises_before_subscription_or_task_creation(
             )
         )
 
-    channel = MagicMock(spec=BroadcastChannel)
+    redis, commands = redis_transport
+    channel = StreamsBroadcastChannel(redis._require_client())
+    topic = mocker.spy(channel, "topic")
     monkeypatch.setattr(message_based_app_generator, "get_pubsub_broadcast_channel", lambda: channel)
     enqueue = MagicMock()
     monkeypatch.setattr(generation_module.workflow_based_app_execution_task, "delay", enqueue)
@@ -830,5 +849,6 @@ def test_unpublished_workflow_raises_before_subscription_or_task_creation(
     assert len(harness.closed_sessions) == 2
     assert all(not session.in_transaction() for session in harness.closed_sessions)
     assert harness.committed_sessions == []
-    channel.topic.assert_not_called()
+    topic.assert_not_called()
+    commands.assert_not_called()
     enqueue.assert_not_called()

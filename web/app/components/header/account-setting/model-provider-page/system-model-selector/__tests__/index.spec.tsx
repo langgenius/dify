@@ -135,6 +135,9 @@ const mockModel: DefaultModelResponse = {
   provider: {
     provider: 'openai',
     icon_small: { en_US: '', zh_Hans: '' },
+    label: { en_US: 'Provider', zh_Hans: 'Provider' },
+    supported_model_types: [],
+    tenant_id: 'tenant-1',
   },
 }
 
@@ -162,18 +165,30 @@ describe('SystemModel', () => {
   })
 
   it('should open dialog when button is clicked', async () => {
+    const user = userEvent.setup()
     render(<SystemModel {...defaultProps} />)
     const button = screen.getByRole('button', { name: /system model settings/i })
-    fireEvent.click(button)
-    await waitFor(() => {
-      expect(screen.getByText(/system reasoning model/i)).toBeInTheDocument()
-    })
+    expect(button).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(button)
+    expect(
+      await screen.findByRole('dialog', { name: 'Default Model Settings' }),
+    ).toBeInTheDocument()
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(button).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('opens the dialog from URL state', async () => {
     render(<SystemModel {...defaultProps} />, { searchParams: '?dialog=system-models' })
 
     expect(await screen.findByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /system model settings/i, hidden: true }),
+    ).toHaveAttribute('aria-expanded', 'true')
     expect(mockModelListQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({

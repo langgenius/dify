@@ -1,6 +1,7 @@
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
+  ModelCredential,
   ModelItem,
   ModelLoadBalancingConfig,
   ModelLoadBalancingConfigEntry,
@@ -8,21 +9,22 @@ import type {
 } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { toast } from '@/app/notifications'
-import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
 import { useRefreshModel } from '../hooks'
 import { useAuth } from '../model-auth/hooks/use-auth'
@@ -60,15 +62,41 @@ const ModelLoadBalancingModal = ({
   const [loading, setLoading] = useState(false)
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const configFrom = providerFormSchemaPredefined ? 'predefined-model' : 'custom-model'
-  const { isLoading, data, refetch } = useGetModelCredential(
-    true,
-    provider.provider,
-    credential?.credential_id,
-    model.model,
-    model.model_type,
-    configFrom,
+  const { isLoading, data, refetch } = useQuery({
+    ...consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.queryOptions(
+      {
+        input: {
+          params: { provider: provider.provider },
+          query: {
+            model: model.model,
+            model_type: model.model_type,
+            config_from: configFrom,
+            credential_id: credential?.credential_id,
+          },
+        },
+      },
+    ),
+    staleTime: 0,
+    gcTime: 0,
+  })
+  const modelCredential = useMemo<ModelCredential | undefined>(
+    () =>
+      data && {
+        ...data,
+        current_credential_id: data.current_credential_id ?? undefined,
+        current_credential_name: data.current_credential_name ?? undefined,
+        load_balancing: {
+          enabled: data.load_balancing.enabled,
+          configs: data.load_balancing.configs.map((config) => ({
+            ...config,
+            credential_id: config.credential_id ?? undefined,
+            // Credential values are untyped JSON form values in the console API response.
+            credentials: config.credentials as ModelLoadBalancingConfigEntry['credentials'],
+          })),
+        },
+      },
+    [data],
   )
-  const modelCredential = data
   const { load_balancing, current_credential_id, available_credentials, current_credential_name } =
     modelCredential ?? {}
   const originalConfig = load_balancing
@@ -129,8 +157,8 @@ const ModelLoadBalancingModal = ({
     },
     [extendedSecretFormSchemas, originalConfigMap],
   )
-  const { mutateAsync: updateModelLoadBalancingConfig } = useUpdateModelLoadBalancingConfig(
-    provider.provider,
+  const { mutateAsync: updateModelLoadBalancingConfig } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions(),
   )
   const initialCustomModelCredential = useMemo(() => {
     if (!current_credential_id) return undefined
@@ -147,14 +175,17 @@ const ModelLoadBalancingModal = ({
     try {
       setLoading(true)
       const res = await updateModelLoadBalancingConfig({
-        credential_id: customModelCredential?.credential_id || current_credential_id,
-        config_from: configFrom,
-        model: model.model,
-        model_type: model.model_type,
-        load_balancing: {
-          ...draftConfig,
-          configs: draftConfig!.configs.map(encodeConfigEntrySecretValues),
-          enabled: Boolean(draftConfig?.enabled),
+        params: { provider: provider.provider },
+        body: {
+          credential_id: customModelCredential?.credential_id || current_credential_id,
+          config_from: configFrom,
+          model: model.model,
+          model_type: model.model_type,
+          load_balancing: {
+            ...draftConfig,
+            configs: draftConfig!.configs.map(encodeConfigEntrySecretValues),
+            enabled: Boolean(draftConfig?.enabled),
+          },
         },
       })
       if (res.result === 'success') {
@@ -413,14 +444,14 @@ const ModelLoadBalancingModal = ({
                   {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
                 </AlertDialogTitle>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
                 <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </DialogContent>

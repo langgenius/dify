@@ -3,7 +3,7 @@ import type { MemberInviteResponse } from '@dify/contracts/api/console/workspace
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,12 +16,9 @@ import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/wor
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { consoleQuery } from '@/service/console'
-import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
-import InviteButton from './invite-button'
 import { InviteModal } from './invite-modal'
 import InvitedModal from './invited-modal'
 import MemberDetailsModal from './member-details-modal'
@@ -40,9 +37,10 @@ const MembersPage = () => {
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data, refetch } = useMembers(language)
+  const { data, refetch } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
+  )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<
     MemberInviteResponse['invitation_results'] | null
   >(null)
@@ -82,7 +80,9 @@ const MembersPage = () => {
     setDetailsMember(null)
   }, [])
 
-  const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
+  const { mutateAsync: updateRolesOfMember } = useMutation(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
+  )
 
   const handleAssignRolesSubmit = (roles: Role[]) => {
     const roleIds = systemFeatures.rbac_enabled
@@ -90,10 +90,7 @@ const MembersPage = () => {
       : roles.slice(0, 1).map((role) => role.id)
 
     updateRolesOfMember(
-      {
-        memberId: detailsMember!.id,
-        roleIds,
-      },
+      { params: { member_id: detailsMember!.id }, body: { role_ids: roleIds } },
       {
         onSuccess: () => {
           toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -174,10 +171,7 @@ const MembersPage = () => {
           <div className="shrink-0">
             {canManageMembers && (
               <InviteModal
-                open={inviteModalVisible}
-                trigger={<InviteButton />}
                 isEmailSetup={systemFeatures.is_email_setup}
-                onOpenChange={setInviteModalVisible}
                 onSend={setInvitationResults}
               />
             )}
@@ -210,7 +204,7 @@ const MembersPage = () => {
                 <MemberRow
                   key={account.id}
                   member={account}
-                  roles={account.roles}
+                  roles={account.roles ?? []}
                   isCurrentUser={userProfileEmail === account.email}
                   canManage={canManageMembers}
                   canTransferOwnership={

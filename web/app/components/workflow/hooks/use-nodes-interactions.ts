@@ -15,9 +15,11 @@ import type { Edge, Node, OnNodeAdd } from '../types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
@@ -163,7 +165,8 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 }
 
 export const useNodesInteractions = () => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
+  const isChatflow = useAtomValue(isChatflowAtom)
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,
@@ -2127,6 +2130,19 @@ export const useNodesInteractions = () => {
       }
     })
 
+    if (!isChatflow) {
+      const memoryNodeTypes: BlockEnum[] = [
+        BlockEnum.LLM,
+        BlockEnum.QuestionClassifier,
+        BlockEnum.ParameterExtractor,
+        BlockEnum.Agent,
+      ]
+      nodesToPaste.forEach((node) => {
+        if (memoryNodeTypes.includes(getNodeCatalogType(node.data)) && 'memory' in node.data)
+          delete node.data.memory
+      })
+    }
+
     const newNodes = produce(nodes, (draft: Node[]) => {
       parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
         const p = draft.find((n) => n.id === parentId)
@@ -2153,6 +2169,7 @@ export const useNodesInteractions = () => {
     handleNodeLoopChildrenCopy,
     getNodeDefaultValueForPaste,
     appDslVersion,
+    isChatflow,
   ])
 
   const handleNodesDuplicate = useCallback(

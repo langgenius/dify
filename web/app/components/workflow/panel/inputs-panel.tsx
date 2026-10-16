@@ -20,7 +20,7 @@ const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation(['workflow'])
   const workflowStore = useWorkflowStore()
   const inputs = useStore((s) => s.inputs)
-  const fileSettings = useHooksStore((s) => s.configsMap?.fileSettings)
+  const fileSettings = useHooksStore((s) => s.fileSettings)
   const canRunWorkflow = useHooksStore((s) => s.accessControl.canRun)
   const nodes = useNodes<StartNodeType>()
   const files = useStore((s) => s.files)

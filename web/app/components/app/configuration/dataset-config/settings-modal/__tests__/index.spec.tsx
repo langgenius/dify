@@ -17,13 +17,17 @@ import {
 } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
-import { useMembers } from '@/service/use-common'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
+
+const { mockMembersQuery } = vi.hoisted(() => ({
+  mockMembersQuery: vi.fn(),
+}))
 
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
@@ -81,7 +85,7 @@ vi.mock('@/service/datasets', () => ({
 
 vi.mock('@/service/use-common', async () => ({
   ...(await vi.importActual('@/service/use-common')),
-  useMembers: vi.fn(),
+  mockMembersQuery: vi.fn(),
 }))
 
 vi.mock('nuqs', async (importOriginal) => {
@@ -113,7 +117,7 @@ vi.mock('@/app/components/datasets/settings/utils', () => ({
 }))
 
 const mockUpdateDatasetSetting = updateDatasetSetting as MockedFunction<typeof updateDatasetSetting>
-const mockUseMembers = useMembers as MockedFunction<typeof useMembers>
+const mockUseMembers = mockMembersQuery as MockedFunction<typeof mockMembersQuery>
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -135,9 +139,9 @@ const createDataset = (
 ): DataSet => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Test Dataset',
-    indexing_status: 'completed',
     icon_info: {
       icon: 'icon',
       icon_type: 'emoji',
@@ -153,7 +157,6 @@ const createDataset = (
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'internal',
@@ -186,10 +189,6 @@ const createDataset = (
     retrieval_model_dict: {
       ...retrievalConfig,
       ...overrides.retrieval_model_dict,
-    },
-    retrieval_model: {
-      ...retrievalConfig,
-      ...overrides.retrieval_model,
     },
   }
 }
@@ -244,7 +243,7 @@ describe('SettingsModal', () => {
           },
         ],
       },
-    } as ReturnType<typeof useMembers>)
+    } as ReturnType<typeof mockMembersQuery>)
     mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank) {
         return {
@@ -470,7 +469,6 @@ describe('SettingsModal', () => {
         },
       })
       const dataset = createDataset({
-        retrieval_model: rerankRetrieval,
         retrieval_model_dict: rerankRetrieval,
       })
 
@@ -522,7 +520,6 @@ describe('SettingsModal', () => {
         },
       })
       const dataset = createDataset({
-        retrieval_model: hybridRetrieval,
         retrieval_model_dict: hybridRetrieval,
       })
 
@@ -568,7 +565,6 @@ describe('SettingsModal', () => {
         },
       } as Partial<RetrievalConfig>)
       const dataset = createDataset({
-        retrieval_model: hybridRetrieval,
         retrieval_model_dict: hybridRetrieval,
       })
 
@@ -694,6 +690,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
     }) => {
+      if (options.queryKey[0].join('.') === 'console.workspaces.current.members.get')
+        return mockMembersQuery()
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
 
       const args = options.queryKey[1].input?.params?.model_type

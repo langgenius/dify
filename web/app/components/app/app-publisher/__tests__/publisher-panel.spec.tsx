@@ -2,7 +2,6 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { AppModeEnum } from '@/types/app'
 import { PublisherPanel } from '../publisher-content/publisher-panel'
 
 vi.mock('../environment-deployment-flow', () => ({
@@ -37,7 +36,8 @@ function PublisherPanelHarness({
       <PublisherPanel
         builtInPublisher={{
           actions: {
-            appDetail: { id: 'app-1', mode: AppModeEnum.CHAT },
+            appId: 'app-1',
+            appMode: 'chat' as const,
             appURL: 'https://example.com/app',
             canViewAccessPoint: false,
             disabledFunctionButton: false,

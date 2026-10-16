@@ -2,11 +2,11 @@ import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/d
 import type { CreateExternalAPIReq } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -55,8 +55,8 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       const formValue: CreateExternalAPIReq = {
         name: response.name,
         settings: {
-          endpoint: response.settings.endpoint,
-          api_key: response.settings.api_key,
+          endpoint: response.settings?.endpoint ?? '',
+          api_key: response.settings?.api_key ?? '',
         },
       }
 
@@ -68,15 +68,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
           try {
             await updateExternalAPI({
               apiTemplateId: api.id,
-              body: {
-                ...response,
-                name: updatedData.name,
-                settings: {
-                  ...response.settings,
-                  endpoint: updatedData.settings.endpoint,
-                  api_key: updatedData.settings.api_key,
-                },
-              },
+              body: { name: updatedData.name, settings: updatedData.settings },
             })
             await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
           } catch (error) {
@@ -106,13 +98,9 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
     if (!canManageExternalKnowledgeApi) return
 
     try {
-      const response = await deleteExternalAPI({ apiTemplateId: api.id })
-      if (response && response.result === 'success') {
-        setShowConfirm(false)
-        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
-      } else {
-        console.error('Failed to delete external API')
-      }
+      await deleteExternalAPI({ apiTemplateId: api.id })
+      setShowConfirm(false)
+      await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
     } catch (error) {
       console.error('Error deleting external knowledge API:', error)
     }
@@ -170,14 +158,14 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
                   })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

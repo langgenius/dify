@@ -1,4 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Details from '../index'
 
@@ -12,9 +15,19 @@ vi.mock('@/app/components/workflow/workflow-preview', () => ({
 }))
 
 const mockUsePipelineTemplateById = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateById: (...args: unknown[]) => mockUsePipelineTemplateById(...args),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.templates.byTemplateId.get': (o: {
+      input: { params: { template_id: string }; query: { type: string } }
+      enabled?: boolean
+    }) =>
+      mockUsePipelineTemplateById(
+        { template_id: o.input.params.template_id, type: o.input.query.type },
+        o.enabled ?? true,
+      ),
+  })
+})
 
 const createPipelineTemplateInfo = (overrides = {}) => ({
   name: 'Test Pipeline',
@@ -46,6 +59,16 @@ const createImageIconPipelineInfo = () => ({
   },
 })
 
+function DetailsDialog({ children }: { children: ReactNode }) {
+  return (
+    <Dialog defaultOpen>
+      <DialogContent>{children}</DialogContent>
+    </Dialog>
+  )
+}
+
+const renderDetails = (element: ReactElement) => render(element, { wrapper: DetailsDialog })
+
 // Details Component Tests
 
 describe('Details', () => {
@@ -53,7 +76,7 @@ describe('Details', () => {
     id: 'pipeline-1',
     type: 'customized' as const,
     onApplyTemplate: vi.fn(),
-    onClose: vi.fn(),
+    name: 'Loading Pipeline',
   }
 
   beforeEach(() => {
@@ -62,14 +85,17 @@ describe('Details', () => {
 
   // Loading State Tests
   describe('Loading State', () => {
-    it('should show loading when data is not available', () => {
+    it('keeps the dialog named and closable while the template is loading', async () => {
+      const user = userEvent.setup()
       mockUsePipelineTemplateById.mockReturnValue({
         data: null,
       })
 
-      render(<Details {...defaultProps} />)
-      // Loading component should be rendered
+      renderDetails(<Details {...defaultProps} />)
+      expect(screen.getByRole('dialog', { name: 'Loading Pipeline' })).toBeInTheDocument()
       expect(screen.queryByText('Test Pipeline')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
   })
 
@@ -79,7 +105,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
 
@@ -88,7 +114,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText('This is a test pipeline')).toBeInTheDocument()
     })
 
@@ -97,7 +123,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText(/details\.createdBy/i)).toBeInTheDocument()
     })
 
@@ -106,7 +132,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo({ created_by: '' }),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.queryByText(/details\.createdBy/i)).not.toBeInTheDocument()
     })
 
@@ -115,7 +141,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText(/operations\.useTemplate/i)).toBeInTheDocument()
     })
 
@@ -124,7 +150,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
     })
 
@@ -133,9 +159,8 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      const { container } = render(<Details {...defaultProps} />)
-      const closeButton = container.querySelector('button[type="button"]')
-      expect(closeButton).toBeInTheDocument()
+      renderDetails(<Details {...defaultProps} />)
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
 
     it('should render workflow preview', () => {
@@ -143,7 +168,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByTestId('workflow-preview')).toBeInTheDocument()
     })
 
@@ -152,23 +177,23 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       // Tooltip component should be present
       expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
-    it('should call onClose when close button is clicked', () => {
+    it('closes the dialog when the close button is clicked', async () => {
+      const user = userEvent.setup()
       mockUsePipelineTemplateById.mockReturnValue({
         data: createPipelineTemplateInfo(),
       })
 
-      const { container } = render(<Details {...defaultProps} />)
-      const closeButton = container.querySelector('button[type="button"]')
-      fireEvent.click(closeButton!)
-
-      expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      renderDetails(<Details {...defaultProps} />)
+      expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
 
     it('should call onApplyTemplate when use template button is clicked', () => {
@@ -176,7 +201,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       const useButton = screen.getByText(/operations\.useTemplate/i).closest('button')
       fireEvent.click(useButton!)
 
@@ -191,8 +216,8 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
-      expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
+      renderDetails(<Details {...defaultProps} />)
+      expect(screen.getByText('📊')).toBeInTheDocument()
     })
 
     it('should handle image icon type', () => {
@@ -200,7 +225,7 @@ describe('Details', () => {
         data: createImageIconPipelineInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText('Test Pipeline')).toBeInTheDocument()
     })
 
@@ -209,7 +234,7 @@ describe('Details', () => {
         data: null,
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
 
       expect(screen.queryByText('Test Pipeline')).not.toBeInTheDocument()
     })
@@ -222,7 +247,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
 
       expect(mockUsePipelineTemplateById).toHaveBeenCalledWith(
         { template_id: 'pipeline-1', type: 'customized' },
@@ -235,7 +260,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      render(<Details {...defaultProps} type="built-in" />)
+      renderDetails(<Details {...defaultProps} type="built-in" />)
 
       expect(mockUsePipelineTemplateById).toHaveBeenCalledWith(
         { template_id: 'pipeline-1', type: 'built-in' },
@@ -251,7 +276,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo({ chunk_structure: 'text' }),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
     })
 
@@ -260,7 +285,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo({ chunk_structure: 'hierarchical' }),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
     })
 
@@ -269,7 +294,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo({ chunk_structure: 'qa' }),
       })
 
-      render(<Details {...defaultProps} />)
+      renderDetails(<Details {...defaultProps} />)
       expect(screen.getByText(/details\.structure/i)).toBeInTheDocument()
     })
   })
@@ -280,7 +305,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      const { container } = render(<Details {...defaultProps} />)
+      const { baseElement: container } = renderDetails(<Details {...defaultProps} />)
       const sidebar = container.querySelector('.w-90')
       expect(sidebar).toBeInTheDocument()
     })
@@ -290,7 +315,7 @@ describe('Details', () => {
         data: createPipelineTemplateInfo(),
       })
 
-      const { container } = render(<Details {...defaultProps} />)
+      const { baseElement: container } = renderDetails(<Details {...defaultProps} />)
       const previewContainer = container.querySelector('[class*="grow"]')
       expect(previewContainer).toBeInTheDocument()
     })

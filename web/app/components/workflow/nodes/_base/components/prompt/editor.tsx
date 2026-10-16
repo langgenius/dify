@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC, ReactNode } from 'react'
 import type { ModelConfig, Node, NodeOutPutVar, Variable } from '../../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -9,11 +10,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
@@ -132,7 +135,7 @@ const Editor: FC<Props> = ({
   }
 
   const getVarType = useWorkflowVariableType()
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   return (
@@ -181,7 +184,7 @@ const Editor: FC<Props> = ({
                     render={
                       <button
                         type="button"
-                        className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                        className="flex size-4 shrink-0 items-center justify-center rounded-sm p-px hover:bg-state-base-hover"
                       >
                         <span
                           aria-hidden
@@ -229,7 +232,7 @@ const Editor: FC<Props> = ({
                         render={
                           <button
                             type="button"
-                            className="flex h-4 w-7 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            className="flex h-4 w-7 items-center justify-center rounded-sm hover:bg-state-base-hover"
                           >
                             <span
                               aria-hidden
@@ -368,7 +371,7 @@ const Editor: FC<Props> = ({
                       }
                       return acc
                     }, {} as any),
-                    showManageInputField: !!pipelineId,
+                    showManageInputField: resourceKind === 'knowledge-pipeline',
                     onManageInputField: () => setShowInputFieldPanel?.(true),
                   }}
                   onChange={onChange}

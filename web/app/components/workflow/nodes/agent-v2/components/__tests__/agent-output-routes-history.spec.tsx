@@ -9,6 +9,11 @@ import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentOutputRoutes } from '../agent-output-routes'
 
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
+
 vi.mock('../../../_base/hooks/use-available-var-list', () => ({
   default: () => ({ availableVars: [], availableNodesWithParent: [] }),
 }))

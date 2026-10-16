@@ -10,13 +10,14 @@ import pytest
 from flask import Flask, Request
 from sqlalchemy import Connection, event, select
 from sqlalchemy.orm import Mapper, Session, SessionTransaction, sessionmaker
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
 from werkzeug.test import TestResponse
 
 import controllers.console.explore.trial as trial_module
 import controllers.console.explore.trial_app_admission as admission_module
 import controllers.console.wraps as console_wraps
 import libs.login as login_module
+from controllers.common.errors import UnauthorizedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from enums import DeploymentEdition
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
@@ -25,6 +26,7 @@ from libs.external_api import ExternalApi
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp
 from models.account import AccountStatus
 from repositories.trial_app_repository import TrialAppRepository
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.audio_types import AudioAppRef, AudioOutput, AudioUpload
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -32,6 +34,7 @@ from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
     SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
@@ -298,24 +301,31 @@ def test_missing_upload_passes_none_and_does_not_record_usage(harness: _Harness)
     assert harness.usage() is None
 
 
+def test_oversized_multipart_request_keeps_transport_error(harness: _Harness) -> None:
+    harness.app.config["MAX_CONTENT_LENGTH"] = 1
+
+    response = harness.post(_ASR)
+
+    _assert_error(response, 413, "request_entity_too_large")
+    assert harness.runtime.calls == []
+    assert harness.usage() is None
+
+
 @pytest.mark.parametrize("endpoint", [_ASR, _TTS])
 @pytest.mark.parametrize(
     ("error", "status", "code"),
     [
         (AppDefinitionUnavailableError("app removed"), 400, "app_unavailable"),
         (AppModelConfigBrokenError(), 400, "app_unavailable"),
-        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded"),
-        (AudioTooLargeServiceError("Audio size larger than 30 mb"), 413, "audio_too_large"),
-        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type"),
-        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text"),
-        (SpeechToTextDisabledServiceError(), 400, "speech_to_text_disabled"),
         (ProviderTokenNotInitError("provider key missing"), 400, "provider_not_initialize"),
         (QuotaExceededError(), 400, "provider_quota_exceeded"),
         (ModelCurrentlyNotSupportError(), 400, "model_currently_not_support"),
         (InvokeError("provider rejected audio"), 400, "completion_request_error"),
         (ValueError("Text is required"), 400, "invalid_param"),
-        (Unauthorized("session expired"), 401, "unauthorized"),
+        (UnauthorizedError("session expired"), 401, "unauthorized"),
+        (AgentVersionNotFoundError(), 404, "agent_version_not_found_error"),
         (RuntimeError("private provider failure"), 500, "internal_server_error"),
+        (Forbidden("private provider failure"), 500, "internal_server_error"),
     ],
 )
 def test_runtime_errors_keep_specific_codes_without_recording_usage(
@@ -329,6 +339,44 @@ def test_runtime_errors_keep_specific_codes_without_recording_usage(
         assert body["message"] == error.description
     elif code in {"audio_too_large", "invalid_param"}:
         assert str(error) in str(body["message"])
+    elif status == 401:
+        assert body["message"] == "session expired"
+        assert response.headers["WWW-Authenticate"] == 'Bearer realm="api"'
+    elif status == 404:
+        assert body["message"] == "Agent config version not found."
+    elif status == 500:
+        assert body["message"] == (
+            "The server encountered an internal error and was unable to complete your request. "
+            "Either the server is overloaded or there is an error in the application."
+        )
+    assert harness.usage() is None
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code"),
+    [
+        (NoAudioUploadedServiceError(), 400, "no_audio_uploaded"),
+        (AudioTooLargeServiceError("Audio size larger than 30 mb"), 413, "audio_too_large"),
+        (UnsupportedAudioTypeServiceError(), 415, "unsupported_audio_type"),
+        (ProviderNotSupportSpeechToTextServiceError(), 400, "provider_not_support_speech_to_text"),
+        (SpeechToTextDisabledServiceError(), 400, "speech_to_text_disabled"),
+    ],
+)
+def test_transcription_errors_keep_specific_codes_without_recording_usage(
+    harness: _Harness, error: Exception, status: int, code: str
+) -> None:
+    # Only transcription validates the upload and needs a speech-to-text model; synthesis documents none of these.
+    harness.runtime.error = error
+    body = _assert_error(harness.post(_ASR), status, code)
+    if code == "audio_too_large":
+        assert str(error) in str(body["message"])
+    assert harness.usage() is None
+
+
+def test_unsupported_tts_provider_has_specific_error(harness: _Harness) -> None:
+    harness.runtime.error = ProviderNotSupportTextToSpeechServiceError()
+
+    _assert_error(harness.post(_TTS), 400, "provider_not_support_text_to_speech")
     assert harness.usage() is None
 
 
@@ -374,7 +422,7 @@ def test_console_and_trial_gates_run_before_app_lookup(
 
     if gate == "login":
         assert response.status_code == 401
-        assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized."}
+        assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized.", "status": 401}
         assert response.headers["Content-Type"] == "application/json"
     else:
         _assert_error(response, status, code)

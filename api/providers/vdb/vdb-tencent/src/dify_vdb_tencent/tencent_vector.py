@@ -4,6 +4,7 @@ import math
 from typing import Any, TypedDict, override
 
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
 from tcvectordb import RPCVectorDBClient, VectorDBException  # type: ignore
 from tcvectordb.model import document, enum  # type: ignore
@@ -228,9 +229,7 @@ class TencentVector(BaseVector):
         docs = self._client.query(
             database_name=self._client_config.database, collection_name=self.collection_name, document_ids=[id]
         )
-        if docs and len(docs) > 0:
-            return True
-        return False
+        return bool(docs and len(docs) > 0)
 
     @override
     def delete_by_ids(self, ids: list[str]):
@@ -337,7 +336,9 @@ class TencentVector(BaseVector):
 
 class TencentVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TencentVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TencentVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

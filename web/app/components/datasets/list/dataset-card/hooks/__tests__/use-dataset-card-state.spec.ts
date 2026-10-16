@@ -19,9 +19,12 @@ vi.mock('@/service/base', () => ({
   sseGeneratorPost: vi.fn(),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({ mutateAsync: vi.fn() }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.exports.get': () => ({ mutateAsync: vi.fn() }),
+  })
+})
 
 const dataset = {
   id: 'dataset-1',

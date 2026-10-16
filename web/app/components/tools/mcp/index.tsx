@@ -5,21 +5,23 @@ import type { Collection } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
-import { useAllMCPTools, useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
+import { selectToolsWithProvider } from '../utils/query-select'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
 import MCPModal from './modal'
@@ -54,7 +56,12 @@ const MCPList = ({
 }: Props) => {
   const { t } = useTranslation(['common', 'tools'])
   const canManageMCP = useCanManageMCP()
-  const fallbackMCPToolsQuery = useAllMCPTools(providers === undefined)
+  const fallbackMCPToolsQuery = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: providers === undefined,
+      select: selectToolsWithProvider,
+    }),
+  )
   const list = providers ?? fallbackMCPToolsQuery.data ?? EMPTY_MCP_TOOLS
   const isLoading = isLoadingProviders ?? fallbackMCPToolsQuery.isLoading
   const refetch = onRefresh ?? fallbackMCPToolsQuery.refetch
@@ -76,8 +83,12 @@ const MCPList = ({
   const editingProvider = list.find((provider) => provider.id === editingProviderID)
   const deletingProvider = list.find((provider) => provider.id === deletingProviderID)
   const detailProvider = editingProvider || deletingProvider ? undefined : currentProvider
-  const { mutateAsync: updateMCP } = useUpdateMCP({})
-  const { mutateAsync: deleteMCP, isPending: isDeleting } = useDeleteMCP({})
+  const { mutateAsync: updateMCP } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.put.mutationOptions(),
+  )
+  const { mutateAsync: deleteMCP, isPending: isDeleting } = useMutation(
+    consoleQuery.workspaces.current.toolProvider.mcp.delete.mutationOptions(),
+  )
 
   const handleCreate = async (provider: ToolWithProvider) => {
     if (!canManageMCP) return
@@ -121,8 +132,7 @@ const MCPList = ({
     if (!canManageMCP || !editingProvider) return
 
     const res = (await updateMCP({
-      ...form,
-      provider_id: editingProvider.id,
+      body: { ...form, provider_id: editingProvider.id },
     })) as MutationResult
     if (res.result !== 'success') return
 
@@ -141,7 +151,9 @@ const MCPList = ({
   const handleDeleteConfirm = async () => {
     if (!canManageMCP || !deletingProvider) return
 
-    const res = (await deleteMCP(deletingProvider.id)) as MutationResult
+    const res = (await deleteMCP({
+      body: { provider_id: deletingProvider.id },
+    })) as MutationResult
     if (res.result !== 'success') return
 
     await refetch()
@@ -211,14 +223,14 @@ const MCPList = ({
                 {t(($) => $['mcp.deleteConfirmTitle'], { ns: 'tools', mcp: deletingProvider.name })}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton loading={isDeleting} onClick={handleDeleteConfirm}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       )}

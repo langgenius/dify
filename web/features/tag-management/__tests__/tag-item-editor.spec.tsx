@@ -136,7 +136,7 @@ describe('TagItemEditor', () => {
       expect(screen.getByRole('textbox', { name: i18n.renameTag })).toHaveValue('Frontend')
     })
 
-    it('should update tag and notify success when submitting a new name', async () => {
+    it('should update tag and leave edit mode when submitting a new name', async () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
@@ -150,10 +150,6 @@ describe('TagItemEditor', () => {
 
       await waitFor(() => {
         expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Frontend V2')
-      })
-      expect(tagMocks.record).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
       })
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })

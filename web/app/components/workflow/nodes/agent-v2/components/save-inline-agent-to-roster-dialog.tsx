@@ -1,9 +1,11 @@
 'use client'
+
 import type {
   AgentComposerAgentResponse,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { Ref } from 'react'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   AgentFormValues,
   AgentIconSelection,
@@ -21,15 +23,12 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 
 type SaveInlineAgentToRosterDialogProps = {
-  flowId: string
-  flowType: typeof FlowType.appFlow | typeof FlowType.snippet
+  resource: Extract<EditorResource, { kind: 'app' | 'snippet' }>
   initialAgent: AgentComposerAgentResponse
   nodeId: string
   open: boolean
@@ -63,7 +62,6 @@ function SaveInlineAgentToRosterFormSession({
     icon: createAgentIconSelection(initialAgent),
   }))
   const [agentIcon, setAgentIcon] = useState(initialValues.icon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   return (
     <>
@@ -84,7 +82,7 @@ function SaveInlineAgentToRosterFormSession({
           defaultValues={initialValues.fields}
           icon={agentIcon}
           iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'], { ns: 'agentRoster' })}
-          onIconClick={() => setIconPickerOpen(true)}
+          onIconChange={setAgentIcon}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -95,19 +93,12 @@ function SaveInlineAgentToRosterFormSession({
           </Button>
         </div>
       </Form>
-      <IconPickerDialog
-        open={iconPickerOpen}
-        defaultValue={agentIcon.type === 'link' ? undefined : agentIcon}
-        onOpenChange={setIconPickerOpen}
-        onConfirm={setAgentIcon}
-      />
     </>
   )
 }
 
 export function SaveInlineAgentToRosterDialog({
-  flowId,
-  flowType,
+  resource,
   initialAgent,
   nodeId,
   open,
@@ -152,11 +143,11 @@ export function SaveInlineAgentToRosterDialog({
       },
     }
 
-    if (flowType === FlowType.snippet) {
+    if (resource.kind === 'snippet') {
       snippetSaveToRosterMutation.mutate(
         {
           params: {
-            snippet_id: flowId,
+            snippet_id: resource.snippetId,
             node_id: nodeId,
           },
           body,
@@ -166,11 +157,11 @@ export function SaveInlineAgentToRosterDialog({
       return
     }
 
-    if (flowType === FlowType.appFlow) {
+    if (resource.kind === 'app') {
       appSaveToRosterMutation.mutate(
         {
           params: {
-            app_id: flowId,
+            app_id: resource.appId,
             node_id: nodeId,
           },
           body,

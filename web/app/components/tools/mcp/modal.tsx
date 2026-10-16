@@ -1,9 +1,11 @@
 'use client'
+
 import type { FC } from 'react'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -13,8 +15,12 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -33,14 +39,13 @@ type MCPModalConfirmPayload = {
   server_url: string
   icon_type: AppIconType
   icon: string
-  icon_background?: string | null
+  icon_background?: string
   server_identifier: string
   headers?: Record<string, string>
   is_dynamic_registration?: boolean
   authentication?: {
-    client_id?: string
+    client_id: string
     client_secret?: string
-    grant_type?: string
   }
   configuration: {
     timeout: number
@@ -196,33 +201,49 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
             />
           </div>
           <div className="pt-2">
-            <IconButton
-              aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
-              className="group/edit-icon size-14 rounded-2xl p-0"
-              onClick={() => actions.setShowIconPicker(true)}
-            >
-              <AppIcon
-                decorative
-                iconType={state.appIcon.type}
-                icon={state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId}
-                background={state.appIcon.type === 'emoji' ? state.appIcon.background : undefined}
-                imageUrl={state.appIcon.type === 'image' ? state.appIcon.url : undefined}
-                innerIcon={
-                  shouldUseMcpIconForAppIcon(
-                    state.appIcon.type,
-                    state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
-                  ) ? (
-                    <span
-                      aria-hidden
-                      className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
-                    />
-                  ) : undefined
+            <IconPicker value={state.appIcon} onValueChange={handleIconSelect}>
+              <IconPickerTrigger
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
+                    className="group/edit-icon relative size-14 rounded-2xl p-0"
+                  >
+                    <>
+                      {shouldUseMcpIconForAppIcon(
+                        state.appIcon.type,
+                        state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
+                      ) ? (
+                        <Avatar
+                          aria-hidden="true"
+                          className="size-14 rounded-2xl border-[0.5px] border-divider-regular"
+                        >
+                          <AvatarFallback
+                            className="text-text-primary-on-surface"
+                            style={{
+                              background:
+                                state.appIcon.type === 'emoji'
+                                  ? state.appIcon.background || '#FFEAD5'
+                                  : '#FFEAD5',
+                            }}
+                          >
+                            <span className="i-custom-vender-other-mcp size-8" />
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <IconPickerIcon size="xxl" />
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                      >
+                        <span className="i-ri-edit-line size-8 text-text-primary-on-surface" />
+                      </span>
+                    </>
+                  </IconButton>
                 }
-                size="xxl"
-                className="relative rounded-2xl"
-                showEditIcon
               />
-            </IconButton>
+              <IconPickerContent />
+            </IconPicker>
           </div>
         </div>
 
@@ -335,13 +356,6 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         </Button>
         <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
       </div>
-
-      <IconPickerDialog
-        open={state.showIconPicker}
-        defaultValue={state.appIcon}
-        onOpenChange={actions.setShowIconPicker}
-        onConfirm={handleIconSelect}
-      />
     </>
   )
 }

@@ -3,18 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { PUBLIC_API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
-import {
-  del,
-  get,
-  handleStream,
-  patch,
-  post,
-  postPublic,
-  put,
-  sseGet,
-  ssePost,
-  upload,
-} from './base'
+import { del, get, handleStream, patch, post, postPublic, sseGet, ssePost, upload } from './base'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -754,7 +743,6 @@ describe('HTTP methods', () => {
   it('should export methods correctly', () => {
     expect(typeof get).toBe('function')
     expect(typeof post).toBe('function')
-    expect(typeof put).toBe('function')
     expect(typeof patch).toBe('function')
     expect(typeof del).toBe('function')
   })

@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+from warnings import deprecated
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -21,7 +22,6 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.environment_variables import load_environment_variables
@@ -469,9 +469,7 @@ class Workflow(Base):  # bug
 
         return features
 
-    def walk_nodes(
-        self, specific_node_type: NodeType | None = None
-    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+    def walk_nodes(self, specific_node_type: NodeType | None = None) -> Generator[tuple[str, Mapping[str, Any]]]:
         """
         Walk through the workflow nodes, yield each node configuration.
 
@@ -1470,6 +1468,8 @@ class WorkflowRunArchiveBundle(DefaultFieldsDCMixin, TypeBase):
     row_count: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archive_bytes: Mapped[int] = mapped_column(sa.BigInteger, nullable=False)
     archived_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    # A non-null value is a durable deletion request, including failed requests that may be retried.
+    deletion_status: Mapped[str | None] = mapped_column(String(16), nullable=True, default=None)
 
 
 class ConversationVariable(TypeBase):

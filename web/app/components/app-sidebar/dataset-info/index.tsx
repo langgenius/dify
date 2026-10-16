@@ -3,6 +3,7 @@ import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { toChunkingMode } from '@/app/components/datasets/dataset-fields'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
@@ -23,6 +24,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
     icon_url: '',
   }
   const isExternalProvider = dataset.provider === 'external'
+  const chunkingMode = toChunkingMode(dataset.doc_form)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
   return (
@@ -38,13 +40,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
         )}
       >
         <div className="flex shrink-0 items-center">
-          <AppIcon
-            size="medium"
-            iconType={iconInfo.icon_type}
-            icon={iconInfo.icon}
-            background={iconInfo.icon_background}
-            imageUrl={iconInfo.icon_url}
-          />
+          <AppIcon size="medium" icon={iconInfo} />
         </div>
         {!expand && <span className="sr-only">{dataset.name}</span>}
         {expand && (
@@ -62,10 +58,10 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
                 {isExternalProvider && (
                   <span className="truncate">{t(($) => $.externalTag, { ns: 'dataset' })}</span>
                 )}
-                {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
+                {!!(!isExternalProvider && chunkingMode && dataset.indexing_technique) && (
                   <>
                     <span className="shrink-0 truncate">
-                      {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], {
+                      {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[chunkingMode]}`], {
                         ns: 'dataset',
                       })}
                     </span>

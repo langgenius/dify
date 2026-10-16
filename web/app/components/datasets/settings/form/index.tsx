@@ -1,17 +1,17 @@
 'use client'
+import type { DataSet } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
 import { useFormState } from './hooks/use-form-state'
 
-const Form = () => {
+const DatasetSettingsForm = ({ currentDataset }: { currentDataset: DataSet }) => {
   const { t } = useTranslation(['datasetSettings'])
   const {
-    // Context values
-    currentDataset,
     canEditSettings,
 
     // Loading state
@@ -25,9 +25,6 @@ const Form = () => {
 
     // Icon
     iconInfo,
-    showIconPicker,
-    setShowIconPicker,
-    handleOpenAppIconPicker,
     handleSelectAppIcon,
 
     // Permission
@@ -63,7 +60,7 @@ const Form = () => {
 
     // Actions
     handleSave,
-  } = useFormState()
+  } = useFormState(currentDataset)
 
   const isExternalProvider = currentDataset?.provider === 'external'
   const readonly = !canEditSettings
@@ -77,9 +74,6 @@ const Form = () => {
         description={description}
         setDescription={setDescription}
         iconInfo={iconInfo}
-        showIconPicker={showIconPicker}
-        setShowIconPicker={setShowIconPicker}
-        handleOpenAppIconPicker={handleOpenAppIconPicker}
         handleSelectAppIcon={handleSelectAppIcon}
         permission={permission}
         setPermission={setPermission}
@@ -136,6 +130,12 @@ const Form = () => {
       </div>
     </div>
   )
+}
+
+const Form = () => {
+  const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
+  if (!currentDataset) return null
+  return <DatasetSettingsForm key={currentDataset.id} currentDataset={currentDataset} />
 }
 
 export default Form

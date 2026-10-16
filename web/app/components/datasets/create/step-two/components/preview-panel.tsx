@@ -36,7 +36,7 @@ type PreviewPanelProps = {
   isSetting?: boolean
   // Picker
   pickerFiles: Array<{ id: string; name: string; extension: string }>
-  pickerValue: { id: string; name: string; extension: string }
+  pickerValue?: { id: string; name: string; extension: string }
   // Mutation state
   isIdle: boolean
   isPending: boolean
@@ -148,8 +148,8 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
             const indexForLabel = index + 1
             const childChunks =
               parentChildConfig.chunkForContext === 'full-doc'
-                ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
-                : item.child_chunks
+                ? (item.child_chunks ?? []).slice(0, FULL_DOC_PREVIEW_LENGTH)
+                : (item.child_chunks ?? [])
             return (
               <ChunkContainer
                 key={item.content}

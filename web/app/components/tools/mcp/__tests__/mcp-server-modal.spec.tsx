@@ -7,17 +7,19 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MCPServerModal from '../mcp-server-modal'
 
 // Mock the services
-vi.mock('@/service/use-tools', () => ({
-  useCreateMCPServer: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
-    isPending: false,
-  }),
-  useUpdateMCPServer: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
-    isPending: false,
-  }),
-  useInvalidateMCPServerDetail: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'apps.byAppId.server.post': () => ({
+      mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
+      isPending: false,
+    }),
+    'apps.byAppId.server.put': () => ({
+      mutateAsync: vi.fn().mockResolvedValue({ result: 'success' }),
+      isPending: false,
+    }),
+  })
+})
 
 describe('MCPServerModal', () => {
   const createWrapper = () => {

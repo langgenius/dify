@@ -118,7 +118,7 @@ class PGVectoRS(BaseVector):
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         pks = []
         with sessionmaker(bind=self._client).begin() as session:
-            for document, embedding in zip(documents, embeddings):
+            for document, embedding in zip(documents, embeddings, strict=False):
                 pk = uuid4()
                 session.execute(
                     insert(self._table).values(
@@ -217,7 +217,9 @@ class PGVectoRS(BaseVector):
 
 class PGVectoRSFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PGVectoRS:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> PGVectoRS:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

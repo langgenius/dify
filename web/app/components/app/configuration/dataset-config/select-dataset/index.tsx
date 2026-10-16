@@ -5,6 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInfiniteScroll } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -18,7 +19,7 @@ import FeatureIcon from '@/app/components/header/account-setting/model-provider-
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import Link from '@/next/link'
-import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
 type ISelectDataSetProps = {
@@ -42,9 +43,15 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets(
-    { page: 1 },
-    { enabled: isShow, staleTime: 0, refetchOnMount: 'always' },
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteQuery(
+    consoleQuery.datasets.get.infiniteOptions({
+      input: (page: number) => ({ query: { page } }),
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      initialPageParam: 1,
+      enabled: isShow,
+      staleTime: 0,
+      refetchOnMount: 'always',
+    }),
   )
   const datasets = useMemo(() => {
     const pages = data?.pages || []
@@ -154,19 +161,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 >
                   <div className="mr-1 flex grow items-center overflow-hidden">
                     <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                      <AppIcon
-                        size="tiny"
-                        iconType={item.icon_info.icon_type}
-                        icon={item.icon_info.icon}
-                        background={
-                          item.icon_info.icon_type === 'image'
-                            ? undefined
-                            : item.icon_info.icon_background
-                        }
-                        imageUrl={
-                          item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined
-                        }
-                      />
+                      <AppIcon size="tiny" icon={item.icon_info} />
                     </div>
                     <div
                       className={cn(

@@ -1,21 +1,20 @@
 import type { ToolNodeType } from '../types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { InputVar } from '@/app/components/workflow/types'
+import { useQueryClient } from '@tanstack/react-query'
 import { capitalize } from 'es-toolkit/string'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { toast } from '@/app/notifications'
 import { updateBuiltInToolCredential } from '@/service/tools'
-import { useInvalidToolsByType } from '@/service/use-tools'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { isToolAuthorizationRequired } from '../auth'
 import { normalizeJsonSchemaType } from '../output-schema-utils'
@@ -29,7 +28,6 @@ const formatDisplayType = (output: Record<string, unknown>): string => {
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { t } = useTranslation(['common'])
 
   const language = useLanguage()
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ToolNodeType>(id, payload)
@@ -45,16 +43,16 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const isShowAuthBtn = isToolAuthorizationRequired(provider_type, currCollection)
   const [showSetAuth, setShowSetAuth] = useState(false)
 
-  const invalidToolsByType = useInvalidToolsByType(provider_type)
+  const queryClient = useQueryClient()
   const handleSaveAuth = useCallback(
     async (value: any) => {
       await updateBuiltInToolCredential(currCollection?.name as string, value)
 
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      invalidToolsByType()
+      const toolListQueryKey = getToolListQueryKey(provider_type)
+      if (toolListQueryKey) queryClient.invalidateQueries({ queryKey: toolListQueryKey })
       setShowSetAuth(false)
     },
-    [currCollection?.name, t, invalidToolsByType],
+    [currCollection?.name, provider_type, queryClient],
   )
 
   const currTool = useMemo(() => {

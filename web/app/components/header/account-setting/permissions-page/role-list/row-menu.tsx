@@ -2,11 +2,11 @@
 import type { Role, RoleCategory } from '@/models/access-control'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -17,15 +17,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import {
-  useCopyWorkspaceRole,
-  useDeleteWorkspaceRole,
-} from '@/service/access-control/use-workspace-roles'
+import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { CopyMembersConfirmDialog } from './copy-members-confirm-dialog'
 
@@ -38,7 +35,6 @@ type RowMenuProps = {
 
 const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
   const { t } = useTranslation(['common', 'permission'])
-  const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCopyMembersConfirm, setShowCopyMembersConfirm] = useState(false)
 
@@ -53,13 +49,14 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     onEdit?.(role)
   }, [canManageRoles, onEdit, role])
 
-  const { mutate: copyRole, isPending: isCopyingRole } = useCopyWorkspaceRole()
+  const { mutate: copyRole, isPending: isCopyingRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.copy.post.mutationOptions(),
+  )
 
   const openCopyMembersConfirm = useCallback(() => {
     if (!canManageRoles) return
 
     setShowCopyMembersConfirm(true)
-    setOpen(false)
   }, [canManageRoles])
 
   const handleDuplicate = useCallback(
@@ -67,40 +64,39 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
       if (!canManageRoles) return
 
       copyRole(
-        {
-          roleId: role.id,
-          copy_member: copyMember,
-        },
+        { params: { role_id: role.id }, body: { copy_member: copyMember } },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['role.duplicated'], { ns: 'permission' }))
             setShowCopyMembersConfirm(false)
           },
         },
       )
     },
-    [canManageRoles, copyRole, role.id, t],
+    [canManageRoles, copyRole, role.id],
   )
 
-  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
+  const { mutateAsync: deleteRole, isPending: isDeletingRole } = useMutation(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.delete.mutationOptions(),
+  )
 
   const openDeleteConfirm = useCallback(() => {
     if (!canManageRoles) return
 
     setShowDeleteConfirm(true)
-    setOpen(false)
   }, [canManageRoles])
 
   const handleDelete = useCallback(() => {
     if (!canManageRoles) return
 
-    deleteRole(role.id, {
-      onSuccess: () => {
-        toast.success(t(($) => $['role.deleted'], { ns: 'permission' }))
-        setShowDeleteConfirm(false)
+    deleteRole(
+      { params: { role_id: role.id } },
+      {
+        onSuccess: () => {
+          setShowDeleteConfirm(false)
+        },
       },
-    })
-  }, [canManageRoles, deleteRole, role.id, t])
+    )
+  }, [canManageRoles, deleteRole, role.id])
 
   const hasViewAction = roleCategory === 'global_system_default'
   const hasEditAction = roleCategory === 'global_custom'
@@ -108,7 +104,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
@@ -173,14 +169,14 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
               {t(($) => $['role.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={isDeletingRole} onClick={handleDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {showCopyMembersConfirm && (

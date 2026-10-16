@@ -53,4 +53,21 @@ describe('BatchAction', () => {
     })
     expect(onBatchDelete).not.toHaveBeenCalled()
   })
+
+  it('should keep the delete confirmation open when batch delete fails', async () => {
+    const onBatchDelete = vi.fn().mockRejectedValue(new Error('failed'))
+    render(<BatchAction {...baseProps} onBatchDelete={onBatchDelete} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => {
+      expect(onBatchDelete).toHaveBeenCalledTimes(1)
+    })
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
+    })
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  })
 })

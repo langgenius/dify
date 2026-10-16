@@ -1,11 +1,11 @@
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -102,14 +102,7 @@ const HeaderInMobile = () => {
           <div className="flex grow items-center justify-center">
             {!currentConversationId && (
               <>
-                <AppIcon
-                  className="mr-2"
-                  size="tiny"
-                  icon={appData?.site.icon}
-                  iconType={appData?.site.icon_type}
-                  imageUrl={appData?.site.icon_url}
-                  background={appData?.site.icon_background}
-                />
+                <AppIcon className="mr-2" size="tiny" icon={appData?.site} />
                 <div className="truncate system-md-semibold text-text-secondary">
                   {appData?.site.title}
                 </div>
@@ -195,14 +188,14 @@ const HeaderInMobile = () => {
               {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {showRename && (

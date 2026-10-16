@@ -12,6 +12,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { createHttpError } from '@/service/http-error'
 import { seedFeatures } from '@/test/console/query-data'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
@@ -97,10 +98,6 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: mocks.fileUploadConfig }),
-}))
-
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   API_PREFIX: 'http://localhost:5001/console/api',
@@ -114,62 +111,24 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  consoleQuery: {
-    features: (await importOriginal<typeof import('@/service/console')>()).consoleQuery.features,
-    tags: {
-      get: {
-        queryOptions: mocks.workspaceSkillTagsQueryOptions,
-      },
-    },
-    agent: {
-      byAgentId: {
-        composer: {
-          get: {
-            key: vi.fn((_options: unknown): unknown[] => ['agent-composer']),
-          },
-        },
-        config: {
-          skills: {
-            upload: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
-              },
-            },
-            byName: {
-              delete: {
-                mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
-              },
-              download: {
-                get: {
-                  queryOptions: mocks.skillDownloadQueryOptions,
-                },
-              },
-              inspect: {
-                get: {
-                  queryOptions: mocks.inspectQueryOptions,
-                },
-              },
-              files: {
-                preview: {
-                  get: {
-                    queryOptions: mocks.previewQueryOptions,
-                  },
-                },
-                download: {
-                  get: {
-                    queryOptions: mocks.downloadQueryOptions,
-                  },
-                },
-              },
-            },
-          },
+vi.mock('@/service/console', async (importOriginal) => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      files: { upload: { get: consoleOperationStub('files.upload.get') } },
+      features: (await importOriginal<typeof import('@/service/console')>()).consoleQuery.features,
+      tags: {
+        get: {
+          queryOptions: mocks.workspaceSkillTagsQueryOptions,
         },
       },
-    },
-    apps: {
-      byAppId: {
-        agent: {
+      agent: {
+        byAgentId: {
+          composer: {
+            get: {
+              key: vi.fn((_options: unknown): unknown[] => ['agent-composer']),
+            },
+          },
           config: {
             skills: {
               upload: {
@@ -208,52 +167,94 @@ vi.mock('@/service/console', async (importOriginal) => ({
           },
         },
       },
-    },
-    trialApps: {
-      byAppId: {
-        agent: {
-          config: {
-            skills: {
-              byName: {
-                download: { get: { queryOptions: mocks.skillDownloadQueryOptions } },
-                inspect: { get: { queryOptions: mocks.inspectQueryOptions } },
-                files: {
-                  preview: { get: { queryOptions: mocks.previewQueryOptions } },
-                  download: { get: { queryOptions: mocks.downloadQueryOptions } },
+      apps: {
+        byAppId: {
+          agent: {
+            config: {
+              skills: {
+                upload: {
+                  post: {
+                    mutationOptions: () => ({ mutationFn: mocks.uploadSkillMutationFn }),
+                  },
+                },
+                byName: {
+                  delete: {
+                    mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                  },
+                  download: {
+                    get: {
+                      queryOptions: mocks.skillDownloadQueryOptions,
+                    },
+                  },
+                  inspect: {
+                    get: {
+                      queryOptions: mocks.inspectQueryOptions,
+                    },
+                  },
+                  files: {
+                    preview: {
+                      get: {
+                        queryOptions: mocks.previewQueryOptions,
+                      },
+                    },
+                    download: {
+                      get: {
+                        queryOptions: mocks.downloadQueryOptions,
+                      },
+                    },
+                  },
                 },
               },
             },
           },
         },
       },
-    },
-    workspaces: {
-      current: {
-        agents: {
-          byAgentId: {
-            skills: {
-              get: {
-                key: mocks.agentSkillBindingsKey,
-                queryOptions: mocks.agentSkillBindingsQueryOptions,
-              },
-              put: {
-                mutationOptions: () => ({
-                  mutationFn: mocks.replaceAgentSkillBindingsMutationFn,
-                }),
+      trialApps: {
+        byAppId: {
+          agent: {
+            config: {
+              skills: {
+                byName: {
+                  download: { get: { queryOptions: mocks.skillDownloadQueryOptions } },
+                  inspect: { get: { queryOptions: mocks.inspectQueryOptions } },
+                  files: {
+                    preview: { get: { queryOptions: mocks.previewQueryOptions } },
+                    download: { get: { queryOptions: mocks.downloadQueryOptions } },
+                  },
+                },
               },
             },
           },
         },
-        skills: {
-          get: {
-            queryOptions: mocks.workspaceSkillsQueryOptions,
-            infiniteOptions: mocks.workspaceSkillsInfiniteOptions,
+      },
+      workspaces: {
+        current: {
+          agents: {
+            byAgentId: {
+              skills: {
+                get: {
+                  key: mocks.agentSkillBindingsKey,
+                  queryOptions: mocks.agentSkillBindingsQueryOptions,
+                },
+                put: {
+                  mutationOptions: () => ({
+                    mutationFn: mocks.replaceAgentSkillBindingsMutationFn,
+                  }),
+                },
+              },
+            },
+          },
+          skills: {
+            get: {
+              queryOptions: mocks.workspaceSkillsQueryOptions,
+              infiniteOptions: mocks.workspaceSkillsInfiniteOptions,
+            },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 async function openUploadSkillDialog(user: ReturnType<typeof userEvent.setup>) {
   await user.click(
@@ -368,6 +369,13 @@ function renderAgentSkills({
     queryClient,
   }
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({ data: mocks.fileUploadConfig }),
+  })
+})
 
 describe('AgentSkills', () => {
   beforeEach(() => {
@@ -585,7 +593,6 @@ describe('AgentSkills', () => {
         name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
       }),
     )
-    expect(embeddedBadge).toHaveClass('opacity-0')
 
     const deleteAction = screen.getByText('common.operation.delete')
     fireEvent.mouseEnter(deleteAction.closest('[data-agent-skill-remove-button]')!)
@@ -908,9 +915,9 @@ describe('AgentSkills', () => {
 
   it('explains when an agent has reached the library skill limit', async () => {
     const user = userEvent.setup()
-    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce({
-      code: 'too_many_agent_skills',
-    })
+    mocks.replaceAgentSkillBindingsMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { code: 'too_many_agent_skills' }),
+    )
     mocks.workspaceSkillsInfiniteOptions.mockImplementation((options) => {
       const { input, getNextPageParam, initialPageParam } = options as {
         input: (pageParam: number) => { query?: { limit?: number } }
@@ -1307,7 +1314,6 @@ describe('AgentSkills', () => {
         name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Refund approval"}',
       }),
     )
-    expect(screen.getByText('refund-approval')).toHaveClass('opacity-0')
 
     const removeAction = await screen.findByText(
       'agentV2.agentDetail.configure.skills.removeAction',

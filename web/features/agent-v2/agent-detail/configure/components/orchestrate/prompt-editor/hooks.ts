@@ -2,18 +2,15 @@
 
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { API_PREFIX } from '@/config'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import useTheme from '@/hooks/use-theme'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 import {
@@ -50,16 +47,31 @@ export function useAgentPromptToolIconResolver(
 ) {
   const { theme } = useTheme()
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const { data: builtInTools } = useAllBuiltInTools(
-    !providerTypes || providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+  const { data: builtInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled:
+        !providerTypes || providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+      select: selectToolsWithProvider,
+    }),
   )
-  const { data: customTools } = useAllCustomTools(
-    !providerTypes || providerTypes.has(CollectionType.custom),
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: !providerTypes || providerTypes.has(CollectionType.custom),
+      select: selectToolsWithProvider,
+    }),
   )
-  const { data: workflowTools } = useAllWorkflowTools(
-    !providerTypes || providerTypes.has(CollectionType.workflow),
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: !providerTypes || providerTypes.has(CollectionType.workflow),
+      select: selectToolsWithProvider,
+    }),
   )
-  const { data: mcpTools } = useAllMCPTools(!providerTypes || providerTypes.has(CollectionType.mcp))
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: !providerTypes || providerTypes.has(CollectionType.mcp),
+      select: selectToolsWithProvider,
+    }),
+  )
 
   const providerById = useMemo(
     () =>

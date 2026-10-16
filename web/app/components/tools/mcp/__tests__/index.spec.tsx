@@ -23,23 +23,26 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['mcp.manage'] as string[],
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllMCPTools: (enabled?: boolean) => {
-    mockUseAllMCPTools(enabled)
-    return {
-      data: mockProviders,
-      isLoading: mockIsLoadingToolProviders,
-      refetch: mockRefetch,
-    }
-  },
-  useUpdateMCP: () => ({
-    mutateAsync: mockUpdateMCP,
-  }),
-  useDeleteMCP: () => ({
-    mutateAsync: mockDeleteMCP,
-    isPending: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.mcp.get': ({ enabled }: { enabled?: boolean }) => {
+      mockUseAllMCPTools(enabled)
+      return {
+        data: mockProviders,
+        isLoading: mockIsLoadingToolProviders,
+        refetch: mockRefetch,
+      }
+    },
+    'workspaces.current.toolProvider.mcp.put': () => ({
+      mutateAsync: mockUpdateMCP,
+    }),
+    'workspaces.current.toolProvider.mcp.delete': () => ({
+      mutateAsync: mockDeleteMCP,
+      isPending: false,
+    }),
+  })
+})
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -475,9 +478,11 @@ describe('MCPList', () => {
       })
 
       expect(mockUpdateMCP).toHaveBeenCalledWith({
-        name: 'Updated MCP',
-        server_url: 'https://updated.com',
-        provider_id: '1',
+        body: {
+          name: 'Updated MCP',
+          server_url: 'https://updated.com',
+          provider_id: '1',
+        },
       })
       expect(mockRefetch).toHaveBeenCalled()
       expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
@@ -528,7 +533,7 @@ describe('MCPList', () => {
         await Promise.resolve()
       })
 
-      expect(mockDeleteMCP).toHaveBeenCalledWith('1')
+      expect(mockDeleteMCP).toHaveBeenCalledWith({ body: { provider_id: '1' } })
       expect(mockRefetch).toHaveBeenCalled()
       expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
     })

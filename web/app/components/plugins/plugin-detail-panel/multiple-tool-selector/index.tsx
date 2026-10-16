@@ -6,12 +6,14 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
-import { useAllMCPTools } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -46,7 +48,9 @@ const MultipleToolSelector = ({
 
   const { t } = useTranslation(['appDebug', 'plugin'])
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const addToolButtonRef = React.useRef<HTMLButtonElement>(null)
   const toolItemTriggerByKeyRef = useRefWithInit(() => new Map<string, HTMLButtonElement>())
   const pendingFocusTargetRef = React.useRef<{ toolKey?: string } | null>(null)
@@ -132,7 +136,7 @@ const MultipleToolSelector = ({
           {supportCollapse ? (
             <CollapsibleTrigger
               aria-label={label}
-              className="group/collapse flex h-6 min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0.5 rounded-lg bg-transparent system-sm-medium text-text-secondary outline-hidden select-none hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary"
+              className="group/collapse flex h-6 min-h-0 min-w-0 touch-manipulation items-center justify-start gap-0.5 rounded-lg bg-transparent system-sm-medium text-text-secondary select-none hover:text-text-primary data-panel-open:text-text-primary"
             >
               <span
                 id={titleId}
