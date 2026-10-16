@@ -44,6 +44,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.dataset import Dataset
 from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, IconType, Message
 from services.knowledge.external.service import ExternalDatasetService
 from tests.unit_tests.core.model_fixtures import make_model_config
@@ -210,7 +211,7 @@ def _message() -> Message:
         id="msg",
         app_id=APP_ID,
         conversation_id="conv",
-        inputs={},
+        _inputs={},
         query="query",
         message={},
         message_unit_price=Decimal(0),
@@ -218,7 +219,7 @@ def _message() -> Message:
         answer_unit_price=Decimal(0),
         total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.SERVICE_API,
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_account_id="user",
         app_mode=AppMode.COMPLETION,
@@ -242,8 +243,8 @@ def _persist_records(session: Session) -> tuple[App, Message]:
         app_id=APP_ID,
         mode=AppMode.COMPLETION,
         name="Conversation",
-        inputs={},
-        invoke_from=InvokeFrom.SERVICE_API,
+        _inputs={},
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_account_id="user",
     )

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
 from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, InstalledApp, Message
 from models.web import PinnedConversation
 from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
@@ -55,38 +56,37 @@ def _conversation(
         app_id=installation.app_id,
         mode=AppMode.CHAT,
         name="Original name",
-        inputs={"empty": "", "list": [], "zero": 0, "flag": False, "none": None},
+        _inputs={"empty": "", "list": [], "zero": 0, "flag": False, "none": None},
         introduction=None,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=_ACCOUNT_ID,
         from_end_user_id=None,
-        created_at=_TIME - timedelta(days=1),
-        updated_at=updated_at,
-        invoke_from=invoke_from,
+        invoke_from=ModelInvokeFrom(invoke_from) if invoke_from is not None else None,
         is_deleted=False,
     )
+    conversation.created_at = _TIME - timedelta(days=1)
+    conversation.updated_at = updated_at
     session.add(conversation)
     session.flush()
     return conversation
 
 
 def _message(session: Session, conversation: Conversation, *, query: str, created_at: datetime) -> None:
-    session.add(
-        Message(
-            app_id=conversation.app_id,
-            conversation_id=conversation.id,
-            inputs={},
-            query=query,
-            message={},
-            message_unit_price=Decimal(0),
-            answer="",
-            answer_unit_price=Decimal(0),
-            currency="USD",
-            from_source=ConversationFromSource.CONSOLE,
-            from_account_id=_ACCOUNT_ID,
-            created_at=created_at,
-        )
+    created_message = Message(
+        app_id=conversation.app_id,
+        conversation_id=conversation.id,
+        _inputs={},
+        query=query,
+        message={},
+        message_unit_price=Decimal(0),
+        answer="",
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.CONSOLE,
+        from_account_id=_ACCOUNT_ID,
     )
+    created_message.created_at = created_at
+    session.add(created_message)
 
 
 def _pin(

@@ -46,7 +46,9 @@ def persist_app(session: Session, **changes: object) -> App:
         "updated_by": ACTOR,
     }
     values.update(changes)
-    app = App(**values)
+    app = App()
+    for key, value in values.items():
+        setattr(app, key, value)
     session.add(app)
     session.commit()
     return app

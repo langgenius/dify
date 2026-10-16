@@ -189,10 +189,10 @@ def test_message_list_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlit
                 ],
             }
         ),
-        created_at=created_at,
         status="normal",
         error=None,
     )
+    message.created_at = created_at
     message.set_extra_contents(
         [
             HumanInputContent(

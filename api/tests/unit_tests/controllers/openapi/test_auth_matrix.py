@@ -1577,7 +1577,7 @@ def world(sqlite_session_factory: sessionmaker[Session], token_rows: dict[str, R
             tenant_id=built.workspace_id,
             name="matrix app",
             description="",
-            mode="workflow",
+            mode=AppMode.WORKFLOW,
             enable_site=False,
             enable_api=enable_api,
         )
@@ -1693,7 +1693,7 @@ def _end_user(_type: EndUserType, tenant_id: str, app_id: str, user_id: str | No
         tenant_id=tenant_id,
         app_id=app_id,
         type=EndUserType.OPENAPI,
-        is_anonymous=False,
+        _is_anonymous=False,
         session_id=user_id or "",
     )
     row.external_user_id = user_id

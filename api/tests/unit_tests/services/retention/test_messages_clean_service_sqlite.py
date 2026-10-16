@@ -4,6 +4,7 @@ import datetime
 import math
 import uuid
 from collections.abc import Iterator
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import TypedDict
 
@@ -15,7 +16,10 @@ from models import Tenant
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import (
     App,
+    AppMode,
     Conversation,
+    ConversationFromSource,
+    ConversationStatus,
     Message,
     MessageAnnotation,
     MessageFeedback,
@@ -73,7 +77,7 @@ def tenant_and_app() -> Iterator[TenantAndApp]:
         app = App(
             tenant_id=tenant.id,
             name="Retention IT App",
-            mode="chat",
+            mode=AppMode.CHAT,
             enable_site=True,
             enable_api=True,
         )
@@ -82,10 +86,10 @@ def tenant_and_app() -> Iterator[TenantAndApp]:
 
         conv = Conversation(
             app_id=app.id,
-            mode="chat",
+            mode=AppMode.CHAT,
             name="test_conv",
-            status="normal",
-            from_source="console",
+            status=ConversationStatus.NORMAL,
+            from_source=ConversationFromSource.CONSOLE,
             _inputs={},
         )
         session.add(conv)
@@ -105,21 +109,22 @@ def tenant_and_app() -> Iterator[TenantAndApp]:
 
 
 def _make_message(app_id: str, conversation_id: str, created_at: datetime.datetime) -> Message:
-    return Message(
+    message = Message(
         app_id=app_id,
         conversation_id=conversation_id,
         query="test",
         message=[{"text": "hello"}],
         answer="world",
         message_tokens=1,
-        message_unit_price=0,
+        message_unit_price=Decimal(0),
         answer_tokens=1,
-        answer_unit_price=0,
-        from_source="console",
+        answer_unit_price=Decimal(0),
+        from_source=ConversationFromSource.CONSOLE,
         currency="USD",
         _inputs={},
-        created_at=created_at,
     )
+    message.created_at = created_at
+    return message
 
 
 class TestMessagesCleanServiceIntegration:

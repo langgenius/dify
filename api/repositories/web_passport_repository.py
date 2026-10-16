@@ -135,7 +135,7 @@ class WebPassportRepository:
             tenant_id=app.tenant_id,
             app_id=app.app_id,
             type=EndUserType.BROWSER,
-            is_anonymous=True,
+            _is_anonymous=True,
             session_id=session_id,
         )
         session.add(end_user)

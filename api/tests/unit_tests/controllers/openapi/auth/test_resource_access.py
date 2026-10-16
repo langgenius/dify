@@ -21,7 +21,7 @@ from extensions.application_services.app import AppServices
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantStatus
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import App, AppMode, AppStar, EndUser
 from models.resource_access_token import (
     ResourceAccessToken,
@@ -85,7 +85,7 @@ def resource_fixture(
         ),
     ):
         end_user = end_user.return_value.app_scoped_end_users.commands.get_or_create_end_user_by_type
-        end_user.return_value = EndUser(id="machine-user", tenant_id=tenant.id, app_id=app.id, type="openapi")
+        end_user.return_value = EndUser(id="machine-user", tenant_id=tenant.id, app_id=app.id, type=EndUserType.OPENAPI)
         yield flask_app, app.id, token.id, tenant.id, end_user
 
 
