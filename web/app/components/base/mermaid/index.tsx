@@ -272,8 +272,8 @@ const Flowchart = (props: FlowchartProps) => {
         // Step 4: Clean up SVG code
         const cleanedSvg = cleanUpSvgCode(processedSvg)
 
-        diagramCache.set(cacheKey, cleanedSvg as string)
-        setSvgString(cleanedSvg as string)
+        diagramCache.set(cacheKey, cleanedSvg)
+        setSvgString(cleanedSvg)
 
         setIsLoading(false)
       } catch (error) {
@@ -328,7 +328,7 @@ const Flowchart = (props: FlowchartProps) => {
               curve: 'linear',
               ranker: 'tight-tree',
             }
-            config.flowchart = flowchartConfig as unknown as MermaidConfig['flowchart']
+            config.flowchart = flowchartConfig
           }
 
           if (currentTheme === 'dark') {

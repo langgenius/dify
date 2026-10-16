@@ -94,7 +94,7 @@ describe('navigateAfterWebAppLogin', () => {
     vi.stubGlobal('location', {
       ...window.location,
       replace: locationReplace,
-    } as unknown as Location)
+    } as Location)
   })
 
   afterEach(() => {

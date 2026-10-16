@@ -10,7 +10,7 @@ describe('replaceLoginRedirect', () => {
     vi.stubGlobal('location', {
       ...window.location,
       replace: locationReplace,
-    } as unknown as Location)
+    } as Location)
   })
 
   afterEach(() => {

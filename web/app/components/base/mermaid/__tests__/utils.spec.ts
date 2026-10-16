@@ -138,7 +138,7 @@ describe('svgToBase64', () => {
               throw new Error('Encoder fail')
             },
             encodeInto: () => ({ read: 0, written: 0 }),
-          }) as unknown as TextEncoder,
+          }) as TextEncoder,
       )
 
       const result = await svgToBase64('<svg>fail</svg>')

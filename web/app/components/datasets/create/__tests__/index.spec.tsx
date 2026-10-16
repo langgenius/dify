@@ -23,8 +23,8 @@ type StepThreeTestProps = ComponentProps<typeof StepThreeComponent>
 // IndexingType values from step-two (defined here since we mock step-two)
 // Using type assertion to match the expected IndexingType enum from step-two
 const IndexingTypeValues = {
-  QUALIFIED: 'high_quality' as unknown as DataSet['indexing_technique'],
-  ECONOMICAL: 'economy' as unknown as DataSet['indexing_technique'],
+  QUALIFIED: 'high_quality' as DataSet['indexing_technique'],
+  ECONOMICAL: 'economy' as DataSet['indexing_technique'],
 }
 
 // Mock next/link

@@ -672,7 +672,7 @@ describe('ModelLoadBalancingModal', () => {
         onSave={onSave}
         onClose={onClose}
         credential={
-          { credential_id: 'cred-1', credential_name: 'Default' } as unknown as Parameters<
+          { credential_id: 'cred-1', credential_name: 'Default' } as Parameters<
             typeof ModelLoadBalancingModal
           >[0]['credential']
         }

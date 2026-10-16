@@ -89,7 +89,7 @@ const defaultHookReturn: HookReturn = {
   conversationList: [],
   setShowNewConversationItemInList: vi.fn(),
   newConversationInputs: {},
-  newConversationInputsRef: { current: {} } as unknown as RefObject<Record<string, unknown>>,
+  newConversationInputsRef: { current: {} } as RefObject<Record<string, unknown>>,
   handleNewConversationInputsChange: vi.fn(),
   inputsForms: [],
   handleNewConversation: vi.fn(),

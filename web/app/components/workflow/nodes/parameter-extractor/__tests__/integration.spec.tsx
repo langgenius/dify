@@ -305,7 +305,7 @@ describe('parameter-extractor path', () => {
       currentModel: undefined,
       textGenerationModelList: [],
       activeTextGenerationModelList: [],
-    } as unknown as ReturnType<typeof useTextGenerationCurrentProviderAndModelAndModelList>)
+    } as ReturnType<typeof useTextGenerationCurrentProviderAndModelAndModelList>)
     mockUseConfig.mockReturnValue(createConfigResult())
   })
 

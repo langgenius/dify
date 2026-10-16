@@ -162,8 +162,8 @@ describe('CodeBlock', () => {
     const windowWithLegacyAudio = window as WindowWithLegacyAudio
     originalAudioContext = windowWithLegacyAudio.AudioContext
     originalWebkitAudioContext = windowWithLegacyAudio.webkitAudioContext
-    windowWithLegacyAudio.AudioContext = MockAudioContext as unknown as AudioContextCtor
-    windowWithLegacyAudio.webkitAudioContext = MockAudioContext as unknown as AudioContextCtor
+    windowWithLegacyAudio.AudioContext = MockAudioContext
+    windowWithLegacyAudio.webkitAudioContext = MockAudioContext
     delete windowWithLegacyAudio.abcjsAudioContext
   })
 
@@ -370,7 +370,7 @@ describe('CodeBlock', () => {
     it('should stop processing extra finished events when chart finished callback fires repeatedly', async () => {
       render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
       const chart = await findEchartsInstance()
-      const chartWithTrigger = chart as unknown as {
+      const chartWithTrigger = chart as {
         trigger?: (eventName: string, event?: unknown) => void
       }
 
@@ -399,7 +399,7 @@ describe('CodeBlock', () => {
 
     it('should parse array JSON after previously incomplete streaming content', async () => {
       const parseSpy = vi.spyOn(JSON, 'parse')
-      parseSpy.mockImplementationOnce(() => ({ series: [] }) as unknown as object)
+      parseSpy.mockImplementationOnce(() => ({ series: [] }) as object)
       const { rerender } = render(<CodeBlock className="language-echarts">[1, 2</CodeBlock>)
       expect(screen.getByText(/Chart loading.../i))!.toBeInTheDocument()
 
@@ -411,7 +411,7 @@ describe('CodeBlock', () => {
 
     it('should parse non-structured streaming content when JSON.parse fallback succeeds', async () => {
       const parseSpy = vi.spyOn(JSON, 'parse')
-      parseSpy.mockImplementationOnce(() => ({ recovered: true }) as unknown as object)
+      parseSpy.mockImplementationOnce(() => ({ recovered: true }) as object)
 
       render(<CodeBlock className="language-echarts">abcde</CodeBlock>)
 

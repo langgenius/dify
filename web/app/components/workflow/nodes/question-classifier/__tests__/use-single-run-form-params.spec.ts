@@ -58,7 +58,7 @@ describe('question-classifier/use-single-run-form-params', () => {
     mockUseNodeCrud.mockReturnValue({
       inputs: createData(),
       setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
+    } as ReturnType<typeof useNodeCrud>)
     mockUseConfigVision.mockReturnValue({
       isVisionModel: true,
     } as ReturnType<typeof useConfigVision>)

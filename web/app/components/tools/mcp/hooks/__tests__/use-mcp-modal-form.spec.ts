@@ -469,7 +469,7 @@ describe('useMCPModalForm', () => {
           size: 1024,
           mime_type: 'image/png',
           url: 'https://example.com/files/file456/file-preview/icon2.png',
-        } as unknown as { id: string; name: string; size: number; mime_type: string; url: string })
+        } as { id: string; name: string; size: number; mime_type: string; url: string })
       })
 
       const { result } = renderHook(() => useMCPModalForm())
@@ -509,7 +509,7 @@ describe('useMCPModalForm', () => {
         size: 1024,
         mime_type: 'image/png',
         url: 'https://example.com/files/file123/file-preview/icon.png',
-      } as unknown as { id: string; name: string; size: number; mime_type: string; url: string })
+      } as { id: string; name: string; size: number; mime_type: string; url: string })
 
       const { result } = renderHook(() => useMCPModalForm())
 

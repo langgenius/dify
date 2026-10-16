@@ -696,7 +696,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 12
+      "count": 10
     }
   },
   "web/app/components/base/chat/chat/question.tsx": {
@@ -2177,7 +2177,7 @@
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
@@ -2451,12 +2451,7 @@
   },
   "web/app/components/workflow/hooks/use-dynamic-test-run-options.tsx": {
     "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "web/app/components/workflow/hooks/use-helpline.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
+      "count": 2
     }
   },
   "web/app/components/workflow/hooks/use-serial-async-callback.ts": {
@@ -2679,7 +2674,7 @@
   },
   "web/app/components/workflow/nodes/_base/components/variable/utils.ts": {
     "typescript/no-explicit-any": {
-      "count": 31
+      "count": 29
     }
   },
   "web/app/components/workflow/nodes/_base/components/variable/var-reference-picker.trigger.tsx": {
@@ -3258,7 +3253,7 @@
   },
   "web/app/components/workflow/nodes/trigger-plugin/default.ts": {
     "typescript/no-explicit-any": {
-      "count": 10
+      "count": 9
     }
   },
   "web/app/components/workflow/nodes/trigger-plugin/node.tsx": {
@@ -3283,7 +3278,7 @@
   },
   "web/app/components/workflow/nodes/trigger-schedule/__tests__/panel.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "web/app/components/workflow/nodes/trigger-schedule/components/__tests__/integration.spec.tsx": {
@@ -3499,7 +3494,7 @@
       "count": 2
     },
     "typescript/no-explicit-any": {
-      "count": 8
+      "count": 7
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/user-input.tsx": {

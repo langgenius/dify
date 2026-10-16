@@ -889,7 +889,7 @@ describe('Form', () => {
         {
           ...createBaseSchema(FormTypeEnum.textInput, { variable: 'no_ph' }),
           label: createI18n('No Placeholder'),
-        } as unknown as CredentialFormSchemaTextInput,
+        } as CredentialFormSchemaTextInput,
       ]
       const value: FormValue = { no_ph: '' }
 
@@ -1255,7 +1255,7 @@ describe('Form', () => {
           tooltip: createI18n('Agree tooltip'),
           options: [],
           show_on: [],
-        } as unknown as AnyFormSchema,
+        } as AnyFormSchema,
       ]
       const value: FormValue = { api_key: '', region: 'a', model: 'a', agree: false }
 
@@ -1299,7 +1299,7 @@ describe('Form', () => {
           required: true,
           options: [],
           show_on: [],
-        } as unknown as AnyFormSchema,
+        } as AnyFormSchema,
         createTextSchema({
           variable: 'model_sel',
           type: FormTypeEnum.modelSelector,
@@ -1462,7 +1462,7 @@ describe('Form', () => {
           label: createI18n('Check'),
           options: [],
           show_on: [],
-        } as unknown as AnyFormSchema,
+        } as AnyFormSchema,
       ]
       const value: FormValue = { check: false }
 
@@ -1508,7 +1508,7 @@ describe('Form', () => {
           label: createPartialI18n('Agree Fallback'),
           options: [],
           show_on: [],
-        } as unknown as AnyFormSchema,
+        } as AnyFormSchema,
       ]
       const value: FormValue = { api_key: '', region: 'a', model: 'a', agree: false }
 
@@ -1612,7 +1612,7 @@ describe('Form', () => {
             placeholder: createI18n('Placeholder'),
           }),
           default: 'default-text',
-        } as unknown as AnyFormSchema,
+        } as AnyFormSchema,
       ]
       const value: FormValue = { with_val: 'actual-value' }
 
@@ -1928,7 +1928,7 @@ describe('Form', () => {
           ...createBaseSchema(FormTypeEnum.boolean, { variable: 'bool_field' }),
           label: createI18n('Boolean Field'),
           show_on: [],
-        } as unknown as AnyFormSchema,
+        } as AnyFormSchema,
       ]
       const value: FormValue = { bool_field: false }
       const customRenderField = vi.fn()

@@ -201,7 +201,7 @@ const defaultOptions = {
 describe('useSegmentListData', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockDocForm.current = ChunkingModeEnum.text as ChunkingMode
+    mockDocForm.current = ChunkingModeEnum.text
     mockParentMode.current = 'paragraph'
     mockDatasetId.current = 'test-dataset-id'
     mockDocumentId.current = 'test-document-id'
@@ -956,7 +956,7 @@ describe('useSegmentListData', () => {
 
   describe('QA Mode validation', () => {
     it('should set content and answer for QA mode', async () => {
-      mockDocForm.current = ChunkingModeEnum.qa as ChunkingMode
+      mockDocForm.current = ChunkingModeEnum.qa
 
       mockUpdateSegment.mockImplementation(
         async (_params, { onSuccess, onSettled }: SegmentMutationCallbacks) => {

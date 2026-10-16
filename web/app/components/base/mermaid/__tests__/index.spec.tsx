@@ -581,7 +581,7 @@ describe('Mermaid Flowchart Component Module Isolation', () => {
   beforeEach(async () => {
     vi.resetModules()
     vi.clearAllMocks()
-    const mod = (await import('mermaid')) as unknown as { default: typeof mermaid } | typeof mermaid
+    const mod = (await import('mermaid')) as { default: typeof mermaid } | typeof mermaid
     mermaidFresh = 'default' in mod ? mod.default : mod
     vi.mocked(mermaidFresh.initialize).mockImplementation(() => {})
   })

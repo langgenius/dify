@@ -525,7 +525,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       latestPresence = presence
     })
     manager.onCursorUpdate((cursors) => {
-      latestCursors = cursors as Record<string, unknown>
+      latestCursors = cursors
     })
 
     const baseUpdate: Pick<CollaborationUpdate, 'userId' | 'timestamp'> = {
@@ -591,12 +591,12 @@ describe('CollaborationManager socket and subscription behavior', () => {
         versionId: 'v1',
         initiatorUserId: 'u-1',
         initiatorName: 'Alice',
-      } as unknown as Record<string, unknown>,
+      } as Record<string, unknown>,
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
       ...baseUpdate,
       type: 'workflow_restore_complete',
-      data: { versionId: 'v1', success: true } as unknown as Record<string, unknown>,
+      data: { versionId: 'v1', success: true } as Record<string, unknown>,
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
       ...baseUpdate,
@@ -1266,7 +1266,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('covers setNodes/setEdges guards and destroy delegation', () => {
     const { manager, internals } = setupManagerWithDoc()
     const destroyDisconnectSpy = vi
-      .spyOn(manager as unknown as { disconnect: () => void }, 'disconnect')
+      .spyOn(manager as { disconnect: () => void }, 'disconnect')
       .mockImplementation(() => undefined)
 
     manager.setNodes([], [createNode('n-guard')])
@@ -1519,7 +1519,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
         title: 'Legacy',
         desc: '',
       },
-    } as unknown as Record<string, unknown>)
+    } as Record<string, unknown>)
     privateInternals.getNodeContainer('legacy-node')
 
     const modernContainer = privateInternals.getNodeContainer('modern-node')

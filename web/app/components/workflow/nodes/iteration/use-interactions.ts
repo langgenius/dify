@@ -1,4 +1,4 @@
-import type { BlockEnum, ChildNodeTypeCount, Node } from '../../types'
+import type { ChildNodeTypeCount, Node } from '../../types'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -85,7 +85,7 @@ export const useNodeIterationInteractions = () => {
       const childNodeTypeCount: ChildNodeTypeCount = {}
 
       const copyChildren = childrenNodes.map((child, index) => {
-        const childNodeType = child.data.type as BlockEnum
+        const childNodeType = child.data.type
         const nodesWithSameType = nodes.filter((node) => node.data.type === childNodeType)
         const nextCount = getNextChildNodeTypeCount(
           childNodeTypeCount,

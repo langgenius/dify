@@ -840,7 +840,7 @@ describe('usePipelineRunByCanEdit', () => {
       await act(async () => {
         await result.current.handleRun({ inputs: {} }, {
           onData: customCallback,
-        } as unknown as Parameters<typeof result.current.handleRun>[1])
+        } as Parameters<typeof result.current.handleRun>[1])
       })
 
       expect(capturedCallbacks.onData).toBeDefined()

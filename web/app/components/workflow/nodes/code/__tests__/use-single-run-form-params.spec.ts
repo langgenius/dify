@@ -40,7 +40,7 @@ describe('code/use-single-run-form-params', () => {
     mockUseNodeCrud.mockReturnValue({
       inputs: createData(),
       setInputs: vi.fn(),
-    } as unknown as ReturnType<typeof useNodeCrud>)
+    } as ReturnType<typeof useNodeCrud>)
   })
 
   it('builds a single form, updates run input values, and exposes dependent vars', () => {

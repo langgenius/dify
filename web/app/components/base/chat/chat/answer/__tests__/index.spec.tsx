@@ -23,7 +23,7 @@ describe('Answer Component', () => {
       id: 'msg-1',
       content: 'Test response',
       isAnswer: true,
-    } as unknown as ChatItem,
+    } as ChatItem,
     question: 'Hello?',
     index: 0,
   }
@@ -46,7 +46,7 @@ describe('Answer Component', () => {
       const { container } = render(
         <Answer
           {...defaultProps}
-          item={{ id: '1', content: '', isAnswer: true } as unknown as ChatItem}
+          item={{ id: '1', content: '', isAnswer: true } as ChatItem}
           responding={true}
         />,
       )
@@ -128,7 +128,7 @@ describe('Answer Component', () => {
             {
               ...defaultProps.item,
               annotation: { id: 'a1', authorName: 'John Doe' },
-            } as unknown as ChatItem
+            } as ChatItem
           }
         />,
       )
@@ -198,7 +198,7 @@ describe('Answer Component', () => {
               // Thinking ⇒ the answer has not started yet, so content must be empty.
               content: '',
               reasoningContent: { llm: 'deep thought' },
-            } as unknown as ChatItem
+            } as ChatItem
           }
         />,
       )
@@ -214,7 +214,7 @@ describe('Answer Component', () => {
               ...defaultProps.item,
               reasoningContent: { llm: 'recalled reasoning' },
               reasoningFinished: true,
-            } as unknown as ChatItem
+            } as ChatItem
           }
         />,
       )
@@ -271,7 +271,7 @@ describe('Answer Component', () => {
             {
               ...defaultProps.item,
               reasoningContent: {},
-            } as unknown as ChatItem
+            } as ChatItem
           }
         />,
       )
@@ -292,7 +292,7 @@ describe('Answer Component', () => {
               siblingIndex: 1,
               prevSibling: 'msg-0',
               nextSibling: 'msg-2',
-            } as unknown as ChatItem
+            } as ChatItem
           }
           switchSibling={mockSwitchSibling}
         />,
@@ -420,7 +420,7 @@ describe('Answer Component', () => {
         observe() {}
         unobserve() {}
         disconnect() {}
-      } as unknown as typeof ResizeObserver
+      } as typeof ResizeObserver
 
       render(<Answer {...defaultProps} />)
 
@@ -441,26 +441,20 @@ describe('Answer Component', () => {
           item={
             {
               ...defaultProps.item,
-              humanInputFilledFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+              humanInputFilledFormDataList: [{ id: 'form1' } as Record<string, unknown>],
               humanInputFormDataList: [], // hits length > 0 false branch
               agent_thoughts: [{ id: 'thought1', thought: 'thinking' }],
               allFiles: [
-                { _id: 'file1', name: 'file1.txt', type: 'document' } as unknown as Record<
-                  string,
-                  unknown
-                >,
+                { _id: 'file1', name: 'file1.txt', type: 'document' } as Record<string, unknown>,
               ],
               message_files: [
-                { id: 'file2', url: 'http://test.com', type: 'image/png' } as unknown as Record<
+                { id: 'file2', url: 'http://test.com', type: 'image/png' } as Record<
                   string,
                   unknown
                 >,
               ],
-              annotation: { id: 'anno1', authorName: 'Author' } as unknown as Record<
-                string,
-                unknown
-              >,
-              citation: [{ item: { title: 'cite 1' } }] as unknown as Record<string, unknown>[],
+              annotation: { id: 'anno1', authorName: 'Author' } as Record<string, unknown>,
+              citation: [{ item: { title: 'cite 1' } }] as Record<string, unknown>[],
               siblingCount: 2,
               siblingIndex: 1,
               prevSibling: 'msg-0',
@@ -501,7 +495,7 @@ describe('Answer Component', () => {
             {
               ...defaultProps.item,
               workflowProcess: { status: 'running', tracing: [], steps: [] },
-              humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+              humanInputFormDataList: [{ id: 'form1' } as Record<string, unknown>],
             } as unknown as ChatItem
           }
         />,
@@ -517,7 +511,7 @@ describe('Answer Component', () => {
             {
               ...defaultProps.item,
               workflowProcess: { status: 'running', tracing: [], steps: [] },
-              humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+              humanInputFormDataList: [{ id: 'form1' } as Record<string, unknown>],
             } as unknown as ChatItem
           }
         />,
@@ -533,7 +527,7 @@ describe('Answer Component', () => {
             {
               ...defaultProps.item,
               workflowProcess: { status: 'running', tracing: [], steps: [] },
-              humanInputFormDataList: [{ id: 'form1' } as unknown as Record<string, unknown>],
+              humanInputFormDataList: [{ id: 'form1' } as Record<string, unknown>],
             } as unknown as ChatItem
           }
         />,

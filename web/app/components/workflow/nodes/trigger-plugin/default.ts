@@ -124,7 +124,7 @@ const toFieldType = (normalizedType: string | undefined, schemaType?: string): T
 
 const toArrayItemType = (type: Type): Exclude<Type, typeof Type.array> => {
   if (type === Type.array) return Type.object
-  return type as Exclude<Type, typeof Type.array>
+  return type
 }
 
 const convertJsonSchemaToField = (
@@ -266,8 +266,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
           if (errorMessage) return
 
           const rawParam =
-            payload.event_parameters?.[field.variable] ??
-            (payload.config as Record<string, any> | undefined)?.[field.variable]
+            payload.event_parameters?.[field.variable] ?? payload.config?.[field.variable]
           if (!rawParam) {
             errorMessage = t(($) => $['errorMsg.fieldRequired'], {
               ns: 'workflow',

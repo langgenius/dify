@@ -201,7 +201,7 @@ const AgentTools: FC = () => {
                   supportAddCustomTool
                   onSelect={handleSelectTool}
                   onSelectMultiple={handleSelectMultipleTool}
-                  selectedTools={tools as unknown as ToolValue[]}
+                  selectedTools={tools as ToolValue[]}
                 />
               </>
             )}

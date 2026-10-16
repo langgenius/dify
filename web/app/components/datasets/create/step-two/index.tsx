@@ -167,7 +167,7 @@ const StepTwo: FC<StepTwoProps> = ({
     crawlOptions,
     websiteCrawlProvider,
     websiteCrawlJobId,
-    indexingTechnique: indexing.getIndexingTechnique() as IndexingType,
+    indexingTechnique: indexing.getIndexingTechnique(),
     processRule: segmentation.getProcessRule(currentDocForm),
   })
 

@@ -1027,7 +1027,7 @@ describe('Operation', () => {
       // Mock tooltip display without rating to hit: 'if (!feedbackData?.rating) return label'
       const item = {
         ...baseItem,
-        feedback: { rating: null } as unknown as Record<string, unknown>,
+        feedback: { rating: null } as Record<string, unknown>,
       } as unknown as ChatItem
       renderOperation({ ...baseProps, item })
       const bar = screen.getByTestId('operation-bar')
@@ -1241,7 +1241,7 @@ describe('Operation', () => {
           id: 'ann-1',
           created_at: 123,
           authorName: 'test author',
-        } as unknown as Record<string, unknown>,
+        } as Record<string, unknown>,
       } as unknown as ChatItem
 
       renderOperation({ ...baseProps, item })
@@ -1268,7 +1268,7 @@ describe('Operation', () => {
           id: 'ann-1',
           created_at: 123,
           authorName: 'test author',
-        } as unknown as Record<string, unknown>,
+        } as Record<string, unknown>,
       } as unknown as ChatItem
 
       renderOperation({ ...baseProps, item })

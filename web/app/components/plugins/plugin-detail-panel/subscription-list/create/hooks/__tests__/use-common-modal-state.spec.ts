@@ -122,7 +122,7 @@ const createFormRef = ({
     getForm: vi.fn().mockReturnValue({
       setFieldValue: vi.fn(),
     }),
-  }) as unknown as FormRefObject
+  }) as FormRefObject
 
 describe('useCommonModalState', () => {
   beforeEach(() => {

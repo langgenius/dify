@@ -1646,7 +1646,7 @@ describe('Authorized Component', () => {
           // Check if it's in the action area (has parent with group-hover:flex or hidden class)
           const parent = btn.closest('.hidden, [class*="group-hover"]')
           if (parent) {
-            deleteButton = btn as HTMLElement
+            deleteButton = btn
           }
         }
       }

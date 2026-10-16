@@ -29,7 +29,7 @@ const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
     allowed_file_extensions: [],
     number_limits: 5,
     ...overrides,
-  }) as unknown as FileUpload
+  }) as FileUpload
 
 const createFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
   id: 'file-1',
@@ -87,7 +87,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
         onChange={vi.fn()}
         fileConfig={createFileConfig({
           allowed_file_upload_methods: [TransferMethod.local_file],
-        } as unknown as Partial<FileUpload>)}
+        } as Partial<FileUpload>)}
       />,
     )
 
@@ -100,7 +100,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
         onChange={vi.fn()}
         fileConfig={createFileConfig({
           allowed_file_upload_methods: [TransferMethod.remote_url],
-        } as unknown as Partial<FileUpload>)}
+        } as Partial<FileUpload>)}
       />,
     )
 
@@ -133,7 +133,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
         onChange={vi.fn()}
         fileConfig={createFileConfig({
           allowed_file_upload_methods: [TransferMethod.remote_url],
-        } as unknown as Partial<FileUpload>)}
+        } as Partial<FileUpload>)}
       />,
     )
 

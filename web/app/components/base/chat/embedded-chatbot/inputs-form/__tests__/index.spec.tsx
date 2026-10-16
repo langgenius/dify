@@ -30,14 +30,14 @@ describe('InputsFormNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as any)
   })
 
   it('should return null if allInputsHidden is true', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       allInputsHidden: true,
-    } as unknown as any)
+    } as any)
     const { container } = render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     expect(container.firstChild).toBeNull()
   })
@@ -46,7 +46,7 @@ describe('InputsFormNode', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       inputsForms: [],
-    } as unknown as any)
+    } as any)
     const { container } = render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     expect(container.firstChild).toBeNull()
   })
@@ -75,7 +75,7 @@ describe('InputsFormNode', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       currentConversationId: 'conv-123',
-    } as unknown as any)
+    } as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(setCollapsed).toHaveBeenCalledWith(true)
@@ -87,7 +87,7 @@ describe('InputsFormNode', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       handleStartChat,
-    } as unknown as any)
+    } as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
     expect(handleStartChat).toHaveBeenCalled()
@@ -100,7 +100,7 @@ describe('InputsFormNode', () => {
       theme: {
         primaryColor: '#ff0000',
       },
-    } as unknown as any)
+    } as any)
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     const button = screen.getByRole('button', { name: 'share.chat.startChat' })
     expect(button).toHaveStyle({ backgroundColor: '#ff0000' })

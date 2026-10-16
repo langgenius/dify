@@ -33,7 +33,7 @@ const createWebsitePage = (url: string, title: string): CrawlResultItem =>
     title,
     markdown: '',
     description: '',
-  }) as unknown as CrawlResultItem
+  }) as CrawlResultItem
 
 describe('usePreviewState', () => {
   const files = [createFile('f-1', 'file1.txt'), createFile('f-2', 'file2.txt')]

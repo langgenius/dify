@@ -61,8 +61,7 @@ vi.mock('@lexical/react/LexicalComposerContext', () => ({
 }))
 
 vi.mock('@lexical/link', () => ({
-  $isLinkNode: (node: unknown) =>
-    Boolean(node && typeof node === 'object' && 'isLink' in (node as object)),
+  $isLinkNode: (node: unknown) => Boolean(node && typeof node === 'object' && 'isLink' in node),
   TOGGLE_LINK_COMMAND: 'toggle-link-command',
 }))
 

@@ -192,7 +192,7 @@ describe('llm/use-config', () => {
       availableNodesWithParent: [{ id: 'previous-node', data: { title: 'Previous' } }],
     } as unknown as ReturnType<typeof useAvailableVarList>)
     mockUseConfigVision.mockImplementation((_model, options) => {
-      latestVisionOptions = options as typeof latestVisionOptions
+      latestVisionOptions = options
       return {
         isVisionModel: false,
         handleVisionResolutionEnabledChange,
@@ -205,10 +205,8 @@ describe('llm/use-config', () => {
       setInputs,
       appendDefaultPromptConfig,
     } as ReturnType<typeof useLLMInputManager>)
-    mockUseLLMPromptConfig.mockReturnValue(promptConfig as ReturnType<typeof useLLMPromptConfig>)
-    mockUseLLMStructuredOutputConfig.mockReturnValue(
-      structuredOutputConfig as ReturnType<typeof useLLMStructuredOutputConfig>,
-    )
+    mockUseLLMPromptConfig.mockReturnValue(promptConfig)
+    mockUseLLMStructuredOutputConfig.mockReturnValue(structuredOutputConfig)
   })
 
   it('composes the helper hooks, forwards filterVar to available vars, and updates completion params', () => {

@@ -380,7 +380,7 @@ describe('utils', () => {
             this.onerror?.(errorEvent)
           }, 0)
         }
-      } as unknown as typeof FileReader
+      } as typeof FileReader
 
       await expect(checkIsAnimatedImage(file)).rejects.toBeInstanceOf(ProgressEvent)
     })

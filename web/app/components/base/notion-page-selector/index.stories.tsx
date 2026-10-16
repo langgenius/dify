@@ -145,7 +145,7 @@ const useMockNotionApi = () => {
       throw new Error(`Unmocked fetch call for ${url}`)
     }
 
-    globalThis.fetch = handler as typeof globalThis.fetch
+    globalThis.fetch = handler
 
     return () => {
       if (originalFetch) globalThis.fetch = originalFetch

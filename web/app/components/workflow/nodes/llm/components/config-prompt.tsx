@@ -197,7 +197,7 @@ const ConfigPrompt: FC<Props> = ({
                 )
                   return
                 if (
-                  (payload as PromptItem[])?.[0]?.role === PromptRole.system &&
+                  payload?.[0]?.role === PromptRole.system &&
                   list[0]!.p?.role !== PromptRole.system
                 )
                   return

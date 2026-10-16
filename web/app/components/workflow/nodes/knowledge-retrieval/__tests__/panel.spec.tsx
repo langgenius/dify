@@ -367,7 +367,7 @@ describe('knowledge-retrieval/panel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseConfig.mockReturnValue(createConfigResult() as ReturnType<typeof useConfig>)
+    mockUseConfig.mockReturnValue(createConfigResult())
   })
 
   it('wires panel actions and passes the intersected metadata list to metadata filters', async () => {
@@ -439,7 +439,7 @@ describe('knowledge-retrieval/panel', () => {
       createConfigResult({
         readOnly: true,
         showImageQueryVarSelector: false,
-      }) as ReturnType<typeof useConfig>,
+      }),
     )
 
     render(<Panel id="knowledge-node" data={createData()} panelProps={panelProps} />)

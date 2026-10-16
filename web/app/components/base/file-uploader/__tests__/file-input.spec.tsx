@@ -62,7 +62,7 @@ describe('FileInput', () => {
     renderWithProvider(
       <FileInput
         fileConfig={createFileConfig({
-          allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_types: ['custom'] as FileUpload['allowed_file_types'],
           allowed_file_extensions: ['.csv', '.xlsx'],
         })}
       />,
@@ -166,7 +166,7 @@ describe('FileInput', () => {
     renderWithProvider(
       <FileInput
         fileConfig={createFileConfig({
-          allowed_file_types: ['custom'] as unknown as FileUpload['allowed_file_types'],
+          allowed_file_types: ['custom'] as FileUpload['allowed_file_types'],
           allowed_file_extensions: undefined,
         })}
       />,

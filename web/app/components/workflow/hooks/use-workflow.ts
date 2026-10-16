@@ -347,8 +347,7 @@ export const useWorkflow = () => {
         )
         if (startNode) startNodes = [startNode]
       } else {
-        startNodes =
-          nodes.filter((node) => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
+        startNodes = nodes.filter((node) => nodesMap?.[node.data.type]?.metaData.isStart) || []
       }
 
       if (!startNodes.length) startNodes = getRootNodesById(id || '')

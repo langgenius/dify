@@ -53,7 +53,7 @@ describe('EditWorkspaceModal', () => {
     const consoleState = {
       currentWorkspace: { name: 'Test Workspace' },
       isCurrentWorkspaceOwner: true,
-    } as unknown as ConsoleStateFixture
+    } as ConsoleStateFixture
     mockConsoleState.current = consoleState
     mockConsoleStateReader.mockReturnValue(consoleState)
   })
@@ -203,7 +203,7 @@ describe('EditWorkspaceModal', () => {
     mockConsoleStateReader.mockReturnValue({
       currentWorkspace: { name: 'Test Workspace' },
       isCurrentWorkspaceOwner: false,
-    } as unknown as ConsoleStateFixture)
+    } as ConsoleStateFixture)
 
     renderModal()
 

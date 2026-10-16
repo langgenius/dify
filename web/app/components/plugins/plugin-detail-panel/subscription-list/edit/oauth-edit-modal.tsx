@@ -120,7 +120,7 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
         showCopy: true,
       },
       ...parametersSchema.map((schema: ParametersSchema) => {
-        const normalizedType = normalizeFormType(schema.type as string)
+        const normalizedType = normalizeFormType(schema.type)
         return {
           ...schema,
           type: normalizedType,

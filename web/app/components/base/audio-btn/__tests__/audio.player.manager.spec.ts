@@ -30,7 +30,7 @@ const MockAudioPlayer = vi.hoisted(() => {
 
     constructor(...args: AudioPlayerCtorArgs) {
       mockAudioPlayerConstructor(...args)
-      mockState.instances.push(this as unknown as MockAudioPlayerInstance)
+      mockState.instances.push(this)
     }
   }
 })

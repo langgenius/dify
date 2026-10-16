@@ -115,8 +115,7 @@ const resolveNodeValidator = (
   const validator = nodesExtraData?.[getNodeCatalogType(data)]?.checkValid
   if (validator) return validator
 
-  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data))
-    return AgentDefault.checkValid as NodeValidator
+  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data)) return AgentDefault.checkValid
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -515,8 +514,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           errorMessages.push(...(duplicateEndOutputMessages.get(node!.id) || []))
         }
 
-        const isStartNodeMeta =
-          nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
+        const isStartNodeMeta = nodesExtraData?.[node!.data.type]?.metaData.isStart ?? false
         const isStartPlaceholderNode = node!.data.type === BlockEnum.StartPlaceholder
         const canSkipConnectionCheck = shouldCheckStartNode
           ? isStartNodeMeta || isStartPlaceholderNode
@@ -548,9 +546,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     // Check for start nodes (including triggers)
     if (shouldCheckStartNode) {
-      const startNodesFiltered = nodes.filter((node) =>
-        START_NODE_TYPES.includes(node.data.type as BlockEnum),
-      )
+      const startNodesFiltered = nodes.filter((node) => START_NODE_TYPES.includes(node.data.type))
       const hasStartPlaceholderNode = nodes.some(
         (node) => node.data.type === BlockEnum.StartPlaceholder,
       )

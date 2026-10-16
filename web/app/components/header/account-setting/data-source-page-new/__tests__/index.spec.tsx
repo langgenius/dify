@@ -193,9 +193,7 @@ describe('DataSourcePage Component', () => {
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useCheckInstalled>)
-    vi.mocked(usePluginsWithLatestVersion).mockImplementation(
-      (plugins = []) => plugins as PluginDetail[],
-    )
+    vi.mocked(usePluginsWithLatestVersion).mockImplementation((plugins = []) => plugins)
     vi.mocked(useInvalidateInstalledPluginList).mockReturnValue(vi.fn())
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: vi.fn() })
     vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })

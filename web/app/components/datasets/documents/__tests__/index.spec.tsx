@@ -675,7 +675,7 @@ describe('Documents', () => {
       vi.mocked(useDatasetDetailContextWithSelector).mockImplementation(
         (selector: MockSelector) => {
           const mockState = { dataset: undefined }
-          return selector(mockState as MockState)
+          return selector(mockState)
         },
       )
 

@@ -730,7 +730,7 @@ export const useChat = (
                 convertedFile,
               ]
             } else {
-              const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
+              const currentFiles = responseItem.message_files ?? []
               responseItem.message_files = [...currentFiles, convertedFile]
             }
           })
@@ -896,7 +896,7 @@ export const useChat = (
               )
             })
             if (currentIndex > -1)
-              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
+              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData
           })
         },
         onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
@@ -1409,7 +1409,7 @@ export const useChat = (
           }
           // For non-agent mode, add files directly to responseItem.message_files
           else {
-            const currentFiles = (responseItem.message_files as FileEntity[] | undefined) ?? []
+            const currentFiles = responseItem.message_files ?? []
             responseItem.message_files = [...currentFiles, convertedFile]
           }
 
@@ -1627,7 +1627,7 @@ export const useChat = (
                 nodeFinishedData.execution_metadata?.parallel_id
             )
           })
-          responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
+          responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData
 
           updateCurrentQAOnTree({
             placeholderQuestionId,

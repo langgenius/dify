@@ -15,7 +15,7 @@ function makeNode(overrides: Record<string, unknown> & { id: string }): Node {
     height: 100,
     data: { type: BlockEnum.LLM, title: '', desc: '' },
     ...overrides,
-  } as unknown as Node
+  } as Node
 }
 
 describe('useHelpline', () => {

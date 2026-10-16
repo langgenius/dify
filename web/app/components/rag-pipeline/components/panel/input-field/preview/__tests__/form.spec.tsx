@@ -48,7 +48,7 @@ describe('Preview form', () => {
   })
 
   it('should prevent the native form submission', () => {
-    const { container } = render(<Form variables={[] as unknown as RAGPipelineVariables} />)
+    const { container } = render(<Form variables={[] as RAGPipelineVariables} />)
     const form = container.querySelector('form')!
     const submitEvent = new Event('submit', { bubbles: true, cancelable: true })
 

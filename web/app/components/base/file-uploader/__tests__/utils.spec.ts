@@ -362,7 +362,7 @@ describe('file-uploader utils', () => {
           url: undefined,
           uploadedId: '123',
         },
-      ] as unknown as FileEntity[]
+      ] as FileEntity[]
 
       const result = getProcessedFiles(files)
       expect(result[0]!.url).toBe('')
@@ -381,7 +381,7 @@ describe('file-uploader utils', () => {
           url: 'http://example.com',
           uploadedId: undefined,
         },
-      ] as unknown as FileEntity[]
+      ] as FileEntity[]
 
       const result = getProcessedFiles(files)
       expect(result[0]!.upload_file_id).toBe('')

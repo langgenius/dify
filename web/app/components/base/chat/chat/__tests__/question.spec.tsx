@@ -102,7 +102,7 @@ const makeItem = (overrides: Partial<ChatItem> = {}): ChatItem =>
 
 const renderWithProvider = (
   item: ChatItem,
-  onRegenerate: OnRegenerate = vi.fn() as unknown as OnRegenerate,
+  onRegenerate: OnRegenerate = vi.fn() as OnRegenerate,
   props: RenderProps = {},
 ) => {
   return render(
@@ -151,7 +151,7 @@ describe('Question component', () => {
   })
 
   it('should hide avatar when hideAvatar is true', () => {
-    const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, {
+    const { container } = renderWithProvider(makeItem(), vi.fn() as OnRegenerate, {
       hideAvatar: true,
     })
     const avatar = container.querySelector('.size-10')
@@ -205,7 +205,7 @@ describe('Question component', () => {
   })
 
   it('should not show edit action when enableEdit is false', () => {
-    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: false })
+    renderWithProvider(makeItem(), vi.fn() as OnRegenerate, { enableEdit: false })
 
     expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
@@ -213,7 +213,7 @@ describe('Question component', () => {
 
   it('should enter edit mode when edit action clicked, allow editing and call onRegenerate on resend', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
 
     const item = makeItem()
     renderWithProvider(item, onRegenerate)
@@ -258,7 +258,7 @@ describe('Question component', () => {
 
   it('should confirm editing when Enter is pressed', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
 
     renderWithProvider(makeItem(), onRegenerate)
 
@@ -280,7 +280,7 @@ describe('Question component', () => {
 
   it('should insert a new line when Shift+Enter is pressed', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
 
     renderWithProvider(makeItem(), onRegenerate)
 
@@ -296,7 +296,7 @@ describe('Question component', () => {
   })
 
   it('should not confirm editing when Enter is pressed during IME composition', () => {
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
 
     renderWithProvider(makeItem(), onRegenerate)
 
@@ -314,7 +314,7 @@ describe('Question component', () => {
     vi.useFakeTimers()
 
     try {
-      const onRegenerate = vi.fn() as unknown as OnRegenerate
+      const onRegenerate = vi.fn() as OnRegenerate
       renderWithProvider(makeItem(), onRegenerate)
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
@@ -356,7 +356,7 @@ describe('Question component', () => {
     const switchSibling = vi.fn()
     const item = makeItem({ prevSibling: 'q-prev', nextSibling: 'q-next', siblingIndex: 1 })
 
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn() as OnRegenerate, { switchSibling })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     const nextBtn = screen.getByRole('button', { name: /next/i })
@@ -376,7 +376,7 @@ describe('Question component', () => {
       siblingIndex: 0,
       siblingCount: 2,
     })
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate)
+    renderWithProvider(item, vi.fn() as OnRegenerate)
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     const nextBtn = screen.getByRole('button', { name: /next/i })
@@ -404,7 +404,7 @@ describe('Question component', () => {
   it('should apply theme bubble styles when theme provided', () => {
     const theme = createTheme('#ff0000')
 
-    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { theme })
+    renderWithProvider(makeItem(), vi.fn() as OnRegenerate, { theme })
 
     const contentContainer = screen.getByTestId('question-content')
     expect(contentContainer.getAttribute('style')).not.toBeNull()
@@ -412,7 +412,7 @@ describe('Question component', () => {
 
   it('should cover composition lifecycle preventing enter submitting when composing', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     const item = makeItem()
 
     renderWithProvider(item, onRegenerate)
@@ -451,7 +451,7 @@ describe('Question component', () => {
 
   it('should prevent Enter from submitting when shiftKey is pressed', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     const item = makeItem()
 
     renderWithProvider(item, onRegenerate)
@@ -467,7 +467,7 @@ describe('Question component', () => {
 
   it('should ignore enter when nativeEvent.isComposing is true', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
@@ -483,7 +483,7 @@ describe('Question component', () => {
 
   it('should clear timer on cancel and on component unmount', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     const { unmount } = renderWithProvider(makeItem(), onRegenerate)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
@@ -511,7 +511,7 @@ describe('Question component', () => {
 
   it('should ignore enter when handleResend with active timer', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
@@ -527,14 +527,14 @@ describe('Question component', () => {
   })
 
   it('should render default question avatar icon when questionIcon is not provided', () => {
-    const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate)
+    const { container } = renderWithProvider(makeItem(), vi.fn() as OnRegenerate)
 
     const defaultIcon = container.querySelector('.question-default-user-icon')
     expect(defaultIcon).toBeInTheDocument()
   })
 
   it('should render custom questionIcon when provided', () => {
-    const { container } = renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, {
+    const { container } = renderWithProvider(makeItem(), vi.fn() as OnRegenerate, {
       questionIcon: <div data-testid="custom-question-icon">CustomIcon</div>,
     })
 
@@ -553,7 +553,7 @@ describe('Question component', () => {
       siblingCount: 3,
     })
 
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn() as OnRegenerate, { switchSibling })
 
     const nextBtn = screen.getByRole('button', { name: /next/i })
     await user.click(nextBtn)
@@ -572,7 +572,7 @@ describe('Question component', () => {
       siblingCount: 3,
     })
 
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn() as OnRegenerate, { switchSibling })
 
     const nextBtn = screen.getByRole('button', { name: /next/i })
     await user.click(nextBtn)
@@ -591,7 +591,7 @@ describe('Question component', () => {
       siblingCount: 3,
     })
 
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn() as OnRegenerate, { switchSibling })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     await user.click(prevBtn)
@@ -607,7 +607,7 @@ describe('Question component', () => {
       siblingIndex: 2,
       siblingCount: 3,
     })
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate)
+    renderWithProvider(item, vi.fn() as OnRegenerate)
 
     const nextBtn = screen.getByRole('button', { name: /next/i })
     expect(nextBtn).toBeDisabled()
@@ -620,7 +620,7 @@ describe('Question component', () => {
       siblingIndex: 0,
       siblingCount: 1,
     })
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate)
+    renderWithProvider(item, vi.fn() as OnRegenerate)
 
     const prevBtn = screen.queryByRole('button', { name: /previous/i })
     const nextBtn = screen.queryByRole('button', { name: /next/i })
@@ -712,14 +712,14 @@ describe('Question component', () => {
   })
 
   it('should hide edit button when enableEdit is explicitly true', () => {
-    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: true })
+    renderWithProvider(makeItem(), vi.fn() as OnRegenerate, { enableEdit: true })
 
     expect(screen.getByRole('button', { name: 'common.operation.edit' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
   })
 
   it('should show copy button always regardless of enableEdit setting', () => {
-    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { enableEdit: false })
+    renderWithProvider(makeItem(), vi.fn() as OnRegenerate, { enableEdit: false })
 
     expect(screen.getByRole('button', { name: 'common.operation.copy' })).toBeInTheDocument()
   })
@@ -783,7 +783,7 @@ describe('Question component', () => {
   it('should render theme styles only in non-edit mode', () => {
     const theme = createTheme('#00ff00', true)
 
-    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { theme })
+    renderWithProvider(makeItem(), vi.fn() as OnRegenerate, { theme })
 
     const contentContainer = screen.getByTestId('question-content')
     const styleAttr = contentContainer.getAttribute('style')
@@ -802,11 +802,9 @@ describe('Question component', () => {
       siblingIndex: 0,
       siblingCount: 3,
     })
-    const { unmount: unmount1 } = renderWithProvider(
-      firstItem,
-      vi.fn() as unknown as OnRegenerate,
-      { switchSibling },
-    )
+    const { unmount: unmount1 } = renderWithProvider(firstItem, vi.fn() as OnRegenerate, {
+      switchSibling,
+    })
 
     let prevBtn = screen.getByRole('button', { name: /previous/i })
     let nextBtn = screen.getByRole('button', { name: /next/i })
@@ -824,7 +822,7 @@ describe('Question component', () => {
       siblingIndex: 2,
       siblingCount: 3,
     })
-    const { unmount: unmount2 } = renderWithProvider(lastItem, vi.fn() as unknown as OnRegenerate, {
+    const { unmount: unmount2 } = renderWithProvider(lastItem, vi.fn() as OnRegenerate, {
       switchSibling,
     })
 
@@ -838,7 +836,7 @@ describe('Question component', () => {
   })
 
   it('should handle rapid composition start/end cycles', async () => {
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.edit' }))
@@ -861,7 +859,7 @@ describe('Question component', () => {
 
   it('should handle Enter key with only whitespace edited content', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     renderWithProvider(makeItem(), onRegenerate)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
@@ -879,7 +877,7 @@ describe('Question component', () => {
 
   it('should trigger onRegenerate with actual message_files in item', async () => {
     const user = userEvent.setup()
-    const onRegenerate = vi.fn() as unknown as OnRegenerate
+    const onRegenerate = vi.fn() as OnRegenerate
     const files = [
       {
         name: 'edit-file.txt',
@@ -945,7 +943,7 @@ describe('Question component', () => {
       siblingIndex: 1,
       siblingCount: 3,
     })
-    renderWithProvider(allItem, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(allItem, vi.fn() as OnRegenerate, { switchSibling })
 
     await user.click(screen.getByRole('button', { name: /previous/i }))
     expect(switchSibling).toHaveBeenCalledWith('q-0')
@@ -987,7 +985,7 @@ describe('Question component', () => {
       siblingIndex: 1,
       siblingCount: 3,
     })
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling: undefined })
+    renderWithProvider(item, vi.fn() as OnRegenerate, { switchSibling: undefined })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     await user.click(prevBtn)
@@ -1000,7 +998,7 @@ describe('Question component', () => {
 
   it('should handle theme without chatBubbleColorStyle', () => {
     const theme = { chatBubbleColorStyle: undefined } as unknown as Theme
-    renderWithProvider(makeItem(), vi.fn() as unknown as OnRegenerate, { theme })
+    renderWithProvider(makeItem(), vi.fn() as OnRegenerate, { theme })
     const content = screen.getByTestId('question-content')
     expect(content.getAttribute('style')).toBeNull()
   })
@@ -1020,7 +1018,7 @@ describe('Question component', () => {
       siblingIndex: 0,
       siblingCount: 2,
     })
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling })
+    renderWithProvider(item, vi.fn() as OnRegenerate, { switchSibling })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     const nextBtn = screen.getByRole('button', { name: /next/i })
@@ -1051,7 +1049,7 @@ describe('Question component', () => {
       siblingIndex: 0,
       siblingCount: 2,
     })
-    renderWithProvider(item, vi.fn() as unknown as OnRegenerate, { switchSibling: undefined })
+    renderWithProvider(item, vi.fn() as OnRegenerate, { switchSibling: undefined })
 
     const prevBtn = screen.getByRole('button', { name: /previous/i })
     await user.click(prevBtn)

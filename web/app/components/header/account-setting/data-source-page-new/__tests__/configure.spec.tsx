@@ -325,7 +325,7 @@ describe('Configure Component', () => {
           oauth_custom_client_params: {},
           redirect_uri: '',
         }),
-      } as unknown as DataSourceAuth
+      } as DataSourceAuth
 
       render(<Configure item={itemWithGlitchedSchema} pluginPayload={mockPluginPayload} />)
       fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))

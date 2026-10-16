@@ -106,7 +106,7 @@ describe('llm/use-single-run-form-params', () => {
         ({
           inputs: payload,
           setInputs: vi.fn(),
-        }) as unknown as ReturnType<typeof useNodeCrud>,
+        }) as ReturnType<typeof useNodeCrud>,
     )
     mockUseConfigVision.mockReturnValue({
       isVisionModel: false,

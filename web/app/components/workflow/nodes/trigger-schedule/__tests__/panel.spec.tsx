@@ -240,7 +240,7 @@ describe('TriggerSchedulePanel', () => {
         handleOnMinuteChange,
       })
 
-      const { rerender } = renderPanel('node-6', createData({ frequency: undefined }) as any)
+      const { rerender } = renderPanel('node-6', createData({ frequency: undefined }))
       expect(screen.getByRole('button', { name: 'daily' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /11:30 AM/ })).toBeInTheDocument()
 

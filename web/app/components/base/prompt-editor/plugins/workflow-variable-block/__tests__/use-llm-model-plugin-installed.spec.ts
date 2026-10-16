@@ -31,7 +31,7 @@ const createWorkflowNodesMap = (node: Record<string, unknown>): WorkflowNodesMap
       type: BlockEnum.Start,
       ...node,
     },
-  }) as unknown as WorkflowNodesMap
+  }) as WorkflowNodesMap
 
 const renderHook: typeof renderHookWithConsoleQuery = (callback, options) => {
   const queryClient = createConsoleQueryClient()

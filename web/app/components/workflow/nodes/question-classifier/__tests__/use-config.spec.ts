@@ -125,7 +125,7 @@ describe('question-classifier/use-config', () => {
       return selector({ nodesDefaultConfigs: {} } as never)
     })
     mockUseConfigVision.mockImplementation((_model, options) => {
-      latestVisionOptions = options as typeof latestVisionOptions
+      latestVisionOptions = options
       return {
         isVisionModel: false,
         handleVisionResolutionEnabledChange: vi.fn(),
@@ -139,7 +139,7 @@ describe('question-classifier/use-config', () => {
       availableVars: [],
       availableNodes: [],
       availableNodesWithParent: [],
-    } as unknown as ReturnType<typeof useAvailableVarList>)
+    } as ReturnType<typeof useAvailableVarList>)
   })
 
   it('preserves the selected model when the vision follow-up updates after model selection', async () => {

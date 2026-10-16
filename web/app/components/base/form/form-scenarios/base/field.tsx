@@ -38,7 +38,7 @@ const BaseField = ({ initialData, config }: BaseFieldProps) =>
         if (!showConditions.length) return true
         return showConditions.every((condition) => {
           const { variable, value } = condition
-          const fieldValue = fieldValues[variable as keyof typeof fieldValues]
+          const fieldValue = fieldValues[variable]
           return fieldValue === value
         })
       })

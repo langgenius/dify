@@ -163,7 +163,7 @@ describe('Prompt config component', () => {
         isAdvancedMode: true,
         currentAdvancedPrompt,
         modelModeType: ModelModeType.chat,
-        dataSets: [{ id: 'ds' } as unknown as DebugConfiguration['dataSets'][number]],
+        dataSets: [{ id: 'ds' } as DebugConfiguration['dataSets'][number]],
         hasSetBlockStatus: { context: false, history: true, query: true },
       },
     )

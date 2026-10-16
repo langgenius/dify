@@ -77,7 +77,7 @@ describe('useCredentialData', () => {
       data: {},
     } as unknown as ReturnType<typeof useGetCredential>)
     const mockProvider = { provider: 'openai' } as unknown as ModelProvider
-    const mockCredential = { credential_id: 'cred-123' } as unknown as Credential
+    const mockCredential = { credential_id: 'cred-123' } as Credential
     const mockModel = { model: 'gpt-4' } as unknown as CustomModelCredential
 
     renderHook(() => useCredentialData(mockProvider, true, true, mockCredential, mockModel), {

@@ -498,7 +498,7 @@ describe('OpeningSettingModal', () => {
   it('should render with empty suggested questions when field is missing', async () => {
     await render(
       <OpeningSettingModal
-        data={{ ...defaultData, suggested_questions: undefined } as unknown as OpeningStatement}
+        data={{ ...defaultData, suggested_questions: undefined } as OpeningStatement}
         onSave={vi.fn()}
         onCancel={vi.fn()}
       />,

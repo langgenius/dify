@@ -527,10 +527,7 @@ describe('useConfigureButton', () => {
       )
 
       await act(async () => {
-        await result.current.handleUpdate(
-          createMockRequest({ workflow_tool_id: 'tool-456' }) as WorkflowToolProviderRequest &
-            Partial<{ workflow_app_id: string; workflow_tool_id: string }>,
-        )
+        await result.current.handleUpdate(createMockRequest({ workflow_tool_id: 'tool-456' }))
       })
 
       expect(handlePublish).toHaveBeenCalled()
@@ -556,10 +553,7 @@ describe('useConfigureButton', () => {
       )
 
       await act(async () => {
-        await result.current.handleUpdate(
-          createMockRequest() as WorkflowToolProviderRequest &
-            Partial<{ workflow_app_id: string; workflow_tool_id: string }>,
-        )
+        await result.current.handleUpdate(createMockRequest())
       })
 
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Publish failed' })
@@ -573,10 +567,7 @@ describe('useConfigureButton', () => {
       )
 
       await act(async () => {
-        await result.current.handleUpdate(
-          createMockRequest() as WorkflowToolProviderRequest &
-            Partial<{ workflow_app_id: string; workflow_tool_id: string }>,
-        )
+        await result.current.handleUpdate(createMockRequest())
       })
 
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Save failed' })

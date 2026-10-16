@@ -98,7 +98,7 @@ const toSnippetCanvasData = (workflow?: SnippetWorkflow | null): SnippetCanvasDa
 
   if (!graph || typeof graph !== 'object') return DEFAULT_GRAPH
 
-  const graphRecord = graph as Record<string, unknown>
+  const graphRecord = graph
 
   return {
     nodes: Array.isArray(graphRecord.nodes)

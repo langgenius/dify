@@ -172,7 +172,7 @@ describe('DSL Import with Human Input Node', () => {
       const nodes = [startNode, humanInputNode]
       const edges = [createEdge('inset-s-1', 'human-input-1')]
 
-      const result = preprocessNodesAndEdges(nodes as Node[], edges as Edge[])
+      const result = preprocessNodesAndEdges(nodes, edges)
 
       expect(result.nodes).toHaveLength(2)
       expect(result.edges).toHaveLength(1)
@@ -184,7 +184,7 @@ describe('DSL Import with Human Input Node', () => {
       const humanInputNode = createHumanInputNode()
       const nodes = [humanInputNode]
 
-      const result = preprocessNodesAndEdges(nodes as Node[], [])
+      const result = preprocessNodesAndEdges(nodes, [])
 
       // No extra iteration/loop start nodes should be injected
       expect(result.nodes).toHaveLength(1)
@@ -200,7 +200,7 @@ describe('DSL Import with Human Input Node', () => {
       const nodes = [startNode, humanInputNode]
       const edges = [createEdge('inset-s-1', 'human-input-1')]
 
-      const result = initialNodes(nodes as Node[], edges as Edge[])
+      const result = initialNodes(nodes, edges)
 
       const processedHumanInput = result.find((n) => n.id === 'human-input-1')
       expect(processedHumanInput).toBeDefined()
@@ -214,7 +214,7 @@ describe('DSL Import with Human Input Node', () => {
       const humanInputNode = createHumanInputNode()
       const nodes = [humanInputNode]
 
-      const result = initialNodes(nodes as Node[], [])
+      const result = initialNodes(nodes, [])
 
       const processed = result[0]
       const nodeData = processed!.data as HumanInputNodeType
@@ -602,11 +602,11 @@ describe('DSL Import with Human Input Node', () => {
         createEdge('human-input-1', 'inset-e-1', 'approve', 'target'),
       ]
 
-      const processed = preprocessNodesAndEdges(nodes as Node[], edges as Edge[])
+      const processed = preprocessNodesAndEdges(nodes, edges)
       expect(processed.nodes).toHaveLength(3)
       expect(processed.edges).toHaveLength(2)
 
-      const initialized = initialNodes(nodes as Node[], edges as Edge[])
+      const initialized = initialNodes(nodes, edges)
       expect(initialized).toHaveLength(3)
 
       // All node types should be preserved
@@ -639,7 +639,7 @@ describe('DSL Import with Human Input Node', () => {
         createEdge('human-input-1', 'reject-end', 'reject', 'target'),
       ]
 
-      const initialized = initialNodes(nodes as Node[], edges as Edge[])
+      const initialized = initialNodes(nodes, edges)
       expect(initialized).toHaveLength(4)
 
       // Human input node should still have correct data

@@ -335,7 +335,7 @@ describe('NotionPageSelector Base', () => {
       data: undefined,
       isFetching: true,
       isError: false,
-    } as unknown as ReturnType<typeof usePreImportNotionPages>)
+    } as ReturnType<typeof usePreImportNotionPages>)
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
     expect(screen.getByTestId('notion-page-selector-loading')).toBeInTheDocument()
   })
@@ -358,7 +358,7 @@ describe('NotionPageSelector Base', () => {
       data: [],
       isFetching: false,
       isError: false,
-    } as unknown as ReturnType<typeof usePreImportNotionPages>)
+    } as ReturnType<typeof usePreImportNotionPages>)
     render(<NotionPageSelector credentialList={mockCredentialList} onSelect={vi.fn()} />)
     expect(screen.getByTestId('notion-page-selector-base')).toBeInTheDocument()
   })

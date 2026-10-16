@@ -41,7 +41,7 @@ vi.mock('es-toolkit/compat', () => ({
   uniqBy: (arr: Array<{ id: string }>, key: string) => {
     const seen = new Set<string>()
     return arr.filter((item) => {
-      const val = item[key as keyof typeof item] as string
+      const val = item[key as keyof typeof item]
       if (seen.has(val)) return false
       seen.add(val)
       return true

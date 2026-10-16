@@ -93,8 +93,7 @@ describe('deploy useInfiniteScroll', () => {
     intersectionOptions = undefined
     scrollRoot = null
     scrollSentinel = null
-    globalThis.IntersectionObserver =
-      MockIntersectionObserver as unknown as typeof IntersectionObserver
+    globalThis.IntersectionObserver = MockIntersectionObserver
   })
 
   afterAll(() => {

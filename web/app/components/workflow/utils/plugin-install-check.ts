@@ -60,7 +60,7 @@ export function isNodePluginMissing(
   data: CommonNodeType,
   context: PluginInstallCheckContext,
 ): boolean {
-  switch (data.type as BlockEnum) {
+  switch (data.type) {
     case BlockEnum.Tool: {
       const toolData = data as ToolNodeType
       const collectionMap: Partial<Record<CollectionType, ToolWithProvider[] | undefined>> = {

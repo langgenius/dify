@@ -2,10 +2,7 @@
 import type { FC } from 'react'
 import type { Param, ParamType } from '../../types'
 import type { ToolParameter } from '@/app/components/tools/types'
-import type {
-  BlockDefaultValue,
-  ToolDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
+import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
@@ -58,7 +55,7 @@ const ImportFromTool: FC<Props> = ({ onImport }) => {
     (_type: BlockEnum, toolInfo?: BlockDefaultValue) => {
       if (!toolInfo || 'datasource_name' in toolInfo || !('tool_name' in toolInfo)) return
 
-      const { provider_id, provider_type, tool_name } = toolInfo as ToolDefaultValue
+      const { provider_id, provider_type, tool_name } = toolInfo
       const currentTools = (() => {
         switch (provider_type) {
           case CollectionType.builtIn:
