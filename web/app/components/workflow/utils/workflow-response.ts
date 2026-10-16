@@ -308,7 +308,8 @@ export const toWorkflowRunDetail = (
 
 const toAgentLogItem = (log: WorkflowAgentLogResponse): AgentLogItem => ({
   node_execution_id: log.node_execution_id ?? '',
-  message_id: log.message_id ?? '',
+  // Logs persisted before `message_id` was recorded identify themselves with `id`.
+  message_id: log.message_id ?? (typeof log.id === 'string' ? log.id : ''),
   node_id: log.node_id ?? '',
   parent_id: log.parent_id ?? undefined,
   label: log.label ?? '',

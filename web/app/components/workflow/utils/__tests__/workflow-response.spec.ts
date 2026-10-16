@@ -5,6 +5,7 @@ import type {
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
 import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '../../constants'
+import formatAgentLog from '../../run/utils/format-log/agent'
 import { BlockEnum, NOTE_NODE_DATA_TYPE } from '../../types'
 import {
   toCanvasGraph,
@@ -169,6 +170,29 @@ describe('toNodeTracing', () => {
         agent_log: [{ label: 'think', status: 'success', node_id: '' }],
       },
     })
+  })
+
+  it('keeps legacy agent logs identified by id linkable into a tree', () => {
+    const [tracing] = toNodeTracing(
+      execution({
+        node_type: BlockEnum.Agent,
+        execution_metadata: {
+          agent_log: [
+            { id: 'round-1', label: 'Round 1', status: 'success' },
+            { id: 'tool-1', parent_id: 'round-1', label: 'Search', status: 'success' },
+          ],
+        },
+      }),
+    )
+
+    const agentLog = tracing?.execution_metadata?.agent_log ?? []
+    expect(agentLog.map((log) => log.message_id)).toEqual(['round-1', 'tool-1'])
+    expect(formatAgentLog(tracing ? [tracing] : [])[0]?.agentLog).toEqual([
+      expect.objectContaining({
+        message_id: 'round-1',
+        children: [expect.objectContaining({ message_id: 'tool-1' })],
+      }),
+    ])
   })
 
   it('leaves the agent log tree empty for Agent V2 run metadata', () => {
