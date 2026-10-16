@@ -136,7 +136,9 @@ export default function ConnectionsDemo() {
           availableConnections,
           selectedConnectionId:
             service.selectedConnectionId === connectionId
-              ? availableConnections.find((connection) => connection.status !== 'expired')?.id
+              ? availableConnections.find(
+                  (connection) => !connection.status || connection.status === 'active',
+                )?.id
               : service.selectedConnectionId,
         }
       }),
@@ -153,6 +155,7 @@ export default function ConnectionsDemo() {
           onConnect={handleConnect}
           onConnectionChange={handleConnectionChange}
           onReconnect={handleReconnect}
+          onReplace={handleReconnect}
           onRemove={handleRemove}
         />
         <hr className="w-full border-0 border-t-2 border-divider-deep" />

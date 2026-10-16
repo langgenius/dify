@@ -51,8 +51,9 @@ const initialServices: readonly RequiredConnectionService[] = [
     description: 'Research prospects',
     iconClassName: 'i-custom-public-plugins-google',
     availableConnections: [
-      { id: 'google-search-personal', name: 'Personal key', method: 'api-key' },
-      { id: 'google-search-work', name: 'Work key', method: 'api-key' },
+      { id: 'google-search-personal', name: 'Personal key', method: 'api-key', status: 'invalid' },
+      { id: 'google-search-work', name: 'Work key', method: 'api-key', status: 'invalid' },
+      { id: 'google-search-backup', name: 'Backup key', method: 'api-key', status: 'active' },
     ],
     selectedConnectionId: 'google-search-personal',
     methods: ['oauth', 'api-key'],
@@ -95,7 +96,7 @@ export default function ConfigureConnectionsDemo() {
     )
   }
 
-  const handleReconnect = (serviceId: string, connectionId: string) => {
+  const handleRestoreConnection = (serviceId: string, connectionId: string) => {
     setServices((currentServices) =>
       currentServices.map((service) => {
         if (service.id !== serviceId) return service
@@ -124,7 +125,9 @@ export default function ConfigureConnectionsDemo() {
           availableConnections,
           selectedConnectionId:
             service.selectedConnectionId === connectionId
-              ? availableConnections.find((connection) => connection.status !== 'expired')?.id
+              ? availableConnections.find(
+                  (connection) => connection.status === undefined || connection.status === 'active',
+                )?.id
               : service.selectedConnectionId,
         }
       }),
@@ -136,7 +139,8 @@ export default function ConfigureConnectionsDemo() {
       services={services}
       onConnect={handleConnect}
       onConnectionChange={handleConnectionChange}
-      onReconnect={handleReconnect}
+      onReconnect={handleRestoreConnection}
+      onReplace={handleRestoreConnection}
       onRemove={handleRemove}
       className="self-start"
     />

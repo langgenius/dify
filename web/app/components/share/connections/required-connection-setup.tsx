@@ -11,6 +11,7 @@ export default function RequiredConnectionSetup({
   onConnect,
   onConnectionChange,
   onReconnect,
+  onReplace,
   onRemove,
   className,
 }: ComponentProps<typeof RequiredServices>) {
@@ -34,6 +35,7 @@ export default function RequiredConnectionSetup({
         onConnect={onConnect}
         onConnectionChange={onConnectionChange}
         onReconnect={onReconnect}
+        onReplace={onReplace}
         onRemove={onRemove}
       />
     </section>

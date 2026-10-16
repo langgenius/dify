@@ -18,6 +18,7 @@ import Badge from '@/app/components/base/badge'
 
 export type ConnectionActions = {
   onReconnect?: (serviceId: string, connectionId: string) => void
+  onReplace?: (serviceId: string, connectionId: string) => void
   onRemove?: (serviceId: string, connectionId: string) => void
 }
 
@@ -54,7 +55,9 @@ function AccountActions({
   returnFocus: RefObject<HTMLButtonElement | null>
 }) {
   const { t } = useTranslation(['share'])
-  if (!onRemove && (!onReconnect || connection.status === 'expired')) return null
+  const canReconnect =
+    !!onReconnect && connection.method !== 'api-key' && connection.status !== 'expired'
+  if (!onRemove && !canReconnect) return null
 
   return (
     <DropdownMenu>
@@ -73,10 +76,10 @@ function AccountActions({
         }
       />
       <DropdownMenuContent finalFocus={returnFocus}>
-        {onReconnect && connection.status !== 'expired' && (
+        {canReconnect && (
           <DropdownMenuItem
             disabled={disabled}
-            onClick={() => onReconnect(serviceId, connection.id)}
+            onClick={() => onReconnect?.(serviceId, connection.id)}
           >
             {t(($) => $['connections.accounts.reconnect'], { ns: 'share' })}
           </DropdownMenuItem>
@@ -103,6 +106,7 @@ export default function ServiceConnectionSelector({
   onConnect,
   onConnectionChange,
   onReconnect,
+  onReplace,
   onRemove,
 }: Props) {
   const { t } = useTranslation(['share'])
@@ -114,6 +118,7 @@ export default function ServiceConnectionSelector({
   )
   const isExpired = selectedConnection?.status === 'expired'
   const isApiKey = selectedConnection?.method === 'api-key'
+  const hasWarning = isExpired || selectedConnection?.status === 'invalid'
 
   return (
     <Popover>
@@ -131,14 +136,17 @@ export default function ServiceConnectionSelector({
           'disabled:cursor-not-allowed disabled:bg-components-input-bg-disabled disabled:text-components-input-text-filled-disabled disabled:hover:bg-components-input-bg-disabled',
           isApiKey && 'w-50',
           isApiKey && disabled && 'opacity-45',
-          isExpired &&
+          hasWarning &&
             'bg-state-warning-hover inset-ring-1 inset-ring-text-warning hover:bg-state-warning-hover data-popup-open:bg-state-warning-hover',
         )}
       >
-        {isExpired && (
+        {hasWarning && (
           <span className="i-ri-alert-fill size-4 shrink-0 text-text-warning" aria-hidden="true" />
         )}
-        <span id={selectedNameId} className="min-w-0 flex-1 truncate px-1 text-start">
+        <span
+          id={selectedNameId}
+          className={cn('min-w-0 flex-1 truncate text-start', !isApiKey && 'px-1')}
+        >
           {selectedConnection?.name ??
             t(($) => $['connections.setup.selectConnection'], { ns: 'share' })}
         </span>
@@ -149,7 +157,7 @@ export default function ServiceConnectionSelector({
               size="xs"
               variant="dimm"
               uppercase={false}
-              className="min-w-4.5 px-1.25 py-0.75 system-2xs-medium"
+              className="min-w-4.5 px-1.25 py-0.75 text-[10px] leading-3 font-medium"
             >
               {t(($) => $['connections.setup.apiKey'], { ns: 'share' })}
             </Badge>
@@ -163,15 +171,19 @@ export default function ServiceConnectionSelector({
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        aria-label={t(($) => $['connections.accounts.title'], {
-          ns: 'share',
-          provider: service.name,
-        })}
+        aria-label={
+          isApiKey
+            ? t(($) => $['connections.apiKeys.title'], { ns: 'share', provider: service.name })
+            : t(($) => $['connections.accounts.title'], { ns: 'share', provider: service.name })
+        }
         className="w-90 max-w-(--available-width) p-1"
       >
         <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto overscroll-contain">
           {service.availableConnections.map((connection) => {
             const expired = connection.status === 'expired'
+            const invalid = connection.status === 'invalid'
+            const unavailable = expired || invalid
+            const recover = invalid ? onReplace : onReconnect
             const selected = connection.id === service.selectedConnectionId
             const accountLabelId = `${methodId}-${encodeURIComponent(connection.id)}`
             return (
@@ -180,10 +192,10 @@ export default function ServiceConnectionSelector({
                 aria-label={connection.name}
                 className={cn(
                   'flex items-center gap-1.5 rounded-lg px-1 py-0.5 hover:bg-state-base-hover',
-                  expired ? 'min-h-13' : 'min-h-11',
+                  unavailable ? 'min-h-13' : 'min-h-11',
                 )}
               >
-                {expired ? (
+                {unavailable ? (
                   <>
                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       <SelectionMark selected={selected} />
@@ -195,18 +207,24 @@ export default function ServiceConnectionSelector({
                           {connection.name}
                         </span>
                         <span className="system-xs-regular text-text-warning">
-                          {t(($) => $['connections.accounts.reconnectRequired'], { ns: 'share' })}
+                          {invalid
+                            ? t(($) => $['connections.apiKeys.invalid'], { ns: 'share' })
+                            : t(($) => $['connections.accounts.reconnectRequired'], {
+                                ns: 'share',
+                              })}
                         </span>
                       </div>
                     </div>
                     <Button
                       size="small"
                       variant="secondary-accent"
-                      disabled={disabled || !onReconnect}
+                      disabled={disabled || !recover}
                       aria-describedby={accountLabelId}
-                      onClick={() => onReconnect?.(service.id, connection.id)}
+                      onClick={() => recover?.(service.id, connection.id)}
                     >
-                      {t(($) => $['connections.accounts.reconnect'], { ns: 'share' })}
+                      {invalid
+                        ? t(($) => $['connections.apiKeys.replace'], { ns: 'share' })
+                        : t(($) => $['connections.accounts.reconnect'], { ns: 'share' })}
                     </Button>
                   </>
                 ) : (
@@ -238,7 +256,7 @@ export default function ServiceConnectionSelector({
           })}
         </ul>
         <div className="mt-1 flex flex-col border-t border-divider-regular pt-1">
-          {service.methods.includes('oauth') && (
+          {service.methods.includes('oauth') && !isApiKey && (
             <PopoverClose
               render={<Button variant="ghost" disabled={disabled} className="justify-start px-2" />}
               onClick={() => onConnect(service.id, 'oauth')}

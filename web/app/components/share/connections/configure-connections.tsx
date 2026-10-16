@@ -23,6 +23,7 @@ export default function ConfigureConnections({
   onConnect,
   onConnectionChange,
   onReconnect,
+  onReplace,
   onRemove,
   isResponding = false,
   className,
@@ -64,6 +65,7 @@ export default function ConfigureConnections({
             onConnectionChange={onConnectionChange}
             disabled={isResponding}
             onReconnect={onReconnect}
+            onReplace={onReplace}
             onRemove={onRemove}
           />
         </div>

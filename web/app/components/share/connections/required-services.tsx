@@ -17,7 +17,7 @@ export type RequiredConnectionService = RequiredConnection & {
     id: string
     name: string
     method?: ConnectionMethod
-    status?: 'active' | 'expired'
+    status?: 'active' | 'expired' | 'invalid'
   }[]
   selectedConnectionId?: string
   methods: readonly ConnectionMethod[]
@@ -37,10 +37,14 @@ function ServiceItem({
   onConnectionChange,
   disabled,
   onReconnect,
+  onReplace,
   onRemove,
 }: {
   service: RequiredConnectionService
-} & Pick<Props, 'onConnect' | 'onConnectionChange' | 'disabled' | 'onReconnect' | 'onRemove'>) {
+} & Pick<
+  Props,
+  'onConnect' | 'onConnectionChange' | 'disabled' | 'onReconnect' | 'onReplace' | 'onRemove'
+>) {
   const { t } = useTranslation(['share'])
   const nameId = useId()
   const descriptionId = useId()
@@ -51,6 +55,7 @@ function ServiceItem({
     (connection) => connection.id === service.selectedConnectionId,
   )
   const isExpired = selectedConnection?.status === 'expired'
+  const isInvalid = selectedConnection?.status === 'invalid'
 
   return (
     <li
@@ -80,9 +85,11 @@ function ServiceItem({
         <span id={descriptionId} className="system-xs-regular wrap-anywhere text-text-tertiary">
           {service.description}
         </span>
-        {isExpired && (
+        {(isExpired || isInvalid) && (
           <span id={warningId} className="system-xs-regular wrap-anywhere text-text-warning">
-            {t(($) => $['connections.accounts.expired'], { ns: 'share' })}
+            {isInvalid
+              ? t(($) => $['connections.apiKeys.warning'], { ns: 'share' })
+              : t(($) => $['connections.accounts.expired'], { ns: 'share' })}
           </span>
         )}
       </div>
@@ -91,11 +98,12 @@ function ServiceItem({
           <ServiceConnectionSelector
             service={service}
             labelledBy={nameId}
-            describedBy={isExpired ? `${descriptionId} ${warningId}` : descriptionId}
+            describedBy={isExpired || isInvalid ? `${descriptionId} ${warningId}` : descriptionId}
             disabled={disabled}
             onConnect={onConnect}
             onConnectionChange={onConnectionChange}
             onReconnect={onReconnect}
+            onReplace={onReplace}
             onRemove={onRemove}
           />
         ) : (
@@ -138,6 +146,7 @@ export default function RequiredServices({
   onConnectionChange,
   disabled = false,
   onReconnect,
+  onReplace,
   onRemove,
   className,
 }: Props) {
@@ -153,6 +162,7 @@ export default function RequiredServices({
           onConnectionChange={onConnectionChange}
           disabled={disabled}
           onReconnect={onReconnect}
+          onReplace={onReplace}
           onRemove={onRemove}
         />
       ))}
