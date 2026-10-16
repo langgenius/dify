@@ -1011,6 +1011,39 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
   })
 
+  it('keeps the deletion dialog modal until the pending deletion settles', async () => {
+    const user = userEvent.setup()
+    let finishDeletion = () => {}
+    serviceMock.deleteSpace.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDeletion = resolve
+        }),
+    )
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.type(
+      within(dialog).getByRole('textbox', {
+        name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
+      }),
+      'Camera Technical Spec',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+    await waitFor(() => expect(serviceMock.deleteSpace).toHaveBeenCalledOnce())
+
+    const cancelButton = within(dialog).getByRole('button', { name: 'common.operation.cancel' })
+    expect(cancelButton).toBeDisabled()
+    await user.click(cancelButton)
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(routerMock.replace).not.toHaveBeenCalled()
+
+    finishDeletion()
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent'))
+  })
+
   it('keeps edits and shows a standard error toast after saving fails', async () => {
     const user = userEvent.setup()
     serviceMock.patchSpace.mockRejectedValueOnce(new Error('network error'))
