@@ -282,6 +282,7 @@
   "tracing.configProvider.username": "Nama Pengguna",
   "tracing.configProvider.viewDocsLink": "Lihat dokumen {{key}}",
   "tracing.configProviderTitle.configured": "Dikonfigurasi",
+  "tracing.configProviderTitle.moreProviders": "Penyedia lainnya",
   "tracing.configProviderTitle.notConfigured": "Penyedia konfigurasi untuk mengaktifkan pelacakan",
   "tracing.databricks.description": "Databricks menawarkan MLflow yang sepenuhnya dikelola dengan tata kelola dan keamanan yang kuat untuk menyimpan data jejak.",
   "tracing.databricks.title": "Databricks",

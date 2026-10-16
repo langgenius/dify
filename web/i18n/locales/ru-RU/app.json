@@ -282,6 +282,7 @@
   "tracing.configProvider.username": "Имя пользователя",
   "tracing.configProvider.viewDocsLink": "Посмотреть документацию {{key}}",
   "tracing.configProviderTitle.configured": "Настроено",
+  "tracing.configProviderTitle.moreProviders": "Другие поставщики",
   "tracing.configProviderTitle.notConfigured": "Настройте провайдера, чтобы включить трассировку",
   "tracing.databricks.description": "Databricks предлагает полностью управляемый MLflow с сильным управлением и безопасностью для хранения данных трассировки.",
   "tracing.databricks.title": "Databricks",
