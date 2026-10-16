@@ -1,43 +1,57 @@
 'use client'
-
 import type { AppTracePayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { FC } from 'react'
 import type { ProviderConfigError } from './provider-panel'
+import type { ConfigurableTracingProvider } from './providers'
+import type { TracingResource } from './resource'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import ConfigButton from './config-button'
+import { configurableProviders, tracingProviders } from './providers'
 import TracingIcon from './tracing-icon'
-import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'tracing'
 
-type PanelProps = {
-  appId: string
+type TracingConfigurationProps = {
+  resource: TracingResource
   readOnly: boolean
 }
 
-const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
+export function TracingConfiguration({ resource, readOnly }: TracingConfigurationProps) {
   const { t } = useTranslation(['app', 'common'])
   const statusQuery = useQuery(
-    consoleQuery.apps.byAppId.trace.get.queryOptions({
-      input: { params: { app_id: appId } },
-    }),
+    resource.kind === 'agent'
+      ? consoleQuery.agent.byAgentId.trace.get.queryOptions({
+          input: { params: { agent_id: resource.agentId } },
+        })
+      : consoleQuery.apps.byAppId.trace.get.queryOptions({
+          input: { params: { app_id: resource.appId } },
+        }),
   )
   const tracingStatus = statusQuery.data
-  const providers = Object.values(TracingProvider)
+  const providers = configurableProviders
   const configQueries = useQueries({
-    queries: providers.map((provider) =>
-      consoleQuery.apps.byAppId.traceConfig.get.queryOptions({
-        input: { params: { app_id: appId }, query: { tracing_provider: provider } },
-      }),
-    ),
+    queries: readOnly
+      ? []
+      : providers.map((provider) =>
+          resource.kind === 'agent'
+            ? consoleQuery.agent.byAgentId.traceConfig.get.queryOptions({
+                input: {
+                  params: { agent_id: resource.agentId },
+                  query: { tracing_provider: provider },
+                },
+              })
+            : consoleQuery.apps.byAppId.traceConfig.get.queryOptions({
+                input: {
+                  params: { app_id: resource.appId },
+                  query: { tracing_provider: provider },
+                },
+              }),
+        ),
   })
   const configs = new Map(
     providers.map((provider, index) => {
@@ -48,60 +62,48 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
       ] as const
     }),
   )
-  const { mutate: updateTracingStatus } = useMutation(
-    consoleQuery.apps.byAppId.trace.post.mutationOptions(),
+  const updateAppTrace = useMutation(
+    consoleQuery.apps.byAppId.trace.post.mutationOptions({ context: { silent: true } }),
   )
+  const updateAgentTrace = useMutation(
+    consoleQuery.agent.byAgentId.trace.post.mutationOptions({ context: { silent: true } }),
+  )
+  const updateTracingStatus = resource.kind === 'agent' ? updateAgentTrace : updateAppTrace
   const enabled = tracingStatus?.enabled ?? false
   const inUseTracingProvider =
     providers.find((provider) => provider === tracingStatus?.tracing_provider) ?? null
-  const handleTracingStatusChange = (body: AppTracePayload, noToast = false) => {
-    updateTracingStatus(
-      { params: { app_id: appId }, body },
-      {
-        onSuccess: () => {
-          if (!noToast)
-            toast(
-              t(($) => $['api.success'], { ns: 'common' }),
-              { type: 'success' },
-            )
-        },
-      },
-    )
+  const updatePolicy = async (changes: Partial<AppTracePayload>) => {
+    if (!tracingStatus || readOnly) return
+    const body: AppTracePayload = {
+      enabled,
+      tracing_provider: tracingStatus.tracing_provider ?? null,
+      capture_content: tracingStatus.capture_content ?? false,
+      capture_agent: tracingStatus.capture_agent ?? true,
+      ...changes,
+    }
+    if (resource.kind === 'agent')
+      await updateAgentTrace.mutateAsync({ params: { agent_id: resource.agentId }, body })
+    else await updateAppTrace.mutateAsync({ params: { app_id: resource.appId }, body })
   }
   const handleTracingEnabledChange = (enabled: boolean) => {
-    handleTracingStatusChange({ tracing_provider: inUseTracingProvider, enabled })
+    void updatePolicy({ enabled }).catch(() => {})
   }
-  const handleChooseProvider = (provider: TracingProvider) => {
-    handleTracingStatusChange({ tracing_provider: provider, enabled: true })
-  }
-  const providerIconClassMap: Record<TracingProvider, string> = {
-    [TracingProvider.arize]: 'i-custom-public-tracing-arize-icon w-18.5',
-    [TracingProvider.phoenix]: 'i-custom-public-tracing-phoenix-icon w-18.5',
-    [TracingProvider.langSmith]: 'i-custom-public-tracing-langsmith-icon w-21',
-    [TracingProvider.langfuse]: 'i-custom-public-tracing-langfuse-icon w-18.5',
-    [TracingProvider.opik]: 'i-custom-public-tracing-opik-icon w-[47.133904px]',
-    [TracingProvider.weave]: 'i-custom-public-tracing-weave-icon w-30',
-    [TracingProvider.aliyun]: 'i-custom-public-tracing-aliyun-icon w-16.25',
-    [TracingProvider.mlflow]: 'i-custom-public-tracing-mlflow-icon w-11',
-    [TracingProvider.databricks]: 'i-custom-public-tracing-databricks-icon w-25',
-    [TracingProvider.tencent]: 'i-custom-public-tracing-tencent-icon w-20',
+  const handleChooseProvider = (provider: ConfigurableTracingProvider) =>
+    updatePolicy({ tracing_provider: provider, enabled: true })
+  const handleBeforeRemove = async (provider: ConfigurableTracingProvider) => {
+    if (provider === inUseTracingProvider)
+      await updatePolicy({ enabled: false, tracing_provider: null })
   }
   const inUseProviderIconClassName = inUseTracingProvider
-    ? providerIconClassMap[inUseTracingProvider]
+    ? tracingProviders[inUseTracingProvider].icon
     : undefined
 
   const hasConfiguredTracing =
     !!inUseTracingProvider || [...configs.values()].some((config) => config !== null)
-  const handleTracingConfigRemoved = (provider: TracingProvider) => {
-    if (provider === inUseTracingProvider) {
-      handleTracingStatusChange({ enabled: false, tracing_provider: null }, true)
-    }
-  }
-
-  const configErrors: Partial<Record<TracingProvider, ProviderConfigError>> = {}
+  const configErrors: Partial<Record<ConfigurableTracingProvider, ProviderConfigError>> = {}
   configQueries.forEach((query, index) => {
     const provider = providers[index]
-    if (provider && query.isFetched && !query.data) {
+    if (!readOnly && provider && query.isFetched && !query.data) {
       configErrors[provider] = {
         onRetry: () => {
           void query.refetch()
@@ -127,32 +129,28 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
     )
   }
   const isLoading =
-    statusQuery.isPending || configQueries.some((query) => query.isPending && !query.isFetched)
+    statusQuery.isPending ||
+    (!readOnly && configQueries.some((query) => query.isPending && !query.isFetched))
 
   return (
     <div className={cn('flex items-center justify-between')}>
       <ConfigButton
-        key={appId}
-        appId={appId}
+        key={resource.kind === 'agent' ? resource.agentId : resource.appId}
+        resource={resource}
         readOnly={readOnly}
         disabled={isLoading}
-        hasConfigured={hasConfiguredTracing}
+        hasConfigured={(resource.kind === 'agent' && readOnly) || hasConfiguredTracing}
         enabled={enabled}
         onStatusChange={handleTracingEnabledChange}
         chosenProvider={inUseTracingProvider}
         onChooseProvider={handleChooseProvider}
-        arizeConfig={configs.get(TracingProvider.arize)}
-        phoenixConfig={configs.get(TracingProvider.phoenix)}
-        langSmithConfig={configs.get(TracingProvider.langSmith)}
-        langFuseConfig={configs.get(TracingProvider.langfuse)}
-        opikConfig={configs.get(TracingProvider.opik)}
-        weaveConfig={configs.get(TracingProvider.weave)}
-        aliyunConfig={configs.get(TracingProvider.aliyun)}
-        mlflowConfig={configs.get(TracingProvider.mlflow)}
-        databricksConfig={configs.get(TracingProvider.databricks)}
-        tencentConfig={configs.get(TracingProvider.tencent)}
+        pending={updateTracingStatus.isPending}
+        policyError={updateTracingStatus.error?.message}
+        policy={tracingStatus}
+        onPolicyChange={updatePolicy}
+        configs={Object.fromEntries(configs)}
         configErrors={configErrors}
-        onConfigRemoved={handleTracingConfigRemoved}
+        onBeforeRemove={handleBeforeRemove}
       >
         {!isLoading && hasConfiguredTracing ? (
           <>
@@ -189,4 +187,3 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
     </div>
   )
 }
-export default React.memo(Panel)
