@@ -9,8 +9,8 @@ from libs.datetime_utils import naive_utc_now
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
-from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.dsl_import_repository import DslImportRepository
+from repositories.app.enterprise_app_repository import EnterpriseAppRepository
 from repositories.app.export_repository import AppExportRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.workspace.workspace_repository import WorkspaceRepository
