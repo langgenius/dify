@@ -18,7 +18,7 @@ vi.mock('@/service/use-plugins', () => ({
             status: TaskStatus.success,
             message: '',
             icon: '',
-            labels: { en_US: 'Installed Plugin' } as Record<string, string>,
+            labels: { en_US: 'Installed Plugin' },
           } satisfies Omit<PluginStatus, 'taskId'>,
         ],
       },

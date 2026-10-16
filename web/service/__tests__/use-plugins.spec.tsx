@@ -1175,7 +1175,6 @@ describe('usePluginTaskList', () => {
       result.current.handleInstallTaskStart({
         all_installed: false,
         task_id: 'task-new',
-        plugin_unique_identifier: 'langgenius/gitlab_datasource:0.3.11@test',
         task: startedTask,
       })
     })
@@ -1233,7 +1232,6 @@ describe('usePluginTaskList', () => {
       result.current.handleInstallTaskStart({
         all_installed: false,
         task_id: 'task-new',
-        plugin_unique_identifier: 'langgenius/gitlab_datasource:0.3.11@test',
         task: {
           id: 'task-new',
           created_at: '2026-06-05T03:34:59.578653Z',

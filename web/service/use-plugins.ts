@@ -6,6 +6,7 @@ import type {
   PluginEntity,
   PluginInstallationItemResponse,
   PluginListResponse,
+  PluginParameterOption,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
   PluginInfoFromMarketPlace,
@@ -29,7 +30,6 @@ import type {
   PluginTask,
   PluginTaskStart,
   ReferenceSetting,
-  uploadGitHubResponse,
   VersionInfo,
   VersionListResponse,
 } from '@/app/components/plugins/types'
@@ -49,7 +49,6 @@ import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { narrowResponse } from '@/service/console/narrow-response'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
 // oxlint-disable-next-line no-restricted-imports
@@ -483,11 +482,12 @@ export const normalizeInstalledPluginDetail = (plugin: InstalledPluginResponse):
 const isUnfinishedPluginTask = (task: PluginTask) =>
   task.status === TaskStatus.pending || task.status === TaskStatus.running
 
+// Each plugin status records its task so a single status can be cleared.
 const normalizeStartedPluginTask = (task: PluginTaskStart): PluginTask => ({
   ...task,
   plugins: task.plugins.map((plugin) => ({
     ...plugin,
-    taskId: plugin.taskId || task.id,
+    taskId: task.id,
   })),
 })
 
@@ -812,11 +812,9 @@ export const useInstallPackageFromMarketPlace = (
   return useMutation({
     ...options,
     mutationFn: (uniqueIdentifier: string) => {
-      return narrowResponse<InstallPackageResponse>(
-        consoleClient.workspaces.current.plugin.install.marketplace.post({
-          body: { plugin_unique_identifiers: [uniqueIdentifier] },
-        }),
-      )
+      return consoleClient.workspaces.current.plugin.install.marketplace.post({
+        body: { plugin_unique_identifiers: [uniqueIdentifier] },
+      })
     },
     onSuccess: (data, variables, context, mutation) => {
       upsertStartedPluginTask(queryClient, data)
@@ -832,11 +830,9 @@ export const useUpdatePackageFromMarketPlace = (
   return useMutation({
     ...options,
     mutationFn: (body: ParserMarketplaceUpgrade) => {
-      return narrowResponse<InstallPackageResponse>(
-        consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
-          body,
-        }),
-      )
+      return consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
+        body,
+      })
     },
     onSuccess: (data, variables, context, mutation) => {
       upsertStartedPluginTask(queryClient, data)
@@ -849,11 +845,9 @@ export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: stri
   return useQuery({
     queryKey: [NAME_SPACE, 'pluginDeclaration', pluginUniqueIdentifier],
     queryFn: () =>
-      narrowResponse<{ manifest: PluginDeclaration }>(
-        consoleClient.workspaces.current.plugin.marketplace.pkg.get({
-          query: { plugin_unique_identifier: pluginUniqueIdentifier },
-        }),
-      ),
+      consoleClient.workspaces.current.plugin.marketplace.pkg.get({
+        query: { plugin_unique_identifier: pluginUniqueIdentifier },
+      }),
     enabled: !!pluginUniqueIdentifier,
   })
 }
@@ -873,11 +867,9 @@ export const useInstallPackageFromLocal = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (uniqueIdentifier: string) => {
-      return narrowResponse<InstallPackageResponse>(
-        consoleClient.workspaces.current.plugin.install.pkg.post({
-          body: { plugin_unique_identifiers: [uniqueIdentifier] },
-        }),
-      )
+      return consoleClient.workspaces.current.plugin.install.pkg.post({
+        body: { plugin_unique_identifiers: [uniqueIdentifier] },
+      })
     },
     onSuccess: (data) => {
       upsertStartedPluginTask(queryClient, data)
@@ -899,16 +891,14 @@ export const useInstallPackageFromGitHub = () => {
       selectedPackage: string
       uniqueIdentifier: string
     }) => {
-      return narrowResponse<InstallPackageResponse>(
-        consoleClient.workspaces.current.plugin.install.github.post({
-          body: {
-            repo: repoUrl,
-            version: selectedVersion,
-            package: selectedPackage,
-            plugin_unique_identifier: uniqueIdentifier,
-          },
-        }),
-      )
+      return consoleClient.workspaces.current.plugin.install.github.post({
+        body: {
+          repo: repoUrl,
+          version: selectedVersion,
+          package: selectedPackage,
+          plugin_unique_identifier: uniqueIdentifier,
+        },
+      })
     },
     onSuccess: (data) => {
       upsertStartedPluginTask(queryClient, data)
@@ -920,11 +910,9 @@ export const useUploadGitHub = (payload: { repo: string; version: string; packag
   return useQuery({
     queryKey: [NAME_SPACE, 'uploadGitHub', payload],
     queryFn: () =>
-      narrowResponse<uploadGitHubResponse>(
-        consoleClient.workspaces.current.plugin.upload.github.post({
-          body: payload,
-        }),
-      ),
+      consoleClient.workspaces.current.plugin.upload.github.post({
+        body: payload,
+      }),
     retry: 0,
   })
 }
@@ -960,15 +948,14 @@ export const useInstallOrUpdate = ({
               // From local bundle don't have data.value.github_plugin_unique_identifier
               uniqueIdentifier = data.value.github_plugin_unique_identifier!
               if (!uniqueIdentifier) {
-                const { unique_identifier } = await narrowResponse<uploadGitHubResponse>(
-                  consoleClient.workspaces.current.plugin.upload.github.post({
+                const { unique_identifier } =
+                  await consoleClient.workspaces.current.plugin.upload.github.post({
                     body: {
                       repo: data.value.repo!,
                       version: data.value.release! || data.value.version!,
                       package: data.value.packages! || data.value.package!,
                     },
-                  }),
-                )
+                  })
                 uniqueIdentifier = data.value.github_plugin_unique_identifier! || unique_identifier
                 // has the same version, but not installed
                 if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
@@ -980,16 +967,14 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await narrowResponse<InstallPackageResponse>(
-                  consoleClient.workspaces.current.plugin.install.github.post({
-                    body: {
-                      repo: data.value.repo!,
-                      version: data.value.release! || data.value.version!,
-                      package: data.value.packages! || data.value.package!,
-                      plugin_unique_identifier: uniqueIdentifier,
-                    },
-                  }),
-                )
+                const response = await consoleClient.workspaces.current.plugin.install.github.post({
+                  body: {
+                    repo: data.value.repo!,
+                    version: data.value.release! || data.value.version!,
+                    package: data.value.packages! || data.value.package!,
+                    plugin_unique_identifier: uniqueIdentifier,
+                  },
+                })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -1010,13 +995,12 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await narrowResponse<InstallPackageResponse>(
-                  consoleClient.workspaces.current.plugin.install.marketplace.post({
+                const response =
+                  await consoleClient.workspaces.current.plugin.install.marketplace.post({
                     body: {
                       plugin_unique_identifiers: [uniqueIdentifier],
                     },
-                  }),
-                )
+                  })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -1034,13 +1018,11 @@ export const useInstallOrUpdate = ({
                 }
               }
               if (!isInstalled) {
-                const response = await narrowResponse<InstallPackageResponse>(
-                  consoleClient.workspaces.current.plugin.install.pkg.post({
-                    body: {
-                      plugin_unique_identifiers: [uniqueIdentifier],
-                    },
-                  }),
-                )
+                const response = await consoleClient.workspaces.current.plugin.install.pkg.post({
+                  body: {
+                    plugin_unique_identifiers: [uniqueIdentifier],
+                  },
+                })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -1050,13 +1032,11 @@ export const useInstallOrUpdate = ({
             if (isInstalled) {
               if (item.type === 'package') {
                 await uninstallPlugin(installedPayload.installedId, { preserveCredentials: true })
-                const response = await narrowResponse<InstallPackageResponse>(
-                  consoleClient.workspaces.current.plugin.install.pkg.post({
-                    body: {
-                      plugin_unique_identifiers: [uniqueIdentifier],
-                    },
-                  }),
-                )
+                const response = await consoleClient.workspaces.current.plugin.install.pkg.post({
+                  body: {
+                    plugin_unique_identifiers: [uniqueIdentifier],
+                  },
+                })
                 upsertStartedPluginTask(queryClient, response)
                 const { task_id, all_installed } = response
                 taskId = task_id
@@ -1424,9 +1404,9 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     enabled: canManagement,
     queryKey: usePluginTaskListKey,
     queryFn: () =>
-      narrowResponse<{ tasks: PluginTask[] }>(
-        consoleClient.workspaces.current.plugin.tasks.get({ query: { page: 1, page_size: 100 } }),
-      ),
+      consoleClient.workspaces.current.plugin.tasks
+        .get({ query: { page: 1, page_size: 100 } })
+        .then(({ tasks }) => ({ tasks: tasks.map(normalizeStartedPluginTask) })),
     structuralSharing: (previousData, nextData) =>
       preserveLocalUnfinishedPluginTasks(
         previousData as PluginTaskListResponse | undefined,
@@ -1509,6 +1489,20 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
+// Untranslated labels fall back to en_US, matching renderI18nObject. Dynamic options have no
+// display conditions.
+const toDynamicOption = ({ value, label, icon }: PluginParameterOption): FormOption => ({
+  value,
+  label: {
+    en_US: label.en_US,
+    zh_Hans: label.zh_Hans ?? label.en_US,
+    ...(label.ja_JP != null && { ja_JP: label.ja_JP }),
+    ...(label.pt_BR != null && { pt_BR: label.pt_BR }),
+  },
+  icon: icon ?? undefined,
+  show_on: [],
+})
+
 export const useFetchDynamicOptions = (
   plugin_id: string,
   provider: string,
@@ -1520,8 +1514,8 @@ export const useFetchDynamicOptions = (
 ) => {
   return useMutation({
     mutationFn: () =>
-      narrowResponse<{ options: FormOption[] }>(
-        consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get({
+      consoleClient.workspaces.current.plugin.parameters.dynamicOptions
+        .get({
           query: {
             plugin_id,
             provider,
@@ -1530,7 +1524,7 @@ export const useFetchDynamicOptions = (
             provider_type,
             ...extra,
           },
-        }),
-      ),
+        })
+        .then(({ options }) => ({ options: options.map(toDynamicOption) })),
   })
 }

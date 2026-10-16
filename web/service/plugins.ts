@@ -1,16 +1,8 @@
 import type { ParserMarketplaceUpgrade } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
-import type {
-  Dependency,
-  InstallPackageResponse,
-  PluginManifestInMarket,
-  TaskStatusResponse,
-  updatePackageResponse,
-  uploadGitHubResponse,
-} from '@/app/components/plugins/types'
+import type { Dependency, PluginManifestInMarket } from '@/app/components/plugins/types'
 import { consoleClient } from '@/service/console'
 import { getMarketplace, upload } from './base'
-import { narrowResponse } from './console/narrow-response'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()
@@ -26,9 +18,7 @@ export const uploadFile = async (file: File, isBundle: boolean) => {
 }
 
 export const updateFromMarketPlace = async (body: ParserMarketplaceUpgrade) => {
-  return narrowResponse<InstallPackageResponse>(
-    consoleClient.workspaces.current.plugin.upgrade.marketplace.post({ body }),
-  )
+  return consoleClient.workspaces.current.plugin.upgrade.marketplace.post({ body })
 }
 
 export const updateFromGitHub = async (
@@ -38,17 +28,15 @@ export const updateFromGitHub = async (
   originalPlugin: string,
   newPlugin: string,
 ) => {
-  return narrowResponse<updatePackageResponse>(
-    consoleClient.workspaces.current.plugin.upgrade.github.post({
-      body: {
-        repo: repoUrl,
-        version: selectedVersion,
-        package: selectedPackage,
-        original_plugin_unique_identifier: originalPlugin,
-        new_plugin_unique_identifier: newPlugin,
-      },
-    }),
-  )
+  return consoleClient.workspaces.current.plugin.upgrade.github.post({
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
+      original_plugin_unique_identifier: originalPlugin,
+      new_plugin_unique_identifier: newPlugin,
+    },
+  })
 }
 
 export const uploadGitHub = async (
@@ -56,15 +44,13 @@ export const uploadGitHub = async (
   selectedVersion: string,
   selectedPackage: string,
 ) => {
-  return narrowResponse<uploadGitHubResponse>(
-    consoleClient.workspaces.current.plugin.upload.github.post({
-      body: {
-        repo: repoUrl,
-        version: selectedVersion,
-        package: selectedPackage,
-      },
-    }),
-  )
+  return consoleClient.workspaces.current.plugin.upload.github.post({
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
+    },
+  })
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
@@ -90,9 +76,7 @@ export const fetchPluginInfoFromMarketPlace = async ({ org, name }: Record<strin
 }
 
 export const checkTaskStatus = async (taskId: string) => {
-  return narrowResponse<TaskStatusResponse>(
-    consoleClient.workspaces.current.plugin.tasks.byTaskId.get({ params: { task_id: taskId } }),
-  )
+  return consoleClient.workspaces.current.plugin.tasks.byTaskId.get({ params: { task_id: taskId } })
 }
 
 export const uninstallPlugin = async (
