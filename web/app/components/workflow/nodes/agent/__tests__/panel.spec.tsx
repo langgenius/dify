@@ -215,7 +215,7 @@ const createConfigResult = (
     },
   ],
   handleMemoryChange: vi.fn(),
-  isChatMode: true,
+  isChatflow: true,
   ...overrides,
 })
 
@@ -315,7 +315,7 @@ describe('agent/panel', () => {
   it('hides memory config when chat mode support is unavailable', () => {
     mockUseConfig.mockReturnValue(
       createConfigResult({
-        isChatMode: false,
+        isChatflow: false,
         currentStrategy: {
           ...createConfigResult().currentStrategy!,
           features: [],

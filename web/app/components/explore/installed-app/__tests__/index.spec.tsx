@@ -170,7 +170,7 @@ describe('InstalledApp', () => {
     })
   })
 
-  it.each<AppMode>(['chat', 'advanced-chat', 'agent-chat'])(
+  it.each<AppMode>(['chat', 'advanced-chat', 'agent-chat'] as const)(
     'renders chat for the supported %s mode',
     async (mode) => {
       mocks.getInstalledApp.mockResolvedValue(createInstalledApp(mode))

@@ -39,11 +39,9 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
 
         <div className={cn('flex flex-col items-center gap-4 px-4 pt-10 pb-8')}>
           <AppIcon
+            fallback={{ content: '🤖', background: appDefaultIconBackground }}
             size="xxl"
-            iconType={data?.icon_type}
-            icon={data?.icon}
-            background={data?.icon_background || appDefaultIconBackground}
-            imageUrl={data?.icon_url}
+            icon={data}
           />
           <div className="w-full text-center">
             <DialogTitle className="system-xl-semibold text-text-secondary">

@@ -22,8 +22,8 @@ describe('workflow-panel helpers', () => {
     payload: Partial<CustomRunFormProps['payload']>,
   ): CustomRunFormProps => ({
     nodeId: 'node-1',
-    flowId: 'flow-1',
-    flowType: 'app' as CustomRunFormProps['flowType'],
+    resource: { kind: 'app', appId: 'flow-1', mode: 'workflow' },
+
     payload: payload as CustomRunFormProps['payload'],
     setRunResult: vi.fn(),
     setIsRunAfterSingleRun: vi.fn(),

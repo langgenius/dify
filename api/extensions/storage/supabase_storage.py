@@ -53,9 +53,7 @@ class SupabaseStorage(BaseStorage):
     @override
     def exists(self, filename):
         result = self.client.storage.from_(self.bucket_name).list(path=filename)
-        if len(result) > 0:
-            return True
-        return False
+        return len(result) > 0
 
     @override
     def delete(self, filename: str):

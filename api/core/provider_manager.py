@@ -460,7 +460,7 @@ def _attach_active_credentials(
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
-        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
         _attach_active_credentials(
             session=session,
@@ -1002,7 +1002,7 @@ class ProviderManager:
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
+            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
             providers = list(session.scalars(stmt))
             _attach_active_credentials(
                 session=session,
@@ -1661,13 +1661,11 @@ class ProviderManager:
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
-                            try:
+                            with contextlib.suppress(ValueError):
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
                                     decoding_context,
                                 )
-                            except ValueError:
-                                pass
 
                     current_using_credentials = provider_credentials or {}
 
@@ -1803,13 +1801,11 @@ class ProviderManager:
 
                             for variable in model_credential_secret_variables:
                                 if variable in provider_model_credentials:
-                                    try:
+                                    with contextlib.suppress(ValueError):
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                             provider_model_credentials.get(variable) or "",
                                             decoding_context,
                                         )
-                                    except ValueError:
-                                        pass
 
                             # cache provider model credentials
                             provider_model_credentials_cache.set(credentials=provider_model_credentials)

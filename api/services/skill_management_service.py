@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from base64 import b64encode
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -4708,10 +4708,8 @@ class SkillManagementService:
                 continue
 
             if source[index : index + 2] == "\\'":
-                try:
+                with suppress(ValueError):
                     text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
-                except ValueError:
-                    pass
                 index += 4
                 continue
             if index + 1 < len(source):

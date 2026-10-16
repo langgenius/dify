@@ -3,7 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
-import { AppModeEnum } from '@/types/app'
 import Logs from '../index'
 
 vi.mock('@/context/i18n', () => ({
@@ -94,7 +93,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-1',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           } as any
         }
       />,
@@ -125,7 +124,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-2',
-            mode: AppModeEnum.COMPLETION,
+            mode: 'completion' as const,
           } as any
         }
       />,
@@ -150,7 +149,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-3',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           } as any
         }
       />,
@@ -174,7 +173,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-sandbox-last-30-days',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           } as any
         }
       />,
@@ -200,7 +199,7 @@ describe('Logs', () => {
     const user = userEvent.setup()
     const appDetail = {
       id: 'app-period-transition',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
     } as any
     mockUseChatConversations.mockReturnValue({
       data: { total: 0 },

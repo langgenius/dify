@@ -14,10 +14,6 @@ async function loadConsoleContractForSegment(segment: string): Promise<AnyContra
     ])
     return { enterprise: { ...enterpriseContract, appDeploy: appDeployContract } }
   }
-  if (segment === 'knowledgeFs') {
-    const { contract } = await import('@dify/contracts/knowledge-fs/orpc.gen')
-    return { knowledgeFs: contract }
-  }
   const loader = generatedConsoleContractLoaders[segment]
   if (!loader) throw new Error(`Console contract segment "${segment}" is not configured.`)
   return loader()

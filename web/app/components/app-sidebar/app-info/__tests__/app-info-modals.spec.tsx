@@ -3,7 +3,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
 vi.mock('next/dynamic', () => ({
@@ -112,7 +111,7 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
   createAppDetailFixture({
     id: 'app-1',
     name: 'Test App',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon: '🤖',
     icon_type: 'emoji',
     icon_background: '#FFEAD5',

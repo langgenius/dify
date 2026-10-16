@@ -70,10 +70,11 @@ const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParame
 })
 
 const renderImportFromTool = (ui: React.ReactElement) => {
-  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+  const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: false },
   })
-  return renderWorkflowComponent(<ConsoleQueryWrapper>{ui}</ConsoleQueryWrapper>, {
+  return renderWorkflowComponent(ui, {
+    queryClient,
     hooksStoreProps: {
       availableNodesMetaData: { nodes: [] },
     },

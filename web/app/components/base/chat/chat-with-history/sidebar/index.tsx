@@ -96,13 +96,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     >
       <div className={cn('flex shrink-0 items-center gap-3 p-3 pr-2')}>
         <div className="shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appData?.site.icon_type}
-            icon={appData?.site.icon}
-            background={appData?.site.icon_background}
-            imageUrl={appData?.site.icon_url}
-          />
+          <AppIcon size="large" icon={appData?.site} />
         </div>
         <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
           {appData?.site.title}

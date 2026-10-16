@@ -3,7 +3,6 @@ import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { FlowType } from '@/types/common'
 import { fullWorkflowAccessControl } from '../hooks-store'
 import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
@@ -76,7 +75,7 @@ vi.mock('../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => mockUseIsChatMode(),
+
     useNodesReadOnly: () => mockUseNodesReadOnly(),
   }
 })
@@ -237,12 +236,9 @@ describe('PanelContextmenu', () => {
       initialStoreState: {
         contextMenuTarget: { type: 'panel' },
       },
+      resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'snippet-1',
-          flowType: FlowType.snippet,
-          fileSettings: {},
-        },
+        fileSettings: {},
       },
     })
 
@@ -292,4 +288,11 @@ describe('PanelContextmenu', () => {
     expect(await screen.findByText('comments.actions.addComment')).toBeInTheDocument()
     expect(screen.queryByText('nodes.note.addNote')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

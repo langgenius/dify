@@ -66,6 +66,7 @@ const iconButtonVariants = cva(
         tone: 'destructive',
         class: [
           'text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
+          'not-data-disabled:focus-visible:bg-state-destructive-hover not-data-disabled:focus-visible:text-text-destructive',
           'data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
         ],
       },
@@ -84,6 +85,7 @@ const iconButtonVariants = cva(
         class: [
           'bg-components-button-destructive-secondary-bg text-components-button-destructive-secondary-text inset-ring-components-button-destructive-secondary-border',
           'hover:bg-components-button-destructive-secondary-bg-hover hover:inset-ring-components-button-destructive-secondary-border-hover',
+          'not-data-disabled:focus-visible:bg-components-button-destructive-secondary-bg-hover',
           'data-disabled:text-components-button-destructive-secondary-text-disabled',
         ],
       },
@@ -102,6 +104,7 @@ const iconButtonVariants = cva(
         class: [
           'text-components-button-destructive-ghost-text',
           'hover:bg-components-button-destructive-ghost-bg-hover',
+          'not-data-disabled:focus-visible:bg-components-button-destructive-ghost-bg-hover',
           'data-disabled:text-components-button-destructive-ghost-text-disabled',
         ],
       },

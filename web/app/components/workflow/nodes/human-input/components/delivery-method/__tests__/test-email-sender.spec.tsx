@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -18,7 +18,6 @@ import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/type
 import { toast } from '@/app/notifications'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import EmailSenderModal from '../test-email-sender'
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
@@ -70,7 +69,9 @@ const renderWithProviders = (ui: ReactNode) => {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
+      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
+      </EditorResourceScope>
     </QueryClientProvider>,
   )
 }
@@ -180,9 +181,6 @@ const createDynamicSelectInput = (): SelectFormInput => ({
 describe('human-input/delivery-method/test-email-sender', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: createAppDetailFixture({ name: 'Workflow App' }),
-    })
   })
 
   afterEach(() => {

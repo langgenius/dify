@@ -15,17 +15,13 @@ const createNode = (id = 'node-1'): Node =>
   }) as Node
 
 describe('appendSnippetInputFieldVars', () => {
-  beforeEach(() => {
-    globalThis.history.pushState({}, '', '/')
-  })
-
   it('should treat missing snippet input fields as empty on snippet canvases', () => {
-    globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
     const availableNodes = [createNode()]
 
     expect(
       appendSnippetInputFieldVars({
         availableNodes,
+        isSnippetFlow: true,
         fields: undefined,
         title: 'Snippet',
       }),

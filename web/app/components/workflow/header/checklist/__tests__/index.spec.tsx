@@ -1,6 +1,7 @@
 import type { ChecklistItem } from '../../../hooks/use-checklist'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '../../../types'
 import WorkflowChecklist from '../index'
 
@@ -56,10 +57,10 @@ vi.mock('../../../store', () => ({
 }))
 
 vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) =>
+  useHooksStore: (selector: (state: { configsMap: { resourceKind: string } }) => unknown) =>
     selector({
       configsMap: {
-        flowType: 'workflow',
+        resourceKind: 'workflow',
       },
     }),
 }))
@@ -109,7 +110,9 @@ describe('WorkflowChecklist', () => {
 
   it('should split checklist items into plugin and node groups and delegate clicks to node selection by default', async () => {
     const user = userEvent.setup()
-    render(<WorkflowChecklist disabled={false} />)
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(screen.getByText('2')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
@@ -123,7 +126,9 @@ describe('WorkflowChecklist', () => {
   it('should use the custom item click handler when provided', async () => {
     const user = userEvent.setup()
     const onItemClick = vi.fn()
-    render(<WorkflowChecklist disabled={false} onItemClick={onItemClick} />)
+    render(<WorkflowChecklist disabled={false} onItemClick={onItemClick} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByTestId('node-group-Broken Node'))
@@ -134,7 +139,9 @@ describe('WorkflowChecklist', () => {
 
   it('should show the tooltip without replacing the warning count in the accessible name', async () => {
     const user = userEvent.setup()
-    render(<WorkflowChecklist disabled={false} />)
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     const trigger = screen.getByRole('button', { name: 'workflow.panel.checklist 2' })
     await user.hover(trigger)
@@ -153,7 +160,9 @@ describe('WorkflowChecklist', () => {
       title: 'Inline Agent',
       openInlineAgentPanel: true,
     }
-    render(<WorkflowChecklist disabled={false} />)
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist 2' }))
     await user.click(screen.getByTestId('node-group-Inline Agent'))
@@ -166,14 +175,18 @@ describe('WorkflowChecklist', () => {
     const user = userEvent.setup()
     mockChecklistItems = []
 
-    render(<WorkflowChecklist disabled={false} />)
+    render(<WorkflowChecklist disabled={false} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await user.click(screen.getByRole('button', { name: 'workflow.panel.checklist' }))
     expect(screen.getByText(/checklistResolved/i)).toBeInTheDocument()
   })
 
   it('should ignore popover open changes when the checklist is disabled', () => {
-    render(<WorkflowChecklist disabled={true} />)
+    render(<WorkflowChecklist disabled={true} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(screen.getByText('2').closest('button')).toBeDisabled()
   })
