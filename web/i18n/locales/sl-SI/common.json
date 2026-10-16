@@ -321,5 +321,13 @@
   "voiceInput.starting": "Zagon mikrofona ...",
   "voiceInput.stop": "Ustavi snemanje",
   "workflowAsToolPage.description": "Vsak objavljen workflow pretvorite v ponovno uporabno orodje. Uporabite ga v več aplikacijah, da ohranite modularnost in se izognete ponavljanju.",
+  "workspace.create.backToMyApps": "Nazaj na Moje aplikacije",
+  "workspace.create.continue": "Ustvari delovni prostor in nadaljuj",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Vse pravice pridržane.",
+  "workspace.create.description": "Ustvarjaj aplikacije v Dify Studio. Za začetek ustvari delovni prostor.",
+  "workspace.create.name": "Ime delovnega prostora",
+  "workspace.create.namePlaceholder": "npr. Moj delovni prostor",
+  "workspace.create.nameRequired": "Vnesi ime delovnega prostora.",
+  "workspace.create.title": "Ustvari delovni prostor",
   "you": "Ti"
 }

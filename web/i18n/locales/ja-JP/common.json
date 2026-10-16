@@ -321,5 +321,13 @@
   "voiceInput.starting": "マイクを起動しています...",
   "voiceInput.stop": "録音を停止",
   "workflowAsToolPage.description": "公開済みのワークフローを再利用可能なツールに変換し、複数のアプリで使い回せます。構成をモジュール化し、重複作業を防げます。",
+  "workspace.create.backToMyApps": "マイアプリに戻る",
+  "workspace.create.continue": "ワークスペースを作成して続行",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. 無断転載を禁じます。",
+  "workspace.create.description": "Dify Studio でアプリを構築しましょう。まずワークスペースを作成してください。",
+  "workspace.create.name": "ワークスペース名",
+  "workspace.create.namePlaceholder": "例：マイワークスペース",
+  "workspace.create.nameRequired": "ワークスペース名を入力してください。",
+  "workspace.create.title": "ワークスペースを作成",
   "you": "あなた"
 }

@@ -321,5 +321,13 @@
   "voiceInput.starting": "माइक्रोफ़ोन शुरू हो रहा है...",
   "voiceInput.stop": "रिकॉर्डिंग रोकें",
   "workflowAsToolPage.description": "किसी भी प्रकाशित workflow को reusable tool में बदलें। अपने builds को modular रखने और दोहराव से बचने के लिए इसे कई apps में उपयोग करें।",
+  "workspace.create.backToMyApps": "मेरे ऐप पर वापस जाएँ",
+  "workspace.create.continue": "वर्कस्पेस बनाएँ और जारी रखें",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. सर्वाधिकार सुरक्षित।",
+  "workspace.create.description": "Dify Studio में अपने ऐप बनाएँ। शुरू करने के लिए एक वर्कस्पेस बनाएँ।",
+  "workspace.create.name": "वर्कस्पेस का नाम",
+  "workspace.create.namePlaceholder": "जैसे: मेरा वर्कस्पेस",
+  "workspace.create.nameRequired": "वर्कस्पेस का नाम दर्ज करें।",
+  "workspace.create.title": "वर्कस्पेस बनाएँ",
   "you": "आप"
 }

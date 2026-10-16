@@ -321,5 +321,13 @@
   "voiceInput.starting": "ກຳລັງເລີ່ມໄມໂຄຣໂຟນ...",
   "voiceInput.stop": "ຢຸດການບັນທຶກ",
   "workflowAsToolPage.description": "ປ່ຽນ Workflow ທີ່ເຜີຍແຜ່ແລ້ວໃຫ້ເປັນເຄື່ອງມືທີ່ນຳໃຊ້ຄືນໃໝ່ໄດ້. ໃຊ້ໃນຫຼາຍແອັບເພື່ອໃຫ້ການສ້າງຂອງທ່ານເປັນລະບົບ ແລະ ຫຼີກເວັ້ນການເຮັດຊ້ຳ.",
+  "workspace.create.backToMyApps": "ກັບໄປຫາແອັບຂອງຂ້ອຍ",
+  "workspace.create.continue": "ສ້າງພື້ນທີ່ເຮັດວຽກ ແລະ ດຳເນີນຕໍ່",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. ສະຫງວນລິຂະສິດ.",
+  "workspace.create.description": "ສ້າງແອັບຂອງທ່ານໃນ Dify Studio. ສ້າງພື້ນທີ່ເຮັດວຽກເພື່ອເລີ່ມຕົ້ນ.",
+  "workspace.create.name": "ຊື່ພື້ນທີ່ເຮັດວຽກ",
+  "workspace.create.namePlaceholder": "ຕົວຢ່າງ: ພື້ນທີ່ເຮັດວຽກຂອງຂ້ອຍ",
+  "workspace.create.nameRequired": "ປ້ອນຊື່ພື້ນທີ່ເຮັດວຽກ.",
+  "workspace.create.title": "ສ້າງພື້ນທີ່ເຮັດວຽກ",
   "you": "ທ່ານ"
 }

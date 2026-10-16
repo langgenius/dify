@@ -321,5 +321,13 @@
   "voiceInput.starting": "Memulai mikrofon...",
   "voiceInput.stop": "Hentikan rekaman",
   "workflowAsToolPage.description": "Ubah workflow yang telah dipublikasikan menjadi alat yang dapat digunakan kembali. Gunakan di beberapa aplikasi agar build tetap modular dan tidak berulang.",
+  "workspace.create.backToMyApps": "Kembali ke Aplikasi saya",
+  "workspace.create.continue": "Buat ruang kerja dan lanjutkan",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Hak cipta dilindungi undang-undang.",
+  "workspace.create.description": "Bangun aplikasi Anda di Dify Studio. Buat ruang kerja untuk memulai.",
+  "workspace.create.name": "Nama ruang kerja",
+  "workspace.create.namePlaceholder": "mis. Ruang kerja saya",
+  "workspace.create.nameRequired": "Masukkan nama ruang kerja.",
+  "workspace.create.title": "Buat ruang kerja",
   "you": "Kamu"
 }

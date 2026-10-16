@@ -321,5 +321,13 @@
   "voiceInput.starting": "Microfoon starten...",
   "voiceInput.stop": "Opname stoppen",
   "workflowAsToolPage.description": "Zet elke gepubliceerde workflow om in een herbruikbare tool. Gebruik deze in meerdere apps om modulair te blijven en herhaling te voorkomen.",
+  "workspace.create.backToMyApps": "Terug naar Mijn apps",
+  "workspace.create.continue": "Werkruimte maken en doorgaan",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Alle rechten voorbehouden.",
+  "workspace.create.description": "Bouw je apps in Dify Studio. Maak een werkruimte om aan de slag te gaan.",
+  "workspace.create.name": "Naam van de werkruimte",
+  "workspace.create.namePlaceholder": "bijv. Mijn werkruimte",
+  "workspace.create.nameRequired": "Voer een naam voor de werkruimte in.",
+  "workspace.create.title": "Een werkruimte maken",
   "you": "You"
 }

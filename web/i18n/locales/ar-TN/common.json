@@ -321,5 +321,13 @@
   "voiceInput.starting": "جارٍ تشغيل الميكروفون...",
   "voiceInput.stop": "إيقاف التسجيل",
   "workflowAsToolPage.description": "حوّل أي workflow منشور إلى أداة قابلة لإعادة الاستخدام. استخدمها عبر تطبيقات متعددة للحفاظ على البنية المعيارية وتجنب التكرار.",
+  "workspace.create.backToMyApps": "العودة إلى تطبيقاتي",
+  "workspace.create.continue": "إنشاء مساحة العمل والمتابعة",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. جميع الحقوق محفوظة.",
+  "workspace.create.description": "أنشئ تطبيقاتك في Dify Studio. أنشئ مساحة عمل للبدء.",
+  "workspace.create.name": "اسم مساحة العمل",
+  "workspace.create.namePlaceholder": "مثال: مساحة عملي",
+  "workspace.create.nameRequired": "أدخل اسمًا لمساحة العمل.",
+  "workspace.create.title": "إنشاء مساحة عمل",
   "you": "أنت"
 }

@@ -321,5 +321,13 @@
   "voiceInput.starting": "Mikrofon başlatılıyor...",
   "voiceInput.stop": "Kaydı durdur",
   "workflowAsToolPage.description": "Yayınlanmış herhangi bir workflowu yeniden kullanılabilir bir araca dönüştürün. Modüler kalmak ve tekrarı önlemek için birden çok uygulamada kullanın.",
+  "workspace.create.backToMyApps": "Uygulamalarıma dön",
+  "workspace.create.continue": "Çalışma alanı oluştur ve devam et",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Tüm hakları saklıdır.",
+  "workspace.create.description": "Uygulamalarını Dify Studio’da oluştur. Başlamak için bir çalışma alanı oluştur.",
+  "workspace.create.name": "Çalışma alanının adı",
+  "workspace.create.namePlaceholder": "ör. Çalışma alanım",
+  "workspace.create.nameRequired": "Bir çalışma alanı adı gir.",
+  "workspace.create.title": "Çalışma alanı oluştur",
   "you": "Sen"
 }

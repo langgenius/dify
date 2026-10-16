@@ -321,5 +321,13 @@
   "voiceInput.starting": "Đang khởi động micrô...",
   "voiceInput.stop": "Dừng ghi âm",
   "workflowAsToolPage.description": "Biến bất kỳ workflow đã xuất bản nào thành công cụ có thể tái sử dụng. Dùng trong nhiều ứng dụng để giữ tính mô-đun và tránh lặp lại.",
+  "workspace.create.backToMyApps": "Quay lại Ứng dụng của tôi",
+  "workspace.create.continue": "Tạo không gian làm việc và tiếp tục",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Bảo lưu mọi quyền.",
+  "workspace.create.description": "Xây dựng ứng dụng của bạn trong Dify Studio. Tạo không gian làm việc để bắt đầu.",
+  "workspace.create.name": "Tên không gian làm việc",
+  "workspace.create.namePlaceholder": "ví dụ: Không gian làm việc của tôi",
+  "workspace.create.nameRequired": "Nhập tên không gian làm việc.",
+  "workspace.create.title": "Tạo không gian làm việc",
   "you": "Bạn"
 }

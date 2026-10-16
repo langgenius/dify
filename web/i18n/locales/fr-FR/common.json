@@ -321,5 +321,13 @@
   "voiceInput.starting": "Démarrage du microphone...",
   "voiceInput.stop": "Arrêter l’enregistrement",
   "workflowAsToolPage.description": "Transformez tout workflow publié en outil réutilisable. Utilisez-le dans plusieurs apps pour garder vos projets modulaires et éviter les répétitions.",
+  "workspace.create.backToMyApps": "Retour à Mes applications",
+  "workspace.create.continue": "Créer l’espace de travail et continuer",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Tous droits réservés.",
+  "workspace.create.description": "Créez vos applications dans Dify Studio. Créez un espace de travail pour commencer.",
+  "workspace.create.name": "Nom de l’espace de travail",
+  "workspace.create.namePlaceholder": "Par exemple : Mon espace de travail",
+  "workspace.create.nameRequired": "Saisissez un nom pour l’espace de travail.",
+  "workspace.create.title": "Créer un espace de travail",
   "you": "Vous"
 }

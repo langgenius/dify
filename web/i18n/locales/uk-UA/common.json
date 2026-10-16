@@ -321,5 +321,13 @@
   "voiceInput.starting": "Запуск мікрофона...",
   "voiceInput.stop": "Зупинити запис",
   "workflowAsToolPage.description": "Перетворіть будь-який опублікований workflow на багаторазовий інструмент. Використовуйте його в кількох застосунках, щоб зберігати модульність і уникати повторень.",
+  "workspace.create.backToMyApps": "Повернутися до моїх застосунків",
+  "workspace.create.continue": "Створити робочий простір і продовжити",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Усі права захищено.",
+  "workspace.create.description": "Створюйте застосунки в Dify Studio. Для початку створіть робочий простір.",
+  "workspace.create.name": "Назва робочого простору",
+  "workspace.create.namePlaceholder": "Наприклад: Мій робочий простір",
+  "workspace.create.nameRequired": "Введіть назву робочого простору.",
+  "workspace.create.title": "Створити робочий простір",
   "you": "Ти"
 }

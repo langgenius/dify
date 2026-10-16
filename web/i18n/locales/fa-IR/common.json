@@ -321,5 +321,13 @@
   "voiceInput.starting": "در حال راه‌اندازی میکروفون...",
   "voiceInput.stop": "توقف ضبط",
   "workflowAsToolPage.description": "هر workflow منتشرشده را به ابزاری قابل استفاده مجدد تبدیل کنید. از آن در چندین برنامه استفاده کنید تا ساختار ماژولار بماند و از تکرار جلوگیری شود.",
+  "workspace.create.backToMyApps": "بازگشت به برنامه‌های من",
+  "workspace.create.continue": "ایجاد فضای کاری و ادامه",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. تمامی حقوق محفوظ است.",
+  "workspace.create.description": "برنامه‌های خود را در Dify Studio بسازید. برای شروع، یک فضای کاری ایجاد کنید.",
+  "workspace.create.name": "نام فضای کاری",
+  "workspace.create.namePlaceholder": "مثلاً: فضای کاری من",
+  "workspace.create.nameRequired": "نام فضای کاری را وارد کنید.",
+  "workspace.create.title": "ایجاد فضای کاری",
   "you": "تو"
 }

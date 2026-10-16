@@ -321,5 +321,13 @@
   "voiceInput.starting": "正在啟動麥克風...",
   "voiceInput.stop": "停止錄音",
   "workflowAsToolPage.description": "將任意已發布工作流程作為可重複使用的工具，在多個應用中使用以保持模組化並避免重複設定。",
+  "workspace.create.backToMyApps": "返回我的應用程式",
+  "workspace.create.continue": "建立工作空間並繼續",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. 保留所有權利。",
+  "workspace.create.description": "在 Dify Studio 中建構你的應用程式。建立工作空間以開始使用。",
+  "workspace.create.name": "工作空間名稱",
+  "workspace.create.namePlaceholder": "例如：我的工作空間",
+  "workspace.create.nameRequired": "請輸入工作空間名稱。",
+  "workspace.create.title": "建立工作空間",
   "you": "你"
 }

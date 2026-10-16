@@ -321,5 +321,13 @@
   "voiceInput.starting": "Se pornește microfonul...",
   "voiceInput.stop": "Oprește înregistrarea",
   "workflowAsToolPage.description": "Transformă orice workflow publicat într-un instrument reutilizabil. Folosește-l în mai multe aplicații pentru a păstra buildurile modulare și a evita repetarea.",
+  "workspace.create.backToMyApps": "Înapoi la Aplicațiile mele",
+  "workspace.create.continue": "Creează spațiul de lucru și continuă",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Toate drepturile rezervate.",
+  "workspace.create.description": "Creează aplicații în Dify Studio. Creează un spațiu de lucru pentru a începe.",
+  "workspace.create.name": "Numele spațiului de lucru",
+  "workspace.create.namePlaceholder": "de ex. Spațiul meu de lucru",
+  "workspace.create.nameRequired": "Introdu un nume pentru spațiul de lucru.",
+  "workspace.create.title": "Creează un spațiu de lucru",
   "you": "Tu"
 }

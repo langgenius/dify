@@ -321,5 +321,13 @@
   "voiceInput.starting": "마이크를 시작하는 중...",
   "voiceInput.stop": "녹음 중지",
   "workflowAsToolPage.description": "게시된 workflow를 재사용 가능한 도구로 전환하세요. 여러 앱에서 사용해 빌드를 모듈화하고 반복을 줄일 수 있습니다.",
+  "workspace.create.backToMyApps": "내 앱으로 돌아가기",
+  "workspace.create.continue": "워크스페이스를 만들고 계속",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. 모든 권리 보유.",
+  "workspace.create.description": "Dify Studio에서 앱을 만드세요. 시작하려면 워크스페이스를 만드세요.",
+  "workspace.create.name": "워크스페이스 이름",
+  "workspace.create.namePlaceholder": "예: 내 워크스페이스",
+  "workspace.create.nameRequired": "워크스페이스 이름을 입력하세요.",
+  "workspace.create.title": "워크스페이스 만들기",
   "you": "나"
 }

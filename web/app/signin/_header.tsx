@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
@@ -14,12 +15,12 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
   loading: () => <div className="size-8 bg-transparent" />,
 })
 
-const Header = () => {
+const Header = ({ className }: { className?: string }) => {
   const locale = useLocale()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   return (
-    <header className="flex w-full items-center justify-between p-6">
+    <header className={cn('flex w-full items-center justify-between p-6', className)}>
       {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo ? (
         <img
           src={systemFeatures.branding.login_page_logo}

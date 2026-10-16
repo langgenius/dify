@@ -321,5 +321,13 @@
   "voiceInput.starting": "กำลังเริ่มไมโครโฟน...",
   "voiceInput.stop": "หยุดการบันทึก",
   "workflowAsToolPage.description": "เปลี่ยน workflow ที่เผยแพร่แล้วให้เป็นเครื่องมือที่ใช้ซ้ำได้ ใช้ได้ในหลายแอปเพื่อให้การสร้างงานเป็นโมดูลและหลีกเลี่ยงการทำซ้ำ",
+  "workspace.create.backToMyApps": "กลับไปที่แอปของฉัน",
+  "workspace.create.continue": "สร้างเวิร์กสเปซและดำเนินการต่อ",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. สงวนลิขสิทธิ์",
+  "workspace.create.description": "สร้างแอปของคุณใน Dify Studio สร้างเวิร์กสเปซเพื่อเริ่มต้นใช้งาน",
+  "workspace.create.name": "ชื่อเวิร์กสเปซ",
+  "workspace.create.namePlaceholder": "เช่น เวิร์กสเปซของฉัน",
+  "workspace.create.nameRequired": "กรุณากรอกชื่อเวิร์กสเปซ",
+  "workspace.create.title": "สร้างเวิร์กสเปซ",
   "you": "คุณ"
 }

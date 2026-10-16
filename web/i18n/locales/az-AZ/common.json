@@ -321,5 +321,13 @@
   "voiceInput.starting": "Mikrofon işə salınır...",
   "voiceInput.stop": "Səs yazısını dayandır",
   "workflowAsToolPage.description": "İstənilən yayımlanmış iş axınını təkrar istifadə oluna bilən alətə çevirin. Quruluşlarınızı modul şəklində saxlamaq və təkrara yol verməmək üçün onu müxtəlif tətbiqlərdə istifadə edin.",
+  "workspace.create.backToMyApps": "Tətbiqlərimə qayıdın",
+  "workspace.create.continue": "İş sahəsi yaradın və davam edin",
+  "workspace.create.copyright": "© {{year}} LangGenius, Inc. Bütün hüquqlar qorunur.",
+  "workspace.create.description": "Tətbiqlərinizi Dify Studio-da yaradın. Başlamaq üçün iş sahəsi yaradın.",
+  "workspace.create.name": "İş sahəsinin adı",
+  "workspace.create.namePlaceholder": "məs., Mənim iş sahəm",
+  "workspace.create.nameRequired": "İş sahəsinin adını daxil edin.",
+  "workspace.create.title": "İş sahəsi yaradın",
   "you": "Siz"
 }
