@@ -263,7 +263,7 @@ describe('ChatInputArea', () => {
       expect(screen.getByPlaceholderText('Ask the assistant')).toBeInTheDocument()
     })
 
-    it('keeps a visible label for the input after typing', async () => {
+    it('keeps the accessible name for the input after typing', async () => {
       const user = userEvent.setup()
       render(
         <ChatInputArea
@@ -277,7 +277,7 @@ describe('ChatInputArea', () => {
       await user.type(input, 'A research assistant')
 
       expect(input).toHaveValue('A research assistant')
-      expect(screen.getByText('Describe your agent')).toBeVisible()
+      expect(input).toHaveAccessibleName('Describe your agent')
     })
 
     it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {
