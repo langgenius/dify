@@ -24,6 +24,11 @@ from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 from typing_extensions import cast
 
+from dify_agent.adapters.native_testing.transport import (
+    AgentRuntimeHTTPClient,
+    AgentRuntimeTransportError,
+    LegacyPluginDaemonTransport,
+)
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -51,6 +56,12 @@ def create_app(
 ) -> FastAPI:
     """Build the FastAPI app with one shared Redis store and local scheduler."""
     resolved_settings = settings or ServerSettings()
+    if native_owner is not None and (
+        resolved_settings.api_token is None
+        or resolved_settings.inner_api_key
+        or resolved_settings.plugin_daemon_api_key
+    ):
+        raise AgentRuntimeTransportError("native_legacy_authority_unqualified")
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     if agent_stub_token_codec is not None:
@@ -193,30 +204,47 @@ def create_plugin_daemon_http_client(settings: ServerSettings) -> httpx.AsyncCli
     process and must be closed by the app lifespan after the scheduler has stopped
     using it.
     """
-    return _create_shared_http_client(settings)
+    return _create_shared_http_client(
+        settings,
+        transport=LegacyPluginDaemonTransport(httpx.AsyncHTTPTransport(limits=_http_limits(settings), trust_env=False)),
+    )
 
 
 def create_dify_api_inner_http_client(settings: ServerSettings) -> httpx.AsyncClient:
-    """Create the lifespan-owned Dify API inner HTTP client.
+    """Existing inner key selects unqualified legacy ordinary composition.
 
-    The Dify API inner client intentionally shares the generic outbound HTTP
-    timeout and connection-pool settings with the plugin daemon client so
-    operational tuning stays in one place while endpoint URL/API keys remain
-    distinct server settings.
+    Removing it selects strict runtime transport using the existing backend
+    bearer. No configured bearer leaves outbound business authority unavailable;
+    anonymous ordinary control-plane migration remains possible. Stub, runless
+    export and process usage are separately unqualified until S2c.
     """
-    return _create_shared_http_client(settings)
+    if settings.inner_api_key:
+        return _create_shared_http_client(settings)
+    return AgentRuntimeHTTPClient(
+        api_url=settings.inner_api_url,
+        api_token=settings.api_token,
+        timeout=settings.create_outbound_http_timeout(),
+        limits=_http_limits(settings),
+    )
 
 
-def _create_shared_http_client(settings: ServerSettings) -> httpx.AsyncClient:
-    """Build one shared HTTP client using generic outbound timeout/pool settings."""
+def _http_limits(settings: ServerSettings) -> httpx.Limits:
+    return httpx.Limits(
+        max_connections=settings.outbound_http_max_connections,
+        max_keepalive_connections=settings.outbound_http_max_keepalive_connections,
+        keepalive_expiry=settings.outbound_http_keepalive_expiry,
+    )
+
+
+def _create_shared_http_client(
+    settings: ServerSettings, *, transport: httpx.AsyncBaseTransport | None = None
+) -> httpx.AsyncClient:
+    """Legacy clients share configured timeouts and never inherit proxies."""
     return httpx.AsyncClient(
         timeout=settings.create_outbound_http_timeout(),
-        limits=httpx.Limits(
-            max_connections=settings.outbound_http_max_connections,
-            max_keepalive_connections=settings.outbound_http_max_keepalive_connections,
-            keepalive_expiry=settings.outbound_http_keepalive_expiry,
-        ),
+        limits=_http_limits(settings),
         trust_env=False,
+        transport=transport,
     )
 
 

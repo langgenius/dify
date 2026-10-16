@@ -60,7 +60,7 @@ class Toolset(FunctionToolset[Deps]):
             execution_context = DifyExecutionContextLayerConfig.model_validate(
                 ctx.deps.layers[config.execution_context]["config"]
             )
-            http_client = ctx.deps.services.dify_api_http_client
+            http_client = ctx.deps.dify_api_http_client
             if http_client.is_closed:
                 raise RuntimeError("Core tools require an open shared HTTP client.")
             client = DifyCoreToolsClient(

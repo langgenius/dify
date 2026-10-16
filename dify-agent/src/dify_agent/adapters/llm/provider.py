@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, NoReturn, Protocol, cast, override
 from uuid import NAMESPACE_URL, uuid5
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from pydantic import BaseModel, JsonValue, TypeAdapter
@@ -199,11 +201,14 @@ class DifyApiLLMClient:
                 raise NativePolicyStopped("native_tool_permit_missing")
             payload = TypeAdapter(dict[str, JsonValue]).validate_python(payload)
             payload["native_dispatch"] = envelope.wire()
-        url = f"{self.inner_api_url}/inner/api/agent/llm/invoke"
-        headers = {
-            "X-Inner-Api-Key": self.inner_api_key,
-            "Content-Type": "application/json",
-        }
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.inner_api_url,
+            legacy_path="agent/llm/invoke",
+            runtime_path="llm/invoke",
+            api_key=self.inner_api_key,
+        )
+        headers["Content-Type"] = "application/json"
 
         try:
             async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:

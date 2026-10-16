@@ -22,6 +22,8 @@ from typing import ClassVar, Protocol, override
 from urllib.parse import urlparse
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint, AgentRuntimeHTTPClient
 from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter, ValidationError
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.tools import ToolDefinition
@@ -112,11 +114,18 @@ class _DifyPluginToolFileClient:
             "invoke_from": execution_context.invoke_from,
             "file": dict(file_mapping),
         }
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.base_url,
+            legacy_path="download/file/request",
+            runtime_path="files/download-request",
+            api_key=self.api_key,
+        )
         try:
             response = await self.http_client.post(
-                f"{self.base_url}/inner/api/download/file/request",
+                url,
                 headers={
-                    "X-Inner-Api-Key": self.api_key,
+                    **headers,
                     "Content-Type": "application/json",
                 },
                 json=payload,
@@ -132,6 +141,13 @@ class _DifyPluginToolFileClient:
             raise DifyPluginToolClientError(
                 response.text or f"HTTP {response.status_code}", status_code=response.status_code
             )
+        if isinstance(self.http_client, AgentRuntimeHTTPClient):
+            try:
+                value = response.json()
+                value["download_url"] = value.pop("download_uri")
+                return _DownloadFileResponse.model_validate(value)
+            except (ValueError, KeyError, TypeError):
+                raise DifyPluginToolClientError("Invalid Dify API file download response.") from None
         try:
             envelope = _BackwardsInvocationEnvelope.model_validate_json(response.text)
         except ValidationError as exc:
@@ -167,14 +183,14 @@ class Toolset(FunctionToolset[Deps]):
         if not self._loaded:
             config = Config.model_validate(ctx.deps.layers[self.name]["config"])
             services = ctx.deps.services
-            if services.dify_api_http_client.is_closed:
+            if ctx.deps.dify_api_http_client.is_closed:
                 raise RuntimeError("Plugin tools require an open shared Dify API HTTP client.")
             tool_clients: dict[str, DifyPluginDaemonToolClient] = {}
             file_context = _PluginToolFileContext(
                 file_client=_DifyPluginToolFileClient(
                     base_url=services.inner_api_url,
                     api_key=services.inner_api_key,
-                    http_client=services.dify_api_http_client,
+                    http_client=ctx.deps.dify_api_http_client,
                 ),
                 execution_context=DifyExecutionContextLayerConfig.model_validate(
                     ctx.deps.layers[config.execution_context]["config"]

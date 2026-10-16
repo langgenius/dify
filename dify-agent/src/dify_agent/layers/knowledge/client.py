@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
@@ -144,11 +146,18 @@ class DifyKnowledgeBaseClient:
             metadata_filtering=metadata_filtering.to_request_payload(),
         )
 
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.base_url,
+            legacy_path="knowledge/retrieve",
+            runtime_path="knowledge/retrieve",
+            api_key=self.api_key,
+        )
         try:
             response = await self.http_client.post(
-                f"{self.base_url}/inner/api/knowledge/retrieve",
+                url,
                 headers={
-                    "X-Inner-Api-Key": self.api_key,
+                    **headers,
                     "Content-Type": "application/json",
                 },
                 json=request_payload.model_dump(

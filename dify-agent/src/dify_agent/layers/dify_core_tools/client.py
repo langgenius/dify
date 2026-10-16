@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from typing import ClassVar, cast
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
@@ -141,11 +143,18 @@ class DifyCoreToolsClient:
             ),
         )
 
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.base_url,
+            legacy_path="agent/tools/invoke",
+            runtime_path="tools/invoke",
+            api_key=self.api_key,
+        )
         try:
             response = await self.http_client.post(
-                f"{self.base_url}/inner/api/agent/tools/invoke",
+                url,
                 headers={
-                    "X-Inner-Api-Key": self.api_key,
+                    **headers,
                     "Content-Type": "application/json",
                 },
                 json=request_payload.model_dump(mode="json", exclude={"native_dispatch"} if envelope is None else None),

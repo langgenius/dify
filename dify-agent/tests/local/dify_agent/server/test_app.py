@@ -134,6 +134,7 @@ class FakePluginDaemonHttpClient:
         timeout: object | None = None,
         limits: object | None = None,
         trust_env: bool | None = None,
+        transport: object | None = None,
     ) -> None:
         self.timeout = timeout
         self.limits = limits
@@ -181,6 +182,7 @@ class FakeHttpxModule:
     Timeout: ClassVar[type[FakeTimeout]] = FakeTimeout
     Limits: ClassVar[type[FakeLimits]] = FakeLimits
     AsyncClient: ClassVar[type[FakePluginDaemonHttpClient]] = FakePluginDaemonHttpClient
+    AsyncHTTPTransport = staticmethod(lambda **kwargs: object())
 
 
 @pytest.mark.parametrize(
@@ -253,7 +255,7 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.server.agent_stub_files.httpx.AsyncClient",
-        lambda **kwargs: original_async_client(transport=httpx.MockTransport(handler), **kwargs),
+        lambda **kwargs: original_async_client(**(kwargs | {"transport": httpx.MockTransport(handler)})),
     )
 
     with TestClient(create_app(settings)) as client:
@@ -306,6 +308,7 @@ def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construct
 
     client = create_dify_api_inner_http_client(
         ServerSettings(
+            inner_api_key="test-legacy-key",
             outbound_http_connect_timeout=1,
             outbound_http_read_timeout=2,
             outbound_http_write_timeout=3,

@@ -111,7 +111,7 @@ class _KnowledgeTools(FunctionToolset[Deps]):
     async def get_tools(self, ctx: RunContext[Deps]):
         if not self._loaded:
             for tool in await _KnowledgeOperations(self.name, ctx.deps).build_tools(
-                http_client=ctx.deps.services.dify_api_http_client
+                http_client=ctx.deps.dify_api_http_client
             ):
                 self.add_tool(tool)
             self._loaded = True
@@ -254,7 +254,7 @@ class _KnowledgeOperations:
         client = DifyKnowledgeBaseClient(
             base_url=self.inner_api_url,
             api_key=self.inner_api_key,
-            http_client=self.deps.services.dify_api_http_client,
+            http_client=self.deps.dify_api_http_client,
         )
         eager_results: list[DifyKnowledgeEagerResult] = []
         for knowledge_set in user_query_sets:

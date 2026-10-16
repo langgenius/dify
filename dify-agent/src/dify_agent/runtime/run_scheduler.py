@@ -15,10 +15,19 @@ structured-output schemas, or session snapshots become asynchronous
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
 from typing import Protocol
 
+from dify_agent.adapters.native_testing.transport import (
+    AgentRuntimeHTTPClient,
+    AgentRuntimeTransportError,
+    bind_runtime_identity,
+)
 from dify_agent.protocol.native_testing import (
+    AgentRuntimeIdentity,
+    AgentNativeTestRef,
+    ReadAgentRuntimeIdentity,
     NATIVE_TEST_CAPABILITIES,
     AgentRuntimeIdentitySeed,
     ContinuationClaim,
@@ -62,6 +71,8 @@ class RunCancellationConflictError(RuntimeError):
 
 class RunStore(RunEventSink, Protocol):
     """Persistence boundary needed by the scheduler."""
+
+    async def read_run_identity(self, *, run_id: str, selection: ReadAgentRuntimeIdentity) -> AgentRuntimeIdentity: ...
 
     async def stop_native_run(self, *, run_id: str, expected_generation: int, reason_code: str) -> None: ...
     async def get_checkpoint(self, run_id: str) -> AgentCheckpoint: ...
@@ -159,6 +170,8 @@ class RunScheduler:
         agent_observability: AgentObservability | None = None,
         native_owner: NativeContinuationOwner | None = None,
     ) -> None:
+        if native_owner is not None and (services.inner_api_key or services.plugin_daemon_api_key):
+            raise AgentRuntimeTransportError("native_legacy_authority_unqualified")
         self.native_owner = native_owner
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
@@ -205,7 +218,13 @@ class RunScheduler:
                 await asyncio.shield(self.active_tasks[run_id])
             # Restore immutable config and resolve the API-owned decisions before scheduling.
             try:
-                prepared = await self.native_owner.restore(checkpoint=checkpoint)
+                async with self._transport_scope(
+                    run_id,
+                    expected_generation=checkpoint.generation,
+                    expected_digest=checkpoint.config_digest,
+                    expected_ref=checkpoint.ref,
+                ):
+                    prepared = await self.native_owner.restore(checkpoint=checkpoint)
                 if checkpoint.stage == "tool" and prepared.deferred_tool_results is not None:
                     validate_deferred_results(checkpoint, prepared.deferred_tool_results)
             except NativePolicyStopped as stop:
@@ -276,7 +295,13 @@ class RunScheduler:
             prepared = None
             if request.execution_mode == "builder_test" and self.native_owner is not None:
                 try:
-                    continuation = await self.native_owner.prepare(run_id=record.run_id, request=request)
+                    async with self._transport_scope(
+                        record.run_id,
+                        request=request,
+                        expected_generation=0,
+                        expected_digest=executable_request_digest(request),
+                    ):
+                        continuation = await self.native_owner.prepare(run_id=record.run_id, request=request)
                     if continuation.ref != request.native_test_ref or continuation.run_id != record.run_id:
                         raise NativeContinuationConflict("prepared native identity mismatch")
                     prepared = PreparedContinuation(request=request, continuation=continuation)
@@ -327,7 +352,82 @@ class RunScheduler:
             _ = task.cancel()
         _ = await asyncio.gather(*pending, return_exceptions=True)
 
+    @asynccontextmanager
+    async def _transport_scope(
+        self,
+        run_id: str,
+        *,
+        expected_generation: int,
+        request: CreateRunRequest | None = None,
+        expected_digest: str | None = None,
+        expected_ref: AgentNativeTestRef | None = None,
+    ) -> AsyncGenerator[None, None]:
+        # Generic clients belong to explicit legacy composition or unit doubles.
+        # Production strict clients always require the existing durable owner.
+        if not isinstance(self.services.dify_api_http_client, AgentRuntimeHTTPClient):
+            yield
+            return
+        try:
+            record = await self.store.get_run(run_id)
+            seed = record.runtime_identity
+            if seed is None or seed.run_id != run_id:
+                raise ValueError("missing persisted Run identity")
+            identity = await self.store.read_run_identity(
+                run_id=run_id,
+                selection=ReadAgentRuntimeIdentity(parent_node=seed.parent_node, request_digest=seed.request_digest),
+            )
+            if (
+                identity.run_id != run_id
+                or identity.parent_node != seed.parent_node
+                or identity.request_digest != seed.request_digest
+                or identity.execution_mode != seed.execution_mode
+                or identity.agent_generation != expected_generation
+                or (expected_digest is not None and identity.request_digest != expected_digest)
+                or (
+                    expected_ref is not None
+                    and (identity.parent_node is None or identity.parent_node.ref != expected_ref)
+                )
+                or (
+                    request is not None
+                    and (
+                        request.execution_mode != identity.execution_mode
+                        or request.native_parent_node != identity.parent_node
+                    )
+                )
+            ):
+                raise ValueError("persisted Run identity changed")
+        except Exception:
+            raise AgentRuntimeTransportError("agent_runtime_identity_unavailable") from None
+        with bind_runtime_identity(identity):
+            yield
+
     async def _run_record(
+        self, record: RunRecord, request: CreateRunRequest, *, native_prepared: PreparedContinuation | None = None
+    ) -> None:
+        # Restore occurs at the old durable generation. This fresh read happens
+        # after start_continuation has atomically advanced that generation.
+        try:
+            async with self._transport_scope(
+                record.run_id,
+                request=request,
+                expected_generation=native_prepared.continuation.generation if native_prepared is not None else 0,
+                expected_digest=(
+                    native_prepared.continuation.config_digest
+                    if native_prepared is not None
+                    else executable_request_digest(request)
+                ),
+            ):
+                await self._run_bound_record(record, request, native_prepared=native_prepared)
+        except AgentRuntimeTransportError:
+            await emit_run_failed(
+                self.store,
+                run_id=record.run_id,
+                error="Run transport unavailable",
+                reason="agent_runtime_transport_unavailable",
+            )
+            raise
+
+    async def _run_bound_record(
         self, record: RunRecord, request: CreateRunRequest, *, native_prepared: PreparedContinuation | None = None
     ) -> None:
         """Supervise one local runner and its durable cancellation observer."""

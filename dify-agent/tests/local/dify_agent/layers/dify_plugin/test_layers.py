@@ -132,7 +132,7 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
                 "tools": {"config": config.model_dump(mode="json"), "state": {}},
                 "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
             },
-            services=Services(client, client),
+            services=Services(client, client, inner_api_key="test-inner-key"),
             run_id="test",
         )
         result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "read", {"source": value})
@@ -151,7 +151,7 @@ async def test_model_assembly_reads_config_reference_and_borrows_shared_client()
                 "llm": {"config": config.model_dump(mode="json"), "state": {}},
                 "renamed": {"config": identity().model_dump(mode="json"), "state": {}},
             },
-            services=Services(client, client),
+            services=Services(client, client, inner_api_key="test-inner-key"),
             run_id="test",
         )
         model = ModelCapability("llm").build_model(deps)

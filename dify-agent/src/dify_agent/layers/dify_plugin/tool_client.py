@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 import httpx
+
+from dify_agent.adapters.native_testing.transport import refuse_native_daemon_dispatch
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from dify_agent.layers.dify_plugin.configs import DifyPluginToolCredentialType
@@ -204,6 +206,7 @@ class DifyPluginDaemonToolClient:
         top-level peer to ``data`` so daemon-side auditing and credential logic
         can attribute the request to the end user.
         """
+        refuse_native_daemon_dispatch()
         payload: dict[str, object] = {"data": to_plugin_daemon_jsonable(dict(request_data))}
         if self.user_id is not None:
             payload["user_id"] = self.user_id

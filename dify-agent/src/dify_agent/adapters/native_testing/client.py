@@ -6,6 +6,7 @@ from typing import Literal
 import httpx
 from pydantic import Field, JsonValue, TypeAdapter
 
+from dify_agent.adapters.native_testing.transport import agent_api_endpoint
 from dify_agent.protocol.native_testing import (
     ID,
     MAX_AGENT_CONFIG_BYTES,
@@ -69,10 +70,17 @@ class HttpAgentPolicyClient:
     ref: AgentNativeTestRef | None = None
 
     async def _post(self, path: str, payload: NativeDTO):
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.base_url,
+            legacy_path=f"agent/native-testing/{path}",
+            runtime_path=f"native-testing/{path}",
+            api_key=self.api_key,
+        )
         try:
             response = await self.http_client.post(
-                f"{self.base_url.rstrip('/')}/inner/api/agent/native-testing/{path}",
-                headers={"X-Inner-Api-Key": self.api_key},
+                url,
+                headers=headers,
                 json=payload.model_dump(mode="json"),
             )
             response.raise_for_status()
@@ -88,12 +96,19 @@ class HttpAgentPolicyClient:
         if parent is None or (self.ref is not None and self.ref != parent.ref):
             raise AgentPolicyTransportUnavailable("native_policy_owner_mismatch")
         self.ref = parent.ref
+        url, headers = agent_api_endpoint(
+            self.http_client,
+            base_url=self.base_url,
+            legacy_path=f"agent/native-testing/{path}",
+            runtime_path=f"native-testing/{path}",
+            api_key=self.api_key,
+        )
         try:
             async with self.http_client.stream(
                 "POST",
-                f"{self.base_url.rstrip('/')}/inner/api/agent/native-testing/{path}",
+                url,
                 headers={
-                    "X-Inner-Api-Key": self.api_key,
+                    **headers,
                     "Content-Type": "application/json",
                     "Accept-Encoding": "identity",
                 },
