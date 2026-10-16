@@ -1328,6 +1328,28 @@ export type WebAppToken = {
   url?: string | null
 }
 
+export type WorkflowAgentLogMetadataResponse = {
+  elapsed_time?: number | null
+  icon?: string | null
+  provider?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowAgentLogResponse = {
+  data?: {
+    [key: string]: unknown
+  } | null
+  error?: string | null
+  label?: string | null
+  message_id?: string | null
+  metadata?: WorkflowAgentLogMetadataResponse | null
+  node_execution_id?: string | null
+  node_id?: string | null
+  parent_id?: string | null
+  status?: string | null
+  [key: string]: unknown
+}
+
 export type WorkflowDiff = {
   edges_added: Array<string>
   edges_removed: Array<string>
@@ -1338,6 +1360,91 @@ export type WorkflowDiff = {
   nodes_changed: Array<NodeChange>
   nodes_removed: Array<NodeChange>
   published: boolean
+}
+
+export type WorkflowGraphEdgeDataResponse = {
+  sourceType?: string | null
+  targetType?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowGraphEdgeResponse = {
+  data?: WorkflowGraphEdgeDataResponse | null
+  id?: string | null
+  source: string
+  sourceHandle?: string | null
+  target: string
+  targetHandle?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowGraphNodeDataResponse = {
+  desc?: string | null
+  title?: string | null
+  type: string
+  [key: string]: unknown
+}
+
+export type WorkflowGraphNodeResponse = {
+  data: WorkflowGraphNodeDataResponse
+  id: string
+  position?: WorkflowGraphPositionResponse | null
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowGraphPositionResponse = {
+  x: number
+  y: number
+  [key: string]: unknown
+}
+
+export type WorkflowGraphResponse = {
+  edges?: Array<WorkflowGraphEdgeResponse>
+  nodes?: Array<WorkflowGraphNodeResponse>
+  viewport?: WorkflowGraphViewportResponse | null
+  [key: string]: unknown
+}
+
+export type WorkflowGraphViewportResponse = {
+  x: number
+  y: number
+  zoom: number
+  [key: string]: unknown
+}
+
+export type WorkflowNodeExecutionMetadataResponse = {
+  agent_log?: Array<WorkflowAgentLogResponse> | null
+  currency?: string | null
+  error_strategy?: string | null
+  iteration_duration_map?: {
+    [key: string]: number
+  } | null
+  iteration_id?: string | null
+  iteration_index?: number | null
+  loop_duration_map?: {
+    [key: string]: number
+  } | null
+  loop_id?: string | null
+  loop_index?: number | null
+  loop_variable_map?: {
+    [key: string]: unknown
+  } | null
+  parallel_id?: string | null
+  parallel_mode_run_id?: string | null
+  parallel_start_node_id?: string | null
+  parent_parallel_id?: string | null
+  parent_parallel_start_node_id?: string | null
+  tool_info?: WorkflowNodeToolInfoResponse | null
+  total_price?: number | null
+  total_tokens?: number | null
+  [key: string]: unknown
+}
+
+export type WorkflowNodeToolInfoResponse = {
+  agent_strategy?: string | null
+  icon?: string | null
+  [key: string]: unknown
 }
 
 export type WorkflowRunData = {
@@ -1364,10 +1471,14 @@ export type WorkflowRunDetailResponse = {
   error?: string | null
   exceptions_count?: number | null
   finished_at?: number | null
-  graph: unknown
+  graph: WorkflowGraphResponse
   id: string
-  inputs: unknown
-  outputs: unknown
+  inputs: {
+    [key: string]: unknown
+  }
+  outputs: {
+    [key: string]: unknown
+  }
   status?: string | null
   total_steps?: number | null
   total_tokens?: number | null
@@ -1399,7 +1510,7 @@ export type WorkflowRunNodeExecutionResponse = {
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
-  execution_metadata?: unknown
+  execution_metadata?: WorkflowNodeExecutionMetadataResponse | null
   extras?: unknown
   finished_at?: number | null
   id: string

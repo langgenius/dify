@@ -76,6 +76,7 @@ from factories import file_factory, variable_factory
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.member_fields import SimpleAccount
+from fields.workflow_graph_fields import WorkflowFeaturesResponse, WorkflowGraphResponse
 from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     node_execution_response_source,
@@ -323,10 +324,10 @@ class WorkflowEnvironmentVariableResponse(ResponseModel):
 
 class WorkflowResponse(ResponseModel):
     id: str
-    graph: dict[str, Any] = Field(
+    graph: WorkflowGraphResponse = Field(
         validation_alias=AliasChoices("graph_dict", "graph"),
     )
-    features: dict[str, Any] = Field(
+    features: WorkflowFeaturesResponse = Field(
         validation_alias=AliasChoices("features_dict", "features"),
     )
     hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))

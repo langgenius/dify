@@ -2,9 +2,9 @@ import type {
   AppDetailWithSite,
   AppMode,
   AppSiteResponse,
+  WorkflowGraphNodeResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
-import type { InputVar, Node } from '@/app/components/workflow/types'
 import { QueryClientProvider, useSuspenseQuery } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -198,7 +198,7 @@ function createDeferredPromise<T>() {
   return { promise, reject, resolve }
 }
 
-const startNode: Node<{ variables: InputVar[] }> = {
+const startNode: WorkflowGraphNodeResponse = {
   id: 'start',
   position: { x: 0, y: 0 },
   data: {

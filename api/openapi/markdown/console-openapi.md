@@ -26824,8 +26824,8 @@ Query parameters for listing snippet published workflows.
 | created_at | integer |  | Yes |
 | created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
-| features | object |  | Yes |
-| graph | object |  | Yes |
+| features | [WorkflowFeaturesResponse](#workflowfeaturesresponse) |  | Yes |
+| graph | [WorkflowGraphResponse](#workflowgraphresponse) |  | Yes |
 | hash | string |  | Yes |
 | id | string |  | Yes |
 | input_fields | [ object ] |  | No |
@@ -28315,6 +28315,28 @@ How a workflow node is bound to an Agent.
 | variant | string |  | Yes |
 | workflow_id | string |  | No |
 
+#### WorkflowAgentLogMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| elapsed_time | number |  | No |
+| icon | string |  | No |
+| provider | string |  | No |
+
+#### WorkflowAgentLogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | object |  | No |
+| error | string |  | No |
+| label | string |  | No |
+| message_id | string |  | No |
+| metadata | [WorkflowAgentLogMetadataResponse](#workflowagentlogmetadataresponse) |  | No |
+| node_execution_id | string |  | No |
+| node_id | string |  | No |
+| parent_id | string |  | No |
+| status | string |  | No |
+
 #### WorkflowAgentSandboxDownloadPayload
 
 | Name | Type | Description | Required |
@@ -28691,6 +28713,12 @@ Data entity
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
 
+#### WorkflowFeatureToggleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+
 #### WorkflowFeaturesConfigPayload
 
 | Name | Type | Description | Required |
@@ -28710,7 +28738,29 @@ Data entity
 | ---- | ---- | ----------- | -------- |
 | features | [WorkflowFeaturesConfigPayload](#workflowfeaturesconfigpayload) | Workflow feature configuration | Yes |
 
+#### WorkflowFeaturesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_upload | [WorkflowFileUploadResponse](#workflowfileuploadresponse) |  | No |
+| opening_statement | string |  | No |
+| retriever_resource | [WorkflowFeatureToggleResponse](#workflowfeaturetoggleresponse) |  | No |
+| sensitive_word_avoidance | [WorkflowSensitiveWordAvoidanceResponse](#workflowsensitivewordavoidanceresponse) |  | No |
+| speech_to_text | [WorkflowFeatureToggleResponse](#workflowfeaturetoggleresponse) |  | No |
+| suggested_questions | [ string ] |  | No |
+| suggested_questions_after_answer | [WorkflowSuggestedQuestionsAfterAnswerResponse](#workflowsuggestedquestionsafteranswerresponse) |  | No |
+| text_to_speech | [WorkflowTextToSpeechResponse](#workflowtexttospeechresponse) |  | No |
+
 #### WorkflowFileUploadImagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| detail | string |  | No |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ string ] |  | No |
+
+#### WorkflowFileUploadImageResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -28742,6 +28792,17 @@ Data entity
 | ---- | ---- | ----------- | -------- |
 | file_type_list | [ string ] |  | No |
 | mode | string |  | No |
+
+#### WorkflowFileUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| enabled | boolean |  | No |
+| image | [WorkflowFileUploadImageResponse](#workflowfileuploadimageresponse) |  | No |
+| number_limits | integer |  | No |
 
 #### WorkflowFileUploadTransferPayload
 
@@ -28855,6 +28916,24 @@ React Flow edge shape with extensible renderer metadata.
 | target | string |  | Yes |
 | type | string |  | Yes |
 
+#### WorkflowGraphEdgeDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sourceType | string |  | No |
+| targetType | string |  | No |
+
+#### WorkflowGraphEdgeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowGraphEdgeDataResponse](#workflowgraphedgedataresponse) |  | No |
+| id | string |  | No |
+| source | string |  | Yes |
+| sourceHandle | string |  | No |
+| target | string |  | Yes |
+| targetHandle | string |  | No |
+
 #### WorkflowGraphNode
 
 React Flow node shape accepted and returned by the generator.
@@ -28870,6 +28949,23 @@ request validation and response serialization.
 | position | [WorkflowGraphPosition](#workflowgraphposition) |  | Yes |
 | type | string |  | Yes |
 
+#### WorkflowGraphNodeDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desc | string |  | No |
+| title | string |  | No |
+| type | string |  | Yes |
+
+#### WorkflowGraphNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowGraphNodeDataResponse](#workflowgraphnodedataresponse) |  | Yes |
+| id | string |  | Yes |
+| position | [WorkflowGraphPositionResponse](#workflowgraphpositionresponse) |  | No |
+| type | string |  | No |
+
 #### WorkflowGraphPosition
 
 | Name | Type | Description | Required |
@@ -28877,7 +28973,30 @@ request validation and response serialization.
 | x | number |  | Yes |
 | y | number |  | Yes |
 
+#### WorkflowGraphPositionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| x | number |  | Yes |
+| y | number |  | Yes |
+
+#### WorkflowGraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| edges | [ [WorkflowGraphEdgeResponse](#workflowgraphedgeresponse) ] |  | No |
+| nodes | [ [WorkflowGraphNodeResponse](#workflowgraphnoderesponse) ] |  | No |
+| viewport | [WorkflowGraphViewportResponse](#workflowgraphviewportresponse) |  | No |
+
 #### WorkflowGraphViewport
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| x | number |  | Yes |
+| y | number |  | Yes |
+| zoom | number |  | Yes |
+
+#### WorkflowGraphViewportResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -28914,6 +29033,29 @@ tenant's default model. The underlying generator never raises — an empty
 | page | integer, <br>**Default:** 1 |  | No |
 | user_id | string |  | No |
 
+#### WorkflowNodeExecutionMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_log | [ [WorkflowAgentLogResponse](#workflowagentlogresponse) ] |  | No |
+| currency | string |  | No |
+| error_strategy | string |  | No |
+| iteration_duration_map | object |  | No |
+| iteration_id | string |  | No |
+| iteration_index | integer |  | No |
+| loop_duration_map | object |  | No |
+| loop_id | string |  | No |
+| loop_index | integer |  | No |
+| loop_variable_map | object |  | No |
+| parallel_id | string |  | No |
+| parallel_mode_run_id | string |  | No |
+| parallel_start_node_id | string |  | No |
+| parent_parallel_id | string |  | No |
+| parent_parallel_start_node_id | string |  | No |
+| tool_info | [WorkflowNodeToolInfoResponse](#workflownodetoolinforesponse) |  | No |
+| total_price | number |  | No |
+| total_tokens | integer |  | No |
+
 #### WorkflowNodeJobConfig
 
 | Name | Type | Description | Required |
@@ -28939,6 +29081,13 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | WorkflowNodeJobMode | string |  |  |
+
+#### WorkflowNodeToolInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_strategy | string |  | No |
+| icon | string |  | No |
 
 #### WorkflowOnlineUser
 
@@ -29057,8 +29206,8 @@ Enabled routes require at least two exits; drafts may omit conditions.
 | created_at | integer |  | Yes |
 | created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
-| features | object |  | Yes |
-| graph | object |  | Yes |
+| features | [WorkflowFeaturesResponse](#workflowfeaturesresponse) |  | Yes |
+| graph | [WorkflowGraphResponse](#workflowgraphresponse) |  | Yes |
 | hash | string |  | Yes |
 | id | string |  | Yes |
 | marked_comment | string |  | Yes |
@@ -29190,10 +29339,10 @@ Lifecycle state for an asynchronous archive download request.
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
-| graph |  |  | Yes |
+| graph | [WorkflowGraphResponse](#workflowgraphresponse) |  | Yes |
 | id | string |  | Yes |
-| inputs |  |  | Yes |
-| outputs |  |  | Yes |
+| inputs | object |  | Yes |
+| outputs | object |  | Yes |
 | status | string |  | No |
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
@@ -29256,7 +29405,7 @@ Lifecycle state for an asynchronous archive download request.
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
 | error | string |  | No |
-| execution_metadata |  |  | No |
+| execution_metadata | [WorkflowNodeExecutionMetadataResponse](#workflownodeexecutionmetadataresponse) |  | No |
 | extras |  |  | No |
 | finished_at | integer |  | No |
 | id | string |  | Yes |
@@ -29320,6 +29469,14 @@ Workflow run not found.
 | enabled | boolean |  | No |
 | type | string |  | No |
 
+#### WorkflowSensitiveWordAvoidanceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| enabled | boolean |  | No |
+| type | string |  | No |
+
 #### WorkflowStatisticQuery
 
 | Name | Type | Description | Required |
@@ -29335,7 +29492,24 @@ Workflow run not found.
 | model | object |  | No |
 | prompt | string |  | No |
 
+#### WorkflowSuggestedQuestionsAfterAnswerResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| model | object |  | No |
+| prompt | string |  | No |
+
 #### WorkflowTextToSpeechPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| autoPlay | string, <br>**Available values:** "disabled", "enabled" |  | No |
+| enabled | boolean |  | No |
+| language | string |  | No |
+| voice | string |  | No |
+
+#### WorkflowTextToSpeechResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

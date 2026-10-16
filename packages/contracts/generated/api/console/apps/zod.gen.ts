@@ -2050,64 +2050,6 @@ export const zSimpleEndUser = z.object({
 })
 
 /**
- * WorkflowRunDetailResponse
- */
-export const zWorkflowRunDetailResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  created_by_role: z.string().nullish(),
-  elapsed_time: z.number().nullish(),
-  error: z.string().nullish(),
-  exceptions_count: z.int().nullish(),
-  finished_at: z.int().nullish(),
-  graph: z.unknown(),
-  id: z.string(),
-  inputs: z.unknown(),
-  outputs: z.unknown(),
-  status: z.string().nullish(),
-  total_steps: z.int().nullish(),
-  total_tokens: z.int().nullish(),
-  version: z.string().nullish(),
-})
-
-/**
- * WorkflowRunNodeExecutionResponse
- */
-export const zWorkflowRunNodeExecutionResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  created_by_role: z.string().nullish(),
-  elapsed_time: z.number().nullish(),
-  error: z.string().nullish(),
-  execution_metadata: z.unknown().optional(),
-  extras: z.unknown().optional(),
-  finished_at: z.int().nullish(),
-  id: z.string(),
-  index: z.int().nullish(),
-  inputs: z.unknown().optional(),
-  inputs_truncated: z.boolean().nullish(),
-  node_id: z.string().nullish(),
-  node_type: z.string().nullish(),
-  outputs: z.unknown().optional(),
-  outputs_truncated: z.boolean().nullish(),
-  predecessor_node_id: z.string().nullish(),
-  process_data: z.unknown().optional(),
-  process_data_truncated: z.boolean().nullish(),
-  retry_index: z.int().nullish(),
-  status: z.string().nullish(),
-  title: z.string().nullish(),
-})
-
-/**
- * WorkflowRunNodeExecutionListResponse
- */
-export const zWorkflowRunNodeExecutionListResponse = z.object({
-  data: z.array(zWorkflowRunNodeExecutionResponse),
-})
-
-/**
  * SandboxFileEntryResponse
  */
 export const zSandboxFileEntryResponse = z.object({
@@ -2304,38 +2246,6 @@ export const zPipelineVariableResponse = z.object({
   type: z.string(),
   unit: z.string().nullish(),
   variable: z.string(),
-})
-
-/**
- * WorkflowResponse
- */
-export const zWorkflowResponse = z.object({
-  conversation_variables: z.array(zWorkflowConversationVariableResponse),
-  created_at: z.int(),
-  created_by: zSimpleAccountResponse.nullish(),
-  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string(),
-  id: z.string(),
-  marked_comment: z.string(),
-  marked_name: z.string(),
-  rag_pipeline_variables: z.array(zPipelineVariableResponse),
-  tool_published: z.boolean(),
-  updated_at: z.int(),
-  updated_by: zSimpleAccountResponse.nullish(),
-  version: z.string(),
-  version_number: z.int().nullish(),
-})
-
-/**
- * WorkflowPaginationResponse
- */
-export const zWorkflowPaginationResponse = z.object({
-  has_more: z.boolean(),
-  items: z.array(zWorkflowResponse),
-  limit: z.int(),
-  page: z.int(),
 })
 
 /**
@@ -3289,6 +3199,15 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 })
 
 /**
+ * WorkflowGraphViewportResponse
+ */
+export const zWorkflowGraphViewportResponse = z.object({
+  x: z.number(),
+  y: z.number(),
+  zoom: z.number(),
+})
+
+/**
  * MemberRoleSummaryResponse
  */
 export const zMemberRoleSummaryResponse = z.object({
@@ -3318,6 +3237,41 @@ export const zAccountWithRoleResponse = z.object({
  */
 export const zWorkflowCommentMentionUsersPayload = z.object({
   users: z.array(zAccountWithRoleResponse),
+})
+
+/**
+ * WorkflowFeatureToggleResponse
+ */
+export const zWorkflowFeatureToggleResponse = z.object({
+  enabled: z.boolean().nullish(),
+})
+
+/**
+ * WorkflowSensitiveWordAvoidanceResponse
+ */
+export const zWorkflowSensitiveWordAvoidanceResponse = z.object({
+  config: z.record(z.string(), z.unknown()).nullish(),
+  enabled: z.boolean().nullish(),
+  type: z.string().nullish(),
+})
+
+/**
+ * WorkflowSuggestedQuestionsAfterAnswerResponse
+ */
+export const zWorkflowSuggestedQuestionsAfterAnswerResponse = z.object({
+  enabled: z.boolean().nullish(),
+  model: z.record(z.string(), z.unknown()).nullish(),
+  prompt: z.string().nullish(),
+})
+
+/**
+ * WorkflowTextToSpeechResponse
+ */
+export const zWorkflowTextToSpeechResponse = z.object({
+  autoPlay: z.enum(['disabled', 'enabled']).nullish(),
+  enabled: z.boolean().nullish(),
+  language: z.string().nullish(),
+  voice: z.string().nullish(),
 })
 
 /**
@@ -3565,6 +3519,14 @@ export const zAgentComposerDifyToolCandidateResponse = z.object({
   provider: z.string().nullish(),
   provider_id: z.string().nullish(),
   tools_count: z.int().nullish(),
+})
+
+/**
+ * WorkflowNodeToolInfoResponse
+ */
+export const zWorkflowNodeToolInfoResponse = z.object({
+  agent_strategy: z.string().nullish(),
+  icon: z.string().nullish(),
 })
 
 /**
@@ -4234,6 +4196,152 @@ export const zAppUserInputFormPayload = z.union([
 ])
 
 /**
+ * WorkflowGraphEdgeDataResponse
+ */
+export const zWorkflowGraphEdgeDataResponse = z.object({
+  sourceType: z.string().nullish(),
+  targetType: z.string().nullish(),
+})
+
+/**
+ * WorkflowGraphEdgeResponse
+ */
+export const zWorkflowGraphEdgeResponse = z.object({
+  data: zWorkflowGraphEdgeDataResponse.nullish(),
+  id: z.string().nullish(),
+  source: z.string(),
+  sourceHandle: z.string().nullish(),
+  target: z.string(),
+  targetHandle: z.string().nullish(),
+})
+
+/**
+ * WorkflowGraphNodeDataResponse
+ */
+export const zWorkflowGraphNodeDataResponse = z.object({
+  desc: z.string().nullish(),
+  title: z.string().nullish(),
+  type: z.string(),
+})
+
+/**
+ * WorkflowGraphPositionResponse
+ */
+export const zWorkflowGraphPositionResponse = z.object({
+  x: z.number(),
+  y: z.number(),
+})
+
+/**
+ * WorkflowGraphNodeResponse
+ */
+export const zWorkflowGraphNodeResponse = z.object({
+  data: zWorkflowGraphNodeDataResponse,
+  id: z.string(),
+  position: zWorkflowGraphPositionResponse.nullish(),
+  type: z.string().nullish(),
+})
+
+/**
+ * WorkflowGraphResponse
+ */
+export const zWorkflowGraphResponse = z.object({
+  edges: z.array(zWorkflowGraphEdgeResponse).optional(),
+  nodes: z.array(zWorkflowGraphNodeResponse).optional(),
+  viewport: zWorkflowGraphViewportResponse.nullish(),
+})
+
+/**
+ * WorkflowRunDetailResponse
+ */
+export const zWorkflowRunDetailResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  exceptions_count: z.int().nullish(),
+  finished_at: z.int().nullish(),
+  graph: zWorkflowGraphResponse,
+  id: z.string(),
+  inputs: z.record(z.string(), z.unknown()),
+  outputs: z.record(z.string(), z.unknown()),
+  status: z.string().nullish(),
+  total_steps: z.int().nullish(),
+  total_tokens: z.int().nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * WorkflowFileUploadImageResponse
+ */
+export const zWorkflowFileUploadImageResponse = z.object({
+  detail: z.string().nullish(),
+  enabled: z.boolean().nullish(),
+  number_limits: z.int().nullish(),
+  transfer_methods: z.array(z.string()).nullish(),
+})
+
+/**
+ * WorkflowFileUploadResponse
+ */
+export const zWorkflowFileUploadResponse = z.object({
+  allowed_file_extensions: z.array(z.string()).nullish(),
+  allowed_file_types: z.array(z.string()).nullish(),
+  allowed_file_upload_methods: z.array(z.string()).nullish(),
+  enabled: z.boolean().nullish(),
+  image: zWorkflowFileUploadImageResponse.nullish(),
+  number_limits: z.int().nullish(),
+})
+
+/**
+ * WorkflowFeaturesResponse
+ */
+export const zWorkflowFeaturesResponse = z.object({
+  file_upload: zWorkflowFileUploadResponse.nullish(),
+  opening_statement: z.string().nullish(),
+  retriever_resource: zWorkflowFeatureToggleResponse.nullish(),
+  sensitive_word_avoidance: zWorkflowSensitiveWordAvoidanceResponse.nullish(),
+  speech_to_text: zWorkflowFeatureToggleResponse.nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerResponse.nullish(),
+  text_to_speech: zWorkflowTextToSpeechResponse.nullish(),
+})
+
+/**
+ * WorkflowResponse
+ */
+export const zWorkflowResponse = z.object({
+  conversation_variables: z.array(zWorkflowConversationVariableResponse),
+  created_at: z.int(),
+  created_by: zSimpleAccountResponse.nullish(),
+  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
+  features: zWorkflowFeaturesResponse,
+  graph: zWorkflowGraphResponse,
+  hash: z.string(),
+  id: z.string(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  rag_pipeline_variables: z.array(zPipelineVariableResponse),
+  tool_published: z.boolean(),
+  updated_at: z.int(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  version: z.string(),
+  version_number: z.int().nullish(),
+})
+
+/**
+ * WorkflowPaginationResponse
+ */
+export const zWorkflowPaginationResponse = z.object({
+  has_more: z.boolean(),
+  items: z.array(zWorkflowResponse),
+  limit: z.int(),
+  page: z.int(),
+})
+
+/**
  * WorkflowFileUploadTransferPayload
  */
 export const zWorkflowFileUploadTransferPayload = z.object({
@@ -4640,6 +4748,90 @@ export const zAgentComposerCandidatesResponse = z.object({
   capabilities: zComposerCandidateCapabilities.optional(),
   truncated: z.boolean().optional().default(false),
   variant: zComposerVariant,
+})
+
+/**
+ * WorkflowAgentLogMetadataResponse
+ */
+export const zWorkflowAgentLogMetadataResponse = z.object({
+  elapsed_time: z.number().nullish(),
+  icon: z.string().nullish(),
+  provider: z.string().nullish(),
+})
+
+/**
+ * WorkflowAgentLogResponse
+ */
+export const zWorkflowAgentLogResponse = z.object({
+  data: z.record(z.string(), z.unknown()).nullish(),
+  error: z.string().nullish(),
+  label: z.string().nullish(),
+  message_id: z.string().nullish(),
+  metadata: zWorkflowAgentLogMetadataResponse.nullish(),
+  node_execution_id: z.string().nullish(),
+  node_id: z.string().nullish(),
+  parent_id: z.string().nullish(),
+  status: z.string().nullish(),
+})
+
+/**
+ * WorkflowNodeExecutionMetadataResponse
+ */
+export const zWorkflowNodeExecutionMetadataResponse = z.object({
+  agent_log: z.array(zWorkflowAgentLogResponse).nullish(),
+  currency: z.string().nullish(),
+  error_strategy: z.string().nullish(),
+  iteration_duration_map: z.record(z.string(), z.number()).nullish(),
+  iteration_id: z.string().nullish(),
+  iteration_index: z.int().nullish(),
+  loop_duration_map: z.record(z.string(), z.number()).nullish(),
+  loop_id: z.string().nullish(),
+  loop_index: z.int().nullish(),
+  loop_variable_map: z.record(z.string(), z.unknown()).nullish(),
+  parallel_id: z.string().nullish(),
+  parallel_mode_run_id: z.string().nullish(),
+  parallel_start_node_id: z.string().nullish(),
+  parent_parallel_id: z.string().nullish(),
+  parent_parallel_start_node_id: z.string().nullish(),
+  tool_info: zWorkflowNodeToolInfoResponse.nullish(),
+  total_price: z.number().nullish(),
+  total_tokens: z.int().nullish(),
+})
+
+/**
+ * WorkflowRunNodeExecutionResponse
+ */
+export const zWorkflowRunNodeExecutionResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  execution_metadata: zWorkflowNodeExecutionMetadataResponse.nullish(),
+  extras: z.unknown().optional(),
+  finished_at: z.int().nullish(),
+  id: z.string(),
+  index: z.int().nullish(),
+  inputs: z.unknown().optional(),
+  inputs_truncated: z.boolean().nullish(),
+  node_id: z.string().nullish(),
+  node_type: z.string().nullish(),
+  outputs: z.unknown().optional(),
+  outputs_truncated: z.boolean().nullish(),
+  predecessor_node_id: z.string().nullish(),
+  process_data: z.unknown().optional(),
+  process_data_truncated: z.boolean().nullish(),
+  retry_index: z.int().nullish(),
+  status: z.string().nullish(),
+  title: z.string().nullish(),
+})
+
+/**
+ * WorkflowRunNodeExecutionListResponse
+ */
+export const zWorkflowRunNodeExecutionListResponse = z.object({
+  data: z.array(zWorkflowRunNodeExecutionResponse),
 })
 
 /**

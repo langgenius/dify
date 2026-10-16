@@ -935,10 +935,14 @@ export type WorkflowRunDetailResponse = {
   error?: string | null
   exceptions_count?: number | null
   finished_at?: number | null
-  graph: unknown
+  graph: WorkflowGraphResponse
   id: string
-  inputs: unknown
-  outputs: unknown
+  inputs: {
+    [key: string]: unknown
+  }
+  outputs: {
+    [key: string]: unknown
+  }
   status?: string | null
   total_steps?: number | null
   total_tokens?: number | null
@@ -1104,12 +1108,8 @@ export type WorkflowResponse = {
   created_at: number
   created_by?: SimpleAccountResponse | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
-  features: {
-    [key: string]: unknown
-  }
-  graph: {
-    [key: string]: unknown
-  }
+  features: WorkflowFeaturesResponse
+  graph: WorkflowGraphResponse
   hash: string
   id: string
   marked_comment: string
@@ -1282,7 +1282,7 @@ export type WorkflowRunNodeExecutionResponse = {
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
-  execution_metadata?: unknown
+  execution_metadata?: WorkflowNodeExecutionMetadataResponse | null
   extras?: unknown
   finished_at?: number | null
   id: string
@@ -2163,6 +2163,13 @@ export type SimpleEndUser = {
   type: string
 }
 
+export type WorkflowGraphResponse = {
+  edges?: Array<WorkflowGraphEdgeResponse>
+  nodes?: Array<WorkflowGraphNodeResponse>
+  viewport?: WorkflowGraphViewportResponse | null
+  [key: string]: unknown
+}
+
 export type SandboxFileEntryResponse = {
   mtime?: number | null
   name: string
@@ -2257,6 +2264,18 @@ export type WorkflowEnvironmentVariableResponse = {
   name: string
   value: unknown
   value_type: string
+}
+
+export type WorkflowFeaturesResponse = {
+  file_upload?: WorkflowFileUploadResponse | null
+  opening_statement?: string | null
+  retriever_resource?: WorkflowFeatureToggleResponse | null
+  sensitive_word_avoidance?: WorkflowSensitiveWordAvoidanceResponse | null
+  speech_to_text?: WorkflowFeatureToggleResponse | null
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: WorkflowSuggestedQuestionsAfterAnswerResponse | null
+  text_to_speech?: WorkflowTextToSpeechResponse | null
+  [key: string]: unknown
 }
 
 export type PipelineVariableResponse = {
@@ -2492,6 +2511,34 @@ export type ComposerValidationWarningResponse = {
   kind?: string | null
   message?: string | null
   surface?: string | null
+}
+
+export type WorkflowNodeExecutionMetadataResponse = {
+  agent_log?: Array<WorkflowAgentLogResponse> | null
+  currency?: string | null
+  error_strategy?: string | null
+  iteration_duration_map?: {
+    [key: string]: number
+  } | null
+  iteration_id?: string | null
+  iteration_index?: number | null
+  loop_duration_map?: {
+    [key: string]: number
+  } | null
+  loop_id?: string | null
+  loop_index?: number | null
+  loop_variable_map?: {
+    [key: string]: unknown
+  } | null
+  parallel_id?: string | null
+  parallel_mode_run_id?: string | null
+  parallel_start_node_id?: string | null
+  parent_parallel_id?: string | null
+  parent_parallel_start_node_id?: string | null
+  tool_info?: WorkflowNodeToolInfoResponse | null
+  total_price?: number | null
+  total_tokens?: number | null
+  [key: string]: unknown
 }
 
 export type WorkflowExecutionStatus =
@@ -3075,9 +3122,75 @@ export type WorkflowRunForLogResponse = {
   version?: string | null
 }
 
+export type WorkflowGraphEdgeResponse = {
+  data?: WorkflowGraphEdgeDataResponse | null
+  id?: string | null
+  source: string
+  sourceHandle?: string | null
+  target: string
+  targetHandle?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowGraphNodeResponse = {
+  data: WorkflowGraphNodeDataResponse
+  id: string
+  position?: WorkflowGraphPositionResponse | null
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowGraphViewportResponse = {
+  x: number
+  y: number
+  zoom: number
+  [key: string]: unknown
+}
+
 export type MemberRoleSummaryResponse = {
   id: string
   name: string
+}
+
+export type WorkflowFileUploadResponse = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<string> | null
+  allowed_file_upload_methods?: Array<string> | null
+  enabled?: boolean | null
+  image?: WorkflowFileUploadImageResponse | null
+  number_limits?: number | null
+  [key: string]: unknown
+}
+
+export type WorkflowFeatureToggleResponse = {
+  enabled?: boolean | null
+  [key: string]: unknown
+}
+
+export type WorkflowSensitiveWordAvoidanceResponse = {
+  config?: {
+    [key: string]: unknown
+  } | null
+  enabled?: boolean | null
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowSuggestedQuestionsAfterAnswerResponse = {
+  enabled?: boolean | null
+  model?: {
+    [key: string]: unknown
+  } | null
+  prompt?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowTextToSpeechResponse = {
+  autoPlay?: 'disabled' | 'enabled' | null
+  enabled?: boolean | null
+  language?: string | null
+  voice?: string | null
+  [key: string]: unknown
 }
 
 export type WorkflowFileUploadPayload = {
@@ -3349,6 +3462,27 @@ export type AgentComposerKnowledgeSetCandidateResponse = {
   id: string
   missing_dataset_ids?: Array<string>
   name: string
+}
+
+export type WorkflowAgentLogResponse = {
+  data?: {
+    [key: string]: unknown
+  } | null
+  error?: string | null
+  label?: string | null
+  message_id?: string | null
+  metadata?: WorkflowAgentLogMetadataResponse | null
+  node_execution_id?: string | null
+  node_id?: string | null
+  parent_id?: string | null
+  status?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowNodeToolInfoResponse = {
+  agent_strategy?: string | null
+  icon?: string | null
+  [key: string]: unknown
 }
 
 export type CheckResultView = {
@@ -3750,6 +3884,33 @@ export type AppSelectFieldPayload = {
     | undefined
 }
 
+export type WorkflowGraphEdgeDataResponse = {
+  sourceType?: string | null
+  targetType?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowGraphNodeDataResponse = {
+  desc?: string | null
+  title?: string | null
+  type: string
+  [key: string]: unknown
+}
+
+export type WorkflowGraphPositionResponse = {
+  x: number
+  y: number
+  [key: string]: unknown
+}
+
+export type WorkflowFileUploadImageResponse = {
+  detail?: string | null
+  enabled?: boolean | null
+  number_limits?: number | null
+  transfer_methods?: Array<string> | null
+  [key: string]: unknown
+}
+
 export type WorkflowFileUploadTransferPayload = {
   enabled?: boolean | null
   number_limits?: number | null
@@ -3985,6 +4146,13 @@ export type AgentComposerKnowledgeDatasetCandidateResponse = {
   id?: string | null
   missing?: boolean
   name?: string | null
+}
+
+export type WorkflowAgentLogMetadataResponse = {
+  elapsed_time?: number | null
+  icon?: string | null
+  provider?: string | null
+  [key: string]: unknown
 }
 
 export type ToolProviderType =
