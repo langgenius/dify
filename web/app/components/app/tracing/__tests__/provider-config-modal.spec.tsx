@@ -259,7 +259,7 @@ const renderProviderConfigModal = ({
     >
       <DialogContent initialFocus={firstInputRef}>
         <ProviderConfigModal
-          resource={{ kind: 'app', appId: 'app-id' }}
+          resource={{ kind: 'app', appId: 'app-id', mode: 'chat' }}
           type={type}
           payload={payload}
           firstInputRef={firstInputRef}
