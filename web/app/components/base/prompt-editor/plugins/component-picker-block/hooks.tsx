@@ -251,13 +251,7 @@ export const useExternalToolOptions = (
           return (
             <VariableMenuItem
               title={item.name}
-              icon={
-                <AppIcon
-                  className="h-3.5! w-3.5!"
-                  icon={item.icon}
-                  background={item.icon_background}
-                />
-              }
+              icon={<AppIcon className="h-3.5! w-3.5!" icon={item} />}
               extraElement={<div className="text-xs text-text-tertiary">{item.variableName}</div>}
               queryString={queryString}
               isSelected={isSelected}

@@ -1,20 +1,21 @@
 'use client'
+
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
 import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ConfigContext from '@/context/debug-configuration'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { commonQueryKeys } from '@/service/use-common'
-import { AppModeEnum } from '@/types/app'
 import {
   checkKeys,
   getNewVarInWorkflow,
@@ -62,9 +63,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const queryClient = useQueryClient()
   const { type, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
-  const appDetail = useAppStore((state) => state.appDetail)
-  const isBasicApp =
-    appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
+  const { appId } = useParams<{ appId?: string }>()
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
+  const isBasicApp = appDetail?.mode !== 'advanced-chat' && appDetail?.mode !== 'workflow'
   const jsonSchemaStr = useMemo(
     () => getJsonSchemaEditorValue(type, tempPayload.json_schema),
     [tempPayload.json_schema, type],

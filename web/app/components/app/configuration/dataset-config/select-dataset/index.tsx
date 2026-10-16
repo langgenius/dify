@@ -154,19 +154,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 >
                   <div className="mr-1 flex grow items-center overflow-hidden">
                     <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                      <AppIcon
-                        size="tiny"
-                        iconType={item.icon_info.icon_type}
-                        icon={item.icon_info.icon}
-                        background={
-                          item.icon_info.icon_type === 'image'
-                            ? undefined
-                            : item.icon_info.icon_background
-                        }
-                        imageUrl={
-                          item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined
-                        }
-                      />
+                      <AppIcon size="tiny" icon={item.icon_info} />
                     </div>
                     <div
                       className={cn(

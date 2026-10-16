@@ -30,7 +30,6 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 
 type SwitchAppModalProps = {
@@ -105,10 +104,7 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
       getRedirection(
         {
           id: newAppID,
-          mode:
-            sourceApp.mode === AppModeEnum.COMPLETION
-              ? AppModeEnum.WORKFLOW
-              : AppModeEnum.ADVANCED_CHAT,
+          mode: sourceApp.mode === 'completion' ? 'workflow' : 'advanced-chat',
           permission_keys,
         },
         removeOriginal ? replace : push,

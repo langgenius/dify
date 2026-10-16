@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import queue
 import time
@@ -465,10 +466,8 @@ def test_check_receiver_status_fail(streams):
     future = executor.submit(raise_err)
     session._receiver_future = future
 
-    try:
+    with contextlib.suppress(BaseException):
         future.result()
-    except BaseException:
-        pass
 
     with pytest.raises(RuntimeError, match="Receiver failed"):
         session.check_receiver_status()

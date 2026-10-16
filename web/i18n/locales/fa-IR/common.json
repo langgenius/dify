@@ -167,7 +167,6 @@
   "operation.create": "ایجاد",
   "operation.deSelectAll": "همه را انتخاب نکنید",
   "operation.delete": "حذف",
-  "operation.deleteConfirmTitle": "حذف شود؟",
   "operation.download": "دانلود",
   "operation.downloadFailed": "دانلود ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
   "operation.downloadSuccess": "دانلود کامل شد.",

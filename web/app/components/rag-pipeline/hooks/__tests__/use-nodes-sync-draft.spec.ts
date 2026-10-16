@@ -1,6 +1,6 @@
-import { renderHook } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createHttpError } from '@/service/http-error'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
@@ -30,7 +30,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
 const mockSyncWorkflowDraft = vi.fn()
 // Stand in for the draft sync request at the client boundary: record the request it sends
 // and validate rejections against the contract, as the console link does.
-vi.mock('@/service/console', async () => {
+vi.mock('@/service/console', async (importOriginal) => {
   const { rag } = await import('@dify/contracts/api/console/rag/orpc.gen')
   const { validateDefinedErrors } = await import('@/service/console/defined-errors')
   const validate = validateDefinedErrors({ rag })
@@ -46,6 +46,7 @@ vi.mock('@/service/console', async () => {
         }),
     })
   return {
+    ...(await importOriginal<typeof import('@/service/console')>()),
     consoleClient: { rag: { pipelines: { byPipelineId: { workflows: { draft: { post } } } } } },
   }
 })
@@ -57,12 +58,14 @@ vi.mock('../use-pipeline-refresh-draft', () => ({
   }),
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
   API_PREFIX: '/api',
 }))
 
 const mockPostWithKeepalive = vi.fn()
-vi.mock('@/service/fetch', () => ({
+vi.mock('@/service/fetch', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/fetch')>()),
   postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
 }))
 
@@ -103,14 +106,18 @@ describe('useNodesSyncDraft', () => {
 
   describe('hook initialization', () => {
     it('should return doSyncWorkflowDraft function', () => {
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(result.current.doSyncWorkflowDraft).toBeDefined()
       expect(typeof result.current.doSyncWorkflowDraft).toBe('function')
     })
 
     it('should return syncWorkflowDraftWhenPageClose function', () => {
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(result.current.syncWorkflowDraftWhenPageClose).toBeDefined()
       expect(typeof result.current.syncWorkflowDraftWhenPageClose).toBe('function')
@@ -121,7 +128,9 @@ describe('useNodesSyncDraft', () => {
     it('should not call postWithKeepalive when nodes are read only', () => {
       mockGetNodesReadOnly.mockReturnValue(true)
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -136,7 +145,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -151,27 +162,12 @@ describe('useNodesSyncDraft', () => {
       )
     })
 
-    it('should not call postWithKeepalive when pipelineId is missing', () => {
-      mockWorkflowStoreGetState.mockReturnValue({
-        pipelineId: undefined,
-        environmentVariables: [],
-        syncWorkflowDraftHash: 'test-hash',
-        ragPipelineVariables: [],
-      })
-
-      const { result } = renderHook(() => useNodesSyncDraft())
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      expect(mockPostWithKeepalive).not.toHaveBeenCalled()
-    })
-
     it('should not call postWithKeepalive when nodes array is empty', () => {
       mockGetNodes.mockReturnValue([])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -185,7 +181,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start', _isTempNode: true }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -199,7 +197,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start', _privateData: 'secret' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -215,7 +215,9 @@ describe('useNodesSyncDraft', () => {
     it('should not sync when nodes are read only', async () => {
       mockGetNodesReadOnly.mockReturnValue(true)
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft()
@@ -230,7 +232,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft()
@@ -258,7 +262,9 @@ describe('useNodesSyncDraft', () => {
         transform: [10, 20, 1.5],
       })
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
       let syncPromise!: ReturnType<typeof result.current.doSyncWorkflowDraft>
 
       act(() => {
@@ -310,7 +316,9 @@ describe('useNodesSyncDraft', () => {
         .mockResolvedValueOnce({ hash: 'hash-after-first-sync', updated_at: 'first-update' })
         .mockResolvedValueOnce({ hash: 'hash-after-second-sync', updated_at: 'second-update' })
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
       let firstSync!: ReturnType<typeof result.current.doSyncWorkflowDraft>
       let secondSync!: ReturnType<typeof result.current.doSyncWorkflowDraft>
 
@@ -343,7 +351,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft()
@@ -365,7 +375,9 @@ describe('useNodesSyncDraft', () => {
       ])
       const onSuccess = vi.fn()
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft(false, { onSuccess })
@@ -381,7 +393,9 @@ describe('useNodesSyncDraft', () => {
       ])
       const onSettled = vi.fn()
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft(false, { onSettled })
@@ -398,7 +412,9 @@ describe('useNodesSyncDraft', () => {
       mockSyncWorkflowDraft.mockRejectedValue(new Error('Sync failed'))
       const onError = vi.fn()
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft(false, { onError })
@@ -424,7 +440,9 @@ describe('useNodesSyncDraft', () => {
         setDraftUpdatedAt: mockSetDraftUpdatedAt,
       })
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft()
@@ -447,7 +465,9 @@ describe('useNodesSyncDraft', () => {
       })
       mockSyncWorkflowDraft.mockRejectedValue(mockJsonError)
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft(false)
@@ -471,7 +491,9 @@ describe('useNodesSyncDraft', () => {
       })
       mockSyncWorkflowDraft.mockRejectedValue(mockJsonError)
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await act(async () => {
         await result.current.doSyncWorkflowDraft(true)
@@ -494,7 +516,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -517,7 +541,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -540,7 +566,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -555,7 +583,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()
@@ -582,7 +612,9 @@ describe('useNodesSyncDraft', () => {
         { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
       ])
 
-      const { result } = renderHook(() => useNodesSyncDraft())
+      const { result } = renderHook(() => useNodesSyncDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.syncWorkflowDraftWhenPageClose()

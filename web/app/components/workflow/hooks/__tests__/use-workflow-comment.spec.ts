@@ -51,10 +51,6 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
 

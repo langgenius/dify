@@ -995,9 +995,7 @@ class ModelManager:
         model_schema = model_type_instance.get_model_schema(model, model_instance.credentials)
         if not model_schema:
             return False
-        if model_schema.features and ModelFeature.VISION in model_schema.features:
-            return True
-        return False
+        return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
 
 
 class LBModelManager:

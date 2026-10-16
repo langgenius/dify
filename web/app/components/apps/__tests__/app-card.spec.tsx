@@ -1,12 +1,11 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { InstalledAppListResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, isInaccessible, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { AppCard } from '../app-card'
 import { StarredAppCard } from '../starred-app-card'
@@ -414,7 +413,7 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   id: 'test-app-id',
   name: 'Test App',
   description: 'Test app description',
-  mode: AppModeEnum.CHAT,
+  mode: 'chat',
   icon: '🤖',
   icon_type: 'emoji' as const,
   icon_background: '#FFEAD5',
@@ -580,22 +579,19 @@ describe('AppCard', () => {
     })
 
     it('should render app icon', () => {
-      // AppIcon component renders the emoji icon from app data
-      const { container } = render(<AppCard app={mockApp} />)
+      render(<AppCard app={mockApp} />)
       const emojiIcon = screen.getByText(mockApp.icon!)
-      const imageIcon = container.querySelector('img')
-      expect(emojiIcon || imageIcon).toBeTruthy()
-      expect(emojiIcon).toHaveAttribute('aria-hidden', 'true')
+      expect(isInaccessible(emojiIcon)).toBe(true)
     })
 
-    it('should treat a redundant image icon as decorative', () => {
+    it('should keep an image fallback decorative beside the app name', () => {
       const imageApp = createMockApp({
         icon_type: 'image',
         icon_url: 'https://example.com/app-icon.png',
       })
-      const { container } = render(<AppCard app={imageApp} />)
+      render(<AppCard app={imageApp} />)
 
-      expect(container.querySelector('img')).toHaveAttribute('alt', '')
+      expect(isInaccessible(screen.getByText('🤖'))).toBe(true)
     })
 
     it('should render app type icon', () => {
@@ -611,7 +607,7 @@ describe('AppCard', () => {
 
   describe('Props', () => {
     it('should handle different app modes', () => {
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
+      const workflowApp = { ...mockApp, mode: 'workflow' as const }
       render(<AppCard app={workflowApp} />)
       expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
@@ -877,7 +873,7 @@ describe('AppCard', () => {
     })
 
     it('should show switch option for chat mode apps', async () => {
-      const chatApp = { ...mockApp, mode: AppModeEnum.CHAT }
+      const chatApp = { ...mockApp, mode: 'chat' as const }
       render(<AppCard app={chatApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -892,7 +888,7 @@ describe('AppCard', () => {
       const editableChatApp = createMockApp({
         created_by: 'another-user',
         maintainer: 'another-user',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat',
         permission_keys: [AppACLPermission.Edit],
       })
       render(<AppCard app={editableChatApp} />)
@@ -906,7 +902,7 @@ describe('AppCard', () => {
     })
 
     it('should show switch option for completion mode apps', async () => {
-      const completionApp = { ...mockApp, mode: AppModeEnum.COMPLETION }
+      const completionApp = { ...mockApp, mode: 'completion' as const }
       render(<AppCard app={completionApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -917,7 +913,7 @@ describe('AppCard', () => {
     })
 
     it('should not show switch option for workflow mode apps', async () => {
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
+      const workflowApp = { ...mockApp, mode: 'workflow' as const }
       render(<AppCard app={workflowApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1239,7 +1235,7 @@ describe('AppCard', () => {
 
   describe('Switch Modal', () => {
     it('should open switch modal when switch button is clicked', async () => {
-      const chatApp = { ...mockApp, mode: AppModeEnum.CHAT }
+      const chatApp = { ...mockApp, mode: 'chat' as const }
       render(<AppCard app={chatApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1253,7 +1249,7 @@ describe('AppCard', () => {
     })
 
     it('should close switch modal when close button is clicked', async () => {
-      const chatApp = { ...mockApp, mode: AppModeEnum.CHAT }
+      const chatApp = { ...mockApp, mode: 'chat' as const }
       render(<AppCard app={chatApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1273,7 +1269,7 @@ describe('AppCard', () => {
     })
 
     it('should open switch modal for completion mode apps', async () => {
-      const completionApp = { ...mockApp, mode: AppModeEnum.COMPLETION }
+      const completionApp = { ...mockApp, mode: 'completion' as const }
       render(<AppCard app={completionApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1316,7 +1312,7 @@ describe('AppCard', () => {
 
   describe('Workflow Export with Environment Variables', () => {
     it('should use the workflow export command for workflow apps', async () => {
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
+      const workflowApp = { ...mockApp, mode: 'workflow' as const }
       render(<AppCard app={workflowApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1339,7 +1335,7 @@ describe('AppCard', () => {
         secretEnvList: [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }],
       })
 
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
+      const workflowApp = { ...mockApp, mode: 'workflow' as const }
       render(<AppCard app={workflowApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1353,7 +1349,7 @@ describe('AppCard', () => {
     })
 
     it('should not open a modal when the workflow command downloads directly', async () => {
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
+      const workflowApp = { ...mockApp, mode: 'workflow' as const }
       render(<AppCard app={workflowApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1372,7 +1368,7 @@ describe('AppCard', () => {
     })
 
     it('should use the workflow export command for advanced chat apps', async () => {
-      const advancedChatApp = { ...mockApp, mode: AppModeEnum.ADVANCED_CHAT }
+      const advancedChatApp = { ...mockApp, mode: 'advanced-chat' as const }
       render(<AppCard app={advancedChatApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1394,7 +1390,7 @@ describe('AppCard', () => {
         secretEnvList: [{ value_type: 'secret', name: 'API_KEY', value: 'secret' }],
       })
 
-      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
+      const workflowApp = { ...mockApp, mode: 'workflow' as const }
       render(<AppCard app={workflowApp} />)
 
       fireEvent.click(getOperationsTrigger())
@@ -1546,7 +1542,7 @@ describe('AppCard', () => {
   describe('Open in Explore - No App Found', () => {
     it('should tell workflow users to publish before opening in explore', async () => {
       const workflowApp = createMockApp({
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         workflow: undefined,
       })
       render(<AppCard app={workflowApp} />)
@@ -1701,7 +1697,7 @@ describe('AppCard', () => {
       mockUserCanAccessApp.result = false
       mockUserCanAccessApp.isLoading = true
       const workflowApp = createMockApp({
-        mode: AppModeEnum.WORKFLOW,
+        mode: 'workflow' as const,
         workflow: undefined,
       })
 

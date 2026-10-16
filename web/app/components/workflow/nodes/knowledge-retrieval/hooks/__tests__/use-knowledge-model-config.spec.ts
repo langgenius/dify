@@ -5,7 +5,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import useKnowledgeModelConfig from '../use-knowledge-model-config'
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
@@ -169,7 +169,7 @@ describe('use-knowledge-model-config', () => {
           model: {
             provider: 'anthropic',
             name: 'claude-sonnet',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           },
         },
@@ -221,7 +221,7 @@ describe('use-knowledge-model-config', () => {
         currentModel: {
           model: 'gpt-4o-mini',
           model_properties: {
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           },
         },
         fallbackRerankModel,
@@ -236,7 +236,7 @@ describe('use-knowledge-model-config', () => {
             model: {
               provider: 'openai',
               name: 'gpt-4o-mini',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
               completion_params: {},
             },
           },
@@ -308,7 +308,7 @@ describe('use-knowledge-model-config', () => {
           model: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           },
         },
@@ -322,7 +322,7 @@ describe('use-knowledge-model-config', () => {
           model: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           },
         },
@@ -348,7 +348,7 @@ describe('use-knowledge-model-config', () => {
         currentModel: {
           model: 'gpt-4o-mini',
           model_properties: {
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           },
         },
         fallbackRerankModel,

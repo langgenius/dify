@@ -1,5 +1,5 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { AppModeEnum } from '@/types/app'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
@@ -43,7 +43,7 @@ function render(ui: ReactElement) {
   queryClient.setQueryData(['system-features'], { webapp_auth: { enabled: true } })
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppModeEnum }),
+    createAppDetailFixture({ ...mocks.appInfo, mode: mocks.appInfo.mode as AppMode }),
   )
   return renderWithConsole(ui, { wrapper: createQueryClientWrapper(queryClient) })
 }
