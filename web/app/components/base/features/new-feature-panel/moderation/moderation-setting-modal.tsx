@@ -3,7 +3,15 @@ import type { CodeBasedExtensionItem } from '@/models/common'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useQuery } from '@tanstack/react-query'
@@ -308,8 +316,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   }
 
   return (
-    <Dialog open>
-      <DialogContent className="mt-14 w-150 max-w-none overflow-hidden">
+    <Dialog open onOpenChange={(open) => !open && onCancel()} disablePointerDismissal>
+      <DialogContent className="w-150 max-w-none">
         <form
           onSubmit={(event) => {
             // Portalled child forms still bubble submit events through the React tree.
@@ -319,20 +327,13 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             handleSave()
           }}
         >
-          <div className="flex items-start gap-2 px-6 pt-6 pr-14 pb-3">
-            <div className="title-2xl-semi-bold text-text-primary">
+          <DialogHeader>
+            <DialogTitle>
               {t(($) => $['feature.moderation.modal.title'], { ns: 'appDebug' })}
-            </div>
-            <button
-              type="button"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="absolute top-5 right-5 flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={onCancel}
-            >
-              <span className="i-ri-close-line size-4.5" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="flex flex-col gap-4 px-6 py-3">
+            </DialogTitle>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <div className="system-sm-medium text-text-secondary">
                 {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
@@ -493,8 +494,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
                 {t(($) => $['feature.moderation.modal.content.condition'], { ns: 'appDebug' })}
               </div>
             </div>
-          </div>
-          <div className="flex h-19 items-center justify-end gap-2 px-6 pt-5 pb-6">
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" onClick={onCancel} size="medium" className="min-w-18">
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
@@ -507,7 +508,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
             >
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

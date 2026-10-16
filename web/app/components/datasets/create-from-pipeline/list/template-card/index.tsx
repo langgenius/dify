@@ -183,7 +183,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
             if (!open) closeEditModal()
           }}
         >
-          <DialogContent className="w-[calc(100vw-2rem)] max-w-130 overflow-hidden border-none">
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-130">
             <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
           </DialogContent>
         </Dialog>

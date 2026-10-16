@@ -3,12 +3,13 @@ import type { FC } from 'react'
 import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
@@ -29,36 +30,23 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
   return (
     <Dialog open={isShow} onOpenChange={onClose} disablePointerDismissal>
       <DialogContent
-        className="w-154.5 max-w-154.5 border border-effects-highlight bg-background-default-subtle p-6 shadow-lg"
+        className="w-154.5 max-w-154.5"
         backdropProps={{ className: 'bg-workflow-canvas-canvas-overlay' }}
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['onboarding.title'], { ns: 'workflow' })}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $['onboarding.description'], { ns: 'workflow' })}
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
 
-        <div className="pb-4">
-          <div className="mb-6">
-            <DialogTitle className="mb-2">
-              {t(($) => $['onboarding.title'], { ns: 'workflow' })}
-            </DialogTitle>
-            <DialogDescription>
-              {t(($) => $['onboarding.description'], { ns: 'workflow' })}
-            </DialogDescription>
-          </div>
-
+        <DialogBody>
           <StartNodeSelectionPanel
             onSelectUserInput={() => onSelectStartNode(BlockEnum.Start)}
             onSelectTrigger={onSelectStartNode}
           />
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

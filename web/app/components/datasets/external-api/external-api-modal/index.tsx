@@ -11,10 +11,17 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
+import { RiBook2Line, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
 import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -136,68 +143,60 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-none flex-col overflow-hidden">
-        <div className="relative flex min-h-0 w-full flex-1 flex-col items-start">
-          <div className="flex shrink-0 flex-col items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-            <DialogTitle className="grow self-stretch">
-              {isEditMode
-                ? t(($) => $.editExternalAPIFormTitle, { ns: 'dataset' })
-                : t(($) => $.createExternalAPI, { ns: 'dataset' })}
-            </DialogTitle>
-            {isEditMode && (datasetBindings?.length ?? 0) > 0 && (
-              <div className="flex items-center system-xs-regular text-text-tertiary">
-                {t(($) => $['editExternalAPIFormWarning.front'], { ns: 'dataset' })}
-                <span className="flex cursor-pointer items-center text-text-accent">
-                  &nbsp;
-                  {datasetBindings?.length}{' '}
-                  {t(($) => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
-                  &nbsp;
-                  <Popover>
-                    <PopoverTrigger
-                      openOnHover
-                      aria-label={t(($) => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
-                      render={
-                        <button
-                          type="button"
-                          className="flex size-3.5 items-center justify-center rounded-sm hover:bg-state-base-hover"
-                        >
-                          <RiInformation2Line className="size-3.5" />
-                        </button>
-                      }
-                    />
-                    <PopoverContent
-                      placement="bottom"
-                      className="flex w-[320px] items-center self-stretch px-3 py-2"
-                    >
-                      <div className="p-1">
-                        <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
-                          <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t(($) => $.editExternalAPITooltipTitle, { ns: 'dataset' })}`}</div>
-                        </div>
-                        {datasetBindings?.map((binding) => (
-                          <div
-                            key={binding.id}
-                            className="flex items-center gap-1 self-stretch px-2 py-1"
-                          >
-                            <RiBook2Line className="size-4 text-text-secondary" />
-                            <div className="system-sm-medium text-text-secondary">
-                              {binding.name}
-                            </div>
-                          </div>
-                        ))}
+      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-none">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditMode
+              ? t(($) => $.editExternalAPIFormTitle, { ns: 'dataset' })
+              : t(($) => $.createExternalAPI, { ns: 'dataset' })}
+          </DialogTitle>
+          {isEditMode && (datasetBindings?.length ?? 0) > 0 && (
+            <div className="flex items-center system-xs-regular text-text-tertiary">
+              {t(($) => $['editExternalAPIFormWarning.front'], { ns: 'dataset' })}
+              <span className="flex cursor-pointer items-center text-text-accent">
+                &nbsp;
+                {datasetBindings?.length}{' '}
+                {t(($) => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
+                &nbsp;
+                <Popover>
+                  <PopoverTrigger
+                    openOnHover
+                    aria-label={t(($) => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
+                    render={
+                      <button
+                        type="button"
+                        className="flex size-3.5 items-center justify-center rounded-sm hover:bg-state-base-hover"
+                      >
+                        <RiInformation2Line className="size-3.5" />
+                      </button>
+                    }
+                  />
+                  <PopoverContent
+                    placement="bottom"
+                    className="flex w-[320px] items-center self-stretch px-3 py-2"
+                  >
+                    <div className="p-1">
+                      <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
+                        <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t(($) => $.editExternalAPITooltipTitle, { ns: 'dataset' })}`}</div>
                       </div>
-                    </PopoverContent>
-                  </Popover>
-                </span>
-              </div>
-            )}
-          </div>
-          <IconButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="absolute top-5 right-5"
-            onClick={onCancel}
-          >
-            <RiCloseLine aria-hidden className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
-          </IconButton>
+                      {datasetBindings?.map((binding) => (
+                        <div
+                          key={binding.id}
+                          className="flex items-center gap-1 self-stretch px-2 py-1"
+                        >
+                          <RiBook2Line className="size-4 text-text-secondary" />
+                          <div className="system-sm-medium text-text-secondary">{binding.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </span>
+            </div>
+          )}
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
           <Form
             id={formId}
             value={formData}
@@ -207,35 +206,34 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               handleSubmit()
             }}
             formSchemas={formSchemas}
-            className="min-h-0 w-full flex-1 overflow-y-auto px-6 py-3"
           />
-          <div className="flex shrink-0 items-center justify-end gap-2 self-stretch p-6 pt-5">
-            <Button type="button" variant="secondary" onClick={onCancel}>
-              {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
-            </Button>
-            <Button
-              form={formId}
-              type="submit"
-              variant="primary"
-              loading={loading}
-              disabled={hasEmptyInputs}
-            >
-              {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
-            </Button>
-          </div>
-          <div className="flex shrink-0 items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
-            <RiLock2Fill className="size-3 text-text-quaternary" />
-            {t(($) => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
-            <a
-              className="text-text-accent"
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
-            >
-              PKCS1_OAEP
-            </a>
-            {t(($) => $['externalAPIForm.encrypted.end'], { ns: 'dataset' })}
-          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
+          </Button>
+          <Button
+            form={formId}
+            type="submit"
+            variant="primary"
+            loading={loading}
+            disabled={hasEmptyInputs}
+          >
+            {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
+          </Button>
+        </DialogFooter>
+        <div className="flex shrink-0 items-center justify-center gap-1 self-stretch rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
+          <RiLock2Fill className="size-3 text-text-quaternary" />
+          {t(($) => $['externalAPIForm.encrypted.front'], { ns: 'dataset' })}
+          <a
+            className="text-text-accent"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
+          >
+            PKCS1_OAEP
+          </a>
+          {t(($) => $['externalAPIForm.encrypted.end'], { ns: 'dataset' })}
         </div>
         <AlertDialog
           open={showConfirm && (datasetBindings?.length ?? 0) > 0}

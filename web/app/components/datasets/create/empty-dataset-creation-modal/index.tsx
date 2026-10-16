@@ -1,7 +1,15 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
@@ -63,43 +71,37 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-130 overflow-hidden border-none px-8 py-6">
-        <div className={s.modalHeader}>
-          <DialogTitle className={s.title}>
-            {t(($) => $['stepOne.modal.title'], { ns: 'datasetCreation' })}
-          </DialogTitle>
-          <button
-            type="button"
-            className={cn(
-              s.close,
-              'border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-            )}
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onHide}
-          />
-        </div>
-        <div className={s.tip}>{t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}</div>
+      <DialogContent className="w-full max-w-130">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['stepOne.modal.title'], { ns: 'datasetCreation' })}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
         <Form onFormSubmit={() => void submit()}>
-          <Field name="datasetName" className={s.form}>
-            <FieldLabel className={s.label}>
-              {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
-            </FieldLabel>
-            <Input
-              value={inputValue}
-              placeholder={
-                t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' }) || ''
-              }
-              onValueChange={setInputValue}
-            />
-          </Field>
-          <div className="flex flex-row-reverse">
-            <Button type="submit" className="ml-2 w-24" variant="primary" loading={isSubmitting}>
-              {t(($) => $['stepOne.modal.confirmButton'], { ns: 'datasetCreation' })}
-            </Button>
+          <DialogBody>
+            <Field name="datasetName">
+              <FieldLabel className={s.label}>
+                {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
+              </FieldLabel>
+              <Input
+                value={inputValue}
+                placeholder={
+                  t(($) => $['stepOne.modal.placeholder'], { ns: 'datasetCreation' }) || ''
+                }
+                onValueChange={setInputValue}
+              />
+            </Field>
+          </DialogBody>
+          <DialogFooter>
             <Button type="button" className="w-24" onClick={onHide}>
               {t(($) => $['stepOne.modal.cancelButton'], { ns: 'datasetCreation' })}
             </Button>
-          </div>
+            <Button type="submit" className="w-24" variant="primary" loading={isSubmitting}>
+              {t(($) => $['stepOne.modal.confirmButton'], { ns: 'datasetCreation' })}
+            </Button>
+          </DialogFooter>
         </Form>
       </DialogContent>
     </Dialog>

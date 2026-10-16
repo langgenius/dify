@@ -7,8 +7,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -141,9 +144,11 @@ function AuthorizationForm({
 
   return (
     <>
-      <DialogTitle>
-        {t(($) => $[`${i18nPrefix}.authorization`], { ns: 'workflowIntegrations' })}
-      </DialogTitle>
+      <DialogHeader>
+        <DialogTitle>
+          {t(($) => $[`${i18nPrefix}.authorization`], { ns: 'workflowIntegrations' })}
+        </DialogTitle>
+      </DialogHeader>
 
       <form
         onSubmit={(event) => {
@@ -152,7 +157,7 @@ function AuthorizationForm({
           onSaved()
         }}
       >
-        <div className="space-y-2">
+        <DialogBody className="space-y-2">
           <Field
             title={t(($) => $[`${i18nPrefix}.authorizationType`], { ns: 'workflowIntegrations' })}
           >
@@ -234,15 +239,15 @@ function AuthorizationForm({
               </Field>
             </>
           )}
-        </div>
-        <div className="mt-6 flex justify-end space-x-2">
+        </DialogBody>
+        <DialogFooter>
           <DialogClose render={<Button />}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </DialogClose>
           <Button variant="primary" type="submit">
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
-        </div>
+        </DialogFooter>
       </form>
     </>
   )
@@ -278,7 +283,7 @@ export function AuthorizationDialog({
         />
         {label}
       </DialogTrigger>
-      <DialogContent className="border-none p-6">
+      <DialogContent>
         <AuthorizationForm
           nodeId={nodeId}
           payload={payload}

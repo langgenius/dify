@@ -1,7 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
@@ -25,33 +32,36 @@ const RenameModal: FC<IRenameModalProps> = ({ isShow, saveLoading, name, onClose
 
   return (
     <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="p-6">
-        <DialogTitle>{t(($) => $['chat.renameConversation'], { ns: 'common' })}</DialogTitle>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['chat.renameConversation'], { ns: 'common' })}</DialogTitle>
+        </DialogHeader>
         <Form
           onFormSubmit={() => {
             if (!saveLoading) onSave(tempName)
           }}
         >
-          <Field name="conversationName" className="mt-6">
-            <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
-              {t(($) => $['chat.conversationName'], { ns: 'common' })}
-            </FieldLabel>
-            <Input
-              className="h-10"
-              value={tempName}
-              onValueChange={setTempName}
-              placeholder={conversationNamePlaceholder}
-            />
-          </Field>
-
-          <div className="mt-10 flex justify-end">
-            <Button type="button" className="mr-2 shrink-0" onClick={onClose}>
+          <DialogBody>
+            <Field name="conversationName">
+              <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
+                {t(($) => $['chat.conversationName'], { ns: 'common' })}
+              </FieldLabel>
+              <Input
+                className="h-10"
+                value={tempName}
+                onValueChange={setTempName}
+                placeholder={conversationNamePlaceholder}
+              />
+            </Field>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" className="shrink-0" onClick={onClose}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </Button>
             <Button type="submit" variant="primary" className="shrink-0" loading={saveLoading}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
-          </div>
+          </DialogFooter>
         </Form>
       </DialogContent>
     </Dialog>
