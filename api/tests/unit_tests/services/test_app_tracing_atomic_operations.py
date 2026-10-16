@@ -13,13 +13,13 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import (
+    AppTraceSettings,
     AppTracingConfigConflictError,
     AppTracingConfigNotFoundError,
     AppTracingConfigRecord,
     AppTracingConfigService,
     AppTracingConfigVerificationFailedError,
 )
-from services.entities.app_entities import AppTraceSettings
 
 CONTEXT = RequestContext("request", None, "account", "tenant")
 
