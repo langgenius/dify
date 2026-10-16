@@ -156,14 +156,13 @@ export function ConfigPopup({
               initialFocus={firstInputRef}
               className="max-h-[calc(100dvh-2rem)] w-160 p-0"
             >
-              {provider && policy && (
+              {provider && (
                 <ProviderConfigModal
                   resource={resource}
                   type={provider}
                   payload={configs[provider]}
                   firstInputRef={firstInputRef}
                   onSaved={closeConfig}
-                  policy={policy}
                   onRemoved={closeConfig}
                 />
               )}
