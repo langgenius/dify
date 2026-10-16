@@ -140,6 +140,59 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output(sqlite_sess
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+@pytest.mark.parametrize(
+    "content_blocks",
+    [
+        [
+            {
+                "type": "resource_link",
+                "uri": "https://example.com/report.txt",
+                "name": "report",
+                "description": "Generated report",
+                "mimeType": "text/plain",
+                "_meta": {"source": "mcp"},
+            },
+        ],
+        [
+            {"type": "text", "text": "See the report."},
+            {
+                "type": "resource_link",
+                "uri": "https://example.com/report.txt",
+                "name": "report",
+                "description": "Generated report",
+                "mimeType": "text/plain",
+                "_meta": {"source": "mcp"},
+            },
+        ],
+    ],
+    ids=["link-only", "mixed-content"],
+)
+def test_mcp_tool_invoke_preserves_resource_links(sqlite_session: Session, content_blocks: list[dict[str, object]]):
+    tool = _build_mcp_tool(with_output_schema=False)
+    result = CallToolResult.model_validate({"content": content_blocks, "structuredContent": None})
+
+    with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
+        messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
+
+    json_messages = [message for message in messages if message.type == ToolInvokeMessage.MessageType.JSON]
+    assert len(json_messages) == 1
+    assert json_messages[0].message.json_object == {
+        "type": "resource_link",
+        "uri": "https://example.com/report.txt",
+        "name": "report",
+        "description": "Generated report",
+        "mimeType": "text/plain",
+        "_meta": {"source": "mcp"},
+    }
+
+    if len(content_blocks) == 2:
+        assert [message.type for message in messages] == [
+            ToolInvokeMessage.MessageType.TEXT,
+            ToolInvokeMessage.MessageType.JSON,
+        ]
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
 def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource(sqlite_session: Session):
     tool = _build_mcp_tool()
     # Use model_construct to bypass pydantic validation and force unsupported resource path.
