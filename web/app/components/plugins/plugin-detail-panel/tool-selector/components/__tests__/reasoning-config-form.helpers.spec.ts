@@ -3,6 +3,7 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { VarType } from '@/app/components/workflow/types'
 import {
+  coerceReasoningScalarDefault,
   createFilterVar,
   createPickerProps,
   getFieldFlags,
@@ -18,6 +19,25 @@ import {
 } from '../reasoning-config-form.helpers'
 
 describe('reasoning-config-form helpers', () => {
+  it('restores conditional fields to typed schema defaults', () => {
+    const schema = (type: FormTypeEnum, defaultValue?: string, originalType?: string) =>
+      ({ type, _type: originalType ?? type, default: defaultValue }) as never
+
+    expect(coerceReasoningScalarDefault(schema(FormTypeEnum.checkbox, 'true', 'boolean'))).toBe(
+      true,
+    )
+    expect(coerceReasoningScalarDefault(schema(FormTypeEnum.checkbox, 'false', 'boolean'))).toBe(
+      false,
+    )
+    expect(coerceReasoningScalarDefault(schema(FormTypeEnum.checkbox))).toBe(false)
+    expect(coerceReasoningScalarDefault(schema(FormTypeEnum.textNumber, '2.5'))).toBe(2.5)
+    expect(coerceReasoningScalarDefault(schema(FormTypeEnum.textNumber))).toBe('')
+    expect(coerceReasoningScalarDefault(schema(FormTypeEnum.textInput, 'fallback'))).toBe(
+      'fallback',
+    )
+    expect(coerceReasoningScalarDefault(schema(FormTypeEnum.textInput))).toBeNull()
+  })
+
   it('maps schema types to variable-kind types and target variable types', () => {
     expect(getVarKindType(FormTypeEnum.files)).toBe(VarKindType.variable)
     expect(getVarKindType(FormTypeEnum.textNumber)).toBe(VarKindType.constant)
