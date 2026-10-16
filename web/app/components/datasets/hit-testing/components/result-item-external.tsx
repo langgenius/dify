@@ -1,5 +1,5 @@
 'use client'
-import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
+import type { ExternalHitTestingRecordResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import {
   Dialog,
   DialogClose,
@@ -15,14 +15,16 @@ import { ResultItemFooter } from './result-item-footer'
 import { ResultItemMeta } from './result-item-meta'
 
 type ResultItemExternalProps = {
-  payload: ExternalKnowledgeBaseHitTesting
+  payload: ExternalHitTestingRecordResponse
   positionId: number
 }
 
 export const ResultItemExternal = memo(({ payload, positionId }: ResultItemExternalProps) => {
   const { t } = useTranslation(['common', 'datasetHitTesting'])
   const descriptionId = useId()
-  const { content, title, score } = payload
+  const content = payload.content ?? ''
+  const title = payload.title ?? ''
+  const score = payload.score ?? null
 
   return (
     <Dialog>

@@ -1,9 +1,10 @@
 'use client'
+
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 // type
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
@@ -31,7 +32,7 @@ import useGenData from './use-gen-data'
 const i18nPrefix = 'generate'
 
 type IGetAutomaticResProps = {
-  mode: AppModeEnum
+  modelMode: ModelModeType
   isShow: boolean
   onClose: () => void
   onFinished: (res: GenRes) => void
@@ -60,7 +61,7 @@ const TryLabel: FC<{
 }
 
 const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
-  mode,
+  modelMode,
   isShow,
   onClose,
   flowId,
@@ -84,10 +85,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     return {
       name: defaultModel?.model ?? '',
       provider: defaultModel?.provider.provider ?? '',
-      mode: mode as unknown as ModelModeType,
+      mode: modelMode,
       completion_params: {} as CompletionParams,
     }
-  }, [defaultModel, mode, selectedModel, storedModel])
+  }, [defaultModel, modelMode, selectedModel, storedModel])
   const tryList = [
     {
       iconClassName: 'i-ri-terminal-box-line',

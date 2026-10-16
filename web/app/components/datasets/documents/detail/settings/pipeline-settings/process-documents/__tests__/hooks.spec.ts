@@ -19,10 +19,19 @@ const mockUsePublishedPipelineProcessingParams = vi.fn(
   (_params: { pipeline_id: string; node_id: string }) => mockParamsReturn,
 )
 
-vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineProcessingParams: (params: { pipeline_id: string; node_id: string }) =>
-    mockUsePublishedPipelineProcessingParams(params),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUsePublishedPipelineProcessingParams({
+        pipeline_id: o.input.params.pipeline_id,
+        node_id: o.input.query.node_id,
+      }),
+  })
+})
 
 describe('useInputVariables', () => {
   beforeEach(() => {

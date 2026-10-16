@@ -4,9 +4,12 @@ import { TransferMethod } from '@/types/app'
 import { FeaturesProvider } from '../../../context'
 import FileUploadSettings from '../setting-modal'
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: undefined }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({ data: undefined }),
+  })
+})
 
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },

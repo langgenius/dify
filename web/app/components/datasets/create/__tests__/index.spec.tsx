@@ -1,18 +1,21 @@
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComponentProps } from 'react'
 import type StepOneComponent from '../step-one'
 import type StepThreeComponent from '../step-three'
 import type { StepTwoProps } from '../step-two/types'
 import type { TopBarProps } from '../top-bar'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
-import type { DataSet, FileItem } from '@/models/datasets'
+import type { FileItem } from '@/models/datasets'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { DataSourceProvider } from '@/models/common'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetUpdateForm from '../index'
 
@@ -22,8 +25,9 @@ type StepThreeTestProps = ComponentProps<typeof StepThreeComponent>
 // IndexingType values from step-two (defined here since we mock step-two)
 // Using type assertion to match the expected IndexingType enum from step-two
 const IndexingTypeValues = {
-  QUALIFIED: 'high_quality' as unknown as DataSet['indexing_technique'],
-  ECONOMICAL: 'economy' as unknown as DataSet['indexing_technique'],
+  QUALIFIED:
+    'high_quality' as unknown as DatasetDetailWithPartialMembersResponse['indexing_technique'],
+  ECONOMICAL: 'economy' as unknown as DatasetDetailWithPartialMembersResponse['indexing_technique'],
 }
 
 // Mock next/link
@@ -88,10 +92,10 @@ vi.mock('nuqs', async (importOriginal) => {
 })
 
 // Mock dataset detail context
-let mockDatasetDetail: DataSet | undefined
+let mockDatasetDetail: DatasetDetailWithPartialMembersResponse | undefined
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | undefined }) => unknown,
+    selector: (state: { dataset: DatasetDetailWithPartialMembersResponse | undefined }) => unknown,
   ) => {
     const state = {
       dataset: mockDatasetDetail,
@@ -111,16 +115,19 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 // Mock useGetDefaultDataSourceListAuth hook
-let mockDataSourceList: { result: DataSourceAuth[] } | undefined
+let mockDataSourceList: { result: DatasourceProviderAuthResponse[] } | undefined
 let mockIsLoadingDataSourceList = false
 let mockFetchingError = false
-vi.mock('@/service/use-datasource', () => ({
-  useGetDefaultDataSourceListAuth: () => ({
-    data: mockDataSourceList,
-    isLoading: mockIsLoadingDataSourceList,
-    isError: mockFetchingError,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'auth.plugin.datasource.defaultList.get': () => ({
+      data: mockDataSourceList,
+      isLoading: mockIsLoadingDataSourceList,
+      isError: mockFetchingError,
+    }),
+  })
+})
 
 // Track props passed to child components
 let stepOneProps = {} as StepOneProps
@@ -254,7 +261,13 @@ vi.mock('../step-two', () => ({
         </button>
         <button
           data-testid="step-two-update-result-cache"
-          onClick={() => props.updateResultCache!({ batch: 'batch-1', documents: [] })}
+          onClick={() =>
+            props.updateResultCache!({
+              batch: 'batch-1',
+              dataset: { id: 'dataset-1', name: 'Dataset' },
+              documents: [],
+            })
+          }
         >
           Update Result Cache
         </button>
@@ -289,13 +302,15 @@ vi.mock('../top-bar', () => ({
   },
 }))
 
-const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
+const createMockDataset = (
+  overrides?: Partial<DatasetDetailWithPartialMembersResponse>,
+): DatasetDetailWithPartialMembersResponse => ({
+  ...createDatasetFixture(),
   id: 'dataset-123',
   name: 'Test Dataset',
-  indexing_status: 'completed',
   icon_info: { icon: '', icon_background: '', icon_type: 'emoji' as const },
   description: 'Test description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
   indexing_technique: IndexingTypeValues.QUALIFIED,
   created_by: 'user-1',
@@ -304,23 +319,12 @@ const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 0,
-  total_document_count: 0,
   word_count: 0,
   provider: 'openai',
   embedding_model: 'text-embedding-ada-002',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_mode: undefined,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    weights: undefined,
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_mode: undefined,
@@ -350,13 +354,15 @@ const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
   ...overrides,
 })
 
-const createMockDataSourceAuth = (overrides?: Partial<DataSourceAuth>): DataSourceAuth =>
+const createMockDataSourceAuth = (
+  overrides?: Partial<DatasourceProviderAuthResponse>,
+): DatasourceProviderAuthResponse =>
   ({
     credential_id: 'cred-1',
     provider: 'notion',
     plugin_id: 'plugin-1',
     ...overrides,
-  }) as DataSourceAuth
+  }) as DatasourceProviderAuthResponse
 
 describe('DatasetUpdateForm', () => {
   beforeEach(() => {

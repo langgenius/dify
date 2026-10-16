@@ -1,4 +1,4 @@
-import type { AgentIteration } from '@/models/log'
+import type { AgentIterationLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import TracingPanel from '../tracing'
@@ -16,18 +16,27 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-const createIteration = (thought: string, tokens: number): AgentIteration => ({
+const createIteration = (thought: string, tokens: number): AgentIterationLogResponse => ({
   created_at: '',
   files: [],
   thought,
   tokens,
   tool_calls: [
-    { tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } },
+    {
+      tool_name: 'tool1',
+      status: 'success',
+      tool_icon: null,
+      tool_label: { 'en-US': 'Tool 1' },
+      time_cost: 0,
+      tool_input: {},
+      tool_output: {},
+      tool_parameters: {},
+    },
   ],
   tool_raw: { inputs: '', outputs: '' },
 })
 
-const mockList: AgentIteration[] = [
+const mockList: AgentIterationLogResponse[] = [
   createIteration('Thought 1', 10),
   createIteration('Thought 2', 20),
   createIteration('Thought 3', 30),

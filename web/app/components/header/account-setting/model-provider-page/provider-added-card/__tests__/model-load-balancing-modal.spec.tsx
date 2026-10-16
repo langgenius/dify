@@ -72,16 +72,40 @@ vi.mock('@/app/notifications', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-models', () => ({
-  useGetModelCredential: () => ({
-    isLoading: false,
-    data: mockCredentialData,
-    refetch: mockRefetch,
-  }),
-  useUpdateModelLoadBalancingConfig: () => ({
-    mutateAsync: mockMutateAsync,
-  }),
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              credentials: { get: { queryOptions: () => ({ operation: 'model-credential' }) } },
+              post: { mutationOptions: () => ({ operation: 'update-load-balancing' }) },
+            },
+          },
+        },
+      },
+    },
+  },
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: { operation?: string }) =>
+      options.operation === 'model-credential'
+        ? { isLoading: false, data: mockCredentialData, refetch: mockRefetch }
+        : actual.useQuery(options as Parameters<typeof actual.useQuery>[0]),
+    useMutation: (options: { operation?: string }) =>
+      options.operation === 'update-load-balancing'
+        ? {
+            mutateAsync: ({ params, body }: { params: { provider: string }; body: unknown }) =>
+              mockMutateAsync(body, params),
+          }
+        : actual.useMutation(options as Parameters<typeof actual.useMutation>[0]),
+  }
+})
 
 vi.mock('../../model-auth/hooks/use-auth', () => ({
   useAuth: () => ({
@@ -274,6 +298,9 @@ describe('ModelLoadBalancingModal', () => {
 
     await waitFor(() => {
       expect(mockRefetch).toHaveBeenCalled()
+      expect(mockMutateAsync).toHaveBeenCalledWith(expect.anything(), {
+        provider: 'test-provider',
+      })
       expect(mockMutateAsync).toHaveBeenCalled()
       const payload = mockMutateAsync.mock.calls[0]![0] as {
         load_balancing: { configs: Array<{ credentials: { api_key: string } }> }

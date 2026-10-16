@@ -3,7 +3,6 @@ import type { ModelAndParameter } from '../../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { AppModeEnum } from '@/types/app'
 import DebugItem from '../debug-item'
 
 const mockUseDebugConfigurationContext = vi.fn()
@@ -98,7 +97,7 @@ describe('DebugItem', () => {
     capturedModelParameterTriggerProps = null
 
     mockUseDebugConfigurationContext.mockReturnValue({
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
     })
 
     mockUseDebugWithMultipleModelContext.mockReturnValue({
@@ -156,7 +155,7 @@ describe('DebugItem', () => {
 
   describe('ChatItem rendering', () => {
     it('should render ChatItem in CHAT mode with active model', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.CHAT })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'chat' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'openai', model: 'gpt-3.5-turbo', status: ModelStatusEnum.active },
@@ -170,7 +169,7 @@ describe('DebugItem', () => {
     })
 
     it('should render ChatItem in AGENT_CHAT mode with active model', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.AGENT_CHAT })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'agent-chat' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'openai', model: 'gpt-3.5-turbo', status: ModelStatusEnum.active },
@@ -183,7 +182,7 @@ describe('DebugItem', () => {
     })
 
     it('should not render ChatItem when model is not active', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.CHAT })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'chat' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'openai', model: 'gpt-3.5-turbo', status: ModelStatusEnum.disabled },
@@ -196,7 +195,7 @@ describe('DebugItem', () => {
     })
 
     it('should not render ChatItem when provider not found', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.CHAT })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'chat' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'anthropic', model: 'claude-3', status: ModelStatusEnum.active },
@@ -209,7 +208,7 @@ describe('DebugItem', () => {
     })
 
     it('should not render ChatItem when model not found', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.CHAT })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'chat' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'openai', model: 'gpt-4', status: ModelStatusEnum.active },
@@ -224,7 +223,7 @@ describe('DebugItem', () => {
 
   describe('TextGenerationItem rendering', () => {
     it('should render TextGenerationItem in COMPLETION mode with active model', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.COMPLETION })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'completion' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'openai', model: 'gpt-3.5-turbo', status: ModelStatusEnum.active },
@@ -238,7 +237,7 @@ describe('DebugItem', () => {
     })
 
     it('should not render TextGenerationItem when provider is not found', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.COMPLETION })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'completion' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'anthropic', model: 'claude-3', status: ModelStatusEnum.active },
@@ -503,7 +502,7 @@ describe('DebugItem', () => {
     })
 
     it('should handle model with quotaExceeded status', () => {
-      mockUseDebugConfigurationContext.mockReturnValue({ mode: AppModeEnum.CHAT })
+      mockUseDebugConfigurationContext.mockReturnValue({ mode: 'chat' as const })
       mockModelListQuery.mockReturnValue({
         data: createTextGenerationModelList([
           { provider: 'anthropic', model: 'not-matching', status: ModelStatusEnum.quotaExceeded },

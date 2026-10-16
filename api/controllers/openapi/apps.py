@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from http import HTTPStatus
+from typing import Any, Final
 
 from flask_restx import Resource
 from werkzeug.exceptions import NotFound
@@ -11,20 +13,74 @@ from constants.oauth_bearer import Scope
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._app_response import app_list_row, build_app_describe_response
-from controllers.openapi._contract import Example, Kind, endpoint
-from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse
+from controllers.openapi._contract import Example, Kind, endpoint, op_of
+from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse, Hint
+from controllers.openapi.app_info import (
+    AdvancedChatAppInfoApi,
+    AgentAppInfoApi,
+    AgentChatAppInfoApi,
+    AgentServiceApiApi,
+    ChatAppInfoApi,
+    CompletionAppInfoApi,
+    ServiceApiApi,
+    WorkflowAppInfoApi,
+)
+from controllers.openapi.app_webapp import (
+    AdvancedChatWebAppApi,
+    AgentChatWebAppApi,
+    AgentWebAppAccessApi,
+    AgentWebAppApi,
+    ChatWebAppApi,
+    CompletionWebAppApi,
+    WebAppAccessApi,
+    WorkflowWebAppApi,
+)
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
+    CheckWebAppAuthEnterprise,
     CheckWorkspaceMember,
 )
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext, RequestContext
+from models.model import AppMode
 from services.app.query_service import AppDiscoveryQuery
 from services.errors.app import AppDiscoveryNotFoundError
+
+_SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
+    AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.ADVANCED_CHAT: (
+        AdvancedChatAppInfoApi.get,
+        AdvancedChatWebAppApi.get,
+        ServiceApiApi.get,
+        WebAppAccessApi.get,
+    ),
+    AppMode.CHAT: (ChatAppInfoApi.get, ChatWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.AGENT_CHAT: (AgentChatAppInfoApi.get, AgentChatWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.COMPLETION: (CompletionAppInfoApi.get, CompletionWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
+    AppMode.AGENT: (AgentAppInfoApi.get, AgentWebAppApi.get, AgentServiceApiApi.get, AgentWebAppAccessApi.get),
+}
+
+
+def _webapp_auth_gated(view: Any) -> bool:
+    return any(isinstance(r, CheckWebAppAuthEnterprise) for r in view.__spec__.requirements)
+
+
+def settings_hints(app_id: str, mode: str) -> list[Hint]:
+    """A stored mode this build doesn't know gets no hints, and the web-app access setting only where it exists."""
+    try:
+        app_mode = AppMode(mode)
+    except ValueError:
+        return []
+    webapp_auth = CheckWebAppAuthEnterprise.available()
+    return [
+        Hint(summary="Read this setting", op=op_of(view), input={"app_id": app_id})
+        for view in _SETTINGS_VIEWS.get(app_mode, ())
+        if webapp_auth or not _webapp_auth_gated(view)
+    ]
 
 
 @openapi_ns.route("/apps/<string:app_id>")
@@ -56,7 +112,9 @@ class AppDescribeApi(Resource):
             result = application_services().apps.discovery.describe(ctx, query.fields)
         except AppDiscoveryNotFoundError as exc:
             raise NotFound(str(exc)) from exc
-        return build_app_describe_response(result, query.fields)
+        response = build_app_describe_response(result, query.fields)
+        response.hints = settings_hints(result.app.id, result.app.mode)
+        return response
 
 
 @openapi_ns.route("/apps")

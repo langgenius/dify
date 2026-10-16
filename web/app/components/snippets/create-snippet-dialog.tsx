@@ -1,6 +1,7 @@
 'use client'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -23,7 +24,7 @@ export type CreateSnippetDialogPayload = {
   name: string
   description: string
   graph: SnippetCanvasData
-  input_fields?: SnippetInputField[]
+  input_fields?: InputVar[]
 }
 
 type CreateSnippetDialogInitialValue = {
@@ -34,7 +35,7 @@ type CreateSnippetDialogInitialValue = {
 type CreateSnippetDialogProps = {
   isOpen: boolean
   selectedGraph?: SnippetCanvasData
-  inputFields?: SnippetInputField[]
+  inputFields?: InputVar[]
   onClose: () => void
   onConfirm: (payload: CreateSnippetDialogPayload) => void
   isSubmitting?: boolean

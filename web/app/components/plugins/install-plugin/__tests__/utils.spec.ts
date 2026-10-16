@@ -4,8 +4,10 @@ import { PluginCategoryEnum } from '../../types'
 import {
   convertRepoToUrl,
   parseGitHubUrl,
+  pluginDeclarationToCardPluginProps,
   pluginManifestInMarketToPluginProps,
   pluginManifestToCardPluginProps,
+  toPluginText,
 } from '../utils'
 
 // Mock es-toolkit/compat
@@ -195,6 +197,45 @@ describe('pluginManifestToCardPluginProps', () => {
       const result = pluginManifestToCardPluginProps(manifest)
 
       expect(result.endpoint).toEqual({ settings: [] })
+    })
+  })
+})
+
+describe('pluginDeclarationToCardPluginProps', () => {
+  const manifest = {
+    author: null,
+    category: 'agent-strategy',
+    created_at: '2026-01-01T00:00:00Z',
+    description: { en_US: 'Description', zh_Hans: null },
+    icon: 'icon.svg',
+    label: { en_US: 'Agent', zh_Hans: '代理' },
+    meta: { minimum_dify_version: null, version: '0.0.1' },
+    name: 'agent',
+    plugins: {},
+    resource: { memory: 0 },
+    version: '1.0.0',
+  } satisfies Parameters<typeof pluginDeclarationToCardPluginProps>[0]
+
+  it('reads the uploaded package as a card', () => {
+    expect(
+      pluginDeclarationToCardPluginProps(manifest, 'langgenius/agent:1.0.0@hash'),
+    ).toMatchObject({
+      plugin_id: 'langgenius/agent:1.0.0@hash',
+      type: 'agent_strategy',
+      category: 'agent-strategy',
+      org: '',
+      author: undefined,
+      label: { en_US: 'Agent', zh_Hans: '代理' },
+      description: { en_US: 'Description' },
+      verified: false,
+      tags: [],
+    })
+  })
+
+  it('leaves untranslated locales out of card text', () => {
+    expect(toPluginText({ en_US: 'Name', ja_JP: null, pt_BR: 'Nome' })).toEqual({
+      en_US: 'Name',
+      pt_BR: 'Nome',
     })
   })
 })

@@ -93,7 +93,7 @@ describe('Operator', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resizeObserverCallback = undefined
-    vi.stubGlobal('ResizeObserver', MockResizeObserver as unknown as typeof ResizeObserver)
+    vi.stubGlobal('ResizeObserver', MockResizeObserver)
   })
 
   afterEach(() => {

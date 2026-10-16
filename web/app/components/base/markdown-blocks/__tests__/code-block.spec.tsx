@@ -162,8 +162,8 @@ describe('CodeBlock', () => {
     const windowWithLegacyAudio = window as WindowWithLegacyAudio
     originalAudioContext = windowWithLegacyAudio.AudioContext
     originalWebkitAudioContext = windowWithLegacyAudio.webkitAudioContext
-    windowWithLegacyAudio.AudioContext = MockAudioContext as unknown as AudioContextCtor
-    windowWithLegacyAudio.webkitAudioContext = MockAudioContext as unknown as AudioContextCtor
+    windowWithLegacyAudio.AudioContext = MockAudioContext as AudioContextCtor
+    windowWithLegacyAudio.webkitAudioContext = MockAudioContext as AudioContextCtor
     delete windowWithLegacyAudio.abcjsAudioContext
   })
 
@@ -370,7 +370,7 @@ describe('CodeBlock', () => {
     it('should stop processing extra finished events when chart finished callback fires repeatedly', async () => {
       render(<CodeBlock className="language-echarts">{'{"series":[]}'}</CodeBlock>)
       const chart = await findEchartsInstance()
-      const chartWithTrigger = chart as unknown as {
+      const chartWithTrigger = chart as {
         trigger?: (eventName: string, event?: unknown) => void
       }
 

@@ -1,11 +1,11 @@
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
 import { useEffect, useRef } from 'react'
 import { AppToastHost } from '@/app/notifications/host'
 import AgentLogModal from '.'
 
-const MOCK_RESPONSE: AgentLogDetailResponse = {
+const MOCK_RESPONSE: AgentLogResponse = {
   meta: {
     status: 'finished',
     executor: 'Agent Runner',
@@ -14,7 +14,6 @@ const MOCK_RESPONSE: AgentLogDetailResponse = {
     total_tokens: 2589,
     agent_mode: 'ReACT',
     iterations: 2,
-    error: undefined,
   },
   iterations: [
     {
@@ -33,6 +32,7 @@ const MOCK_RESPONSE: AgentLogDetailResponse = {
             'en-US': 'Revenue Search',
           },
           time_cost: 1.8,
+          tool_parameters: {},
         },
       ],
       tool_raw: {
@@ -86,7 +86,7 @@ const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
       throw new Error(`Unhandled request: ${url}`)
     }
 
-    globalThis.fetch = handler as typeof globalThis.fetch
+    globalThis.fetch = handler
 
     return () => {
       if (originalFetchRef.current) globalThis.fetch = originalFetchRef.current

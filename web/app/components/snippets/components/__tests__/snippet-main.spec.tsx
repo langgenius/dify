@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type { SnippetDetail, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetDetail, SnippetDetailPayload } from '@/models/snippet'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -63,7 +64,7 @@ vi.mock('@/context/permission-state', async () => {
 let capturedHooksStore: Record<string, unknown> | undefined
 let capturedWorkflowNodes: WorkflowProps['nodes'] | undefined
 let snippetDetailStoreState: {
-  onFieldsChange?: (fields: SnippetInputField[]) => void
+  onFieldsChange?: (fields: InputVar[]) => void
   readonly: boolean
   reset: typeof mockReset
   setNavigationState: typeof mockSetNavigationState
@@ -83,13 +84,7 @@ vi.mock('@/service/use-snippet-workflows', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-configs-map', () => ({
-  useConfigsMap: () => ({
-    flowId: 'snippet-1',
-    flowType: 'snippet',
-    fileSettings: {},
-  }),
-}))
+vi.mock('../../hooks/use-file-settings', () => ({ useFileSettings: () => ({ enabled: true }) }))
 
 vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
   useSetWorkflowVarsWithValue: () => ({
@@ -103,12 +98,12 @@ vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => mockUseAvailableNodesMetaData(),
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: () => mockUseAvailableNodesMetaData(),
 }))
 
-vi.mock('../../hooks/use-inspect-vars-crud', () => ({
-  useInspectVarsCrud: () => mockInspectVarsCrud,
+vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
+  useInspectVarsCrudCommon: () => mockInspectVarsCrud,
 }))
 
 vi.mock('../../hooks/use-nodes-sync-draft', () => ({
@@ -234,7 +229,6 @@ const renderSnippetMain = ({
       draftPayload={payload}
       hasInitialDraftChanges={hasInitialDraftChanges}
       hasPublishedWorkflow={hasPublishedWorkflow}
-      snippetId="snippet-1"
       nodes={workflowNodes}
       edges={[] as WorkflowProps['edges']}
       viewport={{ x: 0, y: 0, zoom: 1 }}
@@ -243,6 +237,7 @@ const renderSnippetMain = ({
       draftViewport={{ x: 0, y: 0, zoom: 1 }}
     />,
     {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
       initialStoreState: {
         nodes: currentNodes,
       },

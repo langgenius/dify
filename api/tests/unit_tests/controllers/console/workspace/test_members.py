@@ -55,6 +55,7 @@ from services.errors.workspace import (
 )
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
 from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
+from tests.unit_tests.controllers.error_body import raised_error
 
 
 class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
@@ -189,9 +190,9 @@ def test_member_mutation_delegates_admitted_ids(app: Flask, services: Mock, oper
 @pytest.mark.parametrize(
     ("error", "code", "status"),
     [
-        (CannotOperateSelfError("self"), "cannot-operate-self", 400),
+        (CannotOperateSelfError("self"), "cannot_operate_self", 400),
         (NoPermissionError("denied"), "forbidden", 403),
-        (MemberNotInTenantError("missing"), "member-not-found", 404),
+        (MemberNotInTenantError("missing"), "member_not_found", 404),
     ],
 )
 def test_member_mutation_maps_errors(
@@ -204,7 +205,9 @@ def test_member_mutation_maps_errors(
     api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
     method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": str(error)}, status)
 
 
@@ -223,15 +226,17 @@ def test_member_mutation_maps_missing_account(app: Flask, services: Mock, operat
 @pytest.mark.parametrize(
     ("error", "code", "message"),
     [
-        (InvalidWorkspaceMemberRoleError(), "invalid-role", "Invalid role"),
-        (RoleAlreadyAssignedError("unchanged"), "role-already-assigned", "unchanged"),
+        (InvalidWorkspaceMemberRoleError(), "invalid_role", "Invalid role."),
+        (RoleAlreadyAssignedError("unchanged"), "role_already_assigned", "unchanged"),
     ],
 )
 def test_update_role_maps_role_errors(app: Flask, services: Mock, error: Exception, code: str, message: str) -> None:
     services.workspaces.members.update_role.side_effect = error
     api = MemberUpdateRoleApi()
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": message}, 400)
 
 

@@ -120,7 +120,7 @@ describe('question-classifier/panel', () => {
       readOnly: false,
       inputs: createData(),
       handleModelChanged,
-      isChatMode: true,
+      isChatflow: true,
       isChatModel: true,
       handleCompletionParamsChange,
       handleQueryVarChange,

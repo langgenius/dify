@@ -1,5 +1,9 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetDocMetadataResponse,
+  DatasetListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeRetrievalNodeType } from '../types'
-import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useState } from 'react'
@@ -12,10 +16,12 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { fetchDatasets } from '@/service/datasets'
-import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -39,7 +45,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
+
     useWorkflow: vi.fn(),
   }
 })
@@ -67,8 +73,10 @@ vi.mock('@/service/datasets', () => ({
   fetchDatasets: vi.fn(),
 }))
 
+type DatasetListItem = DatasetListResponse['data'][number]
+
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -79,10 +87,10 @@ const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
 const mockUseDatasetsDetailStore = vi.mocked(useDatasetsDetailStore)
 const mockFetchDatasets = vi.mocked(fetchDatasets)
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (overrides: Partial<DatasetListItem> = {}): DatasetListItem => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -90,33 +98,22 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -146,11 +143,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc => ({
+const createMetadata = (
+  overrides: Partial<DatasetDocMetadataResponse> = {},
+): DatasetDocMetadataResponse => ({
   id: 'meta-1',
   name: 'topic',
   type: MetadataFilteringVariableType.string,
-  value: 'topic',
   ...overrides,
 })
 
@@ -222,7 +220,7 @@ describe('knowledge-retrieval/use-config', () => {
           currentModel: {
             model: 'rerank-model',
             model_properties: {
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             },
           },
         } as unknown as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
@@ -235,7 +233,7 @@ describe('knowledge-retrieval/use-config', () => {
         currentModel: {
           model: 'gpt-4o-mini',
           model_properties: {
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           },
         },
       } as unknown as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
@@ -317,7 +315,6 @@ describe('knowledge-retrieval/use-config', () => {
     })
 
     expect(mockFetchDatasets).toHaveBeenCalledWith({
-      url: '/datasets',
       params: {
         page: 1,
         ids: ['dataset-1'],
@@ -371,7 +368,7 @@ describe('knowledge-retrieval/use-config', () => {
       result.current.handleModelChanged({
         provider: 'anthropic',
         modelId: 'claude-sonnet',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       result.current.handleCompletionParamsChange({ temperature: 0.2 })
       result.current.handleCompletionParamsChange({ temperature: 0.2 })
@@ -417,13 +414,15 @@ describe('knowledge-retrieval/use-config', () => {
         createDataset({
           id: 'dataset-2',
           name: 'Economic',
-          indexing_technique: 'economy' as DataSet['indexing_technique'],
+          indexing_technique:
+            'economy' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
           is_multimodal: false,
         }),
         createDataset({
           id: 'dataset-3',
           name: 'High Quality',
-          indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+          indexing_technique:
+            'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
           is_multimodal: false,
         }),
       ])
@@ -504,7 +503,7 @@ describe('knowledge-retrieval/use-config', () => {
       result.current.handleMetadataModelChange({
         provider: 'openai',
         modelId: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       result.current.handleMetadataCompletionParamsChange({ top_p: 0.3 })
     })
@@ -517,7 +516,7 @@ describe('knowledge-retrieval/use-config', () => {
       expect(result.current.inputs.metadata_model_config).toEqual({
         provider: 'openai',
         name: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { top_p: 0.3 },
       })
     })
@@ -528,4 +527,11 @@ describe('knowledge-retrieval/use-config', () => {
     expect(result.current.filterFileVar({ type: VarType.arrayFile } as never)).toBe(true)
     expect(result.current.filterFileVar({ type: VarType.string } as never)).toBe(false)
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

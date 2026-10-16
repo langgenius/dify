@@ -69,7 +69,7 @@ describe('StartPanel', () => {
     handleAddVariable.mockReturnValue(true)
     mockUseConfig.mockReturnValue({
       readOnly: false,
-      isChatMode: true,
+      isChatflow: true,
       inputs: createData(),
       isShowAddVarModal: false,
       showAddVarModal,
@@ -99,7 +99,7 @@ describe('StartPanel', () => {
   it('should render the add modal and hide it after a successful confirm', () => {
     mockUseConfig.mockReturnValue({
       readOnly: false,
-      isChatMode: false,
+      isChatflow: false,
       inputs: createData(),
       isShowAddVarModal: true,
       showAddVarModal,
@@ -131,7 +131,7 @@ describe('StartPanel', () => {
     handleAddVariable.mockReturnValue(false)
     mockUseConfig.mockReturnValue({
       readOnly: false,
-      isChatMode: false,
+      isChatflow: false,
       inputs: createData({
         variables: [
           {

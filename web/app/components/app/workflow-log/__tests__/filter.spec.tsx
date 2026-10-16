@@ -214,7 +214,7 @@ describe('Filter', () => {
     ])('should display correct label for %s status', (statusValue, expectedLabel) => {
       render(
         <Filter
-          queryParams={createDefaultQueryParams({ status: statusValue })}
+          queryParams={createDefaultQueryParams({ status: statusValue as QueryParam['status'] })}
           setQueryParams={defaultSetQueryParams}
         />,
       )

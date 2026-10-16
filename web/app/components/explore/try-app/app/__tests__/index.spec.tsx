@@ -20,7 +20,7 @@ const createApp = (mode: string): TrialAppDetailResponse =>
   }) as TrialAppDetailResponse
 
 describe('TryApp', () => {
-  it.each(['chat', 'advanced-chat', 'agent-chat'])(
+  it.each(['chat', 'advanced-chat', 'agent-chat'] as const)(
     'uses the chat experience for %s apps',
     (mode) => {
       render(<TryApp appId="app-id" appDetail={createApp(mode)} />)
@@ -32,7 +32,7 @@ describe('TryApp', () => {
   it.each([
     ['completion', 'Completion preview'],
     ['workflow', 'Workflow preview'],
-  ])('uses the text generation experience for %s apps', (mode, name) => {
+  ] as const)('uses the text generation experience for %s apps', (mode, name) => {
     render(<TryApp appId="app-id" appDetail={createApp(mode)} />)
 
     expect(screen.getByRole('region', { name })).toBeInTheDocument()

@@ -15,9 +15,10 @@ import {
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
+import { consoleQuery } from '@/service/console'
 import { getIconClassName } from '../utils/get-icon'
 import { CreateContent } from './create-content'
 
@@ -58,7 +59,11 @@ export function DatasetMetadataPicker({
   onOpenMetadataManagement,
 }: DatasetMetadataPickerProps) {
   const { t } = useTranslation(['dataset'])
-  const { data: datasetMetaData } = useDatasetMetaData(datasetId)
+  const { data: datasetMetaData } = useQuery(
+    consoleQuery.datasets.byDatasetId.metadata.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  )
   const metadataItems = datasetMetaData?.doc_metadata ?? []
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<PickerView>(PickerView.select)

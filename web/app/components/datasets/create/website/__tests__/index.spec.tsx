@@ -1,4 +1,4 @@
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -83,7 +83,10 @@ const createMockCrawlOptions = (overrides: Partial<CrawlOptions> = {}): CrawlOpt
   ...overrides,
 })
 
-const createMockDataSourceAuth = (provider: string, credentialsCount = 1): DataSourceAuth => ({
+const createMockDataSourceAuth = (
+  provider: string,
+  credentialsCount = 1,
+): DatasourceProviderAuthResponse => ({
   author: 'test',
   provider,
   plugin_id: `${provider}-plugin`,
@@ -92,6 +95,8 @@ const createMockDataSourceAuth = (provider: string, credentialsCount = 1): DataS
   name: provider,
   label: { en_US: provider, zh_Hans: provider },
   description: { en_US: `${provider} description`, zh_Hans: `${provider} description` },
+  credential_schema: [],
+  oauth_schema: null,
   credentials_list: Array.from({ length: credentialsCount }, (_, i) => ({
     credential: {},
     type: CredentialTypeEnum.API_KEY,
@@ -103,7 +108,7 @@ const createMockDataSourceAuth = (provider: string, credentialsCount = 1): DataS
 })
 
 type RenderProps = {
-  authedDataSourceList?: DataSourceAuth[]
+  authedDataSourceList?: DatasourceProviderAuthResponse[]
   enableJina?: boolean
   enableFirecrawl?: boolean
   enableWatercrawl?: boolean

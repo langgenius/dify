@@ -1,7 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RetrievalConfig } from '@/types/app'
 import { render, screen } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import ExternalKnowledgeSection from '../external-knowledge-section'
@@ -19,11 +21,12 @@ describe('ExternalKnowledgeSection', () => {
     score_threshold: 0.5,
   }
 
-  const mockDataset: DataSet = {
+  const mockDataset: DatasetDetailWithPartialMembersResponse = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'External Dataset',
     description: 'External dataset description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     icon_info: {
       icon_type: 'emoji',
       icon: '📚',
@@ -31,7 +34,6 @@ describe('ExternalKnowledgeSection', () => {
       icon_url: '',
     },
     indexing_technique: IndexingType.QUALIFIED,
-    indexing_status: 'completed',
     data_source_type: DataSourceType.FILE,
     doc_form: ChunkingMode.text,
     embedding_model: 'text-embedding-ada-002',
@@ -39,7 +41,6 @@ describe('ExternalKnowledgeSection', () => {
     embedding_available: true,
     app_count: 0,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'external',
     tags: [],
@@ -56,7 +57,6 @@ describe('ExternalKnowledgeSection', () => {
       score_threshold_enabled: true,
     },
     retrieval_model_dict: mockRetrievalConfig,
-    retrieval_model: mockRetrievalConfig,
     built_in_field_enabled: false,
     keyword_number: 10,
     created_by: 'user-1',

@@ -150,7 +150,7 @@ describe('ModelModal dialog branches', () => {
         provider={createProvider({
           help: {
             title: { en_US: 'English Help' },
-            url: '' as unknown as ModelProvider['help']['url'],
+            url: '' as unknown as NonNullable<ModelProvider['help']>['url'],
           } as ModelProvider['help'],
         })}
         configurateMethod={ConfigurationMethodEnum.predefinedModel}

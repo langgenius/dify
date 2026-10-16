@@ -3,6 +3,40 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import SnippetCard from '../snippet-card'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({
+      data: {
+        accounts: [
+          {
+            id: 'creator-id',
+            name: 'Creator',
+            email: 'creator@example.com',
+            avatar: '',
+            avatar_url: null,
+            role: 'editor',
+            last_login_at: '',
+            created_at: '',
+            status: 'active',
+          },
+          {
+            id: 'updater-id',
+            name: 'Updater',
+            email: 'updater@example.com',
+            avatar: '',
+            avatar_url: null,
+            role: 'editor',
+            last_login_at: '',
+            created_at: '',
+            status: 'active',
+          },
+        ],
+      },
+    }),
+  })
+})
+
 const {
   mockDeleteMutate,
   mockDownloadBlob,
@@ -37,37 +71,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          id: 'creator-id',
-          name: 'Creator',
-          email: 'creator@example.com',
-          avatar: '',
-          avatar_url: null,
-          role: 'editor',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-        {
-          id: 'updater-id',
-          name: 'Updater',
-          email: 'updater@example.com',
-          avatar: '',
-          avatar_url: null,
-          role: 'editor',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
 
 vi.mock('@/service/use-snippets', () => ({
   useDeleteSnippetMutation: () => ({

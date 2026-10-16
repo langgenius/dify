@@ -7,19 +7,22 @@ import EditMetadataBatchModal from '../modal'
 
 // Mock service/API calls
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useCreateMetaData: () => ({
-    mutate: mockDoAddMetaData,
-  }),
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [
-        { id: 'existing-1', name: 'existing_field', type: DataType.string },
-        { id: 'existing-2', name: 'another_field', type: DataType.number },
-      ],
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.post': () => ({
+      mutateAsync: mockDoAddMetaData,
+    }),
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        doc_metadata: [
+          { id: 'existing-1', name: 'existing_field', type: DataType.string },
+          { id: 'existing-2', name: 'another_field', type: DataType.number },
+        ],
+      },
+    }),
+  })
+})
 
 // Mock check name hook to control validation
 let mockCheckNameResult = { errorMsg: '' }
@@ -386,8 +389,8 @@ describe('EditMetadataBatchModal', () => {
 
       await waitFor(() => {
         expect(mockDoAddMetaData).toHaveBeenCalledWith({
-          name: 'created_field',
-          type: DataType.string,
+          params: { dataset_id: 'ds-1' },
+          body: { name: 'created_field', type: DataType.string },
         })
       })
 

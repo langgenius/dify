@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -102,14 +103,7 @@ const HeaderInMobile = () => {
           <div className="flex grow items-center justify-center">
             {!currentConversationId && (
               <>
-                <AppIcon
-                  className="mr-2"
-                  size="tiny"
-                  icon={appData?.site.icon}
-                  iconType={appData?.site.icon_type}
-                  imageUrl={appData?.site.icon_url}
-                  background={appData?.site.icon_background}
-                />
+                <AppIcon className="mr-2" size="tiny" icon={appData?.site} />
                 <div className="truncate system-md-semibold text-text-secondary">
                   {appData?.site.title}
                 </div>
@@ -187,14 +181,14 @@ const HeaderInMobile = () => {
       </Dialog>
       <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

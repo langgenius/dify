@@ -1,4 +1,4 @@
-import type { AnnotationItem } from '../type'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -23,7 +23,7 @@ vi.mock('@/service/base', async (importOriginal) => ({
   request: mockedRequest,
 }))
 
-const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
+const createAnnotation = (overrides: Partial<Annotation> = {}): Annotation => ({
   id: overrides.id ?? 'annotation-id',
   question: overrides.question ?? 'question 1',
   answer: overrides.answer ?? 'answer 1',
@@ -52,7 +52,7 @@ describe('List', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText(item.question))
+    fireEvent.click(screen.getByText(item.question!))
 
     expect(onView).toHaveBeenCalledWith(item)
     expect(mockFormatTime).toHaveBeenCalledWith(item.created_at, 'appLog.dateTimeFormat')
@@ -113,7 +113,7 @@ describe('List', () => {
       />,
     )
 
-    const row = screen.getByText(item.question).closest('tr') as HTMLTableRowElement
+    const row = screen.getByText(item.question!).closest('tr') as HTMLTableRowElement
     const actionButtons = within(row).getAllByRole('button')
     fireEvent.click(actionButtons[1]!)
 

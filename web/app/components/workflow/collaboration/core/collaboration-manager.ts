@@ -1153,7 +1153,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_intent',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }
@@ -1163,7 +1163,7 @@ export class CollaborationManager {
 
     this.sendCollaborationEvent({
       type: 'workflow_restore_complete',
-      data: data as unknown as Record<string, unknown>,
+      data: data as Record<string, unknown>,
       timestamp: Date.now(),
     })
   }

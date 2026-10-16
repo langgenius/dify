@@ -3,14 +3,14 @@ import { renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import useConfig from '../use-config'
 
 const mockUseStoreApi = vi.mocked(useStoreApi)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseWorkflowVariables = vi.mocked(useWorkflowVariables)
 
@@ -27,7 +27,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: vi.fn(),
+
     useNodesReadOnly: vi.fn(),
     useWorkflow: vi.fn(),
   }
@@ -108,4 +108,11 @@ describe('document-extractor/use-config', () => {
     expect(result.current.filterVar({ type: VarType.arrayFile } as never)).toBe(true)
     expect(result.current.filterVar({ type: VarType.string } as never)).toBe(false)
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

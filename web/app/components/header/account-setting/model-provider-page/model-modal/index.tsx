@@ -12,6 +12,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -398,7 +399,7 @@ const ModelModal: FC<ModelModalProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-block align-middle system-xs-regular text-text-accent"
-              onClick={(e) => !provider.help.url && e.preventDefault()}
+              onClick={(e) => !provider.help?.url && e.preventDefault()}
             >
               {provider.help.title?.[language] ||
                 provider.help.url[language] ||
@@ -456,11 +457,11 @@ const ModelModal: FC<ModelModalProps> = ({
       </DialogContent>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
