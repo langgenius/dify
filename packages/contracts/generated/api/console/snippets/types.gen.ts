@@ -710,9 +710,7 @@ export type WorkflowSensitiveWordAvoidanceResponse = {
 
 export type WorkflowSuggestedQuestionsAfterAnswerResponse = {
   enabled?: boolean | null
-  model?: {
-    [key: string]: unknown
-  } | null
+  model?: AppModelSelectionResponse | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -997,6 +995,16 @@ export type WorkflowFileUploadImageResponse = {
   [key: string]: unknown
 }
 
+export type AppModelSelectionResponse = {
+  completion_params?: {
+    [key: string]: JsonValue
+  }
+  mode?: LlmMode | ''
+  name?: string
+  provider?: string
+  [key: string]: unknown
+}
+
 export type AgentFileUploadFeatureConfig = {
   allowed_file_extensions?: Array<string>
   allowed_file_types?: Array<FileType>
@@ -1220,6 +1228,10 @@ export type WorkflowAgentLogMetadataResponse = {
   provider?: string | null
   [key: string]: unknown
 }
+
+export type JsonValue = unknown
+
+export type LlmMode = 'chat' | 'completion'
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 

@@ -5,7 +5,7 @@ from fields.workflow_graph_fields import (
 )
 
 
-def test_graph_round_trips_without_adding_or_dropping_keys():
+def test_graph_round_trips_without_adding_or_dropping_keys() -> None:
     graph = {
         "nodes": [
             {
@@ -38,11 +38,11 @@ def test_graph_round_trips_without_adding_or_dropping_keys():
     assert "targetHandle" not in dumped["edges"][0]
 
 
-def test_empty_graph_stays_empty():
+def test_empty_graph_stays_empty() -> None:
     assert WorkflowGraphResponse.model_validate({}).model_dump(mode="json") == {}
 
 
-def test_features_keep_unknown_settings_and_camel_case_keys():
+def test_features_keep_unknown_settings_and_camel_case_keys() -> None:
     features = {
         "opening_statement": "",
         "text_to_speech": {"enabled": True, "autoPlay": "enabled"},
@@ -52,7 +52,7 @@ def test_features_keep_unknown_settings_and_camel_case_keys():
     assert WorkflowFeaturesResponse.model_validate(features).model_dump(mode="json") == features
 
 
-def test_execution_metadata_reports_prices_as_numbers():
+def test_execution_metadata_reports_prices_as_numbers() -> None:
     metadata = WorkflowNodeExecutionMetadataResponse.model_validate(
         {"total_tokens": 3, "total_price": "0.0012", "currency": "USD", "trigger_info": {"a": 1}}
     )

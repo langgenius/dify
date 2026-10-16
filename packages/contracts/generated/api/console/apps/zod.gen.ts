@@ -3256,15 +3256,6 @@ export const zWorkflowSensitiveWordAvoidanceResponse = z.object({
 })
 
 /**
- * WorkflowSuggestedQuestionsAfterAnswerResponse
- */
-export const zWorkflowSuggestedQuestionsAfterAnswerResponse = z.object({
-  enabled: z.boolean().nullish(),
-  model: z.record(z.string(), z.unknown()).nullish(),
-  prompt: z.string().nullish(),
-})
-
-/**
  * WorkflowTextToSpeechResponse
  */
 export const zWorkflowTextToSpeechResponse = z.object({
@@ -3861,6 +3852,15 @@ export const zAppSuggestedQuestionsPayload = z
     prompt: z.string().optional(),
   })
   .catchall(z.json())
+
+/**
+ * WorkflowSuggestedQuestionsAfterAnswerResponse
+ */
+export const zWorkflowSuggestedQuestionsAfterAnswerResponse = z.object({
+  enabled: z.boolean().nullish(),
+  model: zAppModelSelectionResponse.nullish(),
+  prompt: z.string().nullish(),
+})
 
 /**
  * AppUserInputFormConfigResponse

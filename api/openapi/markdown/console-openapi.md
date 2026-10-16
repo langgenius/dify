@@ -29497,7 +29497,7 @@ Workflow run not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
-| model | object |  | No |
+| model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | No |
 | prompt | string |  | No |
 
 #### WorkflowTextToSpeechPayload

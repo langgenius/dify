@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 from pydantic import ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer
 
+from fields.app_model_config_response import AppModelSelectionResponse
 from fields.base import ResponseModel
 
 
@@ -79,7 +80,7 @@ class WorkflowFeatureToggleResponse(StoredJsonResponseModel):
 
 
 class WorkflowSuggestedQuestionsAfterAnswerResponse(WorkflowFeatureToggleResponse):
-    model: dict[str, Any] | None = None
+    model: AppModelSelectionResponse | None = None
     prompt: str | None = None
 
 

@@ -3178,9 +3178,7 @@ export type WorkflowSensitiveWordAvoidanceResponse = {
 
 export type WorkflowSuggestedQuestionsAfterAnswerResponse = {
   enabled?: boolean | null
-  model?: {
-    [key: string]: unknown
-  } | null
+  model?: AppModelSelectionResponse | null
   prompt?: string | null
   [key: string]: unknown
 }

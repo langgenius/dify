@@ -815,9 +815,7 @@ export type WorkflowSensitiveWordAvoidanceResponse = {
 
 export type WorkflowSuggestedQuestionsAfterAnswerResponse = {
   enabled?: boolean | null
-  model?: {
-    [key: string]: unknown
-  } | null
+  model?: AppModelSelectionResponse | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -998,6 +996,16 @@ export type WorkflowFileUploadImageResponse = {
   [key: string]: unknown
 }
 
+export type AppModelSelectionResponse = {
+  completion_params?: {
+    [key: string]: JsonValue
+  }
+  mode?: LlmMode | ''
+  name?: string
+  provider?: string
+  [key: string]: unknown
+}
+
 export type WorkflowAgentLogMetadataResponse = {
   elapsed_time?: number | null
   icon?: string | null
@@ -1128,6 +1136,10 @@ export type ToolParameterType =
   | 'select'
   | 'string'
   | 'system-files'
+
+export type JsonValue = unknown
+
+export type LlmMode = 'chat' | 'completion'
 
 export type DatasourceParameterType =
   | 'boolean'

@@ -599,15 +599,6 @@ export const zWorkflowSensitiveWordAvoidanceResponse = z.object({
 })
 
 /**
- * WorkflowSuggestedQuestionsAfterAnswerResponse
- */
-export const zWorkflowSuggestedQuestionsAfterAnswerResponse = z.object({
-  enabled: z.boolean().nullish(),
-  model: z.record(z.string(), z.unknown()).nullish(),
-  prompt: z.string().nullish(),
-})
-
-/**
  * WorkflowTextToSpeechResponse
  */
 export const zWorkflowTextToSpeechResponse = z.object({
@@ -947,53 +938,6 @@ export const zWorkflowFileUploadResponse = z.object({
   enabled: z.boolean().nullish(),
   image: zWorkflowFileUploadImageResponse.nullish(),
   number_limits: z.int().nullish(),
-})
-
-/**
- * WorkflowFeaturesResponse
- */
-export const zWorkflowFeaturesResponse = z.object({
-  file_upload: zWorkflowFileUploadResponse.nullish(),
-  opening_statement: z.string().nullish(),
-  retriever_resource: zWorkflowFeatureToggleResponse.nullish(),
-  sensitive_word_avoidance: zWorkflowSensitiveWordAvoidanceResponse.nullish(),
-  speech_to_text: zWorkflowFeatureToggleResponse.nullish(),
-  suggested_questions: z.array(z.string()).nullish(),
-  suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerResponse.nullish(),
-  text_to_speech: zWorkflowTextToSpeechResponse.nullish(),
-})
-
-/**
- * SnippetWorkflowResponse
- */
-export const zSnippetWorkflowResponse = z.object({
-  conversation_variables: z.array(zWorkflowConversationVariableResponse),
-  created_at: z.int(),
-  created_by: zSimpleAccountResponse.nullish(),
-  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
-  features: zWorkflowFeaturesResponse,
-  graph: zWorkflowGraphResponse,
-  hash: z.string(),
-  id: z.string(),
-  input_fields: z.array(z.record(z.string(), z.unknown())).optional(),
-  marked_comment: z.string(),
-  marked_name: z.string(),
-  rag_pipeline_variables: z.array(zPipelineVariableResponse),
-  tool_published: z.boolean(),
-  updated_at: z.int(),
-  updated_by: zSimpleAccountResponse.nullish(),
-  version: z.string(),
-  version_number: z.int().nullish(),
-})
-
-/**
- * SnippetWorkflowPaginationResponse
- */
-export const zSnippetWorkflowPaginationResponse = z.object({
-  has_more: z.boolean(),
-  items: z.array(zSnippetWorkflowResponse),
-  limit: z.int(),
-  page: z.int(),
 })
 
 /**
@@ -1421,6 +1365,81 @@ export const zWorkflowRunNodeExecutionResponse = z.object({
  */
 export const zWorkflowRunNodeExecutionListResponse = z.object({
   data: z.array(zWorkflowRunNodeExecutionResponse),
+})
+
+export const zJsonValue = z.unknown()
+
+/**
+ * LLMMode
+ *
+ * Enum class for large language model mode.
+ */
+export const zLlmMode = z.enum(['chat', 'completion'])
+
+/**
+ * AppModelSelectionResponse
+ */
+export const zAppModelSelectionResponse = z.object({
+  completion_params: z.record(z.string(), zJsonValue).optional(),
+  mode: z.union([zLlmMode, z.literal('')]).optional(),
+  name: z.string().optional(),
+  provider: z.string().optional(),
+})
+
+/**
+ * WorkflowSuggestedQuestionsAfterAnswerResponse
+ */
+export const zWorkflowSuggestedQuestionsAfterAnswerResponse = z.object({
+  enabled: z.boolean().nullish(),
+  model: zAppModelSelectionResponse.nullish(),
+  prompt: z.string().nullish(),
+})
+
+/**
+ * WorkflowFeaturesResponse
+ */
+export const zWorkflowFeaturesResponse = z.object({
+  file_upload: zWorkflowFileUploadResponse.nullish(),
+  opening_statement: z.string().nullish(),
+  retriever_resource: zWorkflowFeatureToggleResponse.nullish(),
+  sensitive_word_avoidance: zWorkflowSensitiveWordAvoidanceResponse.nullish(),
+  speech_to_text: zWorkflowFeatureToggleResponse.nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerResponse.nullish(),
+  text_to_speech: zWorkflowTextToSpeechResponse.nullish(),
+})
+
+/**
+ * SnippetWorkflowResponse
+ */
+export const zSnippetWorkflowResponse = z.object({
+  conversation_variables: z.array(zWorkflowConversationVariableResponse),
+  created_at: z.int(),
+  created_by: zSimpleAccountResponse.nullish(),
+  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
+  features: zWorkflowFeaturesResponse,
+  graph: zWorkflowGraphResponse,
+  hash: z.string(),
+  id: z.string(),
+  input_fields: z.array(z.record(z.string(), z.unknown())).optional(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  rag_pipeline_variables: z.array(zPipelineVariableResponse),
+  tool_published: z.boolean(),
+  updated_at: z.int(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  version: z.string(),
+  version_number: z.int().nullish(),
+})
+
+/**
+ * SnippetWorkflowPaginationResponse
+ */
+export const zSnippetWorkflowPaginationResponse = z.object({
+  has_more: z.boolean(),
+  items: z.array(zSnippetWorkflowResponse),
+  limit: z.int(),
+  page: z.int(),
 })
 
 /**
