@@ -39,6 +39,7 @@ from services.app.console_service import (
     CreatorsPlatformDisabledError,
     InvalidAppExportError,
 )
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     AppCreationSettings,
     AppDeletion,
@@ -47,7 +48,6 @@ from services.entities.app_entities import (
     AppPage,
     AppRecord,
     AppReference,
-    AppTraceSettings,
     CopyAppParams,
     CreateAppParams,
     ImportedAppPackage,

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.model import App, AppMode, TraceAppConfig
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from services.app_tracing_config_service import (
+    AppTraceSettings,
     AppTracingConfigAppNotFoundError,
     AppTracingConfigConflictError,
     AppTracingConfigRecord,
@@ -114,6 +115,9 @@ def test_all_operations_reject_apps_console_cannot_address(
     repository = _repository(sqlite_session_factory)
     operations: tuple[Callable[[], object], ...] = (
         lambda: repository.get(workspace_id=workspace_id, app_id=_APP_ID, tracing_provider=_PROVIDER),
+        lambda: repository.set_trace(
+            workspace_id=workspace_id, app_id=_APP_ID, settings=AppTraceSettings(), expected=None
+        ),
         lambda: repository.create(
             workspace_id=workspace_id,
             app_id=_APP_ID,
