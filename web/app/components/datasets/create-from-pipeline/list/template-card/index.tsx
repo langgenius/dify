@@ -168,7 +168,10 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           handleExportDSL={handleExportDSL}
           handleDelete={handleDelete}
         />
-        <DialogContent className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[calc(100vw-2rem)] max-w-[1680px]! overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
+        <DialogContent
+          // oxlint-disable-next-line shadcn/no-restyle -- Full-page template preview keeps its larger radius.
+          className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[1680px] overflow-hidden rounded-3xl"
+        >
           <Details
             id={pipeline.id}
             type={type}
@@ -184,7 +187,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
             if (!open) closeEditModal()
           }}
         >
-          <DialogContent className="w-[calc(100vw-2rem)] max-w-130! overflow-hidden! border-none p-0 text-left align-middle">
+          <DialogContent className="w-130">
             <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
           </DialogContent>
         </Dialog>

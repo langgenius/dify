@@ -5,9 +5,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -88,35 +92,26 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
   const feedbackTextareaId = useId()
   return (
     <form
-      className="flex max-h-[80dvh] flex-col"
       onSubmit={(event) => {
         event.preventDefault()
         const content = new FormData(event.currentTarget).get('feedback-content')
         onSubmit(typeof content === 'string' ? content : '')
       }}
     >
-      <div className="relative shrink-0 p-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogHeader>
+        <DialogTitle>
           {t(($) => $['feedback.title'], { ns: 'common' }) || 'Provide Feedback'}
         </DialogTitle>
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription>
           {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
             'Please tell us what went wrong with this response'}
         </DialogDescription>
-        <DialogClose
+        <DialogCloseButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           disabled={isSubmitting}
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
         />
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+      </DialogHeader>
+      <DialogBody>
         <label
           htmlFor={feedbackTextareaId}
           className="mb-2 block system-sm-semibold text-text-secondary"
@@ -134,15 +129,15 @@ function FeedbackForm({ isSubmitting, onSubmit }: FeedbackFormProps) {
           rows={4}
           className="w-full"
         />
-      </div>
-      <div className="flex shrink-0 justify-end p-6 pt-5">
+      </DialogBody>
+      <DialogFooter>
         <DialogClose disabled={isSubmitting} render={<Button />}>
           {t(($) => $['operation.cancel'], { ns: 'common' }) || 'Cancel'}
         </DialogClose>
-        <Button type="submit" className="ml-2" variant="primary" loading={isSubmitting}>
+        <Button type="submit" variant="primary" loading={isSubmitting}>
           {t(($) => $['operation.submit'], { ns: 'common' }) || 'Submit'}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
@@ -466,11 +461,7 @@ function Operation({
               )}
             </div>
           )}
-          <DialogContent
-            finalFocus={feedbackRef}
-            backdropProps={{ forceRender: true }}
-            className="p-0"
-          >
+          <DialogContent finalFocus={feedbackRef} backdropProps={{ forceRender: true }}>
             <FeedbackForm isSubmitting={isSubmittingFeedback} onSubmit={handleFeedbackSubmit} />
           </DialogContent>
         </Dialog>

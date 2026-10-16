@@ -42,12 +42,22 @@
       "count": 3
     }
   },
+  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-config-modal.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
   "web/app/(shareLayout)/webapp-signin/normalForm.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
+    }
+  },
+  "web/app/account/(commonLayout)/delete-account/index.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
     }
   },
   "web/app/components/app/annotation/add-annotation-modal/edit-item/index.tsx": {
@@ -108,6 +118,21 @@
   "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 5
+    }
+  },
+  "web/app/components/app/app-access-control/__tests__/access-control.spec.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/app-access-control/access-control-dialog.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/app-access-control/access-control-form.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
     }
   },
   "web/app/components/app/configuration/config-prompt/__tests__/index.spec.tsx": {
@@ -219,6 +244,9 @@
   "web/app/components/app/configuration/dataset-config/params-config/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 1
     }
   },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
@@ -285,6 +313,16 @@
   },
   "web/app/components/app/create-app-dialog/app-list/sidebar.tsx": {
     "react/only-export-components": {
+      "count": 1
+    }
+  },
+  "web/app/components/app/deploy/shared/deployment-configuration/index.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "web/app/components/app/deploy/shared/version-selection/index.tsx": {
+    "shadcn/no-restyle": {
       "count": 1
     }
   },
@@ -1297,6 +1335,11 @@
       "count": 2
     }
   },
+  "web/app/components/datasets/documents/detail/completed/common/regeneration-modal.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
   "web/app/components/datasets/documents/detail/completed/components/segment-list-content.tsx": {
     "typescript/no-non-null-asserted-optional-chain": {
       "count": 1
@@ -1584,6 +1627,11 @@
       "count": 2
     }
   },
+  "web/app/components/plugins/install-plugin/install-from-marketplace/index.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
   "web/app/components/plugins/marketplace/home/home-trending.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
@@ -1697,6 +1745,11 @@
   "web/app/components/plugins/types.ts": {
     "typescript/no-explicit-any": {
       "count": 8
+    }
+  },
+  "web/app/components/plugins/update-plugin/from-market-place.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
@@ -3369,11 +3422,6 @@
   "web/hooks/use-mitt.ts": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/hooks/use-pay.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 4
     }
   },
   "web/i18n/index.ts": {

@@ -269,7 +269,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/hooks/use-pay', () => ({
-  CheckModal: () => null,
+  CheckResultToast: () => null,
 }))
 
 vi.mock('next/dynamic', () => ({

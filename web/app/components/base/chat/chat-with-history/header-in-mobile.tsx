@@ -161,7 +161,10 @@ const HeaderInMobile = () => {
                   aria-hidden="true"
                   className="i-custom-public-other-message-3-fill size-6 shrink-0"
                 />
-                <DialogTitle className="grow system-xl-semibold text-text-secondary">
+                <DialogTitle
+                  // oxlint-disable-next-line shadcn/no-restyle -- Title shares the mobile sheet header row with its icon.
+                  className="grow"
+                >
                   {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
                 </DialogTitle>
                 <DialogClose

@@ -18,15 +18,18 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -213,13 +216,13 @@ const ModelModal: FC<ModelModalProps> = ({
       else label = t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'modelProvider' })
     }
 
-    return <DialogTitle className="title-2xl-semi-bold text-text-primary">{label}</DialogTitle>
+    return <DialogTitle>{label}</DialogTitle>
   }, [t, mode, credential])
 
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription>
           {t(($) => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'modelProvider' })}
         </DialogDescription>
       )
@@ -311,27 +314,14 @@ const ModelModal: FC<ModelModalProps> = ({
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="flex w-160 max-w-160 flex-col overflow-hidden p-0"
-      >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="shrink-0 p-6 pb-3">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160 max-w-160">
+        <DialogHeader>
           {modalTitle}
           {modalDesc}
           {modalModel}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
           {mode === ModelModalModeEnum.configCustomModel && (
             <AuthForm
               formSchemas={
@@ -391,29 +381,27 @@ const ModelModal: FC<ModelModalProps> = ({
               ref={formRef2}
             />
           )}
-        </div>
-        <div className="flex shrink-0 justify-between p-6 pt-5">
-          {provider.help && (provider.help.title || provider.help.url) ? (
-            <a
-              href={provider.help?.url[language] || provider.help?.url.en_US}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block align-middle system-xs-regular text-text-accent"
-              onClick={(e) => !provider.help?.url && e.preventDefault()}
-            >
-              {provider.help.title?.[language] ||
-                provider.help.url[language] ||
-                provider.help.title?.en_US ||
-                provider.help.url.en_US}
-              <span
-                aria-hidden
-                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
-              />
-            </a>
-          ) : (
-            <div />
-          )}
-          <div className="ml-2 flex items-center justify-end space-x-2">
+        </DialogBody>
+        <EncryptedFooter>
+          <DialogFooter>
+            {provider.help && (provider.help.title || provider.help.url) && (
+              <a
+                href={provider.help?.url[language] || provider.help?.url.en_US}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="me-auto inline-block align-middle system-xs-regular text-text-accent"
+                onClick={(e) => !provider.help?.url && e.preventDefault()}
+              >
+                {provider.help.title?.[language] ||
+                  provider.help.url[language] ||
+                  provider.help.title?.en_US ||
+                  provider.help.url.en_US}
+                <span
+                  aria-hidden
+                  className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
+                />
+              </a>
+            )}
             {isEditMode && (
               <Button
                 variant="primary"
@@ -431,29 +419,15 @@ const ModelModal: FC<ModelModalProps> = ({
             >
               {saveButtonText}
             </Button>
-          </div>
-        </div>
-        {(mode === ModelModalModeEnum.configCustomModel ||
-          mode === ModelModalModeEnum.configProviderCredential) && (
-          <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
-            <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-              <span
-                aria-hidden
-                className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
-              />
-              {t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
-              <a
-                className="mx-1 text-text-accent"
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
-              >
-                PKCS1_OAEP
-              </a>
-              {t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
-            </div>
-          </div>
-        )}
+          </DialogFooter>
+          {(mode === ModelModalModeEnum.configCustomModel ||
+            mode === ModelModalModeEnum.configProviderCredential) && (
+            <EncryptedBottom
+              front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+              back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+            />
+          )}
+        </EncryptedFooter>
       </DialogContent>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>

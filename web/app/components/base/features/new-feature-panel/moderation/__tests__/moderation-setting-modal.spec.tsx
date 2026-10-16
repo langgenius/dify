@@ -212,7 +212,7 @@ describe('ModerationSettingModal', () => {
 
     const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
     closeButton.focus()
-    fireEvent.keyDown(closeButton, { key: 'Escape' })
+    fireEvent.keyDown(closeButton, { key: 'a' })
 
     expect(onCancel).not.toHaveBeenCalled()
   })

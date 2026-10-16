@@ -591,13 +591,13 @@ function WorkflowGeneratorModal() {
     >
       <DialogContent
         initialFocus={instructionRef}
-        className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[calc(100vw-2rem)] max-w-285! min-w-0 overflow-hidden! border-none p-0! text-left align-middle"
+        className="h-[min(680px,calc(100dvh-2rem))] max-h-none w-285 min-w-0 overflow-hidden"
       >
         <div className="flex h-full min-h-0 flex-col md:flex-row">
           {/* Left pane: instructions + ideal output + model selector */}
           <div className="max-h-[55%] w-full shrink-0 overflow-y-auto border-b border-divider-regular p-6 md:h-full md:max-h-none md:w-1/2 md:border-r md:border-b-0 lg:w-142.5">
             <div className="mb-5">
-              <DialogTitle className="text-lg leading-7 font-bold text-text-primary">
+              <DialogTitle>
                 {isRefine
                   ? t(($) => $['workflowGenerator.refineTitle'], {
                       ns: 'workflowGenerator',
@@ -608,7 +608,7 @@ function WorkflowGeneratorModal() {
                       mode: modeLabel,
                     })}
               </DialogTitle>
-              <DialogDescription className="mt-1 text-[13px] font-normal text-text-tertiary">
+              <DialogDescription>
                 {isRefine
                   ? t(($) => $['workflowGenerator.refineDescription'], { ns: 'workflowGenerator' })
                   : t(($) => $['workflowGenerator.description'], { ns: 'workflowGenerator' })}

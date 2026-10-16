@@ -4,7 +4,14 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -202,26 +209,27 @@ const ConfigModal: FC<IConfigModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="max-h-[calc(100dvh-2rem)]">
         <form
           noValidate
-          className="flex min-h-0 flex-col"
           onSubmit={(event) => {
             event.preventDefault()
             handleConfirm()
           }}
         >
-          <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
-            {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
-              ns: 'appDebug',
-            })}
-          </DialogTitle>
+          <DialogHeader>
+            <DialogTitle>
+              {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
+                ns: 'appDebug',
+              })}
+            </DialogTitle>
+          </DialogHeader>
 
-          <div
+          <DialogBody
             ref={modalRef}
             tabIndex={-1}
             data-testid="config-modal-scroll-area"
-            className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+            className="min-w-0 overflow-x-hidden"
           >
             <ConfigModalFormFields
               checkboxDefaultSelectValue={checkboxDefaultSelectValue}
@@ -252,10 +260,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
               validationError={validationError}
               t={t}
             />
-          </div>
-          <div className="shrink-0 px-6 pt-2 pb-6">
+          </DialogBody>
+          <DialogFooter>
             <ModalFoot confirmType="submit" onCancel={onClose} />
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

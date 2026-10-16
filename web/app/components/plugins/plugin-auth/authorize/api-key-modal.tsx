@@ -2,11 +2,19 @@ import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
+import { EncryptedBottom, EncryptedFooter } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -147,88 +155,63 @@ const ApiKeyModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="w-160! max-w-[calc(100vw-2rem)]! p-0!"
-      >
-        <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
-          <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}
-            </DialogTitle>
-            <div className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
+          </DialogDescription>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          {pluginPayload.detail && (
+            <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
+          )}
+          {isLoading && (
+            <div className="flex h-40 items-center justify-center">
+              <LoadingPlaceholder />
             </div>
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="lg"
-                  className="absolute top-5 right-5"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
+          )}
+          {!isLoading && !!mergedData.length && (
+            <AuthForm
+              ref={formRef}
+              formSchemas={formSchemas}
+              defaultValues={editValues || defaultValues}
+              disabled={disabled}
             />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-            {pluginPayload.detail && (
-              <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
-            )}
-            {isLoading && (
-              <div className="flex h-40 items-center justify-center">
-                <LoadingPlaceholder />
+          )}
+          {!isLoading && !editValues && (
+            <div className="mt-4 px-1">
+              <div className="mb-1 system-sm-semibold text-text-secondary">
+                {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
               </div>
-            )}
-            {!isLoading && !!mergedData.length && (
-              <AuthForm
-                ref={formRef}
-                formSchemas={formSchemas}
-                defaultValues={editValues || defaultValues}
+              <PermissionSelector
                 disabled={disabled}
+                permission={permission}
+                onChange={setPermission}
               />
-            )}
-            {!isLoading && !editValues && (
-              <div className="mt-4 px-1">
-                <div className="mb-1 system-sm-semibold text-text-secondary">
-                  {t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}
-                </div>
-                <PermissionSelector
-                  disabled={disabled}
-                  permission={permission}
-                  onChange={setPermission}
-                />
-              </div>
-            )}
-          </div>
-          <div className="flex shrink-0 justify-between p-6 pt-5">
-            <div />
-            <div className="flex items-center">
-              {editValues && (
-                <>
-                  <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
-                    {t(($) => $['operation.remove'], { ns: 'common' })}
-                  </Button>
-                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-                </>
-              )}
-              <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button
-                className="ml-2"
-                variant="primary"
-                onClick={handleConfirm}
-                disabled={isDisabled}
-              >
-                {t(($) => $['operation.save'], { ns: 'common' })}
-              </Button>
             </div>
-          </div>
-          <div className="shrink-0">
-            <EncryptedBottom />
-          </div>
-        </div>
+          )}
+        </DialogBody>
+        <EncryptedFooter>
+          <DialogFooter>
+            {editValues && (
+              <>
+                <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
+                  {t(($) => $['operation.remove'], { ns: 'common' })}
+                </Button>
+                <div className="mx-1 h-4 w-px bg-divider-regular"></div>
+              </>
+            )}
+            <Button onClick={() => handleOpenChange(false)} disabled={isDisabled}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
+            <Button variant="primary" onClick={handleConfirm} disabled={isDisabled}>
+              {t(($) => $['operation.save'], { ns: 'common' })}
+            </Button>
+          </DialogFooter>
+          <EncryptedBottom />
+        </EncryptedFooter>
       </DialogContent>
     </Dialog>
   )

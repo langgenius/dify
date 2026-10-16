@@ -9,9 +9,9 @@ import { ChunkingMode } from '@/models/datasets'
 import { mockEmojiData, renderWithEmoji as testingLibraryRender } from '@/test/emoji-picker'
 import EditPipelineInfo from '../edit-pipeline-info'
 
-const render = (ui: ReactElement) =>
+const render = (ui: ReactElement<{ onClose: () => void }>) =>
   testingLibraryRender(
-    <Dialog open>
+    <Dialog open onOpenChange={(open) => !open && ui.props.onClose()}>
       <DialogContent>{ui}</DialogContent>
     </Dialog>,
   )
@@ -603,7 +603,7 @@ describe('EditPipelineInfo', () => {
     it('should have close button in header', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
-      expect(closeButton).toHaveClass('right-5', 'top-5')
+      expect(closeButton.parentElement).toContainElement(screen.getByText(/editPipelineInfo/i))
     })
   })
 })

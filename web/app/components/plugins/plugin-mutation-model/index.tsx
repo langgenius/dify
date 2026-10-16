@@ -2,8 +2,15 @@ import type { UseMutationResult } from '@tanstack/react-query'
 import type { FC, ReactNode } from 'react'
 import type { Plugin } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,38 +50,29 @@ const PluginMutationModal: FC<Props> = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-full min-w-140 overflow-hidden! border-none text-left align-middle">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">{modelTitle}</DialogTitle>
-
-        <div className="mt-3 mb-2 system-md-regular text-text-secondary">{description}</div>
-        <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
-          <Card
-            installed={mutation.isSuccess}
-            payload={plugin}
-            className="w-full"
-            titleLeft={cardTitleLeft}
-          />
-        </div>
-        <div className="flex items-center gap-2 self-stretch pt-5">
-          <div>{modalBottomLeft}</div>
-          <div className="ml-auto flex gap-2">
-            {!mutation.isPending && <Button onClick={onCancel}>{cancelButtonText}</Button>}
-            <Button variant="primary" loading={mutation.isPending} onClick={mutate}>
-              {confirmButtonText}
-            </Button>
+      <DialogContent className="w-full min-w-140">
+        <DialogHeader>
+          <DialogTitle>{modelTitle}</DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          <div className="mb-2 system-md-regular text-text-secondary">{description}</div>
+          <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
+            <Card
+              installed={mutation.isSuccess}
+              payload={plugin}
+              className="w-full"
+              titleLeft={cardTitleLeft}
+            />
           </div>
-        </div>
+        </DialogBody>
+        <DialogFooter>
+          <div className="me-auto">{modalBottomLeft}</div>
+          {!mutation.isPending && <Button onClick={onCancel}>{cancelButtonText}</Button>}
+          <Button variant="primary" loading={mutation.isPending} onClick={mutate}>
+            {confirmButtonText}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

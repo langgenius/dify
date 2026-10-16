@@ -17,9 +17,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import {
@@ -883,20 +887,11 @@ function ImportSkillDialogForm({
         if (file && !importing) onImport(file)
       }}
     >
-      <div className="flex items-center justify-between border-b border-divider-subtle px-5 py-4">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['skillManagement.importDialog.title'])}
-        </DialogTitle>
-        <DialogClose
-          disabled={importing}
-          render={
-            <IconButton aria-label={tCommon(($) => $['operation.close'])}>
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-      </div>
-      <div className="p-5">
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['skillManagement.importDialog.title'])}</DialogTitle>
+        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={importing} />
+      </DialogHeader>
+      <DialogBody>
         <div
           role="group"
           aria-label={t(($) => $['skillManagement.importDialog.title'])}
@@ -984,7 +979,8 @@ function ImportSkillDialogForm({
           )}
           <DialogDescription
             id={descriptionId}
-            className="text-center system-sm-regular text-text-tertiary"
+            // oxlint-disable-next-line shadcn/no-restyle -- Description is centred under the upload drop zone.
+            className="text-center"
           >
             {t(($) => $['skillManagement.importDialog.description'])}
           </DialogDescription>
@@ -994,15 +990,15 @@ function ImportSkillDialogForm({
             {t(($) => $['skillManagement.importDialog.invalidFile'])}
           </p>
         )}
-      </div>
-      <div className="flex justify-end gap-2 border-t border-divider-subtle px-5 py-4">
+      </DialogBody>
+      <DialogFooter>
         <DialogClose disabled={importing} render={<Button />}>
           {tCommon(($) => $['operation.cancel'])}
         </DialogClose>
         <Button type="submit" variant="primary" disabled={!file} loading={importing}>
           {t(($) => $['skillManagement.import'])}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }
@@ -1242,7 +1238,7 @@ export default function SkillsPage() {
           if (!importMutation.isPending) setImportOpen(open)
         }}
       >
-        <DialogContent className="p-0">
+        <DialogContent>
           <ImportSkillDialogForm importing={importMutation.isPending} onImport={handleImport} />
         </DialogContent>
       </Dialog>
