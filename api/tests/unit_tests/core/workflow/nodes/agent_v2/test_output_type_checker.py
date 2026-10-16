@@ -75,7 +75,7 @@ def test_all_scalar_types_ready_on_correct_payload() -> None:
         DeclaredOutputConfig(name="b", type=DeclaredOutputType.BOOLEAN),
         DeclaredOutputConfig(name="o", type=DeclaredOutputType.OBJECT),
     ]
-    payload = {"s": "hello", "n": 3.14, "b": True, "o": {"k": "v"}}
+    payload = {"s": "hello", "n": float("3.14"), "b": True, "o": {"k": "v"}}
 
     outcome = checker.check(declared_outputs=declared, raw_output=payload, tenant_id="t-1")
 

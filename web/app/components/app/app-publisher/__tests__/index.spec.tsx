@@ -11,7 +11,6 @@ import {
   renderWithConsoleQuery as renderWithQuery,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { AppPublisher } from '../index'
@@ -269,7 +268,7 @@ describe('AppPublisher', () => {
     mockAppDetail = {
       id: 'app-1',
       name: 'Demo App',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       maintainer: 'user-2',
       permission_keys: [],
       access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
@@ -346,7 +345,7 @@ describe('AppPublisher', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     mockOnPublish.mockResolvedValue(undefined)
@@ -398,7 +397,7 @@ describe('AppPublisher', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [],
     }
     mockOnPublish.mockResolvedValue(undefined)
@@ -423,7 +422,7 @@ describe('AppPublisher', () => {
     const user = userEvent.setup()
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockPublishedWorkflow = {
       created_at: Math.floor(Date.now() / 1000),
@@ -458,7 +457,7 @@ describe('AppPublisher', () => {
     expect(mockUpdateWorkflow).toHaveBeenCalledWith(
       {
         appId: 'app-1',
-        appMode: AppModeEnum.WORKFLOW,
+        appMode: 'workflow' as const,
         url: '/apps/app-1/workflows/workflow-version-5',
         title: 'Release 6',
         releaseNotes: 'Updated notes',
@@ -480,7 +479,7 @@ describe('AppPublisher', () => {
     const queryClient = createConsoleQueryClient()
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     const environmentsQuery =
@@ -513,7 +512,7 @@ describe('AppPublisher', () => {
   it('should keep the workflow publisher single-environment without app deploy ACL', () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [],
     }
 
@@ -581,7 +580,7 @@ describe('AppPublisher', () => {
     }
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     const environmentsQuery =
@@ -684,7 +683,7 @@ describe('AppPublisher', () => {
     const detailRequests: Request[] = []
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
       permission_keys: [AppACLPermission.Deploy],
     }
     const environmentsQuery =
@@ -832,7 +831,7 @@ describe('AppPublisher', () => {
   it('should keep workflow tool drawer mounted after closing the publish popover', () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
 
     render(<AppPublisher appId="app-1" publishedAt={Date.now()} toolPublished />)
@@ -853,7 +852,7 @@ describe('AppPublisher', () => {
   it('should show one success toast when automatically publishing a workflow tool', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
       if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
@@ -876,7 +875,7 @@ describe('AppPublisher', () => {
   it('should not show a success toast when workflow tool creation fails after publishing', async () => {
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockOnPublish.mockImplementation(async (_params, options?: { showSuccessToast?: boolean }) => {
       if (options?.showSuccessToast !== false) mockToastSuccess('common.api.actionSuccess')
@@ -900,7 +899,7 @@ describe('AppPublisher', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockOnPublish.mockRejectedValueOnce(new Error('publish failed'))
 
@@ -922,7 +921,7 @@ describe('AppPublisher', () => {
     mockWorkspacePermissionKeys = []
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
 
     render(<AppPublisher appId="app-1" publishedAt={Date.now()} />)
@@ -1066,7 +1065,7 @@ describe('AppPublisher', () => {
     const user = userEvent.setup()
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockPublishedWorkflow = {
       created_at: 1_710_000_100,
@@ -1102,7 +1101,7 @@ describe('AppPublisher', () => {
     }
     mockAppDetail = {
       ...mockAppDetail,
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockFetchPublishedWorkflow.mockResolvedValue({
       created_at: 1_710_000_300,

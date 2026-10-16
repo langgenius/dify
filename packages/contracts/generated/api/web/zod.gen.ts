@@ -1685,7 +1685,6 @@ export const zSystemFeatureModel = z.object({
   enable_step_by_step_tour: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
-  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseStatusModel.default({ status: 'none' }),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',

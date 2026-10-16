@@ -3,12 +3,13 @@
 import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Node } from '@/app/components/workflow/types'
 import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useMCPServerDetail } from '@/service/use-tools'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AccessPointIcon } from '../shared/access-point-icon'
@@ -24,10 +25,12 @@ export const BuiltInEnvironmentCard = memo(
   ({ canViewAccessPoint }: { canViewAccessPoint: boolean }) => {
     const { t } = useTranslation(['deployments'])
     const { formatTime } = useTimestamp()
-    const appDetail = useAppStore((state) => state.appDetail)
-    const appId = appDetail?.id ?? ''
-    const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId || null))
-    const { data: mcpServerDetail } = useMCPServerDetail(appId, Boolean(appId))
+    const { appId } = useParams<{ appId: string }>()
+    const { data: appDetail } = useSuspenseQuery(
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+    )
+    const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId))
+    const { data: mcpServerDetail } = useMCPServerDetail(appId)
     const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
       ? (publishedWorkflow.graph.nodes as Node[])
       : []
@@ -36,9 +39,9 @@ export const BuiltInEnvironmentCard = memo(
     const serviceModeAvailable = Boolean(publishedWorkflow && hasStartNode && !hasTriggerNode)
     const activeAccessPoints = {
       mcp: serviceModeAvailable && mcpServerDetail?.status === 'active',
-      serviceApi: serviceModeAvailable && Boolean(appDetail?.enable_api),
+      serviceApi: serviceModeAvailable && appDetail.enable_api,
       trigger: Boolean(publishedWorkflow && hasTriggerNode),
-      webApp: serviceModeAvailable && Boolean(appDetail?.enable_site),
+      webApp: serviceModeAvailable && appDetail.enable_site,
     }
     const publishedBy = publishedWorkflow?.created_by?.name ?? '--'
     const updatedBy = publishedWorkflow?.updated_by?.name ?? publishedBy

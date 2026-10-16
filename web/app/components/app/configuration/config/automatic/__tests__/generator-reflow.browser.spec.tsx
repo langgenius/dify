@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { AppModeEnum } from '@/types/app'
 import GetAutomaticRes from '../get-automatic-res'
 
 vi.mock('react-i18next', async () => {
@@ -71,7 +70,7 @@ describe('Prompt generator reflow', () => {
       const screen = await render(
         <QueryClientProvider client={queryClient}>
           <GetAutomaticRes
-            mode={AppModeEnum.CHAT}
+            modelMode="chat"
             isShow
             onClose={vi.fn()}
             onFinished={vi.fn()}

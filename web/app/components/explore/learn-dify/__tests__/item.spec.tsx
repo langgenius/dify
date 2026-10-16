@@ -5,7 +5,6 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import LearnDifyItem from '../item'
 
 let deploymentEdition: DeploymentEdition = 'CLOUD'
@@ -19,7 +18,7 @@ vi.mock('@/app/components/base/amplitude', () => ({
 const createApp = (overrides: Partial<RecommendedAppResponse> = {}): RecommendedAppResponse => ({
   app: {
     id: 'app-basic-id',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: 'emoji',
     icon: '😀',
     icon_background: '#fff',

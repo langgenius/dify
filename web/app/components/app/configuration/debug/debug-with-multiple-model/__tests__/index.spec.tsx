@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { CSSProperties } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type { DebugWithMultipleModelContextType } from '../context'
@@ -12,7 +13,7 @@ import {
   DEFAULT_CHAT_PROMPT_CONFIG,
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
-import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
 import DebugWithMultipleModel from '../index'
 
@@ -161,7 +162,7 @@ const createModelConfig = (promptVariables: PromptVariableWithMeta[] = []): Mode
 
 type DebugConfiguration = {
   onOpenFeatures: () => void
-  mode: AppModeEnum
+  mode: AppMode
   inputs: Inputs
   modelConfig: ModelConfig
   readonly: boolean
@@ -172,7 +173,7 @@ const createDebugConfiguration = (
   overrides: Partial<DebugConfiguration> = {},
 ): DebugConfiguration => ({
   onOpenFeatures: vi.fn(),
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   inputs: {},
   modelConfig: createModelConfig(),
   readonly: false,
@@ -536,7 +537,7 @@ describe('DebugWithMultipleModel', () => {
       // Arrange
       mockUseDebugConfigurationContext.mockReturnValue(
         createDebugConfiguration({
-          mode: AppModeEnum.AGENT_CHAT,
+          mode: 'agent-chat' as const,
         }),
       )
 
@@ -552,7 +553,7 @@ describe('DebugWithMultipleModel', () => {
       // Arrange
       mockUseDebugConfigurationContext.mockReturnValue(
         createDebugConfiguration({
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         }),
       )
       const multipleModelConfigs = [createModelAndParameter()]
@@ -842,7 +843,7 @@ describe('DebugWithMultipleModel', () => {
     it('should set full height when chat input is hidden', () => {
       mockUseDebugConfigurationContext.mockReturnValue(
         createDebugConfiguration({
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         }),
       )
 

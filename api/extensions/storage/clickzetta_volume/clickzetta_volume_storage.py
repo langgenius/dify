@@ -191,11 +191,8 @@ class ClickZettaVolumeStorage(BaseStorage):
 
             # Only use TABLE VOLUME for actual dataset-specific paths
             # like "dataset_12345/file.pdf" or paths with dataset_ prefix
-            if dataset_id:
-                table_name = f"{self._config.table_prefix}{dataset_id}"
-            else:
-                # Default table name for generic operations
-                table_name = "default_dataset"
+            # Default table name for generic operations
+            table_name = f"{self._config.table_prefix}{dataset_id}" if dataset_id else "default_dataset"
             return f"TABLE VOLUME {table_name}"
         elif self._config.volume_type == "external":
             return f"VOLUME {self._config.volume_name}"
@@ -519,10 +516,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                 else:
                     sql = f"LIST {volume_prefix} SUBDIRECTORY '{self._config.dify_prefix}'"
             else:
-                if path:
-                    sql = f"LIST {volume_prefix} SUBDIRECTORY '{path}'"
-                else:
-                    sql = f"LIST {volume_prefix}"
+                sql = f"LIST {volume_prefix} SUBDIRECTORY '{path}'" if path else f"LIST {volume_prefix}"
 
             rows = self._execute_sql(sql, fetch=True)
 

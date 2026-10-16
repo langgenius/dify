@@ -360,11 +360,15 @@ function createDeferredPromise<T>() {
 
 describe('Agent access surface cards', () => {
   beforeEach(() => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
     vi.clearAllMocks()
     mocks.agentDetailQueryFn.mockResolvedValue(createAgent())
     mocks.getUserCanAccess.mockResolvedValue({ result: true })
     mocks.accessSubjectsQueryFn.mockResolvedValue({ groups: [], members: [] })
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   describe('Web app access', () => {
     it('disables Open when the user cannot access the backing Web App', async () => {
@@ -1202,7 +1206,7 @@ describe('Agent access surface cards', () => {
       )
 
       const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
-      const keyTable = within(dialog).getByRole('table', {
+      const keyTable = await within(dialog).findByRole('table', {
         name: 'appApi.apiKeyModal.apiSecretKey',
       })
       expect(
@@ -1215,7 +1219,7 @@ describe('Agent access surface cards', () => {
         within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.lastUsed' }),
       ).toBeInTheDocument()
       expect(
-        await within(keyTable).findByRole('cell', { name: 'app...ing-secret-key-token' }),
+        await within(keyTable).findByRole('cell', { name: 'app-e...oken' }),
       ).toBeInTheDocument()
 
       await user.click(
@@ -1230,11 +1234,16 @@ describe('Agent access surface cards', () => {
         })
       })
       expect(await screen.findByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
-      expect(screen.getByText('app-new-secret-key-token')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'appApi.actionMsg.ok' }))
+      expect(screen.getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })).toHaveValue(
+        'app-new-secret-key-token',
+      )
+      const result = screen.getByRole('alertdialog', { name: 'appApi.apiKeyModal.createdTitle' })
+      await user.click(within(result).getByRole('button', { name: 'appApi.apiKeyModal.saved' }))
 
-      await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(
+        within(dialog).getByRole('button', { name: 'common.operation.delete app-e...oken' }),
+      )
+      await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 
       await waitFor(() => {
         expect(mocks.deleteApiKeyMutation.mock.calls[0]?.[0]).toEqual({
@@ -1244,6 +1253,11 @@ describe('Agent access surface cards', () => {
           },
         })
       })
+      await waitFor(() =>
+        expect(
+          within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+        ).toHaveFocus(),
+      )
     })
 
     it('should explain that publishing enables the Service API switch', async () => {
@@ -1433,7 +1447,7 @@ describe('Agent access surface cards', () => {
     }
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.refreshUrl' }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     const toggle = screen.getByRole('switch')
     await user.click(toggle)
     expect(mocks.siteEnableMutation).not.toHaveBeenCalled()

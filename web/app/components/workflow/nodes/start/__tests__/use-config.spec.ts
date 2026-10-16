@@ -24,7 +24,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
     ...actual,
     useNodesReadOnly: () => mockUseNodesReadOnly(),
     useWorkflow: () => mockUseWorkflow(),
-    useIsChatMode: () => mockUseIsChatMode(),
   }
 })
 
@@ -151,7 +150,7 @@ describe('start/use-config', () => {
     )
     expect(mockRenameInspectVarName).toHaveBeenCalledWith('start-node', 'query', 'prompt')
     expect(result.current.readOnly).toBe(false)
-    expect(result.current.isChatMode).toBe(false)
+    expect(result.current.isChatflow).toBe(false)
   })
 
   it('should block removal when the variable is still in use and confirm the deletion later', () => {
@@ -270,4 +269,11 @@ describe('start/use-config', () => {
       }),
     )
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

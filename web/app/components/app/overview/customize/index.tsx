@@ -1,4 +1,5 @@
 'use client'
+
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -14,7 +15,6 @@ import {
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { AppModeEnum } from '@/types/app'
 
 type CustomizeDialogProps = {
   disabled?: boolean
@@ -62,7 +62,7 @@ export function CustomizeDialog({
 }: CustomizeDialogProps) {
   const { t } = useTranslation(['appOverview', 'common'])
   const docLink = useDocLink()
-  const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
+  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
   const repository =
     sourceCodeRepository ?? (isChatApp ? 'webapp-conversation' : 'webapp-text-generator')
   const apiDocLink = docLink('/api-reference/guides/get-started')

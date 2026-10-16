@@ -34,7 +34,6 @@ import {
 import ConfigContext from '@/context/debug-configuration'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { AppModeEnum } from '@/types/app'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
 import { OperationButton } from '../base/operation-button'
@@ -269,7 +268,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
         draft.metadata_model_config = {
           provider: model.provider,
           name: model.modelId,
-          mode: model.mode || AppModeEnum.CHAT,
+          mode: model.mode || 'chat',
           completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
         }
       })
@@ -355,7 +354,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
         </div>
       )}
 
-      {!readonly && mode === AppModeEnum.COMPLETION && dataSet.length > 0 && (
+      {!readonly && mode === 'completion' && dataSet.length > 0 && (
         <ContextVar
           value={selectedContextVar?.key}
           options={promptVariablesToSelect}

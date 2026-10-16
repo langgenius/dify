@@ -103,10 +103,7 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
-from services.workflow_variable_reference_validator import (
-    format_variable_reference_errors,
-    validate_variable_references,
-)
+from services.workflow_variable_reference_validator import advisory_variable_reference_warning
 
 logger = logging.getLogger(__name__)
 
@@ -1295,21 +1292,6 @@ class DraftWorkflowNodeRunApi(Resource):
         ).model_dump(mode="json")
 
 
-def _advisory_variable_reference_warning(graph_text: str | None) -> str | None:
-    """Return a non-blocking publish warning. A checker failure must not fail publish."""
-    if not graph_text:
-        return None
-    try:
-        graph = json.loads(graph_text)
-        if not isinstance(graph, dict):
-            return None
-        issues = validate_variable_references(graph)
-        return format_variable_reference_errors(issues) if issues else None
-    except Exception:
-        logger.warning("Skipped advisory variable reference check", exc_info=True)
-        return None
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
     @console_ns.doc("get_published_workflow")
@@ -1376,7 +1358,7 @@ class PublishedWorkflowApi(Resource):
             workflow_created_at = TimestampField().format(workflow.created_at)
             graph_text = workflow.graph
 
-        warning = _advisory_variable_reference_warning(graph_text)
+        warning = advisory_variable_reference_warning(graph_text)
         payload: dict[str, object] = {
             "result": "success",
             "created_at": workflow_created_at,
@@ -2014,7 +1996,7 @@ class WorkflowOnlineUsersApi(Resource):
                 pipe.hgetall(f"{WORKFLOW_ONLINE_USERS_PREFIX}{app_id}")
 
             users_json_batch = pipe.execute()
-            for app_id, users_json in zip(app_id_batch, users_json_batch):
+            for app_id, users_json in zip(app_id_batch, users_json_batch, strict=False):
                 users_json_by_app_id[app_id] = users_json
 
         results = []

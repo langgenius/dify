@@ -1,7 +1,6 @@
 'use client'
 
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import { zAgentIconType } from '@dify/contracts/api/console/agent/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -243,14 +242,6 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   ]
     .filter(Boolean)
     .join(' ')
-  const parsedIconType = zAgentIconType.safeParse(agent.icon_type).data
-  const imageUrl =
-    parsedIconType === 'image'
-      ? (agent.icon_url ?? agent.icon)
-      : parsedIconType === 'link'
-        ? agent.icon
-        : undefined
-  const iconType = parsedIconType === 'link' ? 'image' : parsedIconType
 
   const handleEditOpen = () => {
     setActiveDialog('edit')
@@ -290,14 +281,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     <>
       <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
         <span aria-hidden className="shrink-0">
-          <AppIcon
-            size="xl"
-            rounded
-            iconType={iconType}
-            icon={agent.icon ?? undefined}
-            background={agent.icon_background}
-            imageUrl={imageUrl}
-          />
+          <AppIcon size="xl" shape="circle" icon={agent} />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
           <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">

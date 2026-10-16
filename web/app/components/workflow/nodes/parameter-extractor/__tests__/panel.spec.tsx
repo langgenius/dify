@@ -3,7 +3,6 @@ import type { PanelProps } from '@/types/workflow'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import Panel from '../panel'
 import { ParamType, ReasoningModeType } from '../types'
 import useConfig from '../use-config'
@@ -26,7 +25,7 @@ vi.mock(
             setModel({
               provider: 'anthropic',
               modelId: 'claude-3-7-sonnet',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             })
           }
         >
@@ -137,7 +136,7 @@ const createData = (
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as ParameterExtractorNodeType['model'],
   query: ['node-1', 'query'],
@@ -177,7 +176,7 @@ describe('parameter-extractor/panel', () => {
       readOnly: false,
       handleInputVarChange,
       filterVar: vi.fn(() => true),
-      isChatMode: true,
+      isChatflow: true,
       inputs: createData(),
       isChatModel: true,
       isCompletionModel: false,
@@ -236,7 +235,7 @@ describe('parameter-extractor/panel', () => {
     expect(handleModelChanged).toHaveBeenCalledWith({
       provider: 'anthropic',
       modelId: 'claude-3-7-sonnet',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
     })
     expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
     expect(handleInputVarChange).toHaveBeenCalledWith(['node-1', 'query'])

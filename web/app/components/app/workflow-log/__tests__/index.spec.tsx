@@ -1,4 +1,4 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite, AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { UseQueryResult } from '@tanstack/react-query'
 /**
  * Logs Container Component Tests
@@ -19,7 +19,6 @@ import type { MockedFunction } from 'vite-plus/test'
 import type { CloudSandboxPlanState } from '../../log/cloud-sandbox-retention'
 import type { ILogsProps } from '../index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import type { AppModeEnum } from '@/types/app'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
@@ -612,7 +611,7 @@ describe('Logs Container', () => {
         }),
       )
 
-      const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
+      const chatApp = createMockApp({ mode: 'advanced-chat' as AppMode })
 
       // Act
       renderWithQueryClient(<Logs appDetail={chatApp} />)
