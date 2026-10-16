@@ -1,9 +1,10 @@
 import type { Node, WorkflowPluginCatalogs } from '@/app/components/workflow/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
-import type { FlowType } from '@/types/common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useAllBuiltInTools,
@@ -20,16 +21,12 @@ import useMatchSchemaType from '../nodes/_base/components/variable/use-match-sch
 import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 
-type Params = {
-  flowType: FlowType
-  flowId: string
-}
-
-export const useSetWorkflowVarsWithValue = ({ flowType, flowId }: Params) => {
+export const useSetWorkflowVarsWithValue = () => {
+  const resource = useAtomValue(editorResourceAtom)
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(flowType, flowId)
-  const invalidateSysVarValues = useInvalidateSysVarValues(flowType, flowId)
+  const invalidateConversationVarValues = useInvalidateConversationVarValues(resource)
+  const invalidateSysVarValues = useInvalidateSysVarValues(resource)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { schemaTypeDefinitions } = useMatchSchemaType()
   const { data: buildInTools } = useAllBuiltInTools()
@@ -127,15 +124,14 @@ export const useSetWorkflowVarsWithValue = ({ flowType, flowId }: Params) => {
       const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
       invalidateConversationVarValues()
       invalidateSysVarValues()
-      const data = passInVars ? vars! : await fetchAllInspectVars(flowType, flowId)
+      const data = passInVars ? vars! : await fetchAllInspectVars(resource)
       setInspectVarsToStore(data, passedInAllPluginInfoList, passedInSchemaTypeDefinitions)
       handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
     },
     [
       invalidateConversationVarValues,
       invalidateSysVarValues,
-      flowType,
-      flowId,
+      resource,
       setInspectVarsToStore,
       handleCancelAllNodeSuccessStatus,
     ],

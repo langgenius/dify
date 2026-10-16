@@ -2477,11 +2477,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/hooks/use-inspect-vars-crud-common.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/hooks/use-serial-async-callback.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -2777,7 +2772,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 21
+      "count": 20
     }
   },
   "web/app/components/workflow/nodes/_base/hooks/use-output-var-list.ts": {
@@ -4235,11 +4230,6 @@
       "count": 1
     }
   },
-  "web/service/use-flow.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 1
-    }
-  },
   "web/service/use-log.ts": {
     "@tanstack/query/prefer-query-options": {
       "count": 7
@@ -4318,13 +4308,13 @@
   },
   "web/service/use-workflow.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 9
+      "count": 6
     },
     "no-restricted-imports": {
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/service/use-workspace.ts": {
@@ -4365,7 +4355,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 17
+      "count": 16
     }
   },
   "web/utils/completion-params.spec.ts": {

@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { Shape } from '@/app/components/workflow/store/workflow'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import EnvPanel from '../index'
 
@@ -120,13 +122,16 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () =>
   updateNodeVars: mockUpdateNodeVars,
 }))
 
+vi.mock('../requests', () => ({
+  fetchEnvironmentVariables: async () => (await mockFetchWorkflowDraft()).environment_variables,
+}))
+
 vi.mock('@/service/workflow', () => ({
   updateEnvironmentVariables: (payload: {
     appId: string
     environmentVariables: EnvironmentVariable[]
     deletedEnvironmentVariableIds: string[]
   }) => mockUpdateEnvironmentVariables(payload),
-  fetchWorkflowDraft: () => mockFetchWorkflowDraft(),
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -221,13 +226,19 @@ const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVar
   ...overrides,
 })
 
-const renderWithProviders = (ui: ReactElement, storeState: Partial<Shape> = {}) => {
+const renderWithProviders = (
+  ui: ReactElement,
+  storeState: Partial<Shape> = {},
+  resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
+) => {
   const store = createWorkflowStore({})
   store.setState(storeState)
 
   return {
     store,
-    ...render(<WorkflowContext value={store}>{ui}</WorkflowContext>),
+    ...render(<WorkflowContext value={store}>{ui}</WorkflowContext>, {
+      resource,
+    }),
   }
 }
 
@@ -256,7 +267,6 @@ describe('EnvPanel container', () => {
   it('should add variables and normalize secret values after syncing', async () => {
     const user = userEvent.setup()
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [],
       envSecrets: {},
     })
@@ -280,11 +290,109 @@ describe('EnvPanel container', () => {
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
+  it('persists new pipeline variables through draft sync without app requests or socket events', async () => {
+    const user = userEvent.setup()
+    const existingEnv = createEnv({
+      name: 'existing_variable',
+      value_type: 'string',
+      value: 'existing',
+    })
+    const emit = vi.fn()
+    mockGetSocket.mockReturnValue({ emit })
+    const { store } = renderWithProviders(
+      <EnvPanel />,
+      {
+        environmentVariables: [existingEnv],
+        envSecrets: {},
+      },
+      { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    )
+    let completeSync!: () => void
+    let variablesSentToDraft: EnvironmentVariable[] = []
+    mockDoSyncWorkflowDraft.mockImplementationOnce((_notRefresh, callback) => {
+      variablesSentToDraft = store.getState().environmentVariables
+      return new Promise((resolve) => {
+        completeSync = () => {
+          callback?.onSuccess?.()
+          resolve()
+        }
+      })
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    expect(await screen.findByText('created_name')).toBeInTheDocument()
+    expect(variablesSentToDraft).toEqual([
+      expect.objectContaining({ id: 'env-created', name: 'created_name', value: 'created-value' }),
+      existingEnv,
+    ])
+    await act(async () => completeSync())
+
+    expect(screen.getByText('created_name')).toBeInTheDocument()
+    expect(screen.getByText('existing_variable')).toBeInTheDocument()
+    expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
+    expect(mockGetSocket).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
+  })
+
+  it('restores the persisted pipeline variable after draft sync fails and preserves other variables', async () => {
+    const user = userEvent.setup()
+    const existingEnv = createEnv({
+      name: 'existing_variable',
+      value_type: 'string',
+      value: 'existing',
+    })
+    const untouchedEnv = createEnv({
+      id: 'env-untouched',
+      name: 'untouched_variable',
+      value_type: 'string',
+      value: 'untouched',
+    })
+    const emit = vi.fn()
+    mockGetSocket.mockReturnValue({ emit })
+    mockVariableTriggerState.savePayload = { ...existingEnv, name: 'rejected_name' }
+    mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [existingEnv, untouchedEnv] })
+    let failSync!: () => void
+    mockDoSyncWorkflowDraft.mockImplementation(async (_notRefresh, callback) => {
+      callback?.onError?.()
+    })
+    mockDoSyncWorkflowDraft.mockImplementationOnce(
+      (_notRefresh, callback) =>
+        new Promise((resolve) => {
+          failSync = () => {
+            callback?.onError?.()
+            resolve()
+          }
+        }),
+    )
+    renderWithProviders(
+      <EnvPanel />,
+      {
+        environmentVariables: [existingEnv, untouchedEnv],
+        envSecrets: {},
+      },
+      { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Edit existing_variable' }))
+    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    expect(await screen.findByRole('button', { name: 'Edit rejected_name' })).toBeInTheDocument()
+    await act(async () => failSync())
+
+    expect(
+      await screen.findByRole('button', { name: 'Edit existing_variable' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit rejected_name' })).not.toBeInTheDocument()
+    expect(screen.getByText('untouched_variable')).toBeInTheDocument()
+    expect(mockFetchWorkflowDraft).toHaveBeenCalled()
+    expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
+    expect(mockGetSocket).not.toHaveBeenCalled()
+    expect(emit).not.toHaveBeenCalled()
+  })
+
   it('should delete unused variables and sync draft changes', async () => {
     const user = userEvent.setup()
     const env = createEnv({ value_type: 'string', value: 'plain-text' })
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })
@@ -497,7 +605,6 @@ describe('EnvPanel container', () => {
     })
 
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })
@@ -630,7 +737,6 @@ describe('EnvPanel container', () => {
     mockVariableTriggerState.savePayload = nextEnv
 
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })
@@ -684,7 +790,6 @@ describe('EnvPanel container', () => {
     mockGetNodes.mockReturnValue([llmNode])
 
     const { store } = renderWithProviders(<EnvPanel />, {
-      appId: 'app-1',
       environmentVariables: [env],
       envSecrets: {},
     })

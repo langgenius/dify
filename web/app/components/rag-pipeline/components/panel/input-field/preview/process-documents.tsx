@@ -1,6 +1,7 @@
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useDraftPipelineProcessingParams } from '@/service/use-pipeline'
 import Form from './form'
 
@@ -10,7 +11,7 @@ type ProcessDocumentsProps = {
 
 const ProcessDocuments = ({ dataSourceNodeId }: ProcessDocumentsProps) => {
   const { t } = useTranslation(['datasetPipeline'])
-  const pipelineId = useStore((state) => state.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const { data: paramsConfig } = useDraftPipelineProcessingParams(
     {
       pipeline_id: pipelineId!,

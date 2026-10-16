@@ -5,7 +5,6 @@ import * as React from 'react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppInfoTrigger from '../app-info-trigger'
 
@@ -41,7 +40,7 @@ const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
   createAppDetailFixture({
     id: 'app-1',
     name: 'Test App',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon: '🤖',
     icon_type: 'emoji',
     icon_background: '#FFEAD5',
@@ -74,7 +73,7 @@ describe('AppInfoTrigger', () => {
   it('renders expanded app metadata without making the app info clickable', async () => {
     const user = userEvent.setup()
     const props = createProps({
-      appDetail: createAppDetail({ name: 'My Chatbot', mode: AppModeEnum.ADVANCED_CHAT }),
+      appDetail: createAppDetail({ name: 'My Chatbot', mode: 'advanced-chat' as const }),
     })
     render(<AppInfoTrigger {...props} />)
 
@@ -119,7 +118,7 @@ describe('AppInfoTrigger', () => {
   it('shows import DSL for workflow apps without a workflow conversion operation', async () => {
     const user = userEvent.setup()
     const props = createProps({
-      appDetail: createAppDetail({ mode: AppModeEnum.WORKFLOW }),
+      appDetail: createAppDetail({ mode: 'workflow' as const }),
     })
     render(<AppInfoTrigger {...props} />)
 

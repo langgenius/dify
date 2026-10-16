@@ -20,7 +20,6 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { redirect, usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { isNotFoundError } from '@/service/http-error'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { getAppACLCapabilities } from '@/utils/permission'
 
@@ -51,8 +50,7 @@ const getAppDetailRedirectPath = (
   permissionOptions: ResourceMaintainerPermissionOptions,
 ) => {
   const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, permissionOptions)
-  const isWorkflowApp =
-    appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
+  const isWorkflowApp = appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat'
   const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
   const isLogsPath = pathname.endsWith('logs')
   const isAnnotationsPath = pathname.endsWith('annotations')
@@ -65,8 +63,7 @@ const getAppDetailRedirectPath = (
     (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
     (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation) ||
     (isOverviewPath && !appACLCapabilities.canMonitor) ||
-    (isAccessConfigPath &&
-      (appDetail.mode === AppModeEnum.AGENT || !appACLCapabilities.canAccessConfig)) ||
+    (isAccessConfigPath && (appDetail.mode === 'agent' || !appACLCapabilities.canAccessConfig)) ||
     (isAccessPointPath && !appACLCapabilities.canViewAccessPoint) ||
     (isDeployPath && (!isWorkflowApp || !appACLCapabilities.canDeploy))
   )

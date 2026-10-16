@@ -24,7 +24,6 @@ import {
   LogicalOperator,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { AppModeEnum } from '@/types/app'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType } from '../../types'
 import { toggleControlSpaceId } from './config-helpers'
@@ -189,7 +188,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalV2NodeType) => {
           draft.metadata_model_config = {
             provider: model.provider,
             name: model.modelId,
-            mode: model.mode || AppModeEnum.CHAT,
+            mode: model.mode || 'chat',
             completion_params: draft.metadata_model_config?.completion_params || {
               temperature: 0.7,
             },

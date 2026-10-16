@@ -16,7 +16,6 @@ import {
   PromptRole,
   VarType,
 } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { findUsedVarNodes, getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
@@ -39,7 +38,7 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
   model: {
     provider: 'provider',
     name: 'model',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: promptTemplate,
@@ -74,7 +73,7 @@ describe('variable utils', () => {
 
       const availableVars = toNodeAvailableVars({
         beforeNodes: [],
-        isChatMode: false,
+        isChatflow: false,
         environmentVariables,
         filterVar: () => true,
         allPluginInfoList: {},
@@ -96,7 +95,7 @@ describe('variable utils', () => {
         })
         const availableVars = toNodeAvailableVars({
           beforeNodes: [node],
-          isChatMode: false,
+          isChatflow: false,
           filterVar: () => true,
           allPluginInfoList: {},
         })
@@ -125,7 +124,7 @@ describe('variable utils', () => {
           },
         },
       })
-      const options = { beforeNodes: [node], isChatMode: false, allPluginInfoList: {} }
+      const options = { beforeNodes: [node], isChatflow: false, allPluginInfoList: {} }
       const availableVars = toNodeAvailableVars({ ...options, filterVar: () => true })
       expect(availableVars.find((item) => item.nodeId === node.id)?.vars).toEqual(
         expect.arrayContaining([
@@ -161,7 +160,7 @@ describe('variable utils', () => {
 
       const availableVars = toNodeAvailableVars({
         beforeNodes: [node],
-        isChatMode: false,
+        isChatflow: false,
         filterVar: () => true,
         allPluginInfoList: {},
       })
@@ -205,7 +204,7 @@ describe('variable utils', () => {
 
       const availableVars = toNodeAvailableVars({
         beforeNodes: [node],
-        isChatMode: false,
+        isChatflow: false,
         filterVar: () => true,
         allPluginInfoList: {},
       })
@@ -550,7 +549,7 @@ it('keeps datasource output variables typed through the public picker projection
   })
   const options = {
     beforeNodes: [node],
-    isChatMode: false,
+    isChatflow: false,
     allPluginInfoList: { dataSourceList: [provider] },
   }
   const all = toNodeAvailableVars({ ...options, filterVar: () => true }).find(

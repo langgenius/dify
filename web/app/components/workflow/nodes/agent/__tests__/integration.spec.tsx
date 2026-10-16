@@ -242,7 +242,7 @@ const createConfigResult = (
   availableNodesWithParent: [],
   outputSchema: [{ name: 'jsonField', type: 'String', description: 'json output' }],
   handleMemoryChange: vi.fn(),
-  isChatMode: true,
+  isChatflow: true,
   ...overrides,
 })
 

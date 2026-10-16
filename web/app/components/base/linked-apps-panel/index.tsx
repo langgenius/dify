@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { RelatedApp } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -6,7 +7,6 @@ import { RiArrowRightUpLine } from '@remixicon/react'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 
 type ILikedItemProps = Readonly<{
   appStatus?: boolean
@@ -14,12 +14,12 @@ type ILikedItemProps = Readonly<{
   isMobile: boolean
 }>
 
-const appTypeMap = {
-  [AppModeEnum.CHAT]: 'Chatbot',
-  [AppModeEnum.COMPLETION]: 'Completion',
-  [AppModeEnum.AGENT_CHAT]: 'Agent',
-  [AppModeEnum.ADVANCED_CHAT]: 'Chatflow',
-  [AppModeEnum.WORKFLOW]: 'Workflow',
+const appTypeMap: Partial<Record<RelatedApp['mode'], string>> = {
+  chat: 'Chatbot',
+  completion: 'Completion',
+  'agent-chat': 'Agent',
+  'advanced-chat': 'Chatflow',
+  workflow: 'Workflow',
 }
 
 const LikedItem = ({ detail, isMobile }: ILikedItemProps) => {

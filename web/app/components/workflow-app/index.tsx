@@ -5,10 +5,13 @@ import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo } from 'react'
+import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
@@ -19,7 +22,6 @@ import { useParams, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
 import { useAppTriggers } from '@/service/use-tools'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
@@ -40,7 +42,7 @@ const WorkflowAppWithAdditionalContext = () => {
 
   // Initialize trigger status at application level
   const { setTriggerStatuses } = useTriggerStatusStore()
-  const { appId } = useParams<{ appId: string }>()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -53,7 +55,7 @@ const WorkflowAppWithAdditionalContext = () => {
       }),
     [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys],
   )
-  const isWorkflowMode = appDetail.mode === AppModeEnum.WORKFLOW
+  const isWorkflowMode = appDetail.mode === 'workflow'
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false,
@@ -138,12 +140,23 @@ const WorkflowAppWithAdditionalContext = () => {
 }
 
 const WorkflowAppWrapper = () => {
+  const { appId } = useParams<{ appId: string }>()
+  const { data: mode } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (app) => app.mode,
+    }),
+  )
+  if (!isWorkflowAppMode(mode)) throw new Error('This app does not have a workflow editor')
+
   return (
-    <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
-    >
-      <WorkflowAppWithAdditionalContext />
-    </WorkflowContextProvider>
+    <EditorResourceScope resource={{ kind: 'app', appId, mode }}>
+      <WorkflowContextProvider
+        injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
+      >
+        <WorkflowAppWithAdditionalContext />
+      </WorkflowContextProvider>
+    </EditorResourceScope>
   )
 }
 

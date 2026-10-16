@@ -14,8 +14,6 @@ import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -323,12 +321,9 @@ function buildInlineAgentGraph({
     nodes: [startNode, agentNode],
     options: {
       queryClient,
+      resource: { kind: 'app' as const, appId, mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: appId,
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     },
   }
@@ -555,14 +550,14 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    renderWorkflowHook(() =>
-      useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
-    )
+    renderWorkflowHook(() => useChecklist([startNode, llmNode], edges), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     expect(checkValid).toHaveBeenCalledWith(
       expect.objectContaining({ type: BlockEnum.LLM }),
       expect.any(Function),
-      expect.objectContaining({ flowType: FlowType.snippet }),
+      expect.objectContaining({ resourceKind: 'snippet' }),
     )
   })
 
@@ -863,7 +858,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       select?: (data: AppDetailWithSite) => unknown
     }) => {
       if (options.queryKey[0].join('.') === 'console.apps.byAppId.get') {
-        const appDetail = createAppDetailFixture({ mode: AppModeEnum.WORKFLOW })
+        const appDetail = createAppDetailFixture({ mode: 'workflow' as const })
         return { data: options.select ? options.select(appDetail) : appDetail }
       }
       if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))

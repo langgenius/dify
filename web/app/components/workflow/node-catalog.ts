@@ -4,6 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import AnswerDefault from '@/app/components/workflow/nodes/answer/default'
 import EndDefault from '@/app/components/workflow/nodes/end/default'
 import StartPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
@@ -16,7 +17,6 @@ import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled, isAgentV2InChatflowEnabled } from '@/features/agent-v2/feature-flag'
 import { knowledgeFsEnabledAtom } from '@/features/system-features/state'
 import { isProductlessDocPathWithAnchor } from '@/types/doc-paths'
-import { useIsChatMode } from './use-is-chat-mode'
 
 const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
   if (!helpLinkUri) return undefined
@@ -25,14 +25,14 @@ const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefin
   return isProductlessDocPathWithAnchor(helpLinkPath) ? helpLinkPath : undefined
 }
 
-export const useAvailableNodesMetaData = () => {
+export const useWorkflowNodeCatalog = () => {
   const { t } = useTranslation(['workflow'])
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   const docLink = useDocLink()
   const agentV2Enabled = isAgentV2Enabled()
   // Chatflow (advanced-chat) keeps Agent v2 hidden by default; opt in via
   // NEXT_PUBLIC_ENABLE_AGENT_V2_IN_CHATFLOW. Pure workflows are unaffected.
-  const shouldUseAgentV2 = agentV2Enabled && (!isChatMode || isAgentV2InChatflowEnabled())
+  const shouldUseAgentV2 = agentV2Enabled && (!isChatflow || isAgentV2InChatflowEnabled())
   const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
 
   const startNodeMetaData = useMemo(
@@ -40,10 +40,10 @@ export const useAvailableNodesMetaData = () => {
       ...StartDefault,
       metaData: {
         ...StartDefault.metaData,
-        isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
+        isUndeletable: isChatflow, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
       },
     }),
-    [isChatMode],
+    [isChatflow],
   )
 
   const mergedNodesMetaData = useMemo(() => {
@@ -54,7 +54,7 @@ export const useAvailableNodesMetaData = () => {
     return [
       ...commonNodes,
       startNodeMetaData,
-      ...(isChatMode
+      ...(isChatflow
         ? [AnswerDefault]
         : [
             StartPlaceholderDefault,
@@ -64,7 +64,7 @@ export const useAvailableNodesMetaData = () => {
             TriggerPluginDefault,
           ]),
     ]
-  }, [isChatMode, knowledgeFsEnabled, startNodeMetaData])
+  }, [isChatflow, knowledgeFsEnabled, startNodeMetaData])
 
   const nodesMetaData = useMemo(
     () =>
@@ -113,13 +113,14 @@ export const useAvailableNodesMetaData = () => {
     [nodesMetaData],
   )
 
-  return useMemo(() => {
-    return {
+  return useMemo(
+    () => ({
       nodes: availableNodesMetaData,
       nodesMap: {
         ...nodesMetaDataMap,
         [BlockEnum.VariableAssigner]: nodesMetaDataMap?.[BlockEnum.VariableAggregator],
       },
-    }
-  }, [availableNodesMetaData, nodesMetaDataMap])
+    }),
+    [availableNodesMetaData, nodesMetaDataMap],
+  )
 }

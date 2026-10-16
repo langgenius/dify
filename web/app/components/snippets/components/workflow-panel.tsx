@@ -36,8 +36,6 @@ const SnippetWorkflowPanel = ({ snippetId, fields }: SnippetWorkflowPanelProps) 
     return {
       getVersionListUrl: `/snippets/${snippetId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) =>
-        `/snippets/${snippetId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
       latestVersionId: '',
     }

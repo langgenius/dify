@@ -65,7 +65,6 @@ import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-sche
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
-import { AppModeEnum } from '@/types/app'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
 import { Type } from '../../../llm/types'
@@ -302,7 +301,7 @@ const findExceptVarInObject = (
 
 const formatItem = (
   item: any,
-  isChatMode: boolean,
+  isChatflow: boolean,
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
   allPluginInfoList: WorkflowPluginCatalogs,
   ragVars?: Var[],
@@ -340,7 +339,7 @@ const formatItem = (
 
         return varRes
       })
-      if (isChatMode) {
+      if (isChatflow) {
         res.vars.push({
           variable: 'sys.query',
           type: VarType.string,
@@ -748,7 +747,7 @@ export const removeFileVars = (nodeWithVars: NodeOutPutVar[]) => {
 
 export const toNodeOutputVars = (
   nodes: any[],
-  isChatMode: boolean,
+  isChatflow: boolean,
   filterVar = (_payload: Var, _selector: ValueSelector) => true,
   environmentVariables: EnvironmentVariable[] = [],
   conversationVariables: ConversationVariable[] = [],
@@ -780,7 +779,7 @@ export const toNodeOutputVars = (
     data: {
       title: 'SYSTEM',
       type: 'global',
-      globalVarList: getGlobalVars(isChatMode),
+      globalVarList: getGlobalVars(isChatflow),
     },
   }
   // RAG_PIPELINE_NODE data format
@@ -811,7 +810,7 @@ export const toNodeOutputVars = (
   const res = [
     ...sortedNodes.filter((node) => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
-    ...(isChatMode && conversationVariables.length > 0 ? [CHAT_VAR_NODE] : []),
+    ...(isChatflow && conversationVariables.length > 0 ? [CHAT_VAR_NODE] : []),
     GLOBAL_VAR_NODE,
     ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0 ? [RAG_PIPELINE_NODE] : []),
   ]
@@ -825,7 +824,7 @@ export const toNodeOutputVars = (
       return {
         ...formatItem(
           node,
-          isChatMode,
+          isChatflow,
           filterVar,
           allPluginInfoList,
           ragVariablesInDataSource.map((ragVariable: RAGPipelineVariable) => {
@@ -953,7 +952,7 @@ export const getVarType = ({
   isIterationItem,
   isLoopItem,
   availableNodes,
-  isChatMode,
+  isChatflow,
   isConstant,
   environmentVariables = [],
   conversationVariables = [],
@@ -967,7 +966,7 @@ export const getVarType = ({
   isIterationItem?: boolean
   isLoopItem?: boolean
   availableNodes: any[]
-  isChatMode: boolean
+  isChatflow: boolean
   isConstant?: boolean
   environmentVariables?: EnvironmentVariable[]
   conversationVariables?: ConversationVariable[]
@@ -980,7 +979,7 @@ export const getVarType = ({
 
   const beforeNodesOutputVars = toNodeOutputVars(
     availableNodes,
-    isChatMode,
+    isChatflow,
     undefined,
     environmentVariables,
     conversationVariables,
@@ -1096,7 +1095,7 @@ export const toNodeAvailableVars = ({
   parentNode,
   t,
   beforeNodes,
-  isChatMode,
+  isChatflow,
   environmentVariables,
   conversationVariables,
   ragVariables,
@@ -1108,7 +1107,7 @@ export const toNodeAvailableVars = ({
   t?: WorkflowTranslate
   // to get those nodes output vars
   beforeNodes: Node[]
-  isChatMode: boolean
+  isChatflow: boolean
   // env
   environmentVariables?: EnvironmentVariable[]
   // chat var
@@ -1121,7 +1120,7 @@ export const toNodeAvailableVars = ({
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
     beforeNodes,
-    isChatMode,
+    isChatflow,
     filterVar,
     environmentVariables,
     conversationVariables,
@@ -1137,7 +1136,7 @@ export const toNodeAvailableVars = ({
       isIterationItem: true,
       valueSelector: iterationNode?.data.iterator_selector || [],
       availableNodes: beforeNodes,
-      isChatMode,
+      isChatflow,
       environmentVariables,
       conversationVariables,
       allPluginInfoList,
@@ -1238,7 +1237,7 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
     }
     case BlockEnum.LLM: {
       const payload = data as LLMNodeType
-      const isChatModel = payload.model?.mode === AppModeEnum.CHAT
+      const isChatModel = payload.model?.mode === 'chat'
       let prompts: string[] = []
       if (isChatModel) {
         prompts = (payload.prompt_template as PromptItem[])?.flatMap(getPromptItemTexts) || []
@@ -1587,7 +1586,7 @@ export const updateNodeVars = (
       }
       case BlockEnum.LLM: {
         const payload = data as LLMNodeType
-        const isChatModel = payload.model?.mode === AppModeEnum.CHAT
+        const isChatModel = payload.model?.mode === 'chat'
         if (isChatModel) {
           payload.prompt_template = (payload.prompt_template as PromptItem[]).map((prompt) =>
             replaceOldVarInPromptItem(prompt, oldVarSelector, newVarSelector),
@@ -1983,7 +1982,7 @@ const varsToValueSelectorList = (
   varToValueSelectorList(vars as Var, parentValueSelector, res)
 }
 
-export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelector[] => {
+export const getNodeOutputVars = (node: Node, isChatflow: boolean): ValueSelector[] => {
   const { data, id } = node
   const { type } = data
   let res: ValueSelector[] = []
@@ -1995,7 +1994,7 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
         return [id, v.variable]
       })
 
-      if (isChatMode) {
+      if (isChatflow) {
         res.push([id, 'sys', 'query'])
         res.push([id, 'sys', 'files'])
       }

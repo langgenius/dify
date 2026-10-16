@@ -35,7 +35,6 @@ vi.mock('../../../../hooks/use-node-data-update', () => ({
   useNodeDataUpdate: () => ({ handleNodeDataUpdate: vi.fn() }),
 }))
 vi.mock('../../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => false,
   useWorkflow: () => ({ getBeforeNodesInSameBranch: () => [] }),
 }))
 vi.mock('../../../../hooks/use-workflow-variables', () => ({
@@ -73,4 +72,11 @@ it('selects a connection variable from the owning canvas and preserves its focus
     expect.objectContaining({ variable: 'second' }),
   )
   expect(canvas).toHaveFocus()
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

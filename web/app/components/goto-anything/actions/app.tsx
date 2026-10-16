@@ -1,32 +1,24 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ActionItem, AppSearchResult, SearchQueryOptions, SearchResult } from './types'
-import type { AppModeEnum as AppMode } from '@/types/app'
+import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { AppTypeIcon } from '../../app/type-selector'
 import AppIcon from '../../base/app-icon'
 
-const WORKFLOW_MODES = new Set([AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT])
-const APP_MODES = new Set<string>(Object.values(AppModeEnum))
-
 type AppSection = { id: string; label: string; path: string; iconClassName: string }
-
-function getAppMode(app: AppPartial): AppMode {
-  return APP_MODES.has(app.mode) ? (app.mode as AppMode) : AppModeEnum.CHAT
-}
 
 function getAppPath(app: AppPartial) {
   return getRedirectionPath({
     id: app.id,
-    mode: getAppMode(app),
+    mode: app.mode,
     permission_keys: app.permission_keys,
   })
 }
 
 const getAppSections = (app: AppPartial): AppSection[] => {
   const base = `/app/${app.id}`
-  if (WORKFLOW_MODES.has(getAppMode(app))) {
+  if (isWorkflowAppMode(app.mode)) {
     return [
       {
         id: 'workflow',
@@ -76,7 +68,7 @@ const appIcon = (app: AppPartial) => (
     <AppTypeIcon
       wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
       className="size-3"
-      type={getAppMode(app)}
+      type={app.mode}
     />
   </div>
 )
