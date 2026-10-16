@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Edytuj pytanie referencyjne",
   "qualityPage.evaluation.back": "Wróć do uruchomień",
   "qualityPage.evaluation.createdAt": "Utworzono",
+  "qualityPage.evaluation.dialogDescriptionPending": "Wszystkie aktywne pytania referencyjne zostaną ponownie uruchomione w tle. Wersje robocze i nieaktualne pytania zostaną pominięte.",
   "qualityPage.evaluation.dialogDescription_one": "Ponownie uruchamia w tle {{count}} aktywne pytanie referencyjne. Wersje robocze i nieaktualne pytania są pomijane.",
   "qualityPage.evaluation.dialogDescription_other": "Wszystkie aktywne pytania referencyjne zostaną ponownie uruchomione w tle. Liczba pytań: {{count}}. Wersje robocze i nieaktualne pytania zostaną pominięte.",
   "qualityPage.evaluation.dialogTitle": "Uruchom ocenę jakości",

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { render } from '@/test/console/render'
@@ -195,6 +195,10 @@ describe('QualityEvaluationPanel', () => {
     serviceMock.getReplay.mockResolvedValue(completedRun)
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('explains the empty state before the first evaluation run', async () => {
     renderPanel()
 
@@ -296,6 +300,98 @@ describe('QualityEvaluationPanel', () => {
     ).toHaveAccessibleDescription(
       'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":1}',
     )
+  })
+
+  it('counts active golden questions across every page before describing the run', async () => {
+    const user = userEvent.setup()
+    serviceMock.listGoldenQuestions.mockImplementation(
+      ({ query }: { query: { cursor?: string } }) =>
+        Promise.resolve(
+          query.cursor === 'page-2'
+            ? {
+                data: [
+                  { id: 'golden-101', status: 'active' },
+                  { id: 'golden-102', status: 'active' },
+                ],
+                next_cursor: null,
+              }
+            : {
+                data: [{ id: 'golden-1', status: 'draft' }],
+                next_cursor: 'page-2',
+              },
+        ),
+    )
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('dialog', {
+          name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+        }),
+      ).toHaveAccessibleDescription(
+        'knowledgeQuality.qualityPage.evaluation.dialogDescription:{"count":2}',
+      ),
+    )
+    expect(serviceMock.listGoldenQuestions).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'page-2', limit: 100 },
+    })
+  })
+
+  it('describes the run without a count until every page is counted', async () => {
+    const user = userEvent.setup()
+    serviceMock.listGoldenQuestions.mockImplementation(() => new Promise(() => {}))
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeQuality.qualityPage.evaluation.run',
+      }),
+    )
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+      }),
+    ).toHaveAccessibleDescription(
+      'knowledgeQuality.qualityPage.evaluation.dialogDescriptionPending',
+    )
+  })
+
+  it('closes the evaluation dialog through its open state', async () => {
+    vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
+    const user = userEvent.setup()
+    renderPanel()
+
+    await screen.findByText('knowledgeQuality.qualityPage.evaluation.emptyTitle')
+    const runButton = screen.getByRole('button', {
+      name: 'knowledgeQuality.qualityPage.evaluation.run',
+    })
+    await user.click(runButton)
+    const dialog = screen.getByRole('dialog', {
+      name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.cancel' }))
+
+    // The root observes the close, so the popup plays its exit state before unmounting.
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('data-closed')
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', {
+          name: 'knowledgeQuality.qualityPage.evaluation.dialogTitle',
+        }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(runButton).toHaveFocus()
   })
 
   it('starts each evaluation dialog session with the default retrieval mode', async () => {

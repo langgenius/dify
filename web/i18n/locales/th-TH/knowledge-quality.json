@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "แก้ไขคำถามอ้างอิง",
   "qualityPage.evaluation.back": "กลับไปที่รายการเรียกใช้",
   "qualityPage.evaluation.createdAt": "สร้างเมื่อ",
+  "qualityPage.evaluation.dialogDescriptionPending": "เรียกใช้คำถามอ้างอิงที่ใช้งานอยู่ทั้งหมดซ้ำในเบื้องหลัง ระบบจะข้ามฉบับร่างและคำถามที่ล้าสมัย",
   "qualityPage.evaluation.dialogDescription_one": "เรียกใช้คำถามอ้างอิงที่ใช้งานอยู่ {{count}} ข้อซ้ำในเบื้องหลัง ระบบจะข้ามฉบับร่างและคำถามที่ล้าสมัย",
   "qualityPage.evaluation.dialogDescription_other": "เรียกใช้คำถามอ้างอิงที่ใช้งานอยู่ {{count}} ข้อซ้ำในเบื้องหลัง ระบบจะข้ามฉบับร่างและคำถามที่ล้าสมัย",
   "qualityPage.evaluation.dialogTitle": "เรียกใช้การประเมินคุณภาพ",

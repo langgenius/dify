@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Редактировать эталонный вопрос",
   "qualityPage.evaluation.back": "Назад к запускам",
   "qualityPage.evaluation.createdAt": "Создано",
+  "qualityPage.evaluation.dialogDescriptionPending": "Все активные эталонные вопросы будут повторно выполнены в фоновом режиме. Черновики и устаревшие вопросы будут пропущены.",
   "qualityPage.evaluation.dialogDescription_one": "Повторно выполняет в фоновом режиме {{count}} активный эталонный вопрос. Черновики и устаревшие вопросы пропускаются.",
   "qualityPage.evaluation.dialogDescription_other": "Все активные эталонные вопросы будут повторно выполнены в фоновом режиме. Количество вопросов: {{count}}. Черновики и устаревшие вопросы будут пропущены.",
   "qualityPage.evaluation.dialogTitle": "Запустить оценку качества",

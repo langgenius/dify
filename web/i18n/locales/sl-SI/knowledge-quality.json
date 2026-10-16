@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Uredi referenčno vprašanje",
   "qualityPage.evaluation.back": "Nazaj na zagone",
   "qualityPage.evaluation.createdAt": "Ustvarjeno",
+  "qualityPage.evaluation.dialogDescriptionPending": "V ozadju bodo znova izvedena vsa aktivna referenčna vprašanja. Osnutki in zastarela vprašanja bodo preskočeni.",
   "qualityPage.evaluation.dialogDescription_one": "V ozadju znova izvede vaše {{count}} aktivno referenčno vprašanje. Osnutki in zastarela vprašanja so preskočeni.",
   "qualityPage.evaluation.dialogDescription_other": "V ozadju bodo znova izvedena vsa aktivna referenčna vprašanja. Število vprašanj: {{count}}. Osnutki in zastarela vprašanja bodo preskočeni.",
   "qualityPage.evaluation.dialogTitle": "Zaženi ocenjevanje kakovosti",

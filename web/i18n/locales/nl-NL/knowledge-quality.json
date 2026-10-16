@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Referentievraag bewerken",
   "qualityPage.evaluation.back": "Terug naar uitvoeringen",
   "qualityPage.evaluation.createdAt": "Gemaakt",
+  "qualityPage.evaluation.dialogDescriptionPending": "Voert al uw actieve referentievragen opnieuw uit op de achtergrond. Concepten en verouderde vragen worden overgeslagen.",
   "qualityPage.evaluation.dialogDescription_one": "Voert uw {{count}} actieve referentievraag opnieuw uit op de achtergrond. Concepten en verouderde vragen worden overgeslagen.",
   "qualityPage.evaluation.dialogDescription_other": "Voert uw {{count}} actieve referentievragen opnieuw uit op de achtergrond. Concepten en verouderde vragen worden overgeslagen.",
   "qualityPage.evaluation.dialogTitle": "Kwaliteitsevaluatie uitvoeren",

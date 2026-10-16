@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "評価用の基準質問を編集",
   "qualityPage.evaluation.back": "実行一覧に戻る",
   "qualityPage.evaluation.createdAt": "作成日時",
+  "qualityPage.evaluation.dialogDescriptionPending": "有効な評価用の基準質問をすべてバックグラウンドで再実行します。下書きと古い質問はスキップされます。",
   "qualityPage.evaluation.dialogDescription_one": "有効な評価用の基準質問 {{count}} 件をバックグラウンドで再実行します。下書きと古い質問はスキップされます。",
   "qualityPage.evaluation.dialogDescription_other": "有効な評価用の基準質問 {{count}} 件をバックグラウンドで再実行します。下書きと古い質問はスキップされます。",
   "qualityPage.evaluation.dialogTitle": "品質評価を実行",

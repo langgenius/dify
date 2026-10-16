@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Referans sorusunu düzenle",
   "qualityPage.evaluation.back": "Çalıştırmalara dön",
   "qualityPage.evaluation.createdAt": "Oluşturuldu",
+  "qualityPage.evaluation.dialogDescriptionPending": "Tüm etkin referans sorularınızı arka planda yeniden çalıştırır. Taslaklar ve güncelliğini yitirmiş sorular atlanır.",
   "qualityPage.evaluation.dialogDescription_one": "{{count}} etkin referans sorunuzu arka planda yeniden çalıştırır. Taslaklar ve güncelliğini yitirmiş sorular atlanır.",
   "qualityPage.evaluation.dialogDescription_other": "{{count}} etkin referans sorunuzu arka planda yeniden çalıştırır. Taslaklar ve güncelliğini yitirmiş sorular atlanır.",
   "qualityPage.evaluation.dialogTitle": "Kalite değerlendirmesini çalıştır",

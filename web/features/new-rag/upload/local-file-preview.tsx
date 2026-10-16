@@ -9,52 +9,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { TransferMethod } from '@/types/app'
 import { documentUploadFileExtension } from './policy'
 
-function LocalPdfFilePreview({ file, onClose }: { file: File; onClose: () => void }) {
-  const [previewUrl, setPreviewUrl] = useState('')
-
-  useEffect(() => {
-    let active = true
-    let objectUrl = ''
-
-    void Promise.resolve().then(() => {
-      if (!active) return
-      objectUrl = URL.createObjectURL(file.slice(0, file.size, 'application/pdf'))
-      setPreviewUrl(objectUrl)
-    })
-
-    return () => {
-      active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
-  }, [file])
-
-  if (!previewUrl) return null
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-    >
-      <FilePreviewContent
-        kind="pdf"
-        file={{
-          id: file.name,
-          name: file.name,
-          size: file.size,
-          type: 'application/pdf',
-          progress: 100,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: 'document',
-          url: previewUrl,
-        }}
-      />
-    </Dialog>
-  )
-}
-
-function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => void }) {
+function LocalTextFilePreviewBody({ file }: { file: File }) {
   const { t } = useTranslation(['knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const [content, setContent] = useState<string>()
@@ -80,62 +35,84 @@ function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => vo
   }, [file])
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-    >
-      <DialogContent className="flex h-[80dvh] max-h-180 w-240 flex-col overflow-hidden p-0">
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-divider-subtle px-6 py-4">
-          <div className="min-w-0">
-            <div className="system-2xs-semibold-uppercase text-text-accent">
-              {t(($) => $.preview)}
-            </div>
-            <DialogTitle className="mt-1 truncate title-md-semi-bold text-text-primary">
-              {file.name}
-            </DialogTitle>
+    <>
+      <header className="flex shrink-0 items-start justify-between gap-4 border-b border-divider-subtle px-6 py-4">
+        <div className="min-w-0">
+          <div className="system-2xs-semibold-uppercase text-text-accent">
+            {t(($) => $.preview)}
           </div>
-          <DialogClose
-            render={
-              <IconButton
-                size="lg"
-                aria-label={tCommon(($) => $['operation.close'])}
-                className="static shrink-0"
-              >
-                <span aria-hidden className="i-ri-close-line size-5" />
-              </IconButton>
-            }
-          />
-        </header>
-        <div className="min-h-0 flex-1 bg-background-default-subtle p-4">
-          {content === undefined && !readFailed && (
-            <div className="flex size-full items-center justify-center">
-              <LoadingPlaceholder />
-            </div>
-          )}
-          {readFailed && (
-            <div className="flex size-full items-center justify-center system-sm-regular text-text-tertiary">
-              {tCommon(($) => $['fileUploader.uploadFromComputerReadError'])}
-            </div>
-          )}
-          {content !== undefined && (
-            <pre
-              aria-label={file.name}
-              className="size-full overflow-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-4 font-mono text-[13px] leading-5.5 wrap-break-word whitespace-pre-wrap text-text-primary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              {content}
-            </pre>
-          )}
+          <DialogTitle className="mt-1 truncate title-md-semi-bold text-text-primary">
+            {file.name}
+          </DialogTitle>
         </div>
-      </DialogContent>
-    </Dialog>
+        <DialogClose
+          render={
+            <IconButton
+              size="lg"
+              aria-label={tCommon(($) => $['operation.close'])}
+              className="static shrink-0"
+            >
+              <span aria-hidden className="i-ri-close-line size-5" />
+            </IconButton>
+          }
+        />
+      </header>
+      <div className="min-h-0 flex-1 bg-background-default-subtle p-4">
+        {content === undefined && !readFailed && (
+          <div className="flex size-full items-center justify-center">
+            <LoadingPlaceholder />
+          </div>
+        )}
+        {readFailed && (
+          <div className="flex size-full items-center justify-center system-sm-regular text-text-tertiary">
+            {tCommon(($) => $['fileUploader.uploadFromComputerReadError'])}
+          </div>
+        )}
+        {content !== undefined && (
+          <pre
+            aria-label={file.name}
+            className="size-full overflow-auto rounded-lg border border-components-panel-border bg-components-panel-bg p-4 font-mono text-[13px] leading-5.5 wrap-break-word whitespace-pre-wrap text-text-primary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            {content}
+          </pre>
+        )}
+      </div>
+    </>
   )
 }
 
-export function LocalFilePreview({ file, onClose }: { file: File; onClose: () => void }) {
-  if (documentUploadFileExtension(file.name) === 'pdf')
-    return <LocalPdfFilePreview file={file} onClose={onClose} />
-
-  return <LocalTextFilePreview file={file} onClose={onClose} />
+export function LocalFilePreview({
+  file,
+  onOpenChange,
+  open,
+}: {
+  file?: File
+  onOpenChange: (open: boolean) => void
+  open: boolean
+}) {
+  return (
+    <Dialog open={open && Boolean(file)} onOpenChange={onOpenChange}>
+      {file &&
+        (documentUploadFileExtension(file.name) === 'pdf' ? (
+          // The preview content owns the object URL for the lifetime of its mounted popup.
+          <FilePreviewContent
+            kind="pdf"
+            file={{
+              id: file.name,
+              name: file.name,
+              originalFile: file,
+              size: file.size,
+              type: 'application/pdf',
+              progress: 100,
+              transferMethod: TransferMethod.local_file,
+              supportFileType: 'document',
+            }}
+          />
+        ) : (
+          <DialogContent className="flex h-[80dvh] max-h-180 w-240 flex-col overflow-hidden p-0">
+            <LocalTextFilePreviewBody file={file} />
+          </DialogContent>
+        ))}
+    </Dialog>
+  )
 }

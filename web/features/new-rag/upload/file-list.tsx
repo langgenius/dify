@@ -64,6 +64,7 @@ export function DocumentUploadFileList({
   const { i18n, t } = useTranslation(['knowledgeSpace', 'knowledgeCreate'])
   const { t: tCommon } = useTranslation(['common'])
   const [previewFile, setPreviewFile] = useState<File>()
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   return (
     <>
@@ -139,7 +140,10 @@ export function DocumentUploadFileList({
                       className="shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
                       size="small"
                       type="button"
-                      onClick={() => setPreviewFile(item.file)}
+                      onClick={() => {
+                        setPreviewFile(item.file)
+                        setPreviewOpen(true)
+                      }}
                     >
                       {t(($) => $.preview)}
                     </Button>
@@ -176,9 +180,7 @@ export function DocumentUploadFileList({
           )
         })}
       </ul>
-      {previewFile && (
-        <LocalFilePreview file={previewFile} onClose={() => setPreviewFile(undefined)} />
-      )}
+      <LocalFilePreview file={previewFile} open={previewOpen} onOpenChange={setPreviewOpen} />
     </>
   )
 }

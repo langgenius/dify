@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "編輯參考問題",
   "qualityPage.evaluation.back": "返回執行記錄",
   "qualityPage.evaluation.createdAt": "建立時間",
+  "qualityPage.evaluation.dialogDescriptionPending": "系統會在背景重新執行所有有效參考問題。草稿和已過時的問題會被略過。",
   "qualityPage.evaluation.dialogDescription_one": "系統會在背景重新執行 {{count}} 個有效參考問題。草稿和已過時的問題會被略過。",
   "qualityPage.evaluation.dialogDescription_other": "系統會在背景重新執行 {{count}} 個有效參考問題。草稿和已過時的問題會被略過。",
   "qualityPage.evaluation.dialogTitle": "執行品質評估",

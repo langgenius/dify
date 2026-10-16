@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "संदर्भ प्रश्न संपादित करें",
   "qualityPage.evaluation.back": "रन पर वापस जाएँ",
   "qualityPage.evaluation.createdAt": "बनाया गया",
+  "qualityPage.evaluation.dialogDescriptionPending": "आपके सभी सक्रिय संदर्भ प्रश्नों को बैकग्राउंड में फिर से चलाता है। ड्राफ़्ट और पुराने प्रश्न छोड़ दिए जाते हैं।",
   "qualityPage.evaluation.dialogDescription_one": "आपके {{count}} सक्रिय संदर्भ प्रश्न को बैकग्राउंड में फिर से चलाता है। ड्राफ़्ट और पुराने प्रश्न छोड़ दिए जाते हैं।",
   "qualityPage.evaluation.dialogDescription_other": "आपके {{count}} सक्रिय संदर्भ प्रश्नों को बैकग्राउंड में फिर से चलाता है। ड्राफ़्ट और पुराने प्रश्न छोड़ दिए जाते हैं।",
   "qualityPage.evaluation.dialogTitle": "गुणवत्ता मूल्यांकन चलाएँ",

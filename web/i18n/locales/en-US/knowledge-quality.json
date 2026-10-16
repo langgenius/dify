@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Edit golden question",
   "qualityPage.evaluation.back": "Back to runs",
   "qualityPage.evaluation.createdAt": "Created",
+  "qualityPage.evaluation.dialogDescriptionPending": "Replays every active golden question in the background. Drafts and stale questions are skipped.",
   "qualityPage.evaluation.dialogDescription_one": "Replays your {{count}} active golden question in the background. Drafts and stale questions are skipped.",
   "qualityPage.evaluation.dialogDescription_other": "Replays your {{count}} active golden questions in the background. Drafts and stale questions are skipped.",
   "qualityPage.evaluation.dialogTitle": "Run quality evaluation",

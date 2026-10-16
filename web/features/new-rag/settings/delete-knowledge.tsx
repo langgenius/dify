@@ -83,6 +83,8 @@ export function DeleteKnowledgeAction() {
       <AlertDialog
         open={open}
         onOpenChange={(nextOpen) => {
+          // The pending deletion redirects when it settles; keep it modal until then.
+          if (!nextOpen && mutation.isPending) return
           setOpen(nextOpen)
           if (!nextOpen) setConfirmation('')
         }}
@@ -112,7 +114,7 @@ export function DeleteKnowledgeAction() {
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancelButton ref={cancelRef}>
+            <AlertDialogCancelButton ref={cancelRef} disabled={mutation.isPending}>
               {tCommon(($) => $['operation.cancel'])}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton

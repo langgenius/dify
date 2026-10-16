@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Editar pregunta de referencia",
   "qualityPage.evaluation.back": "Volver a las ejecuciones",
   "qualityPage.evaluation.createdAt": "Creado",
+  "qualityPage.evaluation.dialogDescriptionPending": "Vuelve a ejecutar todas tus preguntas de referencia activas en segundo plano. Se omiten los borradores y las preguntas obsoletas.",
   "qualityPage.evaluation.dialogDescription_one": "Vuelve a ejecutar tu {{count}} pregunta de referencia activa en segundo plano. Se omiten los borradores y las preguntas obsoletas.",
   "qualityPage.evaluation.dialogDescription_other": "Vuelve a ejecutar tus {{count}} preguntas de referencia activas en segundo plano. Se omiten los borradores y las preguntas obsoletas.",
   "qualityPage.evaluation.dialogTitle": "Ejecutar evaluación de calidad",

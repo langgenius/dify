@@ -15,7 +15,13 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -30,7 +36,7 @@ type ReplayState = KnowledgeFsQualityReplayResponse['state']
 type ReplayItem = KnowledgeFsQualityReplayResponse['items'][number]
 
 const pageSize = 20
-const activeQuestionCountLimit = 100
+const goldenQuestionPageSize = 100
 const replayRefreshInterval = 1000
 const activeReplayStates = new Set<ReplayState>(['queued', 'running'])
 
@@ -455,17 +461,42 @@ function RunEvaluationDialog({
 
   return (
     <Dialog open={canEdit && open} onOpenChange={onOpenChange}>
-      {canEdit && open && (
-        <RunEvaluationDialogContent
-          onClose={() => onOpenChange(false)}
-          onRunStarted={onRunStarted}
-        />
-      )}
+      <DialogContent className="w-120! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
+        <RunEvaluationForm onClose={() => onOpenChange(false)} onRunStarted={onRunStarted} />
+      </DialogContent>
     </Dialog>
   )
 }
 
-function RunEvaluationDialogContent({
+// The run evaluates every active question, so count across all pages before describing it.
+function useActiveGoldenQuestionCount(knowledgeSpaceId: string) {
+  const queryClient = useQueryClient()
+  const pageOptions = (cursor?: string) =>
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { limit: goldenQuestionPageSize, ...(cursor ? { cursor } : {}) },
+      },
+    })
+
+  return useQuery(
+    queryOptions({
+      queryKey: [...pageOptions().queryKey, 'active-count'],
+      queryFn: async () => {
+        let count = 0
+        let cursor: string | undefined
+        do {
+          const page = await queryClient.fetchQuery(pageOptions(cursor))
+          count += page.data.filter((question) => question.status === 'active').length
+          cursor = page.next_cursor ?? undefined
+        } while (cursor)
+        return count
+      },
+    }),
+  )
+}
+
+function RunEvaluationForm({
   onClose,
   onRunStarted,
 }: {
@@ -477,19 +508,10 @@ function RunEvaluationDialogContent({
   const knowledgeSpaceId = space.control_space_id
   const queryClient = useQueryClient()
   const [mode, setMode] = useState<RetrievalMode>('fast')
-  const goldenQuestionsQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.queryOptions({
-      input: {
-        params: { control_space_id: knowledgeSpaceId },
-        query: { limit: activeQuestionCountLimit },
-      },
-    }),
-  )
+  const activeCountQuery = useActiveGoldenQuestionCount(knowledgeSpaceId)
   const createMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions(),
   )
-  const activeGoldenQuestionCount =
-    goldenQuestionsQuery.data?.data.filter((question) => question.status === 'active').length ?? 0
 
   const startEvaluation = async () => {
     try {
@@ -524,57 +546,59 @@ function RunEvaluationDialogContent({
   }
 
   return (
-    <DialogContent className="w-120! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          void startEvaluation()
-        }}
-      >
-        <div className="relative px-6 pt-6">
-          <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
-            {t(($) => $['qualityPage.evaluation.dialogTitle'], { ns: 'knowledgeQuality' })}
-          </DialogTitle>
-          <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
-            {t(($) => $['qualityPage.evaluation.dialogDescription'], {
-              ns: 'knowledgeQuality',
-              count: activeGoldenQuestionCount,
-            })}
-          </DialogDescription>
-          <DialogClose
-            render={
-              <IconButton
-                size="lg"
-                aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-5" />
-              </IconButton>
-            }
-          />
-        </div>
-        <div className="px-6 py-3">
-          <p className="system-xs-medium text-text-secondary">
-            {t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
-          </p>
-          <RetrievalModeSegmentedControl
-            aria-label={t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
-            appearance="composer"
-            className="mt-2 w-full min-w-0"
-            value={mode}
-            onChange={setMode}
-          />
-        </div>
-        <div className="flex justify-end gap-2 px-6 py-4">
-          <Button type="button" disabled={createMutation.isPending} onClick={onClose}>
-            {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
-          </Button>
-          <Button type="submit" variant="primary" loading={createMutation.isPending}>
-            {t(($) => $['qualityPage.evaluation.start'], { ns: 'knowledgeQuality' })}
-          </Button>
-        </div>
-      </form>
-    </DialogContent>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void startEvaluation()
+      }}
+    >
+      <div className="relative px-6 pt-6">
+        <DialogTitle className="system-lg-semibold pr-10 text-text-primary">
+          {t(($) => $['qualityPage.evaluation.dialogTitle'], { ns: 'knowledgeQuality' })}
+        </DialogTitle>
+        <DialogDescription className="mt-2 pr-8 system-sm-regular text-text-tertiary">
+          {activeCountQuery.isSuccess
+            ? t(($) => $['qualityPage.evaluation.dialogDescription'], {
+                ns: 'knowledgeQuality',
+                count: activeCountQuery.data,
+              })
+            : t(($) => $['qualityPage.evaluation.dialogDescriptionPending'], {
+                ns: 'knowledgeQuality',
+              })}
+        </DialogDescription>
+        <DialogClose
+          render={
+            <IconButton
+              size="lg"
+              aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-5" />
+            </IconButton>
+          }
+        />
+      </div>
+      <div className="px-6 py-3">
+        <p className="system-xs-medium text-text-secondary">
+          {t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
+        </p>
+        <RetrievalModeSegmentedControl
+          aria-label={t(($) => $['qualityPage.evaluation.modeLabel'], { ns: 'knowledgeQuality' })}
+          appearance="composer"
+          className="mt-2 w-full min-w-0"
+          value={mode}
+          onChange={setMode}
+        />
+      </div>
+      <div className="flex justify-end gap-2 px-6 py-4">
+        <Button type="button" disabled={createMutation.isPending} onClick={onClose}>
+          {t(($) => $['qualityPage.cancel'], { ns: 'knowledgeQuality' })}
+        </Button>
+        <Button type="submit" variant="primary" loading={createMutation.isPending}>
+          {t(($) => $['qualityPage.evaluation.start'], { ns: 'knowledgeQuality' })}
+        </Button>
+      </div>
+    </form>
   )
 }
 

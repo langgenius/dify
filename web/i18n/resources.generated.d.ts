@@ -3012,6 +3012,7 @@ export default interface Resources {
     documentRevisionMissingDescription: "This document doesn't have a ready revision yet. Check back after processing finishes."
     documentRevisionMissingTitle: 'No revision available'
     documentRevisionsLoadError: "We couldn't load revision history. The current revision remains available."
+    documentSelectionLimit: 'Select up to {{max}} documents to re-index or remove.'
     documentSummary: 'Summary'
     'documentUploadExclusion.more': 'and {{count}} more'
     documentUploadIncomplete: '{{completed}} files added; {{remaining}} not added. {{reason}}'
@@ -3023,6 +3024,7 @@ export default interface Resources {
     documentsPermissionTitle: 'Documents are restricted'
     documentsReindexFailed: "We couldn't start re-indexing. Try again."
     documentsReindexStarted: 'Re-indexing started.'
+    documentsRemovePartial: "{{removed}} documents removed; {{rejected}} couldn't be removed and stay selected."
     downloadDocuments: 'Download'
     dropFilesHere: 'Drop files here'
     emptyChunk: 'Empty chunk'
@@ -3222,6 +3224,7 @@ export default interface Resources {
     'qualityPage.evaluation.dialogDescription':
       | 'Replays your {{count}} active golden question in the background. Drafts and stale questions are skipped.'
       | 'Replays your {{count}} active golden questions in the background. Drafts and stale questions are skipped.'
+    'qualityPage.evaluation.dialogDescriptionPending': 'Replays every active golden question in the background. Drafts and stale questions are skipped.'
     'qualityPage.evaluation.dialogTitle': 'Run quality evaluation'
     'qualityPage.evaluation.duration': 'Duration'
     'qualityPage.evaluation.emptyDescription': 'Replay every active golden question against the current retrieval profile to see which expected evidence is still found.'

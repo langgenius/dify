@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "تعديل السؤال المرجعي",
   "qualityPage.evaluation.back": "العودة إلى عمليات التشغيل",
   "qualityPage.evaluation.createdAt": "تاريخ الإنشاء",
+  "qualityPage.evaluation.dialogDescriptionPending": "يعيد تشغيل جميع الأسئلة المرجعية النشطة في الخلفية. يتم تخطي المسودات والأسئلة القديمة.",
   "qualityPage.evaluation.dialogDescription_one": "يعيد تشغيل {{count}} سؤال مرجعي نشط في الخلفية. يتم تخطي المسودات والأسئلة القديمة.",
   "qualityPage.evaluation.dialogDescription_other": "يعيد تشغيل {{count}} من الأسئلة المرجعية النشطة في الخلفية. يتم تخطي المسودات والأسئلة القديمة.",
   "qualityPage.evaluation.dialogTitle": "تشغيل تقييم الجودة",

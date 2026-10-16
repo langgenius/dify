@@ -27,6 +27,7 @@
   "qualityPage.editTitle": "Edit pertanyaan referensi",
   "qualityPage.evaluation.back": "Kembali ke proses",
   "qualityPage.evaluation.createdAt": "Dibuat",
+  "qualityPage.evaluation.dialogDescriptionPending": "Menjalankan ulang semua pertanyaan referensi aktif Anda di latar belakang. Draf dan pertanyaan usang dilewati.",
   "qualityPage.evaluation.dialogDescription_one": "Menjalankan ulang {{count}} pertanyaan referensi aktif Anda di latar belakang. Draf dan pertanyaan usang dilewati.",
   "qualityPage.evaluation.dialogDescription_other": "Menjalankan ulang {{count}} pertanyaan referensi aktif Anda di latar belakang. Draf dan pertanyaan usang dilewati.",
   "qualityPage.evaluation.dialogTitle": "Jalankan evaluasi kualitas",
