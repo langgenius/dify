@@ -94,27 +94,28 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   // Invalidation hooks
   const queryClient = useQueryClient()
-  const invalidDocumentList = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-        input: { params: { dataset_id: datasetId } },
+  const invalidDocumentList = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+          input: { params: { dataset_id: datasetId } },
+        }),
       }),
-    })
-  const invalidDocumentDetail = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
-    })
+    [queryClient, datasetId],
+  )
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
 
   const handleUpdate = useCallback(() => {
     invalidDocumentList()
-    invalidDocumentDetail()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+    })
     setTimeout(() => {
       invalidChunkList()
       invalidChildChunkList()
     }, 5000)
-  }, [invalidDocumentList, invalidDocumentDetail, invalidChunkList, invalidChildChunkList])
+  }, [queryClient, invalidDocumentList, invalidChunkList, invalidChildChunkList])
 
   // Metadata editing hook
   const {
