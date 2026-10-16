@@ -1,3 +1,7 @@
+import type {
+  AppMode,
+  TraceProviderCapabilitiesResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
@@ -20,12 +24,25 @@ const langfuseConfig = {
   host: 'https://cloud.langfuse.com',
 }
 
+const capabilities: TraceProviderCapabilitiesResponse = {
+  provider: 'langfuse',
+  agent_spans: true,
+  session: true,
+  native_usage: true,
+  native_cost: true,
+  trace_url: true,
+  span_url: false,
+  api_collection_enabled: true,
+  export_ack: 'accepted',
+}
+
 function mockServer(configured = true) {
   let status = { enabled: configured, tracing_provider: configured ? 'langfuse' : null }
   let config: Record<string, unknown> | null = configured ? langfuseConfig : null
   const writes: Array<{ method: string; body: unknown }> = []
   request.mockImplementation(async (_url, _init, { request: sent }) => {
     const url = new URL(sent.url)
+    if (url.pathname.endsWith('/trace-capabilities')) return Response.json(capabilities)
     if (url.pathname.endsWith('/trace')) {
       if (sent.method === 'POST') {
         status = await sent.json()
@@ -54,21 +71,28 @@ function mockServer(configured = true) {
   return writes
 }
 
-function renderPanel(readOnly = false, searchParams = '') {
+function renderPanel(readOnly = false, searchParams = '', mode: AppMode = 'chat') {
   const client = createTestQueryClient()
   const QueryWrapper = createQueryClientWrapper(client)
   const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({
     searchParams,
     hasMemory: true,
   })
-  const view = render(<Panel resource={{ kind: 'app', appId: 'app-1' }} readOnly={readOnly} />, {
-    wrapper: ({ children }) => (
-      <QueryWrapper>
-        <NuqsWrapper>{children}</NuqsWrapper>
-      </QueryWrapper>
-    ),
-  })
+  const view = render(
+    <Panel resource={{ kind: 'app', appId: 'app-1', mode }} readOnly={readOnly} />,
+    {
+      wrapper: ({ children }) => (
+        <QueryWrapper>
+          <NuqsWrapper>{children}</NuqsWrapper>
+        </QueryWrapper>
+      ),
+    },
+  )
   return { ...view, client, onUrlUpdate }
+}
+
+async function expandCapture(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: /app\.tracing\.captureTitle/ }))
 }
 
 async function openConfiguredPanel() {
@@ -81,6 +105,295 @@ async function openConfiguredPanel() {
 describe('Tracing overview panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it.each(['workflow', 'advanced-chat'] as const)(
+    'reads and saves %s capture policy through the owning App',
+    async (mode) => {
+      const writes = mockServer()
+      const { client } = renderPanel(false, '', mode)
+      const user = await openConfiguredPanel()
+      await expandCapture(user)
+      const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+      const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
+      expect(content).not.toBeChecked()
+      expect(agent).toBeChecked()
+      expect(screen.getByRole('group', { name: 'app.tracing.captureTitle' })).toContainElement(
+        content,
+      )
+      expect(content).toHaveAccessibleDescription('app.tracing.captureContentDescription')
+      await user.click(content)
+      await waitFor(() => expect(client.isMutating()).toBe(0))
+      await user.click(agent)
+      await waitFor(() => expect(client.isMutating()).toBe(0))
+      expect(writes).toEqual([
+        {
+          method: 'POST',
+          body: {
+            enabled: true,
+            tracing_provider: 'langfuse',
+            capture_content: true,
+            capture_agent: true,
+          },
+        },
+        {
+          method: 'POST',
+          body: {
+            enabled: true,
+            tracing_provider: 'langfuse',
+            capture_content: true,
+            capture_agent: false,
+          },
+        },
+      ])
+      expect(
+        client.getQueryData(
+          consoleQuery.apps.byAppId.trace.get.queryKey({
+            input: { params: { app_id: 'app-1' } },
+          }),
+        ),
+      ).toMatchObject({ capture_content: true, capture_agent: false })
+      expect(
+        request.mock.calls.every(([, , { request: sent }]) =>
+          new URL(sent.url).pathname.includes('/apps/app-1/'),
+        ),
+      ).toBe(true)
+    },
+  )
+
+  it.each(['chat', 'completion', 'agent-chat'] as const)(
+    'does not expose Agent capture policy for %s apps',
+    async (mode) => {
+      mockServer()
+      renderPanel(false, '', mode)
+      await openConfiguredPanel()
+      expect(
+        screen.queryByRole('switch', { name: 'app.tracing.captureContent' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('switch', { name: 'app.tracing.captureAgent' }),
+      ).not.toBeInTheDocument()
+      expect(
+        request.mock.calls.some(([, , { request: sent }]) =>
+          new URL(sent.url).pathname.endsWith('/trace-capabilities'),
+        ),
+      ).toBe(false)
+    },
+  )
+
+  it('keeps Workflow capture policy read-only without fetching provider credentials', async () => {
+    const writes = mockServer()
+    renderPanel(true, '', 'workflow')
+    const user = await openConfiguredPanel()
+    await expandCapture(user)
+    const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+    const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
+    await user.click(content)
+    await user.click(agent)
+    expect(content).not.toBeChecked()
+    expect(agent).toBeChecked()
+    expect(writes).toEqual([])
+    expect(
+      request.mock.calls.some(([, , { request: sent }]) =>
+        new URL(sent.url).pathname.endsWith('/trace-config'),
+      ),
+    ).toBe(false)
+  })
+
+  it('serializes Workflow capture changes and restores the last saved policy on failure', async () => {
+    const writes = mockServer()
+    const server = request.getMockImplementation()!
+    const saves: Array<{ complete: (fail?: boolean) => void }> = []
+    request.mockImplementation(async (...args) => {
+      const sent = args[2].request
+      if (sent.method === 'POST' && new URL(sent.url).pathname.endsWith('/trace'))
+        await new Promise<void>((resolve, reject) => {
+          saves.push({
+            complete: (fail) => (fail ? reject(new Error('Policy unavailable')) : resolve()),
+          })
+        })
+      return server(...args)
+    })
+    const { client } = renderPanel(false, '', 'workflow')
+    const user = await openConfiguredPanel()
+    await expandCapture(user)
+    const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+    const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
+    await user.click(content)
+    await user.click(agent)
+    expect(content).toBeChecked()
+    expect(agent).not.toBeChecked()
+    expect(saves).toHaveLength(1)
+    await act(() => saves[0]!.complete())
+    await waitFor(() => expect(saves).toHaveLength(2))
+    expect(content).toBeChecked()
+    expect(agent).not.toBeChecked()
+    await act(() => saves[1]!.complete(true))
+    await waitFor(() => expect(client.isMutating()).toBe(0))
+    expect(content).toBeChecked()
+    expect(agent).toBeChecked()
+    expect(screen.getByRole('alert')).toHaveTextContent('Policy unavailable')
+    expect(writes).toHaveLength(1)
+    await user.click(agent)
+    await waitFor(() => expect(saves).toHaveLength(3))
+    await act(() => saves[2]!.complete())
+    await waitFor(() => expect(client.isMutating()).toBe(0))
+    expect(agent).not.toBeChecked()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('retries Workflow capabilities without blocking capture policy changes', async () => {
+    const writes = mockServer()
+    const server = request.getMockImplementation()!
+    let failCapabilities = true
+    request.mockImplementation(async (...args) => {
+      if (failCapabilities && new URL(args[2].request.url).pathname.endsWith('/trace-capabilities'))
+        throw new Error('Capabilities unavailable')
+      return server(...args)
+    })
+    const { client } = renderPanel(false, '', 'workflow')
+    const user = await openConfiguredPanel()
+    await expandCapture(user)
+    expect(await screen.findByRole('alert')).toHaveTextContent('app.tracing.capabilitiesLoadFailed')
+    await user.click(screen.getByRole('switch', { name: 'app.tracing.captureContent' }))
+    await waitFor(() => expect(client.isMutating()).toBe(0))
+    expect(writes).toHaveLength(1)
+    failCapabilities = false
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    expect(
+      await screen.findByRole('button', { name: /app\.tracing\.capabilities/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('keeps Workflow capture settings collapsed until they are opened', async () => {
+    mockServer()
+    renderPanel(false, '', 'workflow')
+    const user = await openConfiguredPanel()
+    const disclosure = await screen.findByRole('button', { name: 'app.tracing.captureTitle' })
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByRole('switch', { name: 'app.tracing.captureContent' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(disclosure)
+
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('group', { name: 'app.tracing.captureTitle' })).toContainElement(
+      screen.getByRole('switch', { name: 'app.tracing.captureContent' }),
+    )
+  })
+
+  it('requests the selected provider capabilities once the user aims at the trigger', async () => {
+    mockServer()
+    renderPanel(false, '', 'workflow')
+    const user = userEvent.setup()
+    const trigger = await screen.findByRole('button', { name: /app\.tracing\.enabled/ })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    const capabilityRequests = () =>
+      request.mock.calls.filter(([, , { request: sent }]) =>
+        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
+      ).length
+    expect(capabilityRequests()).toBe(0)
+
+    await user.hover(trigger)
+    await waitFor(() => expect(capabilityRequests()).toBe(1))
+    await user.click(trigger)
+
+    expect(
+      await within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' })).findByRole(
+        'button',
+        { name: /app\.tracing\.capabilities/ },
+      ),
+    ).toBeInTheDocument()
+    expect(capabilityRequests()).toBe(1)
+  })
+
+  it('does not request capabilities on hover for apps outside the Agent trace pipeline', async () => {
+    mockServer()
+    renderPanel(false, '', 'chat')
+    const trigger = await screen.findByRole('button', { name: /app\.tracing\.enabled/ })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    await userEvent.setup().hover(trigger)
+    expect(
+      request.mock.calls.some(([, , { request: sent }]) =>
+        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
+      ),
+    ).toBe(false)
+  })
+
+  it('keeps provider capabilities collapsed behind a summary on the selected provider', async () => {
+    mockServer()
+    renderPanel(false, '', 'workflow')
+    const user = await openConfiguredPanel()
+    const card = within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' }))
+    const disclosure = await card.findByRole('button', { name: /app\.tracing\.capabilities/ })
+    expect(disclosure).toHaveAccessibleName(
+      'app.tracing.capabilities app.tracing.capabilitySummary.unsupported:{"count":1}',
+    )
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('app.tracing.capability.span_url')).not.toBeInTheDocument()
+
+    await user.click(disclosure)
+
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
+    expect(card.getByText('app.tracing.capability.span_url').nextElementSibling).toHaveTextContent(
+      'app.tracing.unsupported',
+    )
+    expect(screen.queryByText(/app\.tracing\.agentSpansUnsupported/)).not.toBeInTheDocument()
+  })
+
+  it('warns on the selected provider card when it cannot export full Agent traces', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (...args) => {
+      if (new URL(args[2].request.url).pathname.endsWith('/trace-capabilities'))
+        return Response.json({ ...capabilities, agent_spans: false })
+      return server(...args)
+    })
+    renderPanel(false, '', 'workflow')
+    await openConfiguredPanel()
+
+    expect(
+      await within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' })).findByText(
+        'app.tracing.agentSpansUnsupported:{"provider":"app.tracing.langfuse.title"}',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('replaces Agent capture settings and provider support with one note when Agent tracing is unavailable', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (...args) => {
+      if (new URL(args[2].request.url).pathname.endsWith('/trace-capabilities'))
+        return Response.json({ ...capabilities, api_collection_enabled: false })
+      return server(...args)
+    })
+    renderPanel(false, '', 'workflow')
+    await openConfiguredPanel()
+
+    expect(await screen.findByRole('note')).toHaveTextContent('app.tracing.agentTracingUnavailable')
+    expect(
+      screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /app\.tracing\.capabilities/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+  })
+
+  it('does not query capabilities before a Workflow provider is selected', async () => {
+    mockServer(false)
+    renderPanel(false, 'tracing=configure', 'workflow')
+    await expandCapture(userEvent.setup())
+    expect(
+      await screen.findByRole('switch', { name: 'app.tracing.captureContent' }),
+    ).not.toBeChecked()
+    expect(
+      request.mock.calls.some(([, , { request: sent }]) =>
+        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
+      ),
+    ).toBe(false)
   })
 
   it('shows a loading placeholder instead of an unconfigured trigger before status is known', () => {
@@ -300,7 +613,7 @@ describe('Tracing overview panel', () => {
     expect(screen.getByRole('dialog', { name: 'app.tracing.tracing' })).toHaveAccessibleDescription(
       'app.tracing.tracingDescription',
     )
-    expect(screen.getByText('app.tracing.langfuse.title')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'app.tracing.langfuse.title' })).toBeInTheDocument()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-readonly', 'true')
     expect(screen.getByRole('switch')).toHaveAccessibleDescription('app.tracing.readOnly')
     expect(screen.queryByText('app.tracing.config')).not.toBeInTheDocument()
@@ -572,7 +885,7 @@ describe('Tracing overview panel', () => {
       ),
     )
     expect(host).toHaveValue('https://draft.langfuse.com')
-    rerender(<Panel resource={{ kind: 'app', appId: 'app-2' }} readOnly={false} />)
+    rerender(<Panel resource={{ kind: 'app', appId: 'app-2', mode: 'chat' }} readOnly={false} />)
     await waitFor(() =>
       expect(screen.queryByRole('textbox', { name: 'Host' })).not.toBeInTheDocument(),
     )

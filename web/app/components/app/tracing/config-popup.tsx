@@ -3,7 +3,7 @@ import type {
   AppTracePayload,
   AppTraceResponse,
   TraceAppConfigResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { ProviderConfigError } from './provider-panel'
 import type { ConfigurableTracingProvider } from './providers'
@@ -16,14 +16,17 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useIsMutating } from '@tanstack/react-query'
+import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
-import { AgentTracePolicy } from './agent-trace-policy'
+import { traceCapabilitiesQueryOptions } from './capabilities'
 import { ProviderConfigModal } from './provider-config-modal'
 import { ProviderPanel } from './provider-panel'
 import { configurableProviders, hasProviderForm } from './providers'
+import { usesAgentTracePipeline } from './resource'
+import { TracePolicy } from './trace-policy'
 import { TracingIcon } from './tracing-icon'
 
 type ConfigPopupProps = {
@@ -69,6 +72,15 @@ export function ConfigPopup({
           ? consoleQuery.agent.byAgentId.traceConfig.key({ type: 'mutation' })
           : consoleQuery.apps.byAppId.traceConfig.key({ type: 'mutation' }),
     }) > 0
+  // Shares the query the selected provider card shows; it also says whether this deployment runs Agent tracing.
+  const capabilities = useQuery(
+    traceCapabilitiesQueryOptions(
+      resource,
+      usesAgentTracePipeline(resource) ? (chosenProvider ?? null) : null,
+    ),
+  )
+  const agentTracingUnavailable =
+    usesAgentTracePipeline(resource) && capabilities.data?.api_collection_enabled === false
   const groups = [
     configurableProviders.filter((provider) => !!configs[provider]),
     configurableProviders.filter((provider) => !configs[provider]),
@@ -141,21 +153,48 @@ export function ConfigPopup({
                 {policyError}
               </p>
             )}
-            {resource.kind === 'agent' && (
-              <AgentTracePolicy
-                agentId={resource.agentId}
-                policy={policy}
-                readOnly={readOnly}
-                onChange={onPolicyChange}
-              />
-            )}
-            <Separator className="my-3 bg-divider-subtle" />
-            {readOnly ? (
-              <p className="system-sm-regular text-text-secondary">
-                {chosenProvider
-                  ? t(($) => $[`tracing.${chosenProvider}.title`])
-                  : t(($) => $['tracing.configProviderTitle.notConfigured'])}
+            {agentTracingUnavailable ? (
+              // Capture settings and provider support have no effect without Agent tracing.
+              <p
+                role="note"
+                className="my-3 flex gap-1.5 rounded-lg bg-background-section px-2.5 py-2 system-xs-regular text-text-tertiary"
+              >
+                <span aria-hidden className="mt-px i-ri-information-2-line size-3.5 shrink-0" />
+                {t(($) => $['tracing.agentTracingUnavailable'])}
               </p>
+            ) : (
+              <>
+                {usesAgentTracePipeline(resource) && (
+                  <>
+                    <Separator className="my-3 bg-divider-subtle" />
+                    {chosenProvider && capabilities.isPending ? (
+                      <div aria-hidden className="flex h-5 items-center">
+                        <SkeletonRectangle className="my-0 h-2.5 w-24" />
+                      </div>
+                    ) : (
+                      <TracePolicy policy={policy} readOnly={readOnly} onChange={onPolicyChange} />
+                    )}
+                  </>
+                )}
+                <Separator className="my-3 bg-divider-subtle" />
+              </>
+            )}
+            {readOnly ? (
+              chosenProvider ? (
+                <ProviderPanel
+                  resource={resource}
+                  type={chosenProvider}
+                  readOnly
+                  pending={pending}
+                  config={configs[chosenProvider]}
+                  isChosen
+                  onChoose={() => {}}
+                />
+              ) : (
+                <p className="system-sm-regular text-text-secondary">
+                  {t(($) => $['tracing.configProviderTitle.notConfigured'])}
+                </p>
+              )
             ) : (
               <div className="space-y-2">
                 {groups.flatMap((group, index) =>
@@ -175,6 +214,7 @@ export function ConfigPopup({
                         ...group.map((item) => (
                           <ProviderPanel
                             key={item}
+                            resource={resource}
                             type={item}
                             readOnly={readOnly}
                             pending={pending}

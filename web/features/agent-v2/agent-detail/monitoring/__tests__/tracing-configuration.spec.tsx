@@ -33,7 +33,7 @@ const capabilities: TraceProviderCapabilitiesResponse = {
   native_cost: true,
   trace_url: true,
   span_url: false,
-  api_collection_enabled: false,
+  api_collection_enabled: true,
   export_ack: 'accepted',
 }
 
@@ -134,13 +134,16 @@ function setup({
   return { ...view, state, sent, queryClient, detailKey }
 }
 
-async function openPanel(configured = true) {
+async function openPanel(configured = true, { expandCapture = true } = {}) {
   const user = userEvent.setup()
   const trigger = await screen.findByRole('button', {
     name: configured ? /app.tracing.enabled/ : 'app.tracing.title',
   })
   await waitFor(() => expect(trigger).toBeEnabled())
   await user.click(trigger)
+  // Capture settings stay collapsed until opened.
+  if (expandCapture)
+    await user.click(await screen.findByRole('button', { name: /app\.tracing\.captureTitle/ }))
   return user
 }
 async function openProvider(user: ReturnType<typeof userEvent.setup>) {
@@ -182,7 +185,9 @@ describe('Agent tracing configuration', () => {
   it('shows policy and capabilities to Monitor-only users without requesting credentials', async () => {
     const { sent } = setup({ permissions: [AgentPermission.Monitor] })
     const user = await openPanel()
-    expect(await screen.findByText('app.tracing.apiCollectionDisabled')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /app\.tracing\.capabilities/ }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'app.tracing.captureContent' })).toHaveAttribute(
       'aria-readonly',
       'true',
@@ -201,22 +206,17 @@ describe('Agent tracing configuration', () => {
     expect(writes(sent)).toHaveLength(0)
   })
 
-  it('explains both capture settings on demand without changing the policy', async () => {
+  it('shows what each capture setting sends as its visible description', async () => {
     const { sent } = setup()
-    const user = await openPanel()
+    await openPanel()
     for (const setting of ['captureContent', 'captureAgent']) {
-      expect(
-        screen.getByRole('switch', { name: `app.tracing.${setting}` }),
-      ).toHaveAccessibleDescription(`app.tracing.${setting}Description`)
-      expect(
-        screen.queryByRole('dialog', { name: `app.tracing.${setting}` }),
-      ).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: `app.tracing.${setting}` }))
-      const explanation = await screen.findByRole('dialog', { name: `app.tracing.${setting}` })
-      expect(within(explanation).getByText(`app.tracing.${setting}Description`)).toBeVisible()
-      await user.keyboard('{Escape}')
-      await waitFor(() => expect(explanation).not.toBeInTheDocument())
+      const control = screen.getByRole('switch', { name: `app.tracing.${setting}` })
+      expect(control).toHaveAccessibleDescription(`app.tracing.${setting}Description`)
+      expect(screen.getByText(`app.tracing.${setting}Description`)).toBeVisible()
     }
+    expect(
+      screen.queryByRole('button', { name: 'app.tracing.captureContent' }),
+    ).not.toBeInTheDocument()
     expect(writes(sent)).toHaveLength(0)
   })
 
@@ -491,14 +491,18 @@ describe('Agent tracing configuration', () => {
     })
   })
 
-  it('refreshes capabilities after updating masked credentials without claiming runtime health', async () => {
+  it('refreshes capabilities after updating masked credentials', async () => {
     const { state, sent } = setup()
-    const user = await openPanel()
-    await screen.findByText('app.tracing.apiCollectionDisabled')
+    state.capabilities.api_collection_enabled = false
+    const user = await openPanel(true, { expandCapture: false })
+    await screen.findByText('app.tracing.agentTracingUnavailable')
     await openProvider(user)
     state.capabilities.api_collection_enabled = true
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(await screen.findByText('app.tracing.runtimeUnverified')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /app\.tracing\.captureTitle/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('app.tracing.agentTracingUnavailable')).not.toBeInTheDocument()
     const patch = writes(sent).find((req) => req.method === 'PATCH')!
     expect(await patch.json()).toEqual({ tracing_provider: 'langfuse', tracing_config: langfuse })
     expect(
@@ -510,7 +514,7 @@ describe('Agent tracing configuration', () => {
     const { state } = setup()
     state.failCapabilities = true
     const user = await openPanel()
-    expect(await screen.findByRole('alert')).toHaveTextContent('Capabilities unavailable')
+    expect(await screen.findByRole('alert')).toHaveTextContent('app.tracing.capabilitiesLoadFailed')
     expect(
       within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' })).getByRole(
         'button',
@@ -519,7 +523,9 @@ describe('Agent tracing configuration', () => {
     ).toBeEnabled()
     state.failCapabilities = false
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
-    expect(await screen.findByText('app.tracing.apiCollectionDisabled')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: /app\.tracing\.capabilities/ }),
+    ).toBeInTheDocument()
   })
 
   it('closes credential editing when Edit permission is revoked', async () => {

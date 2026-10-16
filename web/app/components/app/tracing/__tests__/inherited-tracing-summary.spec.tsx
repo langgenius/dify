@@ -73,7 +73,10 @@ function setup({
       return Response.json(providerCapabilities)
     throw new Error(`Unexpected request ${req.method} ${url.pathname}`)
   })
-  render(<InheritedTracingSummary appId="workflow-1" />, { wrapper })
+  render(
+    <InheritedTracingSummary resource={{ kind: 'app', appId: 'workflow-1', mode: 'workflow' }} />,
+    { wrapper },
+  )
   return { sent, state, queryClient }
 }
 
@@ -160,7 +163,7 @@ describe('InheritedTracingSummary', () => {
     setup({ providerCapabilities: { ...capabilities, agent_spans: false } })
     expect(
       await screen.findByText(
-        'app.tracing.inherited.agentSpansUnsupported:{"provider":"app.tracing.langfuse.title"}',
+        'app.tracing.agentSpansUnsupported:{"provider":"app.tracing.langfuse.title"}',
       ),
     ).toBeInTheDocument()
   })
@@ -186,6 +189,17 @@ describe('InheritedTracingSummary', () => {
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText('app.tracing.inherited.loadFailed')).not.toBeInTheDocument()
+  })
+
+  it('drops the capture policy and says why when Agent tracing is unavailable', async () => {
+    const user = userEvent.setup()
+    setup({ providerCapabilities: { ...capabilities, api_collection_enabled: false } })
+    expect(await screen.findByText('app.tracing.agentTracingUnavailable')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'app.tracing.inherited.title' }))
+
+    expect(await screen.findByText('app.tracing.inherited.description')).toBeInTheDocument()
+    expect(screen.queryByText('app.tracing.captureContent')).not.toBeInTheDocument()
   })
 
   it('retries a failed status request in place', async () => {
