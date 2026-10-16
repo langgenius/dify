@@ -615,6 +615,14 @@ export const zExternalKnowledgeApiBindingResponse = z.object({
 })
 
 /**
+ * ExternalKnowledgeApiSettingsResponse
+ */
+export const zExternalKnowledgeApiSettingsResponse = z.object({
+  api_key: z.string().nullish(),
+  endpoint: z.string().nullish(),
+})
+
+/**
  * ExternalKnowledgeApiResponse
  */
 export const zExternalKnowledgeApiResponse = z.object({
@@ -624,7 +632,7 @@ export const zExternalKnowledgeApiResponse = z.object({
   description: z.string(),
   id: z.string(),
   name: z.string(),
-  settings: z.record(z.string(), z.unknown()).nullable(),
+  settings: zExternalKnowledgeApiSettingsResponse.nullable(),
   tenant_id: z.string(),
 })
 

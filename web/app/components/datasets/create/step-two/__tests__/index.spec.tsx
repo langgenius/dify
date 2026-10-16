@@ -1,8 +1,4 @@
-import type {
-  GetWorkspacesCurrentModelsModelTypesByModelTypeData,
-  ProviderWithModelsResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
@@ -134,85 +130,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 const mockFetchDefaultProcessRuleMutate = vi.fn()
 const mockResetFileEstimate = vi.fn()
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useFetchDefaultProcessRule: ({
-    onSuccess,
-  }: {
-    onSuccess: (data: {
-      rules: Rules
-      limits: { indexing_max_segmentation_tokens_length: number }
-    }) => void
-  }) => ({
-    mutate: (url: string) => {
-      mockFetchDefaultProcessRuleMutate(url)
-      onSuccess({
-        rules: {
-          segmentation: { separator: '\\n', max_tokens: 500, chunk_overlap: 50 },
-          pre_processing_rules: [
-            { id: 'remove_extra_spaces', enabled: true },
-            { id: 'remove_urls_emails', enabled: false },
-          ],
-          parent_mode: 'paragraph',
-          subchunk_segmentation: { separator: '\\n', max_tokens: 256 },
-        },
-        limits: { indexing_max_segmentation_tokens_length: 4000 },
-      })
-    },
-    isPending: false,
-  }),
-  useFetchFileIndexingEstimateForFile: () => ({
-    mutate: vi.fn(),
-    data: undefined,
-    isIdle: true,
-    isPending: false,
-    reset: mockResetFileEstimate,
-  }),
-  useFetchFileIndexingEstimateForNotion: () => ({
-    mutate: vi.fn(),
-    data: undefined,
-    isIdle: true,
-    isPending: false,
-    reset: vi.fn(),
-  }),
-  useFetchFileIndexingEstimateForWeb: () => ({
-    mutate: vi.fn(),
-    data: undefined,
-    isIdle: true,
-    isPending: false,
-    reset: vi.fn(),
-  }),
-  useCreateFirstDocument: () => ({
-    mutateAsync: vi
-      .fn()
-      .mockImplementation(
-        async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
-          const data = { dataset: { id: 'new-dataset-id' } }
-          options?.onSuccess?.(data)
-          return data
-        },
-      ),
-    isPending: false,
-  }),
-  useCreateDocument: () => ({
-    mutateAsync: vi
-      .fn()
-      .mockImplementation(
-        async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
-          const data = { document: { id: 'new-doc-id' } }
-          options?.onSuccess?.(data)
-          return data
-        },
-      ),
-    isPending: false,
-  }),
-  getNotionInfo: vi
-    .fn()
-    .mockReturnValue([{ workspace_id: 'ws-1', pages: [{ page_id: 'page-1' }] }]),
-  getWebsiteInfo: vi
-    .fn()
-    .mockReturnValue({ provider: 'jinaReader', job_id: 'job-123', urls: ['https://test.com'] }),
-}))
-
 // Mock amplitude tracking (external service)
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -340,7 +257,6 @@ const createMockEstimate = (
   overrides?: Partial<FileIndexingEstimateResponse>,
 ): FileIndexingEstimateResponse => ({
   total_segments: 10,
-  total_nodes: 10,
   tokens: 5000,
   total_price: 0.01,
   currency: 'USD',
@@ -2712,17 +2628,49 @@ describe('StepTwo Component', () => {
 })
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-      return { data: mockEmbeddingModelList }
-    },
-  }
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const createdDocuments = (data: unknown) =>
+    vi.fn(async (_input: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
+      options?.onSuccess?.(data)
+      return data
+    })
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.models.modelTypes.byModelType.get': () => ({
+      data: mockEmbeddingModelList,
+    }),
+    'datasets.processRule.get': (options: { onSuccess?: (data: unknown) => void }) => ({
+      mutate: (input: unknown) => {
+        mockFetchDefaultProcessRuleMutate(input)
+        options.onSuccess?.({
+          mode: 'custom',
+          rules: {
+            segmentation: { separator: '\\n', max_tokens: 500, chunk_overlap: 50 },
+            pre_processing_rules: [
+              { id: 'remove_extra_spaces', enabled: true },
+              { id: 'remove_urls_emails', enabled: false },
+            ],
+            parent_mode: 'paragraph',
+            subchunk_segmentation: { separator: '\\n', max_tokens: 256 },
+          },
+          limits: { indexing_max_segmentation_tokens_length: 4000 },
+        })
+      },
+      isPending: false,
+    }),
+    'datasets.indexingEstimate.post': () => ({
+      mutate: vi.fn(),
+      data: undefined,
+      isIdle: true,
+      isPending: false,
+      reset: mockResetFileEstimate,
+    }),
+    'datasets.init.post': () => ({
+      mutateAsync: createdDocuments({ dataset: { id: 'new-dataset-id' } }),
+      isPending: false,
+    }),
+    'datasets.byDatasetId.documents.post': () => ({
+      mutateAsync: createdDocuments({ document: { id: 'new-doc-id' } }),
+      isPending: false,
+    }),
+  })
 })

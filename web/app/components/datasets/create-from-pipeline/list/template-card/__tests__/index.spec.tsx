@@ -114,15 +114,10 @@ const mockHandleCheckPluginDependencies = vi.fn()
 // Configurable isPending for export
 let mockIsExporting = false
 
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDatasetFromCustomized: () => ({
-    mutateAsync: mockCreateDataset,
-  }),
-}))
-
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.dataset.post': () => ({ mutateAsync: mockCreateDataset }),
     'rag.pipeline.templates.byTemplateId.get': () => ({
       data: {
         name: 'Test Pipeline',

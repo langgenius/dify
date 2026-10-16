@@ -197,9 +197,7 @@ export type ExternalKnowledgeApiResponse = {
   description: string
   id: string
   name: string
-  settings: {
-    [key: string]: unknown
-  } | null
+  settings: ExternalKnowledgeApiSettingsResponse | null
   tenant_id: string
 }
 
@@ -785,6 +783,11 @@ export type DatasetTagResponse = {
 export type ExternalKnowledgeApiBindingResponse = {
   id: string
   name: string
+}
+
+export type ExternalKnowledgeApiSettingsResponse = {
+  api_key?: string | null
+  endpoint?: string | null
 }
 
 export type PreviewDetail = {

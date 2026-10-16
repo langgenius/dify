@@ -27,7 +27,8 @@ const StepThree = ({
   const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
 
-  const iconInfo = creationCache?.dataset?.icon_info || {
+  // The creation response carries no icon; new knowledge bases start with the default one.
+  const iconInfo = {
     icon: '📙',
     icon_type: 'emoji',
     icon_background: '#FFF4ED',
@@ -75,9 +76,7 @@ const StepThree = ({
             batchId={creationCache?.batch || ''}
             documents={creationCache?.documents}
             indexingType={creationCache?.dataset?.indexing_technique || indexingType}
-            retrievalMethod={
-              creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod
-            }
+            retrievalMethod={retrievalMethod}
           />
         </div>
       </div>

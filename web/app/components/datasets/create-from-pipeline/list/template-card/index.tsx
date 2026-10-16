@@ -19,7 +19,6 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
@@ -46,7 +45,9 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
       select: selectPipelineTemplate,
     }),
   )
-  const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
+  const { mutateAsync: createDataset } = useMutation(
+    consoleQuery.rag.pipeline.dataset.post.mutationOptions(),
+  )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const invalidDatasetList = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
@@ -61,23 +62,26 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
     }
-    await createDataset(request, {
-      onSuccess: async (newDataset) => {
-        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
-        invalidDatasetList()
-        if (newDataset.pipeline_id)
-          await handleCheckPluginDependencies(newDataset.pipeline_id, true)
-        trackEvent('create_datasets_with_pipeline', {
-          template_name: pipeline.name,
-          template_id: pipeline.id,
-          template_type: type,
-        })
-        push(`/datasets/${newDataset.dataset_id}/pipeline`)
+    await createDataset(
+      { body: request },
+      {
+        onSuccess: async (newDataset) => {
+          toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+          invalidDatasetList()
+          if (newDataset.pipeline_id)
+            await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+          trackEvent('create_datasets_with_pipeline', {
+            template_name: pipeline.name,
+            template_id: pipeline.id,
+            template_type: type,
+          })
+          push(`/datasets/${newDataset.dataset_id}/pipeline`)
+        },
+        onError: () => {
+          toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
+        },
       },
-      onError: () => {
-        toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
-      },
-    })
+    )
   }, [
     getPipelineTemplateInfo,
     createDataset,

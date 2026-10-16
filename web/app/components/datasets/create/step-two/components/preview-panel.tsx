@@ -148,8 +148,8 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
             const indexForLabel = index + 1
             const childChunks =
               parentChildConfig.chunkForContext === 'full-doc'
-                ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
-                : item.child_chunks
+                ? (item.child_chunks ?? []).slice(0, FULL_DOC_PREVIEW_LENGTH)
+                : (item.child_chunks ?? [])
             return (
               <ChunkContainer
                 key={item.content}

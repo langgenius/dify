@@ -42,12 +42,16 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: mocks.isReRankModelSelected,
 }))
 
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreateFirstDocument: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
-  useCreateDocument: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
-  getNotionInfo: vi.fn(() => []),
-  getWebsiteInfo: vi.fn(() => ({})),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.init.post': () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
+    'datasets.byDatasetId.documents.post': () => ({
+      mutateAsync: mocks.mutateAsync,
+      isPending: false,
+    }),
+  })
+})
 
 const { useDocumentCreation } = await import('../use-document-creation')
 const { IndexingType } = await import('../use-indexing-config')

@@ -3,19 +3,22 @@ import type {
   ChildChunkResponse,
   ConsoleSegmentListResponse,
   DocumentDetailResponse as ContractDocumentDetailResponse,
+  DocumentResponse as ContractDocumentResponse,
   ErrorDocsResponse as ContractErrorDocsResponse,
+  IndexingEstimateResponse as ContractIndexingEstimateResponse,
   ProcessRuleResponse as ContractProcessRuleResponse,
   RelatedAppResponse as ContractRelatedAppResponse,
+  DatasetAndDocumentResponse,
   DatasetDetailWithPartialMembersResponse,
   DatasetDocMetadataResponse,
   DatasetListResponse,
   DatasetQueryContentResponse,
   DatasetQueryDetailResponse,
-  DocumentStatusListResponse,
   DocumentStatusResponse,
   DocumentWithSegmentsResponse,
   ExternalHitTestingRecordResponse,
   ExternalHitTestingResponse,
+  ExternalKnowledgeApiResponse,
   HitTestingChildChunk as GeneratedHitTestingChildChunk,
   HitTestingResponse as GeneratedHitTestingResponse,
   HitTestingRecord as HitTestingRecordResponse,
@@ -24,9 +27,7 @@ import type {
   RelatedAppListResponse,
   SegmentResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
-import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { AppIconType, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
@@ -72,42 +73,7 @@ export type SummaryIndexSetting = {
 
 export type DataSet = DatasetDetailWithPartialMembersResponse
 
-export type ExternalAPIItem = {
-  id: string
-  tenant_id: string
-  name: string
-  description: string
-  settings: {
-    endpoint: string
-    api_key: string
-  }
-  dataset_bindings: { id: string; name: string }[]
-  created_by: string
-  created_at: string
-}
-
-export type ExternalKnowledgeItem = {
-  id: string
-  name: string
-  description: string | null
-  provider: 'external'
-  permission: DatasetPermission
-  data_source_type: null
-  indexing_technique: null
-  app_count: number
-  document_count: number
-  word_count: number
-  created_by: string
-  created_at: string
-  updated_by: string
-  updated_at: string
-  tags: Tag[]
-}
-
-export type ExternalAPIUsage = {
-  is_using: boolean
-  count: number
-}
+export type ExternalAPIItem = ExternalKnowledgeApiResponse
 
 export type CustomFile = File & {
   id?: string
@@ -177,21 +143,9 @@ export type QA = {
   answer: string
 }
 
-type IndexingEstimateResponse = {
-  tokens: number
-  total_price: number
-  currency: string
-  total_segments: number
-  preview: Array<{ content: string; child_chunks: string[]; summary?: string }>
-  qa_preview?: QA[]
-}
-
-export type FileIndexingEstimateResponse = {
-  total_nodes: number
-} & IndexingEstimateResponse
+export type FileIndexingEstimateResponse = ContractIndexingEstimateResponse
 
 export type IndexingStatusResponse = DocumentStatusResponse
-export type IndexingStatusBatchResponse = DocumentStatusListResponse
 
 export const ProcessMode = {
   general: 'custom',
@@ -308,26 +262,7 @@ export type DataSourceInfo =
   | WebsiteCrawlInfo
   | UploadFileIdInfo
 
-export type InitialDocumentDetail = {
-  id: string
-  batch: string
-  position: number
-  dataset_id: string
-  data_source_type: DataSourceType | DatasourceType
-  data_source_info: DataSourceInfo
-  dataset_process_rule_id: string
-  name: string
-  created_from: 'rag-pipeline' | 'api' | 'web'
-  created_by: string
-  created_at: number
-  indexing_status: DocumentIndexingStatus
-  display_status: DocumentDisplayStatus
-  completed_segments?: number
-  total_segments?: number
-  doc_form: ChunkingMode
-  doc_language: string
-  summary_index_status?: string
-}
+export type InitialDocumentDetail = ContractDocumentResponse
 
 // A document in the dataset document list.
 export type SimpleDocumentDetail = DocumentWithSegmentsResponse
@@ -373,11 +308,7 @@ export type ProcessRule = {
   summary_index_setting?: SummaryIndexSetting
 }
 
-export type createDocumentResponse = {
-  dataset?: DataSet
-  batch: string
-  documents: InitialDocumentDetail[]
-}
+export type createDocumentResponse = DatasetAndDocumentResponse
 
 // A dataset document as the document detail query returns it.
 export type FullDocumentDetail = ContractDocumentDetailResponse

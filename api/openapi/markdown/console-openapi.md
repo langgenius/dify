@@ -21736,8 +21736,15 @@ Flask blueprint initialization.
 | description | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| settings | object |  | Yes |
+| settings | [ExternalKnowledgeApiSettingsResponse](#externalknowledgeapisettingsresponse) |  | Yes |
 | tenant_id | string |  | Yes |
+
+#### ExternalKnowledgeApiSettingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | string |  | No |
+| endpoint | string |  | No |
 
 #### FeatureModel
 

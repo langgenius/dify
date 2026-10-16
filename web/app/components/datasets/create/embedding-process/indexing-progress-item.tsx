@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -15,7 +15,7 @@ type IndexingProgressItemProps = {
   detail: IndexingStatusResponse
   name?: string
   sourceType?: DataSourceType
-  notionIcon?: string
+  notionIcon?: ComponentProps<typeof NotionIcon>['src']
 }
 
 // Status icon component for completed/error states
@@ -54,7 +54,7 @@ const StatusIcon: FC<{ status: string; error?: string }> = ({ status, error }) =
 const SourceTypeIcon: FC<{
   sourceType?: DataSourceType
   name?: string
-  notionIcon?: string
+  notionIcon?: ComponentProps<typeof NotionIcon>['src']
 }> = ({ sourceType, name, notionIcon }) => {
   if (sourceType === DataSourceType.FILE) {
     return (

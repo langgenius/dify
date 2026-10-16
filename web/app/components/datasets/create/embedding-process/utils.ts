@@ -1,10 +1,11 @@
 import type {
   DataSourceInfo,
-  DataSourceType,
   IndexingStatusResponse,
   InitialDocumentDetail,
   LegacyDataSourceInfo,
 } from '@/models/datasets'
+import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
+import { getNotionPageIcon } from '@/app/components/datasets/documents/document-source'
 
 const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
 
@@ -50,13 +51,8 @@ export const createDocumentLookup = (documents: InitialDocumentDetail[]) => {
 
     getName: (id: string) => documentMap.get(id)?.name,
 
-    getSourceType: (id: string) =>
-      documentMap.get(id)?.data_source_type as DataSourceType | undefined,
+    getSourceType: (id: string) => toCreationDataSourceType(documentMap.get(id)?.data_source_type),
 
-    getNotionIcon: (id: string) => {
-      const info = documentMap.get(id)?.data_source_info
-      if (info && isLegacyDataSourceInfo(info)) return info.notion_page_icon
-      return undefined
-    },
+    getNotionIcon: (id: string) => getNotionPageIcon(documentMap.get(id)?.data_source_info, false),
   }
 }

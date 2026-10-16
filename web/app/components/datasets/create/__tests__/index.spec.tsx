@@ -258,7 +258,13 @@ vi.mock('../step-two', () => ({
         </button>
         <button
           data-testid="step-two-update-result-cache"
-          onClick={() => props.updateResultCache!({ batch: 'batch-1', documents: [] })}
+          onClick={() =>
+            props.updateResultCache!({
+              batch: 'batch-1',
+              dataset: { id: 'dataset-1', name: 'Dataset' },
+              documents: [],
+            })
+          }
         >
           Update Result Cache
         </button>

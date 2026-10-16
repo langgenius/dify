@@ -32,11 +32,12 @@ vi.mock('@/app/notifications', async (importOriginal) => {
 
 const mockCreateEmptyDataset = vi.fn()
 
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDataset: () => ({
-    mutateAsync: mockCreateEmptyDataset,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.emptyDataset.post': () => ({ mutateAsync: mockCreateEmptyDataset }),
+  })
+})
 
 // CreateCard Component Tests
 

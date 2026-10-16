@@ -5,6 +5,7 @@ import type { StepTwoProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -20,7 +21,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LanguagesSupported } from '@/i18n/language'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'
-import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
+import { consoleQuery } from '@/service/console'
 import {
   GeneralChunkingOptions,
   IndexingModeSection,
@@ -171,7 +172,8 @@ const StepTwo: FC<StepTwoProps> = ({
   })
 
   // Fetch default process rule
-  const fetchDefaultProcessRuleMutation = useFetchDefaultProcessRule({
+  const fetchDefaultProcessRuleMutation = useMutation({
+    ...consoleQuery.datasets.processRule.get.mutationOptions(),
     onSuccess(data) {
       const defaultRules = data.rules ? toSegmentationRules(data.rules) : undefined
       if (defaultRules) {
@@ -269,7 +271,7 @@ const StepTwo: FC<StepTwoProps> = ({
   // Initialize rules
   useEffect(() => {
     if (!isSetting) {
-      fetchDefaultProcessRuleMutation.mutate()
+      fetchDefaultProcessRuleMutation.mutate({})
     } else if (documentDetail?.dataset_process_rule) {
       const { mode, rules } = documentDetail.dataset_process_rule
       const segmentationRules = rules ? toSegmentationRules(rules) : undefined

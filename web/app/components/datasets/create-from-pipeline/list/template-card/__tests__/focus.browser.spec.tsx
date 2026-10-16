@@ -22,15 +22,13 @@ vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({ handleCheckPluginDependencies: vi.fn() }),
 }))
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDatasetFromCustomized: () => ({ mutateAsync: vi.fn() }),
-}))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
     'rag.pipeline.templates.byTemplateId.get': function useTemplateDetailQuery() {
       return useQuery(templateQueryOptions)
     },
+    'rag.pipeline.dataset.post': () => ({ mutateAsync: vi.fn() }),
     'rag.pipeline.customized.templates.byTemplateId.delete': () => ({ mutateAsync: vi.fn() }),
     'rag.pipeline.customized.templates.byTemplateId.post': () => ({
       mutateAsync: vi.fn(),

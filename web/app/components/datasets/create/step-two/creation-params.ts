@@ -1,36 +1,16 @@
 import type { IndexingEstimatePayload } from '@dify/contracts/api/console/datasets/types.gen'
-import type {
-  PostRagPipelineDatasetData,
-  PostRagPipelineDatasetResponse,
-  PostRagPipelineEmptyDatasetResponse,
-} from '@dify/contracts/api/console/rag/types.gen'
-import type { MutationOptions } from '@tanstack/react-query'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { IndexingType } from './hooks/use-indexing-config'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   ChunkingMode,
   CrawlOptions,
   CrawlResultItem,
-  CreateDocumentReq,
-  createDocumentResponse,
   CustomFile,
   DataSourceType,
-  FileIndexingEstimateResponse,
   NotionInfo,
   ProcessRule,
-  ProcessRuleResponse,
 } from '@/models/datasets'
-import { useMutation } from '@tanstack/react-query'
 import { groupBy } from 'es-toolkit/compat'
-import { consoleClient } from '../console'
-import {
-  createDocument,
-  createFirstDocument,
-  fetchDefaultProcessRule,
-  fetchFileIndexingEstimate,
-} from '../datasets'
-
-const NAME_SPACE = 'knowledge/create-dataset'
 
 export const getNotionInfo = (notionPages: NotionPage[], credentialId: string): NotionInfo[] => {
   const workspacesMap = groupBy(notionPages, 'workspace_id')
@@ -86,7 +66,7 @@ type GetFileIndexingEstimateParamsOptionFile = GetFileIndexingEstimateParamsOpti
   files: CustomFile[]
 }
 
-const getFileIndexingEstimateParamsForFile = ({
+export const getFileIndexingEstimateParamsForFile = ({
   docForm,
   docLanguage,
   dataSourceType,
@@ -112,25 +92,13 @@ const getFileIndexingEstimateParamsForFile = ({
   }
 }
 
-export const useFetchFileIndexingEstimateForFile = (
-  options: GetFileIndexingEstimateParamsOptionFile,
-  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
-) => {
-  return useMutation({
-    mutationFn: async () => {
-      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForFile(options))
-    },
-    ...mutationOptions,
-  })
-}
-
 type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
   dataSourceType: typeof DataSourceType.NOTION
   notionPages: NotionPage[]
   credential_id: string
 }
 
-const getFileIndexingEstimateParamsForNotion = ({
+export const getFileIndexingEstimateParamsForNotion = ({
   docForm,
   docLanguage,
   dataSourceType,
@@ -153,18 +121,6 @@ const getFileIndexingEstimateParamsForNotion = ({
   }
 }
 
-export const useFetchFileIndexingEstimateForNotion = (
-  options: GetFileIndexingEstimateParamsOptionNotion,
-  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
-) => {
-  return useMutation({
-    mutationFn: async () => {
-      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForNotion(options))
-    },
-    ...mutationOptions,
-  })
-}
-
 type GetFileIndexingEstimateParamsOptionWeb = GetFileIndexingEstimateParamsOptionBase & {
   dataSourceType: typeof DataSourceType.WEB
   websitePages: CrawlResultItem[]
@@ -173,7 +129,7 @@ type GetFileIndexingEstimateParamsOptionWeb = GetFileIndexingEstimateParamsOptio
   websiteCrawlJobId: string
 }
 
-const getFileIndexingEstimateParamsForWeb = ({
+export const getFileIndexingEstimateParamsForWeb = ({
   docForm,
   docLanguage,
   dataSourceType,
@@ -201,76 +157,4 @@ const getFileIndexingEstimateParamsForWeb = ({
     doc_language: docLanguage,
     dataset_id,
   }
-}
-
-export const useFetchFileIndexingEstimateForWeb = (
-  options: GetFileIndexingEstimateParamsOptionWeb,
-  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
-) => {
-  return useMutation({
-    mutationFn: async () => {
-      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForWeb(options))
-    },
-    ...mutationOptions,
-  })
-}
-
-export const useCreateFirstDocument = (
-  mutationOptions: MutationOptions<createDocumentResponse, Error, CreateDocumentReq> = {},
-) => {
-  return useMutation({
-    mutationFn: async (createDocumentReq: CreateDocumentReq) => {
-      return createFirstDocument({ body: createDocumentReq })
-    },
-    ...mutationOptions,
-  })
-}
-
-export const useCreateDocument = (
-  datasetId: string,
-  mutationOptions: MutationOptions<createDocumentResponse, Error, CreateDocumentReq> = {},
-) => {
-  return useMutation({
-    mutationFn: async (req: CreateDocumentReq) => {
-      return createDocument({ datasetId, body: req })
-    },
-    ...mutationOptions,
-  })
-}
-
-export const useFetchDefaultProcessRule = (
-  mutationOptions: MutationOptions<ProcessRuleResponse, Error, void> = {},
-) => {
-  return useMutation({
-    mutationFn: fetchDefaultProcessRule,
-    ...mutationOptions,
-  })
-}
-
-export const useCreatePipelineDataset = (
-  mutationOptions: MutationOptions<PostRagPipelineEmptyDatasetResponse, Error> = {},
-) => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'create-pipeline-empty-dataset'],
-    mutationFn: () => {
-      return consoleClient.rag.pipeline.emptyDataset.post()
-    },
-    ...mutationOptions,
-  })
-}
-
-export const useCreatePipelineDatasetFromCustomized = (
-  mutationOptions: MutationOptions<
-    PostRagPipelineDatasetResponse,
-    Error,
-    PostRagPipelineDatasetData['body']
-  > = {},
-) => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'create-pipeline-dataset'],
-    mutationFn: (req: PostRagPipelineDatasetData['body']) => {
-      return consoleClient.rag.pipeline.dataset.post({ body: req })
-    },
-    ...mutationOptions,
-  })
 }
