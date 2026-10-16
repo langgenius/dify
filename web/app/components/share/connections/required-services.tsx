@@ -13,12 +13,13 @@ import {
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import Badge from '@/app/components/base/badge'
 
 export type ConnectionMethod = 'oauth' | 'api-key'
 
 export type RequiredConnectionService = RequiredConnection & {
   description: string
-  availableConnections: readonly { id: string; name: string }[]
+  availableConnections: readonly { id: string; name: string; method?: ConnectionMethod }[]
   selectedConnectionId?: string
   methods: readonly ConnectionMethod[]
 }
@@ -27,6 +28,7 @@ type Props = {
   services: readonly RequiredConnectionService[]
   onConnect: (serviceId: string, method: ConnectionMethod) => void
   onConnectionChange: (serviceId: string, connectionId: string) => void
+  disabled?: boolean
   className?: string
 }
 
@@ -34,14 +36,20 @@ function ServiceItem({
   service,
   onConnect,
   onConnectionChange,
+  disabled,
 }: {
   service: RequiredConnectionService
-} & Pick<Props, 'onConnect' | 'onConnectionChange'>) {
+} & Pick<Props, 'onConnect' | 'onConnectionChange' | 'disabled'>) {
   const { t } = useTranslation(['share'])
   const nameId = useId()
   const descriptionId = useId()
+  const methodId = useId()
   const canOAuth = service.methods.includes('oauth')
   const canApiKey = service.methods.includes('api-key')
+  const selectedConnection = service.availableConnections.find(
+    (connection) => connection.id === service.selectedConnectionId,
+  )
+  const isApiKey = selectedConnection?.method === 'api-key'
 
   return (
     <li
@@ -75,6 +83,7 @@ function ServiceItem({
       <div className="col-start-2 flex max-w-full flex-wrap items-center gap-2 sm:col-start-auto">
         {service.availableConnections.length > 0 ? (
           <Select<string>
+            disabled={disabled}
             items={service.availableConnections.map((connection) => ({
               value: connection.id,
               label: connection.name,
@@ -86,12 +95,32 @@ function ServiceItem({
           >
             <SelectTrigger
               aria-labelledby={nameId}
-              aria-describedby={descriptionId}
-              className="w-40 max-w-full"
+              aria-describedby={isApiKey ? `${descriptionId} ${methodId}` : descriptionId}
+              className={cn(
+                'w-40 max-w-full',
+                isApiKey && 'w-50',
+                isApiKey && disabled && 'opacity-45',
+              )}
             >
-              <SelectValue
-                placeholder={t(($) => $['connections.setup.selectConnection'], { ns: 'share' })}
-              />
+              <span className="flex min-w-0 items-center gap-1">
+                <SelectValue
+                  className="min-w-0 flex-1 truncate"
+                  placeholder={t(($) => $['connections.setup.selectConnection'], { ns: 'share' })}
+                />
+                {isApiKey && (
+                  <span id={methodId} className="shrink-0">
+                    <Badge
+                      as="span"
+                      size="xs"
+                      variant="dimm"
+                      uppercase={false}
+                      className="min-w-4.5 px-1.25 py-0.75 system-2xs-medium"
+                    >
+                      {t(($) => $['connections.setup.apiKey'], { ns: 'share' })}
+                    </Badge>
+                  </span>
+                )}
+              </span>
             </SelectTrigger>
             <SelectContent>
               {service.availableConnections.map((connection) => (
@@ -105,6 +134,7 @@ function ServiceItem({
           <>
             {canOAuth && (
               <Button
+                disabled={disabled}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}
                 onClick={() => onConnect(service.id, 'oauth')}
@@ -119,6 +149,7 @@ function ServiceItem({
             )}
             {canApiKey && (
               <Button
+                disabled={disabled}
                 variant="secondary-accent"
                 aria-describedby={`${nameId} ${descriptionId}`}
                 onClick={() => onConnect(service.id, 'api-key')}
@@ -137,6 +168,7 @@ export default function RequiredServices({
   services,
   onConnect,
   onConnectionChange,
+  disabled = false,
   className,
 }: Props) {
   if (services.length === 0) return null
@@ -149,6 +181,7 @@ export default function RequiredServices({
           service={service}
           onConnect={onConnect}
           onConnectionChange={onConnectionChange}
+          disabled={disabled}
         />
       ))}
     </ul>

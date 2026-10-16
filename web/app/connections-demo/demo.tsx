@@ -5,6 +5,7 @@ import type { RequiredConnectionService } from '@/app/components/share/connectio
 import { useState } from 'react'
 import RequiredConnectionSetup from '@/app/components/share/connections/required-connection-setup'
 import RequiredConnections from '@/app/components/share/connections/required-connections'
+import ConfigureConnectionsDemo from './configure-connections-demo'
 
 const demoConnections: readonly RequiredConnection[] = [
   { id: 'notion', name: 'Notion', iconClassName: 'i-custom-public-common-notion' },
@@ -103,13 +104,16 @@ export default function ConnectionsDemo() {
 
   return (
     <main className="min-h-dvh bg-background-body p-6 sm:p-8">
-      <div className="flex w-150 max-w-full flex-col gap-12">
+      <div className="flex w-150 max-w-full flex-col gap-6">
         <RequiredConnections connections={demoConnections} />
+        <hr className="w-full border-0 border-t-2 border-divider-deep" />
         <RequiredConnectionSetup
           services={services}
           onConnect={handleConnect}
           onConnectionChange={handleConnectionChange}
         />
+        <hr className="w-full border-0 border-t-2 border-divider-deep" />
+        <ConfigureConnectionsDemo />
       </div>
     </main>
   )

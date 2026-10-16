@@ -4092,10 +4092,13 @@ export default interface Resources {
     'chat.viewChatSettings': 'View chat settings'
     'common.appUnavailable': 'App is unavailable'
     'common.appUnknownError': 'App is unavailable'
+    'connections.configure.runningDescription': 'Connections can be changed after this response finishes.'
+    'connections.configure.title': 'Connections'
     'connections.required.signIn': 'Sign in to Dify'
     'connections.required.signInDescription': 'Sign in to set up these connections.'
     'connections.required.title': 'Required connections'
     'connections.setup.addApiKey': 'Add API Key'
+    'connections.setup.apiKey': 'API Key'
     'connections.setup.connect': 'Connect'
     'connections.setup.or': 'OR'
     'connections.setup.required':
