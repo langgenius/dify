@@ -28,7 +28,6 @@ import {
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { AppModeEnum } from '@/types/app'
 
 type AppPickerProps = Pick<ComboboxPositionerProps, 'placement'> & {
   scope?: string
@@ -48,15 +47,15 @@ type AppPickerProps = Pick<ComboboxPositionerProps, 'placement'> & {
 
 function getAppTypeLabel(app: AppPartial) {
   switch (app.mode) {
-    case AppModeEnum.ADVANCED_CHAT:
+    case 'advanced-chat':
       return 'chatflow'
-    case AppModeEnum.AGENT_CHAT:
+    case 'agent-chat':
       return 'agent'
-    case AppModeEnum.CHAT:
+    case 'chat':
       return 'chat'
-    case AppModeEnum.COMPLETION:
+    case 'completion':
       return 'completion'
-    case AppModeEnum.WORKFLOW:
+    case 'workflow':
       return 'workflow'
     default:
       return app.mode

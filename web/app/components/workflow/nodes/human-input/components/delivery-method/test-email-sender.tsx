@@ -12,6 +12,7 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import FormItem from '@/app/components/workflow/nodes/_base/components/before-run-form/form-item'
 import { formatValue } from '@/app/components/workflow/nodes/_base/components/before-run-form/helpers'
 import {
@@ -24,7 +25,6 @@ import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'
@@ -135,7 +135,7 @@ const EmailSenderContent = ({
     select: (data) => data.profile.email,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const { appId } = useParams<{ appId?: string }>()
+  const appId = useAtomValue(editorAppIdAtom)
   const { mutateAsync: testEmailSender } = useTestEmailSender()
 
   const debugEnabled = !!config?.debug_mode
@@ -224,7 +224,7 @@ const EmailSenderContent = ({
   }, [generatedInputs, inputs])
 
   const handleConfirm = useCallback(async () => {
-    if (!confirmChecked) return
+    if (!confirmChecked || !appId) return
     const { formattedValues, parseErrorJsonField } = formatEmailSenderInputs(
       generatedInputs,
       inputs,
@@ -238,7 +238,7 @@ const EmailSenderContent = ({
     setSendingEmail(true)
     try {
       await testEmailSender({
-        appID: appId || '',
+        appID: appId,
         nodeID: nodeId,
         deliveryID: deliveryId,
         inputs: formattedValues,

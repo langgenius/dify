@@ -1,8 +1,10 @@
 import type { MouseEventHandler } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
@@ -24,8 +26,9 @@ type UseUpdateDSLModalParams = {
 const isCompletedStatus = (status: DSLImportStatus): boolean =>
   status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
 export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParams) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const { eventEmitter } = useEventEmitterContextContext()
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { mutateAsync: importDSL } = useMutation(
@@ -123,7 +126,6 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     [],
   )
   const handleImport: MouseEventHandler = useCallback(async () => {
-    const { pipelineId } = workflowStore.getState()
     if (isCreatingRef.current) return
     isCreatingRef.current = true
     if (!currentFile) return

@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import { createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderNodeComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
+import { useWorkflow } from '../../../hooks/use-workflow'
 import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
 import Node from '../node'
 
@@ -13,7 +13,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useWorkflow: vi.fn(),
-    useIsChatMode: vi.fn(),
   }
 })
 
@@ -28,7 +27,7 @@ vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
 
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseWorkflowVariables = vi.mocked(useWorkflowVariables)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 
 const createNodeData = (overrides: Partial<EndNodeType> = {}): EndNodeType => ({
   title: 'End',
@@ -108,4 +107,11 @@ describe('EndNode', () => {
       expect(container).toBeEmptyDOMElement()
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

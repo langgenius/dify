@@ -1,7 +1,8 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowChildren from '../workflow-children'
 
@@ -135,8 +136,8 @@ vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   }
 })
 
-vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: () => ({
+vi.mock('@/app/components/workflow/node-catalog', () => ({
+  useWorkflowNodeCatalog: () => ({
     nodesMap: {
       [BlockEnum.Start]: {
         defaultValue: {
@@ -160,9 +161,12 @@ vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   }),
 }))
 
-vi.mock('../../hooks/use-is-chat-mode', () => ({
-  useIsChatMode: () => false,
-}))
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
+})
 
 vi.mock('../../hooks/use-auto-onboarding', () => ({
   useAutoOnboarding: () => ({
@@ -366,7 +370,7 @@ describe('WorkflowChildren', () => {
       showImportDSLModal: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     expect(screen.getByTestId('plugin-dependency')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-header')).toBeInTheDocument()
@@ -386,7 +390,7 @@ describe('WorkflowChildren', () => {
   it('should react to DSL export check events by showing the confirm modal and closing it', async () => {
     const user = userEvent.setup()
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await act(async () => {
       eventSubscription?.({
@@ -410,7 +414,7 @@ describe('WorkflowChildren', () => {
   })
 
   it('should ignore unrelated workflow events when listening for DSL export checks', async () => {
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await act(async () => {
       eventSubscription?.({
@@ -431,7 +435,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     expect(await screen.findByTestId('workflow-onboarding-modal')).toBeInTheDocument()
 
@@ -447,7 +451,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     expect(screen.queryByTestId('workflow-onboarding-modal')).not.toBeInTheDocument()
     expect(mockSetNodes).not.toHaveBeenCalled()
@@ -461,7 +465,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /^select-start-node$/i }))
 
@@ -490,7 +494,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /select-start-node-with-config/i }))
 
@@ -514,7 +518,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /^select-trigger-plugin$/i }))
 
@@ -550,7 +554,7 @@ describe('WorkflowChildren', () => {
       showOnboarding: true,
     }
 
-    render(<WorkflowChildren />)
+    render(<WorkflowChildren />, { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } })
 
     await user.click(await screen.findByRole('button', { name: /select-trigger-plugin-fallback/i }))
 

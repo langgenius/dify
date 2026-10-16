@@ -10,26 +10,25 @@ import type {
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
-import type { CommonResponse } from '@/models/common'
-import type { FlowType } from '@/types/common'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
-  NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
-  VarInInspect,
   WorkflowConfigResponse,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  skipToken,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { narrowResponse } from '@/service/console/narrow-response'
-import { AppModeEnum } from '@/types/app'
 // oxlint-disable-next-line no-restricted-imports -- run history, config, version and publish hooks take prebuilt flow URLs
 import { del, get, patch, post } from './base'
-import { useInvalid } from './use-base'
-import { callByFlowType } from './utils'
 import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
@@ -281,8 +280,7 @@ export const useUpdateWorkflow = () => {
       if (params.appId) syncAppWorkflowVersionCaches(queryClient, params.appId, updatedWorkflow)
 
       const environmentDeploymentsQueryKey =
-        params.appId &&
-        (params.appMode === AppModeEnum.WORKFLOW || params.appMode === AppModeEnum.ADVANCED_CHAT)
+        params.appId && (params.appMode === 'workflow' || params.appMode === 'advanced-chat')
           ? syncWorkflowDeploymentCaches(queryClient, params.appId, updatedWorkflow)
           : undefined
       const invalidations = [
@@ -308,11 +306,28 @@ export const useDeleteWorkflow = () => {
   })
 }
 
-export const useRestoreWorkflow = () => {
+export const useRestoreWorkflow = (resource: EditorResource) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'restore'],
-    mutationFn: (url: string) =>
-      post<CommonResponse & { updated_at: number; hash: string }>(url, {}, { silent: true }),
+    mutationFn: (versionId: string) => {
+      switch (resource.kind) {
+        case 'app':
+          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post(
+            { params: { app_id: resource.appId, workflow_id: versionId } },
+            { context: { silent: true } },
+          )
+        case 'knowledge-pipeline':
+          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post(
+            { params: { pipeline_id: resource.pipelineId, workflow_id: versionId } },
+            { context: { silent: true } },
+          )
+        case 'snippet':
+          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post(
+            { params: { snippet_id: resource.snippetId, workflow_id: versionId } },
+            { context: { silent: true } },
+          )
+      }
+    },
   })
 }
 
@@ -329,244 +344,219 @@ export const usePublishWorkflow = () => {
   })
 }
 
-const useLastRunKey = [NAME_SPACE, 'last-run']
-export const useLastRun = (
-  flowType: FlowType,
-  flowId: string,
-  nodeId: string,
-  enabled: boolean,
-) => {
-  return useQuery<NodeTracing>({
-    enabled,
-    queryKey: [...useLastRunKey, flowType, flowId, nodeId],
-    queryFn: async () => {
-      return narrowResponse<NodeTracing>(
-        callByFlowType(flowType, {
-          app: () =>
-            consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get(
-              { params: { app_id: flowId, node_id: nodeId } },
-              { context: { silent: true } },
-            ),
-          ragPipeline: () =>
-            consoleClient.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get(
-              { params: { pipeline_id: flowId, node_id: nodeId } },
-              { context: { silent: true } },
-            ),
-          snippet: () =>
-            consoleClient.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get(
-              { params: { snippet_id: flowId, node_id: nodeId } },
-              { context: { silent: true } },
-            ),
-        }),
-      )
-    },
-    retry: 0,
-  })
-}
-
-export const useInvalidLastRun = (flowType: FlowType, flowId: string, nodeId: string) => {
-  return useInvalid([...useLastRunKey, flowType, flowId, nodeId])
-}
-
-// Rerun workflow or change the version of workflow
-export const useInvalidAllLastRun = (flowType?: FlowType, flowId?: string) => {
-  return useInvalid([...useLastRunKey, flowType, flowId])
-}
-
-export const useConversationVarValues = (flowType?: FlowType, flowId?: string) => {
-  return useQuery({
-    enabled: !!flowId,
-    queryKey: [NAME_SPACE, flowType, 'conversation var values', flowId],
-    queryFn: async () => {
-      if (!flowId) return []
-      // RAG pipelines have no conversation variables.
-      const { items } = await narrowResponse<{ items: VarInInspect[] }>(
-        callByFlowType(flowType, {
-          app: () =>
-            consoleClient.apps.byAppId.workflows.draft.conversationVariables.get({
-              params: { app_id: flowId },
-            }),
-          ragPipeline: () => Promise.resolve({ items: [] }),
-          snippet: () =>
-            consoleClient.snippets.bySnippetId.workflows.draft.conversationVariables.get({
-              params: { snippet_id: flowId },
-            }),
-        }),
-      )
-      return items
-    },
-  })
-}
-
-export const useInvalidateConversationVarValues = (flowType: FlowType, flowId: string) => {
-  return useInvalid([NAME_SPACE, flowType, 'conversation var values', flowId])
-}
-
-export const useResetConversationVar = (flowType: FlowType, flowId: string) => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, flowType, 'reset conversation var', flowId],
-    mutationFn: async (varId: string) => {
-      return callByFlowType(flowType, {
-        app: () =>
-          consoleClient.apps.byAppId.workflows.draft.variables.byVariableId.reset.put({
-            params: { app_id: flowId, variable_id: varId },
-          }),
-        ragPipeline: () =>
-          consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.byVariableId.reset.put(
-            { params: { pipeline_id: flowId, variable_id: varId } },
-          ),
-        snippet: () =>
-          consoleClient.snippets.bySnippetId.workflows.draft.variables.byVariableId.reset.put({
-            params: { snippet_id: flowId, variable_id: varId },
-          }),
+function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: boolean) {
+  switch (resource.kind) {
+    case 'app':
+      return consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
+        input: { params: { app_id: resource.appId, node_id: nodeId } },
+        enabled,
+        retry: 0,
+        context: { silent: true },
       })
-    },
-  })
-}
-
-export const useResetToLastRunValue = (flowType: FlowType, flowId: string) => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, flowType, 'reset to last run value', flowId],
-    mutationFn: async (varId: string) => {
-      return narrowResponse<{ value: unknown }>(
-        callByFlowType(flowType, {
-          app: () =>
-            consoleClient.apps.byAppId.workflows.draft.variables.byVariableId.reset.put({
-              params: { app_id: flowId, variable_id: varId },
-            }),
-          ragPipeline: () =>
-            consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.byVariableId.reset.put(
-              { params: { pipeline_id: flowId, variable_id: varId } },
-            ),
-          snippet: () =>
-            consoleClient.snippets.bySnippetId.workflows.draft.variables.byVariableId.reset.put({
-              params: { snippet_id: flowId, variable_id: varId },
-            }),
-        }),
+    case 'knowledge-pipeline':
+      return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
+        {
+          input: { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
+          enabled,
+          retry: 0,
+          context: { silent: true },
+        },
       )
-    },
-  })
-}
-
-export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
-  return useQuery({
-    enabled: !!flowId,
-    queryKey: [NAME_SPACE, flowType, 'sys var values', flowId],
-    queryFn: async () => {
-      if (!flowId) return []
-      const { items } = await narrowResponse<{ items: VarInInspect[] }>(
-        callByFlowType(flowType, {
-          app: () =>
-            consoleClient.apps.byAppId.workflows.draft.systemVariables.get({
-              params: { app_id: flowId },
-            }),
-          ragPipeline: () =>
-            consoleClient.rag.pipelines.byPipelineId.workflows.draft.systemVariables.get({
-              params: { pipeline_id: flowId },
-            }),
-          snippet: () =>
-            consoleClient.snippets.bySnippetId.workflows.draft.systemVariables.get({
-              params: { snippet_id: flowId },
-            }),
-        }),
+    case 'snippet':
+      return consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
+        {
+          input: { params: { snippet_id: resource.snippetId, node_id: nodeId } },
+          enabled,
+          retry: 0,
+          context: { silent: true },
+        },
       )
-      return items
+  }
+}
+function lastRunQueryKey(resource: EditorResource, nodeId?: string) {
+  switch (resource.kind) {
+    case 'app':
+      return consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.key({
+        type: 'query',
+        input: { params: { app_id: resource.appId, ...(nodeId ? { node_id: nodeId } : {}) } },
+      })
+    case 'knowledge-pipeline':
+      return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.key(
+        {
+          type: 'query',
+          input: {
+            params: { pipeline_id: resource.pipelineId, ...(nodeId ? { node_id: nodeId } : {}) },
+          },
+        },
+      )
+    case 'snippet':
+      return consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key({
+        type: 'query',
+        input: {
+          params: { snippet_id: resource.snippetId, ...(nodeId ? { node_id: nodeId } : {}) },
+        },
+      })
+  }
+}
+export const useLastRun = (resource: EditorResource, nodeId: string, enabled: boolean) =>
+  useQuery(lastRunQueryOptions(resource, nodeId, enabled))
+
+export const useInvalidateLastRun = (resource: EditorResource, nodeId: string) => {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource, nodeId) })
+}
+
+export const useInvalidateAllLastRun = (resource: EditorResource) => {
+  const queryClient = useQueryClient()
+  return () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) })
+}
+
+export const useConversationVarValues = (resource: EditorResource | undefined) => {
+  return useQuery(
+    consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get.queryOptions({
+      input: resource?.kind === 'app' ? { params: { app_id: resource.appId } } : skipToken,
+      select: (response) => response.items,
+    }),
+  )
+}
+
+export const useInvalidateConversationVarValues = (resource: EditorResource) => {
+  const queryClient = useQueryClient()
+  return () =>
+    resource.kind === 'app'
+      ? queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get.queryKey({
+            input: { params: { app_id: resource.appId } },
+          }),
+        })
+      : Promise.resolve()
+}
+
+export const useResetInspectorVar = (resource: EditorResource) => {
+  return useMutation({
+    mutationFn: (varId: string) => {
+      switch (resource.kind) {
+        case 'app':
+          return consoleClient.apps.byAppId.workflows.draft.variables.byVariableId.reset.put({
+            params: { app_id: resource.appId, variable_id: varId },
+          })
+        case 'knowledge-pipeline':
+          return consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.byVariableId.reset.put(
+            { params: { pipeline_id: resource.pipelineId, variable_id: varId } },
+          )
+        case 'snippet':
+          return consoleClient.snippets.bySnippetId.workflows.draft.variables.byVariableId.reset.put(
+            { params: { snippet_id: resource.snippetId, variable_id: varId } },
+          )
+      }
     },
   })
 }
 
-export const useInvalidateSysVarValues = (flowType: FlowType, flowId: string) => {
-  return useInvalid([NAME_SPACE, flowType, 'sys var values', flowId])
+export const useSysVarValues = (resource: EditorResource | undefined) => {
+  return useQuery(
+    consoleQuery.apps.byAppId.workflows.draft.systemVariables.get.queryOptions({
+      input: resource?.kind === 'app' ? { params: { app_id: resource.appId } } : skipToken,
+      select: (response) => response.items,
+    }),
+  )
 }
 
-export const useDeleteAllInspectorVars = (flowType: FlowType, flowId: string) => {
+export const useInvalidateSysVarValues = (resource: EditorResource) => {
+  const queryClient = useQueryClient()
+  return () =>
+    resource.kind === 'app'
+      ? queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.byAppId.workflows.draft.systemVariables.get.queryKey({
+            input: { params: { app_id: resource.appId } },
+          }),
+        })
+      : Promise.resolve()
+}
+
+export const useDeleteAllInspectorVars = (resource: EditorResource) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, flowType, 'delete all inspector vars', flowId],
-    mutationFn: async () => {
-      return callByFlowType(flowType, {
-        app: () =>
-          consoleClient.apps.byAppId.workflows.draft.variables.delete({
-            params: { app_id: flowId },
-          }),
-        ragPipeline: () =>
-          consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.delete({
-            params: { pipeline_id: flowId },
-          }),
-        snippet: () =>
-          consoleClient.snippets.bySnippetId.workflows.draft.variables.delete({
-            params: { snippet_id: flowId },
-          }),
-      })
+    mutationFn: () => {
+      switch (resource.kind) {
+        case 'app':
+          return consoleClient.apps.byAppId.workflows.draft.variables.delete({
+            params: { app_id: resource.appId },
+          })
+        case 'knowledge-pipeline':
+          return consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.delete({
+            params: { pipeline_id: resource.pipelineId },
+          })
+        case 'snippet':
+          return consoleClient.snippets.bySnippetId.workflows.draft.variables.delete({
+            params: { snippet_id: resource.snippetId },
+          })
+      }
     },
   })
 }
 
-export const useDeleteNodeInspectorVars = (flowType: FlowType, flowId: string) => {
+export const useDeleteNodeInspectorVars = (resource: EditorResource) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, flowType, 'delete node inspector vars', flowId],
-    mutationFn: async (nodeId: string) => {
-      return callByFlowType(flowType, {
-        app: () =>
-          consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.variables.delete({
-            params: { app_id: flowId, node_id: nodeId },
-          }),
-        ragPipeline: () =>
-          consoleClient.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.variables.delete({
-            params: { pipeline_id: flowId, node_id: nodeId },
-          }),
-        snippet: () =>
-          consoleClient.snippets.bySnippetId.workflows.draft.nodes.byNodeId.variables.delete({
-            params: { snippet_id: flowId, node_id: nodeId },
-          }),
-      })
+    mutationFn: (nodeId: string) => {
+      switch (resource.kind) {
+        case 'app':
+          return consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.variables.delete({
+            params: { app_id: resource.appId, node_id: nodeId },
+          })
+        case 'knowledge-pipeline':
+          return consoleClient.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.variables.delete(
+            { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
+          )
+        case 'snippet':
+          return consoleClient.snippets.bySnippetId.workflows.draft.nodes.byNodeId.variables.delete(
+            { params: { snippet_id: resource.snippetId, node_id: nodeId } },
+          )
+      }
     },
   })
 }
 
-export const useDeleteInspectVar = (flowType: FlowType, flowId: string) => {
+export const useDeleteInspectVar = (resource: EditorResource) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, flowType, 'delete inspector var', flowId],
-    mutationFn: async (varId: string) => {
-      return callByFlowType(flowType, {
-        app: () =>
-          consoleClient.apps.byAppId.workflows.draft.variables.byVariableId.delete({
-            params: { app_id: flowId, variable_id: varId },
-          }),
-        ragPipeline: () =>
-          consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.byVariableId.delete({
-            params: { pipeline_id: flowId, variable_id: varId },
-          }),
-        snippet: () =>
-          consoleClient.snippets.bySnippetId.workflows.draft.variables.byVariableId.delete({
-            params: { snippet_id: flowId, variable_id: varId },
-          }),
-      })
+    mutationFn: (varId: string) => {
+      switch (resource.kind) {
+        case 'app':
+          return consoleClient.apps.byAppId.workflows.draft.variables.byVariableId.delete({
+            params: { app_id: resource.appId, variable_id: varId },
+          })
+        case 'knowledge-pipeline':
+          return consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.byVariableId.delete(
+            { params: { pipeline_id: resource.pipelineId, variable_id: varId } },
+          )
+        case 'snippet':
+          return consoleClient.snippets.bySnippetId.workflows.draft.variables.byVariableId.delete({
+            params: { snippet_id: resource.snippetId, variable_id: varId },
+          })
+      }
     },
   })
 }
 
 // edit the name or value of the inspector var
-export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
+export const useEditInspectorVar = (resource: EditorResource) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, flowType, 'edit inspector var', flowId],
-    mutationFn: async ({ varId, ...rest }: { varId: string; name?: string; value?: any }) => {
-      return callByFlowType(flowType, {
-        app: () =>
-          consoleClient.apps.byAppId.workflows.draft.variables.byVariableId.patch({
-            params: { app_id: flowId, variable_id: varId },
-            body: rest,
-          }),
-        ragPipeline: () =>
-          consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.byVariableId.patch({
-            params: { pipeline_id: flowId, variable_id: varId },
-            body: rest,
-          }),
-        snippet: () =>
-          consoleClient.snippets.bySnippetId.workflows.draft.variables.byVariableId.patch({
-            params: { snippet_id: flowId, variable_id: varId },
-            body: rest,
-          }),
-      })
+    mutationFn: ({ varId, ...body }: { varId: string; name?: string; value?: unknown }) => {
+      switch (resource.kind) {
+        case 'app':
+          return consoleClient.apps.byAppId.workflows.draft.variables.byVariableId.patch({
+            params: { app_id: resource.appId, variable_id: varId },
+            body,
+          })
+        case 'knowledge-pipeline':
+          return consoleClient.rag.pipelines.byPipelineId.workflows.draft.variables.byVariableId.patch(
+            { params: { pipeline_id: resource.pipelineId, variable_id: varId }, body },
+          )
+        case 'snippet':
+          return consoleClient.snippets.bySnippetId.workflows.draft.variables.byVariableId.patch({
+            params: { snippet_id: resource.snippetId, variable_id: varId },
+            body,
+          })
+      }
     },
   })
 }

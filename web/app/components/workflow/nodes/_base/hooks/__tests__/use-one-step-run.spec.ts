@@ -2,9 +2,7 @@ import { ORPCError } from '@orpc/client'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-// oxlint-disable-next-line no-restricted-imports -- Mock the request boundary while preserving the single-run error owner.
-import { post } from '@/service/base'
-import { FlowType } from '@/types/common'
+import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
 
 const mockWorkflowState = {
@@ -46,7 +44,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getBeforeNodesInSameBranch: () => [
         {
@@ -106,18 +104,40 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidLastRun: () => vi.fn(),
+  useInvalidateLastRun: () => vi.fn(),
 }))
 
 vi.mock('@/service/workflow', () => ({
   fetchNodeInspectVars: vi.fn(),
-  getIterationSingleNodeRunUrl: vi.fn(),
-  getLoopSingleNodeRunUrl: vi.fn(),
   singleNodeRun: vi.fn(),
 }))
 
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleClient: {
+      apps: {
+        byAppId: {
+          workflows: { draft: { nodes: { byNodeId: { trigger: { run: { post: vi.fn() } } } } } },
+        },
+      },
+    },
+    consoleQuery: {
+      workspaces: {
+        current: {
+          tools: {
+            builtin: { get: consoleOperationStub('workspaces.current.tools.builtin.get') },
+            api: { get: consoleOperationStub('workspaces.current.tools.api.get') },
+            workflow: { get: consoleOperationStub('workspaces.current.tools.workflow.get') },
+            mcp: { get: consoleOperationStub('workspaces.current.tools.mcp.get') },
+          },
+        },
+      },
+    },
+  }
+})
+
 vi.mock('@/service/base', () => ({
-  post: vi.fn(),
   ssePost: vi.fn(),
 }))
 
@@ -191,8 +211,8 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
   renderHook(() =>
     useOneStepRun({
       id: 'if-else-node',
-      flowId: 'app-id',
-      flowType: FlowType.appFlow,
+      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+
       data: {
         type,
         title: 'IF/ELSE',
@@ -247,6 +267,53 @@ describe('useOneStepRun single-run input vars', () => {
     ])
   })
 
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'runs %s with the app identity and supports aborting polling requests',
+    async (type) => {
+      const run = vi.mocked(
+        consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+      )
+      run.mockResolvedValueOnce({ id: 'execution-1', status: 'succeeded' })
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      expect(run.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-id', node_id: 'if-else-node' },
+      })
+      if (type !== BlockEnum.TriggerSchedule)
+        expect(run.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'aborts the pending %s request when listening stops',
+    async (type) => {
+      const run = vi.mocked(
+        consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+      )
+      run.mockImplementationOnce(
+        (_input, options) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener(
+              'abort',
+              () => reject(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            )
+          }),
+      )
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        const pendingRun = result.current.handleRun({})
+        result.current.handleStop()
+        expect(await pendingRun).toBe(false)
+      })
+      expect(run.mock.calls[0]?.[1]?.signal?.aborted).toBe(true)
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
   it('preserves the plugin request error and metadata when reporting a failed run', async () => {
     const error = new ORPCError('forbidden', {
       status: 403,
@@ -254,7 +321,9 @@ describe('useOneStepRun single-run input vars', () => {
       data: { reason: 'PLUGIN_ACCESS_DENIED' },
       cause: { headers: new Headers({ 'X-Request-Id': 'plugin-run-1' }) },
     })
-    vi.mocked(post).mockRejectedValueOnce(error)
+    vi.mocked(
+      consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+    ).mockRejectedValueOnce(error)
     const reportError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { result } = renderUseOneStepRun(BlockEnum.TriggerPlugin)
 
@@ -266,4 +335,11 @@ describe('useOneStepRun single-run input vars', () => {
     expect(reportError).toHaveBeenCalledWith(error)
     expect(reportError.mock.calls[0]?.[0]).toBe(error)
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

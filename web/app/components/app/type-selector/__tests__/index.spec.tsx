@@ -1,6 +1,6 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import * as React from 'react'
-import { AppModeEnum } from '@/types/app'
 import AppTypeSelector, { AppTypeLabel } from '../index'
 
 describe('AppTypeSelector', () => {
@@ -21,16 +21,14 @@ describe('AppTypeSelector', () => {
   // Covers prop-driven trigger variants (empty, single, multiple).
   describe('Props', () => {
     it('should render selected type label and clear button when a single type is selected', () => {
-      render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={vi.fn()} />)
+      render(<AppTypeSelector value={['chat'] as const} onChange={vi.fn()} />)
 
       expect(screen.getByText('app.typeSelector.chatbot')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeInTheDocument()
     })
 
     it('should render icon-only trigger when multiple types are selected', () => {
-      render(
-        <AppTypeSelector value={[AppModeEnum.CHAT, AppModeEnum.WORKFLOW]} onChange={vi.fn()} />,
-      )
+      render(<AppTypeSelector value={['chat', 'workflow'] as const} onChange={vi.fn()} />)
 
       expect(screen.queryByText('app.typeSelector.all')).not.toBeInTheDocument()
       expect(screen.queryByText('app.typeSelector.chatbot')).not.toBeInTheDocument()
@@ -65,12 +63,12 @@ describe('AppTypeSelector', () => {
         within(screen.getByRole('list')).getByRole('button', { name: 'app.typeSelector.workflow' }),
       )
 
-      expect(onChange).toHaveBeenCalledWith([AppModeEnum.WORKFLOW])
+      expect(onChange).toHaveBeenCalledWith(['workflow'] as const)
     })
 
     it('should call onChange with removed type when selecting an already-selected item', () => {
       const onChange = vi.fn()
-      render(<AppTypeSelector value={[AppModeEnum.WORKFLOW]} onChange={onChange} />)
+      render(<AppTypeSelector value={['workflow'] as const} onChange={onChange} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'app.typeSelector.workflow' }))
       fireEvent.click(
@@ -82,19 +80,19 @@ describe('AppTypeSelector', () => {
 
     it('should call onChange with appended type when selecting an additional item', () => {
       const onChange = vi.fn()
-      render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={onChange} />)
+      render(<AppTypeSelector value={['chat'] as const} onChange={onChange} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'app.typeSelector.chatbot' }))
       fireEvent.click(
         within(screen.getByRole('list')).getByRole('button', { name: 'app.typeSelector.agent' }),
       )
 
-      expect(onChange).toHaveBeenCalledWith([AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT])
+      expect(onChange).toHaveBeenCalledWith(['chat', 'agent-chat'] as const)
     })
 
     it('should clear selection without opening the dropdown when clicking clear button', () => {
       const onChange = vi.fn()
-      render(<AppTypeSelector value={[AppModeEnum.CHAT]} onChange={onChange} />)
+      render(<AppTypeSelector value={['chat'] as const} onChange={onChange} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
@@ -111,11 +109,11 @@ describe('AppTypeLabel', () => {
 
   // Covers label mapping for each supported app type.
   it.each([
-    [AppModeEnum.CHAT, 'app.typeSelector.chatbot'],
-    [AppModeEnum.AGENT_CHAT, 'app.typeSelector.agent'],
-    [AppModeEnum.COMPLETION, 'app.typeSelector.completion'],
-    [AppModeEnum.ADVANCED_CHAT, 'app.typeSelector.advanced'],
-    [AppModeEnum.WORKFLOW, 'app.typeSelector.workflow'],
+    ['chat', 'app.typeSelector.chatbot'],
+    ['agent-chat', 'app.typeSelector.agent'],
+    ['completion', 'app.typeSelector.completion'],
+    ['advanced-chat', 'app.typeSelector.advanced'],
+    ['workflow', 'app.typeSelector.workflow'],
   ] as const)('should render label %s for type %s', (_type, expectedLabel) => {
     render(<AppTypeLabel type={_type} />)
     expect(screen.getByText(expectedLabel)).toBeInTheDocument()
@@ -123,7 +121,7 @@ describe('AppTypeLabel', () => {
 
   // Covers fallback behavior for unexpected app mode values.
   it('should render empty label for unknown type', () => {
-    const { container } = render(<AppTypeLabel type={'unknown' as AppModeEnum} />)
+    const { container } = render(<AppTypeLabel type={'unknown' as AppMode} />)
     expect(container.textContent).toBe('')
   })
 })

@@ -10,7 +10,6 @@ import {
   seedAppDetail,
 } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import ConfigModal from '../index'
 
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -116,12 +115,12 @@ const createPayload = (overrides: Partial<InputVar> = {}): InputVar => ({
 
 const renderConfigModal = (payload: InputVar = createPayload()) => {
   const queryClient = createConsoleQueryClient()
-  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: AppModeEnum.CHAT }))
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'chat' as const }))
   return renderWithConsoleQuery(
     <DebugConfigurationContext.Provider
       value={
         {
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
           dataSets: [],
           modelConfig: { model_id: 'model-1' },
         } as any

@@ -1,12 +1,13 @@
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
-import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import {
   isConversationVar,
   isENV,
@@ -15,39 +16,33 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import useFLow from '@/service/use-flow'
+import {
+  useDeleteAllInspectorVars,
+  useDeleteInspectVar,
+  useDeleteNodeInspectorVars,
+  useEditInspectorVar,
+  useInvalidateConversationVarValues,
+  useInvalidateSysVarValues,
+  useResetInspectorVar,
+} from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 
-type Params = {
-  flowId: string
-  flowType: FlowType
-}
-export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
+export const useInspectVarsCrudCommon = () => {
+  const resource = useAtomValue(editorResourceAtom)
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
-  const {
-    useInvalidateConversationVarValues,
-    useInvalidateSysVarValues,
-    useResetConversationVar,
-    useResetToLastRunValue,
-    useDeleteAllInspectorVars,
-    useDeleteNodeInspectorVars,
-    useDeleteInspectVar,
-    useEditInspectorVar,
-  } = useFLow({ flowType })
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(flowId)
-  const { mutateAsync: doResetConversationVar } = useResetConversationVar(flowId)
-  const { mutateAsync: doResetToLastRunValue } = useResetToLastRunValue(flowId)
-  const invalidateSysVarValues = useInvalidateSysVarValues(flowId)
+  const invalidateConversationVarValues = useInvalidateConversationVarValues(resource)
+  const { mutateAsync: doResetInspectorVar } = useResetInspectorVar(resource)
+  const invalidateSysVarValues = useInvalidateSysVarValues(resource)
 
-  const { mutateAsync: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(flowId)
-  const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(flowId)
-  const { mutate: doDeleteInspectVar } = useDeleteInspectVar(flowId)
+  const { mutateAsync: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(resource)
+  const { mutateAsync: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(resource)
+  const { mutateAsync: doDeleteInspectVar } = useDeleteInspectVar(resource)
 
-  const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(flowId)
+  const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(resource)
   const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
   const { data: buildInTools } = useQuery(
@@ -158,7 +153,7 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
         allPluginInfoList,
         schemaTypeDefinitions,
       )
-      const vars = await fetchNodeInspectVars(flowType, flowId, nodeId!)
+      const vars = await fetchNodeInspectVars(resource, nodeId!)
       const varsWithSchemaType = vars.map((varItem) => {
         const schemaType =
           currentNodeOutputVars[0]?.vars.find((v) => v.variable === varItem.name)?.schemaType || ''
@@ -171,8 +166,7 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
     },
     [
       workflowStore,
-      flowType,
-      flowId,
+      resource,
       invalidateSysVarValues,
       invalidateConversationVarValues,
       buildInTools,
@@ -225,7 +219,12 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
     async (nodeId: string, varId: string) => {
       const { deleteInspectVar } = workflowStore.getState()
       if (hasNodeInspectVar(nodeId, varId)) {
-        await doDeleteInspectVar(varId)
+        try {
+          await doDeleteInspectVar(varId)
+        } catch {
+          // The Console transport reports the failure; preserve the inspected values.
+          return
+        }
         deleteInspectVar(nodeId, varId)
       }
     },
@@ -234,17 +233,22 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
 
   const resetConversationVar = useCallback(
     async (varId: string) => {
-      await doResetConversationVar(varId)
+      await doResetInspectorVar(varId)
       invalidateConversationVarValues()
     },
-    [doResetConversationVar, invalidateConversationVarValues],
+    [doResetInspectorVar, invalidateConversationVarValues],
   )
 
   const deleteNodeInspectorVars = useCallback(
     async (nodeId: string) => {
       const { deleteNodeInspectVars } = workflowStore.getState()
       if (hasNodeInspectVars(nodeId)) {
-        await doDeleteNodeInspectorVars(nodeId)
+        try {
+          await doDeleteNodeInspectorVars(nodeId)
+        } catch {
+          // The Console transport reports the failure; preserve the inspected values.
+          return
+        }
         deleteNodeInspectVars(nodeId)
       }
     },
@@ -267,7 +271,7 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
   ])
 
   const editInspectVarValue = useCallback(
-    async (nodeId: string, varId: string, value: any) => {
+    async (nodeId: string, varId: string, value: VarInInspect['value']) => {
       const { setInspectVarValue } = workflowStore.getState()
       await doEditInspectorVar({
         varId,
@@ -310,12 +314,14 @@ export const useInspectVarsCrudCommon = ({ flowId, flowType }: Params) => {
     async (nodeId: string, varId: string) => {
       const { resetToLastRunVar } = workflowStore.getState()
       const isSysVar = nodeId === 'sys'
-      const data = await doResetToLastRunValue(varId)
+      const data = await doResetInspectorVar(varId)
 
       if (isSysVar) invalidateSysVarValues()
-      else resetToLastRunVar(nodeId, varId, data.value)
+      else if (data && typeof data === 'object' && 'value' in data)
+        resetToLastRunVar(nodeId, varId, data.value)
+      else workflowStore.getState().deleteInspectVar(nodeId, varId)
     },
-    [doResetToLastRunValue, invalidateSysVarValues, workflowStore],
+    [doResetInspectorVar, invalidateSysVarValues, workflowStore],
   )
 
   return {

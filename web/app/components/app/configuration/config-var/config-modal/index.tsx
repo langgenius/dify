@@ -1,4 +1,5 @@
 'use client'
+
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
@@ -13,7 +14,6 @@ import { toast } from '@/app/components/app/configuration/toast'
 import ConfigContext from '@/context/debug-configuration'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import {
   checkKeys,
   getNewVarInWorkflow,
@@ -67,8 +67,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       input: appId ? { params: { app_id: appId } } : skipToken,
     }),
   )
-  const isBasicApp =
-    appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
+  const isBasicApp = appDetail?.mode !== 'advanced-chat' && appDetail?.mode !== 'workflow'
   const jsonSchemaStr = useMemo(
     () => getJsonSchemaEditorValue(type, tempPayload.json_schema),
     [tempPayload.json_schema, type],

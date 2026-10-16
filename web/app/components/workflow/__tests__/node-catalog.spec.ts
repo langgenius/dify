@@ -1,14 +1,10 @@
-import { renderHook } from '@testing-library/react'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 
 const mockUseIsChatMode = vi.fn()
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 const mockIsAgentV2InChatflowEnabled = vi.hoisted(() => vi.fn(() => false))
-
-vi.mock('../use-is-chat-mode', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
@@ -19,7 +15,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `/docs${path}`,
 }))
 
-describe('useAvailableNodesMetaData', () => {
+describe('useWorkflowNodeCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsAgentV2Enabled.mockReturnValue(true)
@@ -29,7 +25,13 @@ describe('useAvailableNodesMetaData', () => {
   it('should include chat-specific nodes and make the start node undeletable in chat mode', () => {
     mockUseIsChatMode.mockReturnValue(true)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
 
     expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.isUndeletable).toBe(true)
     expect(result.current.nodesMap?.[BlockEnum.Answer]).toBeDefined()
@@ -46,7 +48,13 @@ describe('useAvailableNodesMetaData', () => {
   it('should expose only legacy Agent in chat mode by default even when Agent v2 is enabled', () => {
     mockUseIsChatMode.mockReturnValue(true)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.Agent)
@@ -59,7 +67,13 @@ describe('useAvailableNodesMetaData', () => {
     mockUseIsChatMode.mockReturnValue(true)
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.AgentV2)
@@ -73,7 +87,13 @@ describe('useAvailableNodesMetaData', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
     mockIsAgentV2InChatflowEnabled.mockReturnValue(true)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.Agent)
@@ -85,7 +105,13 @@ describe('useAvailableNodesMetaData', () => {
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
 
     expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.isUndeletable).toBe(false)
     expect(result.current.nodesMap?.[BlockEnum.End]).toBeDefined()
@@ -103,7 +129,13 @@ describe('useAvailableNodesMetaData', () => {
   it('should use explicit docs pages and skip nodes without generated docs pages', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
 
     expect(result.current.nodesMap?.[BlockEnum.End]?.metaData.helpLinkUri).toBe(
       '/docs/use-dify/nodes/output',
@@ -121,7 +153,13 @@ describe('useAvailableNodesMetaData', () => {
   it('should hide legacy Agent from the node picker but retain its validator when Agent v2 is enabled', () => {
     mockUseIsChatMode.mockReturnValue(false)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.AgentV2)
@@ -137,7 +175,13 @@ describe('useAvailableNodesMetaData', () => {
     mockUseIsChatMode.mockReturnValue(false)
     mockIsAgentV2Enabled.mockReturnValue(false)
 
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    const { result } = renderWorkflowHook(() => useWorkflowNodeCatalog(), {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+    })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.Agent)

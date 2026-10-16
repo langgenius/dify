@@ -1,14 +1,17 @@
 'use client'
+
 import type { FC } from 'react'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
@@ -42,7 +45,7 @@ const Editor: FC<Props> = ({
   availableNodes = [],
   insertVarTipToLeft,
 }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
 
   const [isFocus, { setTrue: setFocus, setFalse: setBlur }] = useBoolean(false)
 
@@ -50,7 +53,7 @@ const Editor: FC<Props> = ({
     onFocusChange?.(isFocus)
   }, [isFocus])
 
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   return (
@@ -100,7 +103,7 @@ const Editor: FC<Props> = ({
               }
               return acc
             }, {} as any),
-            showManageInputField: !!pipelineId,
+            showManageInputField: resourceKind === 'knowledge-pipeline',
             onManageInputField: () => setShowInputFieldPanel?.(true),
           }}
           onChange={onChange}

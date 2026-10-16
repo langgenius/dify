@@ -11,18 +11,16 @@ import {
 import { selectDatasourceSingleRun } from '@/app/components/rag-pipeline/utils/query-select'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
-import { useInvalidLastRun } from '@/service/use-workflow'
+import { useInvalidateLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useNodesSyncDraft } from '../../../hooks/use-nodes-sync-draft'
 import { NodeRunningStatus } from '../../../types'
 
 const useBeforeRunForm = ({
   nodeId,
-  flowId,
-  flowType,
+  resource,
   payload,
   setRunResult,
   isPaused,
@@ -31,6 +29,9 @@ const useBeforeRunForm = ({
   onSuccess,
   appendNodeInspectVars,
 }: CustomRunFormProps) => {
+  if (resource.kind !== 'knowledge-pipeline')
+    throw new Error('Data source runs require a knowledge pipeline')
+  const flowId = resource.pipelineId
   const store = useStoreApi()
   const dataSourceStore = useDataSourceStore()
   const isPausedRef = useRef(isPaused)
@@ -82,7 +83,7 @@ const useBeforeRunForm = ({
     })
   }
 
-  const invalidLastRun = useInvalidLastRun(flowType, flowId, nodeId)
+  const invalidLastRun = useInvalidateLastRun(resource, nodeId)
 
   const updateRunResult = async (data: NodeRunResult | undefined) => {
     const isPaused = isPausedRef.current
@@ -97,7 +98,7 @@ const useBeforeRunForm = ({
     }
 
     // run fail may also update the inspect vars when the node set the error default output.
-    const vars = await fetchNodeInspectVars(FlowType.ragPipeline, flowId, nodeId)
+    const vars = await fetchNodeInspectVars(resource, nodeId)
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(nodeId, vars, nodes)

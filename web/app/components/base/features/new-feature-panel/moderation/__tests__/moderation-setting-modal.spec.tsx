@@ -11,7 +11,7 @@ import { createFeaturesStore } from '@/app/components/base/features/store'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppModelConfigFixture } from '@/test/fixtures/app'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import ModerationSettingModal from '../moderation-setting-modal'
 
 const mockNotify = vi.fn()
@@ -1090,7 +1090,7 @@ describe('ModerationSettingModal', () => {
         backendModelConfig,
         collectionList: [],
         datasetConfigs: buildConfigurationDatasetConfigs({ backendModelConfig, nextDataSets: [] }),
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         nextDataSets: [],
       })
       const publish = createPublishHandler({
@@ -1105,7 +1105,7 @@ describe('ModerationSettingModal', () => {
         hasSetBlockStatus: { history: true, query: true },
         isAdvancedMode: false,
         isFunctionCall: false,
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         modelConfig: config.modelConfig,
         promptEmpty: false,
         promptMode: 'simple',

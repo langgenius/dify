@@ -25,7 +25,6 @@ import { useDocLink } from '@/context/i18n'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { updateAnnotationStatus } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
 import PageTitle from '../log-annotation/page-title'
 import EmptyElement from './empty-element'
@@ -45,7 +44,7 @@ const Annotation: FC<Props> = (props) => {
   const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
-  const [isChatApp] = useState(appDetail.mode !== AppModeEnum.COMPLETION)
+  const [isChatApp] = useState(appDetail.mode !== 'completion')
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(

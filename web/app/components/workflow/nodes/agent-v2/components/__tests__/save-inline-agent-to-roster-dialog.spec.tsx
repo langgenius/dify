@@ -1,7 +1,6 @@
 import type { AgentComposerAgentResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FlowType } from '@/types/common'
 import { SaveInlineAgentToRosterDialog } from '../save-inline-agent-to-roster-dialog'
 
 const mutationMock = vi.hoisted(() => ({
@@ -88,8 +87,7 @@ const renderDialog = (agent: AgentComposerAgentResponse = inlineAgent) => {
 
   render(
     <SaveInlineAgentToRosterDialog
-      flowId="app-1"
-      flowType={FlowType.appFlow}
+      resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
       initialAgent={agent}
       nodeId="node-1"
       open
@@ -159,8 +157,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const user = userEvent.setup()
     render(
       <SaveInlineAgentToRosterDialog
-        flowId="snippet-1"
-        flowType={FlowType.snippet}
+        resource={{ kind: 'snippet', snippetId: 'snippet-1' }}
         initialAgent={inlineAgent}
         nodeId="node-1"
         open
@@ -295,8 +292,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     }
     const { rerender } = render(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={inlineAgent}
         nodeId="node-1"
         open
@@ -307,8 +303,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open
@@ -334,8 +329,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open={false}
@@ -349,8 +343,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open

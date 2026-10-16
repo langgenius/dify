@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowStartRunByCanEdit } from '../use-workflow-start-run'
@@ -50,7 +51,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
+  useIsChatflow: () => mockUseIsChatMode(),
 }))
 
 vi.mock('../use-nodes-sync-draft', () => ({
@@ -102,7 +103,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
   })
 
   it('should run the workflow immediately when there are no start variables and no image upload input', async () => {
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -121,7 +124,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
       { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
     ])
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -138,7 +143,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
       { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },
     ])
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -161,7 +168,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
       },
     })
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -178,7 +187,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
       showDebugAndPreviewPanel: true,
     })
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -198,7 +209,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
       },
     })
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowStartRunInWorkflow()
@@ -212,7 +225,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
   it('should configure schedule trigger runs and execute the workflow with schedule options', async () => {
     mockGetNodes.mockReturnValue([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowTriggerScheduleRunInWorkflow('schedule-1')
@@ -239,7 +254,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
     })
     mockGetNodes.mockReturnValue([{ id: 'schedule-1', data: { type: BlockEnum.TriggerSchedule } }])
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowTriggerScheduleRunInWorkflow('schedule-1')
@@ -267,7 +284,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
         hook.handleWorkflowTriggerPluginRunInWorkflow(''),
     },
   ])('should ignore $title trigger execution when the node id is empty', async ({ invoke }) => {
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await invoke(result.current)
@@ -302,7 +321,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       mockGetNodes.mockReturnValue([{ id: 'other-node', data: { type: BlockEnum.Start } }])
 
-      const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+      const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       await act(async () => {
         await invoke(result.current)
@@ -340,7 +361,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
     async ({ nodeId, nodeType, invoke, expectedParams, expectedOptions }) => {
       mockGetNodes.mockReturnValue([{ id: nodeId, data: { type: nodeType } }])
 
-      const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+      const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       await act(async () => {
         await invoke(result.current)
@@ -360,7 +383,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
   )
 
   it('should run all triggers and mark the listener state as global', async () => {
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowRunAllTriggersInWorkflow(['trigger-1', 'trigger-2'])
@@ -385,7 +410,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
   })
 
   it('should ignore run-all requests when there are no trigger nodes', async () => {
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleWorkflowRunAllTriggersInWorkflow([])
@@ -399,7 +426,9 @@ describe('useWorkflowStartRunByCanEdit', () => {
   it('should route handleStartWorkflowRun to the chatflow path when chat mode is enabled', async () => {
     mockUseIsChatMode.mockReturnValue(true)
 
-    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true))
+    const { result } = renderHook(() => useWorkflowStartRunByCanEdit(true), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
+    })
 
     await act(async () => {
       result.current.handleStartWorkflowRun()
