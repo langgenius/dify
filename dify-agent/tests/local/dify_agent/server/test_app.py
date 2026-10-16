@@ -211,6 +211,8 @@ def test_create_app_wires_authenticated_agent_stub_connection_route(monkeypatch:
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
+        inner_api_key="explicit-legacy-test-key",
+        sandbox_files_base_url="http://files.example",
         server_secret_key=_base64url_secret(b"1" * 32),
     )
     token_codec = settings.create_agent_stub_token_codec()
@@ -469,3 +471,59 @@ def test_create_app_native_owner_injection_and_truthful_capabilities(monkeypatch
         assert response.json() == {"protocol_version": 1, "features": ["pending-call-v1"]}
         assert client.get("/runs/capabilities").status_code == 401
         assert FakeRunScheduler.created[-1].native_owner is owner
+
+
+def test_strict_embedded_stub_borrows_lifespan_reader_and_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, bind_runtime_identity
+    from dify_agent.protocol.native_testing import AgentRuntimeIdentity
+
+    _patch_app_lifecycle(monkeypatch)
+    identity = AgentRuntimeIdentity(
+        run_id="actual", execution_mode="ordinary", parent_node=None, request_digest="a" * 64, agent_generation=0
+    )
+    seen = []
+    reads = []
+
+    async def read_active(self, selected):
+        reads.append((self, selected))
+        return identity
+
+    monkeypatch.setattr(app_module.RedisRunStore, "read_active_stub_identity", read_active)
+    monkeypatch.setattr(
+        app_module,
+        "create_dify_api_inner_http_client",
+        lambda settings: AgentRuntimeHTTPClient(
+            api_url="http://api",
+            api_token="backend",
+            transport=httpx.MockTransport(lambda req: seen.append(req) or httpx.Response(200, json={})),
+        ),
+    )
+    settings = ServerSettings(
+        redis_url="redis://example.invalid/0",
+        inner_api_url="http://api",
+        api_token="backend",
+        server_secret_key=_base64url_secret(b"1" * 32),
+        sandbox_files_base_url="http://files",
+    )
+    codec = settings.create_agent_stub_token_codec()
+    assert codec is not None
+    context = _execution_context().model_copy(
+        update={"agent_id": "agent", "agent_config_version_id": "config", "agent_config_version_kind": "draft"}
+    )
+    with bind_runtime_identity(identity):
+        token = codec.encode_runtime_token(context, run_id="actual", session_id=None)
+    with TestClient(create_app(settings)) as client:
+        result = client.get("/agent-stub/config/skills/alpha/inspect", headers={"Authorization": "Bearer " + token})
+        assert result.status_code == 200
+        assert (
+            client.post(
+                "/agent-stub/connections",
+                json={"protocol_version": 1, "argv": ["connect"]},
+                headers={"Authorization": "Bearer " + codec.encode_connection_token(context)},
+            ).status_code
+            == 403
+        )
+    assert len(seen) == 1
+    assert "X-Dify-Agent-Run" in seen[0].headers
+    assert len(reads) >= 2
+    assert all(store is reads[0][0] for store, _ in reads)

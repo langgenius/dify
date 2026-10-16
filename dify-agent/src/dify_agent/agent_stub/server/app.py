@@ -10,6 +10,7 @@ methods that the standard run server uses before mounting
 from __future__ import annotations
 
 from fastapi import FastAPI
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
 
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.server.settings import ServerSettings
@@ -22,6 +23,7 @@ def create_agent_stub_app(settings: ServerSettings | None = None) -> FastAPI:
     app.include_router(
         create_agent_stub_router(
             token_codec=resolved_settings.create_agent_stub_token_codec(),
+            admission=AgentStubAdmission() if not resolved_settings.inner_api_key else None,
             file_request_handler=resolved_settings.create_agent_stub_file_request_handler(),
             config_request_handler=resolved_settings.create_agent_stub_config_request_handler(),
         )

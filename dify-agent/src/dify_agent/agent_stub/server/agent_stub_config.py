@@ -8,10 +8,13 @@ Config operation inputs and asset selectors.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, AgentRuntimeTransportError
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+import re
 import httpx
 from pydantic import ValidationError
 
@@ -76,8 +79,16 @@ class DifyApiAgentStubConfigRequestHandler:
     inner_api_key: str
     sandbox_files_base_url: str
     timeout: httpx.Timeout | float = 30.0
+    runtime_client: Callable[[], AgentRuntimeHTTPClient] | None = None
+    admission: AgentStubAdmission | None = None
 
     async def manifest(self, *, principal: AgentStubPrincipal) -> AgentStubConfigManifestResponse:
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
         execution_context = self._require_config_context(principal.execution_context)
         payload = await self._get_inner_api_json(
             f"/inner/api/agent-config/{execution_context.agent_id}/manifest",
@@ -94,6 +105,12 @@ class DifyApiAgentStubConfigRequestHandler:
         principal: AgentStubPrincipal,
         source: AgentStubConfigDownloadSource,
     ) -> AgentStubFileDownloadResponse:
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
         execution_context = self._require_config_context(principal.execution_context)
         payload = await self._post_inner_api_json(
             f"/inner/api/agent-config/{execution_context.agent_id}/download-request",
@@ -119,6 +136,14 @@ class DifyApiAgentStubConfigRequestHandler:
             raise AgentStubConfigRequestError(502, "Dify API config download response is invalid") from exc
 
     async def inspect_skill(self, *, principal: AgentStubPrincipal, name: str) -> dict[str, object]:
+        if self.runtime_client is not None and not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", name):
+            raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
         execution_context = self._require_config_context(principal.execution_context)
         payload = await self._get_inner_api_json(
             f"/inner/api/agent-config/{execution_context.agent_id}/skills/{name}/inspect",
@@ -134,6 +159,12 @@ class DifyApiAgentStubConfigRequestHandler:
         principal: AgentStubPrincipal,
         request: AgentStubConfigPushRequest,
     ) -> AgentStubConfigPushResponse:
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
         execution_context = self._require_user_context(self._require_config_context(principal.execution_context))
         payload = await self._post_inner_api_json(
             f"/inner/api/agent-config/{execution_context.agent_id}/push",
@@ -151,6 +182,12 @@ class DifyApiAgentStubConfigRequestHandler:
             raise AgentStubConfigRequestError(502, "Dify API config push response is invalid") from exc
 
     async def update_env(self, *, principal: AgentStubPrincipal, env_text: str) -> dict[str, object]:
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
         execution_context = self._require_user_context(self._require_config_context(principal.execution_context))
         payload = await self._patch_inner_api_json(
             f"/inner/api/agent-config/{execution_context.agent_id}/env",
@@ -167,6 +204,12 @@ class DifyApiAgentStubConfigRequestHandler:
         return payload
 
     async def update_note(self, *, principal: AgentStubPrincipal, note: str) -> dict[str, object]:
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", principal.execution_context.agent_id or ""):
+                raise AgentRuntimeTransportError("agent_stub_config_path_invalid")
         execution_context = self._require_user_context(self._require_config_context(principal.execution_context))
         payload = await self._put_inner_api_json(
             f"/inner/api/agent-config/{execution_context.agent_id}/note",
@@ -241,6 +284,19 @@ class DifyApiAgentStubConfigRequestHandler:
         params: Mapping[str, str] | None = None,
         json: Mapping[str, Any] | None = None,
     ) -> httpx.Response:
+        if self.runtime_client is not None:
+            path = path.replace("/inner/api/agent-config/", "/inner/api/agent/runtime/config/", 1)
+            client = self.runtime_client()
+            if not isinstance(client, AgentRuntimeHTTPClient):
+                raise AgentRuntimeTransportError("agent_stub_final_owner_required")
+            try:
+                return await client.request(method, f"{self.inner_api_url.rstrip('/')}{path}", params=params, json=json)
+            except httpx.TimeoutException as exc:
+                raise AgentStubConfigRequestError(504, "Dify API config request timed out") from exc
+            except httpx.RequestError as exc:
+                raise AgentStubConfigRequestError(502, f"Dify API config request failed: {exc}") from exc
+        if not self.inner_api_key:
+            raise AgentRuntimeTransportError("agent_stub_live_owner_unavailable")
         url = f"{self.inner_api_url.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, trust_env=False) as client:
             try:

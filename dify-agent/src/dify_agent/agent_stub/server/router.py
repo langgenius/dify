@@ -10,6 +10,8 @@ environment variables or import server settings directly.
 
 from __future__ import annotations
 
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
+
 from fastapi import APIRouter
 
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestHandler
@@ -23,12 +25,14 @@ def create_agent_stub_router(
     token_codec: AgentStubTokenCodec | None,
     file_request_handler: AgentStubFileRequestHandler | None = None,
     config_request_handler: AgentStubConfigRequestHandler | None = None,
+    admission: AgentStubAdmission | None = None,
 ) -> APIRouter:
     """Build the embeddable stub router from pre-built server dependencies."""
     return create_agent_stub_http_router(
         token_codec,
         file_request_handler,
         config_request_handler,
+        admission,
     )
 
 

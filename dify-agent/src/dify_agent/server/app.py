@@ -29,6 +29,8 @@ from dify_agent.adapters.native_testing.transport import (
     AgentRuntimeTransportError,
     LegacyPluginDaemonTransport,
 )
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
+from dify_agent.adapters.native_testing.transport import current_runtime_identity
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -72,14 +74,37 @@ def create_app(
             *,
             session_id: str | None,
         ) -> str:
+            if not resolved_settings.inner_api_key:
+                return agent_stub_token_codec.encode_runtime_token(
+                    execution_context, run_id=current_runtime_identity().run_id, session_id=session_id
+                )
             return agent_stub_token_codec.encode_connection_token(
                 execution_context,
                 session_id=session_id,
             )
 
         agent_stub_token_factory = issue_agent_stub_token
-    agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
-    agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
+    state: dict[str, object] = {}
+
+    async def read_active_stub(identity):
+        store = state.get("store")
+        if not isinstance(store, RedisRunStore):
+            raise AgentRuntimeTransportError("agent_stub_live_owner_unavailable")
+        return await store.read_active_stub_identity(identity)
+
+    def stub_client() -> AgentRuntimeHTTPClient:
+        client = state.get("dify_api_http_client")
+        if not isinstance(client, AgentRuntimeHTTPClient):
+            raise AgentRuntimeTransportError("agent_stub_live_owner_unavailable")
+        return client
+
+    stub_admission = AgentStubAdmission(reader=read_active_stub) if not resolved_settings.inner_api_key else None
+    agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler(
+        runtime_client=stub_client if stub_admission is not None else None, admission=stub_admission
+    )
+    agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler(
+        runtime_client=stub_client if stub_admission is not None else None, admission=stub_admission
+    )
     runtime_backend_profile = resolved_settings.build_runtime_backend_profile()
     if (
         resolved_settings.api_token is None
@@ -95,7 +120,7 @@ def create_app(
         BindingFileService(
             execution_bindings=runtime_backend_profile.execution_bindings,
             agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
-            agent_stub_token_factory=agent_stub_token_factory,
+            agent_stub_token_factory=agent_stub_token_factory if resolved_settings.inner_api_key else None,
             download_command_timeout_seconds=resolved_settings.binding_file_download_command_timeout_seconds,
         )
         if runtime_backend_profile is not None
@@ -114,7 +139,6 @@ def create_app(
         if runtime_backend_profile is not None
         else None
     )
-    state: dict[str, object] = {}
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
@@ -151,12 +175,14 @@ def create_app(
             stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             agent_observability=agent_observability,
         )
+        state["dify_api_http_client"] = dify_api_inner_http_client
         state["store"] = store
         state["scheduler"] = scheduler
         try:
             yield
         finally:
             await scheduler.shutdown()
+            state.clear()
             await dify_api_inner_http_client.aclose()
             await plugin_daemon_http_client.aclose()
             await redis.aclose()
@@ -190,6 +216,7 @@ def create_app(
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,
+            admission=stub_admission,
             file_request_handler=agent_stub_file_request_handler,
             config_request_handler=agent_stub_config_request_handler,
         )

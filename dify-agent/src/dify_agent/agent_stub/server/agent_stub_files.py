@@ -12,7 +12,9 @@ values that route handlers can map directly into responses.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dify_agent.adapters.native_testing.transport import AgentRuntimeHTTPClient, AgentRuntimeTransportError
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dataclasses import dataclass
 import posixpath
 from typing import Any, Protocol
@@ -122,6 +124,8 @@ class DifyApiAgentStubFileRequestHandler:
     sandbox_files_base_url: str
     max_upload_size_bytes: int
     timeout: httpx.Timeout | float = 30.0
+    runtime_client: Callable[[], AgentRuntimeHTTPClient] | None = None
+    admission: AgentStubAdmission | None = None
 
     async def create_upload_request(
         self,
@@ -141,6 +145,10 @@ class DifyApiAgentStubFileRequestHandler:
                 inner API times out or fails, the response is non-2xx, or the
                 success payload does not contain a valid ``upload_uri``.
         """
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
         execution_context = self._require_user_context(principal.execution_context)
         payload = {
             "tenant_id": execution_context.tenant_id,
@@ -177,6 +185,10 @@ class DifyApiAgentStubFileRequestHandler:
                 inner API times out or fails, the response is non-2xx, the
                 success payload does not contain safe download metadata.
         """
+        if self.runtime_client is not None:
+            if self.admission is None:
+                raise AgentRuntimeTransportError("agent_stub_admission_missing")
+            self.admission.require(principal)
         execution_context = self._require_user_context(principal.execution_context)
         file_mapping = request.file
         if file_mapping is None:
@@ -212,17 +224,31 @@ class DifyApiAgentStubFileRequestHandler:
 
     async def _post_inner_api(self, path: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         url = f"{self.inner_api_url.rstrip('/')}{path}"
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, trust_env=False) as client:
+        if self.runtime_client is not None:
+            url = url.replace("/inner/api/agent/files/", "/inner/api/agent/runtime/files/", 1)
+            client = self.runtime_client()
+            if not isinstance(client, AgentRuntimeHTTPClient):
+                raise AgentRuntimeTransportError("agent_stub_final_owner_required")
             try:
-                response = await client.post(
-                    url,
-                    json=dict(payload),
-                    headers={"X-Inner-Api-Key": self.inner_api_key},
-                )
+                response = await client.post(url, json=dict(payload))
             except httpx.TimeoutException as exc:
                 raise AgentStubFileRequestError(504, "Dify API file request timed out") from exc
             except httpx.RequestError as exc:
                 raise AgentStubFileRequestError(502, f"Dify API file request failed: {exc}") from exc
+        else:
+            if not self.inner_api_key:
+                raise AgentRuntimeTransportError("agent_stub_live_owner_unavailable")
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, trust_env=False) as client:
+                try:
+                    response = await client.post(
+                        url,
+                        json=dict(payload),
+                        headers={"X-Inner-Api-Key": self.inner_api_key},
+                    )
+                except httpx.TimeoutException as exc:
+                    raise AgentStubFileRequestError(504, "Dify API file request timed out") from exc
+                except httpx.RequestError as exc:
+                    raise AgentStubFileRequestError(502, f"Dify API file request failed: {exc}") from exc
 
         raw_payload = self._parse_json(response)
         if response.is_error:

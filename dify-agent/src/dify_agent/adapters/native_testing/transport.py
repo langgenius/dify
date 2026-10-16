@@ -11,7 +11,7 @@ from __future__ import annotations
 import base64
 import json
 import re
-from collections.abc import Generator
+from collections.abc import Awaitable, Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -34,18 +34,22 @@ class AgentRuntimeTransportError(RuntimeError):
 class _Lifetime:
     identity: AgentRuntimeIdentity
     active: bool = True
+    validate_send: Callable[[], Awaitable[None]] | None = None
 
 
 _binding: ContextVar[_Lifetime | None] = ContextVar("agent_run_transport_binding", default=None)
 
 
 @contextmanager
-def bind_runtime_identity(identity: AgentRuntimeIdentity) -> Generator[None, None, None]:
+def bind_runtime_identity(
+    identity: AgentRuntimeIdentity, *, validate_send: Callable[[], Awaitable[None]] | None = None
+) -> Generator[None, None, None]:
     """Scheduler-only scope; revoke inherited detached tasks on every exit."""
     if _binding.get() is not None:
         raise AgentRuntimeTransportError("agent_runtime_binding_nested")
     # Parse a detached immutable copy; never retain a caller-owned model object.
     lifetime = _Lifetime(AgentRuntimeIdentity.model_validate_json(identity.model_dump_json()))
+    lifetime.validate_send = validate_send
     token = _binding.set(lifetime)
     try:
         yield
@@ -108,12 +112,44 @@ _PREFIX = "/inner/api/agent/runtime/"
 
 
 def _allowed_route(request: httpx.Request) -> bool:
-    # Decode aliases, query/signed URLs and path normalization must not broaden
-    # the exact route/method authority. Config producers belong to the next slice.
-    if request.url.query or request.url.fragment or b"%" in request.url.raw_path:
+    if request.url.fragment or b"%" in request.url.raw_path.split(b"?", 1)[0]:
         return False
     path = request.url.path
-    return request.method == "POST" and path.startswith(_PREFIX) and path[len(_PREFIX) :] in _POST_ROUTES
+    if request.method == "POST" and path.startswith(_PREFIX) and path[len(_PREFIX) :] in _POST_ROUTES:
+        return not request.url.query
+    match = re.fullmatch(
+        _PREFIX
+        + r"config/[A-Za-z0-9_-]{1,128}/(manifest|download-request|skills/[A-Za-z0-9_-]{1,128}/inspect|push|env|note)",
+        path,
+    )
+    if match is None:
+        return False
+    operation = match.group(1)
+    method = (
+        "GET"
+        if operation == "manifest" or operation.startswith("skills/")
+        else {"download-request": "POST", "push": "POST", "env": "PATCH", "note": "PUT"}[operation]
+    )
+    if request.method != method:
+        return False
+    if method != "GET":
+        return not request.url.query
+    # Identifiers are canonical bounded segments; no encoded aliases or duplicate authority.
+    query = request.url.query.decode("ascii")
+    if len(query) > 1024 or not re.fullmatch(r"[A-Za-z0-9_=&-]+", query):
+        return False
+    pairs = list(request.url.params.multi_items())
+    values = dict(pairs)
+    return (
+        len(pairs) == len(values)
+        and set(values)
+        in (
+            {"tenant_id", "config_version_id", "config_version_kind"},
+            {"tenant_id", "config_version_id", "config_version_kind", "user_id"},
+        )
+        and all(re.fullmatch(r"[A-Za-z0-9_-]{1,128}", value) for value in values.values())
+        and values["config_version_kind"] in {"draft", "snapshot", "build_draft"}
+    )
 
 
 class _RunBoundAPITransport(httpx.AsyncBaseTransport):
@@ -181,6 +217,10 @@ class _RunBoundAPITransport(httpx.AsyncBaseTransport):
         # Do not contaminate the original prebuilt request when it is reused.
         outbound = httpx.Request(request.method, url, headers=headers, content=body, extensions=request.extensions)
         current_runtime_identity()  # Recheck after any awaited request-body read.
+        lifetime = _binding.get()
+        if lifetime is not None and lifetime.validate_send is not None:
+            await lifetime.validate_send()
+            current_runtime_identity()  # Revoke detached calls during the awaited durable read too.
         response = await self._transport.handle_async_request(outbound)
         if 300 <= response.status_code < 400:
             await response.aclose()

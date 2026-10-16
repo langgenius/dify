@@ -358,6 +358,34 @@ class RedisRunStore(RunEventSink):
         except (ValueError, TypeError):
             raise NativeContinuationConflict("native identity unavailable") from None
 
+    async def read_active_stub_identity(self, selection: AgentRuntimeIdentity) -> AgentRuntimeIdentity:
+        """Atomically select a running uncancelled ordinary Run for Stub admission."""
+        if selection.execution_mode != "ordinary" or selection.parent_node is not None:
+            raise NativeContinuationConflict("ordinary Stub identity required")
+        reply = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _READ_ACTIVE_STUB_SCRIPT,
+                2,
+                run_record_key(self.prefix, selection.run_id),
+                run_cancel_intent_key(self.prefix, selection.run_id),
+                selection.run_id,
+                selection.request_digest,
+                selection.agent_generation,
+                MAX_AGENT_CONTROL_BYTES,
+                MAX_CHECKPOINT_BYTES * 2,
+            ),
+        )
+        if not isinstance(reply, (bytes, str)) or len(reply) > MAX_AGENT_CONTROL_BYTES:
+            raise NativeContinuationConflict("active Stub identity unavailable")
+        try:
+            actual = AgentRuntimeIdentity.model_validate_json(reply)
+        except ValueError:
+            raise NativeContinuationConflict("active Stub identity unavailable") from None
+        if actual != selection:
+            raise NativeContinuationConflict("active Stub identity changed")
+        return actual
+
     @override
     async def persist_waiting(self, *, run_id: str, checkpoint: AgentCheckpoint, event: RunWaitingEvent) -> str:
         """Commit protected checkpoint and public waiting event in one Lua CAS."""
@@ -824,4 +852,20 @@ end
 local identity = cjson.encode(r.runtime_identity)
 if #identity > tonumber(ARGV[1]) then return {-2, "", 0} end
 return {1, identity, r.native_generation}
+"""
+
+
+_READ_ACTIVE_STUB_SCRIPT = """
+if redis.call("EXISTS", KEYS[2]) == 1 or redis.call("STRLEN", KEYS[1]) > tonumber(ARGV[5]) then return false end
+local raw = redis.call("GET", KEYS[1])
+if not raw then return false end
+local ok, r = pcall(cjson.decode, raw)
+if not ok or type(r) ~= "table" or r.status ~= "running" or r.run_id ~= ARGV[1] then return false end
+local i = r.runtime_identity
+if type(i) ~= "table" or i.execution_mode ~= "ordinary" or i.parent_node ~= cjson.null or
+    i.run_id ~= ARGV[1] or i.request_digest ~= ARGV[2] or r.native_generation ~= tonumber(ARGV[3]) then return false end
+i.agent_generation = r.native_generation
+local result = cjson.encode(i)
+if #result > tonumber(ARGV[4]) then return false end
+return result
 """

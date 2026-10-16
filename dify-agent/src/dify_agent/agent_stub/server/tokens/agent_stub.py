@@ -24,6 +24,8 @@ from jwcrypto import jwe, jwk
 from jwcrypto.common import JWException
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from dify_agent.adapters.native_testing.transport import AgentRuntimeTransportError, current_runtime_identity
+from dify_agent.protocol.native_testing import AgentRuntimeIdentity
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 
@@ -65,6 +67,7 @@ class AgentStubTokenClaims(BaseModel):
     scope: list[str]
     execution_context: DifyExecutionContextLayerConfig
     shell: AgentStubShellClaims | None = None
+    runtime: AgentRuntimeIdentity | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -77,6 +80,8 @@ class AgentStubPrincipal:
     session_id: str | None
     scope: list[str]
     token_id: str
+    runtime: AgentRuntimeIdentity | None = None
+    expires_at: int | None = None
 
 
 class AgentStubTokenCodec:
@@ -129,12 +134,24 @@ class AgentStubTokenCodec:
         """Encode one fixed-five-minute Agent Stub compact JWE bearer token."""
         return self.encode_claims(self.build_connection_claims(execution_context, session_id=session_id, now=now))
 
+    def encode_runtime_token(
+        self, execution_context: DifyExecutionContextLayerConfig, *, run_id: str, session_id: str | None
+    ) -> str:
+        """Issue only inside the actual ordinary scheduler/Deps owner."""
+        identity = current_runtime_identity()
+        if identity.run_id != run_id or identity.execution_mode != "ordinary":
+            raise AgentRuntimeTransportError("agent_stub_runtime_owner_unavailable")
+        claims = self.build_connection_claims(execution_context, session_id=session_id)
+        claims.runtime = identity
+        return self.encode_claims(claims)
+
     def encode_claims(self, claims: AgentStubTokenClaims) -> str:
         """Encrypt one validated Agent Stub claim set as compact JWE."""
+        payload = claims.model_dump(mode="json", exclude_none=True)
+        if claims.runtime is not None:
+            payload["runtime"] = claims.runtime.model_dump(mode="json")
         token = jwe.JWE(
-            plaintext=json.dumps(claims.model_dump(mode="json", exclude_none=True), separators=(",", ":")).encode(
-                "utf-8"
-            ),
+            plaintext=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
             protected=json.dumps({"alg": "dir", "enc": "A256GCM"}),
         )
         token.add_recipient(self._jwe_key)
@@ -169,6 +186,8 @@ class AgentStubTokenCodec:
             session_id=claims.shell.session_id if claims.shell is not None else None,
             scope=list(claims.scope),
             token_id=claims.jti,
+            runtime=claims.runtime,
+            expires_at=claims.exp,
         )
 
 

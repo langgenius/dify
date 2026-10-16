@@ -660,6 +660,10 @@ class ShellSession:
         require_agent_stub_env: bool = False,
     ) -> dict[str, str]:
         if isinstance(self._require_resource(), NativeScopeLease):
+            if require_agent_stub_env or (
+                include_agent_stub_env and self.deps.services.agent_stub_token_factory is not None
+            ):
+                raise NativePolicyStopped("native_agent_stub_unavailable")
             if (
                 _shell_config_env(self.config)
                 or self.config.secret_refs
@@ -677,6 +681,9 @@ class ShellSession:
             if context_name
             else None
         )
+        # Resolving the strict client checks this actual Deps.run_id against the
+        # scheduler binding synchronously before the server token factory runs.
+        _ = self.deps.dify_api_http_client
         agent_stub_env = build_shell_agent_stub_env(
             agent_stub_api_base_url=self.deps.services.agent_stub_api_base_url,
             execution_context=execution_context,
