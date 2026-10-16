@@ -6,6 +6,7 @@ All key-provider and object-storage work happens outside SQL transactions.
 """
 
 import json
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID, uuid4
@@ -15,17 +16,36 @@ from sqlalchemy import select
 
 from core.helper import encrypter
 from extensions.ext_storage import storage
+from models.agent import (
+    AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentHomeSnapshot,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.dify_builder_native_tests import (
     NativeContinuation,
     NativeEffectOperation,
     NativeInvocationState,
     NativePayloadObject,
+    NativeTestInvocation,
 )
 from models.workflow import Workflow
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
+from services.dify_builder.native_testing.agent_contracts import (
+    AgentNodeAssociation,
+    AgentParentNodeRef,
+    AgentProtectedState,
+    AgentTestWorkspaceRef,
+    AgentWaitAssociation,
+)
 from services.dify_builder.native_testing.contracts import (
+    ID,
     CheckpointRef,
+    Counter,
     FiniteJSON,
     JsonValue,
     NativeTestContextRef,
@@ -116,6 +136,26 @@ class ObjectReceipt:
     value_digest: str
 
 
+@dataclass
+class _AgentPreparation:
+    parent: AgentParentNodeRef
+    context: ResolvedNativeTestContext
+    authority: PrivateReadOwner
+    workspace: AgentTestWorkspaceRef
+    resource_digest: str
+    objects: list[ObjectReceipt]
+
+
+@contextmanager
+def _agent_boundary():
+    try:
+        yield
+    except BuilderExecutionPolicyError:
+        raise
+    except Exception:
+        raise BuilderExecutionPolicyError("native_agent_state_unavailable") from None
+
+
 class NativeExecutionStateStore:
     def __init__(self, loader: OwnedNativeTestLoader):
         self.loader = loader
@@ -173,7 +213,7 @@ class NativeExecutionStateStore:
         return row
 
     @staticmethod
-    def _read_object(row: NativePayloadObject) -> JsonValue:
+    def _read_object(row: NativePayloadObject | ObjectReceipt) -> JsonValue:
         try:
             raw = encrypter.decrypt_token(row.tenant_id, storage.load(row.storage_key).decode("ascii"))
             value = decode_payload(
@@ -316,6 +356,7 @@ class NativeExecutionStateStore:
                 raise BuilderExecutionPolicyError("native_generation_conflict")
             if context.native_run_id != payload.native_run_id:
                 raise BuilderExecutionPolicyError("native_run_mismatch")
+            agent_preparations = self._agent_checkpoint_preparations(ref, payload)
             # Validate every referenced private input/result and child owner before storing.
             for result_ref in (
                 *payload.input_result_refs,
@@ -346,12 +387,16 @@ class NativeExecutionStateStore:
                 tenant_id=context.tenant_id,
                 kind="checkpoint",
                 logical_key=str(generation),
-                payload=payload.model_dump(mode="json"),
+                payload=payload.model_dump(
+                    mode="json", exclude={"agent_associations"} if not payload.agent_associations else set()
+                ),
             )
-            with self.loader.locked(ref=ref) as (session, owned, _):
+            with self.loader.locked(ref=ref) as (session, owned, scope):
                 state = invocation_state(session, ref, owned.tenant_id)
                 if state.generation != generation or state.state not in {"running", "waiting"}:
                     raise BuilderExecutionPolicyError("native_generation_conflict")
+                for prepared in agent_preparations:
+                    self._agent_recheck(session, owned, scope, prepared, writing=False)
                 obj = self.acknowledge_object(session, receipt)
                 prior = session.scalar(
                     owner_query(NativeContinuation, ref, owned.tenant_id).where(
@@ -397,7 +442,39 @@ class NativeExecutionStateStore:
                 or row.storage_key != continuation.payload_ref
             ):
                 raise BuilderExecutionPolicyError("checkpoint_unavailable")
-        return NativeCheckpointPayload.model_validate(self._read_object(row))
+        payload = NativeCheckpointPayload.model_validate(self._read_object(row))
+        if payload.agent_associations:
+            with _agent_boundary():
+                if payload.generation != continuation.generation:
+                    raise BuilderExecutionPolicyError("native_generation_conflict")
+                prepared = self._agent_checkpoint_preparations(ref, payload)
+                outer = ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__})
+                with self.loader.locked(ref=ref) as (session, current, scope):
+                    selected_continuation = session.scalar(
+                        owner_query(NativeContinuation, ref, current.tenant_id).where(
+                            NativeContinuation.checkpoint_id == checkpoint.checkpoint_id,
+                            NativeContinuation.payload_digest == checkpoint.payload_digest,
+                        )
+                    )
+                    selected_object = session.scalar(
+                        owner_query(NativePayloadObject, ref, current.tenant_id).where(
+                            NativePayloadObject.id == checkpoint.checkpoint_id, NativePayloadObject.kind == "checkpoint"
+                        )
+                    )
+                    if selected_continuation is None or selected_continuation.generation != payload.generation:
+                        raise BuilderExecutionPolicyError("native_generation_conflict")
+                    if (
+                        selected_object is None
+                        or selected_continuation.payload_ref != outer.storage_key
+                        or any(
+                            getattr(selected_object, name) != getattr(outer, name)
+                            for name in ObjectReceipt.__dataclass_fields__
+                        )
+                    ):
+                        raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+                    for selected in prepared:
+                        self._agent_recheck(session, current, scope, selected, writing=False)
+        return payload
 
     def store_result(self, *, ref: NativeTestContextRef, key: OperationKey, result: JsonValue) -> str:
         if key.invocation_id != ref.invocation_id:
@@ -465,7 +542,14 @@ class NativeExecutionStateStore:
 
     @staticmethod
     def _validate_node_inputs_owner(
-        session, owned, scope, context: ResolvedNativeTestContext, authority: PrivateReadOwner, generation: int
+        session,
+        owned,
+        scope,
+        context: ResolvedNativeTestContext,
+        authority: PrivateReadOwner,
+        generation: int,
+        *,
+        allowed_states: tuple[str, ...] = ("running",),
     ) -> None:
         """SQL-only preflight/recheck; caller owns the transaction and any root lock."""
         state = invocation_state(session, context.ref, owned.tenant_id)
@@ -475,7 +559,7 @@ class NativeExecutionStateStore:
             raise BuilderExecutionPolicyError("native_generation_conflict")
         if scope.expires_at <= utc_now():
             raise BuilderExecutionPolicyError("native_expired")
-        if state.state != "running":
+        if state.state not in allowed_states:
             raise BuilderExecutionPolicyError("native_invocation_mismatch")
         if (
             context.ref,
@@ -524,3 +608,533 @@ class NativeExecutionStateStore:
         if row is None:
             raise BuilderExecutionPolicyError("native_result_owner_mismatch")
         return self._read_object(row)
+
+    @staticmethod
+    def _agent_key(namespace: str, parent: AgentParentNodeRef, generation: int | None = None) -> str:
+        key = namespace + ":" + canonical_digest(parent.model_dump(mode="json"))
+        if generation is not None:
+            key += ":" + str(TypeAdapter(Counter).validate_python(generation))
+        if len(key) > 128:
+            raise BuilderExecutionPolicyError("native_agent_state_unavailable")
+        return key
+
+    @staticmethod
+    def _agent_resources(session, owned, context: ResolvedNativeTestContext) -> tuple[AgentTestWorkspaceRef, str]:
+        """Current SQL allocation/pin/workspace chain only; no physical/backend IO."""
+        invocation = session.scalar(owner_query(NativeTestInvocation, context.ref, owned.tenant_id))
+        if (
+            invocation is None
+            or not invocation.active
+            or (invocation.tenant_id, invocation.request_id, invocation.invocation_id)
+            != (context.tenant_id, context.ref.request_id, context.ref.invocation_id)
+        ):
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        allocation = invocation.bindings.get("_agent_workspace_v1")
+        if not isinstance(allocation, dict):
+            raise BuilderExecutionPolicyError("native_workspace_unavailable")
+        # Local import avoids the existing workspace service -> state owner dependency.
+        # This is its pure parser/ref conversion, not workspace/backend IO.
+        from services.dify_builder.native_testing.agent_workspace import AgentWorkspaceAllocation, _ref
+
+        parsed_allocation = AgentWorkspaceAllocation.model_validate(allocation)
+        if any(
+            allocation.get(key) != value
+            for key, value in {
+                "tenant_id": context.tenant_id,
+                "app_id": context.app_id,
+                "request_id": context.ref.request_id,
+                "invocation_id": context.ref.invocation_id,
+                "owner_run_id": context.native_run_id,
+                "phase": "ready",
+            }.items()
+        ):
+            raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+        scope = allocation.get("native_scope")
+        if not isinstance(scope, dict):
+            raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+        binding_id = TypeAdapter(ID).validate_python(allocation.get("binding_id"))
+        generation = TypeAdapter(Counter).validate_python(scope.get("generation"))
+        if scope.get("scope_id") != binding_id or scope.get("binding_ref") != binding_id:
+            raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+        workspace_ref = _ref(parsed_allocation)
+        snapshot = session.get(AgentConfigSnapshot, workspace_ref.pinned_snapshot_id)
+        home = session.get(AgentHomeSnapshot, workspace_ref.home_snapshot_id)
+        workspace = session.get(AgentWorkspace, workspace_ref.workspace_id)
+        binding = session.get(AgentWorkspaceBinding, workspace_ref.binding_id)
+        if snapshot is None or home is None or workspace is None or binding is None:
+            raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+        agent_id = TypeAdapter(ID).validate_python(allocation.get("agent_id"))
+        if (
+            (snapshot.tenant_id, snapshot.agent_id, snapshot.home_snapshot_id) != (context.tenant_id, agent_id, home.id)
+            or (home.tenant_id, home.agent_id, home.status, home.snapshot_ref)
+            != (context.tenant_id, agent_id, AgentWorkingResourceStatus.ACTIVE, scope.get("base_snapshot_ref"))
+            or (
+                workspace.tenant_id,
+                workspace.app_id,
+                workspace.owner_type,
+                workspace.owner_id,
+                workspace.owner_scope_key,
+                workspace.status,
+                workspace.backend_workspace_ref,
+            )
+            != (
+                context.tenant_id,
+                context.app_id,
+                AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                context.native_run_id,
+                "native:" + context.ref.invocation_id,
+                AgentWorkingResourceStatus.ACTIVE,
+                workspace_ref.backend_workspace_ref,
+            )
+            or (
+                binding.tenant_id,
+                binding.app_id,
+                binding.workspace_id,
+                binding.agent_id,
+                binding.base_home_snapshot_id,
+                binding.agent_config_version_id,
+                binding.agent_config_version_kind,
+                binding.backend_binding_ref,
+                binding.status,
+            )
+            != (
+                context.tenant_id,
+                context.app_id,
+                workspace.id,
+                agent_id,
+                home.id,
+                snapshot.id,
+                AgentConfigVersionKind.SNAPSHOT,
+                workspace_ref.backend_binding_ref,
+                AgentWorkingResourceStatus.ACTIVE,
+            )
+        ):
+            raise BuilderExecutionPolicyError("native_workspace_owner_mismatch")
+        nodes = context.graph.get("nodes", [])
+        if not isinstance(nodes, list) or not any(
+            isinstance(node, dict)
+            and isinstance(node.get("data"), dict)
+            and isinstance(node["data"].get("agent_binding"), dict)
+            and node["data"]["agent_binding"].get("current_snapshot_id") == snapshot.id
+            and node["data"]["agent_binding"].get("agent_id") == agent_id
+            for node in nodes
+        ):
+            raise BuilderExecutionPolicyError("native_agent_pin_mismatch")
+        return workspace_ref, canonical_digest(
+            {"allocation": allocation, "workspace": workspace_ref.model_dump(mode="json")}
+        )
+
+    def _agent_object(
+        self, preparation: _AgentPreparation, *, logical_key: str, object_ref: str | None = None, required: bool = True
+    ) -> tuple[ObjectReceipt, JsonValue] | None:
+        with self.loader.session_factory() as session:
+            query = owner_query(NativePayloadObject, preparation.parent.ref, preparation.context.tenant_id).where(
+                NativePayloadObject.kind == "result", NativePayloadObject.logical_key == logical_key
+            )
+            if object_ref is not None:
+                query = query.where(NativePayloadObject.id == TypeAdapter(ID).validate_python(object_ref))
+            row = session.scalar(query)
+            if row is None:
+                if required:
+                    raise BuilderExecutionPolicyError("native_agent_object_unavailable")
+                return None
+            receipt = ObjectReceipt(**{name: getattr(row, name) for name in ObjectReceipt.__dataclass_fields__})
+        if (receipt.tenant_id, receipt.request_id, receipt.invocation_id, receipt.kind, receipt.logical_key) != (
+            preparation.context.tenant_id,
+            preparation.parent.ref.request_id,
+            preparation.parent.ref.invocation_id,
+            "result",
+            logical_key,
+        ) or (object_ref is not None and receipt.id != object_ref):
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        value = self._read_object(receipt)
+        preparation.objects.append(receipt)
+        return receipt, value
+
+    def _agent_prepare(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        parent_node: AgentParentNodeRef,
+        writing: bool,
+        expected_generation: int | None = None,
+    ) -> _AgentPreparation:
+        parent = AgentParentNodeRef.model_validate(parent_node.model_dump(mode="json"))
+        if ref != parent.ref:
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        self.loader.load(ref=ref)
+        authority = validate_private_read(self.loader, ref)
+        context = self.load_context(ref=ref)
+        if (
+            expected_generation is not None
+            and TypeAdapter(Counter).validate_python(expected_generation) != context.generation
+        ):
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        with self.loader.session_factory() as session:
+            owned, scope = self.loader._load(session, ref=ref, lock=False)
+            self._validate_node_inputs_owner(
+                session,
+                owned,
+                scope,
+                context,
+                authority,
+                context.generation,
+                allowed_states=("running",) if writing else ("running", "waiting"),
+            )
+            self._agent_single_parent(session, context, parent)
+            workspace, stamp = self._agent_resources(session, owned, context)
+        prepared = _AgentPreparation(parent, context, authority, workspace, stamp, [])
+        selected = self._agent_object(
+            prepared, logical_key="node-input:" + parent.execution_id, object_ref=parent.input_result_ref
+        )
+        assert selected is not None
+        if canonical_digest(selected[1]) != parent.input_digest:
+            raise BuilderExecutionPolicyError("native_journal_input_mismatch")
+        return prepared
+
+    def _agent_recheck(self, session, owned, scope, prepared: _AgentPreparation, *, writing: bool) -> None:
+        self._validate_node_inputs_owner(
+            session,
+            owned,
+            scope,
+            prepared.context,
+            prepared.authority,
+            prepared.context.generation,
+            allowed_states=("running",) if writing else ("running", "waiting"),
+        )
+        self._agent_single_parent(session, prepared.context, prepared.parent)
+        workspace, stamp = self._agent_resources(session, owned, prepared.context)
+        if workspace != prepared.workspace or stamp != prepared.resource_digest:
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        for receipt in prepared.objects:
+            row = session.scalar(
+                owner_query(NativePayloadObject, prepared.parent.ref, owned.tenant_id).where(
+                    NativePayloadObject.id == receipt.id, NativePayloadObject.kind == "result"
+                )
+            )
+            if row is None or any(
+                getattr(row, name) != getattr(receipt, name) for name in ObjectReceipt.__dataclass_fields__
+            ):
+                raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+
+    def _agent_ack(self, prepared: _AgentPreparation, *, logical_key: str, value: JsonValue) -> str:
+        existing = self._agent_object(prepared, logical_key=logical_key, required=False)
+        receipt = None
+        if existing is not None:
+            if canonical_digest(existing[1]) != canonical_digest(value):
+                raise BuilderExecutionPolicyError("native_payload_conflict")
+        else:
+            receipt = self.prepare_object(
+                ref=prepared.parent.ref,
+                tenant_id=prepared.context.tenant_id,
+                kind="result",
+                logical_key=logical_key,
+                payload=value,
+            )
+        with self.loader.locked(ref=prepared.parent.ref) as (session, owned, scope):
+            self._agent_recheck(session, owned, scope, prepared, writing=True)
+            if receipt is not None:
+                return self.acknowledge_object(session, receipt).id
+            assert existing is not None
+            return existing[0].id
+
+    def store_agent_config(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        parent_node: AgentParentNodeRef,
+        expected_invocation_generation: int,
+        config: JsonValue,
+    ) -> str:
+        """Internal immutable config bytes, not backend authorization or preparation proof."""
+        with _agent_boundary():
+            prepared = self._agent_prepare(
+                ref=ref, parent_node=parent_node, writing=True, expected_generation=expected_invocation_generation
+            )
+            value = {
+                "schema": "agent-config-v1",
+                "parent_node": prepared.parent.model_dump(mode="json"),
+                "workflow_native_run_id": prepared.context.native_run_id,
+                "workspace": prepared.workspace.model_dump(mode="json"),
+                "config": _JSON.validate_python(config),
+            }
+            return self._agent_ack(prepared, logical_key=self._agent_key("agent-config", prepared.parent), value=value)
+
+    def _agent_binding(self, prepared: _AgentPreparation, association_object_ref: str) -> AgentNodeAssociation:
+        selected = self._agent_object(
+            prepared, logical_key=self._agent_key("agent-bind", prepared.parent), object_ref=association_object_ref
+        )
+        assert selected is not None
+        association = AgentNodeAssociation.model_validate(selected[1])
+        self._agent_config_relation(prepared, association)
+        return association
+
+    def _agent_config_relation(self, prepared: _AgentPreparation, association: AgentNodeAssociation) -> None:
+        if (association.parent_node, association.workflow_native_run_id, association.workspace) != (
+            prepared.parent,
+            prepared.context.native_run_id,
+            prepared.workspace,
+        ):
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        selected = self._agent_object(
+            prepared, logical_key=self._agent_key("agent-config", prepared.parent), object_ref=association.config_ref
+        )
+        assert selected is not None
+        value = selected[1]
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"schema", "parent_node", "workflow_native_run_id", "workspace", "config"}
+            or value
+            != {
+                "schema": "agent-config-v1",
+                "parent_node": prepared.parent.model_dump(mode="json"),
+                "workflow_native_run_id": prepared.context.native_run_id,
+                "workspace": prepared.workspace.model_dump(mode="json"),
+                "config": value.get("config"),
+            }
+            or canonical_digest(value["config"]) != association.config_digest
+        ):
+            raise BuilderExecutionPolicyError("native_agent_config_mismatch")
+
+    def bind_agent_run(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        parent_node: AgentParentNodeRef,
+        expected_invocation_generation: int,
+        association: AgentNodeAssociation,
+    ) -> str:
+        """Internal protected binding; only the actual later backend producer may supply its Run."""
+        with _agent_boundary():
+            association = AgentNodeAssociation.model_validate(association.model_dump(mode="json"))
+            prepared = self._agent_prepare(
+                ref=ref, parent_node=parent_node, writing=True, expected_generation=expected_invocation_generation
+            )
+            self._agent_config_relation(prepared, association)
+            return self._agent_ack(
+                prepared,
+                logical_key=self._agent_key("agent-bind", prepared.parent),
+                value=association.model_dump(mode="json"),
+            )
+
+    @staticmethod
+    def _agent_checkpoint_metadata(checkpoint: JsonValue, association: AgentNodeAssociation, generation: int) -> None:
+        # The actual backend adapter still owns full AgentCheckpoint/event validation.
+        if (
+            not isinstance(checkpoint, dict)
+            or (
+                checkpoint.get("run_id"),
+                checkpoint.get("ref"),
+                checkpoint.get("config_ref"),
+                checkpoint.get("config_digest"),
+            )
+            != (
+                association.agent_run_id,
+                association.parent_node.ref.model_dump(mode="json"),
+                association.config_ref,
+                association.config_digest,
+            )
+            or TypeAdapter(Counter).validate_python(checkpoint.get("generation")) != generation
+        ):
+            raise BuilderExecutionPolicyError("native_agent_checkpoint_mismatch")
+
+    def store_agent_wait(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        parent_node: AgentParentNodeRef,
+        association_object_ref: str,
+        agent_generation: int,
+        checkpoint: JsonValue,
+        backend_wait_event_id: str,
+    ) -> AgentWaitAssociation:
+        """Store selected bytes/event reference, NEVER certify an actual Redis ACK.
+
+        The uninstalled later trusted backend producer must first read/validate
+        the actual checkpoint and event. No caller proof flag can replace it.
+        """
+        with _agent_boundary():
+            generation = TypeAdapter(Counter).validate_python(agent_generation)
+            event_id = TypeAdapter(ID).validate_python(backend_wait_event_id)
+            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=True)
+            association = self._agent_binding(prepared, association_object_ref)
+            checkpoint = _JSON.validate_python(checkpoint)
+            self._agent_checkpoint_metadata(checkpoint, association, generation)
+            value = {
+                "schema": "agent-checkpoint-v1",
+                "parent_node": prepared.parent.model_dump(mode="json"),
+                "association_object_ref": association_object_ref,
+                "agent_generation": generation,
+                "backend_wait_event_id": event_id,
+                "checkpoint": checkpoint,
+            }
+            object_ref = self._agent_ack(
+                prepared, logical_key=self._agent_key("agent-cp", prepared.parent, generation), value=value
+            )
+            return AgentWaitAssociation(
+                parent_node=prepared.parent,
+                association_object_ref=association_object_ref,
+                agent_generation=generation,
+                checkpoint_object_ref=object_ref,
+                checkpoint_digest=canonical_digest(checkpoint),
+                backend_wait_event_id=event_id,
+            )
+
+    def _agent_wait_relation(
+        self, prepared: _AgentPreparation, association: AgentNodeAssociation, wait: AgentWaitAssociation
+    ) -> JsonValue:
+        if wait.parent_node != prepared.parent:
+            raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+        selected = self._agent_object(
+            prepared,
+            logical_key=self._agent_key("agent-cp", prepared.parent, wait.agent_generation),
+            object_ref=wait.checkpoint_object_ref,
+        )
+        assert selected is not None
+        value = selected[1]
+        if (
+            not isinstance(value, dict)
+            or set(value)
+            != {
+                "schema",
+                "parent_node",
+                "association_object_ref",
+                "agent_generation",
+                "backend_wait_event_id",
+                "checkpoint",
+            }
+            or value
+            != {
+                "schema": "agent-checkpoint-v1",
+                "parent_node": prepared.parent.model_dump(mode="json"),
+                "association_object_ref": wait.association_object_ref,
+                "agent_generation": wait.agent_generation,
+                "backend_wait_event_id": wait.backend_wait_event_id,
+                "checkpoint": value.get("checkpoint"),
+            }
+            or canonical_digest(value["checkpoint"]) != wait.checkpoint_digest
+        ):
+            raise BuilderExecutionPolicyError("native_agent_checkpoint_mismatch")
+        self._agent_checkpoint_metadata(value["checkpoint"], association, wait.agent_generation)
+        return value["checkpoint"]
+
+    def load_agent_association(
+        self, *, ref: NativeTestContextRef, parent_node: AgentParentNodeRef, wait: AgentWaitAssociation | None = None
+    ) -> AgentProtectedState:
+        """Read owned material only; absence refuses and never implies resume/terminal proof."""
+        with _agent_boundary():
+            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=False)
+            if wait is None:
+                selected = self._agent_object(prepared, logical_key=self._agent_key("agent-bind", prepared.parent))
+                assert selected is not None
+                association_ref = selected[0].id
+            else:
+                wait = AgentWaitAssociation.model_validate(wait.model_dump(mode="json"))
+                association_ref = wait.association_object_ref
+            association = self._agent_binding(prepared, association_ref)
+            checkpoint = None if wait is None else self._agent_wait_relation(prepared, association, wait)
+            final = self._agent_object(
+                prepared, logical_key=self._agent_key("agent-final", prepared.parent), required=False
+            )
+            terminal_ref, terminal = None, None
+            if final is not None:
+                final_value = final[1]
+                if (
+                    not isinstance(final_value, dict)
+                    or set(final_value)
+                    != {
+                        "schema",
+                        "parent_node",
+                        "association_object_ref",
+                        "agent_generation",
+                        "backend_terminal_event_id",
+                        "terminal_result",
+                    }
+                    or final_value.get("schema") != "agent-final-v1"
+                    or final_value.get("parent_node") != prepared.parent.model_dump(mode="json")
+                    or final_value.get("association_object_ref") != association_ref
+                ):
+                    raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+                TypeAdapter(Counter).validate_python(final_value["agent_generation"])
+                TypeAdapter(ID).validate_python(final_value["backend_terminal_event_id"])
+                terminal_ref, terminal = final[0].id, final_value["terminal_result"]
+            with self.loader.locked(ref=ref) as (session, owned, scope):
+                self._agent_recheck(session, owned, scope, prepared, writing=False)
+            return AgentProtectedState(
+                association_object_ref=association_ref,
+                association=association,
+                wait=wait,
+                checkpoint=checkpoint,
+                terminal_result_ref=terminal_ref,
+                terminal_result=terminal,
+            )
+
+    def store_agent_final(
+        self,
+        *,
+        ref: NativeTestContextRef,
+        parent_node: AgentParentNodeRef,
+        association_object_ref: str,
+        agent_generation: int,
+        terminal_result: JsonValue,
+        backend_terminal_event_id: str,
+    ) -> str:
+        """Private terminal bytes reference, not verified terminal/physical cleanup proof.
+
+        The later actual backend producer must verify terminal state first. This
+        record never settles C02 or releases capacity and has no installed caller.
+        """
+        with _agent_boundary():
+            generation = TypeAdapter(Counter).validate_python(agent_generation)
+            event_id = TypeAdapter(ID).validate_python(backend_terminal_event_id)
+            prepared = self._agent_prepare(ref=ref, parent_node=parent_node, writing=True)
+            self._agent_binding(prepared, association_object_ref)
+            value = {
+                "schema": "agent-final-v1",
+                "parent_node": prepared.parent.model_dump(mode="json"),
+                "association_object_ref": association_object_ref,
+                "agent_generation": generation,
+                "backend_terminal_event_id": event_id,
+                "terminal_result": _JSON.validate_python(terminal_result),
+            }
+            return self._agent_ack(prepared, logical_key=self._agent_key("agent-final", prepared.parent), value=value)
+
+    def _agent_checkpoint_preparations(
+        self, ref: NativeTestContextRef, payload: NativeCheckpointPayload
+    ) -> list[_AgentPreparation]:
+        """Resolve all selected private references outside the later SQL-only recheck.
+
+        This cannot certify backend ACK or authorize generic restoration. The
+        existing claimed-C03/current-run handoff remains the actual resume gate.
+        """
+        preparations = []
+        for wait in payload.agent_associations:
+            prepared = self._agent_prepare(ref=ref, parent_node=wait.parent_node, writing=False)
+            if (
+                payload.native_run_id != prepared.context.native_run_id
+                or payload.generation > prepared.context.generation
+            ):
+                raise BuilderExecutionPolicyError("native_generation_conflict")
+            association = self._agent_binding(prepared, wait.association_object_ref)
+            self._agent_wait_relation(prepared, association, wait)
+            preparations.append(prepared)
+        return preparations
+
+    def _agent_single_parent(self, session, context: ResolvedNativeTestContext, parent: AgentParentNodeRef) -> None:
+        """Temporary one-workspace limitation: never share it with a distinct occurrence."""
+        expected = self._agent_key("agent-config", parent)
+        keys = session.scalars(
+            owner_query(NativePayloadObject, context.ref, context.tenant_id)
+            .with_only_columns(NativePayloadObject.logical_key)
+            .where(
+                NativePayloadObject.kind == "result",
+                NativePayloadObject.logical_key.like("agent-config:%"),
+                NativePayloadObject.logical_key != expected,
+            )
+            .limit(1)
+        )
+        for key in keys:
+            if type(key) is not str:
+                raise BuilderExecutionPolicyError("native_agent_owner_mismatch")
+            if key.startswith("agent-config:") and key != expected:
+                raise BuilderExecutionPolicyError("native_agent_single_workspace_limit")

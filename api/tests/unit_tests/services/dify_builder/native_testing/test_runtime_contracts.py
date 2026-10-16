@@ -103,6 +103,7 @@ def test_checkpoint_roundtrip_preserves_recovery_state_and_input_references():
     expected = {
         **CHECKPOINT,
         "approval_proposals": [],
+        "agent_associations": [],
         "node_journals": [{**journal, "intents": []} for journal in CHECKPOINT["node_journals"]],
     }
     assert restored.model_dump(mode="json") == expected
@@ -291,6 +292,7 @@ def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dep
         "pydantic",
         "services.dify_builder.native_testing.contracts",
         "services.dify_builder.native_testing.approval_contracts",
+        "services.dify_builder.native_testing.agent_contracts",
     }
 
 

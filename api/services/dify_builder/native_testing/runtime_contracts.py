@@ -10,6 +10,7 @@ from typing import Annotated, Literal, Protocol, Self
 
 from pydantic import Field, TypeAdapter, field_validator, model_validator
 
+from services.dify_builder.native_testing.agent_contracts import AgentWaitAssociation
 from services.dify_builder.native_testing.approval_contracts import NativeApprovalProposal
 from services.dify_builder.native_testing.contracts import (
     CheckpointRef,
@@ -108,6 +109,7 @@ class NativeCheckpointPayload(FrozenDTO):
     child_refs: tuple[NativeTestContextRef, ...]
     input_result_refs: tuple[str, ...]
     approval_proposals: tuple[NativeApprovalProposal, ...] = ()
+    agent_associations: Annotated[tuple[AgentWaitAssociation, ...], Field(max_length=4096)] = ()
 
     @model_validator(mode="after")
     def validate_unique_operation_identities(self) -> Self:
@@ -125,6 +127,23 @@ class NativeCheckpointPayload(FrozenDTO):
             if identity not in intent_keys or identity in proposals:
                 raise ValueError("approval proposal intent identity mismatch")
             proposals.add(identity)
+        parent_nodes: set[tuple[str, str, str, str]] = set()
+        for association in self.agent_associations:
+            parent = association.parent_node
+            identity = (parent.ref.request_id, parent.ref.invocation_id, parent.ref.context_digest, parent.execution_id)
+            if identity in parent_nodes:
+                raise ValueError("duplicate checkpoint Agent parent locator")
+            parent_nodes.add(identity)
+            matches = [
+                journal
+                for journal in self.node_journals
+                if journal.invocation_id == parent.ref.invocation_id
+                and journal.occurrence_path == (parent.execution_id,)
+                and journal.input_result_ref == parent.input_result_ref
+                and journal.input_digest == parent.input_digest
+            ]
+            if len(matches) != 1:
+                raise ValueError("checkpoint Agent journal/input mismatch")
         return self
 
     @field_validator("generate_entity_json", "graph_runtime_state_json", "response_stream_filter_json")

@@ -27,6 +27,7 @@ from models.agent import (
 from models.dify_builder_native_tests import NativeTestInvocation
 from services.agent.workspace_service import AgentWorkspaceService
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
+from services.dify_builder.native_testing.agent_contracts import AgentTestWorkspaceRef
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
 from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
@@ -53,17 +54,6 @@ class AgentWorkspaceAllocation(BaseModel):
     @property
     def backend_ref(self) -> str:
         return f"native:{self.native_scope.scope_id}:{self.native_scope.generation}"
-
-
-class AgentTestWorkspaceRef(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
-    binding_id: str
-    workspace_id: str
-    backend_binding_ref: str
-    backend_workspace_ref: str
-    pinned_snapshot_id: str
-    home_snapshot_id: str
-    workspace_generation: int
 
 
 def store_allocation(row, allocation: AgentWorkspaceAllocation) -> None:
