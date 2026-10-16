@@ -172,19 +172,62 @@ def test_workspace_ref_remains_same_public_reexport():
     assert AgentTestWorkspaceRef.model_validate(workspace_data()).model_dump() == workspace_data()
 
 
-def test_agent_contract_imports_are_pure_without_database_flask_or_backend_sdk():
+def runtime_imports(source):
+    """Exclude only the guarded, statically type-only branch from runtime imports."""
     import ast
+    from typing import override
+
+    class RuntimeImports(ast.NodeVisitor):
+        def __init__(self):
+            self.modules = set()
+
+        @override
+        def visit_If(self, node):
+            if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+                for child in node.orelse:
+                    self.visit(child)
+            else:
+                self.generic_visit(node)
+
+        @override
+        def visit_ImportFrom(self, node):
+            self.modules.add(node.module)
+
+        @override
+        def visit_Import(self, node):
+            self.modules.update(alias.name for alias in node.names)
+
+    visitor = RuntimeImports()
+    visitor.visit(ast.parse(source))
+    return visitor.modules
+
+
+def test_agent_contract_imports_are_pure_without_database_flask_or_backend_sdk():
     from pathlib import Path
 
-    tree = ast.parse(Path(contracts().__file__).read_text())
-    imports = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
-    assert imports <= {
+    assert runtime_imports(Path(contracts().__file__).read_text()) <= {
+        "dataclasses",
         "typing",
         "uuid",
         "pydantic",
         "services.dify_builder.execution_contracts",
         "services.dify_builder.native_testing.contracts",
     }
+
+
+@pytest.mark.parametrize(
+    "dependency", ["flask", "sqlalchemy", "dify_agent.protocol.schemas"]
+)
+@pytest.mark.parametrize("placement", ["direct", "runtime-branch", "type-only-else"])
+def test_contract_purity_guard_detects_runtime_dependencies(dependency, placement):
+    statement = f"import {dependency}"
+    source = {
+        "direct": statement,
+        "runtime-branch": f"if enabled:\n    {statement}",
+        "type-only-else": f"if TYPE_CHECKING:\n    pass\nelse:\n    {statement}",
+    }[placement]
+    assert dependency in runtime_imports(source)
+    assert dependency not in runtime_imports(f"if TYPE_CHECKING:\n    {statement}")
 
 
 @pytest.fixture
@@ -194,19 +237,46 @@ def state_case(monkeypatch):
     from contextlib import contextmanager
     from types import SimpleNamespace
 
+    from core.dify_builder.models import Actor
+    from models.account import (
+        Account,
+        AccountStatus,
+        Tenant,
+        TenantAccountJoin,
+        TenantAccountRole,
+        TenantStatus,
+    )
     from models.agent import (
+        Agent,
         AgentConfigSnapshot,
         AgentConfigVersionKind,
         AgentHomeSnapshot,
+        AgentScope,
+        AgentSource,
+        AgentStatus,
         AgentWorkingResourceStatus,
         AgentWorkspace,
         AgentWorkspaceBinding,
         AgentWorkspaceOwnerType,
+        WorkflowAgentBindingType,
+        WorkflowAgentNodeBinding,
     )
-    from models.dify_builder_native_tests import NativeContinuation, NativePayloadObject, NativeTestInvocation
+    from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+    from models.dify_builder_native_tests import (
+        NativeContinuation,
+        NativePayloadObject,
+        NativeTestInvocation,
+    )
+    from models.model import App
     from services.dify_builder.native_testing import state_store as module
-    from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
-    from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import LoaderStandIn, SQLStandIn
+    from services.dify_builder.native_testing.agent_binding import native_node_data
+    from services.dify_builder.native_testing.runtime_contracts import (
+        ResolvedNativeTestContext,
+    )
+    from tests.unit_tests.services.dify_builder.native_testing.test_node_inputs import (
+        LoaderStandIn,
+        SQLStandIn,
+    )
 
     class AgentSQL(SQLStandIn):
         def scalar(self, query):
@@ -214,15 +284,43 @@ def state_case(monkeypatch):
             if entity is NativeTestInvocation:
                 return self.owner.invocation
             if entity in (NativeContinuation, NativePayloadObject):
-                params = {key.rsplit("_", 1)[0]: value for key, value in query.compile().params.items()}
+                params = {
+                    key.rsplit("_", 1)[0]: value
+                    for key, value in query.compile().params.items()
+                }
                 return next(
                     (
                         row
                         for row in self.owner.rows
-                        if isinstance(row, entity) and all(getattr(row, key) == value for key, value in params.items())
+                        if isinstance(row, entity)
+                        and all(
+                            getattr(row, key) == value for key, value in params.items()
+                        )
                     ),
                     None,
                 )
+            if entity in self.owner.resources:
+                row = self.owner.resources[entity]
+                if row is None:
+                    return None
+                # SQL is a unit boundary double; assert the new access/pin queries
+                # carry the actual fixture owners before returning their rows.
+                params = query.compile().params
+                for key, value in params.items():
+                    field = key.rsplit("_", 1)[0]
+                    if field in (
+                        "tenant_id",
+                        "account_id",
+                        "app_id",
+                        "agent_id",
+                        "workflow_id",
+                        "workflow_version",
+                        "node_id",
+                        "current_snapshot_id",
+                        "binding_type",
+                    ):
+                        assert getattr(row, field) == value
+                return row.id if entity is App else row
             return super().scalar(query)
 
         def scalars(self, query):
@@ -234,13 +332,17 @@ def state_case(monkeypatch):
                 ]
             return super().scalars(query)
 
-        def get(self, model, identity):
+        def get(self, model, identity, *, populate_existing=False):
+            if model in (Account, Tenant):
+                assert populate_existing
             if model in self.owner.resources:
                 row = self.owner.resources[model]
-                return row if row.id == identity else None
+                return row if row is not None and row.id == identity else None
             return super().get(model, identity)
 
     class AgentLoader(LoaderStandIn):
+        actor: Actor
+
         @contextmanager
         def session_factory(self):
             assert not self.writing
@@ -263,9 +365,56 @@ def state_case(monkeypatch):
                 self.writing = False
 
     loader = AgentLoader()
+    loader.actor = Actor(account_id="actor", tenant_id="tenant")
+    soul = AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "openai",
+                "model": "unit-inert-model",
+            }
+        }
+    )
+    job = WorkflowNodeJobConfig(workflow_prompt="Unit Agent task")
     loader.resources = {
+        Account: SimpleNamespace(id="actor", status=AccountStatus.ACTIVE),
+        Tenant: SimpleNamespace(id="tenant", status=TenantStatus.NORMAL),
+        TenantAccountJoin: SimpleNamespace(
+            id="membership",
+            tenant_id="tenant",
+            account_id="actor",
+            role=TenantAccountRole.OWNER,
+        ),
+        App: App(id="app", tenant_id="tenant", status="normal"),
+        Agent: Agent(
+            id="agent",
+            tenant_id="tenant",
+            active_config_snapshot_id="snapshot",
+            active_config_has_model=True,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.ROSTER,
+            status=AgentStatus.ACTIVE,
+            created_by="actor",
+            updated_by="actor",
+        ),
+        WorkflowAgentNodeBinding: WorkflowAgentNodeBinding(
+            id="node-binding",
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            workflow_version="published",
+            node_id="agent-node",
+            agent_id="agent",
+            current_snapshot_id="snapshot",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            node_job_config=job.model_dump(mode="json"),
+        ),
         AgentConfigSnapshot: AgentConfigSnapshot(
-            id="snapshot", tenant_id="tenant", agent_id="agent", home_snapshot_id="home", config_snapshot={}
+            id="snapshot",
+            tenant_id="tenant",
+            agent_id="agent",
+            home_snapshot_id="home",
+            config_snapshot=soul.model_dump(mode="json"),
         ),
         AgentHomeSnapshot: AgentHomeSnapshot(
             id="home",
@@ -297,9 +446,10 @@ def state_case(monkeypatch):
             status=AgentWorkingResourceStatus.ACTIVE,
         ),
     }
+    from services.dify_builder.native_testing.agent_workspace import (
+        AgentWorkspaceAllocation,
+    )
     from shellctl.shared.schemas import NativeScopeLimits, NativeScopeSpec
-
-    from services.dify_builder.native_testing.agent_workspace import AgentWorkspaceAllocation
 
     allocation = AgentWorkspaceAllocation(
         tenant_id="tenant",
@@ -343,7 +493,9 @@ def state_case(monkeypatch):
         "nodes": [
             {
                 "id": "agent-node",
-                "data": {"type": "agent-v2", "agent_binding": {"agent_id": "agent", "current_snapshot_id": "snapshot"}},
+                "data": native_node_data(
+                    agent_id="agent", snapshot_id="snapshot", node_job=job
+                ),
             }
         ]
     }
@@ -419,9 +571,15 @@ def state_case(monkeypatch):
     monkeypatch.setattr(module.encrypter, "decrypt_token", decrypt)
     monkeypatch.setattr(module, "validate_private_read", authority)
     monkeypatch.setattr(
-        module, "validate_invocation_workflow", lambda *_args, **_kwargs: SimpleNamespace(graph=json.dumps(graph))
+        module,
+        "validate_invocation_workflow",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            graph=json.dumps(graph), version="published"
+        ),
     )
-    monkeypatch.setattr(module, "native_workflow_revision", lambda _workflow: "revision")
+    monkeypatch.setattr(
+        module, "native_workflow_revision", lambda _workflow: "revision"
+    )
     store = module.NativeExecutionStateStore(loader)
     receipt = store.prepare_object(
         ref=loader.ref,
@@ -432,9 +590,14 @@ def state_case(monkeypatch):
     )
     loader.rows.append(NativePayloadObject(**vars(receipt)))
     loader.state.context_object_id = receipt.id
-    input_ref = store.store_node_inputs(ref=loader.ref, generation=0, native_execution_id=EXECUTION, inputs=INPUTS)
+    input_ref = store.store_node_inputs(
+        ref=loader.ref, generation=0, native_execution_id=EXECUTION, inputs=INPUTS
+    )
     parent = contracts().AgentParentNodeRef(
-        ref=loader.ref, execution_id=EXECUTION, input_result_ref=input_ref, input_digest=canonical_digest(INPUTS)
+        ref=loader.ref,
+        execution_id=EXECUTION,
+        input_result_ref=input_ref,
+        input_digest=canonical_digest(INPUTS),
     )
     events.clear()
     return SimpleNamespace(
@@ -488,6 +651,45 @@ def backend_checkpoint(c, association, generation=7):
         "job_refs": [],
         "session_snapshot": {"layers": {}},
     }
+
+
+@pytest.mark.parametrize(
+    "fault", ["account", "tenant", "membership", "agent-pin", "published-binding"]
+)
+def test_actual_agent_access_and_publication_guards_precede_private_write(
+    state_case, fault
+):
+    from models.account import (
+        Account,
+        AccountStatus,
+        Tenant,
+        TenantAccountJoin,
+        TenantStatus,
+    )
+    from models.agent import Agent, WorkflowAgentNodeBinding
+    from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
+
+    c = state_case
+    if fault == "account":
+        c.loader.resources[Account].status = AccountStatus.BANNED
+    elif fault == "tenant":
+        c.loader.resources[Tenant].status = TenantStatus.ARCHIVE
+    elif fault == "membership":
+        c.loader.resources[TenantAccountJoin] = None
+    elif fault == "agent-pin":
+        c.loader.resources[Agent].active_config_snapshot_id = "foreign"
+    else:
+        c.loader.resources[WorkflowAgentNodeBinding] = None
+    reason = (
+        "agent_access_denied"
+        if fault in ("account", "tenant", "membership")
+        else "native_agent_pin_mismatch"
+    )
+    before = c.loader.rows.copy()
+    with pytest.raises(BuilderExecutionPolicyError, match=reason):
+        bound_state(c)
+    assert "save" not in c.events
+    assert c.loader.rows == before
 
 
 def test_actual_state_nonempty_bind_wait_final_are_immutable_owned_objects(state_case):

@@ -3,6 +3,7 @@
 import importlib
 import importlib.util
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -380,41 +381,59 @@ def test_private_native_routes_require_existing_service_auth(path):
 
 
 @pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
-def test_private_before_call_http_preserves_wait_reason(monkeypatch, reason):
-    from dify_agent.protocol.native_testing import AgentApprovalWait
-    from flask import Flask
-
-    from controllers.inner_api import bp
-    from controllers.inner_api.agent import native_testing as controller
-    from tests.unit_tests.controllers.inner_api.test_agent_tools import _agent_inner_auth, _headers
-    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
-
-    monkeypatch.setattr(
-        controller,
-        "agent_bridge_for_ref",
-        lambda _ref: SimpleNamespace(
-            before_call=lambda **_kwargs: AgentApprovalWait(pending_operation_id="pending", wait_reason=reason)
-        ),
+def test_private_before_call_bridge_serialization_preserves_wait_reason(reason):
+    from controllers.inner_api.agent.native_testing import AgentBeforeCallResponse
+    from dify_agent.adapters.native_testing.client import AgentBeforeCallPayload
+    from services.dify_builder.native_testing.agent_bridge import (
+        AgentNativeTestingBridge,
     )
-    app = Flask(__name__)
-    app.config["TESTING"] = True
-    app.register_blueprint(bp)
-    with _agent_inner_auth():
-        response = app.test_client().post(
-            "/inner/api/agent/native-testing/before-call",
-            json={
-                "ref": {
-                    "policy_version": "builder-native-test-v1",
-                    "request_id": "request",
-                    "invocation_id": "inv",
-                    "context_digest": "a" * 64,
-                },
-                "intent": intent().model_dump(mode="json"),
+    from services.dify_builder.native_testing.authorization import (
+        EffectAuthorizationService,
+    )
+    from services.dify_builder.native_testing.contracts import ApprovalWait
+
+    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import (
+        intent,
+    )
+
+    payload = AgentBeforeCallPayload.model_validate(
+        {
+            "ref": {
+                "policy_version": "builder-native-test-v1",
+                "request_id": "request",
+                "invocation_id": "inv",
+                "context_digest": "a" * 64,
             },
-            headers=_headers(),
-        )
-    assert response.status_code == 200
-    assert response.get_json() == {"kind": "waiting", "pending_operation_id": "pending", "wait_reason": reason}
+            "intent": intent().model_dump(mode="json"),
+        }
+    )
+    calls = []
+
+    def before_call(**kwargs):
+        calls.append(kwargs)
+        return ApprovalWait(pending_operation_id="pending", wait_reason=reason)
+
+    bridge = AgentNativeTestingBridge(
+        authorization=cast(
+            EffectAuthorizationService, SimpleNamespace(before_call=before_call)
+        ),
+        readiness=None,
+        materializer=None,
+        fence=None,
+    )
+    decision = bridge.before_call(ref=payload.ref, intent=payload.intent)
+    assert AgentBeforeCallResponse(root=decision).model_dump(mode="json") == {
+        "kind": "waiting",
+        "pending_operation_id": "pending",
+        "wait_reason": reason,
+    }
+    assert len(calls) == 1
+    assert calls[0]["ref"].model_dump(mode="json") == payload.ref.model_dump(
+        mode="json"
+    )
+    assert calls[0]["intent"].model_dump(mode="json") == payload.intent.model_dump(
+        mode="json"
+    )
 
 
 def test_native_credential_phases_wait_refresh_then_business_without_double_spend():
@@ -618,24 +637,26 @@ def test_missing_credential_configuration_wait_precedes_business_intent(monkeypa
 
 
 @pytest.mark.parametrize("case", ["omitted", "changed", "caller", "matching"])
-def test_endpoint_lineage_requires_exact_envelope_before_claim(case, monkeypatch):
+def test_endpoint_lineage_requires_exact_envelope_before_physical_owner_refusal(
+    case, monkeypatch
+):
     from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
-    from flask import Flask
-
+    from flask import Flask, g, request
     from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
     from services.dify_builder.native_testing import agent_bridge as module
-    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
+    from werkzeug.local import LocalProxy
 
-    assert hasattr(module, "claim_agent_endpoint"), "Actual endpoint lineage gate is missing"
+    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import (
+        intent,
+    )
+    from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
+
+    lineage, principal, selection, phase = owner()
     effect = intent()
+    assert selection.parent_node is not None
     payload = AgentPhysicalDispatchPayload.model_validate(
         {
-            "ref": {
-                "policy_version": "builder-native-test-v1",
-                "request_id": "request",
-                "invocation_id": effect.key.invocation_id,
-                "context_digest": "a" * 64,
-            },
+            "ref": selection.parent_node.ref.model_dump(mode="json"),
             "intent": effect.model_dump(mode="json"),
             "permit": {
                 "permit_id": "permit",
@@ -646,78 +667,106 @@ def test_endpoint_lineage_requires_exact_envelope_before_claim(case, monkeypatch
         }
     )
     calls = []
-    app = Flask(__name__)
-    app.extensions["native_agent_endpoint_lineage"] = SimpleNamespace(resolve=lambda **_kw: payload.ref)
     monkeypatch.setattr(
         module,
         "agent_bridge_for_ref",
-        lambda _ref: SimpleNamespace(
-            authorization=SimpleNamespace(
-                loader=SimpleNamespace(
-                    load=lambda **_kw: SimpleNamespace(tenant_id="tenant", app_id="app", actor_id="actor")
-                ),
-                claim_dispatch=lambda **kw: calls.append(kw),
-            )
-        ),
+        lambda ref: calls.append(ref) or pytest.fail("Controller claimed"),
     )
-    with app.app_context():
-        kwargs = {
-            "boundary": "model",
-            "caller": {
-                "tenant_id": "other" if case == "caller" else "tenant",
-                "app_id": "app",
-                "user_id": "actor",
-                "user_from": "account",
-            },
-            "envelope": None if case == "omitted" else payload,
-            "target": effect.target,
-            "parameters": {"changed": True} if case == "changed" else effect.parameters,
-            "kind": effect.kind,
-        }
-        if case == "matching":
-            module.claim_agent_endpoint(**kwargs)
-            assert len(calls) == 1
-        else:
-            with pytest.raises(BuilderExecutionPolicyError):
-                module.claim_agent_endpoint(**kwargs)
-            assert calls == []
+    caller = {
+        "tenant_id": "other" if case == "caller" else "tenant",
+        "app_id": "app",
+        "user_id": "actor",
+        "user_from": "account",
+    }
+    reason = {
+        "omitted": "native_endpoint_owner_mismatch",
+        "changed": "native_endpoint_arguments_mismatch",
+        "matching": "native_endpoint_dependency_unavailable",
+        "caller": "native_endpoint_owner_mismatch",
+    }[case]
+    with Flask(__name__).test_request_context():
+        g.agent_runtime_request = cast(LocalProxy, request)._get_current_object()
+        with pytest.raises(BuilderExecutionPolicyError, match=reason):
+            g.agent_runtime_context = lineage.resolve(
+                principal=principal,
+                selection=selection,
+                boundary="model",
+                caller=caller,
+            )
+            module.claim_agent_endpoint(
+                boundary="model",
+                caller=caller,
+                envelope=None if case == "omitted" else payload,
+                target=effect.target,
+                parameters={"changed": True}
+                if case == "changed"
+                else effect.parameters,
+                kind=effect.kind,
+            )
+    assert calls == []
+    assert phase == ["backend"]
 
 
 def test_actual_llm_endpoint_rejects_known_native_omission_before_prepare(monkeypatch):
-    from dify_agent.protocol.native_testing import AgentNativeTestRef
+    from unittest.mock import Mock
 
     from services.agent_llm_inner_service import AgentLLMInnerService
-    from tests.unit_tests.controllers.inner_api.test_agent_llm import _agent_inner_auth, _flask_app, _payload
+
+    from tests.unit_tests.config_override import config_overrides_context
+    from tests.unit_tests.controllers.inner_api.test_agent_llm import _flask_app
+    from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
+        encoded,
+    )
+    from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
 
     app = _flask_app()
-    ref = AgentNativeTestRef(
-        policy_version="builder-native-test-v1",
-        request_id="request",
-        invocation_id="invocation",
-        context_digest="a" * 64,
+    lineage, _principal, selection, phase = owner()
+    app.extensions["native_agent_endpoint_lineage"] = lineage
+    prepare = Mock(
+        side_effect=AssertionError("Known native omission reached model preparation")
     )
-    app.extensions["native_agent_endpoint_lineage"] = SimpleNamespace(resolve=lambda **_kw: ref)
-    monkeypatch.setattr(
-        AgentLLMInnerService, "prepare", lambda *_args: pytest.fail("Known native omission reached model preparation")
-    )
-    with _agent_inner_auth():
+    monkeypatch.setattr(AgentLLMInnerService, "prepare", prepare)
+    with config_overrides_context(
+        AGENT_BACKEND_API_TOKEN="agent-token",
+        INNER_API_KEY_FOR_PLUGIN="plugin-key",
+        PLUGIN_DAEMON_KEY="daemon-key",
+    ):
         response = app.test_client().post(
-            "/inner/api/agent/llm/invoke", json=_payload(), headers={"X-Inner-Api-Key": "inner-key"}
+            "/inner/api/agent/runtime/llm/invoke",
+            json={},
+            headers={
+                "Authorization": "Bearer agent-token",
+                "X-Dify-Agent-Run": encoded(selection),
+            },
         )
     assert response.status_code == 409
+    assert phase == ["backend"]
+    prepare.assert_not_called()
 
 
-def test_private_claim_route_consumes_once_and_rejects_repeated_request(monkeypatch):
-    from flask import Flask
-
+def test_private_claim_route_refuses_repeated_requests_without_consuming_permit(
+    monkeypatch,
+):
     from controllers.inner_api import bp
     from controllers.inner_api.agent import native_testing as controller
+    from flask import Flask
     from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
-    from tests.unit_tests.controllers.inner_api.test_agent_tools import _agent_inner_auth, _headers
-    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
 
-    # Only the HTTP adapter is exercised here. Durable concurrent uniqueness
-    # is covered by the shared authorization owner's PostgreSQL CI inventory.
+    from tests.unit_tests.config_override import config_overrides_context
+    from tests.unit_tests.controllers.inner_api.test_agent_runtime_lineage import (
+        encoded,
+    )
+    from tests.unit_tests.controllers.inner_api.test_agent_tools import (
+        _agent_inner_auth,
+        _headers,
+    )
+    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import (
+        intent,
+    )
+    from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
+
+    # Controllers cannot consume permits. Durable single-use remains covered
+    # by the unchanged authoritative authorization owner's PostgreSQL CI inventory.
     claims = []
 
     def claim(**kw):
@@ -728,7 +777,9 @@ def test_private_claim_route_consumes_once_and_rejects_repeated_request(monkeypa
     monkeypatch.setattr(
         controller,
         "agent_bridge_for_ref",
-        lambda _ref: SimpleNamespace(authorization=SimpleNamespace(claim_dispatch=claim)),
+        lambda _ref: SimpleNamespace(
+            authorization=SimpleNamespace(claim_dispatch=claim)
+        ),
     )
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -750,15 +801,42 @@ def test_private_claim_route_consumes_once_and_rejects_repeated_request(monkeypa
     }
     with _agent_inner_auth():
         first = app.test_client().post(
-            "/inner/api/agent/native-testing/claim-dispatch", json=payload, headers=_headers()
+            "/inner/api/agent/native-testing/claim-dispatch",
+            json=payload,
+            headers=_headers(),
         )
         second = app.test_client().post(
-            "/inner/api/agent/native-testing/claim-dispatch", json=payload, headers=_headers()
+            "/inner/api/agent/native-testing/claim-dispatch",
+            json=payload,
+            headers=_headers(),
         )
-    assert first.status_code == 200
-    assert first.get_json() == {"claimed": True}
-    assert second.status_code == 409
-    assert len(claims) == 1
+    assert first.status_code == second.status_code == 409
+    assert claims == []
+
+    # Strict Agent credentials and a positively resolved native identity do not
+    # make this controller a physical dispatch owner either.
+    lineage, _principal, selection, phase = owner()
+    app.extensions["native_agent_endpoint_lineage"] = lineage
+    assert selection.parent_node is not None
+    payload["ref"] = selection.parent_node.ref.model_dump(mode="json")
+    headers = {
+        "Authorization": "Bearer agent-token",
+        "X-Dify-Agent-Run": encoded(selection),
+    }
+    with config_overrides_context(
+        AGENT_BACKEND_API_TOKEN="agent-token",
+        INNER_API_KEY_FOR_PLUGIN="plugin-key",
+        PLUGIN_DAEMON_KEY="daemon-key",
+    ):
+        for _ in range(2):
+            response = app.test_client().post(
+                "/inner/api/agent/runtime/native-testing/claim-dispatch",
+                json=payload,
+                headers=headers,
+            )
+            assert response.status_code == 409
+    assert phase == ["backend", "backend"]
+    assert claims == []
 
 
 @pytest.mark.parametrize("drift", [None, "access", "client", "encrypted_credentials"])
@@ -815,32 +893,51 @@ def test_native_refresh_cas_rechecks_detached_snapshot_before_write(monkeypatch,
 @pytest.mark.parametrize(
     ("approved", "actual", "matches"),
     [
-        pytest.param({"nested": {"flag": True}}, {"nested": {"flag": 1}}, False, id="nested-true-integer"),
-        pytest.param({"items": [{"flag": False}]}, {"items": [{"flag": 0}]}, False, id="array-false-integer"),
+        pytest.param(
+            {"nested": {"flag": True}},
+            {"nested": {"flag": 1}},
+            False,
+            id="nested-true-integer",
+        ),
+        pytest.param(
+            {"items": [{"flag": False}]},
+            {"items": [{"flag": 0}]},
+            False,
+            id="array-false-integer",
+        ),
         pytest.param({"items": [1]}, {"items": [1.0]}, False, id="integer-float"),
         pytest.param({"items": [-0.0]}, {"items": [0.0]}, False, id="signed-zero"),
         pytest.param(
-            {"z": [True, 1.0], "a": {"b": 2, "a": 1}}, {"a": {"a": 1, "b": 2}, "z": [True, 1.0]}, True, id="key-order"
+            {"z": [True, 1.0], "a": {"b": 2, "a": 1}},
+            {"a": {"a": 1, "b": 2}, "z": [True, 1.0]},
+            True,
+            id="key-order",
         ),
     ],
 )
-def test_endpoint_typed_json_guard_precedes_physical_claim(field, approved, actual, matches, monkeypatch):
+def test_endpoint_typed_json_guard_precedes_physical_owner_refusal(
+    field, approved, actual, matches, monkeypatch
+):
     from dify_agent.adapters.native_testing.client import AgentPhysicalDispatchPayload
-    from flask import Flask
-
+    from flask import Flask, g, request
     from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
     from services.dify_builder.native_testing import agent_bridge as module
-    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import intent
+    from werkzeug.local import LocalProxy
 
+    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import (
+        intent,
+    )
+    from tests.unit_tests.services.dify_builder.test_agent_endpoint_lineage import owner
+
+    lineage, principal, selection, phase = owner()
+    context = lineage.resolve(
+        principal=principal, selection=selection, boundary="model", caller={}
+    )
+    assert context is not None
     effect = intent().model_copy(update={field: approved})
     payload = AgentPhysicalDispatchPayload.model_validate(
         {
-            "ref": {
-                "policy_version": "builder-native-test-v1",
-                "request_id": "request",
-                "invocation_id": effect.key.invocation_id,
-                "context_digest": "a" * 64,
-            },
+            "ref": context.ref.model_dump(mode="json"),
             "intent": effect.model_dump(mode="json"),
             "permit": {
                 "permit_id": "permit",
@@ -852,33 +949,34 @@ def test_endpoint_typed_json_guard_precedes_physical_claim(field, approved, actu
     )
     claims = []
     app = Flask(__name__)
-    app.extensions["native_agent_endpoint_lineage"] = SimpleNamespace(resolve=lambda **_kw: payload.ref)
     monkeypatch.setattr(
         module,
         "agent_bridge_for_ref",
-        lambda _ref: SimpleNamespace(
-            authorization=SimpleNamespace(
-                loader=SimpleNamespace(
-                    load=lambda **_kw: SimpleNamespace(tenant_id="tenant", app_id="app", actor_id="actor")
-                ),
-                claim_dispatch=lambda **kw: claims.append(kw),
-            )
-        ),
+        lambda ref: claims.append(ref) or pytest.fail("Controller claimed"),
     )
-    with app.app_context():
+    with app.test_request_context():
+        g.agent_runtime_request = cast(LocalProxy, request)._get_current_object()
+        g.agent_runtime_context = context
         kwargs = {
             "boundary": "model",
-            "caller": {"tenant_id": "tenant", "app_id": "app", "user_id": "actor", "user_from": "account"},
+            "caller": {
+                "tenant_id": "tenant",
+                "app_id": "app",
+                "user_id": "actor",
+                "user_from": "account",
+            },
             "envelope": payload,
             "target": effect.target,
             "parameters": effect.parameters,
             "kind": effect.kind,
             field: actual,
         }
-        if matches:
+        reason = (
+            "native_endpoint_dependency_unavailable"
+            if matches
+            else "native_endpoint_arguments_mismatch"
+        )
+        with pytest.raises(BuilderExecutionPolicyError, match=reason):
             module.claim_agent_endpoint(**kwargs)
-            assert len(claims) == 1
-        else:
-            with pytest.raises(BuilderExecutionPolicyError, match="native_endpoint_arguments_mismatch"):
-                module.claim_agent_endpoint(**kwargs)
-            assert claims == []
+        assert claims == []
+    assert phase == ["backend"]
