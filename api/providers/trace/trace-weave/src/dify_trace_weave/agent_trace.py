@@ -16,6 +16,8 @@ from weave.trace_server.trace_server_interface import (
 from weave.trace_server_bindings.remote_http_trace_server import RemoteHTTPTraceServer
 
 from core.ops.unified_trace.entities import CanonicalTrace
+from dify_trace_weave.config import WeaveConfig
+from dify_trace_weave.configuration import console_url
 from services.tracing.provider_common import endpoint, request, required, token_usage, utc
 from services.tracing.provider_dispatch import TraceExportRejectedError, TraceExportResult, TraceExportUncertainError
 
@@ -60,8 +62,7 @@ def _project(config: Mapping[str, Any], api_key: str) -> tuple[str, str, str]:
         entity = (response.json().get("data") or {}).get("viewer", {}).get("entity")
     if not isinstance(entity, str) or not entity or "/" in entity or not project or "/" in project:
         raise TraceExportRejectedError("Weave project or entity could not be resolved")
-    # Public W&B uses a distinct UI origin; private hosts keep their configured origin.
-    ui_host = "https://wandb.ai" if host == "https://api.wandb.ai" else host
+    ui_host = console_url(WeaveConfig(api_key=api_key, entity=entity, project=project, host=host))
     return entity, project, ui_host
 
 
