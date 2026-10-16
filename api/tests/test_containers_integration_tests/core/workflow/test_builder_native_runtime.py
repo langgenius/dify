@@ -444,3 +444,103 @@ def test_actual_cancel_through_consumed_source_owner_does_not_ack_live_resumed_o
                 "cancelled",
             }
     assert initial.runtime.host.lifetime._consumed
+
+
+def test_actual_initial_run_null_outputs_survive_first_native_node_persistence(runtime_case):
+    """Real mapped insert/read witness before any graph effect or cleanup claim."""
+    from uuid import uuid4
+
+    from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+    from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+        SQLAlchemyWorkflowNodeExecutionRepository,
+    )
+    from libs.datetime_utils import naive_utc_now
+    from models.account import Account
+    from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+    from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+
+    from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+    from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
+
+    c = runtime_case
+    lifecycle = delivery(c, c.published[0])
+    assert isinstance(lifecycle.runtime, DifyNativeRuntime)
+    context = lifecycle.runtime.context
+    guard = lifecycle.runtime.host.native_observation
+    with c.factory() as session:
+        account = session.get(Account, context.actor_id)
+        assert account is not None
+        session.expunge(account)
+    runs = SQLAlchemyWorkflowExecutionRepository(
+        c.factory, context.tenant_id, account, context.app_id, WorkflowRunTriggeredFrom.DEBUGGING
+    )
+    nodes = SQLAlchemyWorkflowNodeExecutionRepository(
+        c.factory, context.tenant_id, account, context.app_id, WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    )
+    runs.bind_native_observation(context=context, guard=guard)
+    nodes.bind_native_observation(context=context, guard=guard)
+    now = naive_utc_now()
+    execution = WorkflowExecution(
+        id_=context.native_run_id,
+        workflow_id=context.workflow_id,
+        workflow_type=WorkflowType.WORKFLOW,
+        workflow_version="draft",
+        graph=context.graph,
+        inputs=context.inputs,
+        started_at=now,
+    )
+    assert execution.outputs is None
+    runs.save(execution)
+    with c.factory() as session:
+        row = session.scalar(
+            select(WorkflowRun).where(
+                WorkflowRun.id == context.native_run_id,
+                WorkflowRun.tenant_id == context.tenant_id,
+                WorkflowRun.app_id == context.app_id,
+                WorkflowRun.workflow_id == context.workflow_id,
+                WorkflowRun.created_by == context.actor_id,
+                WorkflowRun.created_by_role == CreatorUserRole.ACCOUNT,
+            )
+        )
+        assert row is not None
+        assert row.status is WorkflowExecutionStatus.RUNNING
+        assert row.outputs == "null"
+    restored = runs.get_native_observation_run(workflow_run_id=context.native_run_id)
+    assert restored.outputs is None
+    assert not guard.failed
+    node_id = str(uuid4())
+    nodes.save(
+        WorkflowNodeExecution(
+            id=node_id,
+            node_execution_id=node_id,
+            workflow_id=context.workflow_id,
+            workflow_execution_id=context.native_run_id,
+            index=1,
+            node_id="start",
+            node_type="start",
+            title="Start",
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={},
+            outputs={},
+            process_data={},
+            created_at=now,
+            finished_at=now,
+        )
+    )
+    with c.factory() as session:
+        row = session.scalar(
+            select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.id == node_id,
+                WorkflowNodeExecutionModel.workflow_run_id == context.native_run_id,
+                WorkflowNodeExecutionModel.tenant_id == context.tenant_id,
+                WorkflowNodeExecutionModel.app_id == context.app_id,
+                WorkflowNodeExecutionModel.workflow_id == context.workflow_id,
+                WorkflowNodeExecutionModel.created_by == context.actor_id,
+                WorkflowNodeExecutionModel.created_by_role == CreatorUserRole.ACCOUNT,
+            )
+        )
+        assert row is not None
+        assert row.status is WorkflowNodeExecutionStatus.SUCCEEDED
+    assert execution.outputs is None
+    assert not guard.failed
+    assert c.sends == []

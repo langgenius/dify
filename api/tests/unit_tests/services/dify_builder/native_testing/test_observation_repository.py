@@ -864,3 +864,58 @@ def test_native_history_adoption_restores_active_duration_after_entity_json_roun
             assert entity.workflow_execution_timing.elapsed_time == 0.0
     assert c.sql.rows[WorkflowRun, c.context.native_run_id].elapsed_time == 9.0
     assert not c.guard.failed
+
+
+@pytest.mark.parametrize("outputs", [None, {}])
+def test_first_native_node_accepts_initial_run_after_output_insert_default(case, monkeypatch, outputs):
+    """The first node reloads an initial Run whose absent outputs must stay absent."""
+    import json
+
+    c = case
+    bind(c)
+    c.sql.rows.clear()
+    actual_merge = c.sql.merge
+    column = WorkflowRun.__table__.c.outputs
+    assert column.type.should_evaluate_none is False
+    assert column.default.arg == "{}"
+
+    def merge_with_output_default(row):
+        # SQLAlchemy omits None-valued columns with should_evaluate_none=False.
+        # Its actual declared insert default then materializes this value.
+        if type(row) is WorkflowRun and row.outputs is None:
+            row.outputs = column.default.arg
+        return actual_merge(row)
+
+    monkeypatch.setattr(c.sql, "merge", merge_with_output_default)
+    initial = run(c)
+    initial.status = WorkflowExecutionStatus.RUNNING
+    initial.outputs = outputs
+    initial.finished_at = None
+    c.runs.save(initial)
+    c.nodes.save(node(c))
+
+    saved = c.sql.rows[WorkflowRun, c.context.native_run_id]
+    assert json.loads(saved.outputs) == (
+        None
+        if outputs is None
+        else {
+            "redacted": True,
+            "shape": {"type": "object", "fields": 0, "values": []},
+        }
+    )
+    assert (WorkflowNodeExecutionModel, "row") in c.sql.rows
+    assert initial.outputs == outputs
+    assert not c.guard.failed
+
+
+def test_native_history_refuses_unmarked_empty_run_outputs(case):
+    c = case
+    bind(c)
+    row = c.sql.rows[WorkflowRun, c.context.native_run_id]
+    row.outputs = "{}"
+
+    with pytest.raises(NativeObservationError):
+        c.nodes.save(node(c))
+
+    assert c.guard.failed
+    assert not c.nodes._node_execution_cache

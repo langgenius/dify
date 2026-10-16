@@ -416,7 +416,12 @@ class NativeRepositoryObservation:
 
     def to_db_run(self, repository: Any, execution: WorkflowExecution) -> WorkflowRun:
         with self.scope(repository):
-            row = repository._ordinary_to_db_model(self.project_run(execution))
+            projected = self.project_run(execution)
+            row = repository._ordinary_to_db_model(projected)
+            if projected.outputs is None:
+                # An ORM None is omitted on insert and activates WorkflowRun's
+                # unmarked "{}" default. JSON null preserves absent diagnostics.
+                row.outputs = "null"
             self.run_row(row)
             return row
 
