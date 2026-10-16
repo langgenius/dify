@@ -62,8 +62,8 @@ export type PluginDeclaration = {
   label: Record<Locale | PluginLanguage, string>
   description: Record<Locale | PluginLanguage, string>
   created_at: string
-  resource: any // useless in frontend
-  plugins: any // useless in frontend
+  resource: unknown // useless in frontend
+  plugins: unknown // useless in frontend
   verified: boolean
   endpoint?: EndpointProviderDeclarationResponse | null
   tool?: PluginToolDeclaration
@@ -111,15 +111,15 @@ export type ParametersSchema = {
   name: string
   label: Record<Locale | PluginLanguage, string>
   type: FormTypeEnum
-  auto_generate: any
-  template: any
+  auto_generate: unknown
+  template: unknown
   scope: any
   required: boolean
   multiple: boolean
   default?: string | string[]
-  min: any
-  max: any
-  precision: any
+  min: unknown
+  max: unknown
+  precision: unknown
   options?: Array<{
     value: string
     label: Record<Locale | PluginLanguage, string>
@@ -132,15 +132,15 @@ export type TriggerEventParameter = {
   name: string
   label: TypeWithI18N
   type: string
-  auto_generate: any
-  template: any
+  auto_generate: unknown
+  template: unknown
   scope: any
   required: boolean
   multiple: boolean
   default: any
-  min: any
-  max: any
-  precision: any
+  min: unknown
+  max: unknown
+  precision: unknown
   options?: Array<{
     value: string
     label: TypeWithI18N

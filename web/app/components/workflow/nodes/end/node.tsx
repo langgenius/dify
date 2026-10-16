@@ -15,7 +15,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({ id, data }) => {
   const { getCurrentVariableType } = useWorkflowVariables()
   const isChatflow = useAtomValue(isChatflowAtom)
 
-  const startNode = availableNodes.find((node: any) => {
+  const startNode = availableNodes.find((node) => {
     return node.data.type === BlockEnum.Start
   })
 

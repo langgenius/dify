@@ -15,7 +15,7 @@ export type OnlineDriveData = {
   bucket: string
   files: OnlineDriveFile[]
   is_truncated: boolean
-  next_page_parameters: Record<string, any>
+  next_page_parameters: Record<string, unknown>
 }
 
 export type DataSourceNodeCompletedResponse = {

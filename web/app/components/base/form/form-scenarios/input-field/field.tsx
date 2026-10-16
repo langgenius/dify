@@ -5,7 +5,7 @@ import { withForm } from '../..'
 import { InputFieldType } from './types'
 
 type InputFieldProps = {
-  initialData?: Record<string, any>
+  initialData?: Record<string, unknown>
   config: InputFieldConfiguration
 }
 

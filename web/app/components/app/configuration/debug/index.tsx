@@ -345,7 +345,7 @@ const Debug: FC<IDebug> = ({
     sendTextCompletion()
   }
 
-  const varList = modelConfig.configs.prompt_variables.map((item: any) => {
+  const varList = modelConfig.configs.prompt_variables.map((item) => {
     return {
       label: item.key,
       value: inputs[item.key],
