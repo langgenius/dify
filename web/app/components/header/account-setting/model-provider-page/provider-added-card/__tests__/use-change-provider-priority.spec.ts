@@ -178,12 +178,18 @@ describe('useChangeProviderPriority', () => {
   })
 
   describe('when the mutation is not successful immediately', () => {
-    it('should show an error toast when the mutation fails', async () => {
+    it('should leave error feedback to the request layer and clear the pending state on failure', async () => {
       const queryClient = createConsoleQueryClient()
       const invalidateQueries = vi
         .spyOn(queryClient, 'invalidateQueries')
         .mockResolvedValue(undefined)
-      mockChangePreferredProviderType.mockRejectedValueOnce(new Error('network error'))
+      let rejectMutation: ((reason: Error) => void) | undefined
+      mockChangePreferredProviderType.mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectMutation = reject
+          }),
+      )
       const { result } = renderHook(() => useChangeProviderPriority(createProvider()), {
         wrapper: createWrapper(queryClient),
       })
@@ -193,16 +199,21 @@ describe('useChangeProviderPriority', () => {
       })
 
       await waitFor(() => {
-        expect(mockNotify).toHaveBeenCalledWith({
-          type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
-        })
+        expect(result.current.isChangingPriority).toBe(true)
       })
 
+      await act(async () => {
+        rejectMutation?.(new Error('network error'))
+      })
+
+      await waitFor(() => {
+        expect(result.current.isChangingPriority).toBe(false)
+      })
+
+      expect(mockNotify).not.toHaveBeenCalled()
       expect(invalidateQueries).not.toHaveBeenCalled()
       expect(mockUpdateModelProviders).not.toHaveBeenCalled()
       expect(mockUpdateModelList).not.toHaveBeenCalled()
-      expect(result.current.isChangingPriority).toBe(false)
     })
 
     it('should expose the pending mutation state while the request is in flight', async () => {
