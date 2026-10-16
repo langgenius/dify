@@ -3,8 +3,15 @@ import type { FormRefObject, FormSchema } from '@/app/components/base/form/types
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -168,52 +175,27 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
       }}
     >
       <DialogContent backdropProps={{ forceRender: true }}>
-        <div
-          data-testid="modal"
-          data-title={title}
-          data-disabled={isUpdating}
-          className="flex max-h-[80dvh] flex-col"
-        >
-          <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle>{title}</DialogTitle>
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="lg"
-                  className="absolute top-5 right-5"
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-          </div>
-          <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-            {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
-            <BaseForm
-              formSchemas={formSchemas}
-              ref={formRef}
-              labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
-              formClassName="space-y-4"
-            />
-          </div>
-          <div className="flex shrink-0 justify-between p-6 pt-5">
-            <div />
-            <div className="flex items-center">
-              <Button onClick={onClose} disabled={isUpdating}>
-                {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
-              <Button
-                className="ml-2"
-                variant="primary"
-                onClick={handleConfirm}
-                disabled={isUpdating}
-              >
-                {confirmButtonText}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
+          {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}
+          <BaseForm
+            formSchemas={formSchemas}
+            ref={formRef}
+            labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+            formClassName="space-y-4"
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button onClick={onClose} disabled={isUpdating}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button variant="primary" onClick={handleConfirm} disabled={isUpdating}>
+            {confirmButtonText}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

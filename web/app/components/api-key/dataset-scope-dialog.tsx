@@ -18,9 +18,13 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -59,7 +63,7 @@ export function DatasetScopeDialog({
       <DialogContent
         finalFocus={finalFocus}
         backdropProps={{ forceRender: true }}
-        className="flex w-140 flex-col overflow-hidden"
+        className="w-140"
       >
         <DatasetScopeContent {...props} />
       </DialogContent>
@@ -110,32 +114,23 @@ function DatasetScopeContent({
 
   return (
     <form
-      className="flex min-h-0 flex-col"
       onSubmit={(event) => {
         event.preventDefault()
         handleConfirm()
       }}
     >
-      <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pr-14 pb-4">
+      <DialogHeader>
         <DialogTitle>{t(($) => $['apiKeyModal.addTitle'], { ns: 'appApi' })}</DialogTitle>
         <DialogDescription>
           {t(($) => $['apiKeyModal.addSubtitle'], { ns: 'appApi' })}
         </DialogDescription>
-      </div>
-      <DialogClose
-        render={
-          <IconButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            size="lg"
-            className="absolute inset-e-6 top-6"
-            disabled={isCreating}
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </IconButton>
-        }
-      />
+        <DialogCloseButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          disabled={isCreating}
+        />
+      </DialogHeader>
 
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-6 py-4">
+      <DialogBody className="flex flex-col gap-3">
         <div id={scopeId} className="system-sm-semibold text-text-secondary">
           {t(($) => $['apiKeyModal.knowledgeBaseAccess'], { ns: 'appApi' })}
         </div>
@@ -288,16 +283,16 @@ function DatasetScopeContent({
             </div>
           </div>
         )}
-      </div>
+      </DialogBody>
 
-      <div className="flex shrink-0 justify-end gap-2 px-6 pb-6">
+      <DialogFooter>
         <DialogClose render={<Button variant="secondary" disabled={isCreating} />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
         <Button type="submit" disabled={!canCreate} loading={isCreating}>
           {t(($) => $['operation.create'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }

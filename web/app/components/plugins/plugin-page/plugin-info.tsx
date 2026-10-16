@@ -1,7 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import KeyValueItem from '../base/key-value-item'
@@ -25,21 +31,12 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-120 overflow-hidden border-none p-6">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <DialogTitle>{t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</DialogTitle>
-
-        <div className="mt-5 space-y-3">
+      <DialogContent className="w-full max-w-120">
+        <DialogHeader>
+          <DialogTitle>{t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</DialogTitle>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody className="space-y-3">
           {repository && (
             <KeyValueItem
               label={t(($) => $[`${i18nPrefix}.repository`], { ns: 'plugin' })}
@@ -62,7 +59,7 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
               value={packageName}
             />
           )}
-        </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

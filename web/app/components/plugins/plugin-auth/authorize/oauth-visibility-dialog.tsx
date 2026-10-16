@@ -2,12 +2,14 @@ import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import PermissionSelector from './permission-selector'
@@ -38,41 +40,31 @@ const OAuthVisibilityDialog = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal={loading}>
       <DialogContent>
-        <div className="flex flex-col">
-          <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle>{t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}</DialogTitle>
-            <DialogDescription className="mt-1">
-              {t(($) => $['auth.oauthCredentialPermissionDescription'], { ns: 'plugin' })}
-            </DialogDescription>
-            <DialogClose
-              render={
-                <IconButton
-                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  size="lg"
-                  className="absolute top-5 right-5"
-                  disabled={loading}
-                >
-                  <span aria-hidden className="i-ri-close-line size-4" />
-                </IconButton>
-              }
-            />
-          </div>
-          <div className="px-6 py-3">
-            <PermissionSelector
-              disabled={loading}
-              permission={permission}
-              onChange={onPermissionChange}
-            />
-          </div>
-          <div className="flex shrink-0 justify-end p-6 pt-5">
-            <Button disabled={loading} onClick={() => handleOpenChange(false)}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button variant="primary" className="ml-2" loading={loading} onClick={onConfirm}>
-              {t(($) => $['auth.authorize'], { ns: 'plugin' })}
-            </Button>
-          </div>
-        </div>
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['auth.whoCanUse'], { ns: 'plugin' })}</DialogTitle>
+          <DialogDescription>
+            {t(($) => $['auth.oauthCredentialPermissionDescription'], { ns: 'plugin' })}
+          </DialogDescription>
+          <DialogCloseButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            disabled={loading}
+          />
+        </DialogHeader>
+        <DialogBody>
+          <PermissionSelector
+            disabled={loading}
+            permission={permission}
+            onChange={onPermissionChange}
+          />
+        </DialogBody>
+        <DialogFooter>
+          <Button disabled={loading} onClick={() => handleOpenChange(false)}>
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
+          </Button>
+          <Button variant="primary" loading={loading} onClick={onConfirm}>
+            {t(($) => $['auth.authorize'], { ns: 'plugin' })}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
