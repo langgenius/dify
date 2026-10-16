@@ -79,7 +79,7 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
           </AlertDialogTrigger>
           <AlertDialogContent backdropProps={{ forceRender: true }}>
             <AlertDialogHeader>
-              <AlertDialogTitle className="truncate">
+              <AlertDialogTitle>
                 {`${t(($) => $['operation.delete'], { ns: 'common' })} \u201C${apiBasedExtension.name}\u201D?`}
               </AlertDialogTitle>
             </AlertDialogHeader>

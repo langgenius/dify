@@ -362,7 +362,7 @@ export function Popup({
       <AlertDialog open={confirmVisible} onOpenChange={(open) => !open && handleHideConfirm()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle title={t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}>
+            <AlertDialogTitle>
               {t(($) => $['common.confirmPublish'], { ns: 'pipeline' })}
             </AlertDialogTitle>
             <AlertDialogDescription>

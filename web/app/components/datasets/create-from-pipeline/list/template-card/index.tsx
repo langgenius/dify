@@ -192,7 +192,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
       <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => !open && onCancelDelete()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="truncate">
+            <AlertDialogTitle>
               {t(($) => $['deletePipeline.title'], { ns: 'datasetPipeline' })}
             </AlertDialogTitle>
             <AlertDialogDescription>

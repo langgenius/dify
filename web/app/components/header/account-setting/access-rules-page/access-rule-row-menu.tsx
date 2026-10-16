@@ -127,7 +127,7 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="truncate">
+            <AlertDialogTitle>
               {t(($) => $['accessRule.deleteTitle'], { ns: 'permission', name: rule.name })}
             </AlertDialogTitle>
             <AlertDialogDescription>

@@ -22,7 +22,7 @@ export function ClearAllAnnotationsConfirmContent({ isPending, onConfirm }: Prop
   return (
     <AlertDialogContent>
       <AlertDialogHeader>
-        <AlertDialogTitle title={title}>{title}</AlertDialogTitle>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isPending}>

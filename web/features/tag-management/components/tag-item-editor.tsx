@@ -153,10 +153,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle
-              title={`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
-              className="truncate"
-            >
+            <AlertDialogTitle>
               {`${t(($) => $['tag.delete'], { ns: 'common' })} "${tag.name}"`}
             </AlertDialogTitle>
             <AlertDialogDescription>

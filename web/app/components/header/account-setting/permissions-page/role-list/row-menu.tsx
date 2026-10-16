@@ -163,7 +163,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="truncate">
+            <AlertDialogTitle>
               {t(($) => $['role.deleteTitle'], { ns: 'permission', name: role.name })}
             </AlertDialogTitle>
             <AlertDialogDescription>

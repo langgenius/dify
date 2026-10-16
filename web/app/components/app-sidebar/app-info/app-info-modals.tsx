@@ -217,7 +217,7 @@ const AppInfoModals = ({
           exportDialogMode === 'warning' && (
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle className="truncate">
+                <AlertDialogTitle>
                   {t(($) => $['sidebar.exportWarning'], { ns: 'workflow' })}
                 </AlertDialogTitle>
                 <AlertDialogDescription>

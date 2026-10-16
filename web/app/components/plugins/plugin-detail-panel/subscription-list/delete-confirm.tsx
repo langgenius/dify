@@ -71,7 +71,7 @@ export const DeleteConfirm = (props: Props) => {
           }}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle className="truncate">
+            <AlertDialogTitle>
               {t(($) => $[`${tPrefix}.title`], { ns: 'pluginTrigger', name: currentName })}
             </AlertDialogTitle>
             <AlertDialogDescription>

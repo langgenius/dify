@@ -148,7 +148,7 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
       <AlertDialog open={showConfirm} onOpenChange={(open) => !open && setShowConfirm(false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="truncate">
+            <AlertDialogTitle>
               {`${t(($) => $['deleteExternalAPIConfirmWarningContent.title.front'], { ns: 'dataset' })} ${api.name}${t(($) => $['deleteExternalAPIConfirmWarningContent.title.end'], { ns: 'dataset' })}`}
             </AlertDialogTitle>
             <AlertDialogDescription>

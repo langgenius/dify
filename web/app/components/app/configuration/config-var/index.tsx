@@ -402,7 +402,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="truncate">
+            <AlertDialogTitle>
               {t(($) => $['feature.dataSet.queryVariable.deleteContextVarTitle'], {
                 ns: 'appDebug',
                 varName: promptVariables[removeIndex as number]?.name ?? '',

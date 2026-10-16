@@ -137,7 +137,7 @@ const RecoveryDialog = ({
   <AlertDialog open={open} onOpenChange={(o) => !o && onOpenChange(false)}>
     <AlertDialogContent>
       <AlertDialogHeader>
-        <AlertDialogTitle className="truncate">{title}</AlertDialogTitle>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>

@@ -710,7 +710,7 @@ const ProviderConfigModal: FC<Props> = ({
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="truncate">
+                      <AlertDialogTitle>
                         {t(($) => $[`${I18N_PREFIX}.removeConfirmTitle`], {
                           ns: 'app',
                           key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }),

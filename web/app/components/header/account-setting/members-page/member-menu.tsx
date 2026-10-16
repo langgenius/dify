@@ -166,7 +166,7 @@ const MemberMenu = ({
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="truncate">
+            <AlertDialogTitle>
               {t(($) => $['members.removeFromTeamConfirmTitle'], {
                 ns: 'workspaceMembers',
                 memberName,

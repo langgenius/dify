@@ -282,11 +282,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle
-                            title={t(($) => $['feature.annotation.removeConfirm'], {
-                              ns: 'appDebug',
-                            })}
-                          >
+                          <AlertDialogTitle>
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
                         </AlertDialogHeader>

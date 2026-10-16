@@ -59,7 +59,7 @@ export function DeleteAgentDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader className="pb-0">
-          <AlertDialogTitle className="truncate">
+          <AlertDialogTitle>
             {t(($) => $['roster.deleteDialog.title'], { ns: 'agentRoster', name: agentName })}
           </AlertDialogTitle>
           <AlertDialogDescription>

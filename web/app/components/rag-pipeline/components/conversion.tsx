@@ -130,7 +130,7 @@ const Conversion = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle title={confirmTitle}>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>{confirmContent}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -83,7 +83,7 @@ const Result: FC<Props> = ({
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle className="truncate">
+                <AlertDialogTitle>
                   {isGeneratorPrompt
                     ? t(($) => $['generate.overwriteTitle'], { ns: 'appGeneration' })
                     : t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appGeneration' })}

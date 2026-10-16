@@ -325,7 +325,7 @@ function DeleteSkillDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="truncate">
+          <AlertDialogTitle>
             {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-2">{description}</AlertDialogDescription>

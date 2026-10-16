@@ -132,7 +132,7 @@ export const CheckModal = () => {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="truncate">{confirmInfo.title}</AlertDialogTitle>
+          <AlertDialogTitle>{confirmInfo.title}</AlertDialogTitle>
           {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
         <AlertDialogFooter>

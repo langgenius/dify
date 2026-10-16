@@ -244,7 +244,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle title="Warning">Warning</AlertDialogTitle>
+              <AlertDialogTitle>Warning</AlertDialogTitle>
               <AlertDialogDescription>
                 {`${t(($) => $['editExternalAPIConfirmWarningContent.front'], { ns: 'dataset' })} ${datasetBindings?.length} ${t(($) => $['editExternalAPIConfirmWarningContent.end'], { ns: 'dataset' })}`}
               </AlertDialogDescription>

@@ -29,7 +29,7 @@ const RemoveVarConfirm: FC<Props> = ({ isShow, onConfirm, onCancel }) => {
     <AlertDialog open={isShow} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle title={title}>{title}</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{content}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
