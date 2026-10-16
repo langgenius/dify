@@ -1,6 +1,7 @@
 import type { Readable } from 'node:stream'
 import type { BinaryStream, DifyStream, Headers, JsonValue, StreamEvent } from '../types/common'
 import { StringDecoder } from 'node:string_decoder'
+import { APIError } from '../errors/dify-error'
 import { isRecord } from '../internal/type-guards'
 
 const toBufferChunk = (chunk: unknown): Buffer => {
@@ -120,6 +121,18 @@ export const createSseStream = <T>(
     toText: async () => {
       let text = ''
       for await (const event of iterable) {
+        if (isRecord(event.data) && event.data.event === 'error') {
+          throw new APIError(
+            typeof event.data.message === 'string'
+              ? event.data.message
+              : 'Stream returned an error',
+            {
+              statusCode: typeof event.data.status === 'number' ? event.data.status : undefined,
+              responseBody: event.data,
+              requestId: meta.requestId,
+            },
+          )
+        }
         text += extractTextFromEvent(event.data)
       }
       return text
