@@ -212,11 +212,6 @@ export function DocumentUploadForm({
           {tCommon(($) => $['operation.cancel'])}
         </Button>
         <Button
-          aria-label={
-            canRetryRemainingFiles
-              ? t(($) => $.retryRemainingFiles, { ns: 'knowledgeCreate' })
-              : t(($) => $.addDocument)
-          }
           disabled={!remainingFiles.length}
           loading={uploading}
           type="submit"

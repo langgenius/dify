@@ -2516,7 +2516,7 @@ describe('DocumentsPage', () => {
     )
     await waitForDocumentFilesStaged()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
       body: { upload_id: 'staged-one.md' },
       params: { control_space_id: 'space-1' },
@@ -2529,7 +2529,7 @@ describe('DocumentsPage', () => {
       new File(['three'], 'three.txt', { type: 'text/plain' }),
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(3)
     expect(getUploadQuotaFailure).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
@@ -2573,7 +2573,7 @@ describe('DocumentsPage', () => {
     await waitForDocumentFilesStaged()
 
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       { queryKey: ['features'] },
@@ -2604,14 +2604,14 @@ describe('DocumentsPage', () => {
 
     expect(toastMock.error).toHaveBeenCalledWith(`knowledgeErrors.${failureKey}`)
     expect(stageUploadMutation).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(getUploadQuotaFailure).toHaveBeenCalledTimes(2)
     expect(stageUploadMutation).not.toHaveBeenCalled()
     expect(settingsState.refetch).not.toHaveBeenCalled()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(screen.getByText('draft.md')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
   })
 
   it('rechecks Cloud quotas before claiming already staged files', async () => {
@@ -2627,7 +2627,7 @@ describe('DocumentsPage', () => {
     expect(stageUploadMutation).toHaveBeenCalledTimes(2)
 
     getUploadQuotaFailure.mockResolvedValue('taskFailure.documentCountQuotaExceeded')
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(toastMock.error).toHaveBeenCalledWith(
       'knowledgeErrors.taskFailure.documentCountQuotaExceeded',
@@ -2697,7 +2697,7 @@ describe('DocumentsPage', () => {
       new File(['two'], 'two.pdf', { type: 'application/pdf' }),
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     const uploadRegion = screen.getByRole('region', {
       name: 'knowledgeCreate.uploadDocuments',
@@ -2767,7 +2767,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     const dialog = screen.getByRole('dialog', {
@@ -2818,7 +2818,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(settingsState.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
@@ -2859,7 +2859,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
@@ -2917,7 +2917,7 @@ describe('DocumentsPage', () => {
       expect(stagingSignal?.aborted).toBe(true)
       expect(toastMock.error).toHaveBeenCalledOnce()
       expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
-      expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
       expect(screen.getByRole('listitem')).not.toHaveAttribute('aria-busy')
 
       await act(async () => {
@@ -3018,7 +3018,7 @@ describe('DocumentsPage', () => {
       target: { files: [validFile, unsupportedFile] },
     })
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     await waitFor(() =>
       expect(uploadMutation.mutateAsync).toHaveBeenCalledWith({
@@ -3051,7 +3051,7 @@ describe('DocumentsPage', () => {
       ),
     )
     expect(stageUploadMutation).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
   })
 
   it('rejects oversized files before invoking an upload contract', async () => {
@@ -3066,7 +3066,7 @@ describe('DocumentsPage', () => {
     })
 
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeDisabled()
     expect(
       screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize:.*"size":15/),
     ).toBeVisible()
@@ -3195,7 +3195,7 @@ describe('DocumentsPage', () => {
     fireEvent.drop(surface, { dataTransfer: { files: [second], types: ['Files'] } })
     expect(screen.queryByText('two.md')).not.toBeInTheDocument()
     expect(stageUploadMutation).toHaveBeenCalledTimes(1)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(1))
     await waitFor(() =>
       expect(
@@ -3210,7 +3210,7 @@ describe('DocumentsPage', () => {
       second,
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(2))
   })
 
@@ -3224,7 +3224,7 @@ describe('DocumentsPage', () => {
     await user.upload(input, [new File(['one'], 'one.md'), new File(['two'], 'two.md')])
     await waitForDocumentFilesStaged()
     expect(stageUploadMutation).toHaveBeenCalledTimes(2)
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledTimes(2))
   })
 
@@ -3246,12 +3246,12 @@ describe('DocumentsPage', () => {
       await user.upload(screen.getByLabelText('knowledgeCreate.uploadDocuments'), file)
       if (extraBytes) {
         expect(stageUploadMutation).not.toHaveBeenCalled()
-        expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeDisabled()
         expect(screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize/)).toBeVisible()
       } else {
         await waitForDocumentFilesStaged()
         expect(stageUploadMutation).toHaveBeenCalledTimes(1)
-        expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+        expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
       }
     },
   )
@@ -3267,7 +3267,7 @@ describe('DocumentsPage', () => {
       target: { files: [file] },
     })
     expect(stageUploadMutation).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeDisabled()
     expect(
       screen.getByText(/knowledgeSpace\.documentUploadExclusion\.fileSize:.*"size":15/),
     ).toBeVisible()
@@ -3285,7 +3285,7 @@ describe('DocumentsPage', () => {
 
     expect(stageUploadMutation).not.toHaveBeenCalled()
     expect(uploadMutation.mutateAsync).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeDisabled()
     expect(screen.getByText('knowledgeSpace.documentUploadExclusion.fileEmpty')).toBeVisible()
   })
 
@@ -3317,13 +3317,13 @@ describe('DocumentsPage', () => {
         new File(['one'], 'one.md', { type: 'text/markdown' }),
       )
       await waitForDocumentFilesStaged()
-      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
       await waitFor(() =>
         expect(toastMock.error).toHaveBeenCalledWith(`knowledgeErrors.taskFailure.${key}`),
       )
       expect(screen.getByText('one.md')).toBeVisible()
-      expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toBeEnabled()
       expect(permissionStateMock.refreshAfterDenial).not.toHaveBeenCalled()
       expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
     },
@@ -3353,7 +3353,7 @@ describe('DocumentsPage', () => {
       new File(['three'], 'three.md', { type: 'text/markdown' }),
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     await waitFor(() =>
       expect(toastMock.error).toHaveBeenCalledWith(
@@ -3403,7 +3403,7 @@ describe('DocumentsPage', () => {
       oversizedFile,
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     queryClient.invalidateQueries.mockClear()
     uploadMutation.mutateAsync.mockRejectedValueOnce(new Error('quota exceeded'))
@@ -3413,7 +3413,7 @@ describe('DocumentsPage', () => {
       new File(['two'], 'two.md', { type: 'text/markdown' }),
     ])
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(toastMock.error).toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
     expect(queryClient.invalidateQueries).not.toHaveBeenCalled()
   })
@@ -8683,8 +8683,8 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' })).toHaveAttribute(
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
+    expect(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
@@ -8719,7 +8719,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
 
     await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
     expect(toastMock.error).not.toHaveBeenCalledWith('knowledgeSpace.documentUploadFailed')
@@ -8763,7 +8763,7 @@ describe('DocumentsPage', () => {
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
     await waitForDocumentFilesStaged()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     const documentsHeading = screen.getByRole('heading', {
       name: 'knowledgeSpace.addDocument',
     })
@@ -8889,7 +8889,7 @@ describe('DocumentsPage', () => {
       target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
     })
     await waitForDocumentFilesStaged()
-    fireEvent.click(screen.getByRole('button', { name: 'knowledgeSpace.addDocument' }))
+    fireEvent.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
     expect(cancelMutation.mutateAsync).toHaveBeenCalledOnce()
     await waitFor(() => expect(uploadMutation.mutateAsync).toHaveBeenCalledOnce())
 
