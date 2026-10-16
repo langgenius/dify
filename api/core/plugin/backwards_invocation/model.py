@@ -486,7 +486,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         max_tokens = cls.get_system_model_max_tokens(tenant_id=tenant.id, user_id=user_id)
         content = payload.text
 
-        SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
+        summary_prompt = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but
 retain the original meaning and keep the key points.
 however, the text you got is too long, what you got is possible a part of the text.
@@ -512,7 +512,7 @@ Here is the extra instruction you need to follow:
             return cls.get_prompt_tokens(
                 tenant_id=tenant.id,
                 prompt_messages=[
-                    SystemPromptMessage(content=SUMMARY_PROMPT.replace("{payload.instruction}", payload.instruction)),
+                    SystemPromptMessage(content=summary_prompt.replace("{payload.instruction}", payload.instruction)),
                     UserPromptMessage(content=content),
                 ],
                 user_id=user_id,
@@ -523,7 +523,7 @@ Here is the extra instruction you need to follow:
                 user_id=user_id,
                 tenant=tenant,
                 prompt_messages=[
-                    SystemPromptMessage(content=SUMMARY_PROMPT.replace("{payload.instruction}", payload.instruction)),
+                    SystemPromptMessage(content=summary_prompt.replace("{payload.instruction}", payload.instruction)),
                     UserPromptMessage(content=content),
                 ],
             )
