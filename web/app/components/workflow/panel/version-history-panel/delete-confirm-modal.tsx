@@ -36,7 +36,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <AlertDialogContent className="overflow-hidden border-none shadow-xl">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {`${t(($) => $['operation.delete'], { ns: 'common' })} ${getWorkflowVersionName(

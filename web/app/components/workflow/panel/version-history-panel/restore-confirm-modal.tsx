@@ -36,7 +36,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <AlertDialogContent className="overflow-hidden border-none shadow-xl">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {`${t(($) => $['common.restore'], { ns: 'workflow' })} ${getWorkflowVersionName(

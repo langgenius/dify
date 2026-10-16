@@ -72,7 +72,7 @@ function SnippetDSLConfirmDialog({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="overflow-hidden border-none shadow-xl">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {t(($) => $.dslVersionMismatchTitle, { ns: 'snippet' })}

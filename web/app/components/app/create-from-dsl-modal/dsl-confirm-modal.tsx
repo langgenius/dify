@@ -37,7 +37,7 @@ function DSLConfirmModal({
         if (!open && !confirmLoading) onCancel()
       }}
     >
-      <AlertDialogContent className="overflow-hidden border-none shadow-xl">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}

@@ -96,7 +96,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           if (!open) onQAConfirmDialogClose()
         }}
       >
-        <AlertDialogContent className="w-108">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t(($) => $['stepTwo.qaSwitchHighQualityTipTitle'], { ns: 'datasetCreation' })}

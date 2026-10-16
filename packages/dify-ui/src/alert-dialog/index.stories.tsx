@@ -43,9 +43,7 @@ export const Default: Story = {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Delete project?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Delete project?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. All workflows, datasets, and API keys will be permanently
             removed.
@@ -88,9 +86,7 @@ export const NonDestructive: Story = {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Publish the latest draft?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Publish the latest draft?</AlertDialogTitle>
           <AlertDialogDescription>
             Collaborators will immediately see the new workflow. You can still revert from version
             history.
@@ -117,7 +113,9 @@ export const LongObjectName: Story = {
             Delete “Customer support escalation playbook for enterprise accounts (2026 Q3)”?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {'Documents, segments, and retrieval settings will be removed.\nApps that use this knowledge base will stop retrieving from it.'}
+            {
+              'Documents, segments, and retrieval settings will be removed.\nApps that use this knowledge base will stop retrieving from it.'
+            }
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -145,9 +143,7 @@ function ControlledDemo() {
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Revoke API token?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Revoke API token?</AlertDialogTitle>
             <AlertDialogDescription>
               Any integration using this token will immediately stop working. You can issue a new
               token afterwards.
@@ -194,9 +190,7 @@ function LoadingConfirmDemo() {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Archive this workspace?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Archive this workspace?</AlertDialogTitle>
           <AlertDialogDescription>
             Members will lose access until the workspace is restored. This may take a moment to
             finalize.
