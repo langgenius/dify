@@ -55,6 +55,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from services.dify_response_stream_filter import DifyResponseStreamFilter
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -361,7 +362,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 app_mode=app_model.mode,
             )
 
-            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
+            resolved_response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(

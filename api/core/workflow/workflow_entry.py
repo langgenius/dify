@@ -48,6 +48,7 @@ from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
+from services.dify_response_stream_filter import DifyResponseStreamFilter
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -74,7 +75,7 @@ def iter_dify_graph_engine_events(
         context=GraphEventFilterContext.from_engine(engine),
         filters=[
             HumanInputFormEventFilter(form_repository=HumanInputFormSubmissionRepository()),
-            response_stream_filter or ResponseStreamFilter(),
+            response_stream_filter or DifyResponseStreamFilter(),
         ],
     )
 
@@ -145,7 +146,7 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
-        self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
+        self._response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
         execution_context = capture_current_context()
         # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
         graph_runtime_state._execution_context = execution_context

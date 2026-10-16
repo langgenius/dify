@@ -33,6 +33,7 @@ from graphon.variables import build_segment
 from graphon.variables.segments import Segment
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+from services.dify_response_stream_filter import DifyResponseStreamFilter
 
 
 @pytest.fixture
@@ -542,6 +543,7 @@ def test_get_response_stream_filter_restores_dumped_state() -> None:
     restored = context.get_response_stream_filter()
 
     assert restored.dumps() == original.dumps()
+    assert isinstance(restored, DifyResponseStreamFilter)
 
 
 def test_get_response_stream_filter_defaults_when_state_missing() -> None:
@@ -552,4 +554,4 @@ def test_get_response_stream_filter_defaults_when_state_missing() -> None:
 
     restored = context.get_response_stream_filter()
 
-    assert isinstance(restored, ResponseStreamFilter)
+    assert isinstance(restored, DifyResponseStreamFilter)

@@ -15,6 +15,7 @@ from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from services.dify_response_stream_filter import DifyResponseStreamFilter
 
 
 # Wrapper types for `WorkflowAppGenerateEntity` and
@@ -60,7 +61,7 @@ class WorkflowResumptionContext(BaseModel):
         return self.generate_entity.entity
 
     def get_response_stream_filter(self) -> ResponseStreamFilter:
-        response_stream_filter = ResponseStreamFilter()
+        response_stream_filter = DifyResponseStreamFilter()
         if self.serialized_response_stream_filter_state is not None:
             response_stream_filter.loads(self.serialized_response_stream_filter_state)
         return response_stream_filter

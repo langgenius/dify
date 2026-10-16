@@ -57,6 +57,7 @@ from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
+from services.dify_response_stream_filter import DifyResponseStreamFilter
 from services.errors.conversation import ConversationNotExistsError
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
@@ -575,7 +576,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
 
             graph_layers: list[GraphEngineLayer] = list(graph_engine_layers)
-            resolved_response_stream_filter = response_stream_filter or ResponseStreamFilter()
+            resolved_response_stream_filter = response_stream_filter or DifyResponseStreamFilter()
             if pause_state_config is not None:
                 graph_layers.append(
                     PauseStatePersistenceLayer(
