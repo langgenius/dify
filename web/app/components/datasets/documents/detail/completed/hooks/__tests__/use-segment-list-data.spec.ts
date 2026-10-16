@@ -1,11 +1,10 @@
+import type {
+  ConsoleSegmentListResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
-import type {
-  ChunkingMode,
-  ParentMode,
-  SegmentDetailModel,
-  SegmentsResponse,
-} from '@/models/datasets'
+import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
@@ -16,7 +15,7 @@ import { segmentImportStatus } from '@/types/dataset'
 import { useSegmentListData } from '../use-segment-list-data'
 
 // Type for mutation callbacks
-type SegmentMutationResponse = { data: SegmentDetailModel }
+type SegmentMutationResponse = { data: SegmentResponse }
 type SegmentMutationCallbacks = {
   onSuccess: (res: SegmentMutationResponse) => void
   onSettled: () => void
@@ -61,12 +60,12 @@ const {
   mockQueryClient: { setQueryData: vi.fn(), invalidateQueries: vi.fn() },
   mockSegmentListData: {
     current: {
-      data: [] as SegmentDetailModel[],
+      data: [] as SegmentResponse[],
       total: 0,
       total_pages: 0,
       limit: 20,
       page: 1,
-    } as SegmentsResponse | undefined,
+    } as ConsoleSegmentListResponse | undefined,
   },
   mockEnableSegment: vi.fn(),
   mockDisableSegment: vi.fn(),
@@ -154,7 +153,7 @@ const createWrapper = () => {
     React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const createMockSegment = (overrides: Partial<SegmentDetailModel> = {}): SegmentDetailModel => ({
+const createMockSegment = (overrides: Partial<SegmentResponse> = {}): SegmentResponse => ({
   id: `segment-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   document_id: 'doc-1',

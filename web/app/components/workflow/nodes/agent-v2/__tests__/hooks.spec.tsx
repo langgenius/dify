@@ -549,7 +549,7 @@ describe('useCreateInlineAgentBinding', () => {
     mockComposerMutationFn.mockImplementationOnce(
       async (_variables) =>
         new Promise((resolve) => {
-          resolveComposerState = resolve as typeof resolveComposerState
+          resolveComposerState = resolve
         }),
     )
     const onSuccess = vi.fn()

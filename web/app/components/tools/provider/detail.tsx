@@ -161,7 +161,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const doRemoveCustomToolCollection = async () => {
     if (!canManageTools) return
 
-    await removeCustomCollection(collection?.name as string)
+    await removeCustomCollection(collection?.name)
     onRefreshData()
     setIsShowEditCustomCollectionModal(false)
   }

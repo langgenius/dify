@@ -140,7 +140,7 @@ describe('InputsFormContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as any)
   })
 
   it('should render visible input forms', () => {
@@ -251,7 +251,7 @@ describe('InputsFormContent', () => {
       },
     }
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithValues as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithValues as any)
 
     render(<InputsFormContent />)
     expect(screen.getByDisplayValue('initial value'))!.toBeInTheDocument()
@@ -266,7 +266,7 @@ describe('InputsFormContent', () => {
       },
     }
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithConv as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(contextWithConv as any)
 
     render(<InputsFormContent />)
     expect(screen.getByDisplayValue('conv value'))!.toBeInTheDocument()

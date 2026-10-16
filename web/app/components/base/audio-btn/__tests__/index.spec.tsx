@@ -24,7 +24,7 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
 describe('AudioBtn', () => {
   const getButton = () => screen.getByRole('button')
   const mockUseParams = (value: Partial<Record<string, string>>) => {
-    vi.mocked(useParams).mockReturnValue(value as ReturnType<typeof useParams>)
+    vi.mocked(useParams).mockReturnValue(value)
   }
   const mockUsePathname = (value: string) => {
     vi.mocked(usePathname).mockReturnValue(value)

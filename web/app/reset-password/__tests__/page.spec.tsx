@@ -44,7 +44,7 @@ describe('ResetPasswordPage', () => {
       typeof useRouter
     >)
     vi.mocked(useSearchParams).mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
+      new URLSearchParams() as ReturnType<typeof useSearchParams>,
     )
     vi.mocked(consoleClient.forgotPassword.post).mockResolvedValue({
       result: 'success',

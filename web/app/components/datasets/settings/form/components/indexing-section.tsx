@@ -1,7 +1,8 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -27,7 +28,7 @@ const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settin
 const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type IndexingSectionProps = {
-  currentDataset: DataSet | undefined
+  currentDataset: DatasetDetailWithPartialMembersResponse | undefined
   indexMethod: IndexingType | undefined
   setIndexMethod: (value: IndexingType | undefined) => void
   keywordNumber: number

@@ -1,11 +1,11 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 type ItemProps = {
-  credential: DataSourceCredential
+  credential: DatasourceCredentialResponse
   isSelected: boolean
   onCredentialChange: (credentialId: string) => void
 }

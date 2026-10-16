@@ -1,9 +1,10 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -12,7 +13,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import Dropdown from '../dropdown'
 
-let mockDataset: DataSet
+let mockDataset: DatasetDetailWithPartialMembersResponse
 const mockReplace = vi.fn()
 const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
 const datasetListKey = consoleQuery.datasets.get.key()
@@ -38,7 +39,9 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
     },
   })
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
   ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
@@ -49,9 +52,10 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
@@ -100,8 +104,9 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
-    selector({ dataset: mockDataset }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset?: DatasetDetailWithPartialMembersResponse }) => unknown,
+  ) => selector({ dataset: mockDataset }),
 }))
 
 vi.mock('@/context/permission-state', async () => {

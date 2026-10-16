@@ -380,7 +380,7 @@ describe('prompt-editor/hooks', () => {
       const { unmount } = render(
         <LexicalTextEntityHarness
           getMatch={getMatch}
-          targetNode={MockTargetNode as unknown as Klass<TextNode>}
+          targetNode={MockTargetNode as Klass<TextNode>}
           createNode={createNode}
         />,
       )

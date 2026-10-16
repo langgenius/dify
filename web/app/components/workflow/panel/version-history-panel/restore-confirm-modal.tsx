@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -16,9 +16,9 @@ import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 
 type RestoreConfirmModalProps = {
   isOpen: boolean
-  versionInfo: VersionHistory
+  versionInfo: FetchWorkflowDraftResponse
   onClose: () => void
-  onRestore: (item: VersionHistory) => void
+  onRestore: (item: FetchWorkflowDraftResponse) => void
 }
 
 const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({

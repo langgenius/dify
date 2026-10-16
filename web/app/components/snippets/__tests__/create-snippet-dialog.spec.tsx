@@ -1,4 +1,5 @@
-import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
+import type { SnippetCanvasData } from '@/models/snippet'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -11,7 +12,7 @@ const selectedGraph: SnippetCanvasData = {
   viewport: { x: 12, y: 24, zoom: 0.8 },
 }
 
-const inputFields: SnippetInputField[] = [
+const inputFields: InputVar[] = [
   {
     label: 'topic',
     variable: 'topic',

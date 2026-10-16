@@ -1,7 +1,7 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
@@ -31,7 +31,7 @@ import {
   isAllowedFileExtension,
 } from './utils'
 
-export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
+export const useFileSizeLimit = (fileUploadConfig?: UploadConfig) => {
   const imgSizeLimit =
     Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
   const docSizeLimit = Number(fileUploadConfig?.file_size_limit) * 1024 * 1024 || FILE_SIZE_LIMIT

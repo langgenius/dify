@@ -1,7 +1,7 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
 import type { Shape } from '../../../store'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -30,11 +30,13 @@ const mockToast = vi.hoisted(() => ({
 }))
 let mockPlanType: CloudPlan = 'professional'
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
-let mockPublishedEnvironments: VersionHistory['environments']
+let mockPublishedEnvironments: FetchWorkflowDraftResponse['environments']
 let mockHasNextPage = false
 let mockIsFetching = false
 
-const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
+const createVersionHistory = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse => ({
   id: 'version-id',
   version: WorkflowVersion.Draft,
   graph: { nodes: [], edges: [] },
@@ -60,7 +62,7 @@ const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionH
   ...overrides,
 })
 
-let mockCurrentVersion: VersionHistory | null = null
+let mockCurrentVersion: FetchWorkflowDraftResponse | null = null
 
 type MockVersionStoreState = Pick<
   Shape,
@@ -68,15 +70,15 @@ type MockVersionStoreState = Pick<
 >
 type MockRestoreConfirmModalProps = {
   isOpen: boolean
-  versionInfo: VersionHistory
-  onRestore: (item: VersionHistory) => void
+  versionInfo: FetchWorkflowDraftResponse
+  onRestore: (item: FetchWorkflowDraftResponse) => void
 }
 type MockDeleteConfirmModalProps = {
   isOpen: boolean
 }
 type MockVersionHistoryItemProps = {
-  item: VersionHistory
-  onClick: (item: VersionHistory) => void
+  item: FetchWorkflowDraftResponse
+  onClick: (item: FetchWorkflowDraftResponse) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
 }
 
@@ -200,7 +202,7 @@ vi.mock('@/app/components/app/app-publisher/version-info-modal', () => ({
     versionInfo,
     onPublish,
   }: {
-    versionInfo: VersionHistory
+    versionInfo: FetchWorkflowDraftResponse
     onPublish: (params: { id?: string; title: string; releaseNotes: string }) => Promise<void>
   }) => (
     <button

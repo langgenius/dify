@@ -20,14 +20,12 @@ type AssignRolesModalProps = {
   onSubmit: (roles: Role[]) => void
 }
 
-type AssignRolesModalBodyProps = AssignRolesModalProps
-
 const AssignRolesModalBody = ({
   selectedRoles,
   allowMultipleRoles = true,
   onClose,
   onSubmit,
-}: AssignRolesModalBodyProps) => {
+}: AssignRolesModalProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const [selected, setSelected] = useState(selectedRoles)
   const selectedRoleIds = selected.map((role) => role.id)

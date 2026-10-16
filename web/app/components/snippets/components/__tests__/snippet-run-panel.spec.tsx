@@ -1,4 +1,4 @@
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ReactFlowProvider } from 'reactflow'
@@ -89,7 +89,7 @@ vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
   default: ({ list }: { list: unknown[] }) => <div>{`tracing-${list.length}`}</div>,
 }))
 
-const fields: SnippetInputField[] = [
+const fields: InputVar[] = [
   {
     label: 'Topic',
     variable: 'topic',

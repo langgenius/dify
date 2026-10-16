@@ -1,8 +1,8 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { IndexingStatusResponse } from '@/models/datasets'
-import type { InitialDocumentDetail } from '@/models/pipeline'
 import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -55,7 +55,7 @@ vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => (
 
 // Mock the batch indexing status request
 let mockFetchIndexingStatus: Mock
-let mockIndexingStatusData: IndexingStatusResponse[] = []
+let mockIndexingStatusData: DocumentStatusResponse[] = []
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
@@ -83,28 +83,26 @@ vi.mock('@/hooks/use-api-access-url', () => ({
  * Uses deterministic counter-based IDs to avoid flaky tests
  */
 let documentIdCounter = 0
-const createMockDocument = (
-  overrides: Partial<InitialDocumentDetail> = {},
-): InitialDocumentDetail => ({
+const createMockDocument = (overrides: Partial<PipelineDocument> = {}): PipelineDocument => ({
   id: overrides.id ?? `doc-${++documentIdCounter}`,
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
   data_source_info: {},
   enabled: true,
   error: '',
-  indexing_status: 'waiting' as IndexingStatusResponse['indexing_status'],
+  indexing_status: 'waiting' as DocumentStatusResponse['indexing_status'],
   position: 0,
   ...overrides,
 })
 
 /**
- * Creates a mock IndexingStatusResponse for testing
+ * Creates a mock DocumentStatusResponse for testing
  */
 const createMockIndexingStatus = (
-  overrides: Partial<IndexingStatusResponse> = {},
-): IndexingStatusResponse => ({
+  overrides: Partial<DocumentStatusResponse> = {},
+): DocumentStatusResponse => ({
   id: `doc-${Math.random().toString(36).slice(2, 9)}`,
-  indexing_status: 'waiting' as IndexingStatusResponse['indexing_status'],
+  indexing_status: 'waiting' as DocumentStatusResponse['indexing_status'],
   processing_started_at: Date.now(),
   parsing_completed_at: 0,
   cleaning_completed_at: 0,
@@ -125,7 +123,7 @@ const createDefaultProps = (
   overrides: Partial<{
     datasetId: string
     batchId: string
-    documents: InitialDocumentDetail[]
+    documents: PipelineDocument[]
     indexingType: IndexingType
     retrievalMethod: RETRIEVE_METHOD
   }> = {},
@@ -897,7 +895,7 @@ describe('EmbeddingProcess', () => {
       mockIndexingStatusData = [
         createMockIndexingStatus({
           id: 'doc-1',
-          indexing_status: undefined as unknown as IndexingStatusResponse['indexing_status'],
+          indexing_status: undefined as unknown as DocumentStatusResponse['indexing_status'],
         }),
       ]
       const props = createDefaultProps({ documents: [doc1] })

@@ -1,9 +1,5 @@
-import type {
-  CreateDocumentReq,
-  CustomFile,
-  FullDocumentDetail,
-  ProcessRule,
-} from '@/models/datasets'
+import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { CreateDocumentReq, CustomFile, ProcessRule } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -164,7 +160,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should build params for isSetting mode', () => {
-      const detail = { id: 'doc-1' } as FullDocumentDetail
+      const detail = { id: 'doc-1' } as DocumentDetailResponse
       const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({ ...defaultOptions, isSetting: true, documentDetail: detail }),
       )

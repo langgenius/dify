@@ -1,4 +1,4 @@
-import type { AgentIteration } from '@/models/log'
+import type { AgentIterationLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import Iteration from '../iteration'
 
@@ -15,7 +15,7 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
 }))
 
-const mockIterationInfo: AgentIteration = {
+const mockIterationInfo: AgentIterationLogResponse = {
   created_at: '2023-01-01',
   files: [],
   thought: 'Test thought',

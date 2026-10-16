@@ -52,8 +52,8 @@ vi.mock('@/next/navigation', () => ({
 
 type UseSendMailResult = ReturnType<typeof mockSendMailHook>
 
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 const mockUseSendMail = mockSendMailHook
 
 const renderForm = ({
@@ -76,9 +76,7 @@ const renderForm = ({
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
-    )
+    mockUseSearchParams.mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
@@ -145,9 +143,9 @@ describe('InputMail Form', () => {
   describe('Registration Navigation', () => {
     it('should preserve the current query when navigating to sign in', () => {
       mockUseSearchParams.mockReturnValue(
-        new URLSearchParams(
-          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        new URLSearchParams('redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing') as ReturnType<
+          typeof useSearchParams
+        >,
       )
 
       renderForm()

@@ -1,6 +1,6 @@
+import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
-import type { ExternalAPIItem } from '@/models/datasets'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -24,7 +24,7 @@ import Form from './Form'
 
 type AddExternalAPIModalProps = {
   data?: CreateExternalAPIReq
-  onSave: (api: ExternalAPIItem) => void
+  onSave: (api: ExternalKnowledgeApiResponse) => void
   onCancel: () => void
   onEdit?: (formValue: CreateExternalAPIReq) => Promise<void>
   datasetBindings?: {

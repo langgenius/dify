@@ -1,6 +1,6 @@
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps, ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createHttpError } from '@/service/http-error'
 import AgentLogDetail from '../detail'
@@ -79,9 +79,7 @@ const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
   ...overrides,
 })
 
-const createMockResponse = (
-  overrides: Partial<AgentLogDetailResponse> = {},
-): AgentLogDetailResponse => ({
+const createMockResponse = (overrides: Partial<AgentLogResponse> = {}): AgentLogResponse => ({
   meta: {
     status: 'succeeded',
     executor: 'User',

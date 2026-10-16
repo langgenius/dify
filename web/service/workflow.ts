@@ -19,8 +19,6 @@ import type {
 import { consoleClient } from '@/service/console'
 import { get, post } from './base'
 
-export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
-
 export type EnvironmentVariablePatch = {
   environmentVariables: EnvironmentVariable[]
   deletedEnvironmentVariableIds: string[]
@@ -207,7 +205,7 @@ export const updateFeatures = ({
   features,
 }: {
   appId: string
-  features: WorkflowDraftFeaturesPayload
+  features: WorkflowFeaturesConfigPayload
 }) => {
   return consoleClient.apps.byAppId.workflows.draft.features.post({
     params: { app_id: appId },

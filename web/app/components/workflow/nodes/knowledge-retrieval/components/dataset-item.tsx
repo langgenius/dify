@@ -1,7 +1,7 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -25,9 +25,9 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
 type Props = Readonly<{
-  payload: DataSet
+  payload: DatasetDetailWithPartialMembersResponse
   onRemove: () => void
-  onChange: (dataSet: DataSet) => void
+  onChange: (dataSet: DatasetDetailWithPartialMembersResponse) => void
   readonly?: boolean
   editable?: boolean
   settingsDrawerBackdropClassName?: string
@@ -56,7 +56,7 @@ const DatasetItem: FC<Props> = ({
   const settingsDrawerActionsRef = useRef<DrawerActions>(null)
 
   const handleSave = useCallback(
-    (newDataset: DataSet) => {
+    (newDataset: DatasetDetailWithPartialMembersResponse) => {
       onChange(newDataset)
       settingsDrawerActionsRef.current?.close()
     },

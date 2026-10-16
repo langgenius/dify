@@ -1,5 +1,5 @@
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import type { SnippetWorkflow } from '@/types/snippet'
 import { useCallback } from 'react'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
@@ -24,7 +24,7 @@ export const useSnippetRefreshDraft = (snippetId: string) => {
           if (!response) return
 
           const inputFields = Array.isArray(response.input_fields)
-            ? (response.input_fields as SnippetInputField[])
+            ? (response.input_fields as InputVar[])
             : []
 
           handleUpdateWorkflowCanvas({

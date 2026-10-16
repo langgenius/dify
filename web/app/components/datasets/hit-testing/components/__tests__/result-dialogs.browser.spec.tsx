@@ -1,11 +1,14 @@
-import type { ExternalKnowledgeBaseHitTesting, HitTesting } from '@/models/datasets'
+import type {
+  ExternalHitTestingRecordResponse,
+  HitTestingRecord,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { ResultItem } from '../result-item'
 import { ResultItemExternal } from '../result-item-external'
 
-function createResult(overrides: Partial<HitTesting> = {}): HitTesting {
+function createResult(overrides: Partial<HitTestingRecord> = {}): HitTestingRecord {
   return createHitTestingRecordFixture({
     score: 0.9,
     ...overrides,
@@ -86,7 +89,7 @@ it('opens attachments independently and nests their preview only while details a
 it('keeps external details scrollable and Close reachable on a narrow viewport through keyboard and exit', async () => {
   await page.viewport(414, 900)
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
-  const payload: ExternalKnowledgeBaseHitTesting = {
+  const payload: ExternalHitTestingRecordResponse = {
     title: 'External handbook',
     content: `${'External retrieval content. '.repeat(200)}${'unbroken'.repeat(60)}`,
     score: 0.85,

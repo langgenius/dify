@@ -1,10 +1,9 @@
-import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type {
-  ChildChunkDetail,
-  ChunkingMode,
-  ParentMode,
-  SegmentDetailModel,
-} from '@/models/datasets'
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -44,12 +43,12 @@ const {
     off: vi.fn(),
   },
   mockSegmentListData: {
-    data: [] as SegmentDetailModel[],
+    data: [] as SegmentResponse[],
     total: 0,
     total_pages: 0,
   },
   mockChildSegmentListData: {
-    data: [] as ChildChunkDetail[],
+    data: [] as ChildChunkResponse[],
     total: 0,
     total_pages: 0,
   },
@@ -230,9 +229,7 @@ vi.mock('../common/batch-action', () => ({
   ),
 }))
 
-const createMockSegmentDetail = (
-  overrides: Partial<SegmentDetailModel> = {},
-): SegmentDetailModel => ({
+const createMockSegmentDetail = (overrides: Partial<SegmentResponse> = {}): SegmentResponse => ({
   id: `segment-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   document_id: 'doc-1',
@@ -263,7 +260,9 @@ const createMockSegmentDetail = (
   ...overrides,
 })
 
-const _createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildChunkDetail => ({
+const _createMockChildChunk = (
+  overrides: Partial<ChildChunkResponse> = {},
+): ChildChunkResponse => ({
   id: `child-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   segment_id: 'segment-1',

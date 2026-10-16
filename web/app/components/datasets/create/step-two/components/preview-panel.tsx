@@ -1,8 +1,9 @@
 'use client'
 
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComponentProps, FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
-import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { DataSourceType } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +32,7 @@ type PreviewPanelProps = {
   finalFocus?: ComponentProps<typeof FloatRightContainer>['finalFocus']
   dataSourceType: DataSourceType
   currentDocForm: ChunkingMode
-  estimate?: FileIndexingEstimateResponse
+  estimate?: IndexingEstimateResponse
   parentChildConfig: ParentChildConfig
   isSetting?: boolean
   // Picker

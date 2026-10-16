@@ -1,10 +1,10 @@
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type {
   MetadataBatchEditToServer,
   MetadataItemInBatchEdit,
   MetadataItemWithEdit,
   MetadataItemWithValue,
 } from '../types'
-import type { SimpleDocumentDetail } from '@/models/datasets'
 import { useMutation } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
@@ -15,7 +15,7 @@ import { UpdateType } from '../types'
 
 type Props = Readonly<{
   datasetId: string
-  docList: SimpleDocumentDetail[]
+  docList: DocumentWithSegmentsResponse[]
   selectedDocumentIds?: string[]
   onUpdate: () => void
 }>

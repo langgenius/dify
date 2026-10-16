@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Recipient as RecipientItem } from '../../../../types'
-import type { Member } from '@/models/common'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EmailInput from '../email-input'
@@ -38,7 +38,7 @@ vi.mock('../member-list', () => ({
   },
 }))
 
-const createMember = (overrides: Partial<Member>): Member => ({
+const createMember = (overrides: Partial<AccountWithRoleResponse>): AccountWithRoleResponse => ({
   id: 'member-1',
   email: 'member-1@example.com',
   name: 'Member One',
@@ -53,7 +53,7 @@ const createMember = (overrides: Partial<Member>): Member => ({
   ...overrides,
 })
 
-const members: Member[] = [
+const members: AccountWithRoleResponse[] = [
   createMember({}),
   createMember({
     id: 'member-2',

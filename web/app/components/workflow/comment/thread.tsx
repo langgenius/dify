@@ -1,10 +1,10 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type {
   WorkflowCommentDetail,
-  WorkflowCommentDetailReply,
-} from '@/app/components/workflow/comment/types'
+  WorkflowCommentReply,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -317,7 +317,7 @@ function CommentThreadComponent({
     [screenPosition.x, screenPosition.y, containerLeft, containerTop],
   )
 
-  const handleStartEdit = useCallback((reply: WorkflowCommentDetailReply) => {
+  const handleStartEdit = useCallback((reply: WorkflowCommentReply) => {
     setEditingReply({ id: reply.id, content: reply.content })
     setIsCommentEditing(false)
     setActiveReplyMenuId(null)
