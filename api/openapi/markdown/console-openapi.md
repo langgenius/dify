@@ -22029,6 +22029,7 @@ Effective feature availability and limits for the current workspace.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
 | api_rate_limit | [Quota](#quota) |  | Yes |
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
