@@ -225,7 +225,11 @@ describe('Tracing overview panel', () => {
     )
     const user = userEvent.setup()
     await user.click(screen.getByRole('button'))
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    const tracingSwitch = screen.getByRole('switch', { name: 'app.tracing.tracing' })
+    expect(tracingSwitch).toHaveAttribute('aria-disabled', 'true')
+    expect(tracingSwitch).toHaveAccessibleDescription('app.tracing.disabledTip')
+    await user.click(tracingSwitch)
+    expect(writes).toHaveLength(0)
     await user.click(screen.getByRole('button', { name: 'app.tracing.langfuse.title' }))
     await waitFor(() => expect(screen.getByRole('switch')).toBeChecked())
     expect(writes).toEqual([
@@ -256,7 +260,8 @@ describe('Tracing overview panel', () => {
       'app.tracing.tracingDescription',
     )
     expect(screen.getByText('app.tracing.langfuse.title')).toBeInTheDocument()
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-readonly', 'true')
+    expect(screen.getByRole('switch')).toHaveAccessibleDescription('app.tracing.readOnly')
     expect(screen.queryByText('app.tracing.config')).not.toBeInTheDocument()
   })
 

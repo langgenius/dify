@@ -146,19 +146,74 @@ describe('Agent tracing configuration', () => {
 
   it('shows policy and capabilities to Monitor-only users without requesting credentials', async () => {
     const { sent } = setup({ permissions: [AgentPermission.Monitor] })
-    await openPanel()
+    const user = await openPanel()
     expect(await screen.findByText('app.tracing.apiCollectionDisabled')).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'app.tracing.captureContent' })).toHaveAttribute(
-      'aria-disabled',
+      'aria-readonly',
       'true',
     )
     expect(
       screen.getByRole('switch', { name: 'app.tracing.captureContent' }),
     ).toHaveAccessibleDescription('app.tracing.captureContentDescription')
     expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).toBeChecked()
+    for (const control of screen.getAllByRole('switch')) {
+      expect(control).toHaveAttribute('aria-readonly', 'true')
+      await user.click(control)
+      await user.keyboard(' {Enter}')
+    }
     expect(screen.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
     expect(sent.some((req) => new URL(req.url).pathname.endsWith('/trace-config'))).toBe(false)
     expect(writes(sent)).toHaveLength(0)
+  })
+
+  it('explains both capture settings on demand without changing the policy', async () => {
+    const { sent } = setup()
+    const user = await openPanel()
+    for (const setting of ['captureContent', 'captureAgent']) {
+      expect(
+        screen.getByRole('switch', { name: `app.tracing.${setting}` }),
+      ).toHaveAccessibleDescription(`app.tracing.${setting}Description`)
+      expect(
+        screen.queryByRole('dialog', { name: `app.tracing.${setting}` }),
+      ).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: `app.tracing.${setting}` }))
+      const explanation = await screen.findByRole('dialog', { name: `app.tracing.${setting}` })
+      expect(within(explanation).getByText(`app.tracing.${setting}Description`)).toBeVisible()
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(explanation).not.toBeInTheDocument())
+    }
+    expect(writes(sent)).toHaveLength(0)
+  })
+
+  it('shows busy policy controls and blocks further writes until a failed save finishes', async () => {
+    const { state, sent } = setup()
+    const user = await openPanel()
+    const server = request.getMockImplementation()!
+    let finishSave!: () => void
+    const save = new Promise<void>((resolve) => {
+      finishSave = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      if (args[2].request.method === 'POST') await save
+      return server(...args)
+    })
+    state.failPolicy = true
+    await user.click(screen.getByRole('switch', { name: 'app.tracing.captureContent' }))
+    for (const control of screen.getAllByRole('switch')) {
+      expect(control).toHaveAttribute('aria-busy', 'true')
+      expect(control).toHaveAttribute('aria-disabled', 'true')
+      await user.click(control)
+    }
+    expect(request.mock.calls.filter((call) => call[2].request.method === 'POST')).toHaveLength(1)
+    await act(async () => {
+      finishSave()
+      await save
+    })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Policy unavailable')
+    for (const control of screen.getAllByRole('switch'))
+      expect(control).not.toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('switch', { name: 'app.tracing.captureContent' })).not.toBeChecked()
+    expect(writes(sent)).toHaveLength(1)
   })
 
   it('preserves all policy fields when changing capture flags and refreshing', async () => {
