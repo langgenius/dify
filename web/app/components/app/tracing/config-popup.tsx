@@ -20,7 +20,6 @@ import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { selectAgentTracingEnabled } from './capabilities'
 import { ProviderConfigModal } from './provider-config-modal'
 import { ProviderPanel } from './provider-panel'
 import { configurableProviders, hasProviderForm } from './providers'
@@ -72,7 +71,9 @@ export function ConfigPopup({
           : consoleQuery.apps.byAppId.traceConfig.key({ type: 'mutation' }),
     }) > 0
   const { data: agentTracingEnabled } = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectAgentTracingEnabled }),
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.agent_tracing_api_collection_enabled,
+    }),
   )
   // Agent tracing settings only matter once traces have a destination.
   const agentTracingSection =
