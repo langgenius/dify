@@ -1,9 +1,8 @@
 """Cross-workspace app reads for the trusted enterprise admin inner API.
 
-Enterprise owns non-built-in environments, their deployment status, and their
-invocation metrics. CE exposes the Studio-visible app metadata enterprise joins
-against, plus everything the built-in environment owns: its published version,
-access points, and invocations.
+CE exposes the Studio-visible app metadata enterprise joins against by app id,
+plus what CE itself owns for each app: its published version, access points,
+and invocations.
 """
 
 from collections.abc import Callable, Collection, Mapping, Sequence
@@ -20,7 +19,7 @@ from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 EnterpriseAppSortBy = Literal["created_at", "name"]
 EnterpriseAppSortOrder = Literal["asc", "desc"]
 
-# Window for the built-in invocation counts shown on the admin detail page.
+# Window for the invocation counts shown on the admin list and detail pages.
 INVOCATION_WINDOW = timedelta(hours=24)
 
 
@@ -61,23 +60,18 @@ class EnterpriseAppSummary:
 
 
 @dataclass(frozen=True, slots=True)
-class EnterpriseAppBuiltInSummary:
-    """Built-in environment state cheap enough to read for a whole list page."""
+class EnterpriseAppListItem:
+    """App state cheap enough to read for a whole list page."""
 
+    app: EnterpriseAppSummary
     # True exactly when the detail reports a published_version.
     published: bool
     invocation_count: int
 
 
 @dataclass(frozen=True, slots=True)
-class EnterpriseAppListItem:
-    app: EnterpriseAppSummary
-    built_in: EnterpriseAppBuiltInSummary
-
-
-@dataclass(frozen=True, slots=True)
 class EnterpriseAppPublishedVersion:
-    """The workflow or Agent config version the built-in environment serves."""
+    """The workflow or Agent config version the app currently serves."""
 
     id: str
     # Workflow version string; None for Agent config snapshots, which have none.
@@ -133,9 +127,10 @@ class EnterpriseAppTrigger:
 
 
 @dataclass(frozen=True, slots=True)
-class EnterpriseAppBuiltInState:
-    """Built-in environment state the app store reads; invocations come from run and message logs."""
+class EnterpriseAppRecord:
+    """App state the app store reads; invocations come from run and message logs."""
 
+    app: EnterpriseAppSummary
     # None when the app has never been published (workflow and Agent Apps) or
     # has no version concept (legacy chat, completion, and agent-chat Apps).
     # Agent Apps also report None while their draft differs from the active
@@ -153,7 +148,8 @@ class EnterpriseAppBuiltInState:
 
 
 @dataclass(frozen=True, slots=True)
-class EnterpriseAppBuiltIn:
+class EnterpriseAppDetail:
+    app: EnterpriseAppSummary
     published_version: EnterpriseAppPublishedVersion | None
     published_version_count: int
     site: EnterpriseAppSite | None
@@ -168,22 +164,10 @@ class EnterpriseAppBuiltIn:
 
 
 @dataclass(frozen=True, slots=True)
-class EnterpriseAppDetail:
-    app: EnterpriseAppSummary
-    built_in: EnterpriseAppBuiltIn
-
-
-@dataclass(frozen=True, slots=True)
 class EnterpriseAppListEntry:
     app: EnterpriseAppSummary
-    # True exactly when the app's built-in state has a published_version.
+    # True exactly when the app's record has a published_version.
     published: bool
-
-
-@dataclass(frozen=True, slots=True)
-class EnterpriseAppRecord:
-    app: EnterpriseAppSummary
-    built_in: EnterpriseAppBuiltInState
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,8 +230,7 @@ def _invocations[StatusT](
 class EnterpriseAppService:
     """App queries across tenants, consumed by enterprise dashboard.
 
-    App is deployed in environments, and dify api is treated as a built-in event, where stats are collected from
-    workflow runs and messages.
+    Invocation stats are collected from workflow runs and messages.
     """
 
     def __init__(
@@ -263,10 +246,8 @@ class EnterpriseAppService:
         items = [
             EnterpriseAppListItem(
                 app=entry.app,
-                built_in=EnterpriseAppBuiltInSummary(
-                    published=entry.published,
-                    invocation_count=invocations.get(entry.app.id, _NO_INVOCATIONS).count,
-                ),
+                published=entry.published,
+                invocation_count=invocations.get(entry.app.id, _NO_INVOCATIONS).count,
             )
             for entry in page.items
         ]
@@ -276,25 +257,22 @@ class EnterpriseAppService:
         record = self._apps.get_app(app_id)
         if record is None:
             return None
-        app, state = record.app, record.built_in
-        invocations = self._invocations([app]).get(app.id, _NO_INVOCATIONS)
+        invocations = self._invocations([record.app]).get(record.app.id, _NO_INVOCATIONS)
         return EnterpriseAppDetail(
-            app=app,
-            built_in=EnterpriseAppBuiltIn(
-                published_version=state.published_version,
-                published_version_count=state.published_version_count,
-                site=state.site,
-                api=state.api,
-                mcp_server=state.mcp_server,
-                triggers=state.triggers,
-                last_invoked_at=invocations.last_invoked_at,
-                invocation_count=invocations.count,
-                failed_invocation_count=invocations.failed_count,
-            ),
+            app=record.app,
+            published_version=record.published_version,
+            published_version_count=record.published_version_count,
+            site=record.site,
+            api=record.api,
+            mcp_server=record.mcp_server,
+            triggers=record.triggers,
+            last_invoked_at=invocations.last_invoked_at,
+            invocation_count=invocations.count,
+            failed_invocation_count=invocations.failed_count,
         )
 
     def _invocations(self, apps: Sequence[EnterpriseAppSummary]) -> dict[str, _Invocations]:
-        """Read built-in invocations: workflow runs for workflow Apps, messages otherwise."""
+        """Read invocations: workflow runs for workflow Apps, messages otherwise."""
         since = self._now() - INVOCATION_WINDOW
         workflow_apps = {app.id: app.workspace_id for app in apps if app.mode in WORKFLOW_APP_MODES}
         message_app_ids = [app.id for app in apps if app.mode not in WORKFLOW_APP_MODES]

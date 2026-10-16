@@ -36,7 +36,6 @@ from models.workflow import Workflow
 from services.app.enterprise_app_service import (
     WORKFLOW_APP_MODES,
     EnterpriseAppApi,
-    EnterpriseAppBuiltInState,
     EnterpriseAppCreator,
     EnterpriseAppListEntry,
     EnterpriseAppListParams,
@@ -178,26 +177,24 @@ class EnterpriseAppRepository(EnterpriseAppStore):
             manual_entry = not self._published_trigger_entry(session, app)
             return EnterpriseAppRecord(
                 app=_summary(row),
-                built_in=EnterpriseAppBuiltInState(
-                    published_version=published_version,
-                    published_version_count=published_version_count,
-                    site=EnterpriseAppSite(
-                        enabled=app.enable_site,
-                        code=self._site_code(session, app),
-                        app_base_url=self._app_base_url,
-                    )
-                    if manual_entry
-                    else None,
-                    api=EnterpriseAppApi(
-                        enabled=app.enable_api,
-                        base_url=self._api_base_url,
-                        api_key_count=self._api_key_count(session, app),
-                    )
-                    if manual_entry
-                    else None,
-                    mcp_server=self._mcp_server(session, app) if manual_entry else None,
-                    triggers=self._triggers(session, app),
-                ),
+                published_version=published_version,
+                published_version_count=published_version_count,
+                site=EnterpriseAppSite(
+                    enabled=app.enable_site,
+                    code=self._site_code(session, app),
+                    app_base_url=self._app_base_url,
+                )
+                if manual_entry
+                else None,
+                api=EnterpriseAppApi(
+                    enabled=app.enable_api,
+                    base_url=self._api_base_url,
+                    api_key_count=self._api_key_count(session, app),
+                )
+                if manual_entry
+                else None,
+                mcp_server=self._mcp_server(session, app) if manual_entry else None,
+                triggers=self._triggers(session, app),
             )
 
     @override

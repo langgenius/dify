@@ -1,14 +1,11 @@
 """Inner API endpoints for the enterprise admin app list and app detail.
 
 Called by the enterprise admin-api service. The list covers Studio-visible apps
-across all workspaces with a summary of their built-in environment; enterprise
-joins its own environments, deployment status, and invocation metrics onto it by
-app id. The detail adds what only CE owns: the built-in environment's published
-version, access points, and invocations.
+across all workspaces with their publish state and invocation count; enterprise
+joins its own data onto it by app id. The detail adds what only CE owns: the
+app's published version, access points, and invocations.
 """
 
-from dataclasses import asdict
-from datetime import datetime
 from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
@@ -28,9 +25,17 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.helper import dump_response, to_timestamp
+from libs.helper import to_timestamp
 from models.model import AppMode
-from services.app.enterprise_app_service import EnterpriseAppListParams
+from services.app.enterprise_app_service import (
+    EnterpriseAppApi,
+    EnterpriseAppCreator,
+    EnterpriseAppListParams,
+    EnterpriseAppMCPServer,
+    EnterpriseAppPublishedVersion,
+    EnterpriseAppSite,
+    EnterpriseAppTrigger,
+)
 
 EnterpriseAppListMode = Literal["completion", "workflow", "chat", "advanced-chat", "agent-chat", "agent"]
 APP_LIST_QUERY_ARRAY_FIELDS = ("workspace_ids", "modes")
@@ -71,14 +76,9 @@ class EnterpriseAppResponse(ResponseModel):
     created_at: int
     updated_at: int
 
-    @field_validator("created_at", "updated_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int) -> int:
-        return to_timestamp(value)
-
 
 _INVOCATION_COUNT_DESCRIPTION = (
-    "Built-in invocations in the last 24h: published workflow runs (app-run, webhook, schedule, plugin) for "
+    "Invocations in the last 24h: published workflow runs (app-run, webhook, schedule, plugin) for "
     "workflow and advanced-chat apps, non-debugger messages for other apps"
 )
 
@@ -89,13 +89,9 @@ _TRIGGER_ENTRY_ACCESS_DESCRIPTION = (
 )
 
 
-class EnterpriseAppBuiltInSummaryResponse(ResponseModel):
-    published: bool = Field(description="Whether the app detail reports a built-in published_version")
-    invocation_count_24h: int = Field(validation_alias="invocation_count", description=_INVOCATION_COUNT_DESCRIPTION)
-
-
 class EnterpriseAppListItemResponse(EnterpriseAppResponse):
-    built_in: EnterpriseAppBuiltInSummaryResponse
+    published: bool = Field(description="Whether the app detail reports a published_version")
+    invocation_count_24h: int = Field(description=_INVOCATION_COUNT_DESCRIPTION)
 
 
 class EnterpriseAppPaginationResponse(ResponseModel):
@@ -116,11 +112,6 @@ class EnterpriseAppPublishedVersionResponse(ResponseModel):
     marked_comment: str | None = Field(description="Workflow version comment or Agent snapshot version note")
     created_by: EnterpriseAppCreatorResponse | None
     published_at: int
-
-    @field_validator("published_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int) -> int:
-        return to_timestamp(value)
 
 
 class EnterpriseAppSiteResponse(ResponseModel):
@@ -150,10 +141,10 @@ class EnterpriseAppTriggerResponse(ResponseModel):
     webhook_url: str | None
 
 
-class EnterpriseAppBuiltInResponse(ResponseModel):
+class EnterpriseAppDetailResponse(EnterpriseAppResponse):
     published_version: EnterpriseAppPublishedVersionResponse | None = Field(
         description=(
-            "Version the built-in environment serves; null when unpublished, when an Agent App draft has "
+            "Version the app serves; null when unpublished, when an Agent App draft has "
             "unpublished changes, and always for chat, completion, and agent-chat apps"
         )
     )
@@ -169,26 +160,68 @@ class EnterpriseAppBuiltInResponse(ResponseModel):
     last_invoked_at: int | None = Field(
         description="Latest invocation counted like invocation_count_24h, without the 24h limit"
     )
-    invocation_count_24h: int = Field(validation_alias="invocation_count", description=_INVOCATION_COUNT_DESCRIPTION)
+    invocation_count_24h: int = Field(description=_INVOCATION_COUNT_DESCRIPTION)
     failed_invocation_count_24h: int = Field(
-        validation_alias="failed_invocation_count",
         description=(
             "Invocations counted in invocation_count_24h that ended failed or partial-succeeded (workflow runs) "
             "or in error (messages); running and stopped runs are not failures"
         ),
     )
 
-    @field_validator("last_invoked_at", mode="before")
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class EnterpriseAppDetailResponse(EnterpriseAppResponse):
-    built_in: EnterpriseAppBuiltInResponse
-
 
 register_response_schema_models(inner_api_ns, EnterpriseAppPaginationResponse, EnterpriseAppDetailResponse)
+
+
+def _creator_response(creator: EnterpriseAppCreator | None) -> EnterpriseAppCreatorResponse | None:
+    if creator is None:
+        return None
+    return EnterpriseAppCreatorResponse(id=creator.id, name=creator.name, email=creator.email)
+
+
+def _published_version_response(
+    version: EnterpriseAppPublishedVersion | None,
+) -> EnterpriseAppPublishedVersionResponse | None:
+    if version is None:
+        return None
+    return EnterpriseAppPublishedVersionResponse(
+        id=version.id,
+        version=version.version,
+        version_number=version.version_number,
+        marked_name=version.marked_name,
+        marked_comment=version.marked_comment,
+        created_by=_creator_response(version.created_by),
+        published_at=to_timestamp(version.published_at),
+    )
+
+
+def _site_response(site: EnterpriseAppSite | None) -> EnterpriseAppSiteResponse | None:
+    if site is None:
+        return None
+    return EnterpriseAppSiteResponse(enabled=site.enabled, code=site.code, app_base_url=site.app_base_url)
+
+
+def _api_response(api: EnterpriseAppApi | None) -> EnterpriseAppApiResponse | None:
+    if api is None:
+        return None
+    return EnterpriseAppApiResponse(enabled=api.enabled, base_url=api.base_url, api_key_count=api.api_key_count)
+
+
+def _mcp_server_response(server: EnterpriseAppMCPServer | None) -> EnterpriseAppMCPServerResponse | None:
+    if server is None:
+        return None
+    return EnterpriseAppMCPServerResponse(status=server.status, server_code=server.server_code)
+
+
+def _trigger_response(trigger: EnterpriseAppTrigger) -> EnterpriseAppTriggerResponse:
+    return EnterpriseAppTriggerResponse(
+        id=trigger.id,
+        node_id=trigger.node_id,
+        title=trigger.title,
+        trigger_type=trigger.trigger_type,
+        provider_name=trigger.provider_name,
+        status=trigger.status,
+        webhook_url=trigger.webhook_url,
+    )
 
 
 @inner_api_ns.route("/enterprise/apps")
@@ -219,16 +252,31 @@ class EnterpriseAppList(Resource):
                 sort_order=query.sort_order,
             )
         )
-        return dump_response(
-            EnterpriseAppPaginationResponse,
-            {
-                "page": result.page,
-                "limit": result.per_page,
-                "total": result.total,
-                "has_more": result.has_next,
-                "data": [{**asdict(item.app), "built_in": item.built_in} for item in result.items],
-            },
-        )
+        return EnterpriseAppPaginationResponse(
+            page=result.page,
+            limit=result.per_page,
+            total=result.total,
+            has_more=result.has_next,
+            data=[
+                EnterpriseAppListItemResponse(
+                    id=item.app.id,
+                    name=item.app.name,
+                    description=item.app.description,
+                    mode=item.app.mode,
+                    icon_type=item.app.icon_type,
+                    icon=item.app.icon,
+                    icon_background=item.app.icon_background,
+                    workspace_id=item.app.workspace_id,
+                    workspace_name=item.app.workspace_name,
+                    created_by=_creator_response(item.app.created_by),
+                    created_at=to_timestamp(item.app.created_at),
+                    updated_at=to_timestamp(item.app.updated_at),
+                    published=item.published,
+                    invocation_count_24h=item.invocation_count,
+                )
+                for item in result.items
+            ],
+        ).model_dump(mode="json")
 
 
 @inner_api_ns.route("/enterprise/apps/<uuid:app_id>")
@@ -238,12 +286,32 @@ class EnterpriseAppDetail(Resource):
     @inner_api_ns.doc("enterprise_app_detail", responses={HTTPStatus.NOT_FOUND: "App not found"})
     @inner_api_ns.response(HTTPStatus.OK, "Success", inner_api_ns.models[EnterpriseAppDetailResponse.__name__])
     def get(self, app_id: UUID):
-        """Get a Studio-visible app with its built-in environment state."""
+        """Get a Studio-visible app with its published version, access points, and invocations."""
         detail = application_services().apps.enterprise.get_app(str(app_id))
         if detail is None:
-            return dump_response(SimpleMessageResponse, {"message": "app not found"}), HTTPStatus.NOT_FOUND
+            return SimpleMessageResponse(message="app not found").model_dump(mode="json"), HTTPStatus.NOT_FOUND
 
-        return dump_response(
-            EnterpriseAppDetailResponse,
-            {**asdict(detail.app), "built_in": detail.built_in},
-        )
+        app = detail.app
+        return EnterpriseAppDetailResponse(
+            id=app.id,
+            name=app.name,
+            description=app.description,
+            mode=app.mode,
+            icon_type=app.icon_type,
+            icon=app.icon,
+            icon_background=app.icon_background,
+            workspace_id=app.workspace_id,
+            workspace_name=app.workspace_name,
+            created_by=_creator_response(app.created_by),
+            created_at=to_timestamp(app.created_at),
+            updated_at=to_timestamp(app.updated_at),
+            published_version=_published_version_response(detail.published_version),
+            published_version_count=detail.published_version_count,
+            site=_site_response(detail.site),
+            api=_api_response(detail.api),
+            mcp_server=_mcp_server_response(detail.mcp_server),
+            triggers=[_trigger_response(trigger) for trigger in detail.triggers],
+            last_invoked_at=to_timestamp(detail.last_invoked_at),
+            invocation_count_24h=detail.invocation_count,
+            failed_invocation_count_24h=detail.failed_invocation_count,
+        ).model_dump(mode="json")
