@@ -13,6 +13,7 @@ const Record = () => {
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const getWorkflowRunAndTraceUrl = useHooksStore((s) => s.getWorkflowRunAndTraceUrl)
+  const appId = useAtomValue(editorAppIdAtom)
 
   const handleResultCallback = useCallback(
     (res: WorkflowRunDetailResponse) => {

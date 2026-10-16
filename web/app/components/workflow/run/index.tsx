@@ -22,6 +22,7 @@ type RunProps = {
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
   runDetailUrl: string
   tracingListUrl: string
+  appId?: string
 }
 
 type RunTab = NonNullable<RunProps['activeTab']>
@@ -40,6 +41,7 @@ const RunPanel: FC<RunProps> = ({
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
+  appId,
 }) => {
   const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
   const isListening = useStore((s) => s.isListening)
@@ -56,6 +58,7 @@ const RunPanel: FC<RunProps> = ({
       getResultCallback={getResultCallback}
       runDetailUrl={runDetailUrl}
       tracingListUrl={tracingListUrl}
+      appId={appId}
       currentTab={currentTab}
       onTabChange={setCurrentTab}
       isListening={isListening}
@@ -75,6 +78,7 @@ function RunSession({
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
+  appId,
   currentTab,
   onTabChange,
   isListening,
@@ -244,6 +248,9 @@ function RunSession({
               exceptionCounts={runDetail.exceptions_count}
               isListening={isListening}
               workflowRunId={runDetail.id}
+              externalTrace={
+                appId ? { appId, kind: 'workflow', workflowRunId: runDetail.id } : undefined
+              }
               onOpenTracingTab={() => switchTab('TRACING')}
             />
           )}
@@ -254,6 +261,7 @@ function RunSession({
         <TabsPanel value="TRACING">
           {!loading && (
             <TracingPanel
+              externalTraceRun={appId && runDetail ? { appId, workflowRunId: runDetail.id } : undefined}
               key={runDetail?.id}
               className="bg-background-section-burn"
               list={list}

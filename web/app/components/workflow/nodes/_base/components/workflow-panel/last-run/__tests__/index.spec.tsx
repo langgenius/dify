@@ -1,7 +1,7 @@
 import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
 import LastRun from '../index'
 
@@ -218,6 +218,42 @@ describe('LastRun', () => {
     })
 
     expect(screen.getByTestId('result-panel')).toHaveTextContent(NodeRunningStatus.Succeeded)
+  })
+
+  it('should locate the external trace only for an Agent V2 single-step run in a workflow app', () => {
+    const props = {
+      nodeId: 'node-1',
+      canSingleRun: true,
+      isRunAfterSingleRun: false,
+      updateNodeRunningStatus,
+      onSingleRunClicked,
+    }
+    mockUseLastRun.mockReturnValue({
+      data: { id: 'exec-1', node_type: BlockEnum.AgentV2, status: NodeRunningStatus.Succeeded },
+      isFetching: false,
+      error: undefined,
+    })
+    const { unmount } = render(<LastRun {...props} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+    expect(mockResultPanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        externalTrace: { appId: 'app-1', kind: 'node', nodeExecutionId: 'exec-1' },
+      }),
+    )
+    unmount()
+
+    mockUseLastRun.mockReturnValue({
+      data: { id: 'exec-2', node_type: BlockEnum.LLM, status: NodeRunningStatus.Succeeded },
+      isFetching: false,
+      error: undefined,
+    })
+    render(<LastRun {...props} />, {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
+    expect(mockResultPanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ externalTrace: undefined }),
+    )
   })
 
   it('should restore a completed last run when refreshing the canvas loses its transient status', () => {
