@@ -1,7 +1,7 @@
 """add resource_type to dataset_api_token_bindings
 
 Revision ID: 9a4e7d1c2b60
-Revises: c3f1a9b2e6d4
+Revises: f1d3c5b7a902
 Create Date: 2026-09-03 10:00:00.000000
 
 Legacy knowledge bases (``datasets``) and KnowledgeFS spaces (``knowledge_fs_control_spaces``)
@@ -21,7 +21,7 @@ from models.types import StringUUID
 
 # revision identifiers, used by Alembic.
 revision = "9a4e7d1c2b60"
-down_revision = "c3f1a9b2e6d4"
+down_revision = "f1d3c5b7a902"
 branch_labels = None
 depends_on = None
 
