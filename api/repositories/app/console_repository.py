@@ -49,6 +49,7 @@ from services.agent.errors import (
 from services.app.console_service import ConsoleAppNotFoundError, ConsoleApps
 from services.app.query_service import AppDescription, DiscoveryApps, RelatedApps
 from services.app_creation_records import create_installed_app_record, create_site_record
+from services.app_tracing_config_service import AppTraceSettings
 from services.entities.app_entities import (
     RECENT_APP_MODES,
     AppAgentBinding,
@@ -64,7 +65,6 @@ from services.entities.app_entities import (
     AppRecord,
     AppReference,
     AppSummary,
-    AppTraceSettings,
     AppUpdateArguments,
     CreateAppParams,
     RecentAppListItem,
