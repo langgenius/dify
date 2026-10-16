@@ -170,6 +170,9 @@ def test_check_hybrid_search_support_uses_version_comment(oceanbase_module):
     cursor.fetchone.return_value = ("OceanBase_CE 4.3.4.0 (rxxxxxxxxx) (Built Mar 18 2025)",)
     assert vector._check_hybrid_search_support() is False
 
+    cursor.fetchone.return_value = None
+    assert vector._check_hybrid_search_support() is False
+
 
 def test_init_get_type_and_field_loading(oceanbase_module):
     config = _config(oceanbase_module)
