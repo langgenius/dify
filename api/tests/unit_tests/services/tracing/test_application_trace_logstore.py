@@ -167,6 +167,7 @@ def test_status_and_retry_use_logstore_without_sql_source_rows(
     scheduled: list[str] = []
     service = stored.service()
     monkeypatch.setattr(service, "schedule", scheduled.append)
+    stored.requests.clear()
     result = service.retry(
         tenant_id=run.tenant_id,
         app_id=run.app_id,
@@ -176,7 +177,7 @@ def test_status_and_retry_use_logstore_without_sql_source_rows(
     )
     assert result["status"] == "ready"
     assert scheduled == [run.id]
-    assert len(stored.requests) >= 4
+    assert len(stored.requests) == 1
 
 
 @pytest.mark.parametrize("field", ["id", "tenant_id", "app_id"])
