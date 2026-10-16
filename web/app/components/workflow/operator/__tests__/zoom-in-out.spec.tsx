@@ -1,7 +1,8 @@
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
+import { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { WorkflowContext } from '../../context'
 import { createWorkflowStore } from '../../store'
@@ -34,16 +35,25 @@ const {
 let workflowReadOnly = false
 let collaborationEnabled = true
 
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    zoomIn: mockZoomIn,
-    zoomOut: mockZoomOut,
-    zoomTo: mockZoomTo,
-    fitView: mockFitView,
-  }),
-  useViewport: () => mockViewport,
-  useStoreApi: () => ({ getState: () => ({ d3Selection: { interrupt: mockInterrupt } }) }),
-}))
+vi.mock('reactflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('reactflow')>()
+  return {
+    ...actual,
+    useReactFlow: () => ({
+      zoomIn: mockZoomIn,
+      zoomOut: mockZoomOut,
+      zoomTo: mockZoomTo,
+      fitView: mockFitView,
+    }),
+    useStoreApi: () => {
+      const store = actual.useStoreApi()
+      return {
+        ...store,
+        getState: () => ({ ...store.getState(), d3Selection: { interrupt: mockInterrupt } }),
+      }
+    },
+  }
+})
 
 vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-nodes-sync-draft')>()
@@ -72,28 +82,34 @@ vi.mock('../tip-popup', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
+const InitialViewport = ({ zoom }: { zoom: number }) => {
+  const store = useStoreApi()
+  useLayoutEffect(() => {
+    store.setState({ transform: [0, 0, zoom] })
+  }, [store, zoom])
+  return null
+}
+
 const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />, builderActive = false) => {
   const store = createWorkflowStore({})
   if (builderActive) store.setState({ canvasReadOnly: true, workflowDraftSyncPhase: 'builder' })
-  const rendered = renderWithConsoleQuery(<WorkflowContext value={store}>{ui}</WorkflowContext>, {
-    systemFeatures: { enable_collaboration_mode: collaborationEnabled },
-  })
+  const rendered = renderWithConsoleQuery(
+    <WorkflowContext value={store}>
+      <ReactFlowProvider>
+        <InitialViewport zoom={mockViewport.zoom} />
+        {ui}
+      </ReactFlowProvider>
+    </WorkflowContext>,
+    { systemFeatures: { enable_collaboration_mode: collaborationEnabled } },
+  )
   return { ...rendered, store }
 }
 
 const getZoomControls = () => {
-  const label = Array.from(document.querySelectorAll('button')).find((element) => {
-    return /^\d+%$/.test(element.textContent ?? '') && element.className.includes('w-8.5')
-  })
-  const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
-  const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
-
-  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
-
   return {
-    zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,
-    label,
-    zoomInTrigger: zoomInIcon.parentElement as HTMLElement,
+    zoomOutTrigger: screen.getByRole('button', { name: 'workflow.operator.zoomOut' }),
+    label: screen.getByRole('button', { name: /^\d+%$/ }),
+    zoomInTrigger: screen.getByRole('button', { name: 'workflow.operator.zoomIn' }),
   }
 }
 
@@ -271,6 +287,40 @@ describe('workflow zoom controls', () => {
 
     fireEvent.click(getZoomControls().zoomInTrigger)
     expect(mockZoomIn).not.toHaveBeenCalled()
+  })
+
+  it('updates its zoom label and limits when the viewport scale changes', async () => {
+    const user = userEvent.setup()
+    const ViewportControls = () => {
+      const store = useStoreApi()
+      return (
+        <>
+          <button type="button" onClick={() => store.setState({ transform: [80, 120, 0.25] })}>
+            Set minimum zoom
+          </button>
+          <button type="button" onClick={() => store.setState({ transform: [80, 120, 2] })}>
+            Set maximum zoom
+          </button>
+        </>
+      )
+    }
+    renderZoomInOut(
+      <>
+        <ViewportControls />
+        <ZoomInOut />
+      </>,
+    )
+
+    expect(screen.getByRole('button', { name: '100%' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Set minimum zoom' }))
+    expect(screen.getByRole('button', { name: '25%' })).toBeInTheDocument()
+    expect(getZoomControls().zoomOutTrigger).toBeDisabled()
+    expect(getZoomControls().zoomInTrigger).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: 'Set maximum zoom' }))
+    expect(screen.getByRole('button', { name: '200%' })).toBeInTheDocument()
+    expect(getZoomControls().zoomInTrigger).toBeDisabled()
+    expect(getZoomControls().zoomOutTrigger).toBeEnabled()
   })
 
   it('renders collaboration menu entries only when collaboration is enabled', () => {

@@ -41,7 +41,6 @@ import {
   ReactFlowProvider,
   SelectionMode,
   useEdgesState,
-  useNodes,
   useNodesState,
   useReactFlow,
   useStoreApi,
@@ -88,6 +87,7 @@ import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { useWorkflowViewport } from './hooks/use-workflow-viewport'
 import CustomNode from './nodes'
+import WorkflowNodesDataSync from './nodes-data-sync'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
 import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
@@ -122,6 +122,11 @@ const nodeTypes = {
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
+
+const WorkflowNodeSearch = memo(() => {
+  useWorkflowSearch()
+  return null
+})
 
 type WorkflowDataUpdatePayload = {
   nodes: Node[]
@@ -220,30 +225,8 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [setWorkflowCanvasHeight, setWorkflowCanvasWidth])
 
-    const {
-      setShowConfirm,
-      setControlPromptEditorRerenderKey,
-      setSyncWorkflowDraftHash,
-      setNodes: setNodesInStore,
-    } = workflowStore.getState()
-    const currentNodes = useNodes()
-    const setNodesOnlyChangeWithData = useCallback(
-      (nodes: Node[]) => {
-        const nodesData = nodes.map((node) => ({
-          id: node.id,
-          data: node.data,
-        }))
-        const oldData = workflowStore.getState().nodes.map((node) => ({
-          id: node.id,
-          data: node.data,
-        }))
-        if (!isEqual(oldData, nodesData)) setNodesInStore(nodes)
-      },
-      [setNodesInStore, workflowStore],
-    )
-    useEffect(() => {
-      setNodesOnlyChangeWithData(currentNodes as Node[])
-    }, [currentNodes, setNodesOnlyChangeWithData])
+    const { setShowConfirm, setControlPromptEditorRerenderKey, setSyncWorkflowDraftHash } =
+      workflowStore.getState()
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
@@ -563,9 +546,6 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { handlePaneContextMenu } = usePanelInteractions()
     const { isValidConnection } = useWorkflow()
 
-    // Initialize workflow node search functionality
-    useWorkflowSearch()
-
     // Locate a node by ID from URL query parameter `node_id`
     useLocateNode(nodes)
 
@@ -638,6 +618,8 @@ export const Workflow: FC<WorkflowProps> = memo(
         )}
         ref={workflowContainerRef}
       >
+        <WorkflowNodesDataSync />
+        <WorkflowNodeSearch />
         <CandidateNode />
         <CommentManager />
         <div

@@ -9,7 +9,7 @@ import HeaderInNormal from '../header-in-normal'
 import HeaderInRestoring from '../header-in-restoring'
 import HeaderInHistory from '../header-in-view-history'
 
-const mockUseNodes = vi.fn()
+const mockGetNodes = vi.fn()
 const mockHandleBackupDraft = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleNodeSelect = vi.fn()
@@ -28,7 +28,7 @@ const mockViewHistory = vi.fn()
 let mockNodesReadOnly = false
 let mockTheme: 'light' | 'dark' = 'light'
 vi.mock('reactflow', () => ({
-  useNodes: () => mockUseNodes(),
+  useStoreApi: () => ({ getState: () => ({ getNodes: mockGetNodes }) }),
 }))
 
 vi.mock('../../hooks/use-workflow', () => ({
@@ -196,14 +196,14 @@ describe('Header layout components', () => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
     mockTheme = 'light'
-    mockUseNodes.mockReturnValue([])
+    mockGetNodes.mockReturnValue([])
     mockRestoreWorkflow.mockResolvedValue({})
   })
 
   describe('HeaderInNormal', () => {
     it('should render slots, pass read-only state to action buttons, and start restoring mode', () => {
       mockNodesReadOnly = true
-      mockUseNodes.mockReturnValue([createSelectedNode()])
+      mockGetNodes.mockReturnValue([createSelectedNode()])
 
       const { store } = renderWorkflowComponent(
         <HeaderInNormal
@@ -245,6 +245,17 @@ describe('Header layout components', () => {
       expect(store.getState().showVariableInspectPanel).toBe(false)
       expect(store.getState().showChatVariablePanel).toBe(false)
       expect(store.getState().showGlobalVariablePanel).toBe(false)
+    })
+
+    it('clears the node selected when version history is opened', async () => {
+      const user = userEvent.setup()
+      renderWorkflowComponent(<HeaderInNormal />)
+
+      mockGetNodes.mockReturnValue([{ ...createSelectedNode(), id: 'newly-selected-node' }])
+      await user.click(screen.getByRole('button', { name: 'version-history' }))
+
+      expect(mockHandleNodeSelect).toHaveBeenCalledExactlyOnceWith('newly-selected-node', true)
+      expect(mockHandleBackupDraft).toHaveBeenCalledOnce()
     })
 
     it('should hide env and global variable buttons when the controls are disabled', () => {

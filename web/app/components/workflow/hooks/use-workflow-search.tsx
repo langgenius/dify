@@ -4,10 +4,10 @@ import type { LLMNodeType } from '../nodes/llm/types'
 import type { CommonNodeType } from '../types'
 import type { Emoji } from '@/app/components/tools/types'
 import { useCallback, useEffect, useMemo } from 'react'
-import { useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { registerWorkflowNodeSearch } from '@/app/components/workflow/goto-anything-search'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import {
   useAllBuiltInTools,
   useAllCustomTools,

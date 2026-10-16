@@ -12,7 +12,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow, useViewport } from 'reactflow'
+import { useReactFlow, useStore } from 'reactflow'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
@@ -57,7 +57,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   const { t } = useTranslation(['workflow'])
   const [open, setOpen] = useState(false)
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
-  const { zoom } = useViewport()
+  const zoom = useStore((state) => state.transform[2])
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
   const { builderCanvasActive, handleViewportUserInteraction } = useWorkflowViewport()

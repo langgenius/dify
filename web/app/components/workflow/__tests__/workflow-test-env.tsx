@@ -84,6 +84,7 @@ import { WorkflowContext } from '../context'
 import { EditorResourceScope } from '../editor-resource/provider'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
+import WorkflowNodesDataSync from '../nodes-data-sync'
 import { createWorkflowStore } from '../store/workflow'
 import { WorkflowRunningStatus } from '../types'
 
@@ -332,6 +333,7 @@ function createWorkflowFlowWrapper(
           ReactFlowProvider,
           null,
           React.createElement(ReactFlow, { fitView: true, ...reactFlowProps, nodes, edges }),
+          React.createElement(WorkflowNodesDataSync),
           children,
         ),
       ),
