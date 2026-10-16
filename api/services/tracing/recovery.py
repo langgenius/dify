@@ -115,22 +115,17 @@ def _message_task(repository: ApplicationTraceRepository, run: ApplicationTraceR
 
 
 def _workflow_task(repository: ApplicationTraceRepository, run: ApplicationTraceRun, now: datetime) -> TraceTask | None:
+    workflow = repository._source(tenant_id=run.tenant_id, app_id=run.app_id, kind="workflow", source_id=run.source_id)
+    # An asynchronous workflow repository may not have saved the reserved run yet.
+    if (
+        not isinstance(workflow, WorkflowRun)
+        or workflow.status not in _WORKFLOW_TERMINAL
+        or workflow.finished_at is None
+    ):
+        return None
+    if workflow.finished_at + timedelta(seconds=_SETTLE_SECONDS) > now:
+        return None
     with repository.sessions() as session:
-        workflow = session.scalar(
-            select(WorkflowRun)
-            .join(App, App.id == WorkflowRun.app_id)
-            .where(
-                WorkflowRun.id == run.source_id,
-                WorkflowRun.app_id == run.app_id,
-                WorkflowRun.tenant_id == run.tenant_id,
-                App.tenant_id == run.tenant_id,
-            )
-        )
-        # An asynchronous workflow repository may not have saved the reserved run yet.
-        if workflow is None or workflow.status not in _WORKFLOW_TERMINAL or workflow.finished_at is None:
-            return None
-        if workflow.finished_at + timedelta(seconds=_SETTLE_SECONDS) > now:
-            return None
         conversation_id = session.scalar(
             select(Message.conversation_id)
             .join(Conversation, Conversation.id == Message.conversation_id)
