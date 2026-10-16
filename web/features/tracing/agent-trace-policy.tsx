@@ -1,6 +1,6 @@
 import type { AppTracePayload, AppTraceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +31,7 @@ export function AgentTracePolicy({
     <div className="mt-4 space-y-3">
       <Field
         disabled={readOnly || pending}
-        className="flex flex-row items-center justify-between gap-3"
+        className="flex flex-row flex-wrap items-center justify-between gap-3"
       >
         <FieldLabel>{t(($) => $['tracing.captureContent'], { ns: 'app' })}</FieldLabel>
         <Switch
@@ -40,10 +40,10 @@ export function AgentTracePolicy({
             void onChange({ capture_content }).catch(() => {})
           }}
         />
+        <FieldDescription className="w-full system-xs-regular text-text-tertiary">
+          {t(($) => $['tracing.captureContentDescription'], { ns: 'app' })}
+        </FieldDescription>
       </Field>
-      <p className="system-xs-regular text-text-tertiary">
-        {t(($) => $['tracing.captureContentDescription'], { ns: 'app' })}
-      </p>
       <Field
         disabled={readOnly || pending}
         className="flex flex-row items-center justify-between gap-3"

@@ -252,6 +252,9 @@ describe('Tracing overview panel', () => {
     mockServer()
     renderPanel(true)
     await openConfiguredPanel()
+    expect(screen.getByRole('dialog', { name: 'app.tracing.tracing' })).toHaveAccessibleDescription(
+      'app.tracing.tracingDescription',
+    )
     expect(screen.getByText('app.tracing.langfuse.title')).toBeInTheDocument()
     expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
     expect(screen.queryByText('app.tracing.config')).not.toBeInTheDocument()
@@ -360,6 +363,14 @@ describe('Tracing overview panel', () => {
       ).not.toBeInTheDocument(),
     )
     expect(screen.getByRole('switch')).toBeChecked()
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' })).getByRole(
+          'button',
+          { name: 'app.tracing.config' },
+        ),
+      ).toHaveFocus(),
+    )
   })
 
   it('reopens an edited provider from the refreshed masked config', async () => {
@@ -414,6 +425,14 @@ describe('Tracing overview panel', () => {
       ]),
     )
     expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' })).getByRole(
+          'button',
+          { name: 'app.tracing.config' },
+        ),
+      ).toHaveFocus(),
+    )
   })
 
   it('keeps an open draft across config refreshes and starts a new session for another app', async () => {
