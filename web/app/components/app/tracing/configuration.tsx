@@ -13,7 +13,7 @@ import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
-import { traceCapabilitiesQueryOptions } from './capabilities'
+import { selectAgentTracingEnabled, traceCapabilitiesQueryOptions } from './capabilities'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
 import { tracingQueryParamName, tracingQueryParser } from './query-params'
@@ -88,8 +88,11 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
     providers.find((provider) => provider === tracingStatus?.tracing_provider) ?? null
   const queryClient = useQueryClient()
   // The popup's selected provider card shows these; start the request once the user aims at the trigger.
+  const { data: agentTracingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectAgentTracingEnabled }),
+  )
   const prefetchCapabilities = () => {
-    if (!inUseTracingProvider || !usesAgentTracePipeline(resource)) return
+    if (!inUseTracingProvider || !usesAgentTracePipeline(resource) || !agentTracingEnabled) return
     void queryClient
       .query(traceCapabilitiesQueryOptions(resource, inUseTracingProvider))
       .catch(noop)
