@@ -315,7 +315,7 @@ GET /agent/{agent_id}/trace-capabilities?tracing_provider=langfuse
 | --- | --- |
 | `agent_spans` | 可映射 Agent 内部父子调用树 |
 | `session` | 可向平台传递 session 关联信息 |
-| `native_usage` | 可映射平台使用的 token usage 字段；不是只写自定义 metadata |
+| `native_usage` | 声明可映射一组平台原生 token usage 字段；不表示所有缓存细分、时延或其他 usage 子字段均有原生映射或已做账号验收 |
 | `native_cost` | 可映射原生费用字段；没有支持时仍可能在 metadata 中保留 Dify 费用 |
 | `trace_url` / `span_url` | adapter 能提供相应深链；显示前还需检查本次响应 URL 非空 |
 | `export_ack` | 仅能确认 ingestion 接受；不承诺平台已经可以查询 |
@@ -591,10 +591,11 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 | 会话 | Dify 会话写入每个 run 的 `extra.metadata.session_id` | LangSmith 顶层 `Run.session_id` 是项目 ID，不能误当聊天会话 |
 | Agent 类型 | `run_type=chain`，原类型仍在 metadata 的 `dify.span.kind` | mixed Workflow 的 10 runs 为 6 chain、3 llm、1 tool；不能要求平台原生类型叫 agent |
 | 原生指标 | LLM runs 的 prompt/completion/total tokens 与 USD total_cost | 只按 LLM 比较和累加，避免把祖先汇总再加一次；缺失值不等于零成本 |
+| 缓存与首 token 时延 | normalization 可在有值时保留 `cache_read_tokens`、`time_to_first_token` metadata | 当前 LangSmith adapter 未写原生 cache token breakdown 或 `first_token_time` 列；本轮没有真实 cache 用量样本，不宣称原生专项已验证 |
 
 #### 已通过范围
 
-除 disabled 外，下表运行均达到 accepted 并通过独立平台查询；所有有树的场景核对 mapped IDs、parents、dotted_order、session metadata、project ID、类型和错误状态。usage/cost 只比较实际存在的 LLM 指标；“深链校验通过”表示 URL 与 SDK 路径匹配且对应 run 存在，实际浏览器验证另列。
+除 disabled 外，下表运行均达到 accepted 并通过独立平台查询；所有有树的场景核对 mapped IDs、parents、dotted_order、session metadata、project ID、类型和错误状态。本轮原生 usage 验证限定 input/output/total tokens 和 USD cost，只比较实际存在的 LLM 指标；“深链校验通过”表示 URL 与 SDK 路径匹配且对应 run 存在，实际浏览器验证另列。
 
 | 场景 | 平台结构与指标 | 策略 / 体验证据 |
 | --- | --- | --- |
@@ -615,6 +616,14 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 
 内容关闭时，inputs/outputs 仍可能包含 null 包装或 usage_metadata；检查实际业务 payload 和 canary，不能仅因对象非空就认定泄漏。表中的 token/cost 是这几次运行的事实，不要求未来运行固定返回相同数值。
 
+#### 普通 Workflow 兼容与不同项目并发
+
+普通无 Agent Workflow 已通过 LangSmith 旧路径真实验收：同一次业务执行成功，0 条 managed trace run，平台 4 runs / 1 LLM、32 tokens；比对时区分 usage_metadata/file_list 两个旧附加字段后，业务输出匹配，附加元数据仍按旧规则保留。该旧路径继续使用原 ID 和布局，不套用新 managed tree 的 UUID 映射与类型计数。
+
+同 tenant 两个测试 Workflow 使用相同凭据、不同项目，实际执行时间重叠 7.298783 秒，两者均 accepted 且冻结目的地正确。运行结束后 reference 的原项目、凭据密文、graph 和 policy 已恢复，inline 配置未变。两个项目均已独立查到各自的完整 10 runs，mapped IDs、parents、dotted_order、会话、原生 input/output/total tokens 和 USD cost 均匹配；使用各自 native trace ID 反向查询另一项目均为 0，双向隔离验证通过。reference 配置恢复后，浏览器仍能从历史深链打开其原冻结项目中的正确 10 节点树。
+
+首次查询曾因 LangSmith 读取 API 的 HTTP 429 中断，当时两次 ingestion 均已 accepted。随后仅恢复读取同一 run 并完成验证，没有重跑业务或重投 trace；读取 helper 支持在预算内按安全解析的 Retry-After 退避。这不等于已验证 ingestion 写入 429 的重试机制。
+
 #### 两处真实缺陷与修复状态
 
 | 问题 | 修复前证据 | 修复与验收 |
@@ -626,9 +635,10 @@ preview 的前两轮失败暴露了旧 caller 落库顺序及 runtime scope 合�
 
 ### 12.6 未验证范围与后续前端验收
 
-- 普通无 Agent Workflow legacy 的既有通过证据属于 Langfuse；LangSmith 普通 Workflow legacy 和同 tenant 两应用不同项目并发隔离正在补充，不计为本节核心矩阵已通过范围。普通 Chatflow 未补独立真实平台证据。
+- 普通无 Agent Workflow legacy 已分别取得 Langfuse 与 LangSmith 平台证据；普通 Chatflow 未补独立真实平台证据。同 tenant 两应用不同项目并发、双向零串数和恢复配置后的历史深链已验证。
 - 除已列明证据的 Langfuse、LangSmith 外，Opik、Weave、Arize、Phoenix、MLflow、Databricks、阿里云和腾讯云八家仍没有账号级真实收数 / 查询验收；实现或协议测试不等于账号已验证。
-- 跨 tenant 隔离、真实供应商 429 和凭据撤销没有在本轮 LangSmith 账号上执行；公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
+- LangSmith 的原生 cache token breakdown 和 first-token-time 专项未验证，当前相关值仅在存在时保留 metadata；`native_usage=true` 不代表所有 usage 细项全支持。
+- 跨 tenant 隔离、ingestion 写入 429 和凭据撤销没有在本轮 LangSmith 账号上执行；本次遇到的查询 429 不替代投递限流验收。公共层 / 合约测试不能写成 LangSmith 平台全部验收完成。
 - Agent 调用子 Workflow：只保证外层工具 span；内部节点仅关联，不承诺跨 Workflow 完整同树。
 - 本次未实现 Web 配置和运行状态 UI；新增前端页面的权限展示、交互、状态轮询及深链跳转需在前端接入后验收。
 
