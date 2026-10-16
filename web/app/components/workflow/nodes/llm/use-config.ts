@@ -2,14 +2,15 @@ import type { LLMDefaultConfig } from './hooks/use-llm-input-manager'
 import type { LLMNodeType } from './types'
 import type { EnvironmentVariable, ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { AppModeEnum } from '@/types/app'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useLLMInputManager from './hooks/use-llm-input-manager'
@@ -25,7 +26,7 @@ const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type] as
     | LLMDefaultConfig
@@ -45,8 +46,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     name: '',
   }
   const modelMode = model.mode
-  const isChatModel = modelMode === AppModeEnum.CHAT
-  const isCompletionModel = !isChatModel
+  const isChatModel = modelMode === 'chat'
+  const isCompletionModel = modelMode === 'completion'
 
   const { inputRef, setInputs, appendDefaultPromptConfig } = useLLMInputManager({
     inputs,
@@ -91,7 +92,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
         draft.model_selector = modelSelector
         const isModeChange = model.mode !== inputRef.current.model.mode
         if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-          appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
+          appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
       })
       setInputs(nextInputs)
       setModelChanged(true)
@@ -194,7 +195,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const promptConfig = useLLMPromptConfig({
     inputs,
     inputRef,
-    isChatMode,
+    isChatflow,
     isChatModel,
     setInputs,
   })
@@ -214,7 +215,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   return {
     readOnly,
-    isChatMode,
+    isChatflow,
     inputs,
     model,
     environmentVariables,

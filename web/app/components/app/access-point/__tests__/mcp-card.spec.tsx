@@ -8,7 +8,6 @@ import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
 
 const mocks = vi.hoisted(() => ({
@@ -65,7 +64,7 @@ vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
 const appInfo = createAppDetailFixture({
   api_base_url: 'https://api.example.test/v1',
   id: 'app-1',
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   model_config: createAppModelConfigFixture({
     updated_at: 1_710_000_000,
     user_input_form: [
@@ -82,7 +81,7 @@ const appInfo = createAppDetailFixture({
 
 const workflowAppInfo = createAppDetailFixture({
   ...appInfo,
-  mode: AppModeEnum.WORKFLOW,
+  mode: 'workflow' as const,
   model_config: null,
 })
 

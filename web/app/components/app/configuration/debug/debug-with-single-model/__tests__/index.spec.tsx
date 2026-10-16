@@ -10,7 +10,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { PromptMode } from '@/models/debug'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { AgentStrategy, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import DebugWithSingleModel from '../index'
 
 // ============================================================================
@@ -135,7 +135,7 @@ const mockDebugConfigContext = {
   appId: 'test-app-id',
   onOpenFeatures: vi.fn(),
   isTrailFinished: false,
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
   setPromptMode: vi.fn(),

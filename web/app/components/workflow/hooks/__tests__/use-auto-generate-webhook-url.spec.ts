@@ -1,8 +1,15 @@
+import type { EditorResource } from '../../editor-resource/resource'
 import type { Node } from '../../types'
-import { act, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createElement } from 'react'
 import { useNodes } from 'reactflow'
 import { createNode } from '../../__tests__/fixtures'
-import { renderWorkflowFlowHook } from '../../__tests__/workflow-test-env'
+import {
+  renderWorkflowFlowComponent,
+  renderWorkflowFlowHook,
+} from '../../__tests__/workflow-test-env'
+import { EditorResourceScope } from '../../editor-resource/provider'
 import { BlockEnum } from '../../types'
 import { useAutoGenerateWebhookUrl } from '../use-auto-generate-webhook-url'
 
@@ -13,13 +20,10 @@ type WebhookFlowNode = Node & {
   }
 }
 
-vi.mock('@/app/components/app/store', async () =>
-  (await import('../../__tests__/service-mock-factory')).createAppStoreMock({ appId: 'app-123' }),
-)
+const mockRequest = vi.hoisted(() => vi.fn())
 
-const mockFetchWebhookUrl = vi.fn()
-vi.mock('@/service/apps', () => ({
-  fetchWebhookUrl: (...args: unknown[]) => mockFetchWebhookUrl(...args),
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockRequest },
 }))
 
 describe('useAutoGenerateWebhookUrl', () => {
@@ -42,17 +46,18 @@ describe('useAutoGenerateWebhookUrl', () => {
         nodes: useNodes<WebhookFlowNode>(),
       }),
       {
+        resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
         nodes: createFlowNodes(),
         edges: [],
       },
     )
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockRequest.mockReset()
   })
 
   it('should fetch and set webhook URL for a webhook trigger node', async () => {
-    mockFetchWebhookUrl.mockResolvedValue({
+    mockRequest.mockResolvedValue({
       webhook_url: 'https://example.com/webhook',
       webhook_debug_url: 'https://example.com/webhook-debug',
     })
@@ -63,7 +68,11 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('webhook-1')
     })
 
-    expect(mockFetchWebhookUrl).toHaveBeenCalledWith({ appId: 'app-123', nodeId: 'webhook-1' })
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
+      { params: { app_id: 'app-123' }, query: { node_id: 'webhook-1' } },
+      expect.any(Object),
+    )
 
     await waitFor(() => {
       const webhookNode = result.current.nodes.find((node) => node.id === 'webhook-1') as
@@ -74,6 +83,46 @@ describe('useAutoGenerateWebhookUrl', () => {
     })
   })
 
+  it('uses the scoped app after switching resources and skips snippets', async () => {
+    const user = userEvent.setup()
+    function GenerateButton() {
+      const generate = useAutoGenerateWebhookUrl()
+      return createElement(
+        'button',
+        { type: 'button', onClick: () => generate('webhook-1') },
+        'Generate URL',
+      )
+    }
+    const view = (identity: EditorResource) =>
+      createElement(EditorResourceScope, {
+        resource: identity,
+        children: createElement(GenerateButton),
+      })
+    const { rerender } = renderWorkflowFlowComponent(
+      view({ kind: 'snippet', snippetId: 'snippet-1' }),
+      {
+        nodes: createFlowNodes(),
+        edges: [],
+      },
+    )
+    await user.click(screen.getByRole('button', { name: 'Generate URL' }))
+    expect(mockRequest).not.toHaveBeenCalled()
+
+    mockRequest.mockResolvedValue({
+      webhook_url: 'https://example.com/other-webhook',
+      webhook_debug_url: 'https://example.com/other-debug',
+    })
+    rerender(view({ kind: 'app', appId: 'app-456', mode: 'workflow' }))
+    await user.click(screen.getByRole('button', { name: 'Generate URL' }))
+    await waitFor(() =>
+      expect(mockRequest).toHaveBeenCalledWith(
+        ['apps', 'byAppId', 'workflows', 'triggers', 'webhook', 'get'],
+        { params: { app_id: 'app-456' }, query: { node_id: 'webhook-1' } },
+        expect.any(Object),
+      ),
+    )
+  })
+
   it('should not fetch when node is not a webhook trigger', async () => {
     const { result } = renderAutoGenerateWebhookUrlHook()
 
@@ -81,7 +130,7 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('code-1')
     })
 
-    expect(mockFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockRequest).not.toHaveBeenCalled()
 
     const codeNode = result.current.nodes.find((node) => node.id === 'code-1') as
       | WebhookFlowNode
@@ -96,7 +145,7 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('nonexistent')
     })
 
-    expect(mockFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockRequest).not.toHaveBeenCalled()
   })
 
   it('should not fetch when webhook_url already exists', async () => {
@@ -122,12 +171,12 @@ describe('useAutoGenerateWebhookUrl', () => {
       await result.current.autoGenerateWebhookUrl('webhook-1')
     })
 
-    expect(mockFetchWebhookUrl).not.toHaveBeenCalled()
+    expect(mockRequest).not.toHaveBeenCalled()
   })
 
   it('should handle API errors gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockFetchWebhookUrl.mockRejectedValue(new Error('network error'))
+    mockRequest.mockRejectedValue(new Error('network error'))
 
     const { result } = renderAutoGenerateWebhookUrlHook()
 

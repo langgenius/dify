@@ -10,11 +10,12 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -22,7 +23,6 @@ import VarList from '@/app/components/workflow/nodes/_base/components/variable/v
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
@@ -47,7 +47,7 @@ const getModelSelectionKey = (
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
   const { t } = useTranslation(['common', 'workflow', 'modelProvider', 'workflowModels'])
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const {
     readOnly,
     inputs,
@@ -55,7 +55,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     environmentVariables,
     isEnvironmentModelSource,
     isChatModel,
-    isChatMode,
+    isChatflow,
     isCompletionModel,
     shouldShowContextTip,
     isVisionModel,
@@ -213,7 +213,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           required
           warningDot={hasModelWarning}
           operations={
-            flowType === FlowType.snippet && !isEnvironmentModelSource ? undefined : (
+            resourceKind === 'snippet' && !isEnvironmentModelSource ? undefined : (
               <FormInputTypeSwitch
                 value={isEnvironmentModelSource ? VarKindType.variable : VarKindType.constant}
                 readonly={readOnly}
@@ -299,7 +299,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
             nodeId={id}
             filterVar={isShowVars ? filterJinja2InputVar : filterInputVar}
             isChatModel={isChatModel}
-            isChatApp={isChatMode}
+            isChatApp={isChatflow}
             isShowContext
             payload={inputs.prompt_template}
             onChange={handlePromptChange}
@@ -338,19 +338,19 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           </Field>
         )}
 
-        {isChatMode && (
+        {isChatflow && (
           <>
             <Split />
             <PanelMemorySection
               readOnly={readOnly}
-              isChatMode={isChatMode}
+              isChatflow={isChatflow}
               isChatModel={isChatModel}
               isCompletionModel={isCompletionModel}
               inputs={inputs}
               hasSetBlockStatus={hasSetBlockStatus}
               availableVars={availableVars}
               availableNodesWithParent={availableNodesWithParent}
-              flowType={flowType}
+              resourceKind={resourceKind}
               handleSyeQueryChange={handleSyeQueryChange}
               handleMemoryChange={handleMemoryChange}
             />

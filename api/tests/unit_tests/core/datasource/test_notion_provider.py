@@ -14,15 +14,14 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import json
-from collections.abc import Iterator
-from typing import Any
+from collections.abc import Callable, Iterator, Mapping
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import httpx
 import pytest
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
@@ -35,6 +34,7 @@ from core.datasource.online_document.online_document_provider import (
     OnlineDocumentDatasourcePluginProviderController,
 )
 from core.rag.extractor import notion_extractor as notion_extractor_module
+from core.rag.extractor.entity.extract_setting import StoredDocumentExtractionInput
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.models.document import Document
 from core.tools.entities.common_entities import I18nObject
@@ -48,7 +48,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom
 def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
     """Bind a real session for Notion document metadata persistence."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[DocumentModel.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[DocumentModel.__tablename__]])
     with Session(sqlite_engine, expire_on_commit=False) as session:
         monkeypatch.setattr(notion_extractor_module.db, "session", session)
         yield session
@@ -73,6 +73,16 @@ def persisted_document(database: Session) -> DocumentModel:
     return document
 
 
+def _extraction_input(document: DocumentModel) -> StoredDocumentExtractionInput:
+    """Detach the values the extractor needs, as the indexing source adapter does."""
+    return StoredDocumentExtractionInput(
+        id=document.id,
+        tenant_id=document.tenant_id,
+        dataset_id=document.dataset_id,
+        data_source_info_dict=document.data_source_info_dict,
+    )
+
+
 class TestNotionExtractorAuthentication:
     """Tests for Notion authentication handling.
 
@@ -84,14 +94,16 @@ class TestNotionExtractorAuthentication:
     """
 
     @pytest.fixture
-    def mock_document_model(self):
-        """Create a document with persisted-format Notion metadata."""
-        return DocumentModel(
+    def mock_document_model(self) -> StoredDocumentExtractionInput:
+        """Create detached document values with persisted-format Notion metadata."""
+        return StoredDocumentExtractionInput(
             id="test-doc-id",
-            data_source_info=json.dumps({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
+            tenant_id="tenant-789",
+            dataset_id="dataset-id",
+            data_source_info_dict={"last_edited_time": "2024-01-01T00:00:00.000Z"},
         )
 
-    def test_init_with_explicit_token(self, mock_document_model):
+    def test_init_with_explicit_token(self, mock_document_model: StoredDocumentExtractionInput) -> None:
         """Test NotionExtractor initialization with explicit access token."""
         # Arrange & Act
         extractor = NotionExtractor(
@@ -111,7 +123,12 @@ class TestNotionExtractorAuthentication:
         assert extractor._notion_page_type == "page"
 
     @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
-    def test_init_with_credential_id(self, get_credentials, mock_document_model, sqlite_session_factory):
+    def test_init_with_credential_id(
+        self,
+        get_credentials: Mock,
+        mock_document_model: StoredDocumentExtractionInput,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
         """Test NotionExtractor initialization with credential ID retrieval."""
         # Arrange
         providers = build_data_source_credentials(database_client=sqlite_session_factory).providers
@@ -141,8 +158,12 @@ class TestNotionExtractorAuthentication:
 
     @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
     def test_init_with_integration_token_fallback(
-        self, mock_get_token, mock_document_model, config_overrides, sqlite_session_factory
-    ):
+        self,
+        mock_get_token: Mock,
+        mock_document_model: StoredDocumentExtractionInput,
+        config_overrides: Callable[..., None],
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
         """Test NotionExtractor falls back to integration token when credential not found."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
@@ -167,8 +188,12 @@ class TestNotionExtractorAuthentication:
 
     @patch("services.data_source.provider_service.DatasourceProviderService.get_datasource_credentials")
     def test_init_missing_credentials_raises_error(
-        self, mock_get_token, mock_document_model, config_overrides, sqlite_session_factory
-    ):
+        self,
+        mock_get_token: Mock,
+        mock_document_model: StoredDocumentExtractionInput,
+        config_overrides: Callable[..., None],
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
         """Test NotionExtractor raises error when no credentials available."""
         # Arrange
         mock_get_token.side_effect = Exception("No credential id found")
@@ -202,7 +227,7 @@ class TestNotionExtractorPageRetrieval:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
             notion_workspace_id="workspace-123",
@@ -213,13 +238,13 @@ class TestNotionExtractorPageRetrieval:
             notion_token_loader=lambda: "token",
         )
 
-    def _create_response(self, data: dict[str, Any], status_code: int = 200) -> httpx.Response:
+    def _create_response(self, data: Mapping[str, object], status_code: int = 200) -> httpx.Response:
         """Build an HTTP response with serialized JSON for the extractor to parse."""
         return httpx.Response(status_code, json=data)
 
     def _create_block(
         self, block_id: str, block_type: str, text_content: str, has_children: bool = False
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Helper to create a Notion block structure."""
         return {
             "object": "block",
@@ -238,7 +263,7 @@ class TestNotionExtractorPageRetrieval:
         }
 
     @patch("httpx.request")
-    def test_get_notion_block_data_simple_page(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_simple_page(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving simple page with basic blocks."""
         # Arrange
         mock_data = {
@@ -262,7 +287,7 @@ class TestNotionExtractorPageRetrieval:
         mock_request.assert_called_once()
 
     @patch("httpx.request")
-    def test_get_notion_block_data_with_headings(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_with_headings(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving page with heading blocks."""
         # Arrange
         mock_data = {
@@ -289,7 +314,7 @@ class TestNotionExtractorPageRetrieval:
         assert "### Sub-subtitle" in result[3]
 
     @patch("httpx.request")
-    def test_get_notion_block_data_with_pagination(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_with_pagination(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving page with paginated results."""
         # Arrange
         first_page = {
@@ -319,7 +344,7 @@ class TestNotionExtractorPageRetrieval:
         assert mock_request.call_count == 2
 
     @patch("httpx.request")
-    def test_get_notion_block_data_with_nested_blocks(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_with_nested_blocks(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving page with nested block structure."""
         # Arrange
         # First call returns parent blocks
@@ -355,7 +380,7 @@ class TestNotionExtractorPageRetrieval:
         assert mock_request.call_count == 2
 
     @patch("httpx.request")
-    def test_get_notion_block_data_error_handling(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_error_handling(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test error handling for failed API requests."""
         # Arrange
         mock_request.return_value = self._create_response({}, status_code=404)
@@ -366,7 +391,7 @@ class TestNotionExtractorPageRetrieval:
         assert "Error fetching Notion block data" in str(exc_info.value)
 
     @patch("httpx.request")
-    def test_get_notion_block_data_invalid_response(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_invalid_response(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test handling of invalid API response structure."""
         # Arrange
         mock_request.return_value = self._create_response({"invalid": "structure"})
@@ -377,7 +402,7 @@ class TestNotionExtractorPageRetrieval:
         assert "Error fetching Notion block data" in str(exc_info.value)
 
     @patch("httpx.request")
-    def test_get_notion_block_data_http_error(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_http_error(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test handling of HTTP errors during request."""
         # Arrange
         mock_request.side_effect = httpx.HTTPError("Network error")
@@ -399,7 +424,7 @@ class TestNotionExtractorDatabaseRetrieval:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
             notion_workspace_id="workspace-123",
@@ -410,11 +435,12 @@ class TestNotionExtractorDatabaseRetrieval:
             notion_token_loader=lambda: "token",
         )
 
-    def _create_database_page(self, page_id: str, properties: dict[str, Any]) -> dict[str, Any]:
+    def _create_database_page(self, page_id: str, properties: Mapping[str, Mapping[str, object]]) -> dict[str, object]:
         """Helper to create a database page structure."""
         formatted_properties = {}
         for prop_name, prop_data in properties.items():
             prop_type = prop_data["type"]
+            assert isinstance(prop_type, str)
             formatted_properties[prop_name] = {"type": prop_type, prop_type: prop_data["value"]}
         return {
             "object": "page",
@@ -424,7 +450,7 @@ class TestNotionExtractorDatabaseRetrieval:
         }
 
     @patch("httpx.post")
-    def test_get_notion_database_data_simple(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_simple(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving simple database with basic properties."""
         # Arrange
         mock_response_data = {
@@ -463,7 +489,7 @@ class TestNotionExtractorDatabaseRetrieval:
         assert "Status:Done" in content
 
     @patch("httpx.post")
-    def test_get_notion_database_data_with_pagination(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_with_pagination(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving database with paginated results."""
         # Arrange
         first_response_data = {
@@ -497,7 +523,7 @@ class TestNotionExtractorDatabaseRetrieval:
         assert mock_post.call_count == 2
 
     @patch("httpx.post")
-    def test_get_notion_database_data_multi_select(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_multi_select(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test database with multi_select property type."""
         # Arrange
         mock_response_data = {
@@ -530,7 +556,7 @@ class TestNotionExtractorDatabaseRetrieval:
         assert "Tags:" in content
 
     @patch("httpx.post")
-    def test_get_notion_database_data_empty_properties(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_empty_properties(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test database with empty property values."""
         # Arrange
         mock_response_data = {
@@ -560,12 +586,12 @@ class TestNotionExtractorDatabaseRetrieval:
         assert "Row Page URL:" in content
 
     @patch("httpx.post")
-    def test_get_notion_database_data_empty_results(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_empty_results(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test handling of empty database."""
         # Arrange
         mock_response_data = {
             "object": "list",
-            "results": [],
+            "results": list[object](),
             "has_more": False,
             "next_cursor": None,
         }
@@ -579,7 +605,7 @@ class TestNotionExtractorDatabaseRetrieval:
         assert len(result) == 0
 
     @patch("httpx.post")
-    def test_get_notion_database_data_missing_results(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_missing_results(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test handling of malformed API response."""
         # Arrange
         mock_response_data = {"object": "list"}
@@ -604,7 +630,7 @@ class TestNotionExtractorTableParsing:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
             notion_workspace_id="workspace-123",
@@ -616,7 +642,7 @@ class TestNotionExtractorTableParsing:
         )
 
     @patch("httpx.request")
-    def test_read_table_rows_simple(self, mock_request, extractor: NotionExtractor):
+    def test_read_table_rows_simple(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test reading simple table with headers and rows."""
         # Arrange
         mock_data = {
@@ -668,7 +694,7 @@ class TestNotionExtractorTableParsing:
         assert "| Bob | 25 |" in result
 
     @patch("httpx.request")
-    def test_read_table_rows_with_empty_cells(self, mock_request, extractor: NotionExtractor):
+    def test_read_table_rows_with_empty_cells(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test reading table with empty cells."""
         # Arrange
         mock_data = {
@@ -682,7 +708,7 @@ class TestNotionExtractorTableParsing:
                 {
                     "object": "block",
                     "type": "table_row",
-                    "table_row": {"cells": [[{"text": {"content": "Value1"}}], []]},
+                    "table_row": {"cells": [[{"text": {"content": "Value1"}}], list[object]()]},
                 },
             ],
             "next_cursor": None,
@@ -700,7 +726,7 @@ class TestNotionExtractorTableParsing:
         assert "Value1" in result
 
     @patch("httpx.request")
-    def test_read_table_rows_with_pagination(self, mock_request, extractor: NotionExtractor):
+    def test_read_table_rows_with_pagination(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test reading table with paginated results."""
         # Arrange
         first_page = {
@@ -747,15 +773,17 @@ class TestNotionExtractorLastEditedTime:
     """
 
     @pytest.fixture
-    def mock_document_model(self):
-        """Create a document with persisted-format Notion metadata."""
-        return DocumentModel(
+    def mock_document_model(self) -> StoredDocumentExtractionInput:
+        """Create detached document values with persisted-format Notion metadata."""
+        return StoredDocumentExtractionInput(
             id="test-doc-id",
-            data_source_info=json.dumps({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
+            tenant_id="tenant-789",
+            dataset_id="dataset-id",
+            data_source_info_dict={"last_edited_time": "2024-01-01T00:00:00.000Z"},
         )
 
     @pytest.fixture
-    def extractor_page(self, mock_document_model):
+    def extractor_page(self, mock_document_model: StoredDocumentExtractionInput) -> NotionExtractor:
         """Create a NotionExtractor instance for page testing."""
         return NotionExtractor(
             notion_workspace_id="workspace-123",
@@ -768,7 +796,7 @@ class TestNotionExtractorLastEditedTime:
         )
 
     @pytest.fixture
-    def extractor_database(self, mock_document_model):
+    def extractor_database(self, mock_document_model: StoredDocumentExtractionInput) -> NotionExtractor:
         """Create a NotionExtractor instance for database testing."""
         return NotionExtractor(
             notion_workspace_id="workspace-123",
@@ -781,7 +809,7 @@ class TestNotionExtractorLastEditedTime:
         )
 
     @patch("httpx.request")
-    def test_get_notion_last_edited_time_page(self, mock_request, extractor_page):
+    def test_get_notion_last_edited_time_page(self, mock_request: Mock, extractor_page: NotionExtractor) -> None:
         """Test retrieving last edited time for a page."""
         # Arrange
         mock_response_data = {
@@ -802,7 +830,9 @@ class TestNotionExtractorLastEditedTime:
         assert "pages/page-456" in call_args[0][1]
 
     @patch("httpx.request")
-    def test_get_notion_last_edited_time_database(self, mock_request, extractor_database):
+    def test_get_notion_last_edited_time_database(
+        self, mock_request: Mock, extractor_database: NotionExtractor
+    ) -> None:
         """Test retrieving last edited time for a database."""
         # Arrange
         mock_response_data = {
@@ -829,7 +859,7 @@ class TestNotionExtractorLastEditedTime:
         extractor_page: NotionExtractor,
         database: Session,
         persisted_document: DocumentModel,
-    ):
+    ) -> None:
         """Test updating document model with last edited time."""
         # Arrange
         mock_response_data = {
@@ -841,13 +871,13 @@ class TestNotionExtractorLastEditedTime:
         mock_request.return_value = mock_response
 
         # Act
-        extractor_page.update_last_edited_time(persisted_document)
+        extractor_page.update_last_edited_time(_extraction_input(persisted_document))
 
         # Assert
         database.expire(persisted_document)
         assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T18:00:00.000Z"
 
-    def test_update_last_edited_time_no_document(self, extractor_page):
+    def test_update_last_edited_time_no_document(self, extractor_page: NotionExtractor) -> None:
         """Test update_last_edited_time with None document model."""
         # Act & Assert - should not raise error
         extractor_page.update_last_edited_time(None)
@@ -864,17 +894,19 @@ class TestNotionExtractorIntegration:
     """
 
     @pytest.fixture
-    def mock_document_model(self):
-        """Create a document with persisted-format Notion metadata."""
-        return DocumentModel(
+    def mock_document_model(self) -> StoredDocumentExtractionInput:
+        """Create detached document values with persisted-format Notion metadata."""
+        return StoredDocumentExtractionInput(
             id="test-doc-id",
-            data_source_info=json.dumps({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
+            tenant_id="tenant-789",
+            dataset_id="dataset-id",
+            data_source_info_dict={"last_edited_time": "2024-01-01T00:00:00.000Z"},
         )
 
     @patch("httpx.request")
     def test_extract_page_complete_workflow(
         self, mock_request: Mock, database: Session, persisted_document: DocumentModel
-    ):
+    ) -> None:
         """Test complete page extraction workflow."""
         # Arrange
         extractor = NotionExtractor(
@@ -883,7 +915,7 @@ class TestNotionExtractorIntegration:
             notion_page_type="page",
             tenant_id="tenant-789",
             notion_access_token="test-token",
-            document_model=persisted_document,
+            document_model=_extraction_input(persisted_document),
             notion_token_loader=lambda: "token",
         )
 
@@ -945,7 +977,7 @@ class TestNotionExtractorIntegration:
         mock_post: Mock,
         database: Session,
         persisted_document: DocumentModel,
-    ):
+    ) -> None:
         """Test complete database extraction workflow."""
         # Arrange
         extractor = NotionExtractor(
@@ -954,7 +986,7 @@ class TestNotionExtractorIntegration:
             notion_page_type="database",
             tenant_id="tenant-789",
             notion_access_token="test-token",
-            document_model=persisted_document,
+            document_model=_extraction_input(persisted_document),
             notion_token_loader=lambda: "token",
         )
 
@@ -997,7 +1029,7 @@ class TestNotionExtractorIntegration:
         database.expire(persisted_document)
         assert persisted_document.data_source_info_dict["last_edited_time"] == "2024-11-27T20:00:00.000Z"
 
-    def test_extract_invalid_page_type(self):
+    def test_extract_invalid_page_type(self) -> None:
         """Test extract with invalid page type."""
         # Arrange
         extractor = NotionExtractor(
@@ -1025,7 +1057,7 @@ class TestNotionExtractorReadBlock:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing."""
         return NotionExtractor(
             notion_workspace_id="workspace-123",
@@ -1037,7 +1069,7 @@ class TestNotionExtractorReadBlock:
         )
 
     @patch("httpx.request")
-    def test_read_block_with_indentation(self, mock_request, extractor: NotionExtractor):
+    def test_read_block_with_indentation(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test reading nested blocks with proper indentation."""
         # Arrange
         mock_data = {
@@ -1067,7 +1099,7 @@ class TestNotionExtractorReadBlock:
         assert "\t\tNested content" in result
 
     @patch("httpx.request")
-    def test_read_block_skip_child_page(self, mock_request, extractor: NotionExtractor):
+    def test_read_block_skip_child_page(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test that child_page blocks don't recurse."""
         # Arrange
         mock_data = {
@@ -1104,7 +1136,7 @@ class TestNotionProviderController:
     """
 
     @pytest.fixture
-    def mock_entity(self):
+    def mock_entity(self) -> DatasourceProviderEntityWithPlugin:
         """Create a validated Notion provider entity."""
         return DatasourceProviderEntityWithPlugin(
             identity=DatasourceProviderIdentity(
@@ -1117,7 +1149,7 @@ class TestNotionProviderController:
             provider_type=DatasourceProviderType.ONLINE_DOCUMENT,
         )
 
-    def test_provider_controller_initialization(self, mock_entity):
+    def test_provider_controller_initialization(self, mock_entity: DatasourceProviderEntityWithPlugin) -> None:
         """Test OnlineDocumentDatasourcePluginProviderController initialization."""
         # Act
         controller = OnlineDocumentDatasourcePluginProviderController(
@@ -1133,7 +1165,7 @@ class TestNotionProviderController:
         assert controller.tenant_id == "tenant-123"
         assert controller.provider_type == DatasourceProviderType.ONLINE_DOCUMENT
 
-    def test_provider_controller_get_datasource(self, mock_entity):
+    def test_provider_controller_get_datasource(self, mock_entity: DatasourceProviderEntityWithPlugin) -> None:
         """Test retrieving datasource from controller."""
         # Arrange
         mock_datasource_entity = DatasourceEntity(
@@ -1161,7 +1193,7 @@ class TestNotionProviderController:
         assert datasource is not None
         assert datasource.tenant_id == "tenant-123"
 
-    def test_provider_controller_datasource_not_found(self, mock_entity):
+    def test_provider_controller_datasource_not_found(self, mock_entity: DatasourceProviderEntityWithPlugin) -> None:
         """Test error when datasource not found."""
         # Arrange
         mock_entity.datasources = []
@@ -1189,7 +1221,7 @@ class TestNotionExtractorAdvancedBlockTypes:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for testing.
 
         Returns:
@@ -1206,7 +1238,7 @@ class TestNotionExtractorAdvancedBlockTypes:
 
     def _create_block_with_rich_text(
         self, block_id: str, block_type: str, rich_text_items: list[str], has_children: bool = False
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Helper to create a Notion block with multiple rich text elements.
 
         Args:
@@ -1228,7 +1260,7 @@ class TestNotionExtractorAdvancedBlockTypes:
         }
 
     @patch("httpx.request")
-    def test_get_notion_block_data_with_list_blocks(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_with_list_blocks(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving page with bulleted and numbered list items.
 
         Both list types should be extracted with their content.
@@ -1254,7 +1286,7 @@ class TestNotionExtractorAdvancedBlockTypes:
         assert "Numbered item" in result[1]
 
     @patch("httpx.request")
-    def test_get_notion_block_data_with_special_blocks(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_with_special_blocks(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving page with code, quote, and callout blocks.
 
         Special block types should preserve their content correctly.
@@ -1282,7 +1314,7 @@ class TestNotionExtractorAdvancedBlockTypes:
         assert "Important note" in result[2]
 
     @patch("httpx.request")
-    def test_get_notion_block_data_with_toggle_block(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_with_toggle_block(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving page with toggle block containing children.
 
         Toggle blocks can have nested content that should be extracted.
@@ -1318,7 +1350,7 @@ class TestNotionExtractorAdvancedBlockTypes:
         assert "Hidden content" in result[0]
 
     @patch("httpx.request")
-    def test_get_notion_block_data_mixed_block_types(self, mock_request, extractor: NotionExtractor):
+    def test_get_notion_block_data_mixed_block_types(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test retrieving page with mixed block types.
 
         Real Notion pages contain various block types mixed together.
@@ -1361,7 +1393,7 @@ class TestNotionExtractorDatabaseAdvanced:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for database testing.
 
         Returns:
@@ -1376,7 +1408,9 @@ class TestNotionExtractorDatabaseAdvanced:
             notion_token_loader=lambda: "token",
         )
 
-    def _create_database_page_with_properties(self, page_id: str, properties: dict[str, Any]) -> dict[str, Any]:
+    def _create_database_page_with_properties(
+        self, page_id: str, properties: Mapping[str, Mapping[str, object]]
+    ) -> dict[str, object]:
         """Helper to create a database page with various property types.
 
         Args:
@@ -1389,6 +1423,7 @@ class TestNotionExtractorDatabaseAdvanced:
         formatted_properties = {}
         for prop_name, prop_data in properties.items():
             prop_type = prop_data["type"]
+            assert isinstance(prop_type, str)
             formatted_properties[prop_name] = {"type": prop_type, prop_type: prop_data["value"]}
         return {
             "object": "page",
@@ -1398,7 +1433,9 @@ class TestNotionExtractorDatabaseAdvanced:
         }
 
     @patch("httpx.post")
-    def test_get_notion_database_data_with_various_property_types(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_with_various_property_types(
+        self, mock_post: Mock, extractor: NotionExtractor
+    ) -> None:
         """Test database with multiple property types.
 
         Tests date, number, checkbox, URL, email, phone, and status properties.
@@ -1444,7 +1481,7 @@ class TestNotionExtractorDatabaseAdvanced:
         assert "Status:Active" in content
 
     @patch("httpx.post")
-    def test_get_notion_database_data_large_pagination(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_large_pagination(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test database with multiple pages of results.
 
         Large databases require multiple API calls with cursor-based pagination.
@@ -1505,7 +1542,9 @@ class TestNotionExtractorDatabaseAdvanced:
         assert mock_post.call_count == 3
 
     @patch("httpx.post")
-    def test_get_notion_database_data_with_rich_text_property(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_with_rich_text_property(
+        self, mock_post: Mock, extractor: NotionExtractor
+    ) -> None:
         """Test database with rich_text property type.
 
         Rich text properties can contain formatted text and should be extracted.
@@ -1554,7 +1593,7 @@ class TestNotionExtractorErrorScenarios:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for error testing.
 
         Returns:
@@ -1570,16 +1609,14 @@ class TestNotionExtractorErrorScenarios:
         )
 
     @pytest.mark.parametrize(
-        ("error_type", "error_value"),
-        [
-            ("timeout", httpx.TimeoutException("Request timed out")),
-            ("connection", httpx.ConnectError("Connection failed")),
-        ],
+        "error_value",
+        [httpx.TimeoutException("Request timed out"), httpx.ConnectError("Connection failed")],
+        ids=["timeout", "connection"],
     )
     @patch("httpx.request")
     def test_get_notion_block_data_network_errors(
-        self, mock_request, extractor: NotionExtractor, error_type, error_value
-    ):
+        self, mock_request: Mock, extractor: NotionExtractor, error_value: httpx.TransportError
+    ) -> None:
         """Test handling of various network errors.
 
         Network issues (timeouts, connection failures) should raise appropriate errors.
@@ -1603,8 +1640,8 @@ class TestNotionExtractorErrorScenarios:
     )
     @patch("httpx.request")
     def test_get_notion_block_data_http_status_errors(
-        self, mock_request, extractor: NotionExtractor, status_code, description
-    ):
+        self, mock_request: Mock, extractor: NotionExtractor, status_code: int, description: str
+    ) -> None:
         """Test handling of various HTTP status errors.
 
         Different HTTP error codes (401, 403, 404, 429) should be handled appropriately.
@@ -1619,17 +1656,18 @@ class TestNotionExtractorErrorScenarios:
         assert "Error fetching Notion block data" in str(exc_info.value)
 
     @pytest.mark.parametrize(
-        ("response_data", "description"),
+        "response_data",
         [
-            ({"object": "list"}, "missing results field"),
-            ({"object": "list", "results": "not a list"}, "results not a list"),
-            ({"object": "list", "results": None}, "results is None"),
+            {"object": "list"},
+            {"object": "list", "results": "not a list"},
+            {"object": "list", "results": None},
         ],
+        ids=["missing results field", "results not a list", "results is None"],
     )
     @patch("httpx.request")
     def test_get_notion_block_data_malformed_responses(
-        self, mock_request, extractor: NotionExtractor, response_data, description
-    ):
+        self, mock_request: Mock, extractor: NotionExtractor, response_data: dict[str, object]
+    ) -> None:
         """Test handling of malformed API responses.
 
         Various malformed responses should be handled gracefully.
@@ -1644,7 +1682,7 @@ class TestNotionExtractorErrorScenarios:
         assert "Error fetching Notion block data" in str(exc_info.value)
 
     @patch("httpx.post")
-    def test_get_notion_database_data_with_query_filter(self, mock_post, extractor: NotionExtractor):
+    def test_get_notion_database_data_with_query_filter(self, mock_post: Mock, extractor: NotionExtractor) -> None:
         """Test database query with custom filter.
 
         Databases can be queried with filters to retrieve specific rows.
@@ -1696,7 +1734,7 @@ class TestNotionExtractorTableAdvanced:
     """
 
     @pytest.fixture
-    def extractor(self):
+    def extractor(self) -> NotionExtractor:
         """Create a NotionExtractor instance for table testing.
 
         Returns:
@@ -1712,7 +1750,7 @@ class TestNotionExtractorTableAdvanced:
         )
 
     @patch("httpx.request")
-    def test_read_table_rows_with_many_columns(self, mock_request, extractor: NotionExtractor):
+    def test_read_table_rows_with_many_columns(self, mock_request: Mock, extractor: NotionExtractor) -> None:
         """Test reading table with many columns.
 
         Tables can have numerous columns; all should be extracted correctly.

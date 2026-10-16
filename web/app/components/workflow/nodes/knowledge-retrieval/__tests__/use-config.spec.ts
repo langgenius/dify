@@ -14,8 +14,8 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
-import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -39,7 +39,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: vi.fn(),
-    useIsChatMode: vi.fn(),
+
     useWorkflow: vi.fn(),
   }
 })
@@ -68,7 +68,7 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.mocked(useIsChatMode)
+const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -222,7 +222,7 @@ describe('knowledge-retrieval/use-config', () => {
           currentModel: {
             model: 'rerank-model',
             model_properties: {
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             },
           },
         } as unknown as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
@@ -235,7 +235,7 @@ describe('knowledge-retrieval/use-config', () => {
         currentModel: {
           model: 'gpt-4o-mini',
           model_properties: {
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           },
         },
       } as unknown as ReturnType<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
@@ -371,7 +371,7 @@ describe('knowledge-retrieval/use-config', () => {
       result.current.handleModelChanged({
         provider: 'anthropic',
         modelId: 'claude-sonnet',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       result.current.handleCompletionParamsChange({ temperature: 0.2 })
       result.current.handleCompletionParamsChange({ temperature: 0.2 })
@@ -504,7 +504,7 @@ describe('knowledge-retrieval/use-config', () => {
       result.current.handleMetadataModelChange({
         provider: 'openai',
         modelId: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
       })
       result.current.handleMetadataCompletionParamsChange({ top_p: 0.3 })
     })
@@ -517,7 +517,7 @@ describe('knowledge-retrieval/use-config', () => {
       expect(result.current.inputs.metadata_model_config).toEqual({
         provider: 'openai',
         name: 'gpt-4.1-mini',
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         completion_params: { top_p: 0.3 },
       })
     })
@@ -528,4 +528,11 @@ describe('knowledge-retrieval/use-config', () => {
     expect(result.current.filterFileVar({ type: VarType.arrayFile } as never)).toBe(true)
     expect(result.current.filterFileVar({ type: VarType.string } as never)).toBe(false)
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

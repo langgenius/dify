@@ -3,11 +3,39 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
  * AgentSkillBindingsPayload
  */
 export const zAgentSkillBindingsPayload = z.object({
   skill_ids: z.array(z.string()).optional(),
 })
+
+/**
+ * InvalidRequestError
+ *
+ * Invalid skill request.
+ */
+export const zInvalidRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_request'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * SnippetImportPayload
@@ -102,6 +130,30 @@ export const zMemberInviteErrorResponse = z.object({
 })
 
 /**
+ * InvalidRoleError
+ *
+ * Invalid role.
+ */
+export const zInvalidRoleError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_role'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * LimitExceededError
+ *
+ * Unable to create account because the licensed seats limit was exceeded
+ */
+export const zLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('limit_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * OwnerTransferCheckPayload
  */
 export const zOwnerTransferCheckPayload = z.object({
@@ -119,6 +171,66 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
+ */
+export const zEmailCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotOwnerError
+ *
+ * You are not the owner of the workspace.
+ */
+export const zNotOwnerError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_owner'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * OwnerTransferLimitError
+ *
+ * Too many failed owner transfer attempts. Please try again in 24 hours.
+ */
+export const zOwnerTransferLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('owner_transfer_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * OwnerTransferEmailPayload
  */
 export const zOwnerTransferEmailPayload = z.object({
@@ -134,12 +246,72 @@ export const zSimpleResultDataResponse = z.object({
 })
 
 /**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * OwnerTransferRateLimitExceededError
+ *
+ * Too many owner transfer emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zOwnerTransferRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('owner_transfer_rate_limit_exceeded'),
+    status: z.literal(429),
+  }),
+)
+
+/**
  * MemberActionResponse
  */
 export const zMemberActionResponse = z.object({
   result: z.string(),
   tenant_id: z.string(),
 })
+
+/**
+ * CannotOperateSelfError
+ *
+ * Cannot operate on yourself.
+ */
+export const zCannotOperateSelfError = zErrorResponse.and(
+  z.object({
+    code: z.literal('cannot_operate_self'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * MemberNotFoundError
+ *
+ * Member not found.
+ */
+export const zMemberNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('member_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * OwnerTransferPayload
@@ -149,11 +321,47 @@ export const zOwnerTransferPayload = z.object({
 })
 
 /**
+ * CannotTransferOwnerToSelfError
+ *
+ * You cannot transfer ownership to yourself.
+ */
+export const zCannotTransferOwnerToSelfError = zErrorResponse.and(
+  z.object({
+    code: z.literal('cannot_transfer_owner_to_self'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * MemberNotInTenantError
+ *
+ * The member is not in the workspace.
+ */
+export const zMemberNotInTenantError = zErrorResponse.and(
+  z.object({
+    code: z.literal('member_not_in_tenant'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * MemberRoleUpdatePayload
  */
 export const zMemberRoleUpdatePayload = z.object({
   role: z.string(),
 })
+
+/**
+ * RoleAlreadyAssignedError
+ *
+ * Role already assigned.
+ */
+export const zRoleAlreadyAssignedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('role_already_assigned'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * ModelProviderCreditsResponse
@@ -258,6 +466,18 @@ export const zWorkspacePermissionResponse = z.object({
  */
 export const zBinaryFileResponse = z.custom<Blob | File>(
   (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
+ * PluginError
+ *
+ * Plugin operation failed.
+ */
+export const zPluginError = zErrorResponse.and(
+  z.object({
+    code: z.literal('plugin_error'),
+    status: z.literal(400),
+  }),
 )
 
 /**
@@ -509,6 +729,30 @@ export const zSkillFileUploadResponse = z.object({
 })
 
 /**
+ * FilenameMissingError
+ *
+ * filename is required
+ */
+export const zFilenameMissingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('filename_missing'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * SkillDeletePayload
  */
 export const zSkillDeletePayload = z.object({
@@ -638,6 +882,18 @@ export const zSkillVersionUpdatePayload = z.object({
 })
 
 /**
+ * CurrentWorkspaceArchivedError
+ *
+ * The current workspace has been archived.
+ */
+export const zCurrentWorkspaceArchivedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('current_workspace_archived'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * ApiToolProviderDeletePayload
  */
 export const zApiToolProviderDeletePayload = z.object({
@@ -711,6 +967,18 @@ export const zMcpAuthResponse = z.object({
   authorization_url: z.string().nullish(),
   result: z.literal('success').nullish(),
 })
+
+/**
+ * WorkflowToolHumanInputNotSupportedError
+ *
+ * Workflow with Human Input nodes cannot be published as a workflow tool.
+ */
+export const zWorkflowToolHumanInputNotSupportedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_tool_human_input_not_supported'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * WorkflowToolDeletePayload
@@ -796,6 +1064,54 @@ export const zWorkspaceLogoUploadResponse = z.object({
 })
 
 /**
+ * FilenameNotExistsError
+ *
+ * The specified filename does not exist.
+ */
+export const zFilenameNotExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('filename_not_exists_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
  * WorkspaceInfoPayload
  */
 export const zWorkspaceInfoPayload = z.object({
@@ -808,6 +1124,18 @@ export const zWorkspaceInfoPayload = z.object({
 export const zSwitchWorkspacePayload = z.object({
   tenant_id: z.string(),
 })
+
+/**
+ * AccountNotLinkTenantError
+ *
+ * Account not link tenant.
+ */
+export const zAccountNotLinkTenantError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_link_tenant'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * Meta

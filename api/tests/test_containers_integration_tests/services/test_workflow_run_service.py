@@ -242,7 +242,7 @@ class TestWorkflowRunService:
 
         # Create multiple workflow runs
         workflow_runs = []
-        for i in range(5):
+        for _i in range(5):
             workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
             workflow_runs.append(workflow_run)
 

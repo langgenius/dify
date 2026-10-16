@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import ChatVariableTrigger from '../chat-variable-trigger'
 
 const mockUseNodesReadOnly = vi.fn()
@@ -8,9 +9,12 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => mockUseNodesReadOnly(),
 }))
 
-vi.mock('../../../hooks/use-is-chat-mode', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
+})
 
 vi.mock('@/app/components/workflow/header/chat-variable-button', () => ({
   default: ({ disabled }: { disabled: boolean }) => (
@@ -33,7 +37,9 @@ describe('ChatVariableTrigger', () => {
       mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
 
       // Act
-      render(<ChatVariableTrigger />)
+      render(<ChatVariableTrigger />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       // Assert
       expect(screen.queryByRole('button', { name: 'ChatVariableButton' })).not.toBeInTheDocument()
@@ -48,7 +54,9 @@ describe('ChatVariableTrigger', () => {
       mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
 
       // Act
-      render(<ChatVariableTrigger />)
+      render(<ChatVariableTrigger />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       // Assert
       expect(screen.getByRole('button', { name: 'ChatVariableButton' })).toBeEnabled()
@@ -60,7 +68,9 @@ describe('ChatVariableTrigger', () => {
       mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
 
       // Act
-      render(<ChatVariableTrigger />)
+      render(<ChatVariableTrigger />, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       // Assert
       expect(screen.getByRole('button', { name: 'ChatVariableButton' })).toBeDisabled()

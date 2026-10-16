@@ -451,7 +451,7 @@ def test_admission_blocks_before_runtime(
     response = harness.get()
     if denial == "unauthenticated":
         assert response.status_code == 401
-        assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized."}
+        assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized.", "status": 401}
     else:
         _assert_error(response, status, code)
     assert harness.legacy_sessions == []
