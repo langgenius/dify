@@ -460,6 +460,13 @@ function BasicSourceEditDialogContent({
   )
 }
 
+function cancelPreviewJob(jobId: string | undefined) {
+  if (!jobId) return
+  void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+    .delete({ params: { job_id: jobId } })
+    .catch(() => {})
+}
+
 function WebsiteSourceEditDialogContent({
   controlSpaceId,
   onEdit,
@@ -600,23 +607,20 @@ function WebsiteSourceEditDialogContent({
   useEffect(
     () => () => {
       previewAttemptRef.current += 1
-      const jobId = previewJobIdRef.current
-      if (jobId)
-        void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
-          .delete({ params: { job_id: jobId } })
-          .catch(() => {})
+      cancelPreviewJob(previewJobIdRef.current)
     },
     [],
   )
 
-  const resetPreview = () => {
-    previewAttemptRef.current += 1
+  const releasePreviewJob = () => {
     const jobId = previewJobIdRef.current
     previewJobIdRef.current = undefined
-    if (jobId)
-      void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
-        .delete({ params: { job_id: jobId } })
-        .catch(() => {})
+    cancelPreviewJob(jobId)
+  }
+
+  const resetPreview = () => {
+    previewAttemptRef.current += 1
+    releasePreviewJob()
     setPreviewPages([])
     setSelectedPageIds(new Set())
     setPreviewing(false)
@@ -628,6 +632,8 @@ function WebsiteSourceEditDialogContent({
     if (previewing || !parametersValid || !providerOption || !previewBindingReady) return
     const attempt = previewAttemptRef.current + 1
     previewAttemptRef.current = attempt
+    // A failed status read leaves the previous job owned here; cancel it before taking a new handle.
+    releasePreviewJob()
     setPreviewing(true)
     setPreviewRequested(true)
     setPreviewError(false)
@@ -646,9 +652,7 @@ function WebsiteSourceEditDialogContent({
         },
       })
       if (previewAttemptRef.current !== attempt) {
-        void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
-          .delete({ params: { job_id: job.job_id } })
-          .catch(() => {})
+        cancelPreviewJob(job.job_id)
         return
       }
       previewJobIdRef.current = job.job_id

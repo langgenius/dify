@@ -112,6 +112,34 @@ describe('SyncPolicyField', () => {
     ).toHaveValue('2')
   })
 
+  it('applies the custom interval through its own form without submitting an enclosing form', async () => {
+    const user = userEvent.setup()
+    const onOuterSubmit = vi.fn((event: { preventDefault: () => void }) => event.preventDefault())
+    render(
+      <form onSubmit={onOuterSubmit}>
+        <SyncPolicyFieldHarness />
+      </form>,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: 'Sync policy' }))
+    await user.click(screen.getByRole('option', { name: 'Custom interval' }))
+    const popover = await screen.findByRole('dialog')
+    expect(within(popover).getByRole('button', { name: 'Apply' })).toHaveAttribute('type', 'submit')
+    expect(within(popover).getByRole('button', { name: 'Cancel' })).toHaveAttribute(
+      'type',
+      'button',
+    )
+
+    const interval = within(popover).getByRole('textbox', { name: 'Custom interval hours' })
+    await user.clear(interval)
+    await user.type(interval, '8{Enter}')
+
+    expect(screen.getByTestId('policy-value')).toHaveTextContent(
+      '{"customIntervalSeconds":28800,"mode":"custom"}',
+    )
+    expect(onOuterSubmit).not.toHaveBeenCalled()
+  })
+
   it('closes the custom interval popover on Escape and resets its draft when reopened', async () => {
     const user = userEvent.setup()
     render(<SyncPolicyFieldHarness />)

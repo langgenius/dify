@@ -1984,6 +1984,9 @@ describe('CreateKnowledgePage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeSpace.crawlAndPreview' }))
 
     expect(await screen.findByRole('status')).toHaveTextContent('knowledgeSpace.crawlingPages')
+    const crawlingButton = screen.getByRole('button', { name: 'knowledgeSpace.crawling' })
+    expect(crawlingButton).toHaveAttribute('aria-disabled', 'true')
+    expect(crawlingButton).not.toHaveAttribute('disabled')
     const stopButton = screen.getByRole('button', { name: 'knowledgeSpace.stopCrawl' })
     expect(stopButton).toBeEnabled()
 

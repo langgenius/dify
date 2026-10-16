@@ -182,7 +182,14 @@ function CustomIntervalEditor({
   })
 
   return (
-    <>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        // The popup is portaled, but React still bubbles submit through an enclosing source form.
+        event.stopPropagation()
+        if (!disabled) onApply(intervalSeconds)
+      }}
+    >
       <PopoverTitle className="system-sm-medium text-text-primary">
         {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
       </PopoverTitle>
@@ -239,19 +246,14 @@ function CustomIntervalEditor({
         })}
       </p>
       <div className="mt-3 flex justify-end gap-2">
-        <Button size="small" disabled={disabled} onClick={onCancel}>
+        <Button type="button" size="small" disabled={disabled} onClick={onCancel}>
           {tCommon(($) => $['operation.cancel'])}
         </Button>
-        <Button
-          size="small"
-          variant="primary"
-          disabled={disabled}
-          onClick={() => onApply(intervalSeconds)}
-        >
+        <Button type="submit" size="small" variant="primary" disabled={disabled}>
           {t(($) => $.syncPolicyApply, { ns: 'knowledgeSources' })}
         </Button>
       </div>
-    </>
+    </form>
   )
 }
 

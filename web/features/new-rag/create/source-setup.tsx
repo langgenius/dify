@@ -6,7 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { useAtom } from 'jotai'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient } from '@/service/console'
@@ -134,6 +134,7 @@ function CreateSourceSetupSession({
   const [selection, setSelection] = useAtom(createSourceSelectionAtom)
   const currentSelection = selection?.sessionKey === sessionKey ? selection : undefined
   const [crawlState, setCrawlState] = useState<LocalCrawlState>('idle')
+  const crawlActionLabelId = useId()
   const [stoppingPreview, setStoppingPreview] = useState(false)
   const [previewPages, setPreviewPages] = useState<CrawlPreviewPage[]>([])
   const selectedPageIds = new Set(
@@ -388,10 +389,14 @@ function CreateSourceSetupSession({
               type="button"
               variant="primary"
               className="w-full"
-              disabled={disabled || crawlState === 'running' || !previewReady}
+              disabled={disabled || !previewReady}
+              loading={crawlState === 'running'}
+              aria-labelledby={crawlActionLabelId}
               onClick={() => void startPreview()}
             >
-              {crawlState === 'running' ? t(($) => $.crawling) : t(($) => $.crawlAndPreview)}
+              <span id={crawlActionLabelId}>
+                {crawlState === 'running' ? t(($) => $.crawling) : t(($) => $.crawlAndPreview)}
+              </span>
             </Button>
           )}
           <section

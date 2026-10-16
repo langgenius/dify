@@ -2057,6 +2057,53 @@ describe('SourcesPage', () => {
     expect(clientMock.startPreviewJob).toHaveBeenCalledTimes(2)
   })
 
+  it('cancels a website preview job whose status read failed before starting another', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    useWebsitePreview()
+    clientMock.startPreviewJob
+      .mockResolvedValueOnce({ job_id: 'orphaned-job' })
+      .mockResolvedValueOnce({ job_id: 'preview-job-2' })
+    clientMock.getPreviewJob.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(clientMock.deletePreviewJob).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+
+    expect(await screen.findByRole('checkbox', { name: /Guide/ })).toBeInTheDocument()
+    expect(clientMock.deletePreviewJob).toHaveBeenCalledWith({
+      params: { job_id: 'orphaned-job' },
+    })
+    expect(clientMock.deletePreviewJob.mock.invocationCallOrder[0]).toBeLessThan(
+      clientMock.startPreviewJob.mock.invocationCallOrder[1] ?? 0,
+    )
+  })
+
   it('cancels a website preview job that returns after its edit session ends', async () => {
     const user = userEvent.setup()
     datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]

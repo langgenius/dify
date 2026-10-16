@@ -495,7 +495,13 @@ function ResourceList({
       </ul>
       {hasMore && (
         <div className="border-t border-divider-subtle px-3 py-2 text-center">
-          <Button size="small" variant="ghost" loading={loadingMore} onClick={onLoadMore}>
+          <Button
+            type="button"
+            size="small"
+            variant="ghost"
+            loading={loadingMore}
+            onClick={onLoadMore}
+          >
             {t(($) => $.loadMore)}
           </Button>
         </div>
@@ -514,6 +520,13 @@ function ConnectedSourceSyncPolicyField({
   return (
     <SourceSyncPolicyField draft={draft} triggerClassName="w-75.25" onDraftChange={onDraftChange} />
   )
+}
+
+type PreviewSourceSession = {
+  active: boolean
+  committed: boolean
+  source?: Source
+  submission?: Promise<void>
 }
 
 function ResourceConfiguration({
@@ -541,8 +554,7 @@ function ResourceConfiguration({
   const queryClient = useQueryClient()
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
-  const previewSourceRef = useRef<Source | undefined>(undefined)
-  const committedRef = useRef(false)
+  const sessionRef = useRef<PreviewSourceSession>({ active: false, committed: false })
   const sourceNameInitializedRef = useRef(Boolean(draft.sourceName.trim()))
   const [previewSource, setPreviewSource] = useState<Source>()
   const [previewError, setPreviewError] = useState(false)
@@ -579,12 +591,12 @@ function ResourceConfiguration({
   )
 
   useEffect(() => {
-    let active = true
+    const session: PreviewSourceSession = { active: true, committed: false }
+    sessionRef.current = session
     let source: Source | undefined
-    committedRef.current = false
     const createPreviewSource = async () => {
       await Promise.resolve()
-      if (!active) return
+      if (!session.active) return
       setPreviewError(false)
       setPreviewSource(undefined)
       try {
@@ -617,22 +629,26 @@ function ResourceConfiguration({
           source = await findSourceByClientRequestId(knowledgeSpaceId, clientRequestId)
           if (!source) throw error
         }
-        if (!active) {
+        if (!session.active) {
           await deleteSourceBestEffort(knowledgeSpaceId, source)
           return
         }
-        previewSourceRef.current = source
+        session.source = source
         setPreviewSource(source)
       } catch {
-        if (active) setPreviewError(true)
+        if (session.active) setPreviewError(true)
       }
     }
     void createPreviewSource()
     return () => {
-      active = false
-      if (!committedRef.current)
-        void deleteSourceBestEffort(knowledgeSpaceId, previewSourceRef.current ?? source)
-      previewSourceRef.current = undefined
+      session.active = false
+      // A pending submission may still rename or commit the source; clean up only after it
+      // settles, against the last revision it confirmed.
+      const cleanup = () => {
+        if (!session.committed) void deleteSourceBestEffort(knowledgeSpaceId, session.source)
+      }
+      if (session.submission) void session.submission.then(cleanup)
+      else cleanup()
     }
   }, [
     connection.id,
@@ -1168,18 +1184,11 @@ function ResourceConfiguration({
     else void pagesQuery.fetchNextPage()
   }
 
-  const submit = async () => {
-    if (
-      submitting ||
-      !draft.sourceName.trim() ||
-      draft.sourceName.trim().length > NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH ||
-      !selected.size
-    )
-      return
+  const submitInSession = async (session: PreviewSourceSession) => {
     setSubmitting(true)
     setSubmitError(false)
     const completeSubmission = async () => {
-      committedRef.current = true
+      session.committed = true
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
@@ -1190,7 +1199,7 @@ function ResourceConfiguration({
           refetchType: 'none',
         }),
       ])
-      onCompleted()
+      if (session.active) onCompleted()
     }
     try {
       const selectedResources = [...selected.values()]
@@ -1200,21 +1209,23 @@ function ResourceConfiguration({
       const selectedFiles = selectedResources
         .filter((resource): resource is FileResource => resource.kind === 'file')
         .filter((resource) => !isDriveContainer(resource))
-      if (!previewSource?.version) throw new Error('Source has no version')
+      const currentSource = session.source
+      if (!currentSource?.version) throw new Error('Source has no version')
       const finalSource = sourceFromApi(
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
           body: {
-            expectedVersion: previewSource.version,
+            expectedVersion: currentSource.version,
             name: draft.sourceName.trim(),
           },
           params: {
             control_space_id: knowledgeSpaceId,
-            source_id: previewSource.id,
+            source_id: currentSource.id,
           },
         }),
       )
       if (!finalSource.version) throw new Error('Final source has no version')
-      previewSourceRef.current = finalSource
+      session.source = finalSource
+      if (!session.active) return
       setPreviewSource(finalSource)
       const policy =
         draft.syncPolicy === 'manual'
@@ -1291,22 +1302,22 @@ function ResourceConfiguration({
         },
         status: 'syncing',
       }
-      previewSourceRef.current = committedSource
-      setPreviewSource(committedSource)
+      session.source = committedSource
+      session.committed = true
+      if (session.active) setPreviewSource(committedSource)
       await completeSubmission()
     } catch {
       try {
-        if (previewSourceRef.current) {
+        if (session.source) {
           const reconciledSource = sourceFromApi(
             await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.get({
               params: {
                 control_space_id: knowledgeSpaceId,
-                source_id: previewSourceRef.current.id,
+                source_id: session.source.id,
               },
             }),
           )
-          previewSourceRef.current = reconciledSource
-          setPreviewSource(reconciledSource)
+          session.source = reconciledSource
           if (
             reconciledSource.metadata.preview === false &&
             (reconciledSource.status !== 'disabled' ||
@@ -1315,18 +1326,42 @@ function ResourceConfiguration({
             await completeSubmission()
             return
           }
+          if (!session.active) return
+          setPreviewSource(reconciledSource)
         }
       } catch {
         // Keep the last known source so the visible retry path remains available.
       }
-      setSubmitError(true)
-    } finally {
-      setSubmitting(false)
+      if (session.active) setSubmitError(true)
     }
   }
 
+  const submit = () => {
+    const session = sessionRef.current
+    if (
+      !session.active ||
+      session.submission ||
+      submitting ||
+      !draft.sourceName.trim() ||
+      draft.sourceName.trim().length > NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH ||
+      !selected.size
+    )
+      return
+    const submission = submitInSession(session).finally(() => {
+      if (session.submission === submission) session.submission = undefined
+      if (session.active) setSubmitting(false)
+    })
+    session.submission = submission
+  }
+
   return (
-    <div className="flex flex-col gap-4">
+    <form
+      className="flex flex-col gap-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        submit()
+      }}
+    >
       {!previewSource && !previewError ? (
         <div className="flex min-h-44 items-center justify-center">
           <LoadingPlaceholder />
@@ -1334,7 +1369,7 @@ function ResourceConfiguration({
       ) : previewError ? (
         <div className="rounded-xl bg-background-section p-4">
           <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
-          <Button className="mt-3" onClick={() => globalThis.location.reload()}>
+          <Button type="button" className="mt-3" onClick={() => globalThis.location.reload()}>
             {t(($) => $.retryProviderLoad)}
           </Button>
         </div>
@@ -1371,6 +1406,7 @@ function ResourceConfiguration({
                   {t(($) => $.providerLoadFailed)}
                 </p>
                 <Button
+                  type="button"
                   className="mt-3"
                   onClick={() =>
                     void (driveTransport ? filesQuery.refetch() : pagesQuery.refetch())
@@ -1418,6 +1454,7 @@ function ResourceConfiguration({
           {t(($) => $.cancelAddSource, { ns: 'knowledgeSources' })}
         </Button>
         <Button
+          type="submit"
           variant="primary"
           loading={submitting}
           disabled={
@@ -1427,12 +1464,11 @@ function ResourceConfiguration({
             !draft.sourceName.trim() ||
             Boolean(queryError)
           }
-          onClick={() => void submit()}
         >
           {t(($) => $.addSource)}
         </Button>
       </div>
-    </div>
+    </form>
   )
 }
 
