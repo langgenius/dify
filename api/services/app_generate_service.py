@@ -4,9 +4,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
-from typing import TYPE_CHECKING, Any, Literal, cast
-
-from sqlalchemy.orm import Session
+from typing import TYPE_CHECKING, Any, Literal
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -18,7 +16,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import BuilderExecutionAdmission, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import RateLimitGenerator, rate_limit_context
+from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from core.dify_builder.execution_policy import (
@@ -33,6 +31,9 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
+from sqlalchemy.orm import Session
+from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
+
 from services.dify_builder.execution_policy_service import restricted_admission_snapshot
 from services.errors.app import (
     QuotaExceededError,
@@ -44,7 +45,6 @@ from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
 from services.tools.draft_tool_setup import admit_draft_tool_setup
 from services.workflow_service import WorkflowService
-from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,9 @@ _MANUAL_WORKFLOW_INVOKE_SOURCES = frozenset(
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
+
     from services.dify_builder.native_testing.contracts import NativeTestContextRef
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
     from services.dify_builder.native_testing.native_execution import ClosableNativeEventStream
     from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 
@@ -184,18 +186,19 @@ class AppGenerateService:
         user: Account,
         ref: NativeTestContextRef,
         runtime: NativeRuntimeBridge,
+        native_host: NativeHostLaunch,
     ) -> ClosableNativeEventStream:
         """Trusted native gateway retaining this service's quota and rate-limit owner.
 
         The opaque ref is reloaded before quota or generator setup. Only the
         server composition owner supplies runtime; client arguments never select
-        this path. It returns the existing closable rate-limited SSE iterator.
+        this path. The host retains rate release through actual physical cleanup.
         """
         from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+        from services.dify_builder.native_testing.generation_wiring import validate_native_host
         from services.dify_builder.native_testing.repository import native_workflow_revision
 
-        if runtime is None:
-            raise NativeContextUnavailable("native_runtime_unavailable")
+        validate_native_host(required=True, ref=ref, runtime=runtime, host=native_host)
         context = runtime.resolve(ref)
         if (
             not isinstance(user, Account)
@@ -206,7 +209,7 @@ class AppGenerateService:
             or workflow.graph_dict != context.graph
         ):
             raise NativeContextUnavailable("native_context_mismatch")
-        from services.dify_builder.native_testing.native_execution import NativeGeneratorStream
+        from services.dify_builder.native_testing.generation_wiring import HostOwnedNativeGeneratorStream
 
         def start(rate_limit: RateLimit, request_id: str) -> ClosableNativeEventStream:
             source = WorkflowAppGenerator().generate(
@@ -221,20 +224,12 @@ class AppGenerateService:
                 native_test_required=True,
                 native_test_ref=context.ref,
                 native_runtime=runtime,
+                native_host=native_host,
             )
-            stream = NativeGeneratorStream(source)
-            try:
-                # This legacy owner only consumes next()/close(); its annotation
-                # is narrower than that actual iterator contract.
-                limited = rate_limit.generate(cast(Generator[str], stream), request_id=request_id)
-                if not isinstance(limited, RateLimitGenerator):
-                    raise NativeContextUnavailable("native_stream_unavailable")
-                return limited
-            except BaseException:
-                stream.close()
-                raise
+            stream = HostOwnedNativeGeneratorStream(source=source, host=native_host)
+            return stream
 
-        return cls._run_with_guardrails(app_model=app_model, streaming=True, action=start)
+        return cls._run_with_guardrails(app_model=app_model, streaming=True, action=start, native_host=native_host)
 
     @classmethod
     def _run_with_guardrails(
@@ -243,6 +238,7 @@ class AppGenerateService:
         app_model: App,
         streaming: bool,
         action: Callable[[RateLimit, str], Any],
+        native_host: NativeHostLaunch | None = None,
     ):
         quota_charge = unlimited()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
@@ -255,17 +251,30 @@ class AppGenerateService:
         max_active_request = cls._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
+        host_owns_release = False
         try:
             request_id = rate_limit.enter(request_id)
             quota_charge.commit()
+            if native_host is not None:
+                native_host.bind_release(release=lambda: rate_limit.exit(request_id))
+                host_owns_release = True
             return action(rate_limit, request_id)
         except Exception:
-            quota_charge.refund()
-            if streaming:
-                rate_limit.exit(request_id)
+            if host_owns_release:
+                assert native_host is not None
+                native_host.request_close(reason="failed")
+            else:
+                quota_charge.refund()
+                if streaming:
+                    rate_limit.exit(request_id)
+            raise
+        except BaseException:
+            if host_owns_release:
+                assert native_host is not None
+                native_host.request_close(reason="failed")
             raise
         finally:
-            if not streaming:
+            if not streaming and not host_owns_release:
                 rate_limit.exit(request_id)
 
     @classmethod

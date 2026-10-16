@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 from uuid import uuid4
 
 from configs import dify_config
 from context import capture_current_context
+from extensions.otel.runtime import is_instrument_flag_enabled
+from factories import file_factory
+from models.workflow import Workflow
+
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
@@ -31,8 +37,6 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
-from extensions.otel.runtime import is_instrument_flag_enabled
-from factories import file_factory
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
@@ -47,7 +51,9 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
-from models.workflow import Workflow
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -115,6 +121,7 @@ class WorkflowEntry:
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -148,7 +155,8 @@ class WorkflowEntry:
         self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
         execution_context = capture_current_context()
         # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
-        graph_runtime_state._execution_context = execution_context
+        if native_host is None:
+            graph_runtime_state._execution_context = execution_context
         self.graph_engine = GraphEngine(
             workflow_id=workflow_id,
             graph=graph,
@@ -162,8 +170,11 @@ class WorkflowEntry:
             ),
         )
 
+        if native_host is not None:
+            self.graph_engine.layer(native_host.observation_layer())
+
         # Add debug logging layer when in debug mode
-        if dify_config.DEBUG:
+        if native_host is None and dify_config.DEBUG:
             logger.info("Debug mode enabled - adding DebugLoggingLayer to GraphEngine")
             debug_layer = DebugLoggingLayer(
                 level="DEBUG",
@@ -181,7 +192,7 @@ class WorkflowEntry:
         self.graph_engine.layer(limits_layer)
 
         # Add observability layer when OTel is enabled
-        if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
+        if native_host is None and (dify_config.ENABLE_OTEL or is_instrument_flag_enabled()):
             self.graph_engine.layer(ObservabilityLayer())
 
     def run(self) -> Generator[GraphEngineEvent]:

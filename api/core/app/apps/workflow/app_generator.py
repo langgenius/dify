@@ -7,13 +7,24 @@ import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, Protocol, overload
 
+import contexts
+from configs import dify_config
+from extensions.ext_database import db
+from factories import file_factory
 from flask import Flask, current_app
+from libs.flask_utils import preserve_flask_contexts
+from models.account import Account
+from models.enums import WorkflowRunTriggeredFrom
+from models.model import App, EndUser
+from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from pydantic import ValidationError
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.contracts import NativeTestContextRef
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-import contexts
-from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -51,26 +62,16 @@ from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
-from extensions.ext_database import db
-from factories import file_factory
 from graphon.enums import NodeType
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import GraphRuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
-from libs.flask_utils import preserve_flask_contexts
-from models.account import Account
-from models.enums import WorkflowRunTriggeredFrom
-from models.model import App, EndUser
-from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
-from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
-from services.dify_builder.native_testing.contracts import NativeTestContextRef
-from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
-from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +171,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
@@ -196,6 +198,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -222,6 +225,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
@@ -247,7 +251,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_required: bool = False,
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
+        from services.dify_builder.native_testing.generation_wiring import validate_native_host
+
+        validate_native_host(
+            required=native_test_required or native_test_ref is not None,
+            ref=native_test_ref,
+            runtime=native_runtime,
+            host=native_host,
+        )
         native_context = None
         native_inputs = None
         if native_test_required or native_test_ref is not None:
@@ -425,6 +438,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 pause_state_config=pause_state_config,
                 builder_execution_admit=builder_execution_admit,
                 native_runtime=native_runtime,
+                native_host=native_host,
             )
 
     def resume(
@@ -499,6 +513,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         response_stream_filter: ResponseStreamFilter | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
@@ -512,6 +527,21 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_node_execution_repository: repository for workflow node execution
         :param streaming: is stream
         """
+        from services.dify_builder.native_testing.generation_wiring import bind_native_generation, validate_native_host
+
+        validate_native_host(
+            required=application_generate_entity.native_test_required
+            or application_generate_entity.native_test_ref is not None,
+            ref=application_generate_entity.native_test_ref,
+            runtime=native_runtime,
+            host=native_host,
+        )
+        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_manager is not None):
+            raise NativeContextUnavailable("native_observation_unqualified")
+        if native_host is not None and (
+            not streaming or graph_runtime_state is not None or pause_state_config is not None
+        ):
+            raise NativeContextUnavailable("native_resume_unavailable")
         with self._bind_file_access_scope(
             tenant_id=application_generate_entity.app_config.tenant_id,
             user=user,
@@ -538,6 +568,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     )
                 )
 
+            if native_host is not None:
+                bind_native_generation(
+                    host=native_host,
+                    entity=application_generate_entity,
+                    queue=queue_manager,
+                    response_filter=resolved_response_stream_filter,
+                    workflow_repository=workflow_execution_repository,
+                    node_repository=workflow_node_execution_repository,
+                )
+
             # new thread with request context and contextvars
             context = contextvars.copy_context()
 
@@ -560,13 +600,19 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     "response_stream_filter": resolved_response_stream_filter,
                     "builder_execution_admit": builder_execution_admit,
                     "native_runtime": native_runtime,
+                    "native_host": native_host,
                 },
             )
 
-            worker_thread.start()
+            if native_host is None:
+                worker_thread.start()
+            else:
+                native_host.start_worker(worker=worker_thread)
 
             draft_var_saver_factory: DraftVariableSaverFactory
-            if isinstance(application_generate_entity.builder_execution, ConfirmedToolExecutionContext):
+            if native_host is not None or isinstance(
+                application_generate_entity.builder_execution, ConfirmedToolExecutionContext
+            ):
                 # The authorized native Run/node rows are the only retained copy of a
                 # confirmed Tool's content: no mutable workspace draft-variable copy.
                 draft_var_saver_factory = _no_draft_variable_saver
@@ -591,9 +637,17 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     invoke_from=invoke_from,
                 )
             except BaseException:
-                self._join_worker_thread(worker_thread)
+                if native_host is None:
+                    self._join_worker_thread(worker_thread)
+                else:
+                    native_host.request_close(reason="failed")
                 raise
 
+            if native_host is not None:
+                if not isinstance(converted_response, Generator):
+                    native_host.request_close(reason="failed")
+                    raise NativeContextUnavailable("native_stream_unavailable")
+                return converted_response
             if isinstance(converted_response, Generator):
                 return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
 
@@ -800,6 +854,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         response_stream_filter: ResponseStreamFilter | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -838,14 +893,21 @@ class WorkflowAppGenerator(BaseAppGenerator):
                             native_context.native_run_id,
                         ):
                             raise NativeContextUnavailable("native_context_mismatch")
-                        prepared = native_runtime.prepare_inputs(native_context)
-                        application_generate_entity = application_generate_entity.model_copy(
-                            update={
-                                "inputs": prepared.inputs,
-                                "files": list(prepared.files),
-                                "call_depth": native_context.call_depth,
-                            }
+                        from services.dify_builder.native_testing.generation_wiring import validate_native_host
+
+                        validate_native_host(
+                            required=True,
+                            ref=application_generate_entity.native_test_ref,
+                            runtime=native_runtime,
+                            host=native_host,
                         )
+                        assert native_host is not None
+                        if native_host.generation_bindings.entity is not application_generate_entity:
+                            raise NativeContextUnavailable("native_host_identity_mismatch")
+                        prepared = native_runtime.prepare_inputs(native_context)
+                        application_generate_entity.inputs = prepared.inputs
+                        application_generate_entity.files = list(prepared.files)
+                        application_generate_entity.call_depth = native_context.call_depth
 
                     with session_factory.create_session() as session:
                         workflow = session.scalar(
@@ -924,6 +986,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         workflow=workflow,
                         system_user_id=system_user_id,
                         native_runtime=native_runtime,
+                        native_host=native_host,
                         workflow_execution_repository=workflow_execution_repository,
                         workflow_node_execution_repository=workflow_node_execution_repository,
                         root_node_id=root_node_id,
@@ -966,6 +1029,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             exit_kind = "failed"
             raise
         finally:
+            if native_host is not None:
+                native_host.worker_finished(worker=threading.current_thread(), exit_kind=exit_kind)
             marker = application_generate_entity.builder_execution
             if marker is not None and builder_execution_admit is not None:
                 try:

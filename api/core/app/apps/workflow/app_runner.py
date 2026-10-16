@@ -1,7 +1,18 @@
+from __future__ import annotations
+
 import logging
 import time
 from collections.abc import Sequence
-from typing import cast
+from functools import wraps
+from typing import TYPE_CHECKING, cast
+
+from extensions.ext_redis import redis_client
+from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
+from libs.datetime_utils import naive_utc_now
+from models.workflow import Workflow
+from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
+from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.execution_coordinator import app_task_command_channel_key
@@ -35,19 +46,15 @@ from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_redis import redis_client
-from extensions.otel import WorkflowAppRunnerHandler, trace_span
-from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
 from graphon.enums import WorkflowType
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
-from libs.datetime_utils import naive_utc_now
-from models.workflow import Workflow
-from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
-from services.dify_builder.native_testing.runtime_bridge import NativeRuntimeBridge
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_execution import NativeHostLaunch
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +80,20 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         response_stream_filter: ResponseStreamFilter | None = None,
         execution_recorder: BuilderExecutionRecorder | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
+        native_host: NativeHostLaunch | None = None,
     ):
+        from services.dify_builder.native_testing.generation_wiring import validate_native_host
+
+        validate_native_host(
+            required=application_generate_entity.native_test_required
+            or application_generate_entity.native_test_ref is not None,
+            ref=application_generate_entity.native_test_ref,
+            runtime=native_runtime,
+            host=native_host,
+        )
+        if native_host is not None and (graph_engine_layers or application_generate_entity.trace_manager is not None):
+            raise NativeContextUnavailable("native_observation_unqualified")
+        self._native_host = native_host
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
@@ -91,8 +111,17 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
 
-    @trace_span(WorkflowAppRunnerHandler)
     def run(self):
+        if self._native_host is not None:
+            return self._run()
+        return self._run_with_tracing()
+
+    @trace_span(WorkflowAppRunnerHandler)
+    @wraps(run)
+    def _run_with_tracing(self):
+        return self._run()
+
+    def _run(self):
         """
         Run application
         """
@@ -130,6 +159,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 )
             ):
                 raise NativeContextUnavailable("native_context_mismatch")
+            if self._native_host is None or self._native_host.generation_bindings.entity is not entity:
+                raise NativeContextUnavailable("native_host_identity_mismatch")
+            if self._resume_graph_runtime_state is not None:
+                raise NativeContextUnavailable("native_resume_adapter_unavailable")
             native_prepared = self._native_runtime.prepare_inputs(resolved)
             entity.inputs = native_prepared.inputs
             entity.files = list(native_prepared.files)
@@ -286,6 +319,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             )
         )
 
+        if self._native_host is not None:
+            command_channel = self._native_host.wrap_commands(channel=command_channel)
+
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
         workflow_entry = WorkflowEntry(
@@ -302,6 +338,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
+            native_host=self._native_host,
         )
 
         persistence_layer = WorkflowPersistenceLayer(
@@ -335,6 +372,15 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
+
+        if self._native_host is not None:
+            assert self._response_stream_filter is not None
+            self._native_host.bind_engine(
+                entry=workflow_entry,
+                runtime_state=graph_runtime_state,
+                response_filter=self._response_stream_filter,
+                commands=command_channel,
+            )
 
         generator = workflow_entry.run()
 
