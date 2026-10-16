@@ -19,11 +19,12 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { createContext, use, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -83,7 +84,7 @@ function AgentSelectorList({
   onStartFromScratch,
 }: Pick<AgentSelectorMenuContentProps, 'onSelect' | 'onStartFromScratch'>) {
   const { t } = useTranslation(['workflow', 'common', 'agentRoster'])
-  const appId = useHooksStore((s) => s.configsMap?.flowId)
+  const appId = useAtomValue(editorAppIdAtom)
   const searchText = use(SearchTextContext)
   const keyword = useDebounce(searchText.trim(), { wait: 300 })
   const agentsQuery = useQuery({
@@ -166,13 +167,7 @@ function AgentSelectorList({
                 onClick={() => handleSelect(agent)}
               >
                 <span aria-hidden className="shrink-0">
-                  <AppIcon
-                    size="small"
-                    iconType={agent.icon_type}
-                    icon={agent.icon ?? undefined}
-                    background={agent.icon_background}
-                    imageUrl={agent.icon ?? undefined}
-                  />
+                  <AppIcon size="small" icon={{ ...agent, icon_url: agent.icon }} />
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate system-sm-medium text-text-secondary">

@@ -200,11 +200,9 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
+              fallback={{ content: '🤖', background: appDefaultIconBackground }}
               size={isPC ? 'large' : 'small'}
-              iconType={siteInfo.icon_type}
-              icon={siteInfo.icon}
-              background={siteInfo.icon_background || appDefaultIconBackground}
-              imageUrl={siteInfo.icon_url}
+              icon={siteInfo}
             />
             <div className="grow truncate system-md-semibold text-text-secondary">
               {siteInfo.title}

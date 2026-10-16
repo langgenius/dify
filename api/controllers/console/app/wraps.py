@@ -117,10 +117,7 @@ def get_app_model[**P, R](
             app_mode = AppMode.value_of(app_model.mode)
 
             if mode is not None:
-                if isinstance(mode, list):
-                    modes = mode
-                else:
-                    modes = [mode]
+                modes = mode if isinstance(mode, list) else [mode]
 
                 if app_mode not in modes:
                     mode_values = {m.value for m in modes}

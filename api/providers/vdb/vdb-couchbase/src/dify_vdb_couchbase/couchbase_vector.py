@@ -216,9 +216,9 @@ class CouchbaseVector(BaseVector):
 
         documents_to_insert = [
             {"text": text, "embedding": vector, "metadata": metadata}
-            for _, text, vector, metadata in zip(uuids, texts, embeddings, metadatas)
+            for _, text, vector, metadata in zip(uuids, texts, embeddings, metadatas, strict=False)
         ]
-        for doc, id in zip(documents_to_insert, uuids):
+        for doc, id in zip(documents_to_insert, uuids, strict=False):
             _ = self._scope.collection(self._collection_name).upsert(id, doc)
 
         doc_ids.extend(uuids)

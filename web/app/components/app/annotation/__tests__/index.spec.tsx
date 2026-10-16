@@ -17,7 +17,6 @@ import {
 } from '@/service/annotation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
 
@@ -181,7 +180,7 @@ const updateAnnotationStatusMock = updateAnnotationStatus as Mock
 
 const appDetail = createAppDetailFixture({
   id: 'app-id',
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
 })
 
 const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({

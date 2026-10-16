@@ -95,11 +95,9 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
       >
         <div className="flex items-center gap-3">
           <AppIcon
+            fallback={{ content: '🤖', background: appDefaultIconBackground }}
             size={isPC ? 'large' : 'small'}
-            iconType={siteInfo.icon_type}
-            icon={siteInfo.icon}
-            background={siteInfo.icon_background || appDefaultIconBackground}
-            imageUrl={siteInfo.icon_url}
+            icon={siteInfo}
           />
           <div className="grow truncate system-md-semibold text-text-secondary">
             {siteInfo.title}

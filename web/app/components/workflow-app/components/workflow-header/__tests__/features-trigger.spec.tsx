@@ -2,13 +2,12 @@ import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
@@ -53,7 +52,6 @@ const mockPublishWorkflow = vi.fn()
 const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
-const mockAppResponse = vi.fn()
 const mockInvalidateQueries = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
@@ -76,7 +74,6 @@ const mockWorkflowStore = {
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => mockUseNodesReadOnly(),
-  useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
@@ -229,16 +226,14 @@ vi.mock('@/service/use-tools', () => ({
   useInvalidateAppTriggers: () => mockInvalidateAppTriggers,
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (url: string) => Response.json(await mockAppResponse(url)),
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-id' }),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => mockUseTheme(),
 }))
-
-// Use real app store - global zustand mock will auto-reset between tests
 
 const renderWithToast = (
   ui: ReactElement,
@@ -249,7 +244,17 @@ const renderWithToast = (
   })
   seedFeatures(queryClient, { billing: { subscription: { plan } } })
   vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries)
-  return { queryClient, ...render(ui, { wrapper }) }
+  return {
+    ...render(ui, {
+      resource: {
+        kind: 'app',
+        appId: 'app-id',
+        mode: mockUseIsChatMode() ? 'advanced-chat' : 'workflow',
+      },
+      wrapper,
+      queryClient,
+    }),
+  }
 }
 
 describe('FeaturesTrigger', () => {
@@ -277,9 +282,6 @@ describe('FeaturesTrigger', () => {
     )
     mockUseNodes.mockReturnValue([])
     mockUseEdges.mockReturnValue([])
-    // Set up app store state
-    useAppStore.setState({ appDetail: createAppDetailFixture({ id: 'app-id' }) })
-    mockAppResponse.mockResolvedValue(createAppDetailFixture({ id: 'app-id', name: 'Updated App' }))
     mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
@@ -634,12 +636,11 @@ describe('FeaturesTrigger', () => {
           type: 'success',
           message: 'common.api.actionSuccess',
         })
-        expect(mockAppResponse).toHaveBeenCalledWith(expect.stringContaining('/apps/app-id'))
-        expect(useAppStore.getState().appDetail).toEqual(
-          expect.objectContaining({
-            name: 'Updated App',
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.apps.byAppId.get.queryKey({
+            input: { params: { app_id: 'app-id' } },
           }),
-        )
+        })
       })
     })
 
@@ -798,24 +799,6 @@ describe('FeaturesTrigger', () => {
       expect(mockSetPublishedAt).not.toHaveBeenCalled()
       expect(mockSetLastPublishedHasUserInput).not.toHaveBeenCalled()
       expect(mockResetWorkflowVersionHistory).not.toHaveBeenCalled()
-    })
-
-    it('should log error when app detail refresh fails after publish', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockAppResponse.mockRejectedValueOnce(new Error('fetch failed'))
-
-      renderWithToast(<FeaturesTrigger />)
-
-      // Act
-      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
-
-      // Assert
-      await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalled()
-      })
-      consoleErrorSpy.mockRestore()
     })
   })
 })

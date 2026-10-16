@@ -12,9 +12,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     mockUseTextGenerationCurrentProviderAndModelAndModelList(...args),
 }))
 
-vi.mock('../use-workflow', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
+vi.mock('../use-workflow', () => ({}))
 
 const createModel = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
   provider: 'openai',
@@ -180,4 +178,11 @@ describe('useConfigVision', () => {
       },
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

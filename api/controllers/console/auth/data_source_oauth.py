@@ -17,6 +17,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from core.rbac import RBACPermission
 from extensions.ext_application_services import application_services
@@ -31,8 +32,6 @@ from services.data_source.oauth_service import (
     InvalidDataSourceOAuthCodeError,
     InvalidDataSourceOAuthProviderError,
 )
-
-from .. import console_ns
 
 logger = logging.getLogger(__name__)
 

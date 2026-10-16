@@ -357,7 +357,7 @@ describe('getToolType', () => {
     ['workflow', ToolType.Workflow],
     ['mcp', ToolType.MCP],
     ['unknown', ToolType.BuiltIn],
-  ])('returns correct ToolType for "%s"', (input, expected) => {
+  ] as const)('returns correct ToolType for "%s"', (input, expected) => {
     expect(getToolType(input)).toBe(expected)
   })
 })

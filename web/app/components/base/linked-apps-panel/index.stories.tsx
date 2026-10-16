@@ -1,13 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { RelatedApp } from '@/models/datasets'
-import { AppModeEnum } from '@/types/app'
 import LinkedAppsPanel from '.'
 
 const mockRelatedApps: RelatedApp[] = [
   {
     id: 'app-cx',
     name: 'Customer Support Assistant',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: 'emoji',
     icon: '\u{1F4AC}',
     icon_background: '#EEF2FF',
@@ -16,7 +15,7 @@ const mockRelatedApps: RelatedApp[] = [
   {
     id: 'app-ops',
     name: 'Ops Workflow Orchestrator',
-    mode: AppModeEnum.WORKFLOW,
+    mode: 'workflow' as const,
     icon_type: 'emoji',
     icon: '\u{1F6E0}\u{FE0F}',
     icon_background: '#ECFDF3',
@@ -25,7 +24,7 @@ const mockRelatedApps: RelatedApp[] = [
   {
     id: 'app-research',
     name: 'Research Synthesizer',
-    mode: AppModeEnum.ADVANCED_CHAT,
+    mode: 'advanced-chat' as const,
     icon_type: 'emoji',
     icon: '\u{1F9E0}',
     icon_background: '#FDF2FA',

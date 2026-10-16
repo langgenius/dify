@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
 import GetAutomaticRes from '../get-automatic-res'
 
 const mockGenerateBasicAppFirstTimeRule = vi.fn()
@@ -53,7 +52,9 @@ vi.mock(
     }) => (
       <div>
         <button
-          onClick={() => setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' })}
+          onClick={() =>
+            setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' as const })
+          }
         >
           change-model
         </button>
@@ -121,7 +122,7 @@ describe('GetAutomaticRes', () => {
   it('should apply a basic suggestion and persist model updates', async () => {
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -152,7 +153,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -176,7 +177,7 @@ describe('GetAutomaticRes', () => {
   it('should block generation when instruction is empty', () => {
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -203,7 +204,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -254,7 +255,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -291,7 +292,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.ADVANCED_CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -315,6 +316,7 @@ describe('GetAutomaticRes', () => {
           current: 'current prompt',
           instruction: 'workflow instruction',
           ideal_output: 'ideal output',
+          model_config: expect.objectContaining({ mode: 'chat' }),
         }),
       )
     })

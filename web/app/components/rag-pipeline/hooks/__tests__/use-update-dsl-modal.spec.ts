@@ -1,5 +1,6 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { useUpdateDSLModal } from '../use-update-dsl-modal'
@@ -100,11 +101,13 @@ describe('useUpdateDSLModal', () => {
   const mockOnImport = vi.fn()
 
   const renderUpdateDSLModal = (overrides?: { onImport?: () => void }) =>
-    renderHook(() =>
-      useUpdateDSLModal({
-        onCancel: mockOnCancel,
-        onImport: overrides?.onImport ?? mockOnImport,
-      }),
+    renderHook(
+      () =>
+        useUpdateDSLModal({
+          onCancel: mockOnCancel,
+          onImport: overrides?.onImport ?? mockOnImport,
+        }),
+      { resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' } },
     )
 
   beforeEach(() => {
@@ -599,7 +602,9 @@ describe('useUpdateDSLModal', () => {
 
   describe('optional onImport', () => {
     it('should work without onImport callback', async () => {
-      const { result } = renderHook(() => useUpdateDSLModal({ onCancel: mockOnCancel }))
+      const { result } = renderHook(() => useUpdateDSLModal({ onCancel: mockOnCancel }), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleFile(createFile())

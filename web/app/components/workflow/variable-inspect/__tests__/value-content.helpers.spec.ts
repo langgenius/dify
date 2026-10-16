@@ -71,7 +71,16 @@ describe('value-content helpers', () => {
         createVar({
           name: 'file',
           value_type: VarType.file,
-          value: { id: 'file-1' },
+          value: {
+            id: 'file-1',
+            filename: 'report.pdf',
+            mime_type: 'application/pdf',
+            type: 'document',
+            transfer_method: 'remote_url',
+            related_id: null,
+            remote_url: 'https://example.com/report.pdf',
+            size: 12,
+          },
         }),
       ),
     ).toHaveLength(1)
@@ -84,7 +93,16 @@ describe('value-content helpers', () => {
           type: VarInInspectType.system,
           name: 'files',
           value_type: VarType.arrayFile,
-          value: [{ id: 'file-2' }],
+          value: [
+            {
+              id: 'file-2',
+              filename: 'photo.png',
+              type: 'image',
+              transfer_method: 'local_file',
+              related_id: 'upload-2',
+              size: 20,
+            },
+          ],
         }),
       ),
     ).toHaveLength(1)
