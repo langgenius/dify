@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vite-plus/test'
 import rule from './no-unnecessary-type-assertion'
-import { lintWithRule } from './test-utils'
+import { countTypeErrors, lintWithRule } from './test-utils'
 
 const lint = (code: string) => lintWithRule(rule, code)
 const fixedLines = (code: string) =>
@@ -146,6 +146,31 @@ describe('no-unnecessary-type-assertion', () => {
     expect(lint(`${guard}if ((shape as Shape).isCircle()) {}\n`)).toEqual([])
   })
 
+  it('keeps a boolean assertion that a const alias carries into narrowing', () => {
+    const predicate = [
+      'const isString = (x: string | number) => {',
+      "  const result = (typeof x === 'string') as boolean",
+      '  return result',
+      '}',
+    ].join('\n')
+    expect(lint(predicate)).toEqual([])
+    const condition = [
+      'declare const x: string | number',
+      "const isText = (typeof x === 'string') as boolean",
+      'if (isText) {}',
+    ].join('\n')
+    expect(lint(condition)).toEqual([])
+  })
+
+  it('keeps an assertion destructured into const bindings', () => {
+    const code = [
+      "type State = { kind: 'idle' } | { kind: 'busy'; id: number }",
+      'declare let state: State',
+      'const { kind } = state as State',
+    ].join('\n')
+    expect(lint(code)).toEqual([])
+  })
+
   it('keeps a boolean assertion that stops a type predicate from being inferred', () => {
     const arrow = "const isString = (x: string | number) => (typeof x === 'string') as boolean\n"
     expect(lint(arrow)).toEqual([])
@@ -219,4 +244,87 @@ describe('no-unnecessary-type-assertion', () => {
       expect(lint('declare const a: any\nconst b = a as unknown as string\n')).toEqual([])
     })
   })
+
+  // Each program compiles as written and broke once an earlier version of the rule fixed it.
+  const regressionPrograms = {
+    'literal widening': ["const a = 'a'", "let b = a as 'a'", "const result: 'a' = b"],
+    'union narrowing on declaration': [
+      "type State = { kind: 'idle' } | { kind: 'busy'; id: number }",
+      "declare const initial: { kind: 'idle' }",
+      'declare function mutate(): void',
+      'let state: State = initial as State',
+      'mutate()',
+      "if (state.kind === 'busy') state.id.toFixed()",
+    ],
+    'generic class constructor': [
+      'class Box<T> {',
+      '  value!: T',
+      '  constructor() {}',
+      '}',
+      'const box = new Box() as Box<string>',
+      'box.value.toUpperCase()',
+    ],
+    'double assertion inference': [
+      'declare function make<T>(callback: (value: T) => void): T',
+      'const result = make((value) => {',
+      "  if (typeof value === 'number') value.toFixed()",
+      '}) as unknown as string',
+    ],
+    'used assignment result': [
+      'type A = { a: string }',
+      'type B = A & { b: number }',
+      'declare const value: B',
+      'declare let target: A',
+      'declare function classify(input: B): 1',
+      'declare function classify(input: A): 2',
+      'const kind: 2 = classify(target = value as A)',
+    ],
+    'asserts argument': [
+      'declare let value: string | number',
+      'declare function assertString(input: string | number): asserts input is string',
+      'assertString(value as string | number)',
+      "if (typeof value === 'number') value.toFixed()",
+    ],
+    'inferred predicate': [
+      "const isString = (x: string | number) => (typeof x === 'string') as boolean",
+      "const values = [1, 'a'].filter(isString)",
+      'values.push(2)',
+    ],
+    'discriminant through property access': [
+      "type State = { kind: 'idle' } | { kind: 'busy'; id: number }",
+      'declare let state: State',
+      'declare function mutate(): void',
+      "if ((state as State).kind === 'idle') {",
+      '  mutate()',
+      "  if (state.kind === 'busy') state.id.toFixed()",
+      '}',
+    ],
+    'predicate through const alias': [
+      'const isString = (x: string | number) => {',
+      "  const result = (typeof x === 'string') as boolean",
+      '  return result',
+      '}',
+      'const values: (string | number)[] = []',
+      'values.filter(isString).push(1)',
+    ],
+    'removable assertions': [
+      'declare const list: string[]',
+      'declare function take(value: string | number): void',
+      'declare const s: string',
+      'const copy = list as string[]',
+      'take(s as string | number)',
+      'function f(): string | number {',
+      '  return s as string | number',
+      '}',
+    ],
+  }
+
+  it.each(Object.entries(regressionPrograms))(
+    'keeps %s type-checking after every fix',
+    (_, lines) => {
+      const code = `${lines.join('\n')}\n`
+      expect(countTypeErrors(code)).toBe(0)
+      for (const { fixed } of lint(code)) expect(countTypeErrors(fixed)).toBe(0)
+    },
+  )
 })

@@ -18,8 +18,9 @@ import type * as ts from 'typescript'
  * - Narrowing: `x as T` is not a reference, so control flow never narrows `x` through it.
  *   References in narrowing positions (type predicates, `typeof`, comparisons, conditions,
  *   `switch`), directly or through a property access chain, keep their assertion. So does a
- *   boolean assertion in the return value of an unannotated function, which would otherwise
- *   let TypeScript infer a type predicate.
+ *   boolean assertion in the return value of an unannotated function or in a const
+ *   initializer, which would otherwise let TypeScript infer a type predicate or narrow
+ *   through the const alias, and an assertion destructured into const bindings.
  *
  * For `value as unknown as T`, the `unknown` step is dropped when `value` and `T` are
  * assignable in one direction, which assignment guarantees to type-check as a single `as T`.
@@ -211,8 +212,15 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     return false
   }
 
-  // TypeScript infers a type predicate for an unannotated function that returns a boolean
-  // narrowing expression; a boolean assertion in the returned value is what prevents that.
+  const isConstInitializer = (declaration: ts.VariableDeclaration, initializer: ts.Node) =>
+    declaration.initializer === initializer &&
+    !!(tsApi.getCombinedNodeFlags(declaration) & tsApi.NodeFlags.Const)
+
+  // A boolean assertion stops narrowing from flowing beyond the expression:
+  // - an unannotated function returning a boolean narrowing expression gets an inferred type
+  //   predicate;
+  // - a const alias of a condition (`const ok = typeof x === 'string'`) narrows `x` wherever
+  //   `ok` is checked or returned.
   const blocksPredicateInference = (node: ts.Expression, targetType: ts.Type): boolean => {
     if (!(targetType.flags & tsApi.TypeFlags.BooleanLike)) return false
     for (let current: ts.Node = node; current.parent; current = current.parent) {
@@ -222,6 +230,7 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
         return !!fn && !fn.type
       }
       if (tsApi.isArrowFunction(parent)) return parent.body === current && !parent.type
+      if (tsApi.isVariableDeclaration(parent)) return isConstInitializer(parent, current)
       if (
         tsApi.isFunctionLike(parent) ||
         tsApi.isBlock(parent) ||
@@ -231,6 +240,19 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
         return false
     }
     return false
+  }
+
+  // Destructuring a discriminated union into const bindings lets a check on one binding
+  // narrow the others, which the assertion prevents.
+  const isDestructuredConstInitializer = (node: ts.Expression): boolean => {
+    let current = node
+    while (tsApi.isParenthesizedExpression(current.parent)) current = current.parent
+    const parent = current.parent
+    return (
+      tsApi.isVariableDeclaration(parent) &&
+      !tsApi.isIdentifier(parent.name) &&
+      isConstInitializer(parent, current)
+    )
   }
 
   const replaceNode = (node: ts.Node, newText: string) => {
@@ -263,7 +285,8 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       sourceType === targetType &&
       !hasLiteralType(sourceType) &&
       !(isNarrowableReference(value) && isNarrowingPosition(node)) &&
-      !blocksPredicateInference(node, targetType)
+      !blocksPredicateInference(node, targetType) &&
+      !isDestructuredConstInitializer(node)
     ) {
       reportFix(
         node,
@@ -295,7 +318,7 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     const sourceType = checker.getTypeAtLocation(value)
     const targetType = checker.getTypeFromTypeNode(node.type)
     if (sourceType.flags & tsApi.TypeFlags.Any) return
-    if (blocksPredicateInference(node, targetType)) return
+    if (blocksPredicateInference(node, targetType) || isDestructuredConstInitializer(node)) return
 
     if (sourceType === targetType && !hasLiteralType(sourceType)) {
       reportFix(
