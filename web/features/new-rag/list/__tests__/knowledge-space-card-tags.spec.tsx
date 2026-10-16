@@ -1,12 +1,14 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
+import { createTestQueryClient } from '@/test/query-client'
 import { KnowledgeSpaceCardTags } from '../knowledge-space-card-tags'
 
-const { invalidateQueries, putTags, toastMock } = vi.hoisted(() => ({
-  invalidateQueries: vi.fn(),
+const { putTags, toastMock } = vi.hoisted(() => ({
   putTags: vi.fn(),
   toastMock: {
     error: vi.fn(),
@@ -41,31 +43,6 @@ vi.mock('@/features/tag-management/hooks/use-tag-mutations', () => ({
   useApplyTagBindingsMutation: () => ({ mutate: vi.fn() }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...original,
-    useMutation: (options: {
-      mutationFn?: (input: unknown) => Promise<unknown>
-      onError?: () => void
-      onSettled?: () => void
-      onSuccess?: () => void
-    }) => ({
-      isPending: false,
-      mutate: (input: unknown) => {
-        Promise.resolve(options.mutationFn?.(input))
-          .then(
-            () => options.onSuccess?.(),
-            () => options.onError?.(),
-          )
-          .finally(() => options.onSettled?.())
-      },
-    }),
-    useQuery: () => ({ data: tagQuery.data }),
-    useQueryClient: () => ({ invalidateQueries }),
-  }
-})
-
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     knowledgeFs: {
@@ -73,7 +50,7 @@ vi.mock('@/service/console', () => ({
         byControlSpaceId: {
           tags: {
             put: {
-              mutationOptions: () => ({ mutationFn: putTags }),
+              mutationOptions: () => ({ mutationFn: (input: unknown) => putTags(input) }),
             },
           },
         },
@@ -85,7 +62,7 @@ vi.mock('@/service/console', () => ({
     tags: {
       get: {
         key: () => ['tags'],
-        queryOptions: () => ({}),
+        queryOptions: () => ({ queryKey: ['tags'], queryFn: () => tagQuery.data }),
       },
       post: {
         mutationOptions: () => ({ mutationFn: vi.fn() }),
@@ -125,18 +102,32 @@ function createKnowledgeSpace(
   }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve
+  })
+  return { promise, resolve }
+}
+
+let queryClient = createTestQueryClient()
+
+function renderWithQuery(ui: ReactElement) {
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
 describe('KnowledgeSpaceCardTags', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = createTestQueryClient()
     putTags.mockResolvedValue({ data: [] })
-    invalidateQueries.mockResolvedValue(undefined)
     workspacePermissionKeys.value = ['dataset.tag.manage']
     tagQuery.data = knowledgeTags
   })
 
   it('shows tags returned with the knowledge space', () => {
     tagQuery.data = []
-    render(
+    renderWithQuery(
       <KnowledgeSpaceCardTags
         knowledgeSpace={createKnowledgeSpace(['knowledge_space_read'])}
         onOpenTagManagement={vi.fn()}
@@ -149,7 +140,8 @@ describe('KnowledgeSpaceCardTags', () => {
 
   it('submits the final tag set and refreshes the list and binding counts', async () => {
     const user = userEvent.setup()
-    render(
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    renderWithQuery(
       <KnowledgeSpaceCardTags
         knowledgeSpace={createKnowledgeSpace(['knowledge_space_edit', 'knowledge_space_read'])}
         onOpenTagManagement={vi.fn()}
@@ -168,16 +160,52 @@ describe('KnowledgeSpaceCardTags', () => {
         params: { control_space_id: 'space-1' },
       })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'spaces'],
+    await waitFor(() => {
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['knowledge-fs', 'spaces'],
+      })
     })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['tags'] })
     expect(toastMock.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
   })
 
+  it('serializes replacements against the latest submitted selection', async () => {
+    const user = userEvent.setup()
+    const firstReplacement = deferred<{ data: [] }>()
+    putTags.mockReturnValueOnce(firstReplacement.promise)
+    renderWithQuery(
+      <KnowledgeSpaceCardTags
+        knowledgeSpace={createKnowledgeSpace(['knowledge_space_edit', 'knowledge_space_read'])}
+        onOpenTagManagement={vi.fn()}
+      />,
+    )
+
+    const trigger = screen.getByRole('combobox', { name: 'Frontend, Backend: Public docs' })
+    await user.click(trigger)
+    await user.click(await screen.findByRole('option', { name: 'Frontend' }))
+    await user.click(trigger)
+    await waitFor(() => expect(putTags).toHaveBeenCalledOnce())
+
+    const pendingTrigger = screen.getByRole('combobox', { name: 'Backend: Public docs' })
+    await user.click(pendingTrigger)
+    await user.click(await screen.findByRole('option', { name: 'Public docs' }))
+    await user.click(pendingTrigger)
+
+    expect(putTags).toHaveBeenCalledOnce()
+    await act(async () => {
+      firstReplacement.resolve({ data: [] })
+    })
+
+    await waitFor(() => expect(putTags).toHaveBeenCalledTimes(2))
+    expect(putTags.mock.calls.map(([input]) => input.body.tag_ids)).toEqual([
+      ['tag-2'],
+      ['tag-2', 'tag-3'],
+    ])
+  })
+
   it('can clear every tag from an editable knowledge space', async () => {
     const user = userEvent.setup()
-    render(
+    renderWithQuery(
       <KnowledgeSpaceCardTags
         knowledgeSpace={createKnowledgeSpace(['knowledge_space_edit', 'knowledge_space_read'])}
         onOpenTagManagement={vi.fn()}
@@ -199,7 +227,7 @@ describe('KnowledgeSpaceCardTags', () => {
   })
 
   it('does not allow binding changes without space edit permission', () => {
-    render(
+    renderWithQuery(
       <KnowledgeSpaceCardTags
         knowledgeSpace={createKnowledgeSpace(['knowledge_space_read'])}
         onOpenTagManagement={vi.fn()}
