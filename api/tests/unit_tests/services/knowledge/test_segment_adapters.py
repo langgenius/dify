@@ -28,7 +28,7 @@ from libs.helper import generate_text_hash
 from libs.pagination import PaginatedResult
 from machinery.context import RequestContext
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment, SegmentAttachmentBinding
-from models.enums import CreatorUserRole, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
 from models.model import UploadFile
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
@@ -100,12 +100,12 @@ def _document(document_id: str, workspace_id: str, dataset_id: str) -> Document:
         tenant_id=workspace_id,
         dataset_id=dataset_id,
         position=1,
-        data_source_type="upload_file",
+        data_source_type=DataSourceType("upload_file"),
         batch="batch-1",
         name="Document",
         created_from=DocumentCreatedFrom.API,
         created_by="account-1",
-        doc_form="text_model",
+        doc_form=IndexStructureType("text_model"),
         word_count=0,
     )
 

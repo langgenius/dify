@@ -37,7 +37,7 @@ def graph(sqlite_session: Session) -> tuple[Dataset, Document, DocumentSegment, 
         name="Document",
         created_from=DocumentCreatedFrom.WEB,
         created_by="admin",
-        doc_form="text_model",
+        doc_form=IndexStructureType("text_model"),
     )
     segment = DocumentSegment(
         tenant_id=dataset.tenant_id,
