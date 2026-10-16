@@ -39,12 +39,15 @@ function mockServer(configured = true) {
     }
     if (sent.method === 'DELETE') {
       config = null
+      status = { ...status, enabled: false, tracing_provider: null }
       writes.push({ method: sent.method, body: null })
       return new Response(null, { status: 204 })
     }
     const body = await sent.json()
     writes.push({ method: sent.method, body })
     config = { ...body.tracing_config, secret_key: '[__MASKED__]' }
+    if (body.activate)
+      status = { ...status, enabled: true, tracing_provider: body.tracing_provider }
     return Response.json({ result: 'success' })
   })
   return writes
@@ -323,7 +326,7 @@ describe('Tracing overview panel', () => {
     expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
   })
 
-  it('saves a new provider before enabling it', async () => {
+  it('saves and enables a new provider in one request', async () => {
     const writes = mockServer(false)
     renderPanel()
     const user = userEvent.setup()
@@ -346,15 +349,7 @@ describe('Tracing overview panel', () => {
           body: {
             tracing_provider: 'langfuse',
             tracing_config: { ...langfuseConfig, secret_key: 'secret-key' },
-          },
-        },
-        {
-          method: 'POST',
-          body: {
-            capture_agent: true,
-            capture_content: false,
-            enabled: true,
-            tracing_provider: 'langfuse',
+            activate: true,
           },
         },
       ]),
@@ -405,27 +400,14 @@ describe('Tracing overview panel', () => {
     ])
   })
 
-  it('disables tracing before deleting the last selected provider', async () => {
+  it('deletes the selected provider and refreshes disabled tracing in one request', async () => {
     const writes = mockServer()
     renderPanel()
     const user = await openConfiguredPanel()
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-    await waitFor(() =>
-      expect(writes).toEqual([
-        {
-          method: 'POST',
-          body: {
-            capture_agent: true,
-            capture_content: false,
-            enabled: false,
-            tracing_provider: null,
-          },
-        },
-        { method: 'DELETE', body: null },
-      ]),
-    )
+    await waitFor(() => expect(writes).toEqual([{ method: 'DELETE', body: null }]))
     expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
     await waitFor(() =>
       expect(
