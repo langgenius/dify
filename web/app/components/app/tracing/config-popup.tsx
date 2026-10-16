@@ -78,7 +78,6 @@ export function ConfigPopup({
                         aria-labelledby={titleId}
                         checked={enabled}
                         readOnly={readOnly}
-                        loading={pending}
                         disabled={cannotEnable}
                         onCheckedChange={(enabled) => {
                           void onPolicyChange({ enabled }).catch(() => {})
@@ -106,7 +105,6 @@ export function ConfigPopup({
                 agentId={resource.agentId}
                 policy={policy}
                 readOnly={readOnly}
-                pending={pending}
                 onChange={onPolicyChange}
               />
             )}

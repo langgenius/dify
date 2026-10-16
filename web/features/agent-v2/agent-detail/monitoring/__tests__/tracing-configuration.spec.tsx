@@ -133,6 +133,25 @@ async function openProvider(user: ReturnType<typeof userEvent.setup>) {
 }
 const writes = (sent: Request[]) => sent.filter((req) => req.method !== 'GET')
 
+function holdPolicySaves() {
+  const server = request.getMockImplementation()!
+  const saves: Array<{ request: Request; finish: (fail?: boolean) => void }> = []
+  request.mockImplementation(async (...args) => {
+    const req = args[2].request
+    if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/trace')) {
+      const fail = await new Promise<boolean>((resolve) => {
+        saves.push({ request: req.clone(), finish: (failed = false) => resolve(failed) })
+      })
+      if (fail)
+        throw await httpErrorFromResponse(
+          Response.json({ code: 'invalid_param', message: 'Policy unavailable' }, { status: 400 }),
+        )
+    }
+    return server(...args)
+  })
+  return saves
+}
+
 describe('Agent tracing configuration', () => {
   it.each([[], [AgentPermission.Edit], [AgentPermission.LogManage]])(
     'does not expose tracing without Monitor permission: %j',
@@ -185,35 +204,110 @@ describe('Agent tracing configuration', () => {
     expect(writes(sent)).toHaveLength(0)
   })
 
-  it('shows busy policy controls and blocks further writes until a failed save finishes', async () => {
-    const { state, sent } = setup()
+  it.each([false, true])(
+    'keeps switches responsive and saves the latest complete configuration when the first save fails: %s',
+    async (failFirst) => {
+      const { state } = setup()
+      const user = await openPanel()
+      const saves = holdPolicySaves()
+      const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+      const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
+      await user.click(content)
+      expect(content).toBeChecked()
+      await user.click(agent)
+      expect(agent).not.toBeChecked()
+      for (const control of screen.getAllByRole('switch')) {
+        expect(control).not.toHaveAttribute('aria-busy', 'true')
+        expect(control).not.toHaveAttribute('aria-disabled', 'true')
+      }
+      expect(saves).toHaveLength(1)
+      await act(() => saves[0]!.finish(failFirst))
+      await waitFor(() => expect(saves).toHaveLength(2))
+      expect(await saves[1]!.request.json()).toMatchObject({
+        capture_content: true,
+        capture_agent: false,
+      })
+      expect(agent).not.toBeChecked()
+      expect(content).toBeChecked()
+      await act(() => saves[1]!.finish())
+      await waitFor(() => expect(state.policy.capture_agent).toBe(false))
+      expect(state.policy.capture_content).toBe(true)
+    },
+  )
+
+  it('keeps the latest intent when the same switch is toggled repeatedly and saves fail', async () => {
+    const { state } = setup()
+    const user = await openPanel()
+    const saves = holdPolicySaves()
+    const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+    await user.click(content)
+    await user.click(content)
+    await user.click(content)
+    expect(content).toBeChecked()
+    await act(() => saves[0]!.finish(true))
+    await waitFor(() => expect(saves).toHaveLength(2))
+    expect(content).toBeChecked()
+    await act(() => saves[1]!.finish())
+    await waitFor(() => expect(saves).toHaveLength(3))
+    expect(content).toBeChecked()
+    await act(() => saves[2]!.finish(true))
+    await waitFor(() => expect(content).not.toBeChecked())
+    expect(state.policy.capture_content).toBe(false)
+    expect(screen.getByRole('alert')).toHaveTextContent('Policy unavailable')
+  })
+
+  it('rolls back only the failed change after another setting has saved', async () => {
+    const { state } = setup()
+    const user = await openPanel()
+    const saves = holdPolicySaves()
+    const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+    const agent = screen.getByRole('switch', { name: 'app.tracing.captureAgent' })
+    await user.click(content)
+    await user.click(agent)
+    await act(() => saves[0]!.finish())
+    await waitFor(() => expect(saves).toHaveLength(2))
+    await act(() => saves[1]!.finish(true))
+    await waitFor(() => expect(agent).toBeChecked())
+    expect(content).toBeChecked()
+    expect(state.policy).toMatchObject({ capture_content: true, capture_agent: true })
+  })
+
+  it('retains a successful save when refresh fails, then rolls back a later failed save to it', async () => {
+    const { state } = setup()
     const user = await openPanel()
     const server = request.getMockImplementation()!
-    let finishSave!: () => void
-    const save = new Promise<void>((resolve) => {
-      finishSave = resolve
-    })
     request.mockImplementation(async (...args) => {
-      if (args[2].request.method === 'POST') await save
+      const req = args[2].request
+      if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/trace'))
+        throw await httpErrorFromResponse(
+          Response.json({ message: 'Refresh unavailable' }, { status: 400 }),
+        )
       return server(...args)
     })
-    state.failPolicy = true
-    await user.click(screen.getByRole('switch', { name: 'app.tracing.captureContent' }))
-    for (const control of screen.getAllByRole('switch')) {
-      expect(control).toHaveAttribute('aria-busy', 'true')
-      expect(control).toHaveAttribute('aria-disabled', 'true')
-      await user.click(control)
-    }
-    expect(request.mock.calls.filter((call) => call[2].request.method === 'POST')).toHaveLength(1)
-    await act(async () => {
-      finishSave()
-      await save
-    })
-    expect(await screen.findByRole('alert')).toHaveTextContent('Policy unavailable')
-    for (const control of screen.getAllByRole('switch'))
-      expect(control).not.toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByRole('switch', { name: 'app.tracing.captureContent' })).not.toBeChecked()
-    expect(writes(sent)).toHaveLength(1)
+    const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
+    const saves = holdPolicySaves()
+    await user.click(content)
+    await act(() => saves[0]!.finish())
+    await waitFor(() => expect(state.policy.capture_content).toBe(true))
+    await user.click(content)
+    await waitFor(() => expect(saves).toHaveLength(2))
+    expect(content).not.toBeChecked()
+    await act(() => saves[1]!.finish(true))
+    await waitFor(() => expect(content).toBeChecked())
+    expect(screen.getByRole('alert')).toHaveTextContent('Policy unavailable')
+  })
+
+  it('updates the main switch and entry immediately, then rolls back a failed save', async () => {
+    setup()
+    const user = await openPanel()
+    const saves = holdPolicySaves()
+    const control = screen.getByRole('switch', { name: 'app.tracing.tracing' })
+    await user.click(control)
+    expect(control).not.toBeChecked()
+    expect(screen.getByRole('button', { name: /app.tracing.disabled/ })).toBeInTheDocument()
+    await act(() => saves[0]!.finish(true))
+    await waitFor(() => expect(control).toBeChecked())
+    expect(screen.getByRole('button', { name: /app.tracing.enabled/ })).toBeInTheDocument()
   })
 
   it('preserves all policy fields when changing capture flags and refreshing', async () => {
