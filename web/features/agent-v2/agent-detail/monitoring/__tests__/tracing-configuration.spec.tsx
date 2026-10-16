@@ -43,6 +43,7 @@ function setup({
 } = {}) {
   const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: true },
+    features: { agent_tracing_api_collection_enabled: true },
   })
   const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
     input: { params: { agent_id: 'agent-1' } },
@@ -134,7 +135,7 @@ function setup({
   return { ...view, state, sent, queryClient, detailKey }
 }
 
-async function openPanel(configured = true, { expandCapture = true } = {}) {
+async function openPanel(configured = true, { expandCapture = configured } = {}) {
   const user = userEvent.setup()
   const trigger = await screen.findByRole('button', {
     name: configured ? /app.tracing.enabled/ : 'app.tracing.title',
@@ -492,17 +493,13 @@ describe('Agent tracing configuration', () => {
   })
 
   it('refreshes capabilities after updating masked credentials', async () => {
-    const { state, sent } = setup()
-    state.capabilities.api_collection_enabled = false
-    const user = await openPanel(true, { expandCapture: false })
-    await screen.findByText('app.tracing.agentTracingUnavailable')
+    const { sent } = setup()
+    const user = await openPanel()
     await openProvider(user)
-    state.capabilities.api_collection_enabled = true
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(
-      await screen.findByRole('button', { name: /app\.tracing\.captureTitle/ }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('app.tracing.agentTracingUnavailable')).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: 'Host' })).not.toBeInTheDocument(),
+    )
     const patch = writes(sent).find((req) => req.method === 'PATCH')!
     expect(await patch.json()).toEqual({ tracing_provider: 'langfuse', tracing_config: langfuse })
     expect(

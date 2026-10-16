@@ -12,7 +12,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
-import { traceCapabilitiesQueryOptions } from './capabilities'
+import { selectAgentTracingEnabled, traceCapabilitiesQueryOptions } from './capabilities'
 import { hasProviderForm } from './providers'
 import { tracingQueryParamName } from './query-params'
 
@@ -54,8 +54,14 @@ export function InheritedTracingSummary({
   const policy = statusQuery.data
   const provider = hasProviderForm(policy?.tracing_provider) ? policy.tracing_provider : null
   const enabled = !!policy?.enabled && !!provider
+  const { data: agentTracingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectAgentTracingEnabled }),
+  )
   const capabilitiesQuery = useQuery(
-    traceCapabilitiesQueryOptions(resource, enabled && canMonitor ? provider : null),
+    traceCapabilitiesQueryOptions(
+      resource,
+      enabled && canMonitor && agentTracingEnabled ? provider : null,
+    ),
   )
   const capabilities = capabilitiesQuery.data
   const providerName = provider ? t(($) => $[`tracing.${provider}.title`], { ns: 'app' }) : ''
@@ -89,7 +95,7 @@ export function InheritedTracingSummary({
             <InfotipContent className="max-w-72">
               <p>{t(($) => $['tracing.inherited.description'], { ns: 'app' })}</p>
               {/* The capture policy has no effect where Agent tracing is unavailable. */}
-              {enabled && capabilities?.api_collection_enabled !== false && (
+              {enabled && agentTracingEnabled !== false && (
                 <dl className="mt-2 space-y-0.5">
                   <div className="flex justify-between gap-3">
                     <dt>{t(($) => $['tracing.captureContent'], { ns: 'app' })}</dt>
@@ -145,7 +151,7 @@ export function InheritedTracingSummary({
           </span>
         )}
       </div>
-      {capabilities && !capabilities.api_collection_enabled ? (
+      {enabled && agentTracingEnabled === false ? (
         <p className="flex gap-1 system-xs-regular text-text-warning">
           <span aria-hidden className="mt-px i-ri-error-warning-line size-3.5 shrink-0" />
           {t(($) => $['tracing.agentTracingUnavailable'], { ns: 'app' })}
