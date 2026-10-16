@@ -9,11 +9,12 @@ more reliable and realistic test scenarios.
 
 import logging
 import os
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Protocol
 
+import httpx
 import psycopg2
 import pytest
 from flask import Flask
@@ -569,14 +570,19 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
 
 
 @pytest.fixture(scope="package", autouse=True)
-def mock_ssrf_proxy_requests() -> Generator[None]:
+def mock_ssrf_proxy_requests() -> Generator[Callable[..., httpx.Response]]:
     """
     Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
+
+    Yield the original facade so a witness that intercepts Client.send can
+    restore it locally after installing its synthetic physical transport.
     """
 
     from unittest.mock import patch
 
-    import httpx
+    from core.helper import ssrf_proxy
+
+    actual_make_request = ssrf_proxy.make_request
 
     def _fake_request(method: str, url: str, **_kwargs: object) -> httpx.Response:
         request = httpx.Request(method=method, url=url)
@@ -591,4 +597,4 @@ def mock_ssrf_proxy_requests() -> Generator[None]:
         patch("core.helper.ssrf_proxy.delete", side_effect=lambda url, **kw: _fake_request("DELETE", url, **kw)),
         patch("core.helper.ssrf_proxy.head", side_effect=lambda url, **kw: _fake_request("HEAD", url, **kw)),
     ):
-        yield
+        yield actual_make_request

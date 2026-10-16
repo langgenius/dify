@@ -110,11 +110,13 @@ def runtime_case(
     no_live,
     migrated_continuation_tables,
     migrated_dispatch_claims,
+    mock_ssrf_proxy_requests,
     monkeypatch,
     request,
 ):
     kind = getattr(request, "param", "root")
     assert migrated_continuation_tables is migrated_dispatch_claims is no_live is None
+    from core.helper import ssrf_proxy
     from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
     from libs.sensitive_http_telemetry import SensitiveHttpLogFilter
@@ -159,6 +161,8 @@ def runtime_case(
             )
 
         monkeypatch.setattr(httpx.Client, "send", send)
+        # Restore the real SSRF facade only while this lower transport is synthetic.
+        monkeypatch.setattr(ssrf_proxy, "make_request", mock_ssrf_proxy_requests)
         owner = DifyNativeRuntimeOwner()
         api = build_native_api(sessions=factory, actor=actor, owner=owner, publish=publish)
         admitted = api.start(
