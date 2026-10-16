@@ -36,10 +36,12 @@ export function AppAvailabilityFilter({ value, onChange }: Props) {
       }}
     >
       <SelectTrigger aria-labelledby={labelId} className="w-auto">
-        <span id={labelId} aria-hidden className="font-normal text-text-tertiary">
-          {t(($) => $['studio.availability.status'])}
+        <span className="flex min-w-0 items-center gap-1 whitespace-nowrap">
+          <span id={labelId} aria-hidden className="shrink-0 font-normal text-text-tertiary">
+            {t(($) => $['studio.availability.status'])}
+          </span>{' '}
+          <SelectValue className="min-w-0 truncate font-medium text-text-secondary" />
         </span>
-        <SelectValue className="min-w-0 truncate font-medium text-text-secondary" />
       </SelectTrigger>
       <SelectContent>
         {options.map((option) => (
