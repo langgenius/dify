@@ -518,6 +518,10 @@ class NativeHostLaunch:
         allowance = max((sum(self._baseline), *(sum(item) for item in self._active_http.values())))
         return monotonic() + allowance
 
+    def confirm_never_started(self) -> None:
+        """Delegate actual startup-failure proof; release stays after cleanup."""
+        self.lifetime.confirm_never_started()
+
     def request_close(self, *, reason: CloseReason) -> None:
         with self._registration:
             deadline = self._candidate_deadline()

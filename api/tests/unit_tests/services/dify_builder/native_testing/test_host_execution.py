@@ -1063,3 +1063,44 @@ def test_elapsed_ordinary_work_has_no_deadline_and_independent_work_keeps_runnin
         ordinary.join(2)
     assert not worker.is_alive()
     assert not ordinary.is_alive()
+
+
+def test_prestart_launch_releases_actual_bound_resource_once_only_after_exact_cleanup() -> None:
+    case = LaunchCase()
+    released: list[str] = []
+    case.host.bind_release(release=lambda: released.append("actual rate resource"))
+    case.host.request_close(reason="failed")
+    with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+        case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id="dispatch")
+    with pytest.raises(ValueError, match="native_host_cleanup_unconsumed"):
+        case.host.retire()
+    assert released == []
+    assert case.host.confirm_never_started() is None
+    assert case.lifetime.settle() == "settled"
+    assert released == []  # Proof and physical settle grant no early release.
+    with pytest.raises(ValueError):
+        case.lifetime.consume_cleanup(ref=REF, generation=99, dispatch_id="dispatch")
+    with pytest.raises(ValueError):
+        case.host.retire()
+    case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id="dispatch")
+    # Actual C03 record is outside this no-SQL witness; the real caller must
+    # record cleanup before retiring. This asserts only this host's ordering.
+    assert released == []
+    case.host.retire()
+    assert released == ["actual rate resource"]
+    with pytest.raises(ValueError):
+        case.host.retire()
+    with pytest.raises(ValueError):
+        case.host.confirm_never_started()
+    assert released == ["actual rate resource"]
+    case.registry.dispose()
+
+
+def test_prestart_launch_delegate_cannot_certify_bound_actual_native_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    case = LaunchCase()
+    native_entry(case, monkeypatch)
+    case.host.request_close(reason="failed")
+    with pytest.raises(ValueError):
+        case.host.confirm_never_started()
+    with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+        case.lifetime.consume_cleanup(ref=REF, generation=0, dispatch_id="dispatch")

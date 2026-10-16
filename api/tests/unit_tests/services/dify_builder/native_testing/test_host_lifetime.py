@@ -1006,3 +1006,356 @@ def test_actual_late_frame_runtime_tracking_never_reopens_execution_or_quiet_sam
     with pytest.raises(ValueError):
         life.bind_runtime(runtime_state=frame.runtime)
     registry.dispose()
+
+
+def test_prestart_zero_activity_confirmation_enables_only_exact_once_cleanup() -> None:
+    registry, life = opened()
+    close(life)
+    with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+        consume(life)  # Reproduce actual current prestart retention, before any worker.
+    assert life.confirm_never_started() is None
+    with pytest.raises(ValueError):
+        life.confirm_never_started()
+    assert life.settle() == "settled"
+    foreign = life.ref.model_copy(update={"request_id": "foreign"})
+    for ref, generation, dispatch_id in [(foreign, 0, "dispatch"), (life.ref, 9, "dispatch"), (life.ref, 0, "foreign")]:
+        with pytest.raises(ValueError, match="native_host_cleanup_identity_invalid"):
+            life.consume_cleanup(ref=ref, generation=generation, dispatch_id=dispatch_id)
+    consume(life)
+    with pytest.raises(ValueError, match="native_host_payload_retired"):
+        _ = life.context
+    with pytest.raises(ValueError):
+        life.confirm_never_started()
+    with pytest.raises(ValueError):
+        consume(life)
+    registry.dispose()
+
+
+def test_prestart_confirmation_requires_activated_current_closed_acquisition() -> None:
+    context = ResolvedNativeTestContext.model_validate(CONTEXT)
+    inert = NativeHostLifetime(context=context, dispatch_id="inert")
+    with pytest.raises(ValueError):
+        inert.confirm_never_started()
+    registry, life = opened(context=context)
+    with pytest.raises(ValueError):
+        life.confirm_never_started()
+    foreign = NativeHostLifetime(context=context, dispatch_id="foreign")
+    with pytest.raises(ValueError):
+        foreign.confirm_never_started()
+    close(life)
+    life.confirm_never_started()
+    consume(life)
+    _, replacement = opened(registry=registry, context=context)
+    with pytest.raises(ValueError, match="native_host_acquisition_not_current"):
+        life.confirm_never_started()
+    close(replacement)
+    replacement.confirm_never_started()
+    consume(replacement)
+    registry.dispose()
+
+
+@pytest.mark.parametrize(
+    "history",
+    [
+        "registered",
+        "start_failed",
+        "started",
+        "dispatcher",
+        "runtime",
+        "node",
+        "call",
+        "stream",
+        "expected_child",
+        "attached_child",
+        "control",
+    ],
+)
+def test_prestart_confirmation_refuses_every_owned_activity_history(history: str) -> None:
+    from tests.unit_tests.services.dify_builder.native_testing.test_control import bound_guard, make_native, permit
+
+    registry, life = opened()
+    if history == "registered":
+        life.register_thread(thread=Thread(), role="worker")
+    elif history == "start_failed":
+
+        class FailedStart(Thread):
+            @override
+            def start(self) -> None:
+                raise RuntimeError("actual start refused")
+
+        failed = FailedStart()
+        life.register_thread(thread=failed, role="worker")
+        with pytest.raises(RuntimeError):
+            life.start_thread(thread=failed)
+    elif history == "started":
+        worker(life).join(1)
+    elif history == "dispatcher":
+        life.observe_dispatcher()
+    elif history in ("runtime", "node", "control"):
+        _, factory = make_native(decision=permit())
+        node = bound_guard(factory)
+        life.bind_runtime(runtime_state=factory.runtime)
+        if history in ("node", "control"):
+            with life.node_scope(node=node, phase="run"):
+                if history == "control":
+                    record = NativeControlRecord(
+                        control=NativeApprovalWait(
+                            ref=life.ref, pending_operation_id="pending", wait_reason="approval"
+                        ),
+                        node_id=node.id,
+                        native_execution_id=node.execution_id,
+                        carrier_ref="carrier",
+                    )
+                    life.record_control(record=record, deadline=monotonic() + 0.5)
+    elif history in ("call", "stream"):
+        with life.call_scope() as ticket:
+            if history == "stream":
+
+                def stream() -> Generator[None]:
+                    yield None
+
+                actual = stream()
+                ticket.own_stream(stream=actual)
+                next(actual)
+    elif history == "expected_child":
+        life.expect_child(ref=life.ref.model_copy(update={"invocation_id": "child"}))
+    else:
+        registry, tree = attached_tree(1)
+        life = tree[0]
+    close(life)
+    with pytest.raises(ValueError):
+        life.confirm_never_started()
+    # Real attempted-start proof still follows its original path, not this port.
+    if history in ("start_failed", "started"):
+        assert life.settle() == "settled"
+        consume(life)
+        registry.dispose()
+    else:
+        with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+            consume(life)
+
+
+@pytest.mark.parametrize("diagnostic", ["call", "runtime", "node"])
+def test_prestart_late_diagnostic_history_permanently_invalidates_zero_proof(diagnostic: str) -> None:
+    from tests.unit_tests.services.dify_builder.native_testing.test_control import bound_guard, make_native, permit
+
+    _, life = opened()
+    deadline = monotonic() + 0.03
+    life.request_close(reason="failed", deadline=deadline)
+    life.confirm_never_started()
+    assert life.settle() == "settled"
+    if diagnostic == "call":
+        with life.call_scope() as ticket:
+            with pytest.raises(ValueError, match="native_host_admission_closed"):
+                with ticket.callback_scope():
+                    pytest.fail("zero proof must never reopen physical callbacks")
+    else:
+        _, factory = make_native(decision=permit())
+        life.bind_runtime(runtime_state=factory.runtime)
+        if diagnostic == "node":
+            with life.node_scope(node=bound_guard(factory), phase="resume_container"):
+                assert life.active_node_scopes
+    with pytest.raises(ValueError):
+        life.register_thread(thread=Thread(), role="reader")
+    with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+        consume(life)
+    life.request_close(reason="consumer_closed", deadline=deadline + 20)
+    sleep(0.04)
+    assert life.settle() == "unknown"  # Quiet sample invalidated; deadline never extended.
+    with pytest.raises(ValueError):
+        life.confirm_never_started()
+    with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+        consume(life)
+
+
+def test_prestart_expired_or_unknown_outcome_never_reopens_after_clean_consumption() -> None:
+    registry, life = opened()
+    life.request_close(reason="failed", deadline=monotonic() - 1)
+    life.mark_unknown()
+    life.confirm_never_started()
+    life.request_close(reason="failed", deadline=monotonic() + 20)
+    assert life.settle() == "unknown"
+    consume(life)
+    assert life.unknown
+    registry.dispose()
+
+
+def test_prestart_confirmation_obeys_consumed_ancestor_guard() -> None:
+    registry, tree = attached_tree(1)
+    parent, child = tree
+    worker(parent).join(1)
+    close(parent)
+    close(child)
+    child.confirm_never_started()
+    assert parent.settle() == "settled"
+    consume(parent)
+    with pytest.raises(ValueError, match="native_host_acquisition_not_current"):
+        child.confirm_never_started()
+    consume(child)  # Existing child cleanup remains legal after ancestor consumption.
+    registry.dispose()
+
+
+def test_prestart_in_progress_registered_start_refuses_zero_proof_and_keeps_late_thread_owned() -> None:
+    registry, life = opened()
+    starting, release_start, ran = Event(), Event(), Event()
+    failures: list[BaseException] = []
+
+    class GatedStart(Thread):
+        @override
+        def start(self) -> None:
+            starting.set()
+            assert release_start.wait(2)
+            super().start()
+
+    def run() -> None:
+        try:
+            ran.set()
+        finally:
+            life.thread_finished(thread=current_thread())
+
+    actual = GatedStart(target=run)
+    life.register_thread(thread=actual, role="worker")
+
+    def start() -> None:
+        try:
+            life.start_thread(thread=actual)
+        except BaseException as error:
+            failures.append(error)
+
+    starter = Thread(target=start)
+    starter.start()
+    try:
+        assert starting.wait(1)
+        close(life, 0.02)
+        with pytest.raises(ValueError):
+            life.confirm_never_started()
+        assert life.settle() == "unknown"
+        assert not ran.is_set()
+        with pytest.raises(ValueError):
+            consume(life)
+    finally:
+        release_start.set()
+        starter.join(2)
+        if actual.ident is not None:
+            actual.join(2)
+    assert failures == []
+    assert ran.is_set()
+    assert not actual.is_alive()
+    consume(life)
+    assert life.unknown
+    registry.dispose()
+
+
+def test_prestart_successful_proof_wins_actual_registration_start_race_without_io() -> None:
+    registry, life = opened()
+    ready, proof_done, attempted, ran = Barrier(2), Event(), Event(), Event()
+    failures: list[BaseException] = []
+    actual = Thread(target=ran.set)
+
+    def start() -> None:
+        try:
+            ready.wait(1)
+            assert proof_done.wait(1)
+            life.register_thread(thread=actual, role="worker")
+            life.start_thread(thread=actual)
+        except ValueError:
+            attempted.set()
+        except BaseException as error:
+            failures.append(error)
+
+    starter = Thread(target=start)
+    starter.start()
+    try:
+        ready.wait(1)
+        close(life)
+        life.confirm_never_started()
+        proof_done.set()
+        assert attempted.wait(1)
+    finally:
+        proof_done.set()
+        starter.join(2)
+    assert failures == []
+    assert actual.ident is None
+    assert not ran.is_set()
+    assert life.settle() == "settled"
+    consume(life)
+    registry.dispose()
+
+
+@pytest.mark.parametrize("late", [False, True])
+def test_prestart_current_orphan_child_prevents_zero_proof_or_late_cleanup(late: bool) -> None:
+    registry, parent = opened()
+    child_context = parent.context.model_copy(
+        update={
+            "ref": parent.ref.model_copy(update={"invocation_id": "actual-orphan"}),
+            "parent_invocation_id": parent.ref.invocation_id,
+            "call_depth": parent.context.call_depth + 1,
+        }
+    )
+    close(parent, 0.03)
+    if late:
+        parent.confirm_never_started()
+        assert parent.settle() == "settled"
+    _, child = opened(registry=registry, context=child_context)
+    # Real registry activation, deliberately no expect/attach bookkeeping.
+    with pytest.raises(ValueError):
+        parent.confirm_never_started()
+    with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+        consume(parent)
+    close(child)
+    child.confirm_never_started()
+    consume(child)
+    # Actual registered child history still contradicts the parent's zero fact.
+    with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+        consume(parent)
+    sleep(0.04)
+    parent.request_close(reason="failed", deadline=monotonic() + 20)
+    assert parent.settle() == "unknown"
+
+
+@pytest.mark.parametrize("winner", ["child", "cleanup"])
+def test_prestart_orphan_activation_and_cleanup_linearize_on_actual_registry(winner: str) -> None:
+    registry, parent = opened()
+    child_context = parent.context.model_copy(
+        update={
+            "ref": parent.ref.model_copy(update={"invocation_id": "racing-child"}),
+            "parent_invocation_id": parent.ref.invocation_id,
+            "call_depth": parent.context.call_depth + 1,
+        }
+    )
+    child = NativeHostLifetime(context=child_context, dispatch_id="dispatch")
+    close(parent)
+    parent.confirm_never_started()
+    assert parent.settle() == "settled"
+    enter, done = Event(), Event()
+    activations: list[str] = []
+
+    def activate() -> None:
+        try:
+            assert enter.wait(1)
+            registry.activate(lifetime=child)
+            activations.append("activated")
+        except ValueError:
+            activations.append("refused")
+        finally:
+            done.set()
+
+    contender = Thread(target=activate)
+    contender.start()
+    try:
+        if winner == "child":
+            enter.set()
+            assert done.wait(1)
+            assert activations == ["activated"]
+            with pytest.raises(ValueError, match="native_host_cleanup_incomplete"):
+                consume(parent)
+        else:
+            consume(parent)
+            enter.set()
+            assert done.wait(1)
+            assert activations == ["refused"]
+            registry.dispose()
+    finally:
+        enter.set()
+        contender.join(2)
+    assert not contender.is_alive()

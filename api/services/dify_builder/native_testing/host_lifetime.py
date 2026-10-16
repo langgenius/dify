@@ -243,6 +243,7 @@ class NativeHostLifetime:
         self._deadline: float | None = None
         self._unknown = False
         self._consumed = False
+        self._never_started = False
         self._settled_in_time = False
         self._parent: NativeHostLifetime | None = None
 
@@ -509,6 +510,36 @@ class NativeHostLifetime:
             if child is not None:
                 child._join_tree(deadline)
 
+    def _zero_activity(self) -> bool:
+        # Shared registry Condition is held. Histories stay retained until
+        # consume_cleanup, so a finished diagnostic is still contrary evidence.
+        registry = self._registry
+        return registry is not None and not (
+            self._threads
+            or self._runtimes
+            or self._node_scopes
+            or self._active_scopes
+            or self._tickets
+            or self._expected_children
+            or self._records
+            or any(child._parent_invocation_id == self.ref.invocation_id for child in registry._current.values())
+        )
+
+    def confirm_never_started(self) -> None:
+        """Prove actual closed zero activity; never consume or release anything.
+
+        Trusted startup-error composition calls this on the exact acquisition.
+        This is not a caller assertion of thread death. Any registered start,
+        native observation, call/stream, control or child history refuses it.
+        Late tracking remains visible and invalidates this cleanup alternative.
+        """
+        with self._condition:
+            self._require_tracking()
+            if self._deadline is None or self._never_started or not self._zero_activity():
+                raise ValueError("native_host_never_started_unproven")
+            self._never_started = True
+            self._condition.notify_all()
+
     def _ready(self) -> bool:
         # All callers hold the service-local registry lock, including descendants.
         registry = self._registry
@@ -516,6 +547,8 @@ class NativeHostLifetime:
             return False
         if self._consumed:
             return True  # Exact current instance already proved physical cleanup.
+        if self._never_started:
+            return self._zero_activity()  # Recheck under the same lock as activation/consume.
         if not any(item.role == "worker" for item in self._threads) or self._active_scopes:
             return False
         for item in self._threads:
