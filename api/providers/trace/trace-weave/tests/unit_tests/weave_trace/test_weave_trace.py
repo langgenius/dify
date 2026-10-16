@@ -264,7 +264,8 @@ class TestInit:
     def test_init_without_entity(self, mock_wandb, mock_weave):
         """Test __init__ initializes weave without entity prefix when entity is None."""
         mock_w, weave_client = mock_weave
-        _make_weave_config(entity=None)
+        config = _make_weave_config(entity=None)
+        WeaveDataTrace(config)
 
         mock_w.init.assert_called_once_with(project_name="my-project")
 
