@@ -4,7 +4,6 @@ import type {
   ChildChunkResponse,
   ConsoleSegmentListResponse,
   DocumentDetailResponse as ContractDocumentDetailResponse,
-  DocumentWithSegmentsListResponse,
   DocumentWithSegmentsResponse,
   ExternalHitTestingRecordResponse,
   ExternalHitTestingResponse,
@@ -419,8 +418,6 @@ export type InitialDocumentDetail = {
 
 // A document in the dataset document list.
 export type SimpleDocumentDetail = DocumentWithSegmentsResponse
-
-export type DocumentListResponse = DocumentWithSegmentsListResponse
 
 type DocumentReq = {
   original_document_id?: string
