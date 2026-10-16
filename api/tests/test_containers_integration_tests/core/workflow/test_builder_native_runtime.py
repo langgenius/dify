@@ -712,3 +712,126 @@ def test_real_cancel_after_wait_cleanup_before_source_finalize_preserves_unknown
             assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
     assert len(c.published) == 1
     assert c.sends == []
+
+
+def test_actual_settled_wait_completed_source_cancel_is_clean_and_preserves_native_pause(runtime_case):
+    """Positive CI-only counterpart: real WAIT/source finalization precede API cancel."""
+    from models.dify_builder_native_tests import NativeEffectAttempt, NativeEffectDispatchClaim, NativeEffectOperation
+
+    c = runtime_case
+    message = c.published[0]
+    lifecycle = delivery(c, message)
+    assert isinstance(lifecycle.runtime, DifyNativeRuntime)
+    waiting = execute(c, lifecycle, message)
+    assert waiting.status == "waiting"
+    assert waiting.wait_reason == "approval"
+    assert lifecycle.runtime.host.lifetime._consumed
+    assert c.sends == []
+    checkpoint = c.api.store.read_checkpoint(ref=waiting.ref, checkpoint=waiting.checkpoint_ref)
+    assert checkpoint.native_run_id == waiting.native_run_id
+    assert checkpoint.generation == 0
+    assert checkpoint.node_journals
+    assert checkpoint.approval_proposals
+    with c.factory() as session:
+        state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.tenant_id == c.actor.tenant_id,
+                NativeInvocationState.request_id == c.request_id,
+                NativeInvocationState.invocation_id == waiting.ref.invocation_id,
+            )
+        )
+        scope = session.get(NativeTestScope, c.request_id)
+        source = session.get(NativeDispatch, message["dispatch_id"])
+        assert (source.tenant_id, source.request_id, source.invocation_id) == (
+            c.actor.tenant_id,
+            c.request_id,
+            waiting.ref.invocation_id,
+        )
+        assert state.generation == scope.generation == source.generation == 0
+        assert state.cleanup_complete
+        assert source.state == "completed"
+        assert state.checkpoint_id == waiting.checkpoint_ref.checkpoint_id
+        pending_ids = tuple(state.pending_ids)
+        assert pending_ids == waiting.pending_operation_ids
+        run = session.get(WorkflowRun, waiting.native_run_id)
+        created_at, elapsed_time = run.created_at, run.elapsed_time
+        assert run.status == "paused"
+        assert scope.spent_calls == scope.spent_dispatches == 0
+        operation_ids = {
+            row.id
+            for row in session.scalars(
+                select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
+            )
+        }
+        assert operation_ids
+        for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
+            assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
+    for _ in range(2):
+        cancelled = c.api.cancel(
+            actor=c.actor, session_id=c.session_id, request_id=c.request_id, idempotency_key="settled-wait-cancel"
+        )
+        for receipt in (cancelled, c.api.get(actor=c.actor, session_id=c.session_id, request_id=c.request_id)):
+            assert (receipt.status, receipt.outcome, receipt.cancellation.status) == (
+                "terminal",
+                "cancelled",
+                "cancelled",
+            )
+            assert receipt.native_run_id == waiting.native_run_id
+            assert receipt.native_status == "paused"
+            assert receipt.generation == 0
+            assert receipt.wait_reason is None
+            assert receipt.pending == ()
+            assert set(receipt.cancellation.operation_states) == operation_ids
+            assert set(receipt.cancellation.operation_states.values()) == {"not_dispatched"}
+        assert c.api.lifecycle.reconcile() == 0
+        with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
+            c.api.resume(
+                actor=c.actor,
+                session_id=c.session_id,
+                request_id=c.request_id,
+                expected_generation=0,
+                idempotency_key="settled-wait-cancel-resume-denied",
+            )
+    with c.factory() as session:
+        state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.tenant_id == c.actor.tenant_id,
+                NativeInvocationState.request_id == c.request_id,
+                NativeInvocationState.invocation_id == waiting.ref.invocation_id,
+            )
+        )
+        scope = session.get(NativeTestScope, c.request_id)
+        sources = session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.request_id)).all()
+        assert len(sources) == 1
+        source = sources[0]
+        assert (source.id, source.tenant_id, source.request_id, source.invocation_id) == (
+            message["dispatch_id"],
+            c.actor.tenant_id,
+            c.request_id,
+            waiting.ref.invocation_id,
+        )
+        assert source.state == "completed"
+        assert state.state == "cancelled"
+        assert state.cleanup_complete
+        assert state.generation == scope.generation == source.generation == 0
+        assert scope.cancelled
+        assert scope.spent_calls == scope.spent_dispatches == 0
+        assert session.get(DifyBuilderExecutionRequest, c.request_id).state == "sealed"
+        assert state.checkpoint_id == waiting.checkpoint_ref.checkpoint_id
+        assert tuple(state.pending_ids) == pending_ids
+        run = session.get(WorkflowRun, waiting.native_run_id)
+        assert run.status == "paused"
+        assert run.created_at == created_at
+        assert run.elapsed_time == elapsed_time
+        assert len(session.scalars(select(WorkflowRun).where(WorkflowRun.id == waiting.native_run_id)).all()) == 1
+        assert {
+            row.id
+            for row in session.scalars(
+                select(NativeEffectOperation).where(NativeEffectOperation.request_id == c.request_id)
+            )
+        } == operation_ids
+        for model in (NativeEffectAttempt, NativeEffectDispatchClaim):
+            assert session.scalar(select(model.id).where(model.request_id == c.request_id)) is None
+    assert lifecycle.runtime.host.lifetime._consumed
+    assert len(c.published) == 1
+    assert c.sends == []

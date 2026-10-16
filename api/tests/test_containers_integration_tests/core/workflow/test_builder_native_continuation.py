@@ -1279,10 +1279,13 @@ def test_native_runtime_uses_same_checkpoint_and_terminal_stops_new_effects(cont
 
 
 def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case):
-    from models.dify_builder_native_tests import NativeInvocationState
+    """Generic cleanup evidence cannot replace this fixture's missing source history."""
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestScope
 
     c = continuation_case
-    c.pause()
+    checkpoint = c.pause().checkpoint
+    with c.factory() as session:
+        assert session.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == c.ref.request_id)) is None
     receipt = c.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel")
     assert receipt.status == "cancelling"
 
@@ -1297,11 +1300,29 @@ def test_cancel_cleanup_reconciles_actual_native_evidence(continuation_case):
             select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
         )
         assert state.cleanup_complete is True
-        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "sealed"
+        assert state.state == "cancelled"
+        assert session.get(NativeTestScope, c.ref.request_id).cancelled
+        # The cleanup assertion remains independently true; this fixture never
+        # acquired/finalized a source, so cancellation must not claim sealed/clean.
+        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "waiting"
+        assert session.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == c.ref.request_id)) is None
     assert (
         c.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel").status
-        == "cancelled"
+        == "cancelling"
     )
+    assert c.lifecycle.reconcile() == 0
+    with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
+        c.resume(key="missing-source-after-cancel")
+    with c.factory() as session:
+        state = session.scalar(
+            select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
+        )
+        assert state.cleanup_complete is True
+        assert state.generation == session.get(NativeTestScope, c.ref.request_id).generation == 0
+        assert state.checkpoint_id == checkpoint.checkpoint_id
+        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == "waiting"
+        assert session.scalar(select(NativeDispatch.id).where(NativeDispatch.request_id == c.ref.request_id)) is None
+    assert c.ledger.dispatched_attempt_count() == 0
 
 
 @pytest.mark.parametrize("fault", ["missing", "corrupt"])

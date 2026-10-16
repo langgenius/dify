@@ -422,6 +422,8 @@ def test_real_never_acquired_cancellation_seals_and_stays_complete_under_reconci
 
 @pytest.mark.parametrize("status", ["claimed", "unknown", "completed"])
 def test_real_acquired_cancellation_still_requires_exact_physical_verifier(capacity_case, status):
+    from models.dify_builder import DifyBuilderExecutionRequest
+
     c = capacity_case
     dispatch = c.lifecycle.enqueue_initial_dispatch(ref=c.ref)
     owner, verifier, _ = _owner(c, dispatch)
@@ -429,12 +431,38 @@ def test_real_acquired_cancellation_still_requires_exact_physical_verifier(capac
     with c.factory.begin() as session:
         session.get(NativeDispatch, dispatch.dispatch_id).state = status
     assert not verifier.closed
+    expected_pending = {"claimed": "cancelling", "unknown": "unknown", "completed": "cancelling"}[status]
     assert (
         owner.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel").status
-        == "cancelling"
+        == expected_pending
     )
     assert owner.lifecycle.reconcile() == 1
     assert not verifier.used
     assert not _state(c).cleanup_complete
     with c.factory() as session:
         assert session.get(NativeDispatch, dispatch.dispatch_id).state == status
+
+    # The exact retained verifier port must still be consumed by the real SQL
+    # cleanup owner. Its ACK does not finalize or erase an unresolved source.
+    verifier.closed = True
+    owner.record_cleanup(ref=c.ref, generation=dispatch.generation, dispatch_id=dispatch.dispatch_id)
+    assert verifier.used
+    assert _state(c).cleanup_complete is True
+    expected_cleaned = {"claimed": "cancelling", "unknown": "unknown", "completed": "cancelled"}[status]
+    for _ in range(2):
+        receipt = owner.lifecycle.cancel(actor=c.ledger.actor, request_id=c.ref.request_id, idempotency_key="cancel")
+        assert receipt.status == expected_cleaned
+        assert receipt.operation_states == {}
+        assert owner.lifecycle.reconcile() == 0
+        assert verifier.used
+        assert _state(c).cleanup_complete is True
+    with c.factory() as session:
+        source = session.get(NativeDispatch, dispatch.dispatch_id)
+        assert source.state == status
+        assert source.generation == _state(c).generation == dispatch.generation == 0
+        assert (
+            len(session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id)).all()) == 1
+        )
+        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).state == (
+            "sealed" if status == "completed" else "running"
+        )
