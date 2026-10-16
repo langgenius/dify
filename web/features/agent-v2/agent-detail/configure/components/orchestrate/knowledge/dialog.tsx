@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { RefObject } from 'react'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -23,8 +24,14 @@ import {
 import { consoleQuery } from '@/service/console'
 
 type Props = {
+  open: boolean
   initialBindings: AgentKnowledgeRetrievalItem[]
   onConfirm: (bindings: AgentKnowledgeRetrievalItem[]) => void
+  onOpenChange: (open: boolean) => void
+}
+
+type FormProps = Omit<Props, 'open' | 'onOpenChange'> & {
+  searchRef: RefObject<HTMLInputElement | null>
   onClose: () => void
 }
 
@@ -110,15 +117,19 @@ function KnowledgeSpaceOption({
   )
 }
 
-/** Mounted once per interaction: the composer changes only on explicit confirmation. */
-export function AgentKnowledgeRetrievalDialog({ initialBindings, onConfirm, onClose }: Props) {
+/** Draft state lives as long as the dialog content: each opening starts from the saved bindings. */
+function AgentKnowledgeRetrievalForm({
+  initialBindings,
+  onConfirm,
+  onClose,
+  searchRef,
+}: FormProps) {
   const { t } = useTranslation(['agentV2'])
   const { t: tc } = useTranslation(['common'])
   const [draft, setDraft] = useState(initialBindings)
   const [filter, setFilter] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const searchRef = useRef<HTMLInputElement>(null)
   const validationMessage = useKnowledgeValidationMessage()
   const spacesQuery = useInfiniteQuery({
     ...consoleQuery.knowledgeFs.spaces.get.infiniteOptions({
@@ -178,244 +189,248 @@ export function AgentKnowledgeRetrievalDialog({ initialBindings, onConfirm, onCl
   }
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose()
+    <form
+      noValidate
+      className="flex max-h-[80dvh] flex-col"
+      onSubmit={(event) => {
+        event.preventDefault()
+        setSubmitted(true)
+        if (validation.isValid && unavailableBindingIds.size === 0) onConfirm(draft)
+        else setAdvancedOpen(true)
       }}
     >
+      <div className="shrink-0 px-6 pt-6 pb-4">
+        <div className="flex items-center gap-2">
+          <DialogTitle className="title-xl-semi-bold text-text-primary">
+            {t(($) => $['agentDetail.configure.knowledgeFs.title'])}
+          </DialogTitle>
+          <Infotip>
+            <InfotipTrigger
+              aria-label={t(($) => $['agentDetail.configure.knowledgeFs.description'])}
+            />
+            <InfotipContent>
+              {t(($) => $['agentDetail.configure.knowledgeFs.description'])}
+            </InfotipContent>
+          </Infotip>
+          <IconButton
+            size="lg"
+            className="-my-0.5 ml-auto shrink-0"
+            aria-label={tc(($) => $['operation.close'])}
+            onClick={onClose}
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        </div>
+        <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+          {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+        </DialogDescription>
+        <div className="mt-4">
+          <SearchInput
+            ref={searchRef}
+            value={filter}
+            onValueChange={setFilter}
+            aria-label={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
+          />
+        </div>
+      </div>
+      <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pb-4 system-sm-regular">
+        {legacy && (
+          <div
+            role="alert"
+            className="space-y-2 rounded-lg bg-background-section p-3 system-xs-regular text-text-warning"
+          >
+            <p>{t(($) => $['agentDetail.configure.knowledgeFs.legacy'])}</p>
+            <Button
+              onClick={() => setDraft((current) => current.filter((item) => item.controlSpaceId))}
+            >
+              {t(($) => $['agentDetail.configure.knowledgeFs.removeLegacy'])}
+            </Button>
+          </div>
+        )}
+        {draft.some((item) => item.isMissing) && (
+          <p role="alert" className="px-2 system-xs-regular text-text-warning">
+            {t(($) => $['agentDetail.configure.knowledgeFs.rebind'])}
+          </p>
+        )}
+        {unavailableBindingIds.size > 0 && (
+          <p role="alert" className="px-2 system-xs-regular text-text-warning">
+            {t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])}
+          </p>
+        )}
+        {spacesQuery.isPending && (
+          <div role="status" className="space-y-1">
+            <span className="sr-only">
+              {t(($) => $['agentDetail.configure.knowledgeFs.loading'])}
+            </span>
+            {Array.from({ length: 5 }, (_, index) => (
+              <div
+                key={index}
+                aria-hidden
+                className="flex h-14 items-center gap-3 px-2 motion-safe:animate-pulse"
+              >
+                <span className="size-8 rounded-lg bg-background-section" />
+                <span className="h-4 w-1/2 rounded bg-background-section" />
+              </div>
+            ))}
+          </div>
+        )}
+        {spacesQuery.isError && (
+          <div role="alert" className="space-y-2 p-3 system-sm-regular text-text-destructive">
+            <p>{t(($) => $['agentDetail.configure.knowledgeFs.loadError'])}</p>
+            <Button onClick={() => void spacesQuery.refetch()} loading={spacesQuery.isFetching}>
+              {t(($) => $['agentDetail.configure.knowledgeFs.retry'])}
+            </Button>
+          </div>
+        )}
+        {!spacesQuery.isPending && !spacesQuery.isError && visibleSpaces.length === 0 && (
+          <p className="px-2 py-8 text-center system-sm-regular text-text-tertiary">
+            {t(($) => $['agentDetail.configure.knowledgeFs.empty'])}
+          </p>
+        )}
+        <fieldset className="min-w-0 space-y-1">
+          <legend className="sr-only">
+            {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
+          </legend>
+          {visibleSpaces.map((space) => {
+            const binding = draft.find((item) => item.controlSpaceId === space.control_space_id)
+            const checked = !!binding && !binding.isMissing
+            return (
+              <KnowledgeSpaceOption
+                key={space.control_space_id}
+                space={space}
+                checked={checked}
+                disabled={!checked && !binding && draft.length >= 10}
+                onCheckedChange={(next) => toggle(space, next)}
+              />
+            )
+          })}
+        </fieldset>
+        {spacesQuery.hasNextPage && (
+          <Button
+            className="ml-2"
+            onClick={() => void spacesQuery.fetchNextPage()}
+            loading={spacesQuery.isFetchingNextPage}
+          >
+            {t(($) => $['agentDetail.configure.knowledgeFs.loadMore'])}
+          </Button>
+        )}
+        {draft.length > 0 && (
+          <Collapsible
+            open={advancedOpen}
+            onOpenChange={setAdvancedOpen}
+            className="border-t border-divider-subtle pt-2"
+          >
+            <CollapsibleTrigger className="group flex min-h-8 w-full touch-manipulation items-center justify-between gap-2 rounded-lg px-2.5 text-start system-sm-medium text-text-secondary select-none hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary data-panel-open:text-text-primary">
+              <span>
+                {t(($) => $['agentDetail.configure.advancedSettings.label'])}{' '}
+                <span className="system-xs-regular text-text-tertiary">
+                  {tc(($) => $['label.optional'])}
+                </span>
+              </span>
+              <span
+                aria-hidden
+                className="i-ri-arrow-right-s-line size-4 shrink-0 transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
+              />
+            </CollapsibleTrigger>
+            <CollapsiblePanel>
+              <div className="space-y-3 px-2 pt-3">
+                {draft.map((item) => (
+                  <fieldset
+                    key={item.id}
+                    className="min-w-0 space-y-3 rounded-xl bg-background-section p-3"
+                  >
+                    <legend className="sr-only">
+                      {item.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])}
+                    </legend>
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate system-sm-medium">
+                        {item.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])}
+                      </span>
+                      <IconButton
+                        aria-label={t(($) => $['agentDetail.configure.knowledgeRetrieval.remove'], {
+                          name: item.name || t(($) => $['agentDetail.configure.knowledgeFs.title']),
+                        })}
+                        tone="destructive"
+                        onClick={() =>
+                          setDraft((current) => current.filter((row) => row.id !== item.id))
+                        }
+                      >
+                        <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                      </IconButton>
+                    </div>
+                    {unavailableBindingIds.has(item.id) && (
+                      <p className="system-xs-regular text-text-warning">
+                        {t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])}
+                      </p>
+                    )}
+                    <Field invalid={submitted && !!validation.byId[item.id]?.name}>
+                      <FieldLabel>
+                        {t(($) => $['agentDetail.configure.knowledgeFs.alias'])}
+                      </FieldLabel>
+                      <Input
+                        required
+                        maxLength={120}
+                        value={item.name ?? ''}
+                        onChange={(event) => update(item.id, { name: event.target.value })}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel>
+                        {t(($) => $['agentDetail.configure.knowledgeFs.bindingDescription'])}
+                      </FieldLabel>
+                      <Textarea
+                        rows={3}
+                        maxLength={2000}
+                        value={item.description ?? ''}
+                        onValueChange={(value) => update(item.id, { description: value })}
+                      />
+                    </Field>
+                  </fieldset>
+                ))}
+              </div>
+            </CollapsiblePanel>
+          </Collapsible>
+        )}
+        {submitted && validation.firstIssue && (
+          <p role="alert" className="px-2 system-xs-regular text-text-destructive">
+            {validationMessage(validation.firstIssue.code)}
+          </p>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
+        <span role="status" className="mr-auto system-xs-medium text-text-tertiary tabular-nums">
+          {draft.length} / 10
+        </span>
+        <Button onClick={onClose}>{tc(($) => $['operation.cancel'])}</Button>
+        <Button type="submit" variant="primary">
+          {tc(($) => $['operation.confirm'])}
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+/** The composer changes only on explicit confirmation. */
+export function AgentKnowledgeRetrievalDialog({
+  open,
+  initialBindings,
+  onConfirm,
+  onOpenChange,
+}: Props) {
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         initialFocus={searchRef}
         className="w-144 overflow-hidden p-0 text-text-primary"
       >
-        <form
-          noValidate
-          className="flex max-h-[80dvh] flex-col"
-          onSubmit={(event) => {
-            event.preventDefault()
-            setSubmitted(true)
-            if (validation.isValid && unavailableBindingIds.size === 0) onConfirm(draft)
-            else setAdvancedOpen(true)
-          }}
-        >
-          <div className="shrink-0 px-6 pt-6 pb-4">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="title-xl-semi-bold text-text-primary">
-                {t(($) => $['agentDetail.configure.knowledgeFs.title'])}
-              </DialogTitle>
-              <Infotip>
-                <InfotipTrigger
-                  aria-label={t(($) => $['agentDetail.configure.knowledgeFs.description'])}
-                />
-                <InfotipContent>
-                  {t(($) => $['agentDetail.configure.knowledgeFs.description'])}
-                </InfotipContent>
-              </Infotip>
-              <IconButton
-                size="lg"
-                className="-my-0.5 ml-auto shrink-0"
-                aria-label={tc(($) => $['operation.close'])}
-                onClick={onClose}
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            </div>
-            <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-              {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
-            </DialogDescription>
-            <div className="mt-4">
-              <SearchInput
-                ref={searchRef}
-                value={filter}
-                onValueChange={setFilter}
-                aria-label={t(($) => $['agentDetail.configure.knowledgeFs.filter'])}
-              />
-            </div>
-          </div>
-          <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain px-4 pb-4 system-sm-regular">
-            {legacy && (
-              <div
-                role="alert"
-                className="space-y-2 rounded-lg bg-background-section p-3 system-xs-regular text-text-warning"
-              >
-                <p>{t(($) => $['agentDetail.configure.knowledgeFs.legacy'])}</p>
-                <Button
-                  onClick={() =>
-                    setDraft((current) => current.filter((item) => item.controlSpaceId))
-                  }
-                >
-                  {t(($) => $['agentDetail.configure.knowledgeFs.removeLegacy'])}
-                </Button>
-              </div>
-            )}
-            {draft.some((item) => item.isMissing) && (
-              <p role="alert" className="px-2 system-xs-regular text-text-warning">
-                {t(($) => $['agentDetail.configure.knowledgeFs.rebind'])}
-              </p>
-            )}
-            {unavailableBindingIds.size > 0 && (
-              <p role="alert" className="px-2 system-xs-regular text-text-warning">
-                {t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])}
-              </p>
-            )}
-            {spacesQuery.isPending && (
-              <div role="status" className="space-y-1">
-                <span className="sr-only">
-                  {t(($) => $['agentDetail.configure.knowledgeFs.loading'])}
-                </span>
-                {Array.from({ length: 5 }, (_, index) => (
-                  <div
-                    key={index}
-                    aria-hidden
-                    className="flex h-14 items-center gap-3 px-2 motion-safe:animate-pulse"
-                  >
-                    <span className="size-8 rounded-lg bg-background-section" />
-                    <span className="h-4 w-1/2 rounded bg-background-section" />
-                  </div>
-                ))}
-              </div>
-            )}
-            {spacesQuery.isError && (
-              <div role="alert" className="space-y-2 p-3 system-sm-regular text-text-destructive">
-                <p>{t(($) => $['agentDetail.configure.knowledgeFs.loadError'])}</p>
-                <Button onClick={() => void spacesQuery.refetch()} loading={spacesQuery.isFetching}>
-                  {t(($) => $['agentDetail.configure.knowledgeFs.retry'])}
-                </Button>
-              </div>
-            )}
-            {!spacesQuery.isPending && !spacesQuery.isError && visibleSpaces.length === 0 && (
-              <p className="px-2 py-8 text-center system-sm-regular text-text-tertiary">
-                {t(($) => $['agentDetail.configure.knowledgeFs.empty'])}
-              </p>
-            )}
-            <fieldset className="min-w-0 space-y-1">
-              <legend className="sr-only">
-                {t(($) => $['agentDetail.configure.knowledgeFs.select'])}
-              </legend>
-              {visibleSpaces.map((space) => {
-                const binding = draft.find((item) => item.controlSpaceId === space.control_space_id)
-                const checked = !!binding && !binding.isMissing
-                return (
-                  <KnowledgeSpaceOption
-                    key={space.control_space_id}
-                    space={space}
-                    checked={checked}
-                    disabled={!checked && !binding && draft.length >= 10}
-                    onCheckedChange={(next) => toggle(space, next)}
-                  />
-                )
-              })}
-            </fieldset>
-            {spacesQuery.hasNextPage && (
-              <Button
-                className="ml-2"
-                onClick={() => void spacesQuery.fetchNextPage()}
-                loading={spacesQuery.isFetchingNextPage}
-              >
-                {t(($) => $['agentDetail.configure.knowledgeFs.loadMore'])}
-              </Button>
-            )}
-            {draft.length > 0 && (
-              <Collapsible
-                open={advancedOpen}
-                onOpenChange={setAdvancedOpen}
-                className="border-t border-divider-subtle pt-2"
-              >
-                <CollapsibleTrigger className="group flex min-h-8 w-full touch-manipulation items-center justify-between gap-2 rounded-lg px-2.5 text-start system-sm-medium text-text-secondary outline-hidden select-none hover:bg-components-panel-on-panel-item-bg-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-panel-open:text-text-primary">
-                  <span>
-                    {t(($) => $['agentDetail.configure.advancedSettings.label'])}{' '}
-                    <span className="system-xs-regular text-text-tertiary">
-                      {tc(($) => $['label.optional'])}
-                    </span>
-                  </span>
-                  <span
-                    aria-hidden
-                    className="i-ri-arrow-right-s-line size-4 shrink-0 transition-transform group-data-panel-open:rotate-90 motion-reduce:transition-none"
-                  />
-                </CollapsibleTrigger>
-                <CollapsiblePanel>
-                  <div className="space-y-3 px-2 pt-3">
-                    {draft.map((item) => (
-                      <fieldset
-                        key={item.id}
-                        className="min-w-0 space-y-3 rounded-xl bg-background-section p-3"
-                      >
-                        <legend className="sr-only">
-                          {item.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])}
-                        </legend>
-                        <div className="flex items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate system-sm-medium">
-                            {item.name || t(($) => $['agentDetail.configure.knowledgeFs.title'])}
-                          </span>
-                          <IconButton
-                            aria-label={t(
-                              ($) => $['agentDetail.configure.knowledgeRetrieval.remove'],
-                              {
-                                name:
-                                  item.name ||
-                                  t(($) => $['agentDetail.configure.knowledgeFs.title']),
-                              },
-                            )}
-                            tone="destructive"
-                            onClick={() =>
-                              setDraft((current) => current.filter((row) => row.id !== item.id))
-                            }
-                          >
-                            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                          </IconButton>
-                        </div>
-                        {unavailableBindingIds.has(item.id) && (
-                          <p className="system-xs-regular text-text-warning">
-                            {t(($) => $['agentDetail.configure.knowledgeFs.unavailable'])}
-                          </p>
-                        )}
-                        <Field invalid={submitted && !!validation.byId[item.id]?.name}>
-                          <FieldLabel>
-                            {t(($) => $['agentDetail.configure.knowledgeFs.alias'])}
-                          </FieldLabel>
-                          <Input
-                            required
-                            maxLength={120}
-                            value={item.name ?? ''}
-                            onChange={(event) => update(item.id, { name: event.target.value })}
-                          />
-                        </Field>
-                        <Field>
-                          <FieldLabel>
-                            {t(($) => $['agentDetail.configure.knowledgeFs.bindingDescription'])}
-                          </FieldLabel>
-                          <Textarea
-                            rows={3}
-                            maxLength={2000}
-                            value={item.description ?? ''}
-                            onValueChange={(value) => update(item.id, { description: value })}
-                          />
-                        </Field>
-                      </fieldset>
-                    ))}
-                  </div>
-                </CollapsiblePanel>
-              </Collapsible>
-            )}
-            {submitted && validation.firstIssue && (
-              <p role="alert" className="px-2 system-xs-regular text-text-destructive">
-                {validationMessage(validation.firstIssue.code)}
-              </p>
-            )}
-          </div>
-          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
-            <span
-              role="status"
-              className="mr-auto system-xs-medium text-text-tertiary tabular-nums"
-            >
-              {draft.length} / 10
-            </span>
-            <Button onClick={onClose}>{tc(($) => $['operation.cancel'])}</Button>
-            <Button type="submit" variant="primary">
-              {tc(($) => $['operation.confirm'])}
-            </Button>
-          </div>
-        </form>
+        <AgentKnowledgeRetrievalForm
+          initialBindings={initialBindings}
+          searchRef={searchRef}
+          onConfirm={onConfirm}
+          onClose={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   )

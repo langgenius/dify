@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Workflowtoegang is uitgeschakeld voor deze Agent-kennisbank. Vraag een eigenaar van de werkruimte om deze in te schakelen in de instellingen van deze Agent-kennisbank.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent-kennisbanken",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Klik op ‘+’ om een Agent-kennisbank toe te voegen.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent-kennisbanken konden niet worden geladen. Controleer de beschikbaarheid van de service en je machtigingen.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

@@ -101,6 +101,27 @@ describe('RecallSettings', () => {
     expect(onScoreThresholdChange).toHaveBeenCalledWith(0.73)
   })
 
+  it('labels the retrieval-mode select with its visible heading', async () => {
+    const user = userEvent.setup()
+    render(
+      <RecallSettings
+        topK={10}
+        onModeChange={vi.fn()}
+        onRerankingModelChange={vi.fn()}
+        onScoreThresholdChange={vi.fn()}
+        onTopKChange={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+    const heading = screen.getByText('workflow.nodes.knowledgeRetrievalV2.mode.title')
+    const select = screen.getByRole('combobox', {
+      name: 'workflow.nodes.knowledgeRetrievalV2.mode.title',
+    })
+    await user.click(heading)
+    expect(select).toHaveFocus()
+  })
+
   it('can reset an explicit reranker back to the workspace default', async () => {
     const user = userEvent.setup()
     const onRerankingModelChange = vi.fn()

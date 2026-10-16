@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Доступ для робочих процесів вимкнено для цієї бази знань Agent. Попросіть власника робочого простору ввімкнути його в налаштуваннях цієї бази знань Agent.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Бази знань Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Натисніть «+», щоб додати базу знань Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Не вдалося завантажити бази знань Agent. Перевірте доступність сервісу та дозволи.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

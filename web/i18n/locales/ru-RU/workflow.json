@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Доступ рабочих процессов отключен для этой базы знаний Agent. Попросите владельца рабочего пространства включить его в настройках этой базы знаний Agent.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Базы знаний Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Нажмите «+», чтобы добавить базу знаний Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Не удалось загрузить базы знаний Agent. Проверьте доступность сервиса и права.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

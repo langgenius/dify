@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "دسترسی گردش کار برای این پایگاه دانش Agent غیرفعال است. از مالک فضای کاری بخواهید آن را در تنظیمات همین پایگاه دانش Agent فعال کند.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "پایگاه‌های دانش Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "برای افزودن پایگاه دانش Agent روی «+» کلیک کنید.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "بارگذاری پایگاه‌های دانش Agent ناموفق بود. وضعیت سرویس و مجوزها را بررسی کنید.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

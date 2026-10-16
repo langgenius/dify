@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "此 Agent 知识库已停用工作流访问。请联系工作区所有者在此 Agent 知识库的设置中启用。",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent 知识库",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "点击“+”按钮添加 Agent 知识库",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent 知识库列表加载失败，请检查服务可用性和访问权限。",
   "nodes.knowledgeRetrievalV2.mode.deep": "深度",
   "nodes.knowledgeRetrievalV2.mode.fast": "快速",
   "nodes.knowledgeRetrievalV2.mode.research": "研究",

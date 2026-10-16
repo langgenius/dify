@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Workflow access is disabled for this Agent Knowledge Base. Ask a workspace owner to enable it in this Agent Knowledge Base's settings.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent Knowledge Bases",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Click “+” to add an Agent Knowledge Base.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent Knowledge Bases could not be loaded. Check service availability and your permissions.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

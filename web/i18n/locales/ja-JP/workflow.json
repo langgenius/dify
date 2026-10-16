@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "この Agent ナレッジベースではワークフローアクセスが無効です。ワークスペースのオーナーに、この Agent ナレッジベースの設定で有効にするよう依頼してください。",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent ナレッジベース",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "「+」をクリックして Agent ナレッジベースを追加します。",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent ナレッジベースを読み込めませんでした。サービスの状態と権限を確認してください。",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "इस Agent ज्ञान आधार के लिए वर्कफ़्लो पहुँच बंद है। कार्यस्थान के मालिक से इस Agent ज्ञान आधार की सेटिंग में इसे चालू करने को कहें।",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent ज्ञान आधार",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Agent ज्ञान आधार जोड़ने के लिए “+” पर क्लिक करें।",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent ज्ञान आधार लोड नहीं हो सके। सेवा की उपलब्धता और अपनी अनुमतियाँ जाँचें।",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

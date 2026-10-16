@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "Der Workflow-Zugriff ist für diese Agent-Wissensdatenbank deaktiviert. Bitten Sie einen Workspace-Eigentümer, ihn in den Einstellungen dieser Agent-Wissensdatenbank zu aktivieren.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Agent-Wissensdatenbanken",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Klicken Sie auf „+“, um eine Agent-Wissensdatenbank hinzuzufügen.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Agent-Wissensdatenbanken konnten nicht geladen werden. Prüfen Sie den Dienst und Ihre Berechtigungen.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

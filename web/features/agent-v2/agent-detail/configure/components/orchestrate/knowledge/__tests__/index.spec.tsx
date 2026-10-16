@@ -4,7 +4,7 @@ import { zKnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowl
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -215,6 +215,44 @@ describe('KnowledgeFS composer interaction', () => {
     expect(within(dialog).getByRole('textbox', { name: /knowledgeFs.alias/ })).toHaveValue(
       'Product manual',
     )
+  })
+
+  it('keeps the dialog root mounted through its exit transition', async () => {
+    const user = userEvent.setup()
+    setup([binding])
+    const dialog = await open(user)
+    let finishExit = () => {}
+    const finished = new Promise<void>((resolve) => {
+      finishExit = resolve
+    })
+    const getAnimations = vi
+      .spyOn(Element.prototype, 'getAnimations')
+      .mockReturnValue([
+        { effect: { getTiming: () => ({ duration: 150, iterations: 1 }) }, finished },
+      ] as unknown as Animation[])
+    const animationGlobal = globalThis as typeof globalThis & {
+      BASE_UI_ANIMATIONS_DISABLED: boolean
+    }
+    const animationsDisabled = animationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    animationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
+    try {
+      await user.click(within(dialog).getByRole('button', { name: /operation.cancel/ }))
+      expect(dialog).toBeInTheDocument()
+      expect(dialog).toHaveAttribute('data-closed')
+      finishExit()
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    } finally {
+      animationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
+      getAnimations.mockRestore()
+    }
+  })
+
+  it('leaves the advanced settings focus indicator to the Collapsible primitive', async () => {
+    const user = userEvent.setup()
+    setup([binding])
+    const dialog = await open(user)
+    const advanced = within(dialog).getByRole('button', { name: /advancedSettings.label/ })
+    expect(advanced.className.split(/\s+/)).not.toContain('outline-hidden')
   })
 
   it('renames a stable binding and its prompt reference, then removes it', async () => {

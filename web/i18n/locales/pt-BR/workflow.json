@@ -393,6 +393,7 @@
   "nodes.knowledgeRetrievalV2.errors.workflowAccessDisabled": "O acesso de fluxos de trabalho está desabilitado para esta base de conhecimento Agent. Peça ao proprietário do espaço de trabalho para habilitá-lo nas configurações desta base de conhecimento Agent.",
   "nodes.knowledgeRetrievalV2.knowledgeSpaces": "Bases de conhecimento Agent",
   "nodes.knowledgeRetrievalV2.knowledgeTip": "Clique em “+” para adicionar uma base de conhecimento Agent.",
+  "nodes.knowledgeRetrievalV2.loadSpacesError": "Não foi possível carregar as bases de conhecimento Agent. Verifique a disponibilidade do serviço e suas permissões.",
   "nodes.knowledgeRetrievalV2.mode.deep": "Deep",
   "nodes.knowledgeRetrievalV2.mode.fast": "Fast",
   "nodes.knowledgeRetrievalV2.mode.research": "Research",

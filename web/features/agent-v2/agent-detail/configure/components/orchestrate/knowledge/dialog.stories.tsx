@@ -118,16 +118,15 @@ function PickerPreview({
           <output className="mt-4 block system-sm-regular text-text-secondary">
             {bindings.map((item) => item.name).join(' · ')}
           </output>
-          {open && (
-            <AgentKnowledgeRetrievalDialog
-              initialBindings={bindings}
-              onClose={() => setOpen(false)}
-              onConfirm={(next) => {
-                setBindings(next)
-                setOpen(false)
-              }}
-            />
-          )}
+          <AgentKnowledgeRetrievalDialog
+            open={open}
+            initialBindings={bindings}
+            onOpenChange={setOpen}
+            onConfirm={(next) => {
+              setBindings(next)
+              setOpen(false)
+            }}
+          />
         </div>
       </I18nextProvider>
     </QueryClientProvider>
