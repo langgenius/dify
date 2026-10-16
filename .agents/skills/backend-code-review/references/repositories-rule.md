@@ -14,6 +14,6 @@
   - Otherwise, declare the port next to the service that needs it and implement it in a repository outside migration-only `api/core/`. The repository owns its sessions, filters by the complete owner chain, returns plain records, and is wired only in the composition root.
 - Example:
   - Bad: a service opens a session, queries a table, changes the loaded persistence model, and commits.
-  - Good: the service calls an operation on a port it declares, passing the owner identifiers. The repository behind that port performs the scoped write in one bounded transaction and reports a missing target with a domain error.
-  - Bad: filters, joins, and pagination for one domain are repeated across several services.
-  - Good: the services share one port for that domain's reads, and a single repository implements it.
+  - Good: the service calls an operation on a port it declares, passing the owner identifiers. The repository behind that port performs the scoped write in one bounded transaction and reports a missing target with an application error.
+  - Bad: filters, joins, and pagination for one business area are repeated across several services.
+  - Good: the services share one port for that area's reads, and a single repository implements it.

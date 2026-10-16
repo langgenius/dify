@@ -1,13 +1,15 @@
 # Backend architecture
 
-The backend follows strict domain-driven design. Each business capability is a slice. The application layer owns the use cases and domain rules and declares ports for everything it needs from outside. Adapters implement those ports, and a thin transport layer admits requests and translates them. One composition root connects the parts. The [API agent guide][api-guide] states the condensed rules; this document explains the pattern and how to review it. The legacy execution kernel is migration-only: never propose new files or extracted implementations there.
+The backend uses layered application services with ports and adapters. Each business capability is a slice. Application services own the use cases and business rules and declare ports for everything they need from outside. Adapters implement those ports, and a thin transport layer admits requests and translates them. One composition root connects the parts. The [API agent guide][api-guide] states the condensed rules; this document explains the architecture and how to review it. The legacy execution kernel is migration-only: never propose new files or extracted implementations there.
+
+This document describes the architecture as it is today. Business rules live in application services that work with plain records; there is no separate domain model yet. The [next step](#next-step) section describes the planned move toward one.
 
 ## Layers
 
 Dependencies point toward the application layer. Outer layers know about inner ones; inner layers never know about outer ones.
 
-- **Transport**: admits the caller, validates input, maps it to application inputs, calls one use case, translates domain errors into protocol errors, and serializes the result. It holds no business rules and never touches persistence.
-- **Application**: owns use cases, invariants, and domain policy. It works only with plain values, the admitted caller identity, and the ports it declares. It never depends on the web framework, the ORM, persistence models, configuration, task queues, transport code, or concrete adapters.
+- **Transport**: admits the caller, validates input, maps it to application inputs, calls one use case, translates application errors into protocol errors, and serializes the result. It holds no business rules and never touches persistence.
+- **Application**: owns use cases and business rules. It works only with plain values, the admitted caller identity, and the ports it declares. It never depends on the web framework, the ORM, persistence models, configuration, task queues, transport code, or concrete adapters.
 - **Infrastructure**: repositories and other adapters implement ports over the database, caches, task queues, external services, the execution kernel, and legacy code. They depend on the contracts they implement, never on the transport layer.
 - **Composition root**: the only place that chooses implementations, reads configuration, and constructs services. Everything else receives its dependencies.
 - **Persistence models**: describe tables and nothing else.
@@ -17,24 +19,29 @@ Import-boundary contracts encode these directions and run in lint. Treat a bound
 
 ## Application layer
 
-An application module documents its boundary and invariants and contains:
+An application module documents its boundary and business rules and contains:
 
-- **Values**: immutable records for results and inputs. Each optional field documents what its absence means. A state the domain reasons about is a domain-owned enumeration, not a persistence detail.
-- **Ports**: interfaces owned by the consumer and named for the role they play: persistence for this use case, a read-only query, a gateway to an external system or legacy code, or a narrow capability such as notification, verification, or encryption. A port's documentation is the contract every adapter honors: owner scope, transaction boundary, and the domain errors it raises.
+- **Values**: immutable records for results and inputs. Records carry data, not behavior. Each optional field documents what its absence means. A state the use case reasons about is an application-owned enumeration, not a persistence detail.
+- **Ports**: interfaces owned by the consumer and named for the role they play: persistence for this use case, a read-only query, a gateway to an external system or legacy code, or a narrow capability such as notification, verification, or encryption. A port's documentation is the contract every adapter honors: owner scope, transaction boundary, the rules it enforces, and the errors it raises.
 - **Errors**: one base error per slice with specific subtypes that carry user-facing messages. Errors carry no protocol status or response shape.
-- **Services**: receive ports and plain settings at construction. Every use case takes the admitted caller identity first, derives its scope from that identity, enforces invariants, calls ports with explicit owner identifiers, and returns records.
+- **Services**: receive ports and plain settings at construction. Every use case takes the admitted caller identity first, derives its scope from that identity, enforces business rules, calls ports with explicit owner identifiers, and returns records.
 
-Split a large domain into shared contracts, ports, one module per use-case group, and adapters instead of one large module. A read with no rule beyond owner scoping may be a query port that a repository implements directly; add a service once the read gains rules.
+Split a large business area into shared contracts, ports, one module per use-case group, and adapters instead of one large module. A read with no rule beyond owner scoping may be a query port that a repository implements directly; add a service once the read gains rules.
 
 ## Adapters
 
 - **Repositories** implement persistence and query ports. Each operation owns its database session: a short read or one bounded write transaction. Every statement filters by the complete owner chain. Rows become records before the session closes, so sessions, persistence models, and lazy relationships never cross a port. A repository depends only on the application contracts it implements.
-- **Runtime adapters** implement the remaining ports over caches, task queues, enterprise or external services, the execution kernel, or legacy code. They translate third-party failures into domain errors.
+- **Rules in repositories**: a repository enforces a business rule only when the rule must hold atomically with the write, such as checking the acting account inside the write transaction. The port documents every rule its adapters enforce.
+- **Runtime adapters** implement the remaining ports over caches, task queues, enterprise or external services, the execution kernel, or legacy code. They translate third-party failures into application errors.
 - **Reuse**: one repository may implement several consumer-owned ports. Extend it instead of adding a parallel query path; see the [repositories rule][repositories].
+
+## Consistency
+
+Each repository operation runs in its own session, and no transaction spans a whole use case. A rule that a service checks before a write is therefore not atomic with that write. When a rule must hold under concurrency, such as uniqueness, enforce it inside the write operation or with a database constraint, and document it on the port.
 
 ## Composition root
 
-Register every service in the composition root and group related services by domain. Construct concrete adapters there, read configuration there, and pass plain values in. Services never build their own dependencies, and nothing outside the root creates repositories or module-level service instances.
+Register every service in the composition root and group related services by business area. Construct concrete adapters there, read configuration there, and pass plain values in. Services never build their own dependencies, and nothing outside the root creates repositories or module-level service instances.
 
 ## Transport layer
 
@@ -43,17 +50,17 @@ A handler:
 1. Declares admission, including role and permission checks, which yields the framework-neutral caller identity.
 2. Validates the request and maps it into the use case's input record. It resolves protocol conventions here, such as a masked secret that a client echoes back.
 3. Calls exactly one use case obtained from the composition root.
-4. Translates domain errors into the established protocol errors and keeps the existing status, error code, and message.
+4. Translates application errors into the established protocol errors and keeps the existing status, error code, and message.
 5. Serializes the returned records with the shared response schemas, following the [API schema guide][schema-guide].
 
-## Domain rules
+## Business rules
 
 - Pass owner identifiers explicitly into every port call. Below the transport layer, never read the tenant or account from framework globals.
 - Keep external I/O outside open transactions. Materialize what the I/O needs and close the session first.
 - Trigger side effects after the write commits. The write port returns what the effect needs, and the service triggers it through its own port.
-- Keep persistence models free of session access, queries, caching, and application behavior. The repository maps domain states to primitive columns.
+- Keep persistence models free of session access, queries, caching, and application behavior. The repository maps application-owned states to primitive columns.
 - Raise protocol errors and build responses only in the transport layer.
-- Reach another domain through its contracts and ports, never through its repositories or internals.
+- Reach another slice through its contracts and ports, never through its repositories or internals.
 
 ## Boundary contracts
 
@@ -81,7 +88,7 @@ Do not introduce mock doubles; CI rejects new ones.
 
 ## Business-agnostic libraries
 
-Shared libraries must not own product policy or orchestration. Move domain decisions to their application owner and keep only reusable infrastructure in libraries.
+Shared libraries must not own product policy or orchestration. Move business decisions to their application owner and keep only reusable infrastructure in libraries.
 
 ## Review checks
 
@@ -90,11 +97,24 @@ Flag each finding with the rule it violates:
 - A handler that touches persistence, queries data, calls legacy code a slice replaced, or decides business policy.
 - An application module that depends on the framework, persistence, configuration, or task queues, or raises protocol errors.
 - A port that exposes sessions or persistence models, or an adapter operation that misses an owner-chain filter.
+- A rule that must hold under concurrency but is only checked before a separate write.
+- A business rule enforced in a repository that its port does not document.
 - Dependencies chosen outside the composition root.
 - A new or migrated slice without boundary contracts, a weakened contract, or a new baseline exception.
-- Persistence models that gain behavior.
+- Persistence models that gain behavior before the next step adopts them.
 - New code in the legacy execution kernel, or product policy in shared libraries.
 - Tests that replace ports with mock doubles.
+
+## Next step
+
+Records carry no behavior today, so business rules collect in application services and sometimes in repositories. The next step makes the SQLAlchemy models the temporary domain model:
+
+- Rules that belong to one entity move onto its SQLAlchemy model as behavior over the model's own state. Models still never open sessions, run queries, or call infrastructure.
+- Application services load models through repository ports, call their behavior, and save them through the same ports.
+- How a session spans a use case is decided with the first slice that adopts this step.
+- The boundary contracts that keep models out of application code are relaxed slice by slice, in the changes that adopt this step.
+
+Until a slice adopts this step, follow the rules above. The longer-term goal is a domain model that does not depend on persistence.
 
 [api-guide]: ../../../../api/AGENTS.md
 [repositories]: repositories-rule.md
