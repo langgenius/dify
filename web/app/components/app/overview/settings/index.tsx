@@ -695,7 +695,7 @@ export function SettingsDialog({
       }}
     >
       <DialogTrigger render={trigger} />
-      <DialogContent className="grid w-130 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+      <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-130 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-6 pt-6 pb-3">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $[`${prefixSettings}.title`], { ns: 'appOverview' })}

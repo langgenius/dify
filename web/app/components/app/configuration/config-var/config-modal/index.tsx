@@ -202,7 +202,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="flex flex-col overflow-hidden border-none">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden border-none">
         <form
           noValidate
           className="flex min-h-0 flex-col"

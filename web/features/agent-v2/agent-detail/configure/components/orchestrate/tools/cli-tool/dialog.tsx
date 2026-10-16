@@ -161,7 +161,7 @@ export function CliToolDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-      <DialogContent className="flex w-160 flex-col overflow-hidden">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden">
         <div className="relative px-6 pt-6 pb-3">
           <DialogClose
             render={

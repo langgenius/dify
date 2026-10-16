@@ -86,7 +86,7 @@ function DialogContent({ children, className, backdropProps, ...props }: DialogC
       <DialogPopup
         className={(state) =>
           cn(
-            'fixed top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain',
+            'fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain',
             resolveClassName(className, state),
           )
         }
