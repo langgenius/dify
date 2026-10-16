@@ -60,6 +60,7 @@ function setup({
     config: configured ? langfuse : null,
     failPolicy: false,
     failDelete: false,
+    failConfig: false,
     failCapabilities: false,
     capabilities: { ...capabilities },
   }
@@ -106,9 +107,16 @@ function setup({
             ),
           )
         state.config = null
+        state.policy = { ...state.policy, enabled: false, tracing_provider: null }
         return new Response(null, { status: 204 })
       }
+      if (state.failConfig)
+        throw await httpErrorFromResponse(
+          Response.json({ code: 'invalid_param', message: 'Config rejected' }, { status: 400 }),
+        )
       const body = await req.json()
+      if (body.activate)
+        state.policy = { ...state.policy, enabled: true, tracing_provider: body.tracing_provider }
       state.config = { ...body.tracing_config, secret_key: '[__MASKED__]' }
       return Response.json({ result: 'success' }, { status: req.method === 'POST' ? 201 : 200 })
     }
@@ -341,83 +349,105 @@ describe('Agent tracing configuration', () => {
     expect(sent.every((req) => new URL(req.url).pathname.includes('/agent/agent-1/'))).toBe(true)
   })
 
-  it.each(['enable', 'save'] as const)(
-    'keeps saved credentials when retrying %s after a partial success',
-    async (retry) => {
-      const { state, sent } = setup({ configured: false })
-      const user = await openPanel(false)
-      await openProvider(user)
-      await user.type(
-        screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
-        'public',
-      )
-      await user.type(
-        screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
-        'secret',
-      )
-      await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
-      state.failPolicy = true
-      const saves = holdPolicySaves()
-      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
-      await waitFor(() => expect(saves).toHaveLength(1))
-      for (const input of screen.getAllByRole('textbox')) expect(input).toBeDisabled()
+  it('keeps a failed save-and-enable draft and retries the single atomic request', async () => {
+    const { state, sent } = setup({ configured: false })
+    const user = await openPanel(false)
+    await openProvider(user)
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
+      'public',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+      'secret',
+    )
+    const host = screen.getByRole('textbox', { name: 'Host' })
+    await user.type(host, 'https://cloud.langfuse.com')
+    state.failConfig = true
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Config rejected')
+    expect(state.config).toBeNull()
+    expect(state.policy.enabled).toBe(false)
+    expect(host).toHaveValue('https://cloud.langfuse.com')
+    expect(writes(sent)).toHaveLength(1)
+    state.failConfig = false
+    await user.clear(host)
+    await user.type(host, 'https://updated.langfuse.com')
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+    await waitFor(() =>
       expect(
-        screen.getByRole('dialog', { name: /app.tracing.configProvider.title/ }),
-      ).toBeInTheDocument()
-      await act(() => saves[0]!.finish())
-      expect(
-        await screen.findByText('app.tracing.configurationSavedEnableFailed'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('dialog', { name: /app.tracing.configProvider.title/ }),
-      ).toBeInTheDocument()
-      state.failPolicy = false
-      if (retry === 'save') {
-        const host = screen.getByRole('textbox', { name: 'Host' })
-        await user.clear(host)
-        await user.type(host, 'https://updated.langfuse.com')
-      }
-      await user.click(
-        screen.getByRole('button', {
-          name: retry === 'enable' ? 'app.tracing.retryEnable' : 'common.operation.save',
-        }),
-      )
-      await waitFor(() => expect(saves).toHaveLength(2))
-      for (const input of screen.getAllByRole('textbox')) expect(input).toBeDisabled()
-      await act(() => saves[1]!.finish())
-      await waitFor(() =>
-        expect(
-          screen.queryByRole('dialog', { name: /app.tracing.configProvider.title/ }),
-        ).not.toBeInTheDocument(),
-      )
-      expect(
-        writes(sent).map((req) => `${req.method} ${new URL(req.url).pathname.split('/').at(-1)}`),
-      ).toEqual([
-        'POST trace-config',
-        'POST trace',
-        ...(retry === 'save' ? ['PATCH trace-config'] : []),
-        'POST trace',
-      ])
-      if (retry === 'save') expect(state.config?.host).toBe('https://updated.langfuse.com')
-      expect(state.policy.enabled).toBe(true)
-      expect(state.config?.secret_key).toBe('[__MASKED__]')
-    },
-  )
+        screen.queryByRole('dialog', { name: /app.tracing.configProvider.title/ }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(
+      writes(sent).map((req) => `${req.method} ${new URL(req.url).pathname.split('/').at(-1)}`),
+    ).toEqual(['POST trace-config', 'POST trace-config'])
+    expect(await writes(sent)[1]!.json()).toEqual({
+      tracing_provider: 'langfuse',
+      tracing_config: { ...langfuse, secret_key: 'secret', host: 'https://updated.langfuse.com' },
+      activate: true,
+    })
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+    expect(state.policy).toEqual({
+      enabled: true,
+      tracing_provider: 'langfuse',
+      capture_content: false,
+      capture_agent: true,
+    })
+    expect(state.config?.secret_key).toBe('[__MASKED__]')
+  })
 
-  it('does not delete the selected provider when disabling fails, then disables before deleting', async () => {
+  it('refreshes a concurrently deleted provider without losing the draft or conflict error', async () => {
+    const { state } = setup()
+    const user = await openPanel()
+    await openProvider(user)
+    const host = screen.getByRole('textbox', { name: 'Host' })
+    await user.clear(host)
+    await user.type(host, 'https://draft.langfuse.com')
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (...args) => {
+      if (args[2].request.method === 'PATCH') {
+        state.config = null
+        state.policy = { ...state.policy, enabled: false, tracing_provider: null }
+        throw await httpErrorFromResponse(
+          Response.json(
+            {
+              code: 'tracing_config_conflict',
+              message: 'Tracing configuration changed. Refresh and try again.',
+            },
+            { status: 409 },
+          ),
+        )
+      }
+      return server(...args)
+    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tracing configuration changed')
+    expect(host).toHaveValue('https://draft.langfuse.com')
+    expect(screen.getByRole('button', { name: 'common.operation.saveAndEnable' })).toBeEnabled()
+    expect(
+      screen.getByRole('switch', { name: 'app.tracing.tracing', hidden: true }),
+    ).not.toBeChecked()
+  })
+
+  it('preserves tracing after failed deletion and retries deletion without a policy request', async () => {
     const { state, sent } = setup()
     const user = await openPanel()
     await openProvider(user)
-    state.failPolicy = true
+    state.failDelete = true
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     const dialog = within(screen.getByRole('alertdialog'))
-    expect(await dialog.findByRole('alert')).toHaveTextContent('Policy unavailable')
-    expect(writes(sent).map((req) => req.method)).toEqual(['POST'])
-    state.failPolicy = false
+    expect(await dialog.findByRole('alert')).toHaveTextContent('Delete unavailable')
+    expect(writes(sent).map((req) => req.method)).toEqual(['DELETE'])
+    expect(state.config).toEqual(langfuse)
+    expect(state.policy.enabled).toBe(true)
+    state.failDelete = false
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-    await waitFor(() => expect(state.config).toBeNull())
-    expect(writes(sent).map((req) => req.method)).toEqual(['POST', 'POST', 'DELETE'])
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(writes(sent).map((req) => req.method)).toEqual(['DELETE', 'DELETE'])
+    expect(state.config).toBeNull()
+    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).not.toBeChecked()
     expect(state.policy).toEqual({
       enabled: false,
       tracing_provider: null,
