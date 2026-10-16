@@ -81,7 +81,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const resource = useAtomValue(editorResourceAtom)
   const invalidAllLastRun = useInvalidateAllLastRun(resource)
-  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory(resource)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
@@ -113,7 +113,6 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         ...restCallback
       } = callback || {}
 
-      const runHistoryUrl = `/rag/pipelines/${pipelineId}/workflow-runs`
       workflowStore.setState({ historyWorkflowData: undefined })
       const workflowContainer = document.getElementById('workflow-container')
 
@@ -147,13 +146,13 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           },
           onWorkflowStarted: (params) => {
             handleWorkflowStarted(params)
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
 
             if (onWorkflowStarted) onWorkflowStarted(params)
           },
           onWorkflowFinished: (params) => {
             handleWorkflowFinished(params)
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
             fetchInspectVars({})
             invalidAllLastRun()
 
@@ -161,7 +160,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           },
           onError: (params) => {
             handleWorkflowFailed()
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
 
             if (onError) onError(params)
           },
@@ -261,13 +260,13 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
   const handleStopRun = useCallback(
     (taskId: string) => {
-      stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
+      stopWorkflowRun(resource, taskId)
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
 
       abortControllerRef.current = null
     },
-    [workflowStore],
+    [resource],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(

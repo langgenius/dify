@@ -9,13 +9,7 @@ import type {
   EnvironmentVariable,
 } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
-import type {
-  ConversationVariableResponse,
-  FetchWorkflowDraftResponse,
-  HumanInputFormData,
-  NodesDefaultConfigsResponse,
-  VarInInspect,
-} from '@/types/workflow'
+import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
 import { consoleClient } from '@/service/console'
 import { get, post } from './base'
 
@@ -26,35 +20,18 @@ export type EnvironmentVariablePatch = {
   deletedEnvironmentVariableIds: string[]
 }
 
-type EnvironmentVariablePatchPayload = {
-  environment_variables: EnvironmentVariable[]
-  deleted_environment_variable_ids: string[]
-}
-
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
-export const syncWorkflowDraft = ({
-  url,
-  params,
-}: {
-  url: string
-  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'conversation_variables'> &
-    Partial<Pick<FetchWorkflowDraftResponse, 'environment_variables'>> & {
-      environment_variable_patch?: EnvironmentVariablePatchPayload
-      force?: boolean
+// Block configs arrive as loose records; key them by block type for the editor store.
+export const toNodesDefaultConfigs = (blocks: readonly unknown[]): Record<string, unknown> => {
+  return blocks.reduce<Record<string, unknown>>((acc, block) => {
+    if (block && typeof block === 'object' && 'type' in block && typeof block.type === 'string') {
+      if (!(block.type in acc)) acc[block.type] = 'config' in block ? block.config : undefined
     }
-}) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(
-    url,
-    { body: params },
-    { silent: true },
-  )
-}
-
-export const fetchNodesDefaultConfigs = (url: string) => {
-  return get<NodesDefaultConfigsResponse>(url)
+    return acc
+  }, {})
 }
 
 export const singleNodeRun = (
@@ -81,8 +58,21 @@ export const singleNodeRun = (
   }
 }
 
-export const stopWorkflowRun = (url: string) => {
-  return post<CommonResponse>(url)
+export const stopWorkflowRun = (resource: EditorResource, taskId: string) => {
+  switch (resource.kind) {
+    case 'app':
+      return consoleClient.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post({
+        params: { app_id: resource.appId, task_id: taskId },
+      })
+    case 'knowledge-pipeline':
+      return consoleClient.rag.pipelines.byPipelineId.workflowRuns.tasks.byTaskId.stop.post({
+        params: { pipeline_id: resource.pipelineId, task_id: taskId },
+      })
+    case 'snippet':
+      return consoleClient.snippets.bySnippetId.workflowRuns.tasks.byTaskId.stop.post({
+        params: { snippet_id: resource.snippetId, task_id: taskId },
+      })
+  }
 }
 
 export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}) => {
@@ -99,16 +89,6 @@ export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnu
       query: { q: JSON.stringify(query) },
     },
   )
-}
-
-export const fetchCurrentValueOfConversationVariable = ({
-  url,
-  params,
-}: {
-  url: string
-  params: { conversation_id: string }
-}) => {
-  return get<ConversationVariableResponse>(url, { params })
 }
 
 const fetchAllInspectVarsOnePage = (resource: EditorResource, page: number) => {

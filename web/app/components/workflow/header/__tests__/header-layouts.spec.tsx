@@ -394,16 +394,13 @@ describe('Header layout components', () => {
 
   describe('HeaderInHistory', () => {
     it('should render the history trigger with text and return to edit mode', () => {
-      const { store } = renderWorkflowComponent(
-        <HeaderInHistory viewHistoryProps={{ historyUrl: '/history' } as never} />,
-        {
-          initialStoreState: {
-            historyWorkflowData: {
-              id: 'history-1',
-            } as Shape['historyWorkflowData'],
-          },
+      const { store } = renderWorkflowComponent(<HeaderInHistory />, {
+        initialStoreState: {
+          historyWorkflowData: {
+            id: 'history-1',
+          } as Shape['historyWorkflowData'],
         },
-      )
+      })
 
       expect(screen.getByText('running-title')).toBeInTheDocument()
       expect(screen.getByTestId('view-history')).toHaveTextContent('with-text')

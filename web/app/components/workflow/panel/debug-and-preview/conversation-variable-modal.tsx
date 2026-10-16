@@ -18,7 +18,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
+import { consoleClient } from '@/service/console'
 
 type Props = Readonly<{
   conversationID: string
@@ -37,24 +37,22 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
   >({})
 
   const getChatVarLatestValues = useCallback(async () => {
-    if (conversationID && varList.length > 0) {
-      const res = await fetchCurrentValueOfConversationVariable({
-        url: `/apps/${appID}/conversation-variables`,
-        params: { conversation_id: conversationID },
-      })
-      if (res.data.length > 0) {
-        const valueMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.value
-          return acc
-        }, {})
-        setLatestValueMap(valueMap)
-        const timestampMap = res.data.reduce((acc: any, cur) => {
-          acc[cur.id] = cur.updated_at
-          return acc
-        }, {})
-        setLatestValueTimestampMap(timestampMap)
-      }
-    }
+    if (!appID || !conversationID || varList.length === 0) return
+
+    const res = await consoleClient.apps.byAppId.conversationVariables.get({
+      params: { app_id: appID },
+      query: { conversation_id: conversationID },
+    })
+    if (res.data.length === 0) return
+
+    const valueMap: Record<string, string> = {}
+    const timestampMap: Record<string, number> = {}
+    res.data.forEach((variable) => {
+      valueMap[variable.id] = variable.value ?? ''
+      if (variable.updated_at != null) timestampMap[variable.id] = variable.updated_at
+    })
+    setLatestValueMap(valueMap)
+    setLatestValueTimestampMap(timestampMap)
   }, [appID, conversationID, varList.length])
 
   const [isCopied, setIsCopied] = React.useState(false)

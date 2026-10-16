@@ -35,7 +35,6 @@ import {
 import {
   applyRunningStateForMode,
   applyStoppedState,
-  buildRunHistoryUrl,
   buildTTSConfig,
   buildWorkflowRunRequestBody,
   clearListeningState,
@@ -127,7 +126,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
   const resource = useAtomValue(editorResourceAtom)
   const invalidAllLastRun = useInvalidateAllLastRun(resource)
-  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory(resource)
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
@@ -230,7 +229,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         ...restCallback
       } = callback || {}
       workflowStore.setState({ historyWorkflowData: undefined })
-      const runHistoryUrl = buildRunHistoryUrl(appDetail)
       const workflowContainer = document.getElementById('workflow-container')
 
       const { clientWidth, clientHeight } = workflowContainer!
@@ -385,7 +383,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const baseSseOptions = createBaseWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -420,7 +417,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const finalCallbacks = createFinalWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -501,7 +497,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       if (taskId) {
-        stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+        stopWorkflowRun(resource, taskId)
         setStoppedState()
         return
       }
@@ -527,7 +523,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       abortControllerRef.current = null
       setStoppedState()
     },
-    [appId, workflowStore],
+    [resource, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(

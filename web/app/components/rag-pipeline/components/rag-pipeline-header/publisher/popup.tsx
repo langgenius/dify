@@ -42,7 +42,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { usePublishWorkflow } from '@/service/use-workflow'
+import { usePublishPipelineWorkflow } from '@/service/use-workflow'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
 
@@ -84,7 +84,7 @@ export function Popup({
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = usePublishPipelineWorkflow()
   const workflowStore = useWorkflowStore()
   const { data: isAllowPublishAsCustomKnowledgePipelineTemplate } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -127,11 +127,7 @@ export function Popup({
           }
           startedPublishing = true
           showPublishing()
-          const res = await publishWorkflow({
-            url: `/rag/pipelines/${pipelineId}/workflows/publish`,
-            title: params?.title || '',
-            releaseNotes: params?.releaseNotes || '',
-          })
+          const res = await publishWorkflow(pipelineId)
           setPublished(true)
           trackEvent('app_published_time', {
             action_mode: 'pipeline',

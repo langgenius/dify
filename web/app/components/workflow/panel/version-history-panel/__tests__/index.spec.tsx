@@ -453,12 +453,7 @@ describe('VersionHistoryPanel', () => {
     )
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     fireEvent.click(screen.getByText('edit-published-version-id'))
     fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
@@ -466,11 +461,10 @@ describe('VersionHistoryPanel', () => {
     await waitFor(() => {
       expect(mockUpdateWorkflow).toHaveBeenCalledWith(
         {
-          appId: 'app-1',
-          appMode: 'workflow' as const,
+          owner: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+          workflowId: 'published-version-id',
           releaseNotes: 'Updated notes',
           title: 'Updated release',
-          url: '/apps/app-1/workflows/published-version-id',
         },
         expect.any(Object),
       )

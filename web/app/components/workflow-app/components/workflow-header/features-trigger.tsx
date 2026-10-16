@@ -37,7 +37,7 @@ import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import {
   useInvalidateAppWorkflow,
-  usePublishWorkflow,
+  usePublishAppWorkflow,
   useResetWorkflowVersionHistory,
 } from '@/service/use-workflow'
 
@@ -159,7 +159,7 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = usePublishAppWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
@@ -182,7 +182,7 @@ const FeaturesTrigger = () => {
         if (!draftSyncResult) throw new Error('Workflow draft sync failed')
 
         const res = await publishWorkflow({
-          url: publishParams?.url || `/apps/${appID}/workflows/publish`,
+          appId: appID,
           title: publishParams?.title || '',
           releaseNotes: publishParams?.releaseNotes || '',
         })

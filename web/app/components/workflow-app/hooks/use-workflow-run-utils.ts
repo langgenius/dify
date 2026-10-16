@@ -114,12 +114,6 @@ export const createFailedWorkflowState = (error: string) => {
   }
 }
 
-export const buildRunHistoryUrl = (appDetail?: AppDetailLike) => {
-  return appDetail?.mode === 'advanced-chat'
-    ? `/apps/${appDetail.id}/advanced-chat/workflow-runs`
-    : `/apps/${appDetail?.id}/workflow-runs`
-}
-
 export const resolveWorkflowRunUrl = (
   appDetail: AppDetailLike | undefined,
   runMode: HandleRunMode,

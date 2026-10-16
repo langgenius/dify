@@ -1,60 +1,41 @@
-import type { FileUploadConfigResponse } from '@/models/common'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import { useWorkflowConfig } from '@/service/use-workflow'
+import { toNodesDefaultConfigs } from '@/service/workflow'
 
 export const usePipelineConfig = () => {
   const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const workflowStore = useWorkflowStore()
+  const pipelineInput = pipelineId ? { params: { pipeline_id: pipelineId } } : skipToken
 
-  const handleUpdateNodesDefaultConfigs = useCallback(
-    (nodesDefaultConfigs: Record<string, any> | Record<string, any>[]) => {
-      const { setNodesDefaultConfigs } = workflowStore.getState()
-      let res: Record<string, any> = {}
-      if (Array.isArray(nodesDefaultConfigs)) {
-        nodesDefaultConfigs.forEach((item) => {
-          res[item.type] = item.config
-        })
-      } else {
-        res = nodesDefaultConfigs as Record<string, any>
-      }
-
-      setNodesDefaultConfigs!(res)
-    },
-    [workflowStore],
+  const { data: nodesDefaultConfigs } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
+      input: pipelineInput,
+      select: toNodesDefaultConfigs,
+    }),
   )
-  useWorkflowConfig(
-    pipelineId ? `/rag/pipelines/${pipelineId}/workflows/default-workflow-block-configs` : '',
-    handleUpdateNodesDefaultConfigs,
-  )
+  useEffect(() => {
+    if (nodesDefaultConfigs) workflowStore.getState().setNodesDefaultConfigs?.(nodesDefaultConfigs)
+  }, [nodesDefaultConfigs, workflowStore])
 
-  const handleUpdatePublishedAt = useCallback(
-    (publishedWorkflow: FetchWorkflowDraftResponse | null) => {
-      const { setPublishedAt } = workflowStore.getState()
-
-      setPublishedAt(publishedWorkflow?.created_at ?? 0)
-    },
-    [workflowStore],
+  const { data: publishedAt } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryOptions({
+      input: pipelineInput,
+      // The backend answers null while nothing is published, which the contract does not declare.
+      select: (publishedWorkflow) => publishedWorkflow?.created_at ?? 0,
+    }),
   )
-  useWorkflowConfig(
-    pipelineId ? `/rag/pipelines/${pipelineId}/workflows/publish` : '',
-    handleUpdatePublishedAt,
-  )
+  useEffect(() => {
+    if (publishedAt !== undefined) workflowStore.getState().setPublishedAt(publishedAt)
+  }, [publishedAt, workflowStore])
 
-  const handleUpdateWorkflowFileUploadConfig = useCallback(
-    (config: FileUploadConfigResponse) => {
-      const { setFileUploadConfig } = workflowStore.getState()
-      setFileUploadConfig(config)
-    },
-    [workflowStore],
-  )
-  useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
-
+  const { data: fileUploadConfig } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  useEffect(() => {
+    if (fileUploadConfig) workflowStore.getState().setFileUploadConfig(fileUploadConfig)
+  }, [fileUploadConfig, workflowStore])
   const { data: dataSourceList } = useQuery(
     consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
       enabled: !!pipelineId,

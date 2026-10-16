@@ -628,7 +628,8 @@ describe('useWorkflowRun', () => {
     })
 
     expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
-      '/apps/app-1/workflow-runs/tasks/task-1/stop',
+      expect.objectContaining({ kind: 'app', appId: 'app-1' }),
+      'task-1',
     )
     expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(
       expect.objectContaining({

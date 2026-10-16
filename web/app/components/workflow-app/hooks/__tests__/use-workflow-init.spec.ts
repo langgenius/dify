@@ -22,6 +22,7 @@ const mockWorkflowStoreGetState = vi.fn()
 const mockFetchNodesDefaultConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
+const mockFetchUploadConfig = vi.fn()
 
 let appDetail: AppDetailWithSite
 
@@ -32,11 +33,6 @@ const renderHook = <Result>(callback: () => Result) => {
     resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     wrapper: createQueryClientWrapper(queryClient),
   })
-}
-
-let workflowConfigState: {
-  data: Record<string, unknown> | null
-  isLoading: boolean
 }
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -72,10 +68,17 @@ vi.mock('../use-workflow-template', () => ({
   }),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useWorkflowConfig: (_url: string, onSuccess: (config: Record<string, unknown>) => void) => {
-    if (workflowConfigState.data) onSuccess(workflowConfigState.data)
-    return workflowConfigState
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    const { pathname } = new URL(request.url)
+    const appId = pathname.match(/\/apps\/([^/]+)\//)?.[1]
+    if (pathname.endsWith('/workflows/draft') && request.method === 'POST')
+      return Response.json(await mockSyncWorkflowDraft({ appId, body: await request.json() }))
+    if (pathname.endsWith('/workflows/default-workflow-block-configs'))
+      return Response.json(await mockFetchNodesDefaultConfigs(appId))
+    if (pathname.endsWith('/files/upload')) return Response.json(await mockFetchUploadConfig())
+    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
   },
 }))
 
@@ -88,10 +91,9 @@ vi.mock('@/service/workflow-queries', () => ({
 
 const mockFetchWorkflowDraft = vi.fn()
 
-vi.mock('@/service/workflow', () => ({
+vi.mock('@/service/workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/workflow')>()),
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
-  syncWorkflowDraft: (...args: unknown[]) => mockSyncWorkflowDraft(...args),
-  fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
 }))
 
 const notExistError = () =>
@@ -130,7 +132,7 @@ describe('useWorkflowInit', () => {
       mode: 'workflow',
       permission_keys: [AppACLPermission.Edit],
     })
-    workflowConfigState = { data: null, isLoading: false }
+    mockFetchUploadConfig.mockResolvedValue({})
     mockWorkflowStoreGetState.mockReturnValue({
       setDraftUpdatedAt: mockSetDraftUpdatedAt,
       setToolPublished: mockSetToolPublished,
@@ -189,7 +191,8 @@ describe('useWorkflowInit', () => {
     )
     expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
       expect.objectContaining({
-        params: expect.objectContaining({
+        appId: 'app-1',
+        body: expect.objectContaining({
           graph: {
             nodes: [],
             edges: [],
@@ -220,7 +223,8 @@ describe('useWorkflowInit', () => {
     await waitFor(() =>
       expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
         expect.objectContaining({
-          params: expect.objectContaining({
+          appId: 'app-1',
+          body: expect.objectContaining({
             graph: {
               nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
               edges: [],
@@ -315,10 +319,7 @@ describe('useWorkflowInit', () => {
   })
 
   it('should hydrate draft state, preload defaults, and derive published workflow metadata on success', async () => {
-    workflowConfigState = {
-      data: { enabled: true, sizeLimit: 20 },
-      isLoading: false,
-    }
+    mockFetchUploadConfig.mockResolvedValue({ enabled: true, sizeLimit: 20 })
     mockFetchWorkflowDraft.mockReset().mockResolvedValue({
       ...draftResponse,
       updated_at: 9,
@@ -368,7 +369,9 @@ describe('useWorkflowInit', () => {
     expect(mockSetToolPublished).toHaveBeenCalledWith(true)
     expect(mockSetPublishedAt).toHaveBeenCalledWith(99)
     expect(mockSetLastPublishedHasUserInput).toHaveBeenCalledWith(true)
-    expect(mockSetFileUploadConfig).toHaveBeenCalledWith({ enabled: true, sizeLimit: 20 })
+    await waitFor(() =>
+      expect(mockSetFileUploadConfig).toHaveBeenCalledWith({ enabled: true, sizeLimit: 20 }),
+    )
     expect(result.current.fileUploadConfigResponse).toEqual({ enabled: true, sizeLimit: 20 })
     expect(result.current.isLoading).toBe(false)
   })

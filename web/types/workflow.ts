@@ -1,5 +1,4 @@
 import type {
-  AppMode,
   WorkflowDraftVariableResponse,
   WorkflowDraftVariableWithoutValueResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -16,7 +15,6 @@ import type {
   InputVar,
   Node,
   Variable,
-  WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { TransferMethod } from '@/types/app'
@@ -401,66 +399,11 @@ export type HumanInputFormTimeoutResponse = {
   data: HumanInputFormTimeoutData
 }
 
-export type WorkflowRunHistory = {
-  id: string
-  version: string
-  conversation_id?: string
-  message_id?: string
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport?: Viewport
-  }
-  inputs: Record<string, string>
-  status: WorkflowRunningStatus
-  outputs: Record<string, any>
-  error?: string
-  elapsed_time: number
-  total_tokens: number
-  total_steps: number
-  created_at: number
-  finished_at: number
-  created_by_account: {
-    id: string
-    name: string
-    email: string
-  }
-}
-export type WorkflowRunHistoryResponse = {
-  data: WorkflowRunHistory[]
-}
-
-export type NodesDefaultConfigsResponse = {
-  type: string
-  config: any
-}[]
-
-export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number; created_at: number })[]
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
-
 export type IterationDurationMap = Record<string, number>
 export type LoopDurationMap = Record<string, number>
 export type LoopVariableMap = Record<string, any>
 
-export type WorkflowConfigResponse = {
-  parallel_depth_limit: number
-}
-
 export type PublishWorkflowParams = {
-  url: string
-  title: string
-  releaseNotes: string
-}
-
-export type UpdateWorkflowParams = {
-  appId?: string
-  appMode?: AppMode
-  url: string
   title: string
   releaseNotes: string
 }

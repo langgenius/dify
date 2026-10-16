@@ -13,10 +13,18 @@ import { usePipelineConfig } from '../use-pipeline-config'
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn<(url: string) => Promise<Response>>(),
-  workflowConfig: vi.fn<(url: string, callback: (data: unknown) => void) => void>(),
+  blockConfigs: vi.fn<(url: string) => Promise<Response>>(),
+  published: vi.fn<(url: string) => Promise<Response>>(),
+  uploadConfig: vi.fn<(url: string) => Promise<Response>>(),
 }))
-vi.mock('@/service/base', () => ({ request: mocks.request }))
-vi.mock('@/service/use-workflow', () => ({ useWorkflowConfig: mocks.workflowConfig }))
+vi.mock('@/service/base', () => ({
+  request: (url: string) => {
+    if (url.includes('/default-workflow-block-configs')) return mocks.blockConfigs(url)
+    if (url.endsWith('/workflows/publish')) return mocks.published(url)
+    if (url.endsWith('/files/upload')) return mocks.uploadConfig(url)
+    return mocks.request(url)
+  },
+}))
 
 const catalog = consoleQuery.rag.pipelines.datasourcePlugins.get
 
@@ -40,6 +48,9 @@ describe('usePipelineConfig', () => {
     store = createWorkflowStore({ injectWorkflowStoreSliceFn: createRagPipelineSliceSlice })
     pipelineId = 'pipeline-1'
     mocks.request.mockResolvedValue(Response.json([]))
+    mocks.blockConfigs.mockResolvedValue(Response.json([]))
+    mocks.published.mockResolvedValue(Response.json(null))
+    mocks.uploadConfig.mockResolvedValue(Response.json({}))
   })
   afterEach(() => client.clear())
 
@@ -85,7 +96,8 @@ describe('usePipelineConfig', () => {
 
     expect(mocks.request).not.toHaveBeenCalled()
     expect(store.getState().dataSourceList).toEqual([])
-    expect(mocks.workflowConfig).toHaveBeenCalledWith('', expect.any(Function))
+    expect(mocks.blockConfigs).not.toHaveBeenCalled()
+    expect(mocks.published).not.toHaveBeenCalled()
   })
 
   it('fetches and synchronizes when the pipeline becomes available', async () => {
@@ -122,40 +134,33 @@ describe('usePipelineConfig', () => {
     expect(catalog.queryOptions()).toMatchObject({ staleTime: 0, retry: false })
   })
 
-  it('retains the other pipeline configuration entrypoints', () => {
+  it('loads default block configs, the published timestamp and the upload config', async () => {
+    const uploadConfig = { file_size_limit: 15 }
+    mocks.blockConfigs.mockResolvedValue(
+      Response.json([{ type: 'llm', config: { model: 'test' } }]),
+    )
+    mocks.published.mockResolvedValue(Response.json({ created_at: 123 }))
+    mocks.uploadConfig.mockResolvedValue(Response.json(uploadConfig))
+
     renderHook(usePipelineConfig, { wrapper })
-    expect(mocks.workflowConfig).toHaveBeenCalledWith(
+
+    await waitFor(() =>
+      expect(store.getState().nodesDefaultConfigs).toEqual({ llm: { model: 'test' } }),
+    )
+    await waitFor(() => expect(store.getState().publishedAt).toBe(123 * 1000))
+    await waitFor(() => expect(store.getState().fileUploadConfig).toEqual(uploadConfig))
+    expect(mocks.blockConfigs.mock.calls[0]?.[0]).toContain(
       '/rag/pipelines/pipeline-1/workflows/default-workflow-block-configs',
-      expect.any(Function),
     )
-    expect(mocks.workflowConfig).toHaveBeenCalledWith(
+    expect(mocks.published.mock.calls[0]?.[0]).toContain(
       '/rag/pipelines/pipeline-1/workflows/publish',
-      expect.any(Function),
     )
-    expect(mocks.workflowConfig).toHaveBeenCalledWith('/files/upload', expect.any(Function))
   })
 
-  it.each([[{ type: 'llm', config: { model: 'test' } }], { llm: { model: 'test' } }])(
-    'retains default node configuration normalization',
-    (config) => {
-      renderHook(usePipelineConfig, { wrapper })
-      const callback = mocks.workflowConfig.mock.calls.find(([url]) =>
-        url.endsWith('default-workflow-block-configs'),
-      )?.[1]
-      act(() => callback?.(config))
-      expect(store.getState().nodesDefaultConfigs).toEqual({ llm: { model: 'test' } })
-    },
-  )
+  it('keeps an unpublished pipeline at a zero publication timestamp', async () => {
+    renderHook(usePipelineConfig, { wrapper })
 
-  it.each([{ created_at: 123 }, null])(
-    'retains the publication timestamp fallback',
-    (published) => {
-      renderHook(usePipelineConfig, { wrapper })
-      const callback = mocks.workflowConfig.mock.calls.find(([url]) =>
-        url.endsWith('/publish'),
-      )?.[1]
-      act(() => callback?.(published))
-      expect(store.getState().publishedAt).toBe((published?.created_at ?? 0) * 1000)
-    },
-  )
+    await waitFor(() => expect(mocks.published).toHaveBeenCalledOnce())
+    await waitFor(() => expect(store.getState().publishedAt).toBe(0))
+  })
 })

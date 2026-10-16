@@ -3,7 +3,6 @@ import type { WorkflowAppMode } from '@/app/components/apps/app-type'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { consoleClient } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 
 const MODE_TO_APP_MODE = {
   workflow: 'workflow',
@@ -112,9 +111,9 @@ export const applyToNewApp = async ({
   // so the caller can route to /apps where the orphan is still recoverable
   // by hand.
   try {
-    await syncWorkflowDraft({
-      url: `apps/${app.id}/workflows/draft`,
-      params: {
+    await consoleClient.apps.byAppId.workflows.draft.post({
+      params: { app_id: app.id },
+      body: {
         graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
         features: {},
         conversation_variables: [],
@@ -156,30 +155,22 @@ export const applyToCurrentApp = async ({
   appMode,
   graph,
 }: ApplyToCurrentAppParams): Promise<void> => {
-  const url = `apps/${appId}/workflows/draft`
-
   // First sync may have no existing draft (workflow apps can exist before Studio
-  // has created/saved a draft). ``fetchWorkflowDraft`` rejects on non-2xx (e.g.
-  // 404), so we treat any fetch failure as "no existing draft" and sync without
-  // a hash.
-  let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
-  try {
-    existing = await fetchWorkflowDraft(url)
-  } catch {
-    existing = null
-  }
+  // has created/saved a draft). The draft fetch rejects on non-2xx (e.g. 404),
+  // so we treat any fetch failure as "no existing draft" and sync without a hash.
+  const existing = await consoleClient.apps.byAppId.workflows.draft
+    .get({ params: { app_id: appId } }, { context: { silent: true } })
+    .catch(() => null)
 
   try {
-    await syncWorkflowDraft({
-      url,
-      params: {
+    await consoleClient.apps.byAppId.workflows.draft.post({
+      params: { app_id: appId },
+      body: {
         graph: { ...graph, nodes: normalizeWorkflowNodes(graph.nodes, appMode) },
         features: existing?.features ?? {},
         conversation_variables: existing?.conversation_variables ?? [],
-        // Field is accepted by the backend but not typed in the Pick<> shape of
-        // ``syncWorkflowDraft``'s params — spread it in so it reaches the wire.
         ...(existing?.hash ? { hash: existing.hash } : {}),
-      } as Parameters<typeof syncWorkflowDraft>[0]['params'],
+      },
     })
   } catch (e) {
     // 409 → draft was edited in another tab between our fetch and sync.

@@ -5,7 +5,6 @@ import {
   applyRunningStateForMode,
   applyStoppedState,
   buildListeningTriggerNodeIds,
-  buildRunHistoryUrl,
   buildTTSConfig,
   buildWorkflowRunRequestBody,
   clearListeningState,
@@ -52,14 +51,7 @@ describe('useWorkflowRun utils', () => {
     vi.clearAllMocks()
   })
 
-  it('should resolve run history urls and run endpoints for workflow modes', () => {
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: 'workflow' as const })).toBe(
-      '/apps/app-1/workflow-runs',
-    )
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: 'advanced-chat' as const })).toBe(
-      '/apps/app-1/advanced-chat/workflow-runs',
-    )
-
+  it('should resolve run endpoints for workflow modes', () => {
     expect(
       resolveWorkflowRunUrl(
         { id: 'app-1', mode: 'workflow' as const },

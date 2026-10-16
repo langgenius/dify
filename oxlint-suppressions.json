@@ -2175,11 +2175,6 @@
       "count": 1
     }
   },
-  "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -3484,11 +3479,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -4138,7 +4128,7 @@
   },
   "web/service/use-workflow.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 6
+      "count": 3
     },
     "typescript/no-explicit-any": {
       "count": 1
@@ -4174,7 +4164,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 16
+      "count": 14
     }
   },
   "web/utils/completion-params.spec.ts": {

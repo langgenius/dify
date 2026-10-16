@@ -97,7 +97,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     const callbacks = createBaseWorkflowRunCallbacks({
       clientWidth: 320,
       clientHeight: 240,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
       isInWorkflowDebug: true,
       fetchInspectVars,
       invalidAllLastRun,
@@ -119,7 +118,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     callbacks.onWorkflowFinished?.({ workflow_run_id: 'run-1' } as never)
     expect(clearListeningState).toHaveBeenCalled()
     expect(handlers.handleWorkflowFinished).toHaveBeenCalled()
-    expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
+    expect(invalidateRunHistory).toHaveBeenCalled()
     expect(userOnWorkflowFinished).toHaveBeenCalled()
     expect(fetchInspectVars).toHaveBeenCalledWith({})
     expect(invalidAllLastRun).toHaveBeenCalled()
@@ -164,7 +163,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     const baseSseOptions = createBaseWorkflowRunCallbacks({
       clientWidth: 320,
       clientHeight: 240,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
       isInWorkflowDebug: false,
       fetchInspectVars: vi.fn(),
       invalidAllLastRun: vi.fn(),
@@ -182,7 +180,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     const finalCallbacks = createFinalWorkflowRunCallbacks({
       clientWidth: 320,
       clientHeight: 240,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
       isInWorkflowDebug: false,
       fetchInspectVars: vi.fn(),
       invalidAllLastRun: vi.fn(),
@@ -236,7 +233,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     const callbacks = createBaseWorkflowRunCallbacks({
       clientWidth: 640,
       clientHeight: 360,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
       isInWorkflowDebug: true,
       fetchInspectVars,
       invalidAllLastRun,
@@ -341,7 +337,7 @@ describe('useWorkflowRun callbacks helpers', () => {
       { error: 'failed', node_type: 'llm' },
       workflowData,
     )
-    expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
+    expect(invalidateRunHistory).toHaveBeenCalled()
   })
 
   it('should skip base debug-only side effects and audio playback when debug mode is off or audio is empty', () => {
@@ -353,7 +349,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     const callbacks = createBaseWorkflowRunCallbacks({
       clientWidth: 320,
       clientHeight: 240,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
       isInWorkflowDebug: false,
       fetchInspectVars,
       invalidAllLastRun,
@@ -397,7 +392,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     const baseSseOptions = createBaseWorkflowRunCallbacks({
       clientWidth: 480,
       clientHeight: 320,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
       isInWorkflowDebug: false,
       fetchInspectVars: vi.fn(),
       invalidAllLastRun: vi.fn(),
@@ -415,7 +409,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     const finalCallbacks = createFinalWorkflowRunCallbacks({
       clientWidth: 480,
       clientHeight: 320,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
       isInWorkflowDebug: true,
       fetchInspectVars,
       invalidAllLastRun,
@@ -509,6 +502,6 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed' }, '500')
     expect(getWorkflowRunningData).toHaveBeenCalled()
     expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed' }, workflowData)
-    expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
+    expect(invalidateRunHistory).toHaveBeenCalled()
   })
 })

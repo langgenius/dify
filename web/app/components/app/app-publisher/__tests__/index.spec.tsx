@@ -453,9 +453,8 @@ describe('AppPublisher', () => {
 
     expect(mockUpdateWorkflow).toHaveBeenCalledWith(
       {
-        appId: 'app-1',
-        appMode: 'workflow' as const,
-        url: '/apps/app-1/workflows/workflow-version-5',
+        owner: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        workflowId: 'workflow-version-5',
         title: 'Release 6',
         releaseNotes: 'Updated notes',
       },

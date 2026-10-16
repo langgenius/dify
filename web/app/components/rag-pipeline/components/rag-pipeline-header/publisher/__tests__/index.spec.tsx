@@ -162,7 +162,7 @@ const expectInvalidated = (...path: string[]) =>
   })
 
 vi.mock('@/service/use-workflow', () => ({
-  usePublishWorkflow: () => ({
+  usePublishPipelineWorkflow: () => ({
     mutateAsync: mockPublishWorkflow,
   }),
 }))
@@ -573,11 +573,7 @@ describe('publisher', () => {
         fireEvent.click(publishButton)
 
         await waitFor(() => {
-          expect(mockPublishWorkflow).toHaveBeenCalledWith({
-            url: '/rag/pipelines/test-pipeline-id/workflows/publish',
-            title: '',
-            releaseNotes: '',
-          })
+          expect(mockPublishWorkflow).toHaveBeenCalledWith('test-pipeline-id')
         })
       })
 

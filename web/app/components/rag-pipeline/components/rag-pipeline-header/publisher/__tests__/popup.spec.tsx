@@ -164,7 +164,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-workflow', () => ({
-  usePublishWorkflow: () => ({
+  usePublishPipelineWorkflow: () => ({
     mutateAsync: mockPublishWorkflow,
   }),
 }))
