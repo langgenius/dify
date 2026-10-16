@@ -13,6 +13,7 @@ from core.app.apps.advanced_chat import generate_task_pipeline as pipeline_modul
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueuePingEvent,
+    QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowPartialSuccessEvent,
     QueueWorkflowPausedEvent,
@@ -446,6 +447,30 @@ def test_workflow_partial_success_emits_message_end_before_workflow_finished() -
 
     event = QueueWorkflowPartialSuccessEvent(exceptions_count=1, outputs={})
     responses = list(pipeline._handle_workflow_partial_success_event(event))
+
+    assert [resp.event for resp in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
+
+
+@pytest.mark.parametrize(
+    "stopped_by",
+    [QueueStopEvent.StopBy.USER_MANUAL, QueueStopEvent.StopBy.OUTPUT_MODERATION],
+)
+def test_stop_emits_message_end_before_workflow_finished(stopped_by: QueueStopEvent.StopBy) -> None:
+    pipeline = _build_pipeline()
+    pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
+    pipeline._workflow_id = "workflow-1"
+    pipeline._resolve_graph_runtime_state = mock.Mock(return_value=SimpleNamespace())
+    pipeline._database_session = lambda: nullcontext(mock.Mock())  # type: ignore[method-assign]
+    pipeline._save_message = mock.Mock()
+    pipeline._emit_message_trace = mock.Mock()
+    pipeline._message_end_to_stream_response = mock.Mock(return_value=SimpleNamespace(event=StreamEvent.MESSAGE_END))
+    pipeline._workflow_response_converter = mock.Mock()
+    pipeline._workflow_response_converter.workflow_finish_to_stream_response.return_value = SimpleNamespace(
+        event=StreamEvent.WORKFLOW_FINISHED,
+        data=SimpleNamespace(status=WorkflowExecutionStatus.STOPPED),
+    )
+
+    responses = list(pipeline._handle_stop_event(QueueStopEvent(stopped_by=stopped_by)))
 
     assert [resp.event for resp in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
 
