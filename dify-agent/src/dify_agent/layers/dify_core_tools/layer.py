@@ -27,7 +27,14 @@ from dify_agent.layers.dify_core_tools.configs import (
     DifyCoreToolConfig,
     DifyCoreToolsLayerConfig,
 )
-from dify_agent.layers.dify_plugin.tools_layer import _prepare_tool_arguments, _require_native_file_dependencies
+from dify_agent.layers.dify_plugin.tool_client import DifyPluginToolClientError
+from dify_agent.layers.dify_plugin.tools_layer import (
+    _DifyPluginToolFileClient,
+    _PluginToolFileContext,
+    _prepare_tool_arguments,
+    _require_native_file_dependencies,
+    _validate_required_hidden_parameters,
+)
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.runtime.context import Deps
 from dify_agent.runtime.native_continuation import NativePolicyStopped
@@ -68,9 +75,26 @@ class Toolset(FunctionToolset[Deps]):
                 api_key=ctx.deps.services.inner_api_key,
                 http_client=http_client,
             )
+            file_context = _PluginToolFileContext(
+                file_client=_DifyPluginToolFileClient(
+                    base_url=ctx.deps.services.inner_api_url,
+                    api_key=ctx.deps.services.inner_api_key,
+                    http_client=http_client,
+                ),
+                execution_context=execution_context,
+                deps=ctx.deps,
+                shell=config.shell,
+            )
             for tool_config in config.tools:
+                if tool_config.uses_plugin_parameters:
+                    _validate_required_hidden_parameters(tool_config, tool_config.parameters)
                 self.add_tool(
-                    self._build_tool(client=client, execution_context=execution_context, tool_config=tool_config)
+                    self._build_tool(
+                        client=client,
+                        execution_context=execution_context,
+                        tool_config=tool_config,
+                        file_context=file_context,
+                    )
                 )
             self._loaded = True
         return await super().get_tools(ctx)
@@ -81,6 +105,7 @@ class Toolset(FunctionToolset[Deps]):
         client: DifyCoreToolsClient,
         execution_context: DifyExecutionContextLayerConfig,
         tool_config: DifyCoreToolConfig,
+        file_context: _PluginToolFileContext | None = None,
     ) -> Tool[Deps]:
         tool_name = tool_config.name or tool_config.tool_name
         tool_description = tool_config.description or tool_name
@@ -98,11 +123,21 @@ class Toolset(FunctionToolset[Deps]):
         async def invoke_tool(_ctx: RunContext[Deps], **tool_arguments: object) -> str:
             if _ctx.deps.native_effects is not None:
                 raise NativePolicyStopped("native_dispatch_fence_unavailable")
+            prepared = tool_arguments
+            if tool_config.uses_plugin_parameters:
+                try:
+                    prepared = await _prepare_tool_arguments(
+                        tool_config.parameters, tool_config, tool_arguments, file_context=file_context
+                    )
+                except DifyPluginToolClientError as exc:
+                    return f"tool invoke error: {exc}"
+                except ValueError as exc:
+                    return f"tool parameters validation error: {exc}, please check your tool parameters"
             try:
                 response = await client.invoke(
                     execution_context=execution_context,
                     tool_config=tool_config,
-                    tool_parameters=cast(dict[str, JsonValue], tool_arguments),
+                    tool_parameters=cast(dict[str, JsonValue], prepared),
                 )
                 return response.observation
             except DifyCoreToolsClientConfigurationError:

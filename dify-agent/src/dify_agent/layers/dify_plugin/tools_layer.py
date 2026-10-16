@@ -223,7 +223,7 @@ class Toolset(FunctionToolset[Deps]):
 
 
 def _validate_required_hidden_parameters(
-    tool_config: DifyPluginToolConfig,
+    tool_config: _PreparedToolParameters,
     effective_parameters: Sequence[DifyPluginToolParameter],
 ) -> None:
     missing_names = [
@@ -343,6 +343,9 @@ def _build_pydantic_ai_tool(
 
 
 class _PreparedToolParameters(Protocol):
+    @property
+    def tool_name(self) -> str: ...
+
     @property
     def runtime_parameters(self) -> Mapping[str, object]: ...
 

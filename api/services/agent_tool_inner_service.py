@@ -30,6 +30,7 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
@@ -74,6 +75,14 @@ class AgentToolInnerService:
                 allow_file_parameters=True,
                 use_default_for_missing_form_parameters=True,
             )
+            if isinstance(tool_runtime, PluginTool):
+                # Tool.invoke overlays runtime values again. Reconcile this
+                # invocation's prepared values on a detached runtime so hidden
+                # file paths cannot replace materialized mappings, and callers
+                # cannot mutate a cached runtime through invocation arguments.
+                runtime = tool_runtime.runtime.model_copy(deep=True)
+                runtime.runtime_parameters.update(request.tool.tool_parameters)
+                tool_runtime = tool_runtime.fork_tool_runtime(runtime)
             messages = ToolEngine.generic_invoke(
                 session=session,
                 tool=tool_runtime,
