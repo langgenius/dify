@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Union, override
+from typing import Any, override
 from urllib.parse import urlencode
 
 import httpx
@@ -26,7 +26,7 @@ API_TOOL_DEFAULT_TIMEOUT = (
 class ParsedResponse:
     """Represents a parsed HTTP response with type information"""
 
-    content: Union[str, dict]
+    content: str | dict
     is_json: bool
 
     def to_string(self) -> str:

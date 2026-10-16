@@ -646,7 +646,7 @@ class TestWorkflowPauseIntegration:
         pause_entities = []
         repository = self._get_workflow_run_repository()
 
-        for i in range(5):
+        for _i in range(5):
             workflow_run = self._create_test_workflow_run()
             test_state = self._create_test_state()
 

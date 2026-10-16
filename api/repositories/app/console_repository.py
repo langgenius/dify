@@ -346,14 +346,14 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
         )
         for workflow in workflows:
-            node_id = None
+            _node_id = None
             try:
-                for node_id, node_data in workflow.walk_nodes():
+                for _node_id, node_data in workflow.walk_nodes():
                     if node_data.get("type") in TRIGGER_NODE_TYPES:
                         result.add(workflow.app_id)
                         break
             except Exception:
-                logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, node_id)
+                logger.exception("error while walking nodes, workflow_id=%s, node_id=%s", workflow.id, _node_id)
         return result
 
     @staticmethod
