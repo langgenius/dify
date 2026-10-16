@@ -4,19 +4,21 @@ from datetime import datetime
 from uuid import UUID
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.exceptions import RetryableTraceDispatchError
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.application_trace import ApplicationTraceRun
 from models.enums import CreatorUserRole
+from models.model import Message, TraceAppConfig
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.application_trace_repository import TraceCollectionError
 from services.tracing import service as service_module
 from services.tracing.provider_dispatch import TraceExportResult
 from services.tracing.service import ApplicationTracingService
 from tests.unit_tests.config_override import apply_config_overrides
-from tests.unit_tests.model_factories import make_workflow
+from tests.unit_tests.model_factories import make_message, make_workflow
 from tests.unit_tests.services.tracing.test_application_trace_collection import (
     Collection,
     batch_for,
@@ -88,8 +90,19 @@ def test_status_denies_foreign_or_absent_source_without_destination_details(
 
 def test_status_uses_frozen_destination_and_selects_latest_node_attempt(
     sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     case = seed(sqlite_session_factory, "status")
+    with case.sessions.begin() as session:
+        config = session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == case.run.app_id))
+        assert config is not None
+        config.tracing_config = {"project_url": "https://new.example/project/new", "secret_key": "encrypted-new"}
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("status must not decrypt credentials or resolve current provider metadata")
+
+    monkeypatch.setattr(service_module.OpsTraceManager, "decrypt_tracing_config", forbidden)
+    monkeypatch.setattr(service_module.OpsTraceManager, "get_trace_config_project_url", forbidden)
     node_id = identifier("selected-node")
     invocation = case.repository.invocation(
         run_id=case.run.id, agent_id=identifier("agent"), node_execution_id=node_id, attempt=1, call_key="node:1"
@@ -113,6 +126,7 @@ def test_status_uses_frozen_destination_and_selects_latest_node_attempt(
     assert result["status"] == "accepted"
     assert result["trace_id"] == "provider-trace"
     assert result["span_url"] == "https://frozen.example/span"
+    assert result["project_url"] == "https://langfuse.test/project/original"
     assert result["config_revision"] == case.run.config_revision
     assert result["queryable"] is None
     assert result["capture_content"] is False
@@ -120,6 +134,90 @@ def test_status_uses_frozen_destination_and_selects_latest_node_attempt(
     assert "encrypted-original" not in str(result)
     with pytest.raises(TraceCollectionError, match="tracing_node_not_found"):
         service.status(**source(case), node_execution_id=identifier("another-node"))
+
+
+def test_new_run_freezes_updated_project_without_changing_previous_run(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    case = seed(sqlite_session_factory, "updated-project")
+    new_id = identifier("new-message")
+    with case.sessions.begin() as session:
+        config = session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == case.run.app_id))
+        assert config is not None
+        config.tracing_config = {"project_url": "https://new.example/project/new", "secret_key": "encrypted-new"}
+        message = session.get(Message, case.run.source_id)
+        assert message is not None
+        session.add(
+            make_message(
+                message_id=new_id,
+                app_id=case.run.app_id,
+                conversation_id=message.conversation_id,
+                inputs={},
+                query="new run",
+                message={},
+                answer="done",
+                message_unit_price=message.message_unit_price,
+                answer_unit_price=message.answer_unit_price,
+                currency=message.currency,
+                from_source=message.from_source,
+            )
+        )
+    new_run = case.repository.start(
+        tenant_id=case.run.tenant_id,
+        app_id=case.run.app_id,
+        source_kind="message",
+        source_id=new_id,
+        session_id="new-session",
+    )
+    assert new_run is not None
+    service = ApplicationTracingService(case.repository)
+    assert service.status(**source(case))["project_url"] == "https://langfuse.test/project/original"
+    assert service.status(**{**source(case), "source_id": new_id})["project_url"] == "https://new.example/project/new"
+
+
+@pytest.mark.parametrize(
+    "project_url",
+    [
+        None,
+        "",
+        1,
+        "javascript:alert(1)",
+        "//example.com/project",
+        "https://user:secret@example.com/project",
+        "https://@example.com",
+        "https://example.com\\@other.test",
+        "https://example.com:invalid/project",
+        "https://[invalid/project",
+        "https://example.com/\nproject",
+    ],
+)
+def test_status_hides_unavailable_or_unsafe_frozen_project_urls(
+    sqlite_session_factory: sessionmaker[Session], project_url: object
+) -> None:
+    case = seed(sqlite_session_factory, "invalid-project")
+    with case.sessions.begin() as session:
+        run = session.get(ApplicationTraceRun, case.run.id)
+        assert run is not None
+        run.provider_config = {
+            "secret_key": "encrypted-original",
+            **({"project_url": project_url} if project_url is not None else {}),
+        }
+    result = ApplicationTracingService(case.repository).status(**source(case))
+    assert result["project_url"] is None
+    assert "encrypted-original" not in str(result)
+
+
+@pytest.mark.parametrize("provider", ["aliyun", "tencent"])
+def test_status_does_not_present_platform_console_as_project(
+    sqlite_session_factory: sessionmaker[Session], provider: str
+) -> None:
+    case = seed(sqlite_session_factory, "platform-console")
+    with case.sessions.begin() as session:
+        run = session.get(ApplicationTraceRun, case.run.id)
+        assert run is not None
+        run.provider = provider
+        run.provider_config = {"project_url": "https://console.example.com"}
+    assert ApplicationTracingService(case.repository).status(**source(case))["project_url"] is None
 
 
 @pytest.mark.parametrize("disabled", [True, False])

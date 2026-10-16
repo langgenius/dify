@@ -27856,6 +27856,7 @@ Adapter support declarations, not successful-delivery or platform-verification r
 | capture_content | boolean |  | No |
 | config_revision | string | Frozen destination configuration revision | No |
 | error_code | string |  | No |
+| project_url | string | Frozen destination project URL; null when unavailable, never resolved from current config | No |
 | provider | string |  | No |
 | queryable | boolean | Null when third-party query visibility is not verified | No |
 | source_id | string |  | Yes |

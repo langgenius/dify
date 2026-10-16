@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from importlib import import_module
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from core.ops.exceptions import RetryableTraceDispatchError, TraceProviderNotInstalledError
 from core.ops.unified_trace.entities import CanonicalTrace
@@ -30,6 +31,34 @@ class TraceExportUncertainError(RetryableTraceDispatchError):
     """The transport failed without proving whether ingestion accepted the data."""
 
     acceptance_unknown = True
+
+
+def frozen_project_url(provider: str, config: Mapping[str, Any]) -> str | None:
+    """Read only persisted destination metadata, without credentials or vendor I/O."""
+    # These adapters expose a platform console, not the run's destination project.
+    if provider in {"aliyun", "tencent"}:
+        return None
+    value = config.get("project_url")
+    if (
+        not isinstance(value, str)
+        or not value
+        or any(ord(char) <= 32 or ord(char) == 127 for char in value)
+        or "\\" in value
+    ):
+        return None
+    try:
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
+            return None
+        _ = parsed.port
+    except ValueError:
+        return None
+    return value
 
 
 _MODULES = {
