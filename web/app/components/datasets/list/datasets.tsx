@@ -1,7 +1,8 @@
 'use client'
 
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import type { useDatasetList } from './use-dataset-list'
+import type { DataSetListResponse } from '@/models/datasets'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -9,14 +10,16 @@ import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
 import { useInvalidDatasetList } from './use-dataset-list'
 
+type DatasetListQuery = UseInfiniteQueryResult<InfiniteData<DataSetListResponse, number>>
+
 type Props = Readonly<{
-  datasetList: ReturnType<typeof useDatasetList>['data'] | null
-  fetchNextPage: ReturnType<typeof useDatasetList>['fetchNextPage']
-  hasNextPage: ReturnType<typeof useDatasetList>['hasNextPage']
-  isFetching: ReturnType<typeof useDatasetList>['isFetching']
-  isFetchingNextPage: ReturnType<typeof useDatasetList>['isFetchingNextPage']
-  isLoading: ReturnType<typeof useDatasetList>['isLoading']
-  isPlaceholderData: ReturnType<typeof useDatasetList>['isPlaceholderData']
+  datasetList: DatasetListQuery['data'] | null
+  fetchNextPage: DatasetListQuery['fetchNextPage']
+  hasNextPage: DatasetListQuery['hasNextPage']
+  isFetching: DatasetListQuery['isFetching']
+  isFetchingNextPage: DatasetListQuery['isFetchingNextPage']
+  isLoading: DatasetListQuery['isLoading']
+  isPlaceholderData: DatasetListQuery['isPlaceholderData']
   emptyElement?: ReactNode
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
