@@ -277,6 +277,7 @@
   "tracing.configProvider.username": "使用者名稱",
   "tracing.configProvider.viewDocsLink": "查看{{key}}文件",
   "tracing.configProviderTitle.configured": "已配置",
+  "tracing.configProviderTitle.moreProviders": "更多供應商",
   "tracing.configProviderTitle.notConfigured": "配置提供商以啟用追蹤",
   "tracing.databricks.description": "Databricks提供完全託管的MLflow，具有強大的治理和安全功能，用於存儲追蹤數據。",
   "tracing.databricks.title": "Databricks",
