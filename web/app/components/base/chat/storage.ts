@@ -5,6 +5,35 @@ import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from './constants'
 
 type ConversationIdInfo = Record<string, Record<string, string>>
 
+const getSessionStorage = (): Storage | null => {
+  try {
+    if (typeof window === 'undefined') return null
+    return window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+export const getChatInputDraft = (draftKey?: string) => {
+  if (!draftKey) return ''
+
+  try {
+    return getSessionStorage()?.getItem(draftKey) || ''
+  } catch {
+    return ''
+  }
+}
+
+export const setChatInputDraft = (draftKey: string | undefined, draft: string) => {
+  if (!draftKey) return
+
+  try {
+    const storage = getSessionStorage()
+    if (draft) storage?.setItem(draftKey, draft)
+    else storage?.removeItem(draftKey)
+  } catch {}
+}
+
 const [useLastConversationIdInfo, _useLastConversationIdInfoValue, _useSetLastConversationIdInfo] =
   createLocalStorageState<ConversationIdInfo>(CONVERSATION_ID_INFO, {})
 
