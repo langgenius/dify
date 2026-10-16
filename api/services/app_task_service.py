@@ -22,7 +22,6 @@ from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper, redis_client
-from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus, WorkflowType
 from libs.datetime_utils import to_utc_timestamp
 from models import Account, EndUser, WorkflowRun
@@ -30,6 +29,7 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.entities.workflow_execution import WorkflowExecution
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
@@ -288,6 +288,7 @@ class AppTaskService:
                 total_steps=run.total_steps,
                 exceptions_count=run.exceptions_count,
                 started_at=run.created_at,
+                accumulated_elapsed_time=run.elapsed_time,
                 finished_at=run.finished_at,
             )
         )

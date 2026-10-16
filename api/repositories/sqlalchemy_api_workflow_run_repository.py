@@ -1425,7 +1425,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             workflow_run.error = "User requested stop"
             finished_at = naive_utc_now()
             workflow_run.finished_at = finished_at
-            workflow_run.elapsed_time = max((finished_at - workflow_run.created_at).total_seconds(), 0.0)
             session.execute(
                 update(Message)
                 .where(

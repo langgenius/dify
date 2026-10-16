@@ -19,6 +19,7 @@ from models import (
     EndUser,
 )
 from models.enums import WorkflowRunTriggeredFrom
+from repositories.entities.workflow_execution import WorkflowExecution as TimedWorkflowExecution
 from repositories.workflow_run_control import get_stopped_workflow_run
 
 logger = logging.getLogger(__name__)
@@ -191,12 +192,14 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         with self._session_factory() as session:
             stopped = get_stopped_workflow_run(session, tenant_id=self._tenant_id, workflow_run_id=execution.id_)
             if stopped is not None:
-                execution = execution.model_copy(
-                    update={
+                execution = TimedWorkflowExecution.model_validate(
+                    {
+                        **execution.model_dump(),
                         "status": WorkflowExecutionStatus.STOPPED,
                         "error_message": stopped.error,
                         "outputs": stopped.outputs_dict,
                         "finished_at": stopped.finished_at,
+                        "accumulated_elapsed_time": stopped.elapsed_time,
                     }
                 )
         try:
