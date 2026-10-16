@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { createTestQueryClient } from '@/test/query-client'
 import { TracingConfiguration as Panel } from '../configuration'
 
@@ -52,12 +53,21 @@ function mockServer(configured = true) {
   return writes
 }
 
-function renderPanel(readOnly = false) {
+function renderPanel(readOnly = false, searchParams = '') {
   const client = createTestQueryClient()
-  const view = render(<Panel resource={{ kind: 'app', appId: 'app-1' }} readOnly={readOnly} />, {
-    wrapper: createQueryClientWrapper(client),
+  const QueryWrapper = createQueryClientWrapper(client)
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({
+    searchParams,
+    hasMemory: true,
   })
-  return { ...view, client }
+  const view = render(<Panel resource={{ kind: 'app', appId: 'app-1' }} readOnly={readOnly} />, {
+    wrapper: ({ children }) => (
+      <QueryWrapper>
+        <NuqsWrapper>{children}</NuqsWrapper>
+      </QueryWrapper>
+    ),
+  })
+  return { ...view, client, onUrlUpdate }
 }
 
 async function openConfiguredPanel() {
@@ -441,6 +451,27 @@ describe('Tracing overview panel', () => {
     )
   })
 
+  it('opens from the tracing URL destination once ready and clears it on close', async () => {
+    mockServer()
+    const { onUrlUpdate } = renderPanel(false, '?tracing=configure')
+    expect(await screen.findByText('app.tracing.tracing')).toBeInTheDocument()
+
+    await userEvent.setup().keyboard('{Escape}')
+
+    await waitFor(() => expect(screen.queryByText('app.tracing.tracing')).not.toBeInTheDocument())
+    expect(onUrlUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ queryString: '' }))
+    expect(screen.getByRole('button', { name: /app\.tracing\.enabled/ })).toHaveFocus()
+  })
+
+  it('records the open configuration in the URL when opened from its trigger', async () => {
+    mockServer()
+    const { onUrlUpdate } = renderPanel()
+    await openConfiguredPanel()
+    expect(onUrlUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ queryString: '?tracing=configure' }),
+    )
+  })
+
   it('keeps an open draft across config refreshes and starts a new session for another app', async () => {
     mockServer()
     const { client, rerender } = renderPanel()
@@ -459,9 +490,11 @@ describe('Tracing overview panel', () => {
     )
     expect(host).toHaveValue('https://draft.langfuse.com')
     rerender(<Panel resource={{ kind: 'app', appId: 'app-2' }} readOnly={false} />)
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    await openConfiguredPanel()
-    await user.click(screen.getAllByText('app.tracing.config')[0]!)
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: 'Host' })).not.toBeInTheDocument(),
+    )
+    // The URL destination still asks for configuration, so the new app's popover reopens once ready.
+    await user.click((await screen.findAllByText('app.tracing.config'))[0]!)
     expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue(langfuseConfig.host)
   })
 })
