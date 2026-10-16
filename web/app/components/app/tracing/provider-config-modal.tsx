@@ -32,6 +32,8 @@ type ProviderConfigModalProps = {
   resource: TracingResource
   type: ConfigurableTracingProvider
   payload?: TraceAppConfigResponse['tracing_config']
+  /** Whether traces currently go to this provider, so removing it turns tracing off. */
+  inUse: boolean
   onRemoved: () => void
   firstInputRef: RefObject<HTMLInputElement | null>
   onSaved: () => void
@@ -43,6 +45,7 @@ export function ProviderConfigModal({
   resource,
   type,
   payload,
+  inUse,
   onRemoved,
   firstInputRef,
   onSaved,
@@ -743,7 +746,13 @@ export function ProviderConfigModal({
                         })}
                       </AlertDialogTitle>
                       <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                        {t(($) => $[`${I18N_PREFIX}.removeConfirmContent`], { ns: 'app' })}
+                        {t(
+                          ($) =>
+                            $[
+                              `${I18N_PREFIX}.${inUse ? 'removeConfirmContentInUse' : 'removeConfirmContentNotInUse'}`
+                            ],
+                          { ns: 'app', key: t(($) => $[`tracing.${type}.title`], { ns: 'app' }) },
+                        )}
                       </AlertDialogDescription>
                     </div>
                     {removeConfig.error && (
@@ -756,7 +765,7 @@ export function ProviderConfigModal({
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleRemove} loading={pending}>
-                        {t(($) => $['operation.confirm'], { ns: 'common' })}
+                        {t(($) => $['operation.remove'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
                     </AlertDialogFooter>
                   </AlertDialogContent>

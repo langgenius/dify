@@ -1,7 +1,7 @@
 import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigurableTracingProvider } from '../providers'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { toast } from '@/app/notifications'
@@ -205,9 +205,11 @@ const invalidConfigCases: Array<{
 const renderProviderConfigModal = ({
   type = 'langfuse',
   payload,
+  inUse = false,
 }: {
   type?: ConfigurableTracingProvider
   payload?: TraceConfigPayload['tracing_config'] | null
+  inUse?: boolean
 } = {}) => {
   const callbacks = {
     onCancel: vi.fn(),
@@ -229,6 +231,7 @@ const renderProviderConfigModal = ({
           resource={{ kind: 'app', appId: 'app-id', mode: 'chat' }}
           type={type}
           payload={payload}
+          inUse={inUse}
           firstInputRef={firstInputRef}
           onSaved={callbacks.onSaved}
           onRemoved={callbacks.onRemoved}
@@ -535,11 +538,31 @@ describe('ProviderConfigModal', () => {
         ),
       ).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(
+        within(screen.getByRole('alertdialog')).getByRole('button', {
+          name: 'common.operation.remove',
+        }),
+      )
 
       await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce())
       await expectRequest('DELETE')
       expect(toast).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      [true, 'removeConfirmContentInUse'],
+      [false, 'removeConfirmContentNotInUse'],
+    ])('describes the removal consequence when in use is %s', async (inUse, key) => {
+      const user = userEvent.setup()
+      renderProviderConfigModal({ type: 'langfuse', payload: validConfigs.langfuse, inUse })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+
+      expect(
+        within(screen.getByRole('alertdialog')).getByText(
+          `app.tracing.configProvider.${key}:{"key":"app.tracing.langfuse.title"}`,
+        ),
+      ).toBeInTheDocument()
     })
 
     it('keeps the draft and returns focus to Remove when confirmation is canceled', async () => {

@@ -237,6 +237,7 @@ export function ConfigPopup({
                   resource={resource}
                   type={provider}
                   payload={configs[provider]}
+                  inUse={enabled && chosenProvider === provider}
                   firstInputRef={firstInputRef}
                   onSaved={closeConfig}
                   onRemoved={closeConfig}
