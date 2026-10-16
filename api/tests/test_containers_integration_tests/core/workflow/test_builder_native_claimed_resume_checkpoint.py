@@ -78,7 +78,7 @@ def _snapshot(c):
                     deepcopy({column.key: getattr(row, column.key) for column in inspect(model).column_attrs})
                     for row in rows
                 ],
-                key=itemgetter("id"),
+                key=itemgetter("request_id" if model is NativeTestScope else "id"),
             )
     return result
 
@@ -141,7 +141,7 @@ def test_child_local_claim_survives_unrelated_shared_scope_advance(checkpoint_ca
         assert saved.generation < local_generation - 1
     root_generation = root_dispatch.generation
     pending = NativePendingActionService(c.store.loader).configuration(
-        ref=c.ref, requirements_ref="unrelated-root-config", expected_generation=root_generation
+        ref=c.ref, requirements_ref="configuration-1", expected_generation=root_generation
     )
     root_checkpoint = c.checkpoint(generation=root_generation)
     c.lifecycle.pause(
