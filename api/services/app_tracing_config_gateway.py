@@ -104,6 +104,12 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             raise AppTracingConfigProcessingError from error
 
         self._verify_config(decrypted_config, tracing_provider)
+        if tracing_provider == "weave":
+            # Verification resolves an optional entity and qualified project name.
+            # Encryption happened first to restore masked credentials; persist the
+            # verified non-secret destination alongside that unchanged ciphertext.
+            encrypted_config["entity"] = decrypted_config["entity"]
+            encrypted_config["project"] = decrypted_config["project"]
         # Re-resolve after destination changes; never retain a previous project's link.
         project_url = self._get_project_url(decrypted_config, tracing_provider)
         if project_url:
@@ -133,7 +139,16 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         except Exception as error:
             raise AppTracingConfigProcessingError from error
 
-        if tracing_provider == "langfuse" and not decrypted_config.get("project_key"):
+        if tracing_provider == "weave":
+            from dify_trace_weave.config import WeaveConfig
+            from dify_trace_weave.configuration import console_url, project_url
+
+            try:
+                config = WeaveConfig.model_validate(decrypted_config)
+                presented_config["project_url"] = project_url(config) or console_url(config)
+            except ValueError:
+                presented_config["project_url"] = _PROJECT_URL_FALLBACKS["weave"]
+        elif tracing_provider == "langfuse" and not decrypted_config.get("project_key"):
             try:
                 project_key = OpsTraceManager.get_trace_config_project_key(decrypted_config, tracing_provider)
                 presented_config["project_url"] = f"{decrypted_config.get('host')}/project/{project_key}"
@@ -186,6 +201,18 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "weave":
+            from dify_trace_weave.config import WeaveConfig
+            from dify_trace_weave.configuration import WeaveConfigurationError, verify_configuration
+
+            try:
+                resolved = verify_configuration(WeaveConfig.model_validate(tracing_config))
+            except WeaveConfigurationError as error:
+                logger.warning("Weave configuration verification failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from error
+            tracing_config["entity"] = resolved.entity
+            tracing_config["project"] = resolved.project
+            return
         try:
             is_effective = OpsTraceManager.check_trace_config_is_effective(tracing_config, tracing_provider)
         except ValueError as error:
@@ -197,6 +224,11 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
     @staticmethod
     def _get_project_url(tracing_config: dict[str, Any], tracing_provider: str) -> str | None:
         try:
+            if tracing_provider == "weave":
+                from dify_trace_weave.config import WeaveConfig
+                from dify_trace_weave.configuration import project_url
+
+                return project_url(WeaveConfig.model_validate(tracing_config))
             if tracing_provider in ("arize", "phoenix"):
                 return OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
             if tracing_provider == "langfuse":
