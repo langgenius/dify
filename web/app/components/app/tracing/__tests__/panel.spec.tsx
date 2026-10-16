@@ -362,7 +362,9 @@ describe('Tracing overview panel', () => {
     const writes = mockServer(false)
     renderPanel()
     const user = userEvent.setup()
-    await user.click(await screen.findByText('app.tracing.title'))
+    const trigger = screen.getByRole('button', { name: 'app.tracing.title' })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    await user.click(trigger)
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
     await user.type(
       screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
@@ -451,6 +453,78 @@ describe('Tracing overview panel', () => {
     )
   })
 
+  it('keeps the provider form open while a save is in flight, then closes it on success', async () => {
+    mockServer(false)
+    const server = request.getMockImplementation()!
+    let releaseSave!: () => void
+    const saveHeld = new Promise<void>((resolve) => {
+      releaseSave = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      const sent = args[2].request
+      if (sent.method === 'POST' && new URL(sent.url).pathname.endsWith('/trace-config'))
+        await saveHeld
+      return server(...args)
+    })
+    renderPanel()
+    const user = userEvent.setup()
+    const trigger = screen.getByRole('button', { name: 'app.tracing.title' })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    await user.click(trigger)
+    await user.click(screen.getAllByText('app.tracing.config')[0]!)
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
+      'public-key',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+      'secret-key',
+    )
+    await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
+    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+
+    const form = screen.getByRole('dialog', { name: /app.tracing.configProvider.title/ })
+    await waitFor(() =>
+      expect(within(form).getByRole('button', { name: 'common.operation.close' })).toBeDisabled(),
+    )
+    expect(within(form).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(form).toBeInTheDocument()
+
+    releaseSave()
+    await waitFor(() => expect(form).not.toBeInTheDocument())
+  })
+
+  it('keeps the removal confirmation open until the deletion settles', async () => {
+    mockServer()
+    const server = request.getMockImplementation()!
+    let releaseDelete!: () => void
+    const deleteHeld = new Promise<void>((resolve) => {
+      releaseDelete = resolve
+    })
+    request.mockImplementation(async (...args) => {
+      if (args[2].request.method === 'DELETE') await deleteHeld
+      return server(...args)
+    })
+    renderPanel()
+    const user = await openConfiguredPanel()
+    await user.click(screen.getAllByText('app.tracing.config')[0]!)
+    await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+    const confirmation = screen.getByRole('alertdialog')
+    await user.click(within(confirmation).getByRole('button', { name: 'common.operation.confirm' }))
+
+    await waitFor(() =>
+      expect(
+        within(confirmation).getByRole('button', { name: 'common.operation.cancel' }),
+      ).toBeDisabled(),
+    )
+    await user.keyboard('{Escape}')
+    expect(confirmation).toBeInTheDocument()
+
+    releaseDelete()
+    await waitFor(() => expect(confirmation).not.toBeInTheDocument())
+  })
+
   it('opens from the tracing URL destination once ready and clears it on close', async () => {
     mockServer()
     const { onUrlUpdate } = renderPanel(false, '?tracing=configure')
@@ -494,7 +568,7 @@ describe('Tracing overview panel', () => {
       expect(screen.queryByRole('textbox', { name: 'Host' })).not.toBeInTheDocument(),
     )
     // The URL destination still asks for configuration, so the new app's popover reopens once ready.
-    await user.click((await screen.findAllByText('app.tracing.config'))[0]!)
+    await user.click(screen.getAllByText('app.tracing.config')[0]!)
     expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue(langfuseConfig.host)
   })
 })

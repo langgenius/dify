@@ -115,6 +115,7 @@ export function ProviderConfigModal({
           {t(($) => $[`tracing.${type}.title`], { ns: 'app' })}
         </DialogTitle>
         <DialogClose
+          disabled={pending}
           render={
             <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} size="lg">
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -717,7 +718,11 @@ export function ProviderConfigModal({
           <div className="flex items-center">
             {isEdit && (
               <>
-                <AlertDialog>
+                <AlertDialog
+                  onOpenChange={(open, details) => {
+                    if (!open && removeConfig.isPending) details.cancel()
+                  }}
+                >
                   <AlertDialogTrigger
                     render={
                       <Button
@@ -747,7 +752,7 @@ export function ProviderConfigModal({
                       </p>
                     )}
                     <AlertDialogFooter>
-                      <AlertDialogCancelButton>
+                      <AlertDialogCancelButton disabled={removeConfig.isPending}>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleRemove} loading={pending}>
@@ -760,6 +765,7 @@ export function ProviderConfigModal({
               </>
             )}
             <DialogClose
+              disabled={pending}
               render={<Button className="mr-2 h-9 text-sm font-medium text-text-secondary" />}
             >
               {t(($) => $['operation.cancel'], { ns: 'common' })}
