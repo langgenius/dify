@@ -8,14 +8,14 @@ All key-provider and object-storage work happens outside SQL transactions.
 import json
 from dataclasses import dataclass
 from typing import Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
 
 from core.helper import encrypter
 from extensions.ext_storage import storage
-from models.dify_builder import DifyBuilderTestInput
+from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.dify_builder_native_tests import (
     NativeContinuation,
     NativeEffectOperation,
@@ -32,9 +32,14 @@ from services.dify_builder.native_testing.contracts import (
     OperationKey,
     operation_digest,
 )
-from services.dify_builder.native_testing.private_reads import validate_private_read
+from services.dify_builder.native_testing.private_reads import (
+    PrivateReadOwner,
+    validate_invocation_workflow,
+    validate_private_read,
+)
 from services.dify_builder.native_testing.repository import OwnedNativeTestLoader, native_workflow_revision, utc_now
 from services.dify_builder.native_testing.runtime_contracts import NativeCheckpointPayload, ResolvedNativeTestContext
+from services.dify_builder.native_testing.transitions import require_ancestor_authority
 
 _JSON = TypeAdapter(FiniteJSON)
 PayloadKind = Literal["context", "checkpoint", "result"]
@@ -421,6 +426,92 @@ class NativeExecutionStateStore:
             row = self.acknowledge_object(session, receipt)
             result_ref = row.id
         return result_ref
+
+    def store_node_inputs(
+        self, *, ref: NativeTestContextRef, generation: int, native_execution_id: str, inputs: JsonValue
+    ) -> str:
+        """Persist typed inputs independently of effect result slots, without issuing authority.
+
+        The trusted producer must obtain the UUID from its attached, bound native
+        node. UUID syntax alone establishes no native execution provenance.
+        """
+        try:
+            ref = NativeTestContextRef.model_validate(ref.model_dump(warnings=False), strict=True)
+            if type(native_execution_id) is not str or str(UUID(native_execution_id)) != native_execution_id:
+                raise BuilderExecutionPolicyError("native_run_mismatch")
+            logical_key = "node-input:" + native_execution_id
+            if len(logical_key) > 128:
+                raise BuilderExecutionPolicyError("native_payload_invalid")
+            inputs = _JSON.validate_python(inputs)
+            self.loader.load(ref=ref)
+            authority = validate_private_read(self.loader, ref)
+            context = self.load_context(ref=ref)
+            if type(generation) is not int or generation != context.generation:
+                raise BuilderExecutionPolicyError("native_generation_conflict")
+            with self.loader.session_factory() as session:
+                owned, scope = self.loader._load(session, ref=ref, lock=False)
+                self._validate_node_inputs_owner(session, owned, scope, context, authority, generation)
+            receipt = self.prepare_object(
+                ref=ref, tenant_id=context.tenant_id, kind="result", logical_key=logical_key, payload=inputs
+            )
+            with self.loader.locked(ref=ref) as (session, owned, scope):
+                self._validate_node_inputs_owner(session, owned, scope, context, authority, generation)
+                result_ref = self.acknowledge_object(session, receipt).id
+            return result_ref
+        except BuilderExecutionPolicyError:
+            raise
+        except Exception:
+            raise BuilderExecutionPolicyError("native_payload_unavailable") from None
+
+    @staticmethod
+    def _validate_node_inputs_owner(
+        session, owned, scope, context: ResolvedNativeTestContext, authority: PrivateReadOwner, generation: int
+    ) -> None:
+        """SQL-only preflight/recheck; caller owns the transaction and any root lock."""
+        state = invocation_state(session, context.ref, owned.tenant_id)
+        # The scope counter advances on resume; unrelated running branches keep
+        # their own invocation generation and remain eligible to persist inputs.
+        if (context.generation, state.generation, authority.generation) != (generation,) * 3:
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        if scope.expires_at <= utc_now():
+            raise BuilderExecutionPolicyError("native_expired")
+        if state.state != "running":
+            raise BuilderExecutionPolicyError("native_invocation_mismatch")
+        if (
+            context.ref,
+            context.tenant_id,
+            context.actor_id,
+            context.app_id,
+            context.workflow_id,
+            context.parent_invocation_id,
+            authority.context_object_id,
+        ) != (
+            owned.ref,
+            owned.tenant_id,
+            owned.actor_id,
+            state.app_id,
+            state.workflow_id,
+            state.parent_invocation_id,
+            state.context_object_id,
+        ):
+            raise BuilderExecutionPolicyError("native_context_mismatch")
+        require_ancestor_authority(session, context.ref, owned.tenant_id)
+        request = session.get(DifyBuilderExecutionRequest, context.ref.request_id)
+        if (
+            context.execution_mode != "native"
+            or not context.native_run_id
+            or not context.root_native_run_id
+            or request is None
+            or request.context.get("mode") != "native"
+            or request.context.get("native_run_id") != context.root_native_run_id
+            or (context.parent_invocation_id is None and context.native_run_id != context.root_native_run_id)
+        ):
+            raise BuilderExecutionPolicyError("native_run_mismatch")
+        workflow = validate_invocation_workflow(
+            session, tenant_id=owned.tenant_id, app_id=context.app_id, workflow_id=context.workflow_id
+        )
+        if native_workflow_revision(workflow) != context.graph_revision or json.loads(workflow.graph) != context.graph:
+            raise BuilderExecutionPolicyError("native_revision_drift")
 
     def load_result(self, *, ref: NativeTestContextRef, result_ref: str) -> JsonValue:
         owned = validate_private_read(self.loader, ref)

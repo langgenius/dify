@@ -241,6 +241,373 @@ def test_result_owner_digest_and_completed_effect_replay(continuation_case):
     assert c.ledger.dispatched_attempt_count() == 1
 
 
+@pytest.fixture
+def node_input_case(ledger_case, native_owner):
+    """Dedicated synthetic admitted Run correlation; no actual native ID provenance claim."""
+    from extensions.ext_database import db
+    from libs.key_providers import generate_key_pair
+    from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+    _, _, app, workflow, _, _ = native_owner
+    assert app.id
+    assert workflow.id
+    db.session.expunge(app)
+    db.session.expunge(workflow)
+    db.session.close()
+    public_key = generate_key_pair(ledger_case.actor.tenant_id)
+    run_id = str(uuid4())
+    inputs = {"boolean": True}
+    with ledger_case.factory.begin() as session:
+        session.get(Tenant, ledger_case.actor.tenant_id).encrypt_public_key = public_key
+        request = session.get(DifyBuilderExecutionRequest, ledger_case.ref.request_id)
+        request.context = {
+            **request.context,
+            "request_id": request.id,
+            "invocation_id": ledger_case.ref.invocation_id,
+            "native_run_id": run_id,
+            "mode": "native",
+            "tenant_id": request.tenant_id,
+            "actor_id": request.actor_id,
+            "app_id": request.app_id,
+            "workflow_id": request.workflow_id,
+            "session_id": request.session_id,
+            "test_input_id": request.test_input_id,
+            "input_revision": canonical_digest(inputs),
+        }
+        request.context_digest = canonical_digest(request.context)
+        ref = ledger_case.ref.model_copy(update={"context_digest": request.context_digest})
+        app_id, workflow_id = request.app_id, request.workflow_id
+        graph = json.loads(session.get(Workflow, workflow_id).graph)
+        revision = request.context["execution_revision"]
+        session.get(DifyBuilderTestInput, request.test_input_id).inputs = inputs
+    ledger_case.ref = ref
+    store = NativeExecutionStateStore(
+        OwnedNativeTestLoader(ledger_case.factory, actor=ledger_case.actor, resolver=ledger_case.metadata)
+    )
+    context = ResolvedNativeTestContext(
+        ref=ref,
+        tenant_id=ledger_case.actor.tenant_id,
+        actor_id=ledger_case.actor.account_id,
+        app_id=app_id,
+        workflow_id=workflow_id,
+        graph=graph,
+        inputs=inputs,
+        graph_revision=revision,
+        input_revision=canonical_digest(inputs),
+        resource_manifest=(),
+        generation=0,
+        root_native_run_id=run_id,
+        native_run_id=run_id,
+        parent_invocation_id=None,
+        call_depth=0,
+        budget_ref=ref.request_id,
+        cancellation_ref=ref.request_id,
+        execution_mode="native",
+    )
+    store.initialize_context(context=context)
+    return ContinuationCase(ledger_case, store, None, None, context)
+
+
+@pytest.mark.parametrize(("inputs", "changed"), [(True, "true"), ([1, None], "[1,null]"), (None, "null")])
+def test_node_inputs_real_storage_idempotence_conflict_and_cursor_zero_result(node_input_case, inputs, changed):
+    from models.dify_builder_native_tests import NativePayloadObject
+    from services.dify_builder.native_testing.contracts import operation_digest
+
+    c = node_input_case
+    native_id = str(uuid4())  # Synthetic UUID only; actual bound-ID producer qualification is separate.
+    input_ref = c.store.store_node_inputs(ref=c.ref, generation=0, native_execution_id=native_id, inputs=inputs)
+    assert c.store.store_node_inputs(ref=c.ref, generation=0, native_execution_id=native_id, inputs=inputs) == input_ref
+    with pytest.raises(BuilderExecutionPolicyError, match="native_payload_conflict"):
+        c.store.store_node_inputs(ref=c.ref, generation=0, native_execution_id=native_id, inputs=changed)
+    assert c.store.load_result(ref=c.ref, result_ref=input_ref) == inputs
+    assert c.ledger.intent.key.cursor == 0
+    c.ledger.confirm()
+    permit = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
+    result_ref = c.store.store_result(ref=c.ref, key=c.ledger.intent.key, result={"completed": True})
+    c.ledger.guard.record_outcome(permit=permit, outcome="completed", result_ref=result_ref)
+    with c.factory() as session:
+        input_row = session.get(NativePayloadObject, input_ref)
+        result_row = session.get(NativePayloadObject, result_ref)
+        assert (input_row.kind, input_row.logical_key) == ("result", "node-input:" + native_id)
+        assert result_row.logical_key == operation_digest(c.ledger.intent.key)
+        assert input_row.id != result_row.id
+    assert c.store.load_result(ref=c.ref, result_ref=result_ref) == {"completed": True}
+    assert c.ledger.dispatched_attempt_count() == 1
+
+
+@pytest.mark.parametrize("phase", ["before-save", "after-readback", "before-ack"])
+@pytest.mark.parametrize("change", ["generation", "cancelled", "inactive", "owner", "graph"])
+def test_node_inputs_real_sql_authority_drift_never_acknowledges(node_input_case, monkeypatch, phase, change):
+    from contextlib import contextmanager
+
+    from extensions.ext_storage import storage
+    from models.dify_builder_native_tests import (
+        NativeInvocationState,
+        NativePayloadObject,
+        NativeTestInvocation,
+        NativeTestScope,
+    )
+
+    c = node_input_case
+    native_id = str(uuid4())
+
+    def drift():
+        with c.factory.begin() as session:
+            if change == "generation":
+                session.scalar(
+                    select(NativeInvocationState).where(NativeInvocationState.request_id == c.ref.request_id)
+                ).generation += 1
+            elif change == "cancelled":
+                session.scalar(
+                    select(NativeTestScope).where(NativeTestScope.request_id == c.ref.request_id)
+                ).cancelled = True
+            elif change == "inactive":
+                session.scalar(
+                    select(NativeTestInvocation).where(NativeTestInvocation.request_id == c.ref.request_id)
+                ).active = False
+            elif change == "owner":
+                session.get(DifyBuilderExecutionRequest, c.ref.request_id).actor_id = str(uuid4())
+            elif change == "graph":
+                session.get(Workflow, c.context.workflow_id).graph = '{"nodes":[],"edges":[]}'
+
+    if phase == "before-save":
+        drift()
+    elif phase == "after-readback":
+        original_prepare = c.store.prepare_object
+
+        def prepare_then_drift(**kwargs):
+            receipt = original_prepare(**kwargs)
+            drift()
+            return receipt
+
+        monkeypatch.setattr(c.store, "prepare_object", prepare_then_drift)
+    else:
+        original_lock = c.store.loader.locked
+
+        @contextmanager
+        def drift_before_lock(**kwargs):
+            drift()
+            with original_lock(**kwargs) as locked:
+                yield locked
+
+        monkeypatch.setattr(c.store.loader, "locked", drift_before_lock)
+    saved = []
+    original_save = storage.save
+
+    def counted_save(*args, **kwargs):
+        saved.append(args[0])
+        return original_save(*args, **kwargs)
+
+    monkeypatch.setattr(storage, "save", counted_save)
+    with pytest.raises(BuilderExecutionPolicyError):
+        c.store.store_node_inputs(
+            ref=c.ref, generation=0, native_execution_id=native_id, inputs={"secret": "canary-input"}
+        )
+    with c.factory() as session:
+        assert (
+            session.scalar(
+                select(NativePayloadObject).where(
+                    NativePayloadObject.request_id == c.ref.request_id,
+                    NativePayloadObject.logical_key == "node-input:" + native_id,
+                )
+            )
+            is None
+        )
+    if phase == "before-save":
+        assert saved == []
+    assert c.ledger.dispatched_attempt_count() == 0
+
+
+@pytest.mark.parametrize("phase", ["before-save", "after-readback", "before-ack"])
+def test_node_inputs_running_child_survives_unrelated_real_resume(node_input_case, monkeypatch, phase):
+    """Root ruling: a running branch retains its local generation on another resume."""
+    from contextlib import contextmanager
+
+    from models.dify_builder_native_tests import NativeInvocationState, NativeTestScope
+    from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
+    from services.dify_builder.native_testing.lifecycle import NativeTestLifecycleService
+
+    c = node_input_case
+
+    class ChildOwner:
+        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+            assert child_app_id == parent.app_id
+            assert child_workflow_revision == parent.graph_revision
+            return parent.model_copy(
+                update={
+                    "ref": ref,
+                    "parent_invocation_id": parent.ref.invocation_id,
+                    "call_depth": 1,
+                    "inputs": inputs,
+                    "input_revision": canonical_digest(inputs),
+                    "native_run_id": str(uuid4()),
+                }
+            )
+
+    initial_inputs = {"initial": True}
+    initial_ref = c.store.store_node_inputs(
+        ref=c.ref, generation=0, native_execution_id=str(uuid4()), inputs=initial_inputs
+    )
+    child = NativeChildInvocationService(c.store, resolver=ChildOwner()).get_or_create(
+        parent_ref=c.ref,
+        key=OperationKey(invocation_id=c.ref.invocation_id, occurrence_path=("retained-running-child",), cursor=0),
+        child_app_id=c.context.app_id,
+        child_workflow_revision=c.context.graph_revision,
+        input_digest=canonical_digest(initial_inputs),
+        input_result_ref=initial_ref,
+    )
+    c.lifecycle = NativeTestLifecycleService(c.store.loader, state_store=c.store)
+    pending = c.ledger.guard.before_call(ref=c.ref, intent=c.ledger.intent)
+    checkpoint = c.store.commit_checkpoint(
+        ref=c.ref,
+        generation=0,
+        payload=NativeCheckpointPayload(
+            schema_version="1",
+            native_run_id=c.context.native_run_id,
+            generation=0,
+            generate_entity_json="{}",
+            graph_runtime_state_json="{}",
+            response_stream_filter_json="{}",
+            node_journals=(),
+            child_refs=(child,),
+            input_result_refs=(),
+        ),
+    )
+    c.lifecycle.pause(
+        ref=c.ref, checkpoint=checkpoint, pending_operation_ids=(pending.pending_operation_id,), expected_generation=0
+    )
+    c.ledger.confirm()
+    resumed = False
+
+    def resume_other_branch():
+        nonlocal resumed
+        if resumed:
+            return
+        resumed = True
+        receipt = c.resume()
+        assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
+
+    if phase == "before-save":
+        resume_other_branch()
+    elif phase == "after-readback":
+        original_prepare = c.store.prepare_object
+
+        def prepare_then_resume(**kwargs):
+            receipt = original_prepare(**kwargs)
+            resume_other_branch()
+            return receipt
+
+        monkeypatch.setattr(c.store, "prepare_object", prepare_then_resume)
+    else:
+        original_lock = c.store.loader.locked
+
+        @contextmanager
+        def resume_before_lock(**kwargs):
+            resume_other_branch()
+            with original_lock(**kwargs) as locked:
+                yield locked
+
+        monkeypatch.setattr(c.store.loader, "locked", resume_before_lock)
+    input_ref = c.store.store_node_inputs(
+        ref=child, generation=0, native_execution_id=str(uuid4()), inputs={"retained": [True, None]}
+    )
+    assert c.store.load_result(ref=child, result_ref=input_ref) == {"retained": [True, None]}
+    with c.factory() as session:
+        assert (
+            session.scalar(select(NativeTestScope.generation).where(NativeTestScope.request_id == c.ref.request_id))
+            == 1
+        )
+        assert (
+            session.scalar(
+                select(NativeInvocationState.generation).where(
+                    NativeInvocationState.request_id == c.ref.request_id,
+                    NativeInvocationState.invocation_id == c.ref.invocation_id,
+                )
+            )
+            == 1
+        )
+        state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == child.request_id,
+                NativeInvocationState.invocation_id == child.invocation_id,
+            )
+        )
+        assert (state.generation, state.state) == (0, "running")
+    assert c.store.load_context(ref=child).generation == 0
+    assert c.ledger.dispatched_attempt_count() == 0
+
+
+def test_node_inputs_real_sql_ack_rollback_returns_no_reference(node_input_case, monkeypatch):
+    from models.dify_builder_native_tests import NativePayloadObject
+
+    c = node_input_case
+    native_id = str(uuid4())
+    original_ack = c.store.acknowledge_object
+
+    def acknowledge_then_fail(session, receipt):
+        original_ack(session, receipt)
+        raise RuntimeError("private-input-canary")
+
+    monkeypatch.setattr(c.store, "acknowledge_object", acknowledge_then_fail)
+    with pytest.raises(BuilderExecutionPolicyError, match="native_payload_unavailable") as exc:
+        c.store.store_node_inputs(
+            ref=c.ref, generation=0, native_execution_id=native_id, inputs={"secret": "private-input-canary"}
+        )
+    assert "private-input-canary" not in str(exc.value)
+    with c.factory() as session:
+        assert (
+            session.scalar(
+                select(NativePayloadObject).where(
+                    NativePayloadObject.request_id == c.ref.request_id,
+                    NativePayloadObject.logical_key == "node-input:" + native_id,
+                )
+            )
+            is None
+        )
+    assert c.ledger.dispatched_attempt_count() == 0
+
+
+def test_node_inputs_storage_and_key_io_are_outside_root_write_transaction(node_input_case, monkeypatch):
+    from contextlib import contextmanager
+
+    from core.helper import encrypter
+    from extensions.ext_storage import storage
+
+    c = node_input_case
+    writing = False
+    original_lock = c.store.loader.locked
+
+    @contextmanager
+    def tracked_lock(**kwargs):
+        nonlocal writing
+        with original_lock(**kwargs) as locked:
+            writing = True
+            try:
+                yield locked
+            finally:
+                writing = False
+
+    monkeypatch.setattr(c.store.loader, "locked", tracked_lock)
+    for target, name in (
+        (storage, "save"),
+        (storage, "load"),
+        (encrypter, "encrypt_token"),
+        (encrypter, "decrypt_token"),
+    ):
+        original = getattr(target, name)
+
+        def outside_write_transaction(*args, _original=original, **kwargs):
+            assert not writing
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(target, name, outside_write_transaction)
+    input_ref = c.store.store_node_inputs(
+        ref=c.ref, generation=0, native_execution_id=str(uuid4()), inputs={"typed": [True, None]}
+    )
+    assert c.store.load_result(ref=c.ref, result_ref=input_ref) == {"typed": [True, None]}
+
+
 def test_resume_double_submit_same_generation_and_single_worker_claim(continuation_case):
     c = continuation_case
     c.pause()
