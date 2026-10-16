@@ -35,6 +35,7 @@ class RunRecord(BaseModel):
     error: str | None = None
     error_type: _protocol_schemas.RunFailureType | None = None
     native_checkpoint_json: str | None = None
+    native_wait_event_id: str | None = None
     native_generation: int = 0
     native_claim: ContinuationClaim | None = None
     native_dispatch_started: bool = False

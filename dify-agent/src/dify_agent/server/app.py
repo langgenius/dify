@@ -41,6 +41,7 @@ from dify_agent.server.routes.e2b_usage import create_e2b_usage_router
 from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
 from dify_agent.server.routes.runs import create_runs_router
+from dify_agent.server.routes.native_testing import create_native_testing_router
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
 
@@ -167,6 +168,9 @@ def create_app(
     control_plane_router.include_router(
         create_runs_router(get_store, get_scheduler, lambda: get_scheduler().native_capabilities)
     )
+    # Ordinary anonymous migration mode must never expose protected checkpoint history.
+    if resolved_settings.api_token is not None:
+        control_plane_router.include_router(create_native_testing_router(get_store))
     control_plane_router.include_router(create_execution_bindings_router(lambda: execution_binding_service))
     control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
     control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))

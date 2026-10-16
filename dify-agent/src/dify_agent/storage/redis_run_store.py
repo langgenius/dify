@@ -17,6 +17,16 @@ from pydantic import JsonValue
 from typing import cast, override
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
+from pydantic import ValidationError
+from dify_agent.protocol.native_continuation import (
+    MAX_CHECKPOINT_BYTES,
+    MAX_CHECKPOINT_EVENT_BYTES,
+    MAX_CHECKPOINT_RECORD_BYTES,
+    MAX_CHECKPOINT_RESPONSE_BYTES,
+    ReadNativeCheckpointRequest,
+    SelectedNativeCheckpoint,
+)
 
 from dify_agent.protocol.native_testing import AgentNativeTestRef, AgentOperationKey, ContinuationClaim
 from dify_agent.runtime.native_continuation import AgentCheckpoint, NativeContinuationConflict
@@ -138,6 +148,7 @@ end
 
 record.status = "cancelled"
 record.native_checkpoint_json = cjson.null
+record.native_wait_event_id = cjson.null
 record.native_claim = cjson.null
 record.updated_at = ARGV[1]
 if ARGV[2] == "1" then
@@ -170,6 +181,7 @@ r.updated_at = ARGV[3]
 r.native_claim = cjson.null
 r.native_dispatch_started = false
 local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[5], "*", "payload", ARGV[2])
+r.native_wait_event_id = event_id
 redis.call("EXPIRE", KEYS[2], ARGV[4])
 redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[4])
 return {1, event_id}
@@ -227,11 +239,30 @@ r.status = "failed"
 r.error = ARGV[2]
 r.updated_at = ARGV[3]
 r.native_checkpoint_json = cjson.null
+r.native_wait_event_id = cjson.null
 r.native_claim = cjson.null
 redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[6], "*", "payload", ARGV[4])
 redis.call("EXPIRE", KEYS[2], ARGV[5])
 redis.call("SET", KEYS[1], cjson.encode(r), "EX", ARGV[5])
 return 1
+"""
+
+
+_READ_NATIVE_CHECKPOINT_SCRIPT = """
+if redis.call("EXISTS", KEYS[1]) == 0 then return {-1, "", "", ""} end
+if redis.call("STRLEN", KEYS[1]) > tonumber(ARGV[3]) then return {-2, "", "", ""} end
+local raw = redis.call("GET", KEYS[1])
+local ok, r = pcall(cjson.decode, raw)
+if not ok or type(r) ~= "table" then return {-2, "", "", ""} end
+if r.status ~= "waiting" or redis.call("EXISTS", KEYS[3]) == 1 or
+    r.native_dispatch_started == true or (r.native_generation or 0) ~= tonumber(ARGV[1]) or
+    r.native_wait_event_id ~= ARGV[2] or type(r.native_checkpoint_json) ~= "string" or
+    #r.native_checkpoint_json > tonumber(ARGV[4]) then return {-2, "", "", ""} end
+local entries = redis.call("XRANGE", KEYS[2], ARGV[2], ARGV[2], "COUNT", 1)
+if #entries ~= 1 or entries[1][1] ~= ARGV[2] then return {-2, "", "", ""} end
+local fields = entries[1][2]
+if #fields ~= 2 or fields[1] ~= "payload" or #fields[2] > tonumber(ARGV[5]) then return {-2, "", "", ""} end
+return {1, raw, entries[1][1], fields[2]}
 """
 
 
@@ -287,7 +318,10 @@ class RedisRunStore(RunEventSink):
         if run_id != checkpoint.run_id or event.run_id != run_id or event.data != checkpoint.waiting_event().data:
             raise NativeContinuationConflict("checkpoint/event identity mismatch")
         payload = checkpoint.model_dump_json()
-        if len(payload.encode()) > 2**20:
+        if (
+            len(payload.encode()) > MAX_CHECKPOINT_BYTES
+            or len(event.model_dump_json().encode()) > MAX_CHECKPOINT_EVENT_BYTES
+        ):
             raise ValueError("native checkpoint exceeds protected payload limit")
         result = await cast(
             Awaitable[object],
@@ -340,6 +374,74 @@ class RedisRunStore(RunEventSink):
         if record.native_checkpoint_json is None:
             raise NativeContinuationConflict("protected checkpoint unavailable")
         return AgentCheckpoint.model_validate_json(record.native_checkpoint_json)
+
+    async def read_native_checkpoint(
+        self, *, run_id: str, request: ReadNativeCheckpointRequest
+    ) -> SelectedNativeCheckpoint:
+        """Read an exact ACKed wait atomically; never grants resume/cleanup authority.
+
+        This intentionally refuses current-only, expired, pruned, cancelled or
+        started state. No retries, scheduling, stream scan or TTL refresh occurs.
+        """
+        try:
+            reply = await cast(
+                Awaitable[object],
+                self.redis.eval(
+                    _READ_NATIVE_CHECKPOINT_SCRIPT,
+                    3,
+                    run_record_key(self.prefix, run_id),
+                    run_events_key(self.prefix, run_id),
+                    run_cancel_intent_key(self.prefix, run_id),
+                    str(request.expected_generation),
+                    request.waiting_event_id,
+                    str(MAX_CHECKPOINT_RECORD_BYTES),
+                    str(MAX_CHECKPOINT_BYTES),
+                    str(MAX_CHECKPOINT_EVENT_BYTES),
+                ),
+            )
+            if not isinstance(reply, list) or len(reply) != 4:
+                raise ValueError("invalid checkpoint reply")
+            code = int(reply[0])
+            if code == -1:
+                raise RunNotFoundError(run_id)
+            if code != 1:
+                raise ValueError("checkpoint unavailable")
+            raw, event_id, event_raw = (_decode_redis_text(value) for value in reply[1:])
+            if len(raw.encode()) > MAX_CHECKPOINT_RECORD_BYTES or len(event_raw.encode()) > MAX_CHECKPOINT_EVENT_BYTES:
+                raise ValueError("checkpoint unavailable")
+            record_json = json.loads(raw)
+            if (
+                not isinstance(record_json, dict)
+                or type(record_json.get("native_generation")) is not int
+                or type(record_json.get("native_dispatch_started")) is not bool
+            ):
+                raise ValueError("checkpoint record unavailable")
+            record = RunRecord.model_validate(record_json)
+            if (
+                record.run_id != run_id
+                or record.status != "waiting"
+                or record.native_dispatch_started
+                or record.native_generation != request.expected_generation
+                or record.native_wait_event_id != request.waiting_event_id
+                or event_id != request.waiting_event_id
+                or record.native_checkpoint_json is None
+                or len(record.native_checkpoint_json.encode()) > MAX_CHECKPOINT_BYTES
+            ):
+                raise ValueError("checkpoint selection mismatch")
+            checkpoint = AgentCheckpoint.model_validate_json(record.native_checkpoint_json)
+            event = RunWaitingEvent.model_validate_json(event_raw)
+            if event.id is not None:
+                raise ValueError("checkpoint event unavailable")
+            event = event.model_copy(update={"id": event_id})
+            selected = SelectedNativeCheckpoint(checkpoint=checkpoint, waiting_event=event)
+            selected.validate_selection(run_id=run_id, request=request)
+            if len(selected.model_dump_json().encode()) > MAX_CHECKPOINT_RESPONSE_BYTES:
+                raise ValueError("checkpoint unavailable")
+            return selected
+        except RunNotFoundError:
+            raise
+        except (RedisError, ValidationError, ValueError, TypeError, UnicodeError, IndexError, OverflowError):
+            raise NativeContinuationConflict("selected native checkpoint unavailable") from None
 
     async def claim_continuation(
         self, *, run_id: str, expected_generation: int, idempotency_key: str

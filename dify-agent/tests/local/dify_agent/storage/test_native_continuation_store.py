@@ -15,7 +15,7 @@ from redis.asyncio import Redis
 
 from dify_agent.protocol.schemas import CancelRunRequest
 from dify_agent.runtime.native_continuation import AgentCheckpoint, NativeContinuationConflict
-from dify_agent.storage.redis_run_store import RedisRunStore, RedisAgentResultStore
+from dify_agent.storage.redis_run_store import RedisRunStore, RedisAgentResultStore, RunNotFoundError
 
 
 def checkpoint(run_id="run-1", generation=0):
@@ -225,5 +225,254 @@ def test_real_redis_result_store_owner_bound_and_restart():
             if keys:
                 await redis.delete(*keys)
             await redis.aclose()
+
+    asyncio.run(exercise())
+
+
+# Selected checkpoint readback below is NORMAL-CI REDIS ONLY. Never collect this
+# module locally to substitute fake replies for Lua/ACK/restart qualification.
+async def _selected_wait_fixture(redis, prefix, *, generation=0):
+    from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
+
+    store = RedisRunStore(redis, prefix=prefix)
+    record = await store.create_run()
+    cp = checkpoint(record.run_id)
+    event_id = await store.persist_waiting(run_id=record.run_id, checkpoint=cp, event=cp.waiting_event())
+    for current in range(generation):
+        claim = await store.claim_continuation(
+            run_id=record.run_id, expected_generation=current, idempotency_key=f"advance-{current}"
+        )
+        assert await store.start_continuation(claim)
+        cp = cp.model_copy(update={"generation": current + 1})
+        event_id = await store.persist_waiting(run_id=record.run_id, checkpoint=cp, event=cp.waiting_event())
+    request = ReadNativeCheckpointRequest(
+        ref=cp.ref,
+        expected_generation=cp.generation,
+        waiting_event_id=event_id,
+        config_ref=cp.config_ref,
+        config_digest=cp.config_digest,
+    )
+    return store, cp, request
+
+
+async def _delete_selected_fixture(redis, prefix):
+    keys = [key async for key in redis.scan_iter(match=prefix + "*")]
+    if keys:
+        await redis.delete(*keys)
+    await redis.aclose()
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not os.environ.get("DIFY_AGENT_NATIVE_TEST_REDIS_URL"), reason="normal CI Redis only")
+@pytest.mark.parametrize("generation", [0, 7])
+def test_real_redis_selected_checkpoint_ack_and_fresh_process_read(generation):
+    async def exercise():
+        from dify_agent.storage.redis_keys import run_record_key
+
+        redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
+        prefix = "native-selected-ci-" + uuid4().hex
+        try:
+            store, cp, request = await _selected_wait_fixture(redis, prefix, generation=generation)
+            # Backend 0/7 is independent from a parent local2/shared3 occurrence.
+            assert cp.generation == generation
+            record = await store.get_run(cp.run_id)
+            assert record.native_wait_event_id == request.waiting_event_id
+            before = await redis.get(run_record_key(prefix, cp.run_id))
+            first = await store.read_native_checkpoint(run_id=cp.run_id, request=request)
+            second = await RedisRunStore(redis, prefix=prefix).read_native_checkpoint(run_id=cp.run_id, request=request)
+            assert first == second
+            assert first.checkpoint == cp
+            assert first.waiting_event.id == request.waiting_event_id
+            assert first.waiting_event.data.pending_actions[0].wait_reason == "configuration"
+            assert before == await redis.get(run_record_key(prefix, cp.run_id))  # Reads do not create/claim/rewrite.
+            child = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-c",
+                r"""
+import asyncio, os, sys
+from redis.asyncio import Redis
+from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
+from dify_agent.storage.redis_run_store import RedisRunStore
+async def verify():
+    redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
+    try:
+        request = ReadNativeCheckpointRequest.model_validate_json(sys.argv[3])
+        selected = await RedisRunStore(redis,prefix=sys.argv[1]).read_native_checkpoint(run_id=sys.argv[2],request=request)
+        assert selected.checkpoint.generation == request.expected_generation
+        assert selected.waiting_event.id == request.waiting_event_id
+        assert selected.checkpoint.history[-1].parts[0].tool_call_id == "call-1"
+        assert selected.checkpoint.result_refs == {"previous":"result-1"}
+    finally:
+        await redis.aclose()
+asyncio.run(verify())
+""",
+                prefix,
+                cp.run_id,
+                request.model_dump_json(),
+            )
+            assert await child.wait() == 0
+        finally:
+            await _delete_selected_fixture(redis, prefix)
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not os.environ.get("DIFY_AGENT_NATIVE_TEST_REDIS_URL"), reason="normal CI Redis only")
+def test_real_redis_lost_wait_ack_discovers_exact_committed_event_without_republish():
+    async def exercise():
+        redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
+        prefix = "native-selected-ci-" + uuid4().hex
+        try:
+            from dify_agent.protocol.native_continuation import ReadNativeCheckpointRequest
+
+            store = RedisRunStore(redis, prefix=prefix)
+            record = await store.create_run()
+            cp = checkpoint(record.run_id)
+
+            class LoseReply:
+                async def eval(self, *args):
+                    await redis.eval(*args)
+                    raise ConnectionError("synthetic lost postcommit ACK")
+
+            with pytest.raises(ConnectionError):
+                await RedisRunStore(LoseReply(), prefix=prefix).persist_waiting(
+                    run_id=cp.run_id, checkpoint=cp, event=cp.waiting_event()
+                )
+            committed = await RedisRunStore(redis, prefix=prefix).get_run(cp.run_id)
+            request = ReadNativeCheckpointRequest(
+                ref=cp.ref,
+                expected_generation=0,
+                waiting_event_id=committed.native_wait_event_id,
+                config_ref=cp.config_ref,
+                config_digest=cp.config_digest,
+            )
+            selected = await store.read_native_checkpoint(run_id=cp.run_id, request=request)
+            assert selected.checkpoint == cp
+            assert selected.waiting_event.id == committed.native_wait_event_id
+            with pytest.raises(NativeContinuationConflict):
+                await store.persist_waiting(run_id=cp.run_id, checkpoint=cp, event=cp.waiting_event())
+            assert len((await store.get_events(cp.run_id)).events) == 1
+        finally:
+            await _delete_selected_fixture(redis, prefix)
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not os.environ.get("DIFY_AGENT_NATIVE_TEST_REDIS_URL"), reason="normal CI Redis only")
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "old_generation",
+        "pruned_event",
+        "foreign_run",
+        "foreign_ref",
+        "changed_config",
+        "wrong_event",
+        "expired",
+        "oversized_record",
+        "oversized_event",
+        "altered_pending",
+    ],
+)
+def test_real_redis_selected_checkpoint_refuses_actual_changed_or_unavailable_state(mutation):
+    async def exercise():
+        import json
+        from dify_agent.storage.redis_keys import run_record_key, run_events_key
+
+        redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
+        prefix = "native-selected-ci-" + uuid4().hex
+        try:
+            store, cp, request = await _selected_wait_fixture(redis, prefix)
+            original_run_id = cp.run_id
+            key = run_record_key(prefix, original_run_id)
+            if mutation == "old_generation":
+                claim = await store.claim_continuation(run_id=cp.run_id, expected_generation=0, idempotency_key="next")
+                assert await store.start_continuation(claim)
+                next_cp = cp.model_copy(update={"generation": 1})
+                await store.persist_waiting(run_id=cp.run_id, checkpoint=next_cp, event=next_cp.waiting_event())
+            elif mutation == "pruned_event":
+                await redis.xdel(run_events_key(prefix, cp.run_id), request.waiting_event_id)
+            elif mutation == "foreign_run":
+                cp = cp.model_copy(update={"run_id": "foreign"})
+            elif mutation == "foreign_ref":
+                cp = cp.model_copy(update={"ref": cp.ref.model_copy(update={"request_id": "foreign"})})
+            elif mutation == "changed_config":
+                cp = cp.model_copy(update={"config_ref": "other"})
+            elif mutation == "wrong_event":
+                request = request.model_copy(update={"waiting_event_id": "1-0"})
+            elif mutation == "expired":
+                await redis.expire(key, 0)
+            elif mutation == "oversized_record":
+                await redis.set(key, b"x" * (2**21 + 16385))
+            elif mutation in {"oversized_event", "altered_pending"}:
+                event = cp.waiting_event()
+                if mutation == "altered_pending":
+                    raw = event.model_dump(mode="json", exclude={"id"})
+                    raw["data"]["pending_actions"][0]["pending_operation_id"] = "foreign"
+                    payload = json.dumps(raw)
+                else:
+                    payload = "x" * (2**20 + 1)
+                replacement = await redis.xadd(run_events_key(prefix, cp.run_id), {"payload": payload})
+                if isinstance(replacement, bytes):
+                    replacement = replacement.decode()
+                record = await store.get_run(cp.run_id)
+                record.native_wait_event_id = replacement
+                await redis.set(key, record.model_dump_json())
+                request = request.model_copy(update={"waiting_event_id": replacement})
+            if mutation in {"foreign_run", "foreign_ref", "changed_config"}:
+                record = await store.get_run(original_run_id)
+                record.native_checkpoint_json = cp.model_dump_json()
+                await redis.set(key, record.model_dump_json())
+            with pytest.raises((NativeContinuationConflict, RunNotFoundError)):
+                await store.read_native_checkpoint(run_id=original_run_id, request=request)
+        finally:
+            await _delete_selected_fixture(redis, prefix)
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not os.environ.get("DIFY_AGENT_NATIVE_TEST_REDIS_URL"), reason="normal CI Redis only")
+@pytest.mark.parametrize("action", ["cancel", "start"])
+def test_real_redis_atomic_read_race_never_mixes_wait_and_execution_generation(action):
+    async def exercise():
+        redis = Redis.from_url(os.environ["DIFY_AGENT_NATIVE_TEST_REDIS_URL"])
+        prefix = "native-selected-ci-" + uuid4().hex
+        try:
+            store, cp, request = await _selected_wait_fixture(redis, prefix)
+            claim = await store.claim_continuation(run_id=cp.run_id, expected_generation=0, idempotency_key="continue")
+            # An unstarted claim is still the exact original waiting generation.
+            assert (await store.read_native_checkpoint(run_id=cp.run_id, request=request)).checkpoint == cp
+            gate = asyncio.Event()
+
+            async def read():
+                await gate.wait()
+                try:
+                    return await RedisRunStore(redis, prefix=prefix).read_native_checkpoint(
+                        run_id=cp.run_id, request=request
+                    )
+                except NativeContinuationConflict:
+                    return None
+
+            async def mutate():
+                await gate.wait()
+                if action == "cancel":
+                    await store.request_cancellation(cp.run_id, CancelRunRequest())
+                else:
+                    assert await store.start_continuation(claim)
+
+            reads = asyncio.create_task(read())
+            mutations = asyncio.create_task(mutate())
+            gate.set()
+            selected, _ = await asyncio.gather(reads, mutations)
+            if selected is not None:
+                assert selected.checkpoint == cp
+                assert selected.waiting_event.id == request.waiting_event_id
+            with pytest.raises(NativeContinuationConflict):
+                await store.read_native_checkpoint(run_id=cp.run_id, request=request)
+        finally:
+            await _delete_selected_fixture(redis, prefix)
 
     asyncio.run(exercise())

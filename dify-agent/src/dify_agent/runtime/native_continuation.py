@@ -6,32 +6,28 @@ DTOs and constructing native ToolApproved values never authorizes an effect.
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import Protocol
 
-from pydantic import Field, JsonValue, TypeAdapter, ValidationError, model_validator
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from pydantic_ai import ApprovalRequired, CallDeferred, DeferredToolRequests, DeferredToolResults, ToolApproved
 from pydantic_ai.messages import ModelMessage
+from dify_agent.protocol.native_continuation import (
+    AgentCheckpoint as AgentCheckpoint,
+    AgentPendingCall as AgentPendingCall,
+    Stage as Stage,
+)
 from pydantic_ai.capabilities import AbstractCapability
 
 from dify_agent.protocol.native_testing import (
-    AgentApprovalWait,
-    AgentEffectIntent,
     AgentNativeTestRef,
     AgentOperationKey,
-    Counter,
-    ID,
-    Digest,
     FiniteJSON,
-    NativeDTO,
     NativeTestCapabilities,
-    WaitReason,
 )
-from dify_agent.protocol.schemas import CreateRunRequest, RunWaitingEvent, RunWaitingEventData
+from dify_agent.protocol.schemas import CreateRunRequest
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.context import Deps
 from dify_agent.layers.history import persistent_messages
-
-Stage = Literal["model", "tool", "eager", "configuration", "bootstrap", "shell", "interaction"]
 
 
 class NativeContinuationConflict(RuntimeError):
@@ -44,17 +40,6 @@ class NativePolicyStopped(RuntimeError):
     def __init__(self, reason_code: str):
         self.reason_code = reason_code
         super().__init__(reason_code)
-
-
-class AgentPendingCall(NativeDTO):
-    call_id: ID
-    tool_name: ID
-    native_arguments: JsonValue = None
-    deferred_kind: Literal["approval", "external"] = "approval"
-    intent: AgentEffectIntent
-    stage: Stage
-    pending_operation_id: ID
-    wait_reason: WaitReason
 
 
 class NativeApprovalSuspended(Exception):
@@ -73,43 +58,6 @@ def defer_native_call(pending: AgentPendingCall) -> None:
     if pending.deferred_kind == "external":
         raise CallDeferred(metadata=metadata)
     raise ApprovalRequired(metadata=metadata)
-
-
-class AgentCheckpoint(NativeDTO):
-    protocol_version: Literal[1] = 1
-    run_id: ID
-    generation: Counter
-    ref: AgentNativeTestRef
-    stage: Stage
-    pending_calls: tuple[AgentPendingCall, ...] = Field(min_length=1, max_length=4096)
-    history: list[ModelMessage]
-    operation_cursor: Counter
-    result_refs: dict[str, str]
-    job_refs: tuple[str, ...]
-    config_digest: Digest
-    config_ref: ID
-    session_snapshot: SessionSnapshot
-
-    @model_validator(mode="after")
-    def validate_ownership(self):
-        ids = [call.call_id for call in self.pending_calls]
-        if len(ids) != len(set(ids)):
-            raise ValueError("duplicate pending call identity")
-        if any(call.intent.key.invocation_id != self.ref.invocation_id for call in self.pending_calls):
-            raise ValueError("pending call belongs to another invocation")
-        return self
-
-    def waiting_event(self) -> RunWaitingEvent:
-        return RunWaitingEvent(
-            run_id=self.run_id,
-            data=RunWaitingEventData(
-                generation=self.generation,
-                pending_actions=tuple(
-                    AgentApprovalWait(pending_operation_id=p.pending_operation_id, wait_reason=p.wait_reason)
-                    for p in self.pending_calls
-                ),
-            ),
-        )
 
 
 class NativeRunResult(Protocol):

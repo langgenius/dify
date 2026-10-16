@@ -693,3 +693,19 @@ def test_duplicate_before_start_cas_does_not_block_unrelated_admission_or_shutdo
                 await scheduler.shutdown()
 
     asyncio.run(exercise())
+
+
+def test_private_protocol_move_preserves_runtime_capture_and_wire_contract():
+    from dify_agent.protocol.native_continuation import AgentCheckpoint as WireCheckpoint
+
+    state = continuation()
+    cp = state.capture_wait(NativeApprovalSuspended(pending("configuration", "bootstrap")))
+    decoded = WireCheckpoint.model_validate_json(cp.model_dump_json())
+    assert isinstance(cp, WireCheckpoint)
+    assert decoded.run_id == "run-1"
+    assert decoded.ref == REF
+    assert decoded.generation == 0
+    assert decoded.config_ref == "protected-config-1"
+    assert decoded.pending_calls[0].wait_reason == "configuration"
+    assert decoded.pending_calls[0].intent.key.cursor == 0
+    assert decoded.history == []

@@ -112,3 +112,29 @@ operation key, limits each payload to 1 MiB and refuses conflicting writes.
 Its references are separate from redacted audit receipts. Checkpoints also have
 a 1 MiB bound and share run-record retention. The API owner must treat expired
 or unavailable state as unavailable rather than reissuing an effect.
+
+
+### Private selected checkpoint readback
+
+With a configured `DIFY_AGENT_API_TOKEN`, the control plane additionally mounts
+`POST /runs/{run_id}/native-checkpoint`. It requires the same service bearer and
+an exact `ReadNativeCheckpointRequest`: full native ref, backend generation,
+waiting Redis event ID, protected config reference and digest. Anonymous
+migration mode omits this route; ordinary run routes keep their existing behavior.
+The body limit is 4 KiB; the private response limit is 2 MiB. Errors exclude
+checkpoint/history bytes. The SDK provides bounded async/sync
+`read_native_checkpoint` / `read_native_checkpoint_sync` methods without retries.
+
+The existing wait Lua CAS now retains its actual XADD event ID in the same record
+write. A read atomically selects that current waiting record, cancellation state
+and exact stream entry; missing/pruned/expired events, changed config/ref/backend
+generation and already-started continuations refuse. A pending but unstarted
+continuation claim does not change that generation. This is a read of backend
+state at one linearization point, not a lease against subsequent cancellation.
+
+The API must derive the selected Run/config/ref from its own protected full
+parent/node/input/pin/workspace association and recheck that owner before storing
+the returned checkpoint. A bearer is service authentication, not tenant or human
+authority. Readback does not prove C02 approval, outer C03 checkpoint ACK, terminal
+completion, current resume authority or physical cleanup. No native continuation
+owner, node wiring or full native capability is enabled by this read interface.

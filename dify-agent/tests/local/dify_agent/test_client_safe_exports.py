@@ -59,6 +59,8 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         dify_agent = importlib.import_module("dify_agent")
         client_module = importlib.import_module("dify_agent.client")
         protocol_module = importlib.import_module("dify_agent.protocol")
+        checkpoint_module = importlib.import_module("dify_agent.protocol.native_continuation")
+        assert "dify_agent.runtime.native_continuation" not in sys.modules
         agent_stub_protocol_module = importlib.import_module("dify_agent.agent_stub.protocol")
         agent_cli_help_module = importlib.import_module("dify_agent.layers._agent_cli_help")
         agent_stub_shell_env_module = importlib.import_module("dify_agent.agent_stub.shell_env")
@@ -69,6 +71,8 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         user_prompt_module = importlib.import_module("dify_agent.layers.user_prompt")
 
         assert dify_agent.Client is client_module.Client
+        assert checkpoint_module.ReadNativeCheckpointRequest is not None
+        assert checkpoint_module.AgentCheckpoint is not None
         assert protocol_module.CreateRunRequest is not None
         assert protocol_module.RunComposition is not None
         assert protocol_module.RunLayerSpec is not None

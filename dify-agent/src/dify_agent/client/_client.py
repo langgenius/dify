@@ -25,6 +25,12 @@ import httpx
 from pydantic import BaseModel, ValidationError
 from pydantic_ai.messages import FunctionToolResultEvent
 
+from dify_agent.protocol.native_continuation import (
+    MAX_CHECKPOINT_REQUEST_BYTES,
+    MAX_CHECKPOINT_RESPONSE_BYTES,
+    ReadNativeCheckpointRequest,
+    SelectedNativeCheckpoint,
+)
 from dify_agent.protocol.native_testing import (
     NativeTestCapabilities,
     NativeTestProtocolUnsupported,
@@ -376,6 +382,58 @@ class Client:
             return capabilities
         except (httpx.HTTPError, DifyAgentClientError, ValueError) as exc:
             raise NativeTestProtocolUnsupported() from exc
+
+    async def read_native_checkpoint(
+        self, run_id: str, request: ReadNativeCheckpointRequest
+    ) -> SelectedNativeCheckpoint:
+        """Read a selected private wait once, without public-event fallback or retries."""
+        payload = _native_checkpoint_request_json(run_id, request)
+        try:
+            async with self._get_async_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-checkpoint"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_native_checkpoint_response(response)
+                body = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=65536):
+                    if len(body) + len(chunk) > MAX_CHECKPOINT_RESPONSE_BYTES:
+                        raise DifyAgentValidationError("native checkpoint response unavailable")
+                    body.extend(chunk)
+                return _parse_native_checkpoint_response(body, run_id=run_id, request=request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native checkpoint read timed out") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native checkpoint read failed") from None
+
+    def read_native_checkpoint_sync(
+        self, run_id: str, request: ReadNativeCheckpointRequest
+    ) -> SelectedNativeCheckpoint:
+        """Synchronous bounded private read; errors never contain checkpoint/history bytes."""
+        payload = _native_checkpoint_request_json(run_id, request)
+        try:
+            with self._get_sync_http_client().stream(
+                "POST",
+                self._url(f"/runs/{quote(run_id, safe='')}/native-checkpoint"),
+                content=payload,
+                headers=self._merged_headers({"Content-Type": "application/json", "Accept-Encoding": "identity"}),
+                timeout=self._timeout,
+                follow_redirects=False,
+            ) as response:
+                _check_native_checkpoint_response(response)
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=65536):
+                    if len(body) + len(chunk) > MAX_CHECKPOINT_RESPONSE_BYTES:
+                        raise DifyAgentValidationError("native checkpoint response unavailable")
+                    body.extend(chunk)
+                return _parse_native_checkpoint_response(body, run_id=run_id, request=request)
+        except httpx.TimeoutException:
+            raise DifyAgentTimeoutError("native checkpoint read timed out") from None
+        except httpx.RequestError:
+            raise DifyAgentClientError("native checkpoint read failed") from None
 
     async def continue_run(self, run_id: str, request: ContinueRunRequest) -> ContinuationClaim:
         await self.native_test_capabilities()
@@ -997,6 +1055,55 @@ class Client:
             raise DifyAgentTimeoutError(f"{operation} timed out") from exc
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"{operation} request failed: {exc}") from exc
+
+
+def _native_checkpoint_request_json(run_id: str, request: ReadNativeCheckpointRequest) -> bytes:
+    from dify_agent.protocol.native_testing import ID
+    from pydantic import TypeAdapter
+
+    try:
+        TypeAdapter(ID).validate_python(run_id)
+        if not isinstance(request, ReadNativeCheckpointRequest):
+            raise ValueError("invalid request")
+        # model_copy can bypass validation. Do not print its private input in
+        # serializer warnings; the strict reconstruction below still refuses it.
+        validated = ReadNativeCheckpointRequest.model_validate(request.model_dump(mode="json", warnings=False))
+        payload = validated.model_dump_json().encode()
+        if len(payload) > MAX_CHECKPOINT_REQUEST_BYTES:
+            raise ValueError("invalid request")
+        return payload
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("invalid native checkpoint selection") from None
+
+
+def _check_native_checkpoint_response(response: httpx.Response) -> None:
+    # Never parse untrusted error bodies: the ordinary error decoder may expose
+    # provider/private validation input, which is inappropriate for this read.
+    if response.status_code == 404:
+        raise DifyAgentNotFoundError(404, "native checkpoint unavailable")
+    if response.status_code == 422:
+        raise DifyAgentValidationError("native checkpoint unavailable")
+    if response.status_code >= 400:
+        raise DifyAgentHTTPError(response.status_code, "native checkpoint unavailable")
+    if response.status_code != 200 or response.headers.get("content-encoding", "identity").lower() != "identity":
+        raise DifyAgentValidationError("native checkpoint response unavailable")
+    try:
+        length = response.headers.get("content-length")
+        if length is not None and not 0 <= int(length) <= MAX_CHECKPOINT_RESPONSE_BYTES:
+            raise ValueError("response too large")
+    except ValueError:
+        raise DifyAgentValidationError("native checkpoint response unavailable") from None
+
+
+def _parse_native_checkpoint_response(
+    content: bytearray, *, run_id: str, request: ReadNativeCheckpointRequest
+) -> SelectedNativeCheckpoint:
+    try:
+        selected = SelectedNativeCheckpoint.model_validate_json(content)
+        selected.validate_selection(run_id=run_id, request=request)
+        return selected
+    except (ValueError, TypeError):
+        raise DifyAgentValidationError("native checkpoint response unavailable") from None
 
 
 def _create_run_json(request: CreateRunRequest) -> str:
