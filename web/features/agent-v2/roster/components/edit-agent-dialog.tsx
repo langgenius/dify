@@ -162,10 +162,7 @@ export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogPr
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent
-          initialFocus={nameInputRef}
-          className="flex w-130 flex-col overflow-hidden"
-        >
+        <DialogContent initialFocus={nameInputRef} className="flex w-130 flex-col overflow-hidden">
           <DialogClose
             disabled={updateAgentMutation.isPending}
             render={

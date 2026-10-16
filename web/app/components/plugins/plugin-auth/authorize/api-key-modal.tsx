@@ -147,10 +147,7 @@ const ApiKeyModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="w-160"
-      >
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">

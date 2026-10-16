@@ -29,7 +29,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
   return (
     <Dialog open={isShow} onOpenChange={onClose} disablePointerDismissal>
       <DialogContent
-        className="w-154.5 max-w-154.5 border border-effects-highlight bg-background-default-subtle shadow-lg p-6"
+        className="w-154.5 max-w-154.5 border border-effects-highlight bg-background-default-subtle p-6 shadow-lg"
         backdropProps={{ className: 'bg-workflow-canvas-canvas-overlay' }}
       >
         <DialogClose

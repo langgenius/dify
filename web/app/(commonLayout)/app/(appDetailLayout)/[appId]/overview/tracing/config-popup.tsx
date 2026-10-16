@@ -357,10 +357,7 @@ const ConfigPopup: FC<PopupProps> = ({
               )}
             </div>
           </div>
-          <DialogContent
-            initialFocus={firstInputRef}
-            className="w-160"
-          >
+          <DialogContent initialFocus={firstInputRef} className="w-160">
             {provider && (
               <ProviderConfigModal
                 appId={appId}

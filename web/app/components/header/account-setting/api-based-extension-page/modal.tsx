@@ -86,10 +86,7 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="w-160 border-none p-8 pb-6"
-      >
+      <DialogContent backdropProps={{ forceRender: true }} className="w-160 border-none p-8 pb-6">
         <DialogClose
           render={
             <IconButton

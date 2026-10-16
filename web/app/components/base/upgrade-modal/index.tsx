@@ -40,11 +40,7 @@ export function UpgradeModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={cn(
-          styles.surface,
-          'w-145 max-w-120 overflow-hidden',
-          classNames?.content,
-        )}
+        className={cn(styles.surface, 'w-145 max-w-120 overflow-hidden', classNames?.content)}
       >
         <div className="relative">
           <div

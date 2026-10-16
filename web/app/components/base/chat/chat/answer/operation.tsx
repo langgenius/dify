@@ -466,11 +466,7 @@ function Operation({
               )}
             </div>
           )}
-          <DialogContent
-            finalFocus={feedbackRef}
-            backdropProps={{ forceRender: true }}
-           
-          >
+          <DialogContent finalFocus={feedbackRef} backdropProps={{ forceRender: true }}>
             <FeedbackForm isSubmitting={isSubmittingFeedback} onSubmit={handleFeedbackSubmit} />
           </DialogContent>
         </Dialog>
