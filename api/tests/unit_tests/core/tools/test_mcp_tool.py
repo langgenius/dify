@@ -159,21 +159,29 @@ def test_mcp_tool_handle_none_parameter_filters_empty_values():
 
 
 # Home Assistant's GetLiveContext declares `domain` as `vol.Any(cv.string, [cv.string])`.
-_STRING_OR_STRING_LIST_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "domain": {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]},
-        "name": {"type": "string"},
-    },
-    "required": [],
-}
+_STRING = {"type": "string"}
+_STRING_LIST = {"type": "array", "items": {"type": "string"}}
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-@pytest.mark.parametrize("domain", [["light"], "light"])
-def test_mcp_tool_invoke_preserves_values_of_mixed_type_union_parameters(sqlite_session: Session, domain):
+@pytest.mark.parametrize(
+    "domain_schema",
+    [
+        {"anyOf": [_STRING, _STRING_LIST]},
+        {"anyOf": [_STRING_LIST, _STRING]},
+        {"oneOf": [_STRING, _STRING_LIST]},
+        {"oneOf": [_STRING_LIST, _STRING]},
+        {"type": ["string", "array"], "items": _STRING},
+        {"type": ["array", "string"], "items": _STRING},
+    ],
+)
+@pytest.mark.parametrize("domain", [["light", "cover"], "light"])
+def test_mcp_tool_invoke_preserves_values_of_mixed_type_union_parameters(
+    sqlite_session: Session, domain_schema, domain
+):
     tool = _build_mcp_tool()
-    tool.entity.parameters = ToolTransformService.convert_mcp_schema_to_parameter(_STRING_OR_STRING_LIST_SCHEMA)
+    schema = {"type": "object", "properties": {"domain": domain_schema, "name": _STRING}, "required": []}
+    tool.entity.parameters = ToolTransformService.convert_mcp_schema_to_parameter(schema)
     result = CallToolResult(content=[TextContent(type="text", text="ok")])
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result) as invoke_remote:

@@ -442,23 +442,30 @@ class TestConvertMcpSchemaToParameter:
         schema = {"type": "object", "properties": {"f": {"type": ["string", "null"]}}, "required": []}
         assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "string"
 
-    def test_mixed_type_union_attaches_input_schema(self):
-        prop = {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}
+    @pytest.mark.parametrize(
+        ("prop", "expected_type"),
+        [
+            ({"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}, "string"),
+            ({"anyOf": [{"type": "array", "items": {"type": "string"}}, {"type": "string"}]}, "array"),
+            ({"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}, "string"),
+            ({"oneOf": [{"type": "array", "items": {"type": "string"}}, {"type": "string"}]}, "array"),
+            ({"type": ["string", "array"], "items": {"type": "string"}}, "string"),
+            ({"type": ["array", "string"], "items": {"type": "string"}}, "array"),
+            ({"type": ["string", "array", "null"]}, "string"),
+        ],
+    )
+    def test_mixed_type_union_attaches_input_schema(self, prop, expected_type):
         schema = {"type": "object", "properties": {"domain": prop}, "required": []}
         param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
-        assert param.type.value == "string"
+        assert param.type.value == expected_type
         assert param.input_schema == prop
-
-    def test_mixed_type_list_attaches_input_schema(self):
-        prop = {"type": ["string", "array", "null"]}
-        schema = {"type": "object", "properties": {"f": prop}, "required": []}
-        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].input_schema == prop
 
     @pytest.mark.parametrize(
         "prop",
         [
             {"type": ["string", "null"]},
             {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            {"oneOf": [{"type": "null"}, {"type": "string"}]},
             {"oneOf": [{"type": "integer"}, {"type": "number"}]},
         ],
     )
