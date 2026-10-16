@@ -498,7 +498,9 @@ def test_ordinary_package_import_checks_permission_and_quota(
     )
     features = FeatureModel(apps=LimitationModel(size=1, limit=1))
     monkeypatch.setattr("services.app.console_gateway.FeatureService.get_features", lambda *_a, **_k: features)
-    with AppPackageService().export(dsl="kind: app\napp: {mode: workflow}\n", name="Workflow") as package:
-        with pytest.raises(Forbidden):
-            _post(app, imports, data={"file": (package.archive, "workflow.ifpkg")})
+    with (
+        AppPackageService().export(dsl="kind: app\napp: {mode: workflow}\n", name="Workflow") as package,
+        pytest.raises(Forbidden),
+    ):
+        _post(app, imports, data={"file": (package.archive, "workflow.ifpkg")})
     assert imports.dsl_calls == []

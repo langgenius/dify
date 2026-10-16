@@ -798,9 +798,8 @@ class TestRagPipelineRunTasks:
         }
 
         # Act & Assert: Execute the single task with non-existent entities (should raise ValueError)
-        with flask_app_with_containers.app_context():
-            with pytest.raises(ValueError, match="Account .* not found"):
-                run_single_rag_pipeline_task(invalid_entity_data, flask_app_with_containers)
+        with flask_app_with_containers.app_context(), pytest.raises(ValueError, match="Account .* not found"):
+            run_single_rag_pipeline_task(invalid_entity_data, flask_app_with_containers)
 
         # Assert: Pipeline generator should not be called
         mock_pipeline_generator.assert_not_called()
@@ -843,9 +842,8 @@ class TestRagPipelineRunTasks:
         }
 
         # Act & Assert: Execute the single task with non-existent entities (should raise ValueError)
-        with flask_app_with_containers.app_context():
-            with pytest.raises(ValueError, match="Account .* not found"):
-                run_single_rag_pipeline_task(entity_data, flask_app_with_containers)
+        with flask_app_with_containers.app_context(), pytest.raises(ValueError, match="Account .* not found"):
+            run_single_rag_pipeline_task(entity_data, flask_app_with_containers)
 
         # Assert: Pipeline generator should not be called
         mock_pipeline_generator.assert_not_called()

@@ -143,9 +143,9 @@ class TestEndpointCollectionApi:
                 "controllers.console.workspace.endpoint.EndpointService.create_endpoint",
                 side_effect=PluginPermissionDeniedError("denied"),
             ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, req_data, "t1", "u1")
+            method(api, req_data, "t1", "u1")
 
     def test_create_validation_error(self, app: Flask):
         api = EndpointCollectionApi()
@@ -157,11 +157,8 @@ class TestEndpointCollectionApi:
             "settings": {},
         }
 
-        with (
-            app.test_request_context("/", json=payload),
-        ):
-            with pytest.raises(ValueError):
-                method(api, EndpointCreatePayload(**payload), "t1", "u1")
+        with app.test_request_context("/", json=payload), pytest.raises(ValueError):
+            method(api, EndpointCreatePayload(**payload), "t1", "u1")
 
 
 class TestDeprecatedEndpointCreateApi:
@@ -228,11 +225,8 @@ class TestEndpointListApi:
         api = EndpointListApi()
         method = inspect.unwrap(api.get)
 
-        with (
-            app.test_request_context("/?page=0&page_size=10"),
-        ):
-            with pytest.raises(ValueError):
-                method(api, EndpointListQuery(page=0, page_size=10), "t1", "u1")
+        with app.test_request_context("/?page=0&page_size=10"), pytest.raises(ValueError):
+            method(api, EndpointListQuery(page=0, page_size=10), "t1", "u1")
 
 
 class TestEndpointListForSinglePluginApi:
@@ -257,11 +251,8 @@ class TestEndpointListForSinglePluginApi:
         api = EndpointListForSinglePluginApi()
         method = inspect.unwrap(api.get)
 
-        with (
-            app.test_request_context("/?page=1&page_size=10"),
-        ):
-            with pytest.raises(ValueError):
-                method(api, EndpointListForPluginQuery(page=1, page_size=10), "t1", "u1")
+        with app.test_request_context("/?page=1&page_size=10"), pytest.raises(ValueError):
+            method(api, EndpointListForPluginQuery(page=1, page_size=10), "t1", "u1")
 
 
 class TestEndpointItemApi:
@@ -291,9 +282,9 @@ class TestEndpointItemApi:
                 "controllers.console.workspace.endpoint.EndpointService.delete_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, "t1", "u1", "e1")
+            method(api, "t1", "u1", "e1")
 
     def test_update_success(self, app: Flask):
         api = EndpointItemApi()
@@ -329,11 +320,8 @@ class TestEndpointItemApi:
 
         payload = {"settings": {}}
 
-        with (
-            app.test_request_context("/", method="PATCH", json=payload),
-        ):
-            with pytest.raises(ValueError):
-                method(api, EndpointUpdatePayload(**payload), "t1", "u1", "e1")
+        with app.test_request_context("/", method="PATCH", json=payload), pytest.raises(ValueError):
+            method(api, EndpointUpdatePayload(**payload), "t1", "u1", "e1")
 
     def test_update_service_failure(self, app: Flask):
         api = EndpointItemApi()
@@ -351,9 +339,9 @@ class TestEndpointItemApi:
                 "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1", "e1")
+            method(api, req_data, "t1", "u1", "e1")
 
 
 class TestDeprecatedEndpointDeleteApi:
@@ -376,11 +364,8 @@ class TestDeprecatedEndpointDeleteApi:
         api = DeprecatedEndpointDeleteApi()
         method = inspect.unwrap(api.post)
 
-        with (
-            app.test_request_context("/", json={}),
-        ):
-            with pytest.raises(ValueError):
-                method(api, EndpointIdPayload(), "t1", "u1")
+        with app.test_request_context("/", json={}), pytest.raises(ValueError):
+            method(api, EndpointIdPayload(), "t1", "u1")
 
     def test_delete_service_failure(self, app: Flask):
         api = DeprecatedEndpointDeleteApi()
@@ -395,9 +380,9 @@ class TestDeprecatedEndpointDeleteApi:
                 "controllers.console.workspace.endpoint.EndpointService.delete_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1")
+            method(api, req_data, "t1", "u1")
 
 
 class TestDeprecatedEndpointUpdateApi:
@@ -426,11 +411,8 @@ class TestDeprecatedEndpointUpdateApi:
 
         payload = {"endpoint_id": "e1", "settings": {}}
 
-        with (
-            app.test_request_context("/", json=payload),
-        ):
-            with pytest.raises(ValueError):
-                method(api, LegacyEndpointUpdatePayload(**payload), "t1", "u1")
+        with app.test_request_context("/", json=payload), pytest.raises(ValueError):
+            method(api, LegacyEndpointUpdatePayload(**payload), "t1", "u1")
 
     def test_update_service_failure(self, app: Flask):
         api = DeprecatedEndpointUpdateApi()
@@ -449,9 +431,9 @@ class TestDeprecatedEndpointUpdateApi:
                 "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1")
+            method(api, req_data, "t1", "u1")
 
 
 class TestEndpointRouteMetadata:
@@ -510,11 +492,8 @@ class TestEndpointEnableApi:
         api = EndpointEnableApi()
         method = inspect.unwrap(api.post)
 
-        with (
-            app.test_request_context("/", json={}),
-        ):
-            with pytest.raises(ValueError):
-                method(api, EndpointIdPayload(), "t1", "u1")
+        with app.test_request_context("/", json={}), pytest.raises(ValueError):
+            method(api, EndpointIdPayload(), "t1", "u1")
 
     def test_enable_service_failure(self, app: Flask):
         api = EndpointEnableApi()
@@ -529,9 +508,9 @@ class TestEndpointEnableApi:
                 "controllers.console.workspace.endpoint.EndpointService.enable_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
             ),
+            pytest.raises(PluginDaemonInternalServerError),
         ):
-            with pytest.raises(PluginDaemonInternalServerError):
-                method(api, req_data, "t1", "u1")
+            method(api, req_data, "t1", "u1")
 
 
 class TestEndpointDisableApi:
@@ -554,8 +533,5 @@ class TestEndpointDisableApi:
         api = EndpointDisableApi()
         method = inspect.unwrap(api.post)
 
-        with (
-            app.test_request_context("/", json={}),
-        ):
-            with pytest.raises(ValueError):
-                method(api, EndpointIdPayload(), "t1", "u1")
+        with app.test_request_context("/", json={}), pytest.raises(ValueError):
+            method(api, EndpointIdPayload(), "t1", "u1")

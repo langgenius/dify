@@ -184,9 +184,11 @@ class TestQAIndexProcessor:
         assert mock_format.call_count == 2
 
     def test_format_by_template_validates_file_type(self, processor: QAIndexProcessor) -> None:
-        with closing(FileStorage(stream=BytesIO(b"not csv"), filename="qa.txt")) as file:
-            with pytest.raises(ValueError, match="Only CSV files"):
-                processor.format_by_template(file)
+        with (
+            closing(FileStorage(stream=BytesIO(b"not csv"), filename="qa.txt")) as file,
+            pytest.raises(ValueError, match="Only CSV files"),
+        ):
+            processor.format_by_template(file)
 
     def test_format_by_template_parses_csv_rows(self, processor: QAIndexProcessor) -> None:
         with closing(FileStorage(stream=BytesIO(b"question,answer\nQ1,A1\nQ2,A2\n"), filename="qa.csv")) as file:
@@ -196,14 +198,18 @@ class TestQAIndexProcessor:
         assert [doc.metadata["answer"] for doc in docs] == ["A1", "A2"]
 
     def test_format_by_template_raises_on_empty_csv(self, processor: QAIndexProcessor) -> None:
-        with closing(FileStorage(stream=BytesIO(b"question,answer\n"), filename="qa.csv")) as file:
-            with pytest.raises(ValueError, match="empty"):
-                processor.format_by_template(file)
+        with (
+            closing(FileStorage(stream=BytesIO(b"question,answer\n"), filename="qa.csv")) as file,
+            pytest.raises(ValueError, match="empty"),
+        ):
+            processor.format_by_template(file)
 
     def test_format_by_template_raises_on_invalid_csv(self, processor: QAIndexProcessor) -> None:
-        with closing(FileStorage(stream=BytesIO(b'question,answer\n"unterminated'), filename="qa.csv")) as file:
-            with pytest.raises(ValueError, match="Error tokenizing data"):
-                processor.format_by_template(file)
+        with (
+            closing(FileStorage(stream=BytesIO(b'question,answer\n"unterminated'), filename="qa.csv")) as file,
+            pytest.raises(ValueError, match="Error tokenizing data"),
+        ):
+            processor.format_by_template(file)
 
     def test_load_creates_vectors_for_high_quality_dataset(
         self, processor: QAIndexProcessor, dataset: Dataset, sqlite_session: Session
@@ -374,9 +380,9 @@ class TestQAIndexProcessor:
                 "core.rag.index_processor.processor.qa_index_processor.calculate_segment_token_counts",
                 return_value=[0],
             ),
+            pytest.raises(ValueError, match="must be high quality"),
         ):
-            with pytest.raises(ValueError, match="must be high quality"):
-                processor.index(dataset, dataset_document, {"qa_chunks": []}, session)
+            processor.index(dataset, dataset_document, {"qa_chunks": []}, session)
 
     def test_format_preview_returns_qa_preview(self, processor: QAIndexProcessor) -> None:
         qa_chunks = SimpleNamespace(qa_chunks=[SimpleNamespace(question="Q1", answer="A1")])

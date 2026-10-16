@@ -139,9 +139,8 @@ def test_api_key_overrides_conflicting_header(
         ENTERPRISE_OTLP_API_KEY="test-key",
     )
 
-    with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"):
-        with _running_exporter(config):
-            pass
+    with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"), _running_exporter(config):
+        pass
 
     headers = span_calls[0]["headers"]
     assert isinstance(headers, tuple)
@@ -474,14 +473,16 @@ def test_export_span_logs_exception_on_error(caplog: pytest.LogCaptureFixture, m
 def test_export_span_invalid_trace_correlation_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     """Invalid UUID for trace_correlation_override triggers a warning log."""
     parent_uid = "987fbc97-4bed-5078-9f07-9141ba07c9f3"
-    with _exporter_with_in_memory_tracer() as (exporter, _):
-        with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"):
-            exporter.export_span(
-                name="link.span",
-                attributes={},
-                correlation_id="not-a-valid-uuid",
-                parent_span_id_source=parent_uid,
-            )
+    with (
+        _exporter_with_in_memory_tracer() as (exporter, _),
+        caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"),
+    ):
+        exporter.export_span(
+            name="link.span",
+            attributes={},
+            correlation_id="not-a-valid-uuid",
+            parent_span_id_source=parent_uid,
+        )
 
     assert "Invalid trace correlation UUID for cross-workflow link" in caplog.text
 

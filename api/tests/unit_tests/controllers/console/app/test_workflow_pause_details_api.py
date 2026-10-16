@@ -87,9 +87,11 @@ def test_pause_details_maps_missing_or_inaccessible_run_to_not_found(
     api = workflow_run_module.ConsoleWorkflowPauseDetailsApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
-        with pytest.raises(NotFoundError, match="Workflow run not found"):
-            handler(api, request_context, workflow_run_id="run-1")
+    with (
+        app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"),
+        pytest.raises(NotFoundError, match="Workflow run not found"),
+    ):
+        handler(api, request_context, workflow_run_id="run-1")
 
     workflow_runs.get_pause_details.assert_called_once_with(
         request_context,

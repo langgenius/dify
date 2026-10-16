@@ -85,9 +85,8 @@ class PluginMigration:
                 try:
                     plugins = cls.extract_installed_plugin_ids(tenant_id)
                     # Use lock when writing to file
-                    with file_lock:
-                        with open(filepath, "a") as f:
-                            f.write(json.dumps({"tenant_id": tenant_id, "plugins": plugins}) + "\n")
+                    with file_lock, open(filepath, "a") as f:
+                        f.write(json.dumps({"tenant_id": tenant_id, "plugins": plugins}) + "\n")
 
                     # Use lock when updating counter
                     with counter_lock:

@@ -68,7 +68,6 @@ ignore = [
     "N815",    # mixed-case-variable-in-class-scope
     "PT011",   # pytest-raises-too-broad
     "SIM102",  # collapsible-if
-    "SIM117",  # multiple-with-statements
 ]
 
 [lint.per-file-ignores]

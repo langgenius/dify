@@ -130,15 +130,14 @@ class TestOpenApiWorkflowEventsApi:
         factory_mock = self._bind_repo(monkeypatch, None)
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CreatorUserRole.ACCOUNT),
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    query=WorkflowEventsQuery(),
-                )
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"), pytest.raises(NotFound):
+            api.get.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                task_id="wf-run-1",
+                query=WorkflowEventsQuery(),
+            )
 
         # The stream outlives the guard's session, so the repository gets the guard's
         # own maker rather than a fresh one bound straight to the engine.
@@ -149,29 +148,27 @@ class TestOpenApiWorkflowEventsApi:
         self._bind_repo(monkeypatch, _make_workflow_run(app_id="other-app"))
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CreatorUserRole.ACCOUNT),
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    query=WorkflowEventsQuery(),
-                )
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"), pytest.raises(NotFound):
+            api.get.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                task_id="wf-run-1",
+                query=WorkflowEventsQuery(),
+            )
 
     def test_account_caller_rejected_for_end_user_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         self._bind_repo(monkeypatch, _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1"))
 
         api = OpenApiWorkflowEventsApi()
-        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"):
-            with pytest.raises(NotFound):
-                api.get.__handler__(
-                    api,
-                    _context(_make_account(), CreatorUserRole.ACCOUNT),
-                    app_id="app-1",
-                    task_id="wf-run-1",
-                    query=WorkflowEventsQuery(),
-                )
+        with app.test_request_context("/openapi/v1/apps/app-1/tasks/wf-run-1/events"), pytest.raises(NotFound):
+            api.get.__handler__(
+                api,
+                _context(_make_account(), CreatorUserRole.ACCOUNT),
+                app_id="app-1",
+                task_id="wf-run-1",
+                query=WorkflowEventsQuery(),
+            )
 
     def test_end_user_caller_checks_created_by_end_user(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         """End-user caller must match created_by == caller.id and role == END_USER."""

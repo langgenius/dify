@@ -119,9 +119,11 @@ class TestAudioApi:
         content = b"x" * (FILE_SIZE_LIMIT + 1) if condition == "large" else b"audio"
         mime = "video/mp4" if condition == "unsupported" else "audio/mp3"
         data: dict[str, object] = {} if condition == "missing" else {"file": (BytesIO(content), "test.mp3", mime)}
-        with app.test_request_context("/audio-to-text", method="POST", data=data):
-            with pytest.raises(expected_error):
-                AudioApi().post(web_app, _end_user())
+        with (
+            app.test_request_context("/audio-to-text", method="POST", data=data),
+            pytest.raises(expected_error),
+        ):
+            AudioApi().post(web_app, _end_user())
         assert audio_runtime.resolutions == []
         assert audio_runtime.daemon_calls == []
 
@@ -143,21 +145,25 @@ class TestAudioApi:
         audio_runtime: AudioRuntimeObservations,
     ) -> None:
         audio_runtime.lookup_error = provider_error
-        with app.test_request_context(
-            "/audio-to-text", method="POST", data={"file": (BytesIO(b"audio"), "x.mp3", "audio/mp3")}
+        with (
+            app.test_request_context(
+                "/audio-to-text", method="POST", data={"file": (BytesIO(b"audio"), "x.mp3", "audio/mp3")}
+            ),
+            pytest.raises(expected_error),
         ):
-            with pytest.raises(expected_error):
-                AudioApi().post(web_app, _end_user())
+            AudioApi().post(web_app, _end_user())
         assert len(audio_runtime.resolutions) == 1
         assert audio_runtime.daemon_calls == []
 
     def test_missing_default_model(self, app: Flask, web_app: App, audio_runtime: AudioRuntimeObservations) -> None:
         audio_runtime.default_available = False
-        with app.test_request_context(
-            "/audio-to-text", method="POST", data={"file": (BytesIO(b"audio"), "x.mp3", "audio/mp3")}
+        with (
+            app.test_request_context(
+                "/audio-to-text", method="POST", data={"file": (BytesIO(b"audio"), "x.mp3", "audio/mp3")}
+            ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                AudioApi().post(web_app, _end_user())
+            AudioApi().post(web_app, _end_user())
 
 
 class TestTextApi:
@@ -243,6 +249,8 @@ class TestTextApi:
 
     def test_invoke_error_mapped(self, app: Flask, web_app: App, audio_runtime: AudioRuntimeObservations) -> None:
         audio_runtime.lookup_error = InvokeError(description="invoke failed")
-        with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
-            with pytest.raises(CompletionRequestError):
-                TextApi().post(web_app, _end_user())
+        with (
+            app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}),
+            pytest.raises(CompletionRequestError),
+        ):
+            TextApi().post(web_app, _end_user())

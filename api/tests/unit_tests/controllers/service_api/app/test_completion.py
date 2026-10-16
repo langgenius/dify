@@ -411,16 +411,18 @@ class TestCompletionControllerLogic:
         mock_service_api_ns.payload = payload_dict
         mock_generate_service.generate.return_value = {"text": "response"}
 
-        with app.test_request_context():
+        with (
+            app.test_request_context(),
+            patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact,
+        ):
             # Helper for compact_generate_response logic check
-            with patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact:
-                mock_compact.return_value = {"text": "compacted"}
+            mock_compact.return_value = {"text": "compacted"}
 
-                api = CompletionApi()
-                response = unwrap(api.post)(api, orm_session, app_model, end_user)
+            api = CompletionApi()
+            response = unwrap(api.post)(api, orm_session, app_model, end_user)
 
-                assert response == {"text": "compacted"}
-                mock_generate_service.generate.assert_called_once()
+            assert response == {"text": "compacted"}
+            mock_generate_service.generate.assert_called_once()
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     def test_completion_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask, orm_session: Session):
@@ -429,9 +431,8 @@ class TestCompletionControllerLogic:
 
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
-        with app.test_request_context():
-            with pytest.raises(AppUnavailableError):
-                unwrap(CompletionApi().post)(CompletionApi(), orm_session, app_model, end_user)
+        with app.test_request_context(), pytest.raises(AppUnavailableError):
+            unwrap(CompletionApi().post)(CompletionApi(), orm_session, app_model, end_user)
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")
@@ -445,13 +446,15 @@ class TestCompletionControllerLogic:
         mock_service_api_ns.payload = payload_dict
         mock_generate_service.generate.return_value = {"text": "response"}
 
-        with app.test_request_context():
-            with patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact:
-                mock_compact.return_value = {"text": "compacted"}
+        with (
+            app.test_request_context(),
+            patch("controllers.service_api.app.completion.helper.compact_generate_response") as mock_compact,
+        ):
+            mock_compact.return_value = {"text": "compacted"}
 
-                api = ChatApi()
-                response = unwrap(api.post)(api, orm_session, app_model, end_user)
-                assert response == {"text": "compacted"}
+            api = ChatApi()
+            response = unwrap(api.post)(api, orm_session, app_model, end_user)
+            assert response == {"text": "compacted"}
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     def test_chat_api_post_wrong_app_mode(self, mock_service_api_ns, app: Flask, orm_session: Session):
@@ -460,9 +463,8 @@ class TestCompletionControllerLogic:
 
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
-        with app.test_request_context():
-            with pytest.raises(NotChatAppError):
-                unwrap(ChatApi().post)(ChatApi(), orm_session, app_model, end_user)
+        with app.test_request_context(), pytest.raises(NotChatAppError):
+            unwrap(ChatApi().post)(ChatApi(), orm_session, app_model, end_user)
 
     @patch("controllers.service_api.app.completion.AppTaskService")
     def test_completion_stop_api_success(self, mock_task_service, app: Flask, orm_session: Session):
@@ -510,9 +512,11 @@ class TestCompletionApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
-        with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
-            with pytest.raises(AppUnavailableError):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}),
+            pytest.raises(AppUnavailableError),
+        ):
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
         monkeypatch.setattr(
@@ -525,9 +529,11 @@ class TestCompletionApiController:
         api = CompletionApi()
         handler = unwrap(api.post)
 
-        with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
-            with pytest.raises(NotFound):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}),
+            pytest.raises(NotFound),
+        ):
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
 
 class TestCompletionStopApiController:
@@ -536,9 +542,11 @@ class TestCompletionStopApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
-        with app.test_request_context("/completion-messages/1/stop", method="POST"):
-            with pytest.raises(AppUnavailableError):
-                handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+        with (
+            app.test_request_context("/completion-messages/1/stop", method="POST"),
+            pytest.raises(AppUnavailableError),
+        ):
+            handler(api, app_model=app_model, end_user=end_user, task_id="t1")
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
         stop_mock = Mock()
@@ -582,11 +590,13 @@ class TestChatApiController:
         api = ChatApi()
         handler = unwrap(api.post)
 
-        with app.test_request_context(
-            "/chat-messages", method="POST", json={"inputs": {}, "query": "hi", "response_mode": "blocking"}
+        with (
+            app.test_request_context(
+                "/chat-messages", method="POST", json={"inputs": {}, "query": "hi", "response_mode": "blocking"}
+            ),
+            pytest.raises(http_error) as exc_info,
         ):
-            with pytest.raises(http_error) as exc_info:
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
         generate.assert_called_once()
         assert exc_info.value.code == status_code
@@ -609,13 +619,15 @@ class TestChatApiController:
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.ADVANCED_CHAT)
         workflow_id = str(uuid.uuid4())
 
-        with app.test_request_context(
-            "/chat-messages",
-            method="POST",
-            json={"inputs": {}, "query": "hi", "workflow_id": workflow_id},
+        with (
+            app.test_request_context(
+                "/chat-messages",
+                method="POST",
+                json={"inputs": {}, "query": "hi", "workflow_id": workflow_id},
+            ),
+            pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info,
         ):
-            with pytest.raises(WorkflowVersionExecutionNotAllowedError) as exc_info:
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
         billing_get_info.assert_called_once_with(app_model.tenant_id, exclude_vector_space=True)
         generate.assert_not_called()
@@ -672,9 +684,11 @@ class TestChatApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
-        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
-            with pytest.raises(NotChatAppError):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}),
+            pytest.raises(NotChatAppError),
+        ):
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_workflow_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
         monkeypatch.setattr(
@@ -687,9 +701,11 @@ class TestChatApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
-        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
-            with pytest.raises(NotFound):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}),
+            pytest.raises(NotFound),
+        ):
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session) -> None:
         monkeypatch.setattr(
@@ -702,9 +718,11 @@ class TestChatApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
-        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
-            with pytest.raises(BadRequest):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}),
+            pytest.raises(BadRequest),
+        ):
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_agent_not_published_error_mapped(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
@@ -719,9 +737,11 @@ class TestChatApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.AGENT)
 
-        with app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}):
-            with pytest.raises(AgentNotPublishedError):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+        with (
+            app.test_request_context("/chat-messages", method="POST", json={"inputs": {}, "query": "hi"}),
+            pytest.raises(AgentNotPublishedError),
+        ):
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
     def test_invalid_conversation_id_fails_fast_as_not_found(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
@@ -739,13 +759,15 @@ class TestChatApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.CHAT)
 
-        with app.test_request_context(
-            "/chat-messages",
-            method="POST",
-            json={"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())},
+        with (
+            app.test_request_context(
+                "/chat-messages",
+                method="POST",
+                json={"inputs": {}, "query": "hi", "conversation_id": str(uuid.uuid4())},
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(api, session=orm_session, app_model=app_model, end_user=end_user)
+            handler(api, session=orm_session, app_model=app_model, end_user=end_user)
 
         # The lookup must run before generation, so the generator is never started.
         generate_mock.assert_not_called()
@@ -758,6 +780,5 @@ class TestChatStopApiController:
         handler = unwrap(api.post)
         app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
 
-        with app.test_request_context("/chat-messages/1/stop", method="POST"):
-            with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user, task_id="t1")
+        with app.test_request_context("/chat-messages/1/stop", method="POST"), pytest.raises(NotChatAppError):
+            handler(api, app_model=app_model, end_user=end_user, task_id="t1")

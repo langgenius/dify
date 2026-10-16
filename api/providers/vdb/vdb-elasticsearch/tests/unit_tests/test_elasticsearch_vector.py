@@ -143,21 +143,27 @@ def test_init_client_connection_failures(elasticsearch_module):
 
     client = MagicMock()
     client.ping.return_value = False
-    with patch.object(elasticsearch_module, "Elasticsearch", return_value=client):
-        with pytest.raises(ConnectionError, match="Failed to connect"):
-            vector._init_client(_regular_config(elasticsearch_module))
-
-    with patch.object(
-        elasticsearch_module,
-        "Elasticsearch",
-        side_effect=elasticsearch_module.ElasticsearchConnectionError("boom"),
+    with (
+        patch.object(elasticsearch_module, "Elasticsearch", return_value=client),
+        pytest.raises(ConnectionError, match="Failed to connect"),
     ):
-        with pytest.raises(ConnectionError, match="Vector database connection error"):
-            vector._init_client(_regular_config(elasticsearch_module))
+        vector._init_client(_regular_config(elasticsearch_module))
 
-    with patch.object(elasticsearch_module, "Elasticsearch", side_effect=RuntimeError("oops")):
-        with pytest.raises(ConnectionError, match="initialization failed"):
-            vector._init_client(_regular_config(elasticsearch_module))
+    with (
+        patch.object(
+            elasticsearch_module,
+            "Elasticsearch",
+            side_effect=elasticsearch_module.ElasticsearchConnectionError("boom"),
+        ),
+        pytest.raises(ConnectionError, match="Vector database connection error"),
+    ):
+        vector._init_client(_regular_config(elasticsearch_module))
+
+    with (
+        patch.object(elasticsearch_module, "Elasticsearch", side_effect=RuntimeError("oops")),
+        pytest.raises(ConnectionError, match="initialization failed"),
+    ):
+        vector._init_client(_regular_config(elasticsearch_module))
 
 
 def test_init_get_version_and_check_version(elasticsearch_module):

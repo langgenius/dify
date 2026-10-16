@@ -41,18 +41,20 @@ def subscription_builder() -> SubscriptionBuilder:
 )
 def test_get_subscription_builder_rejects_non_owner(field: str, value: str) -> None:
     builder = subscription_builder().model_copy(update={field: value})
-    with patch.object(
-        TriggerSubscriptionBuilderService,
-        "_get_subscription_builder_by_endpoint_id",
-        return_value=builder,
+    with (
+        patch.object(
+            TriggerSubscriptionBuilderService,
+            "_get_subscription_builder_by_endpoint_id",
+            return_value=builder,
+        ),
+        pytest.raises(ValueError, match="not found"),
     ):
-        with pytest.raises(ValueError, match="not found"):
-            TriggerSubscriptionBuilderService.get_subscription_builder(
-                tenant_id="tenant-1",
-                user_id="user-1",
-                provider_id=PROVIDER_ID,
-                subscription_builder_id="builder-1",
-            )
+        TriggerSubscriptionBuilderService.get_subscription_builder(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            provider_id=PROVIDER_ID,
+            subscription_builder_id="builder-1",
+        )
 
 
 def test_get_subscription_builder_accepts_owner() -> None:
@@ -140,9 +142,9 @@ def test_owner_scoped_operations_reject_missing_builder_before_side_effects(
         ) as get_subscription_builder,
         patch("services.trigger.trigger_subscription_builder_service.redis_client.setex") as setex,
         patch("services.trigger.trigger_subscription_builder_service.redis_client.delete") as delete,
+        pytest.raises(ValueError, match="not found"),
     ):
-        with pytest.raises(ValueError, match="not found"):
-            operation(**kwargs)
+        operation(**kwargs)
 
     get_subscription_builder.assert_called_once_with(
         tenant_id="tenant-1",

@@ -277,14 +277,16 @@ def test_get_plugin_provider_uses_context_cache():
     lock_context.set(threading.Lock())
     provider_entity = SimpleNamespace(declaration=Mock(), plugin_id="pid", plugin_unique_identifier="uid")
 
-    with patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context):
-        with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
-            with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
-                mock_manager_cls.return_value.fetch_tool_provider.return_value = provider_entity
-                controller = SimpleNamespace(name="controller")
-                with patch("core.tools.tool_manager.PluginToolProviderController", return_value=controller):
-                    built = ToolManager.get_plugin_provider("provider-a", "tenant-1")
-                    cached = ToolManager.get_plugin_provider("provider-a", "tenant-1")
+    with (
+        patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context),
+        patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context),
+        patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls,
+    ):
+        mock_manager_cls.return_value.fetch_tool_provider.return_value = provider_entity
+        controller = SimpleNamespace(name="controller")
+        with patch("core.tools.tool_manager.PluginToolProviderController", return_value=controller):
+            built = ToolManager.get_plugin_provider("provider-a", "tenant-1")
+            cached = ToolManager.get_plugin_provider("provider-a", "tenant-1")
 
     assert built is controller
     assert cached is controller
@@ -296,12 +298,14 @@ def test_get_plugin_provider_raises_when_provider_missing():
     lock_context = _SimpleContextVar()
     lock_context.set(threading.Lock())
 
-    with patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context):
-        with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
-            with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
-                mock_manager_cls.return_value.fetch_tool_provider.return_value = None
-                with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
-                    ToolManager.get_plugin_provider("provider-a", "tenant-1")
+    with (
+        patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context),
+        patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context),
+        patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls,
+    ):
+        mock_manager_cls.return_value.fetch_tool_provider.return_value = None
+        with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
+            ToolManager.get_plugin_provider("provider-a", "tenant-1")
 
 
 @pytest.mark.parametrize(
@@ -329,12 +333,14 @@ def test_get_plugin_provider_translates_plugin_not_found_to_domain_error(daemon_
     lock_context = _SimpleContextVar()
     lock_context.set(threading.Lock())
 
-    with patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context):
-        with patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context):
-            with patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls:
-                mock_manager_cls.return_value.fetch_tool_provider.side_effect = daemon_error
-                with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
-                    ToolManager.get_plugin_provider("provider-a", "tenant-1")
+    with (
+        patch("core.tools.tool_manager.contexts.plugin_tool_providers", provider_context),
+        patch("core.tools.tool_manager.contexts.plugin_tool_providers_lock", lock_context),
+        patch("core.tools.tool_manager.PluginToolManager") as mock_manager_cls,
+    ):
+        mock_manager_cls.return_value.fetch_tool_provider.side_effect = daemon_error
+        with pytest.raises(ToolProviderNotFoundError, match="plugin provider provider-a not found"):
+            ToolManager.get_plugin_provider("provider-a", "tenant-1")
 
 
 def test_get_tool_runtime_builtin_without_credentials():
@@ -359,14 +365,16 @@ def test_get_tool_runtime_builtin_without_credentials():
 def test_get_tool_runtime_builtin_missing_tool_raises():
     controller = SimpleNamespace(get_tool=Mock(return_value=None), need_credentials=False)
 
-    with patch.object(ToolManager, "get_builtin_provider", return_value=controller):
-        with pytest.raises(ToolProviderNotFoundError, match="builtin tool missing not found"):
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.BUILT_IN,
-                provider_id="time",
-                tool_name="missing",
-                tenant_id="tenant-1",
-            )
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=controller),
+        pytest.raises(ToolProviderNotFoundError, match="builtin tool missing not found"),
+    ):
+        ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.BUILT_IN,
+            provider_id="time",
+            tool_name="missing",
+            tenant_id="tenant-1",
+        )
 
 
 def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
@@ -388,18 +396,20 @@ def test_get_tool_runtime_builtin_with_credentials_decrypts_and_forks(
     tool_database.session.commit()
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
 
-    with patch.object(ToolManager, "get_builtin_provider", return_value=controller):
-        with patch("core.helper.credential_utils.check_credential_policy_compliance"):
-            encrypter = Mock()
-            encrypter.decrypt.return_value = {"api_key": "secret"}
-            cache = Mock()
-            with patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, cache)):
-                result = ToolManager.get_tool_runtime(
-                    provider_type=ToolProviderType.BUILT_IN,
-                    provider_id="time",
-                    tool_name="weekday",
-                    tenant_id=tenant_id,
-                )
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=controller),
+        patch("core.helper.credential_utils.check_credential_policy_compliance"),
+    ):
+        encrypter = Mock()
+        encrypter.decrypt.return_value = {"api_key": "secret"}
+        cache = Mock()
+        with patch("core.tools.tool_manager.create_provider_encrypter", return_value=(encrypter, cache)):
+            result = ToolManager.get_tool_runtime(
+                provider_type=ToolProviderType.BUILT_IN,
+                provider_id="time",
+                tool_name="weekday",
+                tenant_id=tenant_id,
+            )
 
     assert result == "runtime-tool"
     runtime = tool.fork_tool_runtime.call_args.kwargs["runtime"]
@@ -521,15 +531,17 @@ def test_get_tool_runtime_builtin_plugin_credential_deleted_raises(
     plugin_controller.get_credentials_schema_by_type = Mock(return_value=[])
 
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller):
-        with pytest.raises(ToolProviderCredentialValidationError, match="credential .* has been deleted"):
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.BUILT_IN,
-                provider_id="time",
-                tool_name="weekday",
-                tenant_id="00000000-0000-0000-0000-000000000001",
-                credential_id="00000000-0000-0000-0000-000000000002",
-            )
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller),
+        pytest.raises(ToolProviderCredentialValidationError, match="credential .* has been deleted"),
+    ):
+        ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.BUILT_IN,
+            provider_id="time",
+            tool_name="weekday",
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            credential_id="00000000-0000-0000-0000-000000000002",
+        )
 
 
 def test_get_tool_runtime_builtin_plugin_without_workspace_credential_raises(
@@ -541,14 +553,16 @@ def test_get_tool_runtime_builtin_plugin_without_workspace_credential_raises(
     plugin_controller.get_credentials_schema_by_type = Mock(return_value=[])
 
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller):
-        with pytest.raises(ToolProviderCredentialValidationError, match="No workspace credential is configured"):
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.BUILT_IN,
-                provider_id="langgenius/dify-gmail/dify-gmail",
-                tool_name="send_draft",
-                tenant_id="00000000-0000-0000-0000-000000000001",
-            )
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=plugin_controller),
+        pytest.raises(ToolProviderCredentialValidationError, match="No workspace credential is configured"),
+    ):
+        ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.BUILT_IN,
+            provider_id="langgenius/dify-gmail/dify-gmail",
+            tool_name="send_draft",
+            tenant_id="00000000-0000-0000-0000-000000000001",
+        )
 
 
 def test_get_tool_runtime_hardcoded_provider_without_credential_raises(
@@ -560,14 +574,16 @@ def test_get_tool_runtime_hardcoded_provider_without_credential_raises(
     )
 
     monkeypatch.setattr("core.tools.tool_manager.db", tool_database)
-    with patch.object(ToolManager, "get_builtin_provider", return_value=controller):
-        with pytest.raises(ToolProviderCredentialValidationError, match="No credential is configured"):
-            ToolManager.get_tool_runtime(
-                provider_type=ToolProviderType.BUILT_IN,
-                provider_id="legacy-provider",
-                tool_name="legacy-tool",
-                tenant_id="00000000-0000-0000-0000-000000000001",
-            )
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=controller),
+        pytest.raises(ToolProviderCredentialValidationError, match="No credential is configured"),
+    ):
+        ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.BUILT_IN,
+            provider_id="legacy-provider",
+            tool_name="legacy-tool",
+            tenant_id="00000000-0000-0000-0000-000000000001",
+        )
 
 
 def test_get_tool_runtime_api_path():
@@ -673,26 +689,28 @@ def test_get_agent_runtime_apply_runtime_parameters():
     tool_runtime = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_runtime.get_merged_runtime_parameters = Mock(return_value=[parameter])
 
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime) as mock_get_tool_runtime:
-        with patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "hello"}):
-            manager = Mock()
-            manager.decrypt_tool_parameters.return_value = {"query": "decrypted"}
-            with patch("core.tools.tool_manager.ToolParameterConfigurationManager", return_value=manager):
-                agent_tool = SimpleNamespace(
-                    provider_type=ToolProviderType.API,
-                    provider_id="api-1",
-                    tool_name="search",
-                    tool_parameters={"query": "hello"},
-                    credential_id=None,
-                )
-                result = ToolManager.get_agent_tool_runtime(
-                    tenant_id="tenant-1",
-                    app_id="app-1",
-                    agent_tool=agent_tool,
-                    user_id="user-1",
-                    invoke_from=InvokeFrom.DEBUGGER,
-                    variable_pool=None,
-                )
+    with (
+        patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime) as mock_get_tool_runtime,
+        patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "hello"}),
+    ):
+        manager = Mock()
+        manager.decrypt_tool_parameters.return_value = {"query": "decrypted"}
+        with patch("core.tools.tool_manager.ToolParameterConfigurationManager", return_value=manager):
+            agent_tool = SimpleNamespace(
+                provider_type=ToolProviderType.API,
+                provider_id="api-1",
+                tool_name="search",
+                tool_parameters={"query": "hello"},
+                credential_id=None,
+            )
+            result = ToolManager.get_agent_tool_runtime(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                agent_tool=agent_tool,
+                user_id="user-1",
+                invoke_from=InvokeFrom.DEBUGGER,
+                variable_pool=None,
+            )
 
     assert result is tool_runtime
     assert tool_runtime.runtime.runtime_parameters["query"] == "decrypted"
@@ -726,20 +744,22 @@ def test_get_workflow_runtime_apply_runtime_parameters():
     )
     tool_runtime2 = SimpleNamespace(runtime=ToolRuntime(tenant_id="tenant-1", runtime_parameters={}))
     tool_runtime2.get_merged_runtime_parameters = Mock(return_value=[parameter])
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime2) as mock_get_tool_runtime:
-        with patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "workflow"}):
-            manager = Mock()
-            manager.decrypt_tool_parameters.return_value = {"query": "workflow-dec"}
-            with patch("core.tools.tool_manager.ToolParameterConfigurationManager", return_value=manager):
-                workflow_result = ToolManager.get_workflow_tool_runtime(
-                    tenant_id="tenant-1",
-                    app_id="app-1",
-                    node_id="node-1",
-                    workflow_tool=workflow_tool,
-                    user_id="user-1",
-                    invoke_from=InvokeFrom.DEBUGGER,
-                    variable_pool=None,
-                )
+    with (
+        patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime2) as mock_get_tool_runtime,
+        patch.object(ToolManager, "_convert_tool_parameters_type", return_value={"query": "workflow"}),
+    ):
+        manager = Mock()
+        manager.decrypt_tool_parameters.return_value = {"query": "workflow-dec"}
+        with patch("core.tools.tool_manager.ToolParameterConfigurationManager", return_value=manager):
+            workflow_result = ToolManager.get_workflow_tool_runtime(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                node_id="node-1",
+                workflow_tool=workflow_tool,
+                user_id="user-1",
+                invoke_from=InvokeFrom.DEBUGGER,
+                variable_pool=None,
+            )
 
     assert workflow_result is tool_runtime2
     assert tool_runtime2.runtime.runtime_parameters["query"] == "workflow-dec"
@@ -764,15 +784,17 @@ def test_get_agent_runtime_raises_when_runtime_missing():
         tool_parameters={},
         credential_id=None,
     )
-    with patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime):
-        with patch.object(ToolManager, "_convert_tool_parameters_type", return_value={}):
-            with patch("core.tools.tool_manager.ToolParameterConfigurationManager", return_value=Mock()):
-                with pytest.raises(ValueError, match="runtime not found"):
-                    ToolManager.get_agent_tool_runtime(
-                        tenant_id="tenant-1",
-                        app_id="app-1",
-                        agent_tool=agent_tool,
-                    )
+    with (
+        patch.object(ToolManager, "get_tool_runtime", return_value=tool_runtime),
+        patch.object(ToolManager, "_convert_tool_parameters_type", return_value={}),
+        patch("core.tools.tool_manager.ToolParameterConfigurationManager", return_value=Mock()),
+        pytest.raises(ValueError, match="runtime not found"),
+    ):
+        ToolManager.get_agent_tool_runtime(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            agent_tool=agent_tool,
+        )
 
 
 def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
@@ -820,20 +842,24 @@ def test_get_tool_runtime_from_plugin_only_uses_form_parameters():
 
 def test_hardcoded_provider_icon_success():
     provider = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(icon="icon.svg")))
-    with patch.object(ToolManager, "get_hardcoded_provider", return_value=provider):
-        with patch("core.tools.tool_manager.path.exists", return_value=True):
-            with patch("core.tools.tool_manager.mimetypes.guess_type", return_value=("image/svg+xml", None)):
-                icon_path, mime = ToolManager.get_hardcoded_provider_icon("time")
+    with (
+        patch.object(ToolManager, "get_hardcoded_provider", return_value=provider),
+        patch("core.tools.tool_manager.path.exists", return_value=True),
+        patch("core.tools.tool_manager.mimetypes.guess_type", return_value=("image/svg+xml", None)),
+    ):
+        icon_path, mime = ToolManager.get_hardcoded_provider_icon("time")
     assert icon_path.endswith("icon.svg")
     assert mime == "image/svg+xml"
 
 
 def test_hardcoded_provider_icon_missing_raises():
     provider = SimpleNamespace(entity=SimpleNamespace(identity=SimpleNamespace(icon="icon.svg")))
-    with patch.object(ToolManager, "get_hardcoded_provider", return_value=provider):
-        with patch("core.tools.tool_manager.path.exists", return_value=False):
-            with pytest.raises(ToolProviderNotFoundError, match="icon not found"):
-                ToolManager.get_hardcoded_provider_icon("time")
+    with (
+        patch.object(ToolManager, "get_hardcoded_provider", return_value=provider),
+        patch("core.tools.tool_manager.path.exists", return_value=False),
+        pytest.raises(ToolProviderNotFoundError, match="icon not found"),
+    ):
+        ToolManager.get_hardcoded_provider_icon("time")
 
 
 def test_list_hardcoded_providers_cache_hit():
@@ -857,15 +883,17 @@ def test_list_hardcoded_providers_internal_loader():
     )
     provider_class = Mock(return_value=good_provider)
 
-    with patch("core.tools.tool_manager.listdir", return_value=["good", "bad", "__skip"]):
-        with patch("core.tools.tool_manager.path.isdir", side_effect=lambda p: "good" in p or "bad" in p):
-            with patch(
-                "core.tools.tool_manager.load_single_subclass_from_source",
-                side_effect=[provider_class, RuntimeError("boom")],
-            ):
-                ToolManager._hardcoded_providers = {}
-                ToolManager._builtin_tools_labels = {}
-                providers = list(ToolManager._list_hardcoded_providers())
+    with (
+        patch("core.tools.tool_manager.listdir", return_value=["good", "bad", "__skip"]),
+        patch("core.tools.tool_manager.path.isdir", side_effect=lambda p: "good" in p or "bad" in p),
+        patch(
+            "core.tools.tool_manager.load_single_subclass_from_source",
+            side_effect=[provider_class, RuntimeError("boom")],
+        ),
+    ):
+        ToolManager._hardcoded_providers = {}
+        ToolManager._builtin_tools_labels = {}
+        providers = list(ToolManager._list_hardcoded_providers())
 
     assert providers == [good_provider]
     assert ToolManager._hardcoded_providers["good"] is good_provider
@@ -1164,13 +1192,17 @@ def test_get_tool_icon_for_builtin_provider_variants():
     plugin_provider = object.__new__(PluginToolProviderController)
     plugin_provider.entity = SimpleNamespace(identity=SimpleNamespace(icon="plugin.svg"))
 
-    with patch.object(ToolManager, "get_builtin_provider", return_value=plugin_provider):
-        with patch.object(ToolManager, "generate_plugin_tool_icon_url", return_value="plugin-icon"):
-            assert ToolManager.get_tool_icon("tenant-1", ToolProviderType.BUILT_IN, "plugin-provider") == "plugin-icon"
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=plugin_provider),
+        patch.object(ToolManager, "generate_plugin_tool_icon_url", return_value="plugin-icon"),
+    ):
+        assert ToolManager.get_tool_icon("tenant-1", ToolProviderType.BUILT_IN, "plugin-provider") == "plugin-icon"
 
-    with patch.object(ToolManager, "get_builtin_provider", return_value=SimpleNamespace()):
-        with patch.object(ToolManager, "generate_builtin_tool_icon_url", return_value="builtin-icon"):
-            assert ToolManager.get_tool_icon("tenant-1", ToolProviderType.BUILT_IN, "time") == "builtin-icon"
+    with (
+        patch.object(ToolManager, "get_builtin_provider", return_value=SimpleNamespace()),
+        patch.object(ToolManager, "generate_builtin_tool_icon_url", return_value="builtin-icon"),
+    ):
+        assert ToolManager.get_tool_icon("tenant-1", ToolProviderType.BUILT_IN, "time") == "builtin-icon"
 
 
 def test_get_tool_icon_for_api_workflow_and_mcp():
@@ -1188,10 +1220,12 @@ def test_get_tool_icon_plugin_error_returns_default():
     plugin_provider = object.__new__(PluginToolProviderController)
     plugin_provider.entity = SimpleNamespace(identity=SimpleNamespace(icon="plugin.svg"))
 
-    with patch.object(ToolManager, "get_plugin_provider", return_value=plugin_provider):
-        with patch.object(ToolManager, "generate_plugin_tool_icon_url", side_effect=RuntimeError("fail")):
-            icon = ToolManager.get_tool_icon("tenant-1", ToolProviderType.PLUGIN, "plugin-provider")
-            assert icon["background"] == "#252525"
+    with (
+        patch.object(ToolManager, "get_plugin_provider", return_value=plugin_provider),
+        patch.object(ToolManager, "generate_plugin_tool_icon_url", side_effect=RuntimeError("fail")),
+    ):
+        icon = ToolManager.get_tool_icon("tenant-1", ToolProviderType.PLUGIN, "plugin-provider")
+        assert icon["background"] == "#252525"
 
 
 def test_get_tool_icon_invalid_provider_type_raises():

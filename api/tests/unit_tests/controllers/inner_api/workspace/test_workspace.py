@@ -163,9 +163,11 @@ def test_invalid_payload_after_admission(
     ],
 ) -> None:
     config_overrides(INNER_API=True, INNER_API_KEY="secret", DEPLOYMENT_EDITION="CLOUD")
-    with app.test_request_context(method="POST", json={}, headers={"X-Inner-Api-Key": "secret"}):
-        with pytest.raises(UnprocessableEntity):
-            resource().post()
+    with (
+        app.test_request_context(method="POST", json={}, headers={"X-Inner-Api-Key": "secret"}),
+        pytest.raises(UnprocessableEntity),
+    ):
+        resource().post()
     provisioning.create.assert_not_called()
     provisioning.join_member.assert_not_called()
 
@@ -174,9 +176,8 @@ def test_inner_api_auth_precedes_payload_parsing(
     app: Flask, provisioning: Mock, config_overrides: Callable[..., None]
 ) -> None:
     config_overrides(INNER_API=True, INNER_API_KEY="secret", DEPLOYMENT_EDITION="CLOUD")
-    with app.test_request_context(method="POST", json={}):
-        with pytest.raises(InnerApiUnauthorizedError):
-            controller.EnterpriseWorkspace().post()
+    with app.test_request_context(method="POST", json={}), pytest.raises(InnerApiUnauthorizedError):
+        controller.EnterpriseWorkspace().post()
     provisioning.create.assert_not_called()
 
 

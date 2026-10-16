@@ -17,12 +17,14 @@ def test_credit_usage_metadata_is_scoped_and_propagated_to_worker_threads() -> N
 
 
 def test_nested_credit_usage_metadata_keeps_app_type_and_direct_feature() -> None:
-    with use_credit_usage_metadata({"app_type": CreditUsageAppType.WORKFLOW}):
-        with use_credit_usage_metadata({"created_by": CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL}):
-            assert get_credit_usage_metadata() == {
-                "app_type": CreditUsageAppType.WORKFLOW,
-                "created_by": CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL,
-            }
+    with (
+        use_credit_usage_metadata({"app_type": CreditUsageAppType.WORKFLOW}),
+        use_credit_usage_metadata({"created_by": CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL}),
+    ):
+        assert get_credit_usage_metadata() == {
+            "app_type": CreditUsageAppType.WORKFLOW,
+            "created_by": CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL,
+        }
 
 
 def test_credit_usage_created_by_decorator_sets_feature() -> None:

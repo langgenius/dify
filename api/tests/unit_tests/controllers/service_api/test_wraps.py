@@ -976,9 +976,9 @@ class TestValidateDatasetToken:
         with (
             app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
             patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                protected_view(dataset_id=str(uuid.uuid4()))
+            protected_view(dataset_id=str(uuid.uuid4()))
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     def test_bound_key_rejects_other_dataset(self, mock_validate_token, app: Flask, sqlite_session: Session):
@@ -1038,11 +1038,11 @@ class TestValidateDatasetToken:
         with (
             app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
             patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+            pytest.raises(NotFound),
         ):
             # The bound dataset is allowed by scope; it is simply not persisted, so the
             # downstream lookup raises NotFound instead of the scope Forbidden.
-            with pytest.raises(NotFound):
-                protected_view(dataset_id=allowed_dataset_id)
+            protected_view(dataset_id=allowed_dataset_id)
 
 
 class TestFetchUserArg:

@@ -47,9 +47,11 @@ def test_handle_logs_document_pause(
 ) -> None:
     mock_indexing_runner.run.side_effect = DocumentIsPausedError("Document is paused")
 
-    with patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner):
-        with caplog.at_level(logging.INFO, logger=handler_module.logger.name):
-            handler_module.handle("dataset-1", document_ids=["doc-1"])
+    with (
+        patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner),
+        caplog.at_level(logging.INFO, logger=handler_module.logger.name),
+    ):
+        handler_module.handle("dataset-1", document_ids=["doc-1"])
 
     sqlite_session.refresh(persisted_document)
     assert persisted_document.indexing_status == IndexingStatus.PARSING
@@ -66,9 +68,11 @@ def test_handle_logs_unexpected_indexing_errors(
 ) -> None:
     mock_indexing_runner.run.side_effect = RuntimeError("Indexing failed")
 
-    with patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner):
-        with caplog.at_level(logging.ERROR, logger=handler_module.logger.name):
-            handler_module.handle("dataset-1", document_ids=["doc-1"])
+    with (
+        patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner),
+        caplog.at_level(logging.ERROR, logger=handler_module.logger.name),
+    ):
+        handler_module.handle("dataset-1", document_ids=["doc-1"])
 
     sqlite_session.refresh(persisted_document)
     assert persisted_document.indexing_status == IndexingStatus.PARSING
@@ -94,9 +98,11 @@ def test_handle_runs_indexing_on_success(
 
     mock_indexing_runner.run.side_effect = assert_status_committed
 
-    with patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner):
-        with caplog.at_level(logging.INFO, logger=handler_module.logger.name):
-            handler_module.handle("dataset-1", document_ids=["doc-1"])
+    with (
+        patch.object(handler_module, "build_document_indexing_service", return_value=mock_indexing_runner),
+        caplog.at_level(logging.INFO, logger=handler_module.logger.name),
+    ):
+        handler_module.handle("dataset-1", document_ids=["doc-1"])
 
     mock_indexing_runner.run.assert_called_once()
     sqlite_session.refresh(persisted_document)

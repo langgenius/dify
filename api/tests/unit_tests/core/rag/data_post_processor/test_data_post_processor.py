@@ -20,16 +20,18 @@ class TestDataPostProcessor:
         rerank_runner = object()
         reorder_runner = object()
 
-        with patch.object(DataPostProcessor, "_get_rerank_runner", return_value=rerank_runner) as rerank_mock:
-            with patch.object(DataPostProcessor, "_get_reorder_runner", return_value=reorder_runner) as reorder_mock:
-                processor = DataPostProcessor(
-                    tenant_id="tenant-1",
-                    reranking_mode=RerankMode.WEIGHTED_SCORE,
-                    reranking_model={"config": "value"},
-                    weights={"weight": "value"},
-                    reorder_enabled=True,
-                    session=unbound_session,
-                )
+        with (
+            patch.object(DataPostProcessor, "_get_rerank_runner", return_value=rerank_runner) as rerank_mock,
+            patch.object(DataPostProcessor, "_get_reorder_runner", return_value=reorder_runner) as reorder_mock,
+        ):
+            processor = DataPostProcessor(
+                tenant_id="tenant-1",
+                reranking_mode=RerankMode.WEIGHTED_SCORE,
+                reranking_model={"config": "value"},
+                weights={"weight": "value"},
+                reorder_enabled=True,
+                session=unbound_session,
+            )
 
         assert processor.rerank_runner is rerank_runner
         assert processor.reorder_runner is reorder_runner
@@ -120,17 +122,19 @@ class TestDataPostProcessor:
             "reranking_model_name": "model-y",
         }
 
-        with patch.object(DataPostProcessor, "_get_rerank_model_instance", return_value=None) as model_mock:
-            with patch(
+        with (
+            patch.object(DataPostProcessor, "_get_rerank_model_instance", return_value=None) as model_mock,
+            patch(
                 "core.rag.data_post_processor.data_post_processor.RerankRunnerFactory.create_rerank_runner"
-            ) as factory_mock:
-                result = processor._get_rerank_runner(
-                    reranking_mode=RerankMode.RERANKING_MODEL,
-                    tenant_id="tenant-1",
-                    reranking_model=reranking_model,
-                    weights=None,
-                    session=unbound_session,
-                )
+            ) as factory_mock,
+        ):
+            result = processor._get_rerank_runner(
+                reranking_mode=RerankMode.RERANKING_MODEL,
+                tenant_id="tenant-1",
+                reranking_model=reranking_model,
+                weights=None,
+                session=unbound_session,
+            )
 
         assert result is None
         model_mock.assert_called_once_with("tenant-1", reranking_model)
@@ -141,21 +145,23 @@ class TestDataPostProcessor:
         model_instance = object()
         expected_runner = object()
 
-        with patch.object(DataPostProcessor, "_get_rerank_model_instance", return_value=model_instance):
-            with patch(
+        with (
+            patch.object(DataPostProcessor, "_get_rerank_model_instance", return_value=model_instance),
+            patch(
                 "core.rag.data_post_processor.data_post_processor.RerankRunnerFactory.create_rerank_runner",
                 return_value=expected_runner,
-            ) as factory_mock:
-                result = processor._get_rerank_runner(
-                    reranking_mode=RerankMode.RERANKING_MODEL,
-                    tenant_id="tenant-1",
-                    reranking_model={
-                        "reranking_provider_name": "provider-x",
-                        "reranking_model_name": "model-y",
-                    },
-                    weights=None,
-                    session=unbound_session,
-                )
+            ) as factory_mock,
+        ):
+            result = processor._get_rerank_runner(
+                reranking_mode=RerankMode.RERANKING_MODEL,
+                tenant_id="tenant-1",
+                reranking_model={
+                    "reranking_provider_name": "provider-x",
+                    "reranking_model_name": "model-y",
+                },
+                weights=None,
+                session=unbound_session,
+            )
 
         assert result is expected_runner
         factory_mock.assert_called_once_with(

@@ -365,9 +365,11 @@ def test_model_guard_translates_provider_errors(error: Exception, kind: str) -> 
         embedding_model="model",
     )
 
-    with patch("services.knowledge.segments.adapters.ModelManager.for_tenant", return_value=model):
-        with pytest.raises(SegmentModelProviderError) as raised:
-            ModelManagerSegmentGuard().check(dataset)
+    with (
+        patch("services.knowledge.segments.adapters.ModelManager.for_tenant", return_value=model),
+        pytest.raises(SegmentModelProviderError) as raised,
+    ):
+        ModelManagerSegmentGuard().check(dataset)
 
     assert raised.value.kind == kind
 
