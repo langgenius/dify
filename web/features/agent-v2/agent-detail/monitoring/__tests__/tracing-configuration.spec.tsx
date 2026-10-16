@@ -341,40 +341,68 @@ describe('Agent tracing configuration', () => {
     expect(sent.every((req) => new URL(req.url).pathname.includes('/agent/agent-1/'))).toBe(true)
   })
 
-  it('keeps saved credentials and retries only enable after a partial success', async () => {
-    const { state, sent } = setup({ configured: false })
-    const user = await openPanel(false)
-    await openProvider(user)
-    await user.type(
-      screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
-      'public',
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
-      'secret',
-    )
-    await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
-    state.failPolicy = true
-    await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
-    expect(
-      await screen.findByText('app.tracing.configurationSavedEnableFailed'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('dialog', { name: /app.tracing.configProvider.title/ }),
-    ).toBeInTheDocument()
-    state.failPolicy = false
-    await user.click(screen.getByRole('button', { name: 'app.tracing.retryEnable' }))
-    await waitFor(() =>
+  it.each(['enable', 'save'] as const)(
+    'keeps saved credentials when retrying %s after a partial success',
+    async (retry) => {
+      const { state, sent } = setup({ configured: false })
+      const user = await openPanel(false)
+      await openProvider(user)
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.publicKey' }),
+        'public',
+      )
+      await user.type(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
+        'secret',
+      )
+      await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
+      state.failPolicy = true
+      const saves = holdPolicySaves()
+      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+      await waitFor(() => expect(saves).toHaveLength(1))
+      for (const input of screen.getAllByRole('textbox')) expect(input).toBeDisabled()
       expect(
-        screen.queryByRole('dialog', { name: /app.tracing.configProvider.title/ }),
-      ).not.toBeInTheDocument(),
-    )
-    expect(
-      writes(sent).map((req) => `${req.method} ${new URL(req.url).pathname.split('/').at(-1)}`),
-    ).toEqual(['POST trace-config', 'POST trace', 'POST trace'])
-    expect(state.policy.enabled).toBe(true)
-    expect(state.config?.secret_key).toBe('[__MASKED__]')
-  })
+        screen.getByRole('dialog', { name: /app.tracing.configProvider.title/ }),
+      ).toBeInTheDocument()
+      await act(() => saves[0]!.finish())
+      expect(
+        await screen.findByText('app.tracing.configurationSavedEnableFailed'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: /app.tracing.configProvider.title/ }),
+      ).toBeInTheDocument()
+      state.failPolicy = false
+      if (retry === 'save') {
+        const host = screen.getByRole('textbox', { name: 'Host' })
+        await user.clear(host)
+        await user.type(host, 'https://updated.langfuse.com')
+      }
+      await user.click(
+        screen.getByRole('button', {
+          name: retry === 'enable' ? 'app.tracing.retryEnable' : 'common.operation.save',
+        }),
+      )
+      await waitFor(() => expect(saves).toHaveLength(2))
+      for (const input of screen.getAllByRole('textbox')) expect(input).toBeDisabled()
+      await act(() => saves[1]!.finish())
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: /app.tracing.configProvider.title/ }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(
+        writes(sent).map((req) => `${req.method} ${new URL(req.url).pathname.split('/').at(-1)}`),
+      ).toEqual([
+        'POST trace-config',
+        'POST trace',
+        ...(retry === 'save' ? ['PATCH trace-config'] : []),
+        'POST trace',
+      ])
+      if (retry === 'save') expect(state.config?.host).toBe('https://updated.langfuse.com')
+      expect(state.policy.enabled).toBe(true)
+      expect(state.config?.secret_key).toBe('[__MASKED__]')
+    },
+  )
 
   it('does not delete the selected provider when disabling fails, then disables before deleting', async () => {
     const { state, sent } = setup()
