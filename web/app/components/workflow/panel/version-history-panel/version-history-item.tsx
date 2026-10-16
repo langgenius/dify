@@ -137,7 +137,7 @@ function VersionHistoryItem({
         )}
         {!isDraft && (
           <div className="truncate system-xs-regular text-text-tertiary">
-            {`${formatTime(item.created_at)} · ${item.created_by.name}`}
+            {[formatTime(item.created_at), item.created_by?.name].filter(Boolean).join(' · ')}
           </div>
         )}
         {!isDraft && deployedEnvironments.length > 0 && (

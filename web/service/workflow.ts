@@ -10,8 +10,9 @@ import type {
 } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
+import { toWorkflowDraft } from '@/app/components/workflow/utils/workflow-response'
 import { consoleClient } from '@/service/console'
-import { get, post } from './base'
+import { post } from './base'
 
 export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
 
@@ -20,8 +21,24 @@ export type EnvironmentVariablePatch = {
   deletedEnvironmentVariableIds: string[]
 }
 
-export const fetchWorkflowDraft = (url: string) => {
-  return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+export type WorkflowDraftOwner =
+  | Readonly<{ kind: 'app'; appId: string }>
+  | Readonly<{ kind: 'knowledge-pipeline'; pipelineId: string }>
+
+export const fetchWorkflowDraft = async (
+  owner: WorkflowDraftOwner,
+): Promise<FetchWorkflowDraftResponse> => {
+  const draft =
+    owner.kind === 'app'
+      ? await consoleClient.apps.byAppId.workflows.draft.get(
+          { params: { app_id: owner.appId } },
+          { context: { silent: true } },
+        )
+      : await consoleClient.rag.pipelines.byPipelineId.workflows.draft.get(
+          { params: { pipeline_id: owner.pipelineId } },
+          { context: { silent: true } },
+        )
+  return toWorkflowDraft(draft)
 }
 
 // Block configs arrive as loose records; key them by block type for the editor store.

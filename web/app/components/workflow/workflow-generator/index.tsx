@@ -368,7 +368,7 @@ function WorkflowGeneratorModal() {
     let currentGraph: GeneratedGraph | undefined
     if (isRefine && currentAppId) {
       try {
-        const draft = await fetchWorkflowDraft(`apps/${currentAppId}/workflows/draft`)
+        const draft = await fetchWorkflowDraft({ kind: 'app', appId: currentAppId })
         if (draft?.graph?.nodes?.length) currentGraph = draft.graph as GeneratedGraph
       } catch {
         currentGraph = undefined

@@ -3368,11 +3368,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/hooks.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/__tests__/index.spec.tsx": {
     "eslint-react/static-components": {
       "count": 2
@@ -3694,7 +3689,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/app/components/workflow/utils/__tests__/node-navigation.spec.ts": {
@@ -4046,11 +4041,6 @@
       "count": 2
     }
   },
-  "web/service/log.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/plugins.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -4164,7 +4154,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 14
+      "count": 13
     }
   },
   "web/utils/completion-params.spec.ts": {

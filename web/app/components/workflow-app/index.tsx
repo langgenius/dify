@@ -15,6 +15,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { toFeaturesData } from '@/app/components/workflow/utils/workflow-response'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -23,10 +24,9 @@ import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
-import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import { useWorkflowInit } from './hooks/use-workflow-init'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
-import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from './utils'
+import { buildTriggerStatusMap, coerceReplayUserInputs } from './utils'
 
 const WorkflowAppWithAdditionalContext = () => {
   const { data, isLoading, fileUploadConfigResponse } = useWorkflowInit()
@@ -88,14 +88,11 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [data])
 
   const searchParams = useSearchParams()
-  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const replayRunId = searchParams.get('replayRunId')
 
   useEffect(() => {
     if (!replayRunId || !appACLCapabilities.canTestAndRun) return
-    const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
-    if (!runUrl) return
-    fetchRunDetail(runUrl).then((res) => {
+    fetchRunDetail({ kind: 'app', appId }, replayRunId).then((res) => {
       const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } =
         workflowStore.getState()
       const rawInputs = res.inputs
@@ -118,7 +115,7 @@ const WorkflowAppWithAdditionalContext = () => {
       setShowInputsPanel(true)
       setShowDebugAndPreviewPanel(true)
     })
-  }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
+  }, [appACLCapabilities.canTestAndRun, appId, replayRunId, workflowStore])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
@@ -128,10 +125,7 @@ const WorkflowAppWithAdditionalContext = () => {
     )
   }
 
-  const initialFeatures: FeaturesData = buildInitialFeatures(
-    data.features,
-    fileUploadConfigResponse,
-  )
+  const initialFeatures: FeaturesData = toFeaturesData(data.features, fileUploadConfigResponse)
 
   return (
     <WorkflowWithDefaultContext edges={edgesData} nodes={nodesData}>

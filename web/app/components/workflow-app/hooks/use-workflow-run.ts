@@ -22,6 +22,7 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toFeaturesData } from '@/app/components/workflow/utils/workflow-response'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
@@ -40,7 +41,6 @@ import {
   clearListeningState,
   clearWindowDebugControllers,
   isDebuggableTriggerType,
-  mapPublishedWorkflowFeatures,
   normalizePublishedWorkflowNodes,
   resolveWorkflowRunUrl,
   runTriggerDebug,
@@ -536,7 +536,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         edges,
         viewport,
       })
-      featuresStore?.setState({ features: mapPublishedWorkflowFeatures(publishedWorkflow) })
+      featuresStore?.setState({ features: toFeaturesData(publishedWorkflow.features) })
       workflowStore
         .getState()
         .setEnvironmentVariables(publishedWorkflow.environment_variables || [])

@@ -65,9 +65,6 @@ describe('RagPipelinePanel', () => {
     expect(screen.getByText('Input field editor panel')).toBeInTheDocument()
     expect(screen.getByText('Preview panel')).toBeInTheDocument()
     expect(screen.getByText('Global variable panel')).toBeInTheDocument()
-
-    expect(panelProps?.versionHistoryPanelProps?.getVersionListUrl).toBe(
-      '/rag/pipelines/pipeline-1/workflows',
-    )
+    expect(panelProps?.versionHistoryPanelProps).toEqual({ latestVersionId: '' })
   })
 })

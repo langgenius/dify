@@ -2,6 +2,7 @@ import type { Shape } from '../../store/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedSystemFeatures } from '@/test/console/query-data'
+import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInNormal from '../header-in-normal'
@@ -162,33 +163,17 @@ const createBackupDraft = (): NonNullable<Shape['backupDraft']> => ({
   environmentVariables: [],
 })
 
-const createCurrentVersion = (): NonNullable<Shape['currentVersion']> => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'Tester',
-    email: 'tester@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 0,
-  updated_by: {
-    id: 'user-1',
-    name: 'Tester',
-    email: 'tester@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  version: WorkflowVersion.Latest,
-  version_number: 5,
-  marked_name: '',
-  marked_comment: '',
-})
+const createCurrentVersion = (): NonNullable<Shape['currentVersion']> =>
+  createWorkflowDraftFixture({
+    id: 'version-1',
+    graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+    created_at: 0,
+    created_by: { id: 'user-1', name: 'Tester', email: 'tester@example.com' },
+    updated_at: 0,
+    updated_by: { id: 'user-1', name: 'Tester', email: 'tester@example.com' },
+    version: WorkflowVersion.Latest,
+    version_number: 5,
+  })
 
 describe('Header layout components', () => {
   beforeEach(() => {

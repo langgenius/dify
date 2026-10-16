@@ -22,10 +22,10 @@ import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
   getImportNotificationPayload,
   isImportCompleted,
-  normalizeWorkflowFeatures,
   validateDSLContent,
 } from './update-dsl-modal.helpers'
 import { initialEdges, initialNodes } from './utils'
+import { toFeaturesData } from './utils/workflow-response'
 
 type UpdateDSLModalProps = {
   appId: string
@@ -44,7 +44,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   const handleWorkflowUpdate = useCallback(
     async (app_id: string) => {
       const { graph, features, hash, conversation_variables, environment_variables } =
-        await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
+        await fetchWorkflowDraft({ kind: 'app', appId: app_id })
 
       const { nodes, edges, viewport } = graph
       const importedNodes = initialNodes(nodes, edges)
@@ -61,7 +61,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           nodes: importedNodes,
           edges: importedEdges,
           viewport,
-          features: normalizeWorkflowFeatures(features),
+          features: toFeaturesData(features),
           hash,
           conversation_variables: conversation_variables || [],
           environment_variables: environment_variables || [],

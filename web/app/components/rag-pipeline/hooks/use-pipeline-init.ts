@@ -37,7 +37,7 @@ export const usePipelineInit = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     try {
-      const res = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
+      const res = await fetchWorkflowDraft({ kind: 'knowledge-pipeline', pipelineId })
       setData(res)
       setDraftUpdatedAt(res.updated_at)
       setToolPublished(res.tool_published)

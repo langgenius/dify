@@ -12,7 +12,6 @@ import {
   createFailedWorkflowState,
   createRunningWorkflowState,
   createStoppedWorkflowState,
-  mapPublishedWorkflowFeatures,
   normalizePublishedWorkflowNodes,
   resolveWorkflowRunUrl,
   runTriggerDebug,
@@ -213,34 +212,11 @@ describe('useWorkflowRun utils', () => {
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
       },
-      features: {
-        opening_statement: 'hello',
-        suggested_questions: ['Q1'],
-        suggested_questions_after_answer: { enabled: true },
-        text_to_speech: { enabled: true },
-        speech_to_text: { enabled: true },
-        retriever_resource: { enabled: true },
-        sensitive_word_avoidance: { enabled: true },
-        file_upload: { enabled: true },
-      },
     } as never
 
     expect(normalizePublishedWorkflowNodes(publishedWorkflow)).toEqual([
       { id: 'node-1', selected: false, data: { selected: false, title: 'Start' } },
     ])
-    expect(mapPublishedWorkflowFeatures(publishedWorkflow)).toMatchObject({
-      opening: {
-        enabled: true,
-        opening_statement: 'hello',
-        suggested_questions: ['Q1'],
-      },
-      suggested: { enabled: true },
-      text2speech: { enabled: true },
-      speech2text: { enabled: true },
-      citation: { enabled: true },
-      moderation: { enabled: true },
-      file: { enabled: true },
-    })
   })
 
   it('should handle trigger debug null and invalid json responses as request failures', async () => {

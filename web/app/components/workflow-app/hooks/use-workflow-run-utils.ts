@@ -1,5 +1,4 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
@@ -286,24 +285,6 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
   return {
     ttsUrl,
     ttsIsPublic,
-  }
-}
-
-export const mapPublishedWorkflowFeatures = (publishedWorkflow: VersionHistory): FeaturesData => {
-  return {
-    opening: {
-      enabled:
-        !!publishedWorkflow.features.opening_statement ||
-        !!publishedWorkflow.features.suggested_questions.length,
-      opening_statement: publishedWorkflow.features.opening_statement,
-      suggested_questions: publishedWorkflow.features.suggested_questions,
-    },
-    suggested: publishedWorkflow.features.suggested_questions_after_answer,
-    text2speech: publishedWorkflow.features.text_to_speech,
-    speech2text: publishedWorkflow.features.speech_to_text,
-    citation: publishedWorkflow.features.retriever_resource,
-    moderation: publishedWorkflow.features.sensitive_word_avoidance,
-    file: publishedWorkflow.features.file_upload,
   }
 }
 

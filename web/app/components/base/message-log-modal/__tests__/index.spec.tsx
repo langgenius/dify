@@ -12,18 +12,18 @@ vi.mock('ahooks', () => ({
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({
     activeTab,
-    runDetailUrl,
-    tracingListUrl,
+    owner,
+    runId,
   }: {
     activeTab: string
-    runDetailUrl: string
-    tracingListUrl: string
+    owner: { kind: 'app'; appId: string }
+    runId?: string
   }) => (
     <div
       data-testid="workflow-run"
       data-active-tab={activeTab}
-      data-run-detail-url={runDetailUrl}
-      data-tracing-list-url={tracingListUrl}
+      data-app-id={owner.appId}
+      data-run-id={runId}
     />
   ),
 }))
@@ -85,12 +85,8 @@ describe('MessageLogModal', () => {
       )
       const runComponent = screen.getByTestId('workflow-run')
       expect(runComponent.getAttribute('data-active-tab')).toBe('TRACING')
-      expect(runComponent.getAttribute('data-run-detail-url')).toBe(
-        '/apps/inspected-app/workflow-runs/run-1',
-      )
-      expect(runComponent.getAttribute('data-tracing-list-url')).toBe(
-        '/apps/inspected-app/workflow-runs/run-1/node-executions',
-      )
+      expect(runComponent.getAttribute('data-app-id')).toBe('inspected-app')
+      expect(runComponent.getAttribute('data-run-id')).toBe('run-1')
     })
 
     it('sets fixed style when fixedWidth is false (floating)', () => {

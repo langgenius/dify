@@ -20,7 +20,6 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
 import { useFileSettings } from '../hooks/use-file-settings'
-import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetRun } from '../hooks/use-snippet-run'
@@ -103,7 +102,6 @@ const SnippetMainContent = ({
 
   return (
     <SnippetChildren
-      snippetId={snippetId}
       fields={fields}
       canSave={canSave}
       canEdit={canEdit}
@@ -196,7 +194,6 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
   const { handleStartWorkflowRun, handleWorkflowStartRunInWorkflow } = useSnippetStartRun({
     handleRun,
   })
-  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl(snippetId)
   useEffect(() => {
     reset()
 
@@ -311,7 +308,6 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
       handleStartWorkflowRun,
       handleWorkflowStartRunInWorkflow,
       handleExportDSL,
-      getWorkflowRunAndTraceUrl,
       availableNodesMetaData,
       fetchInspectVars,
       hasNodeInspectVars,
@@ -358,7 +354,6 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
     handleStopRun,
     handleWorkflowStartRunInWorkflow,
     handleExportDSL,
-    getWorkflowRunAndTraceUrl,
     hasNodeInspectVars,
     hasSetInspectVar,
     invalidateConversationVarValues,

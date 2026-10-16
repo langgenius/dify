@@ -54,8 +54,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <Run
         hideResult
         activeTab={activeTab}
-        runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
-        tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
+        owner={{ kind: 'app', appId }}
+        runId={currentLogItem.workflow_run_id}
       />
     </>
   )
@@ -104,8 +104,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <Run
         hideResult
         activeTab={activeTab}
-        runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
-        tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
+        owner={{ kind: 'app', appId }}
+        runId={currentLogItem.workflow_run_id}
       />
     </div>
   )

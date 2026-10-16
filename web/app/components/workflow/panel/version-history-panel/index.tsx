@@ -47,14 +47,10 @@ const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
-  getVersionListUrl?: string
   latestVersionId?: string
 }
 
-export const VersionHistoryPanel = ({
-  getVersionListUrl,
-  latestVersionId,
-}: VersionHistoryPanelProps) => {
+export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProps) => {
   const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(
     WorkflowVersionFilterOptions.all,
   )
@@ -97,7 +93,7 @@ export const VersionHistoryPanel = ({
     hasNextPage,
     isFetching,
   } = useWorkflowVersionHistory({
-    url: getVersionListUrl || '',
+    owner: resource,
     initialPage: INITIAL_PAGE,
     limit: HISTORY_PER_PAGE,
     userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',

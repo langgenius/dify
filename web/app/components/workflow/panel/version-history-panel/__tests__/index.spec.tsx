@@ -8,6 +8,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useEffect, useRef } from 'react'
 import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -34,31 +35,32 @@ let mockPublishedEnvironments: VersionHistory['environments']
 let mockHasNextPage = false
 let mockIsFetching = false
 
-const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
-  id: 'version-id',
-  version: WorkflowVersion.Draft,
-  graph: { nodes: [], edges: [] },
-  features: {
-    opening_statement: '',
-    suggested_questions: [],
-    suggested_questions_after_answer: { enabled: false },
-    text_to_speech: { enabled: false },
-    speech_to_text: { enabled: false },
-    retriever_resource: { enabled: false },
-    sensitive_word_avoidance: { enabled: false },
-    file_upload: { image: { enabled: false } },
-  },
-  created_at: Date.now() / 1000,
-  created_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
-  hash: 'test-hash',
-  updated_at: Date.now() / 1000,
-  updated_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
-  tool_published: false,
-  environment_variables: [],
-  marked_name: '',
-  marked_comment: '',
-  ...overrides,
-})
+const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory =>
+  createWorkflowDraftFixture({
+    id: 'version-id',
+    version: WorkflowVersion.Draft,
+    graph: { nodes: [], edges: [] },
+    features: {
+      opening_statement: '',
+      suggested_questions: [],
+      suggested_questions_after_answer: { enabled: false },
+      text_to_speech: { enabled: false },
+      speech_to_text: { enabled: false },
+      retriever_resource: { enabled: false },
+      sensitive_word_avoidance: { enabled: false },
+      file_upload: { image: { enabled: false } },
+    },
+    created_at: Date.now() / 1000,
+    created_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+    hash: 'test-hash',
+    updated_at: Date.now() / 1000,
+    updated_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+    tool_published: false,
+    environment_variables: [],
+    marked_name: '',
+    marked_comment: '',
+    ...overrides,
+  })
 
 let mockCurrentVersion: VersionHistory | null = null
 

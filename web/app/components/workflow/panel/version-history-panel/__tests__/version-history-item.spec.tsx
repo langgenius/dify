@@ -2,6 +2,7 @@ import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 
@@ -10,36 +11,36 @@ vi.mock('@/app/components/workflow/store', () => ({
     selector({ pipelineId: undefined }),
 }))
 
-const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-    viewport: undefined,
-  },
-  features: {},
-  created_at: 1710000000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 1710000000,
-  updated_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  conversation_variables: [],
-  rag_pipeline_variables: undefined,
-  version: '2024-01-01T00:00:00Z',
-  marked_name: 'Release 1',
-  marked_comment: 'Initial release',
-  ...overrides,
-})
+const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory =>
+  createWorkflowDraftFixture({
+    id: 'version-1',
+    graph: {
+      nodes: [],
+      edges: [],
+      viewport: undefined,
+    },
+    features: {},
+    created_at: 1710000000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 1710000000,
+    updated_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    tool_published: false,
+    environment_variables: [],
+    conversation_variables: [],
+    version: '2024-01-01T00:00:00Z',
+    marked_name: 'Release 1',
+    marked_comment: 'Initial release',
+    ...overrides,
+  })
 
 describe('VersionHistoryItem', () => {
   beforeEach(() => {

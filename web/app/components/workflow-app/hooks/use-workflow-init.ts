@@ -16,12 +16,6 @@ import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
 
-const emptyAccount = {
-  id: '',
-  name: '',
-  email: '',
-}
-
 const createLocalWorkflowDraft = (
   graph: FetchWorkflowDraftResponse['graph'],
 ): FetchWorkflowDraftResponse => ({
@@ -31,13 +25,12 @@ const createLocalWorkflowDraft = (
     retriever_resource: { enabled: true },
   },
   created_at: 0,
-  created_by: emptyAccount,
   hash: '',
   updated_at: 0,
-  updated_by: emptyAccount,
   tool_published: false,
   environment_variables: [],
   conversation_variables: [],
+  rag_pipeline_variables: [],
   version: '',
   marked_name: '',
   marked_comment: '',
@@ -90,7 +83,7 @@ export const useWorkflowInit = () => {
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
-      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const res = await fetchWorkflowDraft({ kind: 'app', appId: appDetail.id })
       const initialData = {
         ...res,
         graph: {

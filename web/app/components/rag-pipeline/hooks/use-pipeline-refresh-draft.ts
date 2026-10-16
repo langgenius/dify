@@ -21,7 +21,7 @@ export const usePipelineRefreshDraft = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
-    fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
+    fetchWorkflowDraft({ kind: 'knowledge-pipeline', pipelineId })
       .then((response) => {
         const { nodes: processedNodes, viewport } = processNodesWithoutDataSource(
           response.graph.nodes,

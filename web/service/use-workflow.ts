@@ -12,11 +12,7 @@ import type {
 import type { InfiniteData, QueryClient, UseQueryOptions } from '@tanstack/react-query'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
-import type {
-  FetchWorkflowDraftPageParams,
-  FetchWorkflowDraftPageResponse,
-  PublishWorkflowParams,
-} from '@/types/workflow'
+import type { FetchWorkflowDraftPageResponse, PublishWorkflowParams } from '@/types/workflow'
 import {
   skipToken,
   useInfiniteQuery,
@@ -24,9 +20,8 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { toWorkflowDraft } from '@/app/components/workflow/utils/workflow-response'
 import { consoleClient, consoleQuery } from '@/service/console'
-// oxlint-disable-next-line no-restricted-imports -- version list items feed the canvas a typed graph the contract leaves untyped
-import { get } from './base'
 import { appWorkflowQueryOptions, appWorkflowVersionsInfiniteQueryKey } from './workflow-queries'
 
 const NAME_SPACE = 'workflow'
@@ -130,20 +125,45 @@ export const useInvalidateAppWorkflow = () => {
 
 const WorkflowVersionHistoryKey = [NAME_SPACE, 'versionHistory']
 
-export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) => {
-  const { url, initialPage, limit, userId, namedOnly } = params
+type WorkflowVersionHistoryParams = {
+  owner: WorkflowVersionOwner
+  initialPage: number
+  limit: number
+  userId?: string
+  namedOnly?: boolean
+}
+
+const fetchWorkflowVersionPage = async (
+  { owner, limit, userId, namedOnly }: WorkflowVersionHistoryParams,
+  page: number,
+): Promise<FetchWorkflowDraftPageResponse> => {
+  const query = { page, limit, user_id: userId || '', named_only: !!namedOnly }
+  const response =
+    owner.kind === 'app'
+      ? await consoleClient.apps.byAppId.workflows.get({ params: { app_id: owner.appId }, query })
+      : owner.kind === 'knowledge-pipeline'
+        ? await consoleClient.rag.pipelines.byPipelineId.workflows.get({
+            params: { pipeline_id: owner.pipelineId },
+            query,
+          })
+        : // Snippet versions cannot be filtered by author or name.
+          await consoleClient.snippets.bySnippetId.workflows.get({
+            params: { snippet_id: owner.snippetId },
+            query: { page, limit },
+          })
+  return {
+    items: response.items.map(toWorkflowDraft),
+    has_more: response.has_more,
+    page: response.page,
+  }
+}
+
+export const useWorkflowVersionHistory = (params: WorkflowVersionHistoryParams) => {
+  const { owner, initialPage, limit, userId, namedOnly } = params
   return useInfiniteQuery({
-    enabled: !!url,
-    queryKey: [...WorkflowVersionHistoryKey, url, initialPage, limit, userId, namedOnly],
-    queryFn: ({ pageParam = 1 }) =>
-      get<FetchWorkflowDraftPageResponse>(url, {
-        params: {
-          page: pageParam,
-          limit,
-          user_id: userId || '',
-          named_only: !!namedOnly,
-        },
-      }),
+    queryKey: [...WorkflowVersionHistoryKey, owner, initialPage, limit, userId, namedOnly],
+    queryFn: ({ pageParam }) =>
+      fetchWorkflowVersionPage({ owner, initialPage, limit, userId, namedOnly }, pageParam),
     getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : null),
     initialPageParam: initialPage,
   })

@@ -69,9 +69,10 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   )
   const updateWorkflow = useCallback(
     async (pipelineId: string) => {
-      const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(
-        `/rag/pipelines/${pipelineId}/workflows/draft`,
-      )
+      const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft({
+        kind: 'knowledge-pipeline',
+        pipelineId,
+      })
       const { nodes, edges, viewport } = graph
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,

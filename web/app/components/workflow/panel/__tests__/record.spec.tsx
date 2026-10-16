@@ -1,4 +1,5 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { WorkflowRunOwner } from '@/service/log'
 import { act, screen } from '@testing-library/react'
 import { createEdge, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
@@ -24,22 +25,16 @@ vi.mock('../../hooks/use-workflow-update', async (importOriginal) => {
 
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({
-    runDetailUrl,
-    tracingListUrl,
+    owner,
+    runId,
     getResultCallback,
   }: {
-    runDetailUrl: string
-    tracingListUrl: string
+    owner: WorkflowRunOwner
+    runId?: string
     getResultCallback: (res: WorkflowRunDetailResponse) => void
   }) => {
     latestGetResultCallback = getResultCallback
-    return (
-      <div
-        data-run-detail-url={runDetailUrl}
-        data-testid="run"
-        data-tracing-list-url={tracingListUrl}
-      />
-    )
+    return <div data-owner={JSON.stringify(owner)} data-run-id={runId} data-testid="run" />
   },
 }))
 
@@ -56,11 +51,9 @@ const createRunDetail = (
     nodes: [],
     edges: [],
   },
-  inputs: '{}',
-  inputs_truncated: false,
+  inputs: {},
   status: 'succeeded',
-  outputs: '{}',
-  outputs_truncated: false,
+  outputs: {},
   total_steps: 1,
   created_by_role: 'account',
   created_at: 1,
@@ -74,12 +67,7 @@ describe('Record', () => {
     latestGetResultCallback = undefined
   })
 
-  it('renders the run title and passes run and trace URLs to the run panel', () => {
-    const getWorkflowRunAndTraceUrl = vi.fn((runId?: string) => ({
-      runUrl: `/runs/${runId}`,
-      traceUrl: `/traces/${runId}`,
-    }))
-
+  it('renders the run title and passes the editor resource and run id to the run panel', () => {
     renderWorkflowComponent(<Record />, {
       initialStoreState: {
         historyWorkflowData: {
@@ -88,17 +76,14 @@ describe('Record', () => {
           finished_at: 1700000000000,
         },
       },
-      hooksStoreProps: {
-        getWorkflowRunAndTraceUrl,
-      },
     })
 
     expect(screen.getByText('Test Run (Finished)')).toBeInTheDocument()
-    expect(screen.getByTestId('run')).toHaveAttribute('data-run-detail-url', '/runs/run-1')
-    expect(screen.getByTestId('run')).toHaveAttribute('data-tracing-list-url', '/traces/run-1')
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenCalledTimes(2)
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenNthCalledWith(1, 'run-1')
-    expect(getWorkflowRunAndTraceUrl).toHaveBeenNthCalledWith(2, 'run-1')
+    expect(screen.getByTestId('run')).toHaveAttribute(
+      'data-owner',
+      JSON.stringify({ kind: 'app', appId: 'app-1', mode: 'workflow' }),
+    )
+    expect(screen.getByTestId('run')).toHaveAttribute('data-run-id', 'run-1')
     expect(mockFormatWorkflowRunIdentifier).toHaveBeenCalledWith(1700000000000)
   })
 
@@ -112,9 +97,6 @@ describe('Record', () => {
           id: 'run-1',
           status: 'succeeded',
         },
-      },
-      hooksStoreProps: {
-        getWorkflowRunAndTraceUrl: () => ({ runUrl: '/runs/run-1', traceUrl: '/traces/run-1' }),
       },
     })
 
@@ -149,9 +131,6 @@ describe('Record', () => {
           id: 'run-1',
           status: 'succeeded',
         },
-      },
-      hooksStoreProps: {
-        getWorkflowRunAndTraceUrl: () => ({ runUrl: '/runs/run-1', traceUrl: '/traces/run-1' }),
       },
     })
 

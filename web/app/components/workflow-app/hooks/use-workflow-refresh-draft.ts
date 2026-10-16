@@ -43,7 +43,7 @@ export const useWorkflowRefreshDraft = () => {
       if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(false)
       const refreshSequence = ++refreshSequenceRef.current
       setIsSyncingWorkflowDraft(true)
-      return fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+      return fetchWorkflowDraft({ kind: 'app', appId })
         .then((response) => {
           if (options?.shouldApply && !options.shouldApply()) return false
 

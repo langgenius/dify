@@ -64,7 +64,6 @@ const hookFns = {
   handleWorkflowTriggerWebhookRunInWorkflow: vi.fn(),
   handleWorkflowTriggerPluginRunInWorkflow: vi.fn(),
   handleWorkflowRunAllTriggersInWorkflow: vi.fn(),
-  getWorkflowRunAndTraceUrl: vi.fn(),
   exportCheck: vi.fn(),
   handleExportDSL: vi.fn(),
   fetchInspectVars: vi.fn(),
@@ -248,7 +247,7 @@ vi.mock('@/app/components/workflow', () => ({
             onWorkflowDataUpdate?.({
               nodes: [],
               edges: [],
-              features: { file_upload: { enabled: true } },
+              features: { file: { enabled: true } },
               conversation_variables: [
                 {
                   id: 'conversation-1',
@@ -314,10 +313,6 @@ vi.mock('../../hooks/use-DSL', () => ({
     exportCheck: hookFns.exportCheck,
     handleExportDSL: hookFns.handleExportDSL,
   }),
-}))
-
-vi.mock('../../hooks/use-get-run-and-trace-url', () => ({
-  useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud-common', () => ({
@@ -558,7 +553,6 @@ describe('WorkflowMain', () => {
       handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
       handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
       availableNodesMetaData: { nodes: [{ id: 'start' }], nodesMap: { start: { id: 'start' } } },
-      getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl,
       exportCheck: hookFns.exportCheck,
       handleExportDSL: hookFns.handleExportDSL,
       fetchInspectVars: hookFns.fetchInspectVars,
@@ -661,7 +655,7 @@ describe('WorkflowMain', () => {
     await collaborationListeners.workflowUpdate?.()
 
     await waitFor(() => {
-      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/apps/app-1/workflows/draft')
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' })
       expect(mockSetFeatures).toHaveBeenCalled()
       expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('imported-hash')
       expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({

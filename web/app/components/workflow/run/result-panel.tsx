@@ -17,7 +17,7 @@ import StatusPanel from './status'
 
 export type ResultPanelProps = {
   nodeInfo?: NodeTracing
-  inputs?: string
+  inputs?: string | Record<string, unknown>
   inputs_truncated?: boolean
   process_data?: string
   process_data_truncated?: boolean

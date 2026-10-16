@@ -46,13 +46,11 @@ vi.mock('@/app/components/workflow/panel', () => ({
       right?: ReactNode
     }
     versionHistoryPanelProps?: {
-      getVersionListUrl: string
       latestVersionId?: string
     }
   }) => (
     <div
       data-testid="panel"
-      data-version-list-url={versionHistoryPanelProps?.getVersionListUrl ?? ''}
       data-latest-version-id={versionHistoryPanelProps?.latestVersionId ?? ''}
     >
       <div data-testid="panel-left">{components?.left}</div>
@@ -76,7 +74,7 @@ vi.mock('next/dynamic', () => ({
 
 vi.mock('@/service/log', () => ({
   fetchRunDetail: vi.fn().mockResolvedValue(undefined),
-  fetchTracingList: vi.fn().mockResolvedValue({ data: [] }),
+  fetchTracingList: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('@/app/components/workflow/panel/record', () => ({
@@ -122,11 +120,10 @@ describe('WorkflowPanel', () => {
     mockUseIsChatMode.mockReturnValue(false)
   })
 
-  it('should configure workflow version history urls and latest version id for the panel shell', async () => {
+  it('should pass the latest version id to the panel shell', async () => {
     renderPanel(workflowStoreState)
 
     const panel = await screen.findByTestId('panel')
-    expect(panel).toHaveAttribute('data-version-list-url', '/apps/app-123/workflows')
     expect(panel).toHaveAttribute('data-latest-version-id', 'workflow-version-id')
   })
 

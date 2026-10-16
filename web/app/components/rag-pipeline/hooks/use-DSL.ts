@@ -62,7 +62,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const exportCheck = useCallback(async () => {
     if (!pipelineId) return
     try {
-      const workflowDraft = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
+      const workflowDraft = await fetchWorkflowDraft({ kind: 'knowledge-pipeline', pipelineId })
       const list = (workflowDraft.environment_variables || []).filter(
         (env) => env.value_type === 'secret',
       )

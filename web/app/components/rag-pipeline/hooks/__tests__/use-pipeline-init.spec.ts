@@ -133,9 +133,10 @@ describe('usePipelineInit', () => {
       })
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
-          '/rag/pipelines/test-pipeline-id/workflows/draft',
-        )
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith({
+          kind: 'knowledge-pipeline',
+          pipelineId: 'test-pipeline-id',
+        })
       })
     })
 

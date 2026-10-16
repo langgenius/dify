@@ -1,6 +1,7 @@
 import type {
   WorkflowDraftVariableResponse,
   WorkflowDraftVariableWithoutValueResponse,
+  WorkflowResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
@@ -86,14 +87,15 @@ export type NodeTracing = {
     }
     loop_variable_map?: Record<string, any>
   }
-  metadata: {
+  // Only live run events carry container progress; stored executions do not.
+  metadata?: {
     iterator_length: number
     iterator_index: number
     loop_length: number
     loop_index: number
   }
   created_at: number
-  created_by: {
+  created_by?: {
     id: string
     name: string
     email: string
@@ -125,47 +127,24 @@ type VersionEnvironment = {
   name: string
 }
 
-export type FetchWorkflowDraftResponse = {
-  id: string
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport?: Viewport
-  }
-  features?: any
-  created_at: number
-  created_by: {
-    id: string
-    name: string
-    email: string
-  }
-  hash: string
-  updated_at: number
-  updated_by: {
-    id: string
-    name: string
-    email: string
-  }
-  tool_published: boolean
-  environment_variables?: EnvironmentVariable[]
-  conversation_variables?: ConversationVariable[]
-  rag_pipeline_variables?: RAGPipelineVariables
-  version: string
-  version_number?: number | null
-  marked_name: string
-  marked_comment: string
+export type WorkflowCanvasGraph = {
+  nodes: Node[]
+  edges: Edge[]
+  viewport?: Viewport
+}
+
+export type FetchWorkflowDraftResponse = Omit<
+  WorkflowResponse,
+  'graph' | 'environment_variables' | 'conversation_variables' | 'rag_pipeline_variables'
+> & {
+  graph: WorkflowCanvasGraph
+  environment_variables: EnvironmentVariable[]
+  conversation_variables: ConversationVariable[]
+  rag_pipeline_variables: RAGPipelineVariables
   environments?: VersionEnvironment[]
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
-
-export type FetchWorkflowDraftPageParams = {
-  url: string
-  initialPage: number
-  limit: number
-  userId?: string
-  namedOnly?: boolean
-}
 
 export type FetchWorkflowDraftPageResponse = {
   items: VersionHistory[]
