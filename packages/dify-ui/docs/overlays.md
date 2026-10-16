@@ -44,20 +44,17 @@ clipping.
 
 ## Layering
 
-| Layer                                                                   | z-index |
-| ----------------------------------------------------------------------- | ------- |
-| Dialogs, pickers, drawers, menus, popovers, preview cards, and tooltips | `z-50`  |
-| Toast viewport                                                          | `z-60`  |
-
-Overlays at `z-50` rely on portal DOM order; the portal mounted later appears above earlier ones.
-Toast remains one layer above ordinary overlays.
+Overlays set no z-index; portal DOM order stacks them. A Base UI modal blocks outside clicks with
+an unstyled sibling of its popup, so any overlay z-index can lift a lower layer above that guard.
+Only a body-level layer that must stay above overlays mounted after it sets one. A portal into an
+application container sits inside the isolated root and layers against its siblings there.
 
 Positioners hide with their anchor: Base UI marks them `data-anchor-hidden` when the anchor is
 clipped, `display: none` or unmounted, and the shared positioner class turns that into
 `visibility: hidden` plus `pointer-events: none` so a popup never lingers at the viewport origin.
 
-- Do not add call-site `z-*` overrides. Fix the owning overlay structure when content is clipped
-  or hidden.
+- Do not add call-site `z-*` overrides or force a backdrop to block clicks. Fix the owning overlay
+  structure when content is clipped, hidden, or clickable behind a modal.
 - Do not wrap a Dify UI overlay in another manual portal.
 - Add shared backdrop or presentation chrome inside the owning exported component, not at call
   sites.

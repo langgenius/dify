@@ -124,7 +124,7 @@ const toFieldType = (normalizedType: string | undefined, schemaType?: string): T
 
 const toArrayItemType = (type: Type): Exclude<Type, typeof Type.array> => {
   if (type === Type.array) return Type.object
-  return type as Exclude<Type, typeof Type.array>
+  return type
 }
 
 const convertJsonSchemaToField = (

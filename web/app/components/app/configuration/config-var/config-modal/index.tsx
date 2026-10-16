@@ -3,7 +3,7 @@
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
-import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
@@ -133,7 +133,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleTypeChange = useCallback((item: SelectItem) => {
-    setTempPayload((prev) => createPayloadForType(prev, item.value as InputVarType))
+    setTempPayload((prev) => createPayloadForType(prev, item.value))
     setValidationError(undefined)
   }, [])
 

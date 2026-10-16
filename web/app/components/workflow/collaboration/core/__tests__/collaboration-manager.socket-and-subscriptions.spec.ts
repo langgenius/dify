@@ -1266,7 +1266,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('covers setNodes/setEdges guards and destroy delegation', () => {
     const { manager, internals } = setupManagerWithDoc()
     const destroyDisconnectSpy = vi
-      .spyOn(manager as unknown as { disconnect: () => void }, 'disconnect')
+      .spyOn(manager as { disconnect: () => void }, 'disconnect')
       .mockImplementation(() => undefined)
 
     manager.setNodes([], [createNode('n-guard')])

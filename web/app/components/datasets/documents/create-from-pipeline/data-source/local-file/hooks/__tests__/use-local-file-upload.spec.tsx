@@ -273,7 +273,7 @@ describe('useLocalFileUpload', () => {
       const mockFile = { name: 'test.pdf', size: 1024 }
 
       act(() => {
-        result.current.handlePreview(mockFile as unknown as CustomFile)
+        result.current.handlePreview(mockFile as CustomFile)
       })
 
       expect(mockSetCurrentLocalFile).not.toHaveBeenCalled()

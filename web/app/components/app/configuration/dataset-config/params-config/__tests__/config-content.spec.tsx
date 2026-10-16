@@ -98,7 +98,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Dataset Name',
-    icon_info: resolvedIconInfo as DataSet['icon_info'],
+    icon_info: resolvedIconInfo,
     description: 'A test dataset',
     permission: DatasetPermission.onlyMe,
     data_source_type: DataSourceType.FILE,

@@ -112,7 +112,7 @@ const useMessageLogMocks = () => {
       throw new Error(`Unmocked fetch call for ${url}`)
     }
 
-    globalThis.fetch = handle as typeof globalThis.fetch
+    globalThis.fetch = handle
 
     return () => {
       globalThis.fetch = originalFetch || globalThis.fetch

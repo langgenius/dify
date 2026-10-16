@@ -130,10 +130,7 @@ const FeaturesTrigger = () => {
     return edges.some((edge) => startNodeIds.includes(edge.source))
   }, [edges, startNodeIds])
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
-  const hasTriggerNode = useMemo(
-    () => nodes.some((node) => isTriggerNode(node.data.type as BlockEnum)),
-    [nodes],
-  )
+  const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
   const startNodeLimitExceeded = useMemo(() => {
     const entryCount = nodes.reduce((count, node) => {
       const nodeType = node.data.type as BlockEnum

@@ -252,7 +252,7 @@ export class AudioPlayer {
 
   private async loadAudio() {
     try {
-      const audioResponse = (await textToAudioStream(
+      const audioResponse = await textToAudioStream(
         this.url,
         this.isPublic ? AppSourceType.webApp : AppSourceType.installedApp,
         {
@@ -261,7 +261,7 @@ export class AudioPlayer {
           voice: this.voice,
           text: this.msgContent,
         },
-      )) as Response
+      )
       if (this.destroyed) return
       if (audioResponse.status !== 200) {
         this.failLoad()

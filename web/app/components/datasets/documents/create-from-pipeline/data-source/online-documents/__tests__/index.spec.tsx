@@ -89,7 +89,7 @@ const mockDataSourceStore = { getState: mockGetState }
 
 vi.mock('../../store', () => ({
   useDataSourceStoreWithSelector: (selector: (s: Record<string, unknown>) => unknown) =>
-    selector(mockStoreState as unknown as Record<string, unknown>),
+    selector(mockStoreState),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 

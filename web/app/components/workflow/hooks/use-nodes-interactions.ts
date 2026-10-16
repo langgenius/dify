@@ -275,14 +275,13 @@ export const useNodesInteractions = () => {
 
         // Check if current dragging node is an entry node
         const isCurrentEntryNode =
-          isTriggerNode(node.data.type as BlockEnum) || node.data.type === BlockEnum.Start
+          isTriggerNode(node.data.type) || node.data.type === BlockEnum.Start
 
         // X-axis alignment with offset consideration
         if (showVerticalHelpLineNodesLength > 0) {
           const targetNode = showVerticalHelpLineNodes[0]
           const isTargetEntryNode =
-            isTriggerNode(targetNode!.data.type as BlockEnum) ||
-            targetNode!.data.type === BlockEnum.Start
+            isTriggerNode(targetNode!.data.type) || targetNode!.data.type === BlockEnum.Start
 
           // Calculate the wrapper position needed to align the inner nodes
           // Target inner position = target.position + target.offset
@@ -304,8 +303,7 @@ export const useNodesInteractions = () => {
         if (showHorizontalHelpLineNodesLength > 0) {
           const targetNode = showHorizontalHelpLineNodes[0]
           const isTargetEntryNode =
-            isTriggerNode(targetNode!.data.type as BlockEnum) ||
-            targetNode!.data.type === BlockEnum.Start
+            isTriggerNode(targetNode!.data.type) || targetNode!.data.type === BlockEnum.Start
 
           const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
           const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0

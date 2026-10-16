@@ -51,7 +51,7 @@ const mockUseSearchParams = vi.mocked(useSearchParams)
 
 const setSearchParams = (searchParams = '') => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(searchParams) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(searchParams) as ReturnType<typeof useSearchParams>,
   )
   window.history.replaceState(null, '', `/signin${searchParams ? `?${searchParams}` : ''}`)
 }

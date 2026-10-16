@@ -20,6 +20,7 @@ type TestNode = {
     _connectedSourceHandleIds?: string[]
     _connectedTargetHandleIds?: string[]
     variables?: { variable: string; value_selector: string[] }[]
+    prompt_template?: { role: string; text: string }[]
     items?: {
       variable_selector: string[]
       input_type: 'variable' | 'constant'
@@ -141,6 +142,58 @@ describe('useInsertSnippet', () => {
   })
 
   describe('Insert Flow', () => {
+    it('should keep prompt references parseable across insertions at the same timestamp', async () => {
+      const timestamp = vi.spyOn(Date, 'now').mockReturnValue(1791619342702)
+      try {
+        seedPublishedWorkflow(queryClient, {
+          graph: {
+            nodes: [
+              {
+                id: 'extractor-with-hyphens',
+                position: { x: 0, y: 0 },
+                data: { type: 'document-extractor' },
+              },
+              {
+                id: 'llm-with-hyphens',
+                position: { x: 300, y: 0 },
+                data: {
+                  type: 'llm',
+                  model: { mode: 'chat' },
+                  prompt_template: [{ role: 'system', text: '{{#extractor-with-hyphens.text#}}' }],
+                },
+              },
+            ],
+            edges: [{ id: 'edge', source: 'extractor-with-hyphens', target: 'llm-with-hyphens' }],
+          },
+        })
+        const { result } = renderUseInsertSnippet()
+
+        for (let insertion = 0; insertion < 2; insertion++) {
+          await act(async () => {
+            await result.current.handleInsertSnippet('snippet-1')
+          })
+          const nextNodes = mockSetNodes.mock.calls[insertion]![0] as TestNode[]
+          const insertedNodes = nextNodes.slice(-2)
+          const extractor = insertedNodes[0]!
+          const llm = insertedNodes[1]!
+          // Runtime variable selectors accept at most 50 alphanumeric/underscore characters.
+          for (const node of insertedNodes) expect(node.id).toMatch(/^\w{1,50}$/)
+          expect(llm.data.prompt_template).toEqual([
+            { role: 'system', text: `{{#${extractor.id}.text#}}` },
+          ])
+          expect(new Set(nextNodes.map((node) => node.id)).size).toBe(nextNodes.length)
+          const edges = mockSetEdges.mock.calls[insertion]![0] as TestEdge[]
+          expect(edges.at(-1)).toEqual(
+            expect.objectContaining({ source: extractor.id, target: llm.id }),
+          )
+          mockGetNodes.mockReturnValue(nextNodes)
+          mockEdges = edges
+        }
+      } finally {
+        timestamp.mockRestore()
+      }
+    })
+
     it('should append remapped snippet graph into current workflow graph', async () => {
       seedPublishedWorkflow(queryClient, {
         graph: {
@@ -269,8 +322,8 @@ describe('useInsertSnippet', () => {
       })
 
       const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
-      const insertedLLMNode = nextNodes.find((node) => node.id.includes('snippet-llm'))!
-      const insertedCodeNode = nextNodes.find((node) => node.id.includes('snippet-code'))!
+      const insertedLLMNode = nextNodes.find((node) => node.data.type === 'llm')!
+      const insertedCodeNode = nextNodes.find((node) => node.data.type === 'code')!
 
       expect(insertedLLMNode.id).not.toBe('snippet-llm')
       expect(insertedCodeNode.data.variables).toEqual([
@@ -461,8 +514,8 @@ describe('useInsertSnippet', () => {
       })
 
       const firstInsertion = mockSetNodes.mock.calls[0]![0] as TestNode[]
-      const firstSource = firstInsertion.find((node) => node.id.includes('snippet-source'))!
-      const firstAssigner = firstInsertion.find((node) => node.id.includes('snippet-assigner'))!
+      const firstSource = firstInsertion.find((node) => node.data.type === 'code')!
+      const firstAssigner = firstInsertion.find((node) => node.data.type === 'assigner')!
       mockGetNodes.mockReturnValue(firstInsertion)
 
       await act(async () => {
@@ -470,13 +523,13 @@ describe('useInsertSnippet', () => {
       })
 
       const secondInsertion = mockSetNodes.mock.calls[1]![0] as TestNode[]
-      const insertedSources = secondInsertion.filter((node) => node.id.includes('snippet-source'))
+      const insertedSources = secondInsertion.filter((node) => node.data.type === 'code')
       const secondSource = insertedSources.find((node) => node.id !== firstSource.id)!
       const firstAssignerAfterSecondInsert = secondInsertion.find(
         (node) => node.id === firstAssigner.id,
       )!
       const secondAssigner = secondInsertion.find(
-        (node) => node.id.includes('snippet-assigner') && node.id !== firstAssigner.id,
+        (node) => node.data.type === 'assigner' && node.id !== firstAssigner.id,
       )!
 
       expect(firstAssignerAfterSecondInsert.data.items![0]).toEqual(
@@ -727,12 +780,10 @@ describe('useInsertSnippet', () => {
 
         const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
         const insertedEntry = nextNodes.find(
-          (node) =>
-            node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-entry'),
+          (node) => node.id !== 'prev-node' && node.id !== 'next-node' && node.data.type === 'llm',
         )!
         const insertedExit = nextNodes.find(
-          (node) =>
-            node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'),
+          (node) => node.id !== 'prev-node' && node.id !== 'next-node' && node.data.type === 'code',
         )!
         const shiftedNextNode = nextNodes.find((node) => node.id === 'next-node')!
         expect(insertedEntry.position).toEqual({ x: 300, y: 0 })

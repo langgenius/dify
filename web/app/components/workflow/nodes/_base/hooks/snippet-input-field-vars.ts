@@ -18,7 +18,7 @@ export const filterSnippetSystemVars = (availableVars: NodeOutPutVar[], isSnippe
     .filter((nodeVar) => nodeVar.vars.length > 0)
 }
 
-const toWorkflowInputType = (type: SnippetInputField['type']) => type as unknown as InputVarType
+const toWorkflowInputType = (type: SnippetInputField['type']) => type as InputVarType
 
 const buildSnippetInputFieldNode = (
   fields: SnippetInputField[],
@@ -64,7 +64,7 @@ const buildSnippetInputFieldVars = (
     .filter((field) => !!field.variable)
     .map((field) => ({
       variable: field.variable,
-      type: inputVarTypeToVarType(field.type as PipelineInputVarType),
+      type: inputVarTypeToVarType(field.type),
       isParagraph: field.type === PipelineInputVarType.paragraph,
       isSelect: field.type === PipelineInputVarType.select,
       options: field.options,

@@ -91,15 +91,13 @@ vi.mock('@/utils/timezone', () => ({
 const mockReplace = vi.fn()
 const mockRefetch = vi.fn()
 
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 const mockActivateMember = vi.mocked(consoleClient.activate.post)
 const mockUseQuery = mockProfileQuery
 const mockUseInvitationCheck = mockInvitationCheckHook
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
-  typeof getBrowserTimezone
->
+const mockGetBrowserTimezone = getBrowserTimezone as MockedFunction<typeof getBrowserTimezone>
 
 describe('InviteSettingsPage', () => {
   beforeEach(() => {
@@ -110,9 +108,7 @@ describe('InviteSettingsPage', () => {
       typeof useRouter
     >)
     mockUseSearchParams.mockReturnValue(
-      new URLSearchParams('invite_token=invite-token') as unknown as ReturnType<
-        typeof useSearchParams
-      >,
+      new URLSearchParams('invite_token=invite-token') as ReturnType<typeof useSearchParams>,
     )
     mockUseInvitationCheck.mockReturnValue({
       data: {
@@ -320,7 +316,7 @@ describe('InviteSettingsPage', () => {
       mockUseSearchParams.mockReturnValue(
         new URLSearchParams(
           'invite_token=invite-token&redirect_url=https%3A%2F%2Fgoogle.com',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        ) as ReturnType<typeof useSearchParams>,
       )
 
       render(<InviteSettingsPage />)

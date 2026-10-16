@@ -280,7 +280,7 @@ describe('useTriggerStatusStore', () => {
       act(() => {
         specialNodeIds.forEach((nodeId, index) => {
           const status = index % 2 === 0 ? 'enabled' : 'disabled'
-          result.current.setTriggerStatus(nodeId, status as EntryNodeStatus)
+          result.current.setTriggerStatus(nodeId, status)
         })
       })
 

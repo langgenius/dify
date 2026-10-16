@@ -44,7 +44,7 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
           type="button"
           onClick={() =>
             props.onConfirm({
-              type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+              type: PipelineInputVarType.textInput as InputVar['type'],
               label: 'Question',
               variable: 'question',
               required: false,
@@ -214,13 +214,13 @@ describe('SnippetSidebarContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.operation\.add/i }))
     capturedConfigVarModalProps?.onConfirm({
-      type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+      type: PipelineInputVarType.textInput as InputVar['type'],
       label: 'Another label',
       variable: 'query',
       required: true,
     })
     capturedConfigVarModalProps?.onConfirm({
-      type: PipelineInputVarType.textInput as unknown as InputVar['type'],
+      type: PipelineInputVarType.textInput as InputVar['type'],
       label: 'Query',
       variable: 'another_query',
       required: true,

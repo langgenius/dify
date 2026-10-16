@@ -25,12 +25,10 @@ describe('iteration interaction helpers', () => {
       createNode({ id: 'a', position: { x: 20, y: 10 }, width: 80, height: 40 }),
       createNode({ id: 'b', position: { x: 120, y: 60 }, width: 50, height: 30 }),
     ]
-    const bounds = getIterationContainerBounds(children as Node[])
+    const bounds = getIterationContainerBounds(children)
     expect(bounds.rightNode?.id).toBe('b')
     expect(bounds.bottomNode?.id).toBe('b')
-    expect(
-      getIterationContainerResize(createNode({ width: 120, height: 80 }) as Node, bounds),
-    ).toEqual({
+    expect(getIterationContainerResize(createNode({ width: 120, height: 80 }), bounds)).toEqual({
       width: 186,
       height: 110,
     })
@@ -42,7 +40,7 @@ describe('iteration interaction helpers', () => {
           height: 40,
           data: { isInIteration: true },
         }),
-        createNode({ width: 200, height: 180 }) as Node,
+        createNode({ width: 200, height: 180 }),
       ),
     ).toEqual({ x: 16, y: 120 })
     expect(
@@ -53,7 +51,7 @@ describe('iteration interaction helpers', () => {
           height: 30,
           data: { isInIteration: true },
         }),
-        createNode({ width: 200, height: 180 }) as Node,
+        createNode({ width: 200, height: 180 }),
       ),
     ).toEqual({ x: 144, y: 65 })
   })
@@ -76,9 +74,7 @@ describe('iteration interaction helpers', () => {
 
   it('keeps bounds, resize and positions empty when no container restriction applies', () => {
     expect(getIterationContainerBounds([])).toEqual({})
-    expect(
-      getIterationContainerResize(createNode({ width: 300, height: 240 }) as Node, {}),
-    ).toEqual({
+    expect(getIterationContainerResize(createNode({ width: 300, height: 240 }), {})).toEqual({
       width: undefined,
       height: undefined,
     })
@@ -88,7 +84,7 @@ describe('iteration interaction helpers', () => {
     expect(
       getRestrictedIterationPosition(
         createNode({ data: { isInIteration: false } }),
-        createNode({ width: 200, height: 180 }) as Node,
+        createNode({ width: 200, height: 180 }),
       ),
     ).toEqual({ x: undefined, y: undefined })
   })

@@ -263,7 +263,7 @@ const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: Sn
       const graph = syncedDraftPayload?.graph
       if (!graph || typeof graph !== 'object') return
 
-      const graphRecord = graph as Record<string, unknown>
+      const graphRecord = graph
       const draftGraph: SnippetCanvasData = {
         nodes: Array.isArray(graphRecord.nodes)
           ? (graphRecord.nodes as SnippetCanvasData['nodes'])

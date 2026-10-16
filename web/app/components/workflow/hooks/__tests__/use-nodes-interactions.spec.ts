@@ -157,7 +157,7 @@ describe('useNodesInteractions', () => {
         target: 'node-2',
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
     runtimeNodesMetaDataMap.value = {}
   })
@@ -374,7 +374,7 @@ describe('useNodesInteractions', () => {
       }),
     ]
     currentEdges = []
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -422,7 +422,7 @@ describe('useNodesInteractions', () => {
         target: 'to-node',
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -508,7 +508,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = []
     rfState.setNodes.mockImplementation((nextNodes) => {
       rfState.nodes = nextNodes
@@ -593,7 +593,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = []
     rfState.setNodes.mockImplementation((nextNodes) => {
       rfState.nodes = nextNodes
@@ -665,7 +665,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
       historyStore: {
@@ -705,7 +705,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
       historyStore: {
@@ -750,7 +750,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
       historyStore: {
@@ -794,7 +794,7 @@ describe('useNodesInteractions', () => {
         target: 'node-b',
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -843,7 +843,7 @@ describe('useNodesInteractions', () => {
         target: 'drag-node-2',
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = currentEdges as unknown as typeof rfState.edges
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -867,7 +867,7 @@ describe('useNodesInteractions', () => {
       result.current.handleNodeDrag(
         { stopPropagation: vi.fn() } as never,
         currentNodes[0] as Node,
-        currentNodes as Node[],
+        currentNodes,
       )
       result.current.handleNodeSelect('drag-node-2')
       result.current.handleNodeConnect({
@@ -918,7 +918,7 @@ describe('useNodesInteractions', () => {
         },
       }),
     ]
-    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.nodes = currentNodes
     rfState.edges = []
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -1068,7 +1068,7 @@ describe('useNodesInteractions', () => {
         }),
       ]
       currentEdges = []
-      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.nodes = currentNodes
       rfState.edges = currentEdges as unknown as typeof rfState.edges
 
       const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -1126,7 +1126,7 @@ describe('useNodesInteractions', () => {
         }),
       ]
       currentEdges = []
-      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.nodes = currentNodes
       rfState.edges = currentEdges as unknown as typeof rfState.edges
 
       const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -1216,7 +1216,7 @@ describe('useNodesInteractions', () => {
           }),
         ]
         currentEdges = []
-        rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+        rfState.nodes = currentNodes
         rfState.edges = currentEdges as unknown as typeof rfState.edges
 
         const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
@@ -1309,7 +1309,7 @@ describe('useNodesInteractions', () => {
         }),
       ]
       currentEdges = []
-      rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+      rfState.nodes = currentNodes
       rfState.edges = currentEdges as unknown as typeof rfState.edges
 
       const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {

@@ -12,6 +12,7 @@ import type {
   Edge,
   EnvironmentVariable,
   Node,
+  NodeDataType,
   ValueSelector,
 } from '../types'
 import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -115,11 +116,10 @@ const resolveNodeValidator = (
   const validator = getNodeBlockEntry(nodesExtraData, data)?.checkValid
   if (validator) return validator
 
-  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data))
-    return AgentDefault.checkValid as NodeValidator
+  if (data.type === BlockEnum.Agent && !isAgentV2NodeData(data)) return AgentDefault.checkValid
 }
 
-const START_NODE_TYPES: BlockEnum[] = [
+const START_NODE_TYPES: readonly NodeDataType[] = [
   BlockEnum.Start,
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
@@ -548,9 +548,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     // Check for start nodes (including triggers)
     if (shouldCheckStartNode) {
-      const startNodesFiltered = nodes.filter((node) =>
-        START_NODE_TYPES.includes(node.data.type as BlockEnum),
-      )
+      const startNodesFiltered = nodes.filter((node) => START_NODE_TYPES.includes(node.data.type))
       const hasStartPlaceholderNode = nodes.some(
         (node) => node.data.type === BlockEnum.StartPlaceholder,
       )
@@ -904,9 +902,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     if (shouldCheckStartNode) {
-      const startNodesFiltered = nodes.filter((node) =>
-        START_NODE_TYPES.includes(node.data.type as BlockEnum),
-      )
+      const startNodesFiltered = nodes.filter((node) => START_NODE_TYPES.includes(node.data.type))
       if (startNodesFiltered.length === 0) {
         toast.error(t(($) => $['common.needStartNode'], { ns: 'workflow' }))
         return false

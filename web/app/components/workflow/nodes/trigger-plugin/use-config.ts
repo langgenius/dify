@@ -75,11 +75,11 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   } = inputs
 
   const event_parameters = useMemo(
-    () => normalizeEventParameters(rawEventParameters as PluginTriggerVarInputs),
+    () => normalizeEventParameters(rawEventParameters),
     [rawEventParameters],
   )
   const legacy_config_parameters = useMemo(
-    () => normalizeEventParameters(config as PluginTriggerVarInputs, { allowScalars: true }),
+    () => normalizeEventParameters(config, { allowScalars: true }),
     [config],
   )
 
