@@ -9,10 +9,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { Separator } from '@langgenius/dify-ui/separator'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
+import { tracingQueryParamName, tracingQueryParser } from './query-params'
 import { TracingIcon } from './tracing-icon'
 
 const I18N_PREFIX = 'tracing'
@@ -24,6 +26,7 @@ type TracingConfigurationProps = {
 
 export function TracingConfiguration({ resource, readOnly }: TracingConfigurationProps) {
   const { t } = useTranslation(['app', 'common'])
+  const [destination, setDestination] = useQueryState(tracingQueryParamName, tracingQueryParser)
   const statusQuery = useQuery(
     resource.kind === 'agent'
       ? consoleQuery.agent.byAgentId.trace.get.queryOptions({
@@ -134,7 +137,13 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
   if (resource.kind === 'app' && readOnly && !hasConfiguredTracing) return null
 
   return (
-    <Popover key={resource.kind === 'agent' ? resource.agentId : resource.appId}>
+    <Popover
+      key={resource.kind === 'agent' ? resource.agentId : resource.appId}
+      open={destination === 'configure' && !isLoading}
+      onOpenChange={(open) => {
+        void setDestination(open ? 'configure' : null)
+      }}
+    >
       <PopoverTrigger
         disabled={isLoading}
         render={
