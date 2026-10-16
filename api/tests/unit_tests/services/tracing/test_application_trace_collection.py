@@ -491,3 +491,29 @@ def test_capture_agent_disabled_preserves_outer_only_content_policy(
     assert len(stored.outer_trace["spans"]) == 1
     invocations, _ = case.repository.collected(case.run.id)
     assert invocations == []
+
+
+def test_deleting_selected_configuration_keeps_historical_destination(collection: Collection) -> None:
+    from machinery.context import RequestContext
+    from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+    from services.app_tracing_config_gateway import OpsTraceManagerGateway
+    from services.app_tracing_config_service import AppTracingConfigService
+
+    original = collection.run
+    service = AppTracingConfigService(
+        configs=SQLAlchemyAppTracingConfigRepository(session_factory=collection.sessions),
+        provider=OpsTraceManagerGateway(),
+    )
+    service.delete(RequestContext("request", None, "account", original.tenant_id), original.app_id, "langfuse")
+    stored = collection.repository.get(original.id)
+    assert stored is not None
+    assert stored.provider_config == original.provider_config
+    assert stored.provider_config["project_url"] == "https://langfuse.test/project/original"
+    assert stored.config_revision == original.config_revision
+    with collection.sessions() as session:
+        assert session.scalar(select(TraceAppConfig).where(TraceAppConfig.app_id == original.app_id)) is None
+        app = session.get(App, original.app_id)
+        assert app is not None
+        assert app.tracing is not None
+        assert json.loads(app.tracing)["enabled"] is False
+        assert json.loads(app.tracing)["tracing_provider"] is None

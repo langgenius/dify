@@ -28,7 +28,7 @@ from services.app.import_service import AppImportService
 from services.app.query_service import AppDiscoveryService
 from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService
-from services.app_tracing_config_gateway import OpsTraceManagerGateway
+from services.app_tracing_config_service import AppTracingConfigService
 from services.oauth_server_service import OAuthServerService
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
@@ -52,6 +52,7 @@ def build_app_services(
     recommended_packages: RecommendedAppPackageService,
     repository: ConsoleAppRepository,
     rbac_members: MemberService,
+    tracing_configs: AppTracingConfigService,
 ) -> AppServices:
     transfers = AppTransferGateway(
         session_factory=database_client,
@@ -77,7 +78,7 @@ def build_app_services(
             access=EnterpriseConsoleAppAccess(members=rbac_members),
             transfers=transfers,
             creators=CreatorsPlatformGateway(oauth=oauth),
-            tracing=OpsTraceManagerGateway(),
+            tracing=tracing_configs,
             lifecycle=AppLifecycleGateway(session_factory=database_client),
         ),
         enterprise=EnterpriseAppService(

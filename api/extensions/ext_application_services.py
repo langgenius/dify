@@ -468,6 +468,7 @@ def build_application_services(
         recommended_packages=recommended_app_packages,
         repository=console_apps,
         rbac_members=rbac.members,
+        tracing_configs=tracing_configs,
     )
     tags = TagApplicationService(tags=TagRepository(session_factory=database_client))
     knowledge = build_knowledge_services(
