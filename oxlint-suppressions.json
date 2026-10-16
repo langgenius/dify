@@ -29,11 +29,6 @@
       "count": 1
     }
   },
-  "web/.storybook/main.ts": {
-    "storybook/no-uninstalled-addons": {
-      "count": 3
-    }
-  },
   "web/__mocks__/zustand.ts": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -523,11 +518,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/agent-log-modal/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    }
-  },
   "web/app/components/base/agent-log-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -573,11 +563,6 @@
   "web/app/components/base/audio-gallery/__tests__/AudioPlayer.spec.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
-    }
-  },
-  "web/app/components/base/auto-height-textarea/index.stories.tsx": {
-    "no-console": {
-      "count": 2
     }
   },
   "web/app/components/base/auto-height-textarea/index.tsx": {
@@ -799,11 +784,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/file-list-in-log.tsx": {
-    "eslint-react/no-missing-key": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/file-preview-content.tsx": {
     "jsx-a11y/media-has-caption": {
       "count": 2
@@ -985,18 +965,8 @@
       "count": 2
     }
   },
-  "web/app/components/base/message-log-modal/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    }
-  },
   "web/app/components/base/node-status/index.tsx": {
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/notion-connector/index.stories.tsx": {
-    "no-console": {
       "count": 1
     }
   },
@@ -1011,14 +981,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/base/prompt-editor/index.stories.tsx": {
-    "jsx-a11y/label-has-associated-control": {
-      "count": 4
-    },
-    "no-console": {
-      "count": 1
     }
   },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
@@ -1166,22 +1128,9 @@
       "count": 3
     }
   },
-  "web/app/components/base/prompt-log-modal/index.stories.tsx": {
-    "no-console": {
-      "count": 1
-    }
-  },
   "web/app/components/base/prompt-log-modal/index.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    }
-  },
-  "web/app/components/base/tag-input/index.stories.tsx": {
-    "jsx-a11y/label-has-associated-control": {
-      "count": 12
-    },
-    "no-console": {
-      "count": 2
     }
   },
   "web/app/components/base/text-generation/__tests__/hooks.spec.ts": {
@@ -1214,13 +1163,7 @@
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
     },
-    "jsx-a11y/label-has-associated-control": {
-      "count": 2
-    },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    },
-    "no-console": {
       "count": 2
     },
     "typescript/no-explicit-any": {
