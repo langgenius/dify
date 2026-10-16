@@ -3551,15 +3551,15 @@ class TestWorkflowServiceHumanInputOperations:
         with (
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
             patch.object(service, "_resolve_human_input_delivery_method", return_value=None),
+            pytest.raises(ValueError, match="Delivery method not found"),
         ):
-            with pytest.raises(ValueError, match="Delivery method not found"):
-                service.test_human_input_delivery(
-                    app_model=TestWorkflowAssociatedDataFactory.create_app(),
-                    account=TestWorkflowAssociatedDataFactory.create_account(),
-                    node_id="node-1",
-                    delivery_method_id="none",
-                    session=sqlite_session,
-                )
+            service.test_human_input_delivery(
+                app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                account=TestWorkflowAssociatedDataFactory.create_account(),
+                node_id="node-1",
+                delivery_method_id="none",
+                session=sqlite_session,
+            )
 
     def test_load_email_recipients_parsing_failure(self, service: WorkflowService, sqlite_session: Session) -> None:
         """Malformed persisted recipient payloads are skipped instead of aborting delivery tests."""
@@ -3647,9 +3647,11 @@ class TestWorkflowServiceFreeNodeExecution:
             service.validate_features_structure(app, {})
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
-        with patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")):
-            with pytest.raises(ValueError, match="Invalid HumanInput node data"):
-                service._validate_human_input_node_data({})
+        with (
+            patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")),
+            pytest.raises(ValueError, match="Invalid HumanInput node data"),
+        ):
+            service._validate_human_input_node_data({})
 
     def test_rebuild_single_file_unreachable(self) -> None:
         # Test line 1523 (unreachable)

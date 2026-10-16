@@ -230,6 +230,15 @@ class AliyunLogStorePG:
                             row_dict[col] = "" if val is None else str(val)
                         result.append(row_dict)
 
+                    if log_enabled:
+                        logger.info(
+                            "[LogStore-PG] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",
+                            logstore,
+                            len(result),
+                        )
+
+                    return result
+
             except psycopg2.Error as e:
                 if not self._is_retriable_error(e):
                     logger.exception(
