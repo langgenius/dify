@@ -42,6 +42,17 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         self._provider_config(tracing_provider)
 
     @override
+    def validate_saved_config(
+        self, *, workspace_id: str, tracing_provider: str, tracing_config: dict[str, Any]
+    ) -> None:
+        provider_config = self._provider_config(tracing_provider)
+        try:
+            decrypted = OpsTraceManager.decrypt_tracing_config(workspace_id, tracing_provider, tracing_config)
+        except Exception as error:
+            raise AppTracingConfigProcessingError from error
+        self._validate_config(provider_config, decrypted)
+
+    @override
     def prepare_new_config(
         self,
         *,

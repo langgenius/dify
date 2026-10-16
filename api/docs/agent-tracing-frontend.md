@@ -242,31 +242,27 @@ GET /agent/{agent_id}/trace-config?tracing_provider=langfuse
 DELETE /agent/{agent_id}/trace-config?tracing_provider=langfuse
 ```
 
-返回 HTTP 204。删除当前选中的 provider 前，先将 `/trace` 设置为关闭；删除配置本身不自动完成前端的当前选择/总开关更新。关闭后仍可保留凭据，删除不是关闭的必要操作。
+返回 HTTP 204。删除当前 provider 自动关闭 tracing 并清空选择；关闭 tracing 本身仍可保留凭据，删除不是关闭的必要操作。
 
-### 6.2 保存并启用是两个步骤
+### 6.2 原子保存并启用
 
-1. POST 新配置或 PATCH 已有配置，等待连接验证成功。
-2. POST `/trace` 设置 `enabled=true`、选定 provider，并提交 capture 策略。
-3. 重新读取配置以获得脱敏值，刷新策略和 capability 查询。
+1. POST 新配置或 PATCH 已有配置时显式提交 `activate: true`。后端先完成供应商凭据验证，再在单一事务内保存凭据、选择 provider 并开启 tracing；保留数据库中最新的 `capture_content` 和 `capture_agent`。
+2. 成功后刷新该 provider 的配置和 `/trace` 查询。无需第二个启用请求。省略 `activate` 或传 `false` 只保存配置，不改变当前策略。
 
-两个请求不是一个事务。第二步失败时应呈现“配置已保存，启用失败”，不能显示“使用中”。只有配置写入权限的用户才请求脱敏凭据。
+保存并启用是一个原子业务操作，校验失败或数据库提交失败均不产生部分保存。只有配置写入权限的用户才请求脱敏凭据。
+
+删除当前选定 provider 时，同一事务关闭 tracing、清空 `tracing_provider` 并删除配置；capture 策略不变。删除非当前 provider 不改变当前策略。已采集运行的加密目的地快照和 `project_url` 不受删除影响；不需要迁移。
+
+直接 POST `/trace` 启用已有 provider 时，后端要求该应用存在 active、非空、可解密且符合 provider schema 的已保存配置，并确认适配器已安装。此操作不向供应商发起网络健康探测，不承诺已保存凭据没有被第三方撤销。
+
+所有配置和策略写入共享应用行锁。PATCH 凭据在事务外验证后，事务内检查配置身份、内容和 active 状态；若校验期间被其他写入替换，返回 HTTP 409、`code: "tracing_config_conflict"`、`message: "Tracing configuration changed. Refresh and try again."`。启用期间配置被替换或删除也返回该冲突；调用方刷新配置和策略后允许用户重试，不自动重发旧表单。缺少可用已保存配置返回既有 HTTP 404 `trace_config_not_found`。客户端不需要保存版本号或时间戳。
 
 ```ts
 import { consoleClient } from '@/service/console'
 
 await consoleClient.agent.byAgentId.traceConfig.post({
   params: { agent_id: agentId },
-  body: { tracing_provider: 'langfuse', tracing_config: formValues },
-})
-await consoleClient.agent.byAgentId.trace.post({
-  params: { agent_id: agentId },
-  body: {
-    enabled: true,
-    tracing_provider: 'langfuse',
-    capture_content: captureContent,
-    capture_agent: captureAgent,
-  },
+  body: { tracing_provider: 'langfuse', tracing_config: formValues, activate: true },
 })
 ```
 
