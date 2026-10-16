@@ -279,7 +279,7 @@ class ApiTool(Tool):
         if files:
             headers.pop("Content-Type", None)
 
-        _METHOD_MAP = {
+        _method_map = {
             "get": ssrf_proxy.get,
             "head": ssrf_proxy.head,
             "post": ssrf_proxy.post,
@@ -288,9 +288,9 @@ class ApiTool(Tool):
             "patch": ssrf_proxy.patch,
         }
         method_lc = method.lower()
-        if method_lc not in _METHOD_MAP:
+        if method_lc not in _method_map:
             raise ValueError(f"Invalid http method {method}")
-        response: httpx.Response = _METHOD_MAP[
+        response: httpx.Response = _method_map[
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,
