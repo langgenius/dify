@@ -277,6 +277,7 @@
   "tracing.configProvider.username": "Kullanıcı Adı",
   "tracing.configProvider.viewDocsLink": "{{key}} dökümanlarını görüntüle",
   "tracing.configProviderTitle.configured": "Yapılandırıldı",
+  "tracing.configProviderTitle.moreProviders": "Diğer sağlayıcılar",
   "tracing.configProviderTitle.notConfigured": "İzlemeyi etkinleştirmek için sağlayıcıyı yapılandırın",
   "tracing.databricks.description": "Databricks, iz veri depolama için güçlü yönetişim ve güvenlik ile tamamen yönetilen MLflow sunar.",
   "tracing.databricks.title": "Databricks",

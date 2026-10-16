@@ -8,10 +8,12 @@ import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { ProviderConfigError } from './provider-panel'
 import type { ConfigurableTracingProvider } from './providers'
 import type { TracingResource } from './resource'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field, FieldDescription } from '@langgenius/dify-ui/field'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useIsMutating } from '@tanstack/react-query'
@@ -22,6 +24,7 @@ import { AgentTracePolicy } from './agent-trace-policy'
 import { ProviderConfigModal } from './provider-config-modal'
 import { ProviderPanel } from './provider-panel'
 import { configurableProviders, hasProviderForm } from './providers'
+import { TracingIcon } from './tracing-icon'
 
 type ConfigPopupProps = {
   resource: TracingResource
@@ -69,7 +72,7 @@ export function ConfigPopup({
   const groups = [
     configurableProviders.filter((provider) => !!configs[provider]),
     configurableProviders.filter((provider) => !configs[provider]),
-  ]
+  ] as const
   return (
     <Dialog<ConfigurableTracingProvider>
       actionsRef={dialogActionsRef}
@@ -81,28 +84,50 @@ export function ConfigPopup({
     >
       {({ payload: provider }) => (
         <>
-          <div className="max-h-[min(32rem,calc(100dvh-8rem))] w-105 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
+          <div className="max-h-[min(32rem,calc(100dvh-8rem))] w-105 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl">
             <Field>
               <div className="flex items-center justify-between gap-3">
-                <PopoverTitle id={titleId} className="title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['tracing.tracing'])}
-                </PopoverTitle>
-                <Tooltip disabled={!switchDescription}>
-                  <TooltipTrigger
-                    render={
-                      <Switch
-                        aria-labelledby={titleId}
-                        checked={enabled}
-                        readOnly={readOnly}
-                        disabled={cannotEnable}
-                        onCheckedChange={(enabled) => {
-                          void onPolicyChange({ enabled }).catch(() => {})
-                        }}
-                      />
-                    }
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <TracingIcon
+                    size="md"
+                    className="shrink-0 bg-util-colors-blue-brand-blue-brand-500"
                   />
-                  <TooltipContent>{switchDescription}</TooltipContent>
-                </Tooltip>
+                  <PopoverTitle id={titleId} className="title-2xl-semi-bold text-text-primary">
+                    {t(($) => $['tracing.tracing'])}
+                  </PopoverTitle>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="flex items-center gap-1">
+                    <span className="flex size-3 items-center justify-center">
+                      <StatusDot status={enabled ? 'success' : 'disabled'} />
+                    </span>
+                    <span
+                      className={cn(
+                        'system-xs-semibold-uppercase',
+                        enabled ? 'text-util-colors-green-green-600' : 'text-text-tertiary',
+                      )}
+                    >
+                      {t(($) => $[enabled ? 'tracing.enabled' : 'tracing.disabled'])}
+                    </span>
+                  </span>
+                  <Tooltip disabled={!switchDescription}>
+                    <TooltipTrigger
+                      render={
+                        <Switch
+                          size="lg"
+                          aria-labelledby={titleId}
+                          checked={enabled}
+                          readOnly={readOnly}
+                          disabled={cannotEnable}
+                          onCheckedChange={(enabled) => {
+                            void onPolicyChange({ enabled }).catch(() => {})
+                          }}
+                        />
+                      }
+                    />
+                    <TooltipContent>{switchDescription}</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
               {switchDescription && (
                 <FieldDescription className="sr-only">{switchDescription}</FieldDescription>
@@ -124,7 +149,7 @@ export function ConfigPopup({
                 onChange={onPolicyChange}
               />
             )}
-            <Separator className="my-3" />
+            <Separator className="my-3 bg-divider-subtle" />
             {readOnly ? (
               <p className="system-sm-regular text-text-secondary">
                 {chosenProvider
@@ -143,7 +168,7 @@ export function ConfigPopup({
                           {t(
                             ($) =>
                               $[
-                                `tracing.configProviderTitle.${index === 0 ? 'configured' : 'notConfigured'}`
+                                `tracing.configProviderTitle.${index === 0 ? 'configured' : groups[0].length > 0 ? 'moreProviders' : 'notConfigured'}`
                               ],
                           )}
                         </h4>,

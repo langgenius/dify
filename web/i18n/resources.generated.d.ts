@@ -806,6 +806,7 @@ export default interface Resources {
     'tracing.configProvider.username': 'Username'
     'tracing.configProvider.viewDocsLink': 'View {{key}} docs'
     'tracing.configProviderTitle.configured': 'Configured'
+    'tracing.configProviderTitle.moreProviders': 'More providers'
     'tracing.configProviderTitle.notConfigured': 'Config provider to enable tracing'
     'tracing.databricks.description': 'Databricks offers fully-managed MLflow with strong governance and security for storing trace data.'
     'tracing.databricks.title': 'Databricks'
