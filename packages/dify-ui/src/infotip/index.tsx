@@ -65,7 +65,7 @@ function InfotipTrigger<Payload = unknown>({
       className={(state) =>
         cn(
           iconButtonVariants({ variant: null, size: 'xs' }),
-          'shrink-0 border-0 bg-transparent text-text-quaternary outline-hidden hover:text-text-tertiary',
+          'shrink-0 border-0 bg-transparent text-text-quaternary outline-hidden hover:text-text-tertiary data-popup-open:text-text-tertiary',
           resolveClassName(className, state),
         )
       }
