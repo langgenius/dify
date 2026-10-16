@@ -16,6 +16,7 @@ from opentelemetry.proto.trace.v1.trace_pb2 import Span
 
 from core.ops.exceptions import RetryableTraceDispatchError
 from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, CanonicalSpanStatus, CanonicalTrace
+from services.tracing.normalization import remap_outer_trace
 from services.tracing.provider_dispatch import (
     TraceExportRejectedError,
     TraceExportUncertainError,
@@ -369,6 +370,43 @@ def test_opik_real_sdk_preserves_json_content_across_trace_and_span_boundaries(
     assert spans[1]["usage"]["total_tokens"] == 12
     assert not spans[0].get("usage")
     assert not spans[2].get("usage")
+
+
+@pytest.mark.parametrize("capture_content", [True, False])
+@pytest.mark.parametrize("root_error", [True, False])
+def test_opik_trace_error_matches_sanitized_root_and_not_handled_tool_failure(
+    trace: CanonicalTrace, http_calls: list[HTTPCall], capture_content: bool, root_error: bool
+) -> None:
+    root = trace.spans[0].model_copy(
+        update={
+            "status": CanonicalSpanStatus.ERROR if root_error else CanonicalSpanStatus.OK,
+            "error": "private-model-error" if root_error else None,
+            "inputs": {"query": "private-error-input"},
+        }
+    )
+    source = trace.model_copy(update={"spans": (root, *trace.spans[1:])})
+    canonical = remap_outer_trace(source, trace_id=trace.trace_id, capture_content=capture_content, agent_message=True)
+    export_trace(
+        "opik",
+        {"api_key": "synthetic-key", "url": "https://opik.test/api", "workspace": "team", "project": "one"},
+        canonical,
+    )
+    root_payload = json.loads(http_calls[0][2]["content"])
+    spans = json.loads(http_calls[1][2]["content"])["spans"]
+    assert spans[2]["error_info"] is not None
+    if root_error:
+        expected = {
+            "exception_type": "DifyExecutionError",
+            "message": "private-model-error" if capture_content else "Application execution failed",
+            "traceback": "",
+        }
+        assert root_payload["error_info"] == spans[0]["error_info"] == expected
+    else:
+        assert root_payload.get("error_info") is None
+        assert spans[0].get("error_info") is None
+    if not capture_content:
+        assert all(b"private-model-error" not in call[2]["content"] for call in http_calls)
+        assert all(b"private-error-input" not in call[2]["content"] for call in http_calls)
 
 
 @pytest.mark.parametrize(
