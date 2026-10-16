@@ -207,23 +207,27 @@ def test_read_settings_and_masked_config_keep_agent_identity(app: Flask, service
 
 
 @pytest.mark.parametrize("create", [True, False])
+@pytest.mark.parametrize("activate", [False, True])
 def test_config_write_forwards_credentials_but_response_does_not_echo_them(
-    app: Flask, service: ConfigCase, monkeypatch: pytest.MonkeyPatch, create: bool
+    app: Flask, service: ConfigCase, monkeypatch: pytest.MonkeyPatch, create: bool, activate: bool
 ) -> None:
-    calls: list[tuple[RequestContext, str, str, dict[str, object]]] = []
+    calls: list[tuple[RequestContext, str, str, dict[str, object], bool]] = []
 
-    def write(context: RequestContext, agent_id: str, provider: str, config: dict[str, object]) -> None:
-        calls.append((context, agent_id, provider, config))
+    def write(
+        context: RequestContext, agent_id: str, provider: str, config: dict[str, object], *, activate: bool
+    ) -> None:
+        calls.append((context, agent_id, provider, config, activate))
 
     target = service.services.agent_tracing_configs
     monkeypatch.setattr(target, "create" if create else "update", write)
     credentials = {"secret_key": "never-echo-this-secret"}
     with app.test_request_context(
-        method="POST" if create else "PATCH", json={"tracing_provider": "langfuse", "tracing_config": credentials}
+        method="POST" if create else "PATCH",
+        json={"tracing_provider": "langfuse", "tracing_config": credentials, "activate": activate},
     ):
         api = tracing.AgentTraceConfigApi()
         result = inspect.unwrap(api.post if create else api.patch)(api, CONTEXT, AGENT_ID)
-    assert calls == [(CONTEXT, str(AGENT_ID), "langfuse", credentials)]
+    assert calls == [(CONTEXT, str(AGENT_ID), "langfuse", credentials, activate)]
     assert result == (({"result": "success"}, 201) if create else {"result": "success"})
     assert "never-echo-this-secret" not in str(result)
 
@@ -235,6 +239,7 @@ def test_config_write_forwards_credentials_but_response_does_not_echo_them(
         (tracing.AppTracingConfigAppNotFoundError(), tracing.AppNotFoundError),
         (tracing.AppTracingConfigAlreadyExistsError(), tracing.TracingConfigAlreadyExistsError),
         (tracing.AppTracingConfigNotFoundError(), tracing.TracingConfigNotFoundError),
+        (tracing.AppTracingConfigConflictError(), tracing.TracingConfigConflictError),
         (
             tracing.AppTracingConfigInvalidProviderError("private-provider-secret"),
             tracing.UnsupportedTracingProviderError,

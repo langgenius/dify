@@ -18,6 +18,7 @@ from controllers.console.app.error import (
     AppNotFoundError,
     InvalidTracingConfigError,
     TracingConfigAlreadyExistsError,
+    TracingConfigConflictError,
     TracingConfigNotFoundError,
     TracingConfigProcessingError,
     TracingConfigVerificationFailedError,
@@ -39,6 +40,7 @@ from services.app.console_service import ConsoleAppNotFoundError
 from services.app_tracing_config_service import (
     AppTracingConfigAlreadyExistsError,
     AppTracingConfigAppNotFoundError,
+    AppTracingConfigConflictError,
     AppTracingConfigInvalidConfigurationError,
     AppTracingConfigInvalidProviderError,
     AppTracingConfigNotFoundError,
@@ -83,6 +85,8 @@ def _tracing_call[T](call: Callable[[], T]) -> T:
         raise AppNotFoundError() from error
     except AppTracingConfigAlreadyExistsError as error:
         raise TracingConfigAlreadyExistsError() from error
+    except AppTracingConfigConflictError as error:
+        raise TracingConfigConflictError() from error
     except AppTracingConfigNotFoundError as error:
         raise TracingConfigNotFoundError() from error
     except AppTracingConfigInvalidProviderError as error:
@@ -106,7 +110,14 @@ class AgentTraceApi(Resource):
         settings = _tracing_call(lambda: application_services().agent_tracing_configs.get_trace(context, str(agent_id)))
         return dump_response(AppTraceResponse, settings)
 
-    @error_responses(TracingProviderUnavailableError)
+    @error_responses(
+        TracingProviderUnavailableError,
+        TracingConfigNotFoundError,
+        TracingConfigConflictError,
+        InvalidTracingConfigError,
+        TracingConfigProcessingError,
+        UnsupportedTracingProviderError,
+    )
     @console_ns.doc("update_agent_trace")
     @console_ns.expect(console_ns.models[AppTracePayload.__name__])
     @console_ns.response(200, "Updated Agent tracing settings", console_ns.models[AppTraceResponse.__name__])
@@ -152,7 +163,7 @@ class AgentTraceConfigApi(Resource):
         payload = TraceConfigPayload.model_validate(console_ns.payload or {})
         _tracing_call(
             lambda: application_services().agent_tracing_configs.create(
-                context, str(agent_id), payload.tracing_provider, payload.tracing_config
+                context, str(agent_id), payload.tracing_provider, payload.tracing_config, activate=payload.activate
             )
         )
         return dump_response(TraceAppConfigResponse, {"result": "success"}, exclude_none=True), 201
@@ -161,6 +172,7 @@ class AgentTraceConfigApi(Resource):
         AppNotFoundError,
         InvalidTracingConfigError,
         TracingConfigNotFoundError,
+        TracingConfigConflictError,
         TracingConfigProcessingError,
         TracingConfigVerificationFailedError,
         TracingProviderUnavailableError,
@@ -174,7 +186,7 @@ class AgentTraceConfigApi(Resource):
         payload = TraceConfigPayload.model_validate(console_ns.payload or {})
         _tracing_call(
             lambda: application_services().agent_tracing_configs.update(
-                context, str(agent_id), payload.tracing_provider, payload.tracing_config
+                context, str(agent_id), payload.tracing_provider, payload.tracing_config, activate=payload.activate
             )
         )
         return dump_response(TraceAppConfigResponse, {"result": "success"}, exclude_none=True)
