@@ -24,6 +24,9 @@ from services.dify_builder.native_testing.contracts import decode_native_ref
 from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
 from services.dify_builder.native_testing.runtime import DifyNativeRuntime, DifyNativeRuntimeOwner, build_native_api
 from sqlalchemy import select
+from tests.test_containers_integration_tests.core.workflow.builder_native_runtime_diagnostics import (
+    native_runtime_resume_diagnostics as native_runtime_resume_diagnostics,  # noqa: PLC0414
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import (
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414
 )
