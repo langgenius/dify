@@ -24,6 +24,7 @@ from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.app_tracing_config_service import AppTracingConfigService, AppTracingConfigVerificationFailedError
 from services.tracing.provider_dispatch import export_trace
 from tests.unit_tests.model_factories import make_app, make_message
+from tests.unit_tests.services.tracing.test_opik_configuration import AccessAPI
 
 
 @dataclass
@@ -69,27 +70,41 @@ def boundary(monkeypatch: pytest.MonkeyPatch) -> ProviderBoundary:
 @pytest.mark.parametrize("provider", ["langsmith", "opik"])
 @pytest.mark.parametrize("project", ["original", "changed"])
 def test_update_resolves_project_link_using_verified_unmasked_configuration(
-    boundary: ProviderBoundary, provider: str, project: str
+    boundary: ProviderBoundary, provider: str, project: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     gateway = OpsTraceManagerGateway()
     workspace = str(uuid4())
+    api = AccessAPI()
+    if provider == "opik":
+        monkeypatch.setattr(ssrf_proxy, "make_request", api.request)
+    target = {"workspace": "team", "url": "https://tracing.test/opik/api/"} if provider == "opik" else {}
     current = gateway.prepare_new_config(
         workspace_id=workspace,
         tracing_provider=provider,
-        tracing_config={"api_key": "synthetic-key", "project": "original"},
+        tracing_config={"api_key": "synthetic-key", "project": "original", **target},
     )
-    submitted = {"api_key": "******", "project": project, "project_url": "https://untrusted.test/stale"}
+    submitted = {"api_key": "******", "project": project, "project_url": "https://untrusted.test/stale", **target}
     updated = gateway.prepare_updated_config(
         workspace_id=workspace, tracing_provider=provider, tracing_config=submitted, current_tracing_config=current
     )
 
-    assert updated["project_url"] == f"https://tracing.test/{provider}/{project}"
+    prefix = f"https://tracing.test/{provider}/" + ("team/redirect/projects?name=" if provider == "opik" else "")
+    assert updated["project_url"] == prefix + project
     assert updated["api_key"] == current["api_key"] == "test-cipher:synthetic-key"
-    assert current["project_url"] == f"https://tracing.test/{provider}/original"
+    assert current["project_url"] == prefix + "original"
     assert submitted["api_key"] == "******"
-    assert [call[0] for call in boundary.calls] == ["verify", "url", "verify", "url"]
-    assert boundary.calls[-1][2]["api_key"] == "synthetic-key"
-    assert boundary.calls[-1][2]["project"] == project
+    if provider == "opik":
+        assert boundary.calls == []
+        assert len(api.calls) == 2
+        assert api.calls[-1][2]["headers"] == {
+            "Authorization": "synthetic-key",
+            "Comet-Workspace": "team",
+            "Accept": "application/json",
+        }
+    else:
+        assert [call[0] for call in boundary.calls] == ["verify", "url", "verify", "url"]
+        assert boundary.calls[-1][2]["api_key"] == "synthetic-key"
+        assert boundary.calls[-1][2]["project"] == project
 
 
 def test_langfuse_update_uses_current_host_and_resolved_project_key(boundary: ProviderBoundary) -> None:
