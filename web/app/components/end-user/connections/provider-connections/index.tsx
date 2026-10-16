@@ -45,7 +45,7 @@ function ConnectionRow({ connection, onRequestRemoval }: ConnectionRowProps) {
       <td className="px-2 py-4 align-middle">
         <LinkedAppsDialog connection={connection} connectionLabelId={connectionLabelId} />
       </td>
-      <td className="px-2 py-4 align-middle system-xs-medium text-text-accent">
+      <td className="px-2 py-4 align-middle system-sm-regular text-text-secondary">
         {connection.type === 'oauth'
           ? t(($) => $['endUser.oauthAccount'], { ns: 'app' })
           : t(($) => $['endUser.apiKey'], { ns: 'app' })}
