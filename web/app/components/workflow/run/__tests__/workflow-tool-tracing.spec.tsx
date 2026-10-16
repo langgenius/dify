@@ -4,8 +4,7 @@ import userEvent from '@testing-library/user-event'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNodeTracing } from '../../__tests__/fixtures'
-import { WorkflowContext } from '../../context'
-import { createWorkflowStore } from '../../store'
+import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import TracingPanel from '../tracing-panel'
 
@@ -43,18 +42,18 @@ describe('Workflow tool tracing', () => {
       const user = userEvent.setup()
       const root = createTrace('chat-tool-execution', { expand: true })
       mockRequest.mockImplementation(() => Promise.resolve(Response.json({ data: [] })))
-      const workflowStore = hasWorkflowStore
-        ? createWorkflowStore({ injectWorkflowStoreSliceFn: () => ({ appId: 'chat-app' }) })
-        : null
-      renderWithConsoleQuery(
-        <WorkflowContext value={workflowStore}>
-          <WorkflowProcessItem
-            item={{ id: 'answer', isAnswer: true, content: '', workflow_run_id: 'chat-run' }}
-            data={{ tracing: [root], status: WorkflowRunningStatus.Succeeded }}
-            expand
-          />
-        </WorkflowContext>,
+      const processItem = (
+        <WorkflowProcessItem
+          item={{ id: 'answer', isAnswer: true, content: '', workflow_run_id: 'chat-run' }}
+          data={{ tracing: [root], status: WorkflowRunningStatus.Succeeded }}
+          expand
+        />
       )
+      if (hasWorkflowStore)
+        renderWorkflowComponent(processItem, {
+          resource: { kind: 'app', appId: 'chat-app', mode: 'advanced-chat' },
+        })
+      else renderWithConsoleQuery(processItem)
 
       if (!hasWorkflowStore) {
         expect(screen.queryByRole('button', { name: 'runLog.tracing' })).not.toBeInTheDocument()
