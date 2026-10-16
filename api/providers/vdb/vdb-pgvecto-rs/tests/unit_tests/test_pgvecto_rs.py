@@ -193,7 +193,7 @@ def test_add_texts_get_ids_and_delete_methods(pgvecto_module, monkeypatch: pytes
 
     monkeypatch.setattr(module, "insert", lambda table: _InsertBuilder(table))
     first_id, second_id = UUID(int=1), UUID(int=2)
-    monkeypatch.setattr(module, "uuid4", MagicMock(side_effect=[first_id, second_id]))
+    monkeypatch.setattr(module, "uuid4", iter([first_id, second_id]).__next__)
     docs = [
         Document(page_content="a", metadata={"doc_id": "1"}),
         Document(page_content="b", metadata={"doc_id": "2"}),
