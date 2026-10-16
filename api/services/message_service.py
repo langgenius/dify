@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -84,6 +84,19 @@ class SuggestedQuestionsContext:
     model_config: object | None
 
 
+def _message_older_than(cursor: Message):
+    """Keyset condition for rows strictly before ``cursor`` in ``(created_at DESC, id DESC)`` order.
+
+    ``messages.created_at`` has second precision, so messages sent in quick succession share
+    the same timestamp. Comparing ``created_at`` alone would drop every row that ties with the
+    cursor; the ``id`` tiebreaker keeps the cursor stable and complete.
+    """
+    return or_(
+        Message.created_at < cursor.created_at,
+        and_(Message.created_at == cursor.created_at, Message.id < cursor.id),
+    )
+
+
 class MessageService:
     @classmethod
     def _get_agent_suggested_questions_config(
@@ -151,19 +164,15 @@ class MessageService:
 
             history_messages = session.scalars(
                 select(Message)
-                .where(
-                    Message.conversation_id == conversation.id,
-                    Message.created_at < first_message.created_at,
-                    Message.id != first_message.id,
-                )
-                .order_by(Message.created_at.desc())
+                .where(Message.conversation_id == conversation.id, _message_older_than(first_message))
+                .order_by(Message.created_at.desc(), Message.id.desc())
                 .limit(fetch_limit)
             ).all()
         else:
             history_messages = session.scalars(
                 select(Message)
                 .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at.desc())
+                .order_by(Message.created_at.desc(), Message.id.desc())
                 .limit(fetch_limit)
             ).all()
 
@@ -218,12 +227,14 @@ class MessageService:
                 raise LastMessageNotExistsError()
 
             history_messages = session.scalars(
-                stmt.where(Message.created_at < last_message.created_at, Message.id != last_message.id)
-                .order_by(Message.created_at.desc())
+                stmt.where(_message_older_than(last_message))
+                .order_by(Message.created_at.desc(), Message.id.desc())
                 .limit(fetch_limit)
             ).all()
         else:
-            history_messages = session.scalars(stmt.order_by(Message.created_at.desc()).limit(fetch_limit)).all()
+            history_messages = session.scalars(
+                stmt.order_by(Message.created_at.desc(), Message.id.desc()).limit(fetch_limit)
+            ).all()
 
         has_more = False
         if len(history_messages) > limit:
