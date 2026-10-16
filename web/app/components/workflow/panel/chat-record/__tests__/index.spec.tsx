@@ -2,15 +2,10 @@ import type { HistoryWorkflowData } from '@/app/components/workflow/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import ChatRecord from '../index'
 
-const routeParams = vi.hoisted(() => ({ appId: 'app-1' }))
 const mockRequest = vi.hoisted(() => vi.fn())
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => routeParams,
-}))
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
@@ -25,7 +20,6 @@ const historyWorkflowData: HistoryWorkflowData = {
 
 describe('ChatRecord', () => {
   beforeEach(() => {
-    routeParams.appId = 'app-1'
     mockRequest.mockReset()
   })
 
@@ -116,17 +110,22 @@ describe('ChatRecord', () => {
       has_more: false,
       limit: 20,
     })
-    const { store } = renderWorkflowComponent(<ChatRecord />, {
+    const view = (appId: string) => (
+      <EditorResourceScope resource={{ kind: 'app', appId, mode: 'workflow' }}>
+        <ChatRecord />
+      </EditorResourceScope>
+    )
+    const { store, rerender } = renderWorkflowComponent(view('app-1'), {
       initialStoreState: { historyWorkflowData },
     })
     await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(1))
 
-    routeParams.appId = 'app-2'
     act(() => {
       store.setState({
         historyWorkflowData: { ...historyWorkflowData, conversation_id: 'conversation-2' },
       })
     })
+    rerender(view('app-2'))
     expect(await screen.findByText('Current answer')).toBeInTheDocument()
     expect(mockRequest).toHaveBeenLastCalledWith(
       ['apps', 'byAppId', 'chatMessages', 'get'],

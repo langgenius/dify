@@ -6,14 +6,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { AppModeEnum } from '@/types/app'
 import { AppSelector } from '../index'
 
 const apps = [
   {
     id: 'app-1',
     name: 'Support Bot',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: 'emoji',
     icon: '🤖',
     icon_background: '#FFEAD5',
@@ -22,7 +21,7 @@ const apps = [
   {
     id: 'app-2',
     name: 'Workflow App',
-    mode: AppModeEnum.WORKFLOW,
+    mode: 'workflow' as const,
     icon_type: 'emoji',
     icon: '⚙️',
     icon_background: '#E0EAFF',
@@ -31,7 +30,7 @@ const apps = [
   {
     id: 'app-3',
     name: 'Sales Bot',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon_type: 'emoji',
     icon: '💼',
     icon_background: '#FEE4E2',

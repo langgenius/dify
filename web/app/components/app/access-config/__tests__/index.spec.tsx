@@ -10,7 +10,6 @@ import {
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppAccessConfigPage from '../index'
 
@@ -375,7 +374,7 @@ describe('AppAccessConfigPage', () => {
   it('should not mount access config data hooks for Agent apps', () => {
     appDetail = createAppDetailFixture({
       id: 'app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       maintainer: 'account-1',
       permission_keys: [AppACLPermission.AccessConfig],
     })

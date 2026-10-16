@@ -2,7 +2,6 @@ import logging
 import time
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Union
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -83,7 +82,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         application_generate_entity: WorkflowAppGenerateEntity,
         workflow: Workflow,
         queue_manager: AppQueueManager,
-        user: Union[Account, EndUser],
+        user: Account | EndUser,
         stream: bool,
         draft_var_saver_factory: DraftVariableSaverFactory,
     ):
@@ -124,7 +123,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def process(
         self,
-    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse, Generator[WorkflowAppStreamResponse]]:
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Process generate task pipeline.
         :return:
@@ -137,7 +136,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _to_blocking_response(
         self, generator: Generator[StreamResponse]
-    ) -> Union[WorkflowAppBlockingResponse, WorkflowAppPausedBlockingResponse]:
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse:
         """
         To blocking response.
         :return:
@@ -383,7 +382,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_node_failed_events(
         self,
-        event: Union[QueueNodeFailedEvent, QueueNodeExceptionEvent],
+        event: QueueNodeFailedEvent | QueueNodeExceptionEvent,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle various node failure events."""
@@ -523,7 +522,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
     def _handle_workflow_failed_and_stop_events(
         self,
-        event: Union[QueueWorkflowFailedEvent, QueueStopEvent],
+        event: QueueWorkflowFailedEvent | QueueStopEvent,
         *,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
@@ -556,7 +555,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueTextChunkEvent,
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
         """Handle text chunk events."""
@@ -643,7 +642,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         *,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         trace_manager: TraceQueueManager | None = None,
-        queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
     ) -> Generator[StreamResponse]:
         """Dispatch events using elegant pattern matching."""
         handlers = self._get_event_handlers()

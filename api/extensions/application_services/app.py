@@ -10,6 +10,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.api_key_repository import AppApiKeyRepository
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.enterprise_app_repository import EnterpriseAppRepository
+from repositories.app.dsl_import_repository import DslImportRepository
 from repositories.app.export_repository import AppExportRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -31,12 +32,14 @@ from services.app_tracing_config_gateway import OpsTraceManagerGateway
 from services.oauth_server_service import OAuthServerService
 from services.rbac.members import MemberService
 from services.recommended_app_package_service import RecommendedAppPackageService
+from services.workflow.dsl_import import DslImportService
 
 
 @dataclass(frozen=True, slots=True)
 class AppServices:
     imports: AppImportService
     exports: AppExportService
+    dsl_imports: DslImportService
     discovery: AppDiscoveryService
     console: ConsoleAppService
     enterprise: EnterpriseAppService
@@ -63,6 +66,7 @@ def build_app_services(
         exports=AppExportService(
             apps=AppExportRepository(session_factory=database_client), serialize=AppDslService.serialize_export_data
         ),
+        dsl_imports=DslImportService(store=DslImportRepository(session_factory=database_client)),
         discovery=AppDiscoveryService(
             apps=repository,
             workspaces=WorkspaceRepository(database_client),

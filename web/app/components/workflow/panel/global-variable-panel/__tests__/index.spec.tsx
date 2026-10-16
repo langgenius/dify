@@ -18,9 +18,7 @@ vi.mock('../../../constants', () => ({
   isInWorkflowPage: () => mockIsWorkflowPage,
 }))
 
-vi.mock('../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => mockIsChatMode,
-}))
+vi.mock('../../../hooks/use-workflow', () => ({}))
 
 describe('global-variable-panel path', () => {
   beforeEach(() => {
@@ -42,4 +40,11 @@ describe('global-variable-panel path', () => {
       screen.getByText('workflow.globalVar.fieldsDescription.triggerTimestamp'),
     ).toBeInTheDocument()
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

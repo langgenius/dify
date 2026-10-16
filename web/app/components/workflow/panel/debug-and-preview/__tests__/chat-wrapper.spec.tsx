@@ -13,13 +13,7 @@ import ChatWrapper from '../chat-wrapper'
 const mockUseChat = vi.hoisted(() => vi.fn())
 const mockUseSubscription = vi.hoisted(() => vi.fn())
 
-const routeParams = vi.hoisted(() => ({ appId: 'app-1' }))
 const mockRequest = vi.hoisted(() => vi.fn())
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => routeParams,
-}))
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
@@ -164,7 +158,6 @@ const createChatWrapperRef = () =>
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    routeParams.appId = 'app-1'
     mockRequest.mockReset()
     mockRequest.mockResolvedValue({ data: [] })
     mockUseChat.mockReturnValue(createChatState())

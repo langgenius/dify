@@ -12,7 +12,7 @@ state.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Union, override
+from typing import Any, override
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY, WorkflowNodeRetryAttempt
@@ -86,7 +86,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def __init__(
         self,
         *,
-        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
+        application_generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
         workflow_info: PersistenceWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,

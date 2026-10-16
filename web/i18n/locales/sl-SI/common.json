@@ -167,7 +167,6 @@
   "operation.create": "Ustvari",
   "operation.deSelectAll": "Odberi vse",
   "operation.delete": "Izbriši",
-  "operation.deleteConfirmTitle": "Izbrisati?",
   "operation.download": "Prenesi",
   "operation.downloadFailed": "Prenos ni uspel. Prosim, poskusite znova pozneje.",
   "operation.downloadSuccess": "Prenos končan.",

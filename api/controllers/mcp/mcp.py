@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 from flask import Response, request
 from flask_restx import Resource
@@ -69,7 +69,7 @@ class MCPAppApi(Resource):
         """
         # response-contract:ignore MCP route returns Flask Response from JSON-RPC handler
         args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
-        request_id: Union[int, str] | None = args.id
+        request_id: int | str | None = args.id
         mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
 
         # Resolve the negotiated protocol version from the MCP-Protocol-Version header.
@@ -98,9 +98,7 @@ class MCPAppApi(Resource):
             session.commit()
             return response
 
-    def _protocol_version_error_response(
-        self, request_id: Union[int, str] | None, header_value: str | None
-    ) -> Response:
+    def _protocol_version_error_response(self, request_id: int | str | None, header_value: str | None) -> Response:
         """Return a JSON-RPC error for an unsupported MCP-Protocol-Version header.
 
         Per JSON-RPC 2.0, an error whose request id is unknown uses a null id, so we echo the
@@ -137,7 +135,7 @@ class MCPAppApi(Resource):
     def _process_mcp_message(
         self,
         mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification,
-        request_id: Union[int, str] | None,
+        request_id: int | str | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -163,7 +161,7 @@ class MCPAppApi(Resource):
     def _handle_request(
         self,
         mcp_request: mcp_types.ClientRequest,
-        request_id: Union[int, str] | None,
+        request_id: int | str | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -272,7 +270,7 @@ class MCPAppApi(Resource):
         mcp_request: mcp_types.ClientRequest,
         user_input_form: list[VariableEntity],
         session: Session,
-        request_id: Union[int, str],
+        request_id: int | str,
         protocol_version: str,
     ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
         """Handle MCP request and return response"""
