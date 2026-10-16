@@ -2613,3 +2613,1085 @@ class TestWorkflowServiceCredentialValidation:
             pytest.raises(ValueError, match="Invalid load balancing credentials"),
         ):
             service._validate_load_balancing_credentials("tenant-1", node_data, "node-1", session=sqlite_session)
+
+
+# ===========================================================================
+# TestWorkflowServiceExecutionHelpers
+# Tests for _apply_error_strategy, _populate_execution_result, _execute_node_safely
+# ===========================================================================
+
+
+class TestWorkflowServiceExecutionHelpers:
+    """
+    Tests for the private execution-result handling methods:
+    _apply_error_strategy, _populate_execution_result, _execute_node_safely.
+    """
+
+    @pytest.fixture
+    def service(self, sqlite_engine: Engine) -> WorkflowService:
+        return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+
+    # --- _apply_error_strategy ---
+
+    def test_apply_error_strategy_should_return_exception_status_noderunresult(self, service: WorkflowService) -> None:
+        # Arrange
+        node = MagicMock()
+        node.error_strategy = ErrorStrategy.FAIL_BRANCH
+        node.default_value_dict = {}
+        original = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.FAILED,
+            error="something went wrong",
+            error_type="SomeError",
+            inputs={"x": 1},
+            outputs={},
+        )
+
+        # Act
+        result = service._apply_error_strategy(node, original)
+
+        # Assert
+        assert result.status == WorkflowNodeExecutionStatus.EXCEPTION
+        assert result.error == "something went wrong"
+        assert result.metadata[WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY] == ErrorStrategy.FAIL_BRANCH
+
+    def test_apply_error_strategy_should_include_default_values_for_default_value_strategy(
+        self, service: WorkflowService
+    ) -> None:
+        # Arrange
+        node = MagicMock()
+        node.error_strategy = ErrorStrategy.DEFAULT_VALUE
+        node.default_value_dict = {"output_key": "fallback"}
+        original = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.FAILED,
+            error="err",
+        )
+
+        # Act
+        result = service._apply_error_strategy(node, original)
+
+        # Assert
+        assert result.outputs.get("output_key") == "fallback"
+        assert result.status == WorkflowNodeExecutionStatus.EXCEPTION
+
+    # --- _populate_execution_result ---
+
+    def test_populate_execution_result_should_set_succeeded_fields_when_run_succeeded(
+        self, service: WorkflowService
+    ) -> None:
+        # Arrange
+        node_execution = MagicMock(error=None)
+        node_run_result = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"q": "hello"},
+            process_data={"steps": 3},
+            outputs={"answer": "hi"},
+            metadata={WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 10},
+        )
+
+        # Act
+        with patch("services.workflow_service.WorkflowEntry.handle_special_values", side_effect=lambda x: x):
+            service._populate_execution_result(node_execution, node_run_result, True, None)
+
+        # Assert
+        assert node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert node_execution.outputs == {"answer": "hi"}
+        assert node_execution.error is None  # SUCCEEDED status doesn't set error
+
+    def test_populate_execution_result_should_set_failed_status_and_error_when_not_succeeded(
+        self, service: WorkflowService
+    ) -> None:
+        # Arrange
+        node_execution = MagicMock(error=None)
+
+        # Act
+        service._populate_execution_result(node_execution, None, False, "catastrophic failure")
+
+        # Assert
+        assert node_execution.status == WorkflowNodeExecutionStatus.FAILED
+        assert node_execution.error == "catastrophic failure"
+
+    def test_populate_execution_result_should_set_error_field_for_exception_status(
+        self, service: WorkflowService
+    ) -> None:
+        """A succeeded=True result with EXCEPTION status should still populate the error field."""
+        # Arrange
+        node_execution = MagicMock()
+        node_run_result = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.EXCEPTION,
+            error="constraint violated",
+        )
+
+        # Act
+        with patch("services.workflow_service.WorkflowEntry.handle_special_values", side_effect=lambda x: x):
+            service._populate_execution_result(node_execution, node_run_result, True, None)
+
+        # Assert
+        assert node_execution.status == WorkflowNodeExecutionStatus.EXCEPTION
+        assert node_execution.error == "constraint violated"
+
+    # --- _execute_node_safely ---
+
+    def test_execute_node_safely_should_return_succeeded_result_on_happy_path(self, service: WorkflowService) -> None:
+        # Arrange
+        node = MagicMock()
+        node.error_strategy = None
+        node_run_result = NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED)
+        succeeded_event = NodeRunSucceededEvent(
+            id=str(uuid.uuid4()),
+            node_id="node-1",
+            node_type=BuiltinNodeTypes.LLM,
+            node_run_result=node_run_result,
+            start_at=naive_utc_now(),
+        )
+
+        def invoke_fn():
+            def _gen():
+                yield succeeded_event
+
+            return node, _gen()
+
+        # Act
+        out_node, out_result, run_succeeded, error = service._execute_node_safely(invoke_fn)
+
+        # Assert
+        assert out_node is node
+        assert run_succeeded is True
+        assert error is None
+
+    def test_execute_node_safely_should_return_failed_result_on_failed_event(self, service: WorkflowService) -> None:
+        # Arrange
+        node = MagicMock()
+        node.error_strategy = None
+        node_run_result = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.FAILED,
+            error="node exploded",
+        )
+        failed_event = NodeRunFailedEvent(
+            id=str(uuid.uuid4()),
+            node_id="node-1",
+            node_type=BuiltinNodeTypes.LLM,
+            node_run_result=node_run_result,
+            start_at=naive_utc_now(),
+            error="node exploded",
+        )
+
+        def invoke_fn():
+            def _gen():
+                yield failed_event
+
+            return node, _gen()
+
+        # Act
+        _, _, run_succeeded, error = service._execute_node_safely(invoke_fn)
+
+        # Assert
+        assert run_succeeded is False
+        assert error == "node exploded"
+
+    def test_execute_node_safely_should_handle_workflow_node_run_failed_error(self, service: WorkflowService) -> None:
+        # Arrange
+        node = MagicMock()
+        exc = WorkflowNodeRunFailedError(node, "runtime failure")
+
+        def invoke_fn():
+            raise exc
+
+        # Act
+        out_node, out_result, run_succeeded, error = service._execute_node_safely(invoke_fn)
+
+        # Assert
+        assert out_node is node
+        assert out_result is None
+        assert run_succeeded is False
+        assert error == "runtime failure"
+
+    def test_execute_node_safely_should_raise_when_no_result_event(self, service: WorkflowService) -> None:
+        """If the generator produces no NodeRunSucceededEvent/NodeRunFailedEvent, ValueError is expected."""
+        # Arrange
+        node = MagicMock()
+        node.error_strategy = None
+
+        def invoke_fn():
+            def _gen():
+                yield from []
+
+            return node, _gen()
+
+        # Act + Assert
+        with pytest.raises(ValueError, match="no result returned"):
+            service._execute_node_safely(invoke_fn)
+
+    # --- _apply_error_strategy with FAIL_BRANCH strategy ---
+
+    def test_execute_node_safely_should_apply_error_strategy_on_failed_status(self, service: WorkflowService) -> None:
+        # Arrange
+        node = MagicMock()
+        node.error_strategy = ErrorStrategy.FAIL_BRANCH
+        node.default_value_dict = {}
+
+        original_result = NodeRunResult(
+            status=WorkflowNodeExecutionStatus.FAILED,
+            error="oops",
+            error_type="ValueError",
+            inputs={},
+        )
+        failed_event = NodeRunFailedEvent(
+            id=str(uuid.uuid4()),
+            node_id="node-1",
+            node_type=BuiltinNodeTypes.LLM,
+            node_run_result=original_result,
+            start_at=naive_utc_now(),
+            error="oops",
+        )
+
+        def invoke_fn():
+            def _gen():
+                yield failed_event
+
+            return node, _gen()
+
+        # Act
+        _, result, run_succeeded, _ = service._execute_node_safely(invoke_fn)
+
+        # Assert — after applying error strategy status becomes EXCEPTION
+        assert result is not None
+        assert result.status == WorkflowNodeExecutionStatus.EXCEPTION
+        # run_succeeded should be True because EXCEPTION is in the succeeded set
+        assert run_succeeded is True
+
+
+# ===========================================================================
+# TestWorkflowServiceGetNodeLastRun
+# Tests for get_node_last_run delegation to repository
+# ===========================================================================
+
+
+class TestWorkflowServiceGetNodeLastRun:
+    @pytest.fixture
+    def service(self, sqlite_engine: Engine) -> WorkflowService:
+        return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+
+    def test_get_node_last_run_should_delegate_to_repository(self, service: WorkflowService) -> None:
+        # Arrange
+        app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(workflow_id="wf-1")
+        expected = MagicMock()
+
+        service._node_execution_service_repo = MagicMock()
+        service._node_execution_service_repo.get_node_last_execution.return_value = expected
+
+        # Act
+        result = service.get_node_last_run(app, workflow, "node-42")
+
+        # Assert
+        assert result is expected
+        service._node_execution_service_repo.get_node_last_execution.assert_called_once_with(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="wf-1",
+            node_id="node-42",
+        )
+
+    def test_get_node_last_run_should_return_none_when_repository_returns_none(self, service: WorkflowService) -> None:
+        # Arrange
+        app = TestWorkflowAssociatedDataFactory.create_app(app_id="a", tenant_id="t")
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(workflow_id="w")
+        service._node_execution_service_repo = MagicMock()
+        service._node_execution_service_repo.get_node_last_execution.return_value = None
+
+        # Act
+        result = service.get_node_last_run(app, workflow, "node-x")
+
+        # Assert
+        assert result is None
+
+
+# ===========================================================================
+# TestWorkflowServiceModuleLevelHelpers
+# Tests for module-level helper functions exported from workflow_service
+# ===========================================================================
+
+
+class TestSetupVariablePool:
+    """
+    Tests for the module-level `_setup_variable_pool` function.
+    This helper initialises the VariablePool used for single-step workflow execution.
+    """
+
+    def _make_workflow(self, workflow_type: str = WorkflowType.WORKFLOW) -> Workflow:
+        return TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="wf-1",
+            app_id="app-1",
+            workflow_type=WorkflowType(workflow_type),
+        )
+
+    def test_setup_variable_pool_should_use_full_system_variables_for_start_node(
+        self,
+    ) -> None:
+        # Arrange
+        workflow = self._make_workflow()
+
+        # Act
+        with (
+            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
+            patch("services.workflow_service.add_node_inputs_to_pool") as mock_add_node_inputs_to_pool,
+        ):
+            _setup_variable_pool(
+                query="hello",
+                files=[],
+                user_id="u-1",
+                user_inputs={"k": "v"},
+                workflow=workflow,
+                node_id="start-node",
+                node_type=BuiltinNodeTypes.START,
+                conversation_id="conv-1",
+                conversation_variables=[],
+            )
+
+        # Assert — start nodes should build bootstrap variables and attach node inputs.
+        MockPool.assert_called_once_with()
+        mock_build_system_variables.assert_called_once()
+        mock_add_variables_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            mock_build_bootstrap_variables.return_value,
+        )
+        mock_add_node_inputs_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            node_id="start-node",
+            inputs={"k": "v"},
+        )
+
+    def test_setup_variable_pool_should_use_default_system_variables_for_non_start_node(
+        self,
+    ) -> None:
+        # Arrange
+        workflow = self._make_workflow()
+
+        # Act
+        with (
+            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
+            patch("services.workflow_service.add_node_inputs_to_pool") as mock_add_node_inputs_to_pool,
+        ):
+            _setup_variable_pool(
+                query="",
+                files=[],
+                user_id="u-1",
+                user_inputs={},
+                workflow=workflow,
+                node_id="llm-node",
+                node_type=BuiltinNodeTypes.LLM,  # not a start/trigger node
+                conversation_id="conv-1",
+                conversation_variables=[],
+            )
+
+        # Assert — default system variables should be used and node inputs should not be added.
+        mock_default_system_variables.assert_called_once()
+        MockPool.assert_called_once_with()
+        mock_add_variables_to_pool.assert_called_once_with(
+            MockPool.return_value,
+            mock_build_bootstrap_variables.return_value,
+        )
+        mock_add_node_inputs_to_pool.assert_not_called()
+
+    def test_setup_variable_pool_should_set_chatflow_specifics_for_non_workflow_type(
+        self,
+    ) -> None:
+        """For ADVANCED_CHAT workflows on a START node, query/conversation_id/dialogue_count should be set."""
+        from models.workflow import WorkflowType
+
+        # Arrange
+        workflow = self._make_workflow(workflow_type=WorkflowType.CHAT)
+
+        # Act
+        with (
+            patch("services.workflow_service.VariablePool") as MockPool,
+            patch("services.workflow_service.build_system_variables") as mock_build_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables"),
+            patch("services.workflow_service.add_variables_to_pool"),
+            patch("services.workflow_service.add_node_inputs_to_pool"),
+        ):
+            _setup_variable_pool(
+                query="what is AI?",
+                files=[],
+                user_id="u-1",
+                user_inputs={},
+                workflow=workflow,
+                node_id="start-node",
+                node_type=BuiltinNodeTypes.START,
+                conversation_id="conv-abc",
+                conversation_variables=[],
+            )
+
+        # Assert — chatflow system variables should include query, conversation_id and dialogue_count.
+        MockPool.assert_called_once_with()
+        system_variable_values = mock_build_system_variables.call_args.args[0]
+        assert system_variable_values["query"] == "what is AI?"
+        assert system_variable_values["conversation_id"] == "conv-abc"
+        assert system_variable_values["dialogue_count"] == 1
+
+
+class TestRebuildSingleFile:
+    """
+    Tests for the module-level `_rebuild_single_file` function.
+    Ensures correct delegation to `build_from_mapping` / `build_from_mappings`.
+    """
+
+    def test_rebuild_single_file_should_call_build_from_mapping_for_file_type(
+        self,
+    ) -> None:
+        # Arrange
+        tenant_id = "tenant-1"
+        value = {"url": "https://example.com/file.pdf", "type": "document"}
+        mock_file = MagicMock()
+
+        # Act
+        with patch("services.workflow_service.build_from_mapping", return_value=mock_file) as mock_build:
+            result = _rebuild_single_file(tenant_id, value, VariableEntityType.FILE)
+
+        # Assert
+        assert result is mock_file
+        mock_build.assert_called_once_with(mapping=value, tenant_id=tenant_id, access_controller=ANY)
+
+    def test_rebuild_single_file_should_raise_when_file_value_not_dict(
+        self,
+    ) -> None:
+        # Arrange + Act + Assert
+        with pytest.raises(ValueError, match="expected dict for file object"):
+            _rebuild_single_file("tenant-1", "not-a-dict", VariableEntityType.FILE)
+
+    def test_rebuild_single_file_should_call_build_from_mappings_for_file_list(
+        self,
+    ) -> None:
+        # Arrange
+        tenant_id = "tenant-1"
+        value = [{"url": "https://example.com/a.pdf"}, {"url": "https://example.com/b.pdf"}]
+        mock_files = [MagicMock(), MagicMock()]
+
+        # Act
+        with patch("services.workflow_service.build_from_mappings", return_value=mock_files) as mock_build:
+            result = _rebuild_single_file(tenant_id, value, VariableEntityType.FILE_LIST)
+
+        # Assert
+        assert result is mock_files
+        mock_build.assert_called_once_with(mappings=value, tenant_id=tenant_id, access_controller=ANY)
+
+    def test_rebuild_single_file_should_raise_when_file_list_value_not_list(
+        self,
+    ) -> None:
+        # Arrange + Act + Assert
+        with pytest.raises(ValueError, match="expected list for file list object"):
+            _rebuild_single_file("tenant-1", "not-a-list", VariableEntityType.FILE_LIST)
+
+    def test_rebuild_single_file_should_return_empty_list_for_empty_file_list(
+        self,
+    ) -> None:
+        # Arrange + Act
+        result = _rebuild_single_file("tenant-1", [], VariableEntityType.FILE_LIST)
+
+        # Assert
+        assert result == []
+
+    def test_rebuild_single_file_should_raise_when_first_element_not_dict(
+        self,
+    ) -> None:
+        # Arrange + Act + Assert
+        with pytest.raises(ValueError, match="expected dict for first element"):
+            _rebuild_single_file("tenant-1", ["not-a-dict"], VariableEntityType.FILE_LIST)
+
+
+class TestRebuildFileForUserInputsInStartNode:
+    """
+    Tests for the module-level `_rebuild_file_for_user_inputs_in_start_node` function.
+    """
+
+    def _make_start_node_data(self, variables: list) -> MagicMock:
+        start_data = MagicMock()
+        start_data.variables = variables
+        return start_data
+
+    def _make_variable(self, name: str, var_type: VariableEntityType) -> MagicMock:
+        var = MagicMock()
+        var.variable = name
+        var.type = var_type
+        return var
+
+    def test_rebuild_should_pass_through_non_file_variables(
+        self,
+    ) -> None:
+        # Arrange
+        text_var = self._make_variable("query", VariableEntityType.TEXT_INPUT)
+        start_data = self._make_start_node_data([text_var])
+        user_inputs = {"query": "hello world"}
+
+        # Act
+        result = _rebuild_file_for_user_inputs_in_start_node(
+            tenant_id="tenant-1",
+            start_node_data=start_data,
+            user_inputs=user_inputs,
+        )
+
+        # Assert — non-file inputs are untouched
+        assert result["query"] == "hello world"
+
+    def test_rebuild_should_rebuild_file_variable(
+        self,
+    ) -> None:
+        # Arrange
+        file_var = self._make_variable("attachment", VariableEntityType.FILE)
+        start_data = self._make_start_node_data([file_var])
+        file_value = {"url": "https://example.com/file.pdf"}
+        user_inputs = {"attachment": file_value}
+        mock_file = MagicMock()
+
+        # Act
+        with patch("services.workflow_service.build_from_mapping", return_value=mock_file):
+            result = _rebuild_file_for_user_inputs_in_start_node(
+                tenant_id="tenant-1",
+                start_node_data=start_data,
+                user_inputs=user_inputs,
+            )
+
+        # Assert — the dict value should be replaced by the rebuilt File object
+        assert result["attachment"] is mock_file
+
+    def test_rebuild_should_skip_variable_not_in_inputs(
+        self,
+    ) -> None:
+        # Arrange
+        file_var = self._make_variable("attachment", VariableEntityType.FILE)
+        start_data = self._make_start_node_data([file_var])
+        user_inputs: dict[str, Any] = {}  # attachment not provided
+
+        # Act
+        result = _rebuild_file_for_user_inputs_in_start_node(
+            tenant_id="tenant-1",
+            start_node_data=start_data,
+            user_inputs=user_inputs,
+        )
+
+        # Assert — no key should be added for missing inputs
+        assert "attachment" not in result
+
+
+class TestWorkflowServiceResolveDeliveryMethod:
+    """
+    Tests for the static helper `_resolve_human_input_delivery_method`.
+    """
+
+    def _make_method(self, method_id) -> MagicMock:
+        m = MagicMock()
+        m.id = method_id
+        return m
+
+    def test_resolve_delivery_method_should_return_method_when_id_matches(self) -> None:
+        # Arrange
+        method_a = self._make_method("method-1")
+        method_b = self._make_method("method-2")
+
+        # Act
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[method_a, method_b]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="method-2"
+            )
+
+        # Assert
+        assert result is method_b
+
+    def test_resolve_delivery_method_should_return_none_when_no_match(self) -> None:
+        # Arrange
+        method_a = self._make_method("method-1")
+
+        # Act
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[method_a]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="does-not-exist"
+            )
+
+        # Assert
+        assert result is None
+
+    def test_resolve_delivery_method_should_return_none_for_empty_methods(self) -> None:
+        # Act
+        with patch("services.workflow_service.parse_human_input_delivery_methods", return_value=[]):
+            result = WorkflowService._resolve_human_input_delivery_method(
+                node_data=MagicMock(), delivery_method_id="method-1"
+            )
+
+        # Assert
+        assert result is None
+
+
+# ===========================================================================
+# TestWorkflowServiceDraftExecution
+# Tests for run_draft_workflow_node
+# ===========================================================================
+
+
+class TestWorkflowServiceDraftExecution:
+    @pytest.fixture
+    def service(self, sqlite_engine: Engine) -> WorkflowService:
+        return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+
+    def test_run_draft_workflow_node_should_execute_start_node_successfully(
+        self, service: WorkflowService, sqlite_engine: Engine
+    ) -> None:
+        # Arrange
+        app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
+        account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
+        node_id = "start-node"
+        draft_workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="wf-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            graph={
+                "nodes": [
+                    {
+                        "id": node_id,
+                        "data": {"type": BuiltinNodeTypes.START, "title": "Start", "variables": []},
+                    }
+                ],
+                "edges": [],
+            },
+        )
+
+        # Mocking complex dependencies
+        with (
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
+            patch("services.workflow_service.WorkflowDraftVariableService"),
+            patch("services.workflow_service.StartNodeData") as mock_start_data,
+            patch(
+                "services.workflow_service._rebuild_file_for_user_inputs_in_start_node",
+                side_effect=lambda **kwargs: kwargs["user_inputs"],
+            ),
+            patch("services.workflow_service._setup_variable_pool"),
+            patch("services.workflow_service.DraftVarLoader"),
+            patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
+            patch("services.workflow_service.DifyCoreRepositoryFactory") as mock_repo_factory,
+            patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
+            patch("services.workflow_service.storage"),
+        ):
+            mock_node = MagicMock()
+            mock_node.node_type = BuiltinNodeTypes.START
+            mock_node.title = "Start Node"
+            mock_run_result = NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"result": "ok"}
+            )
+            mock_event = NodeRunSucceededEvent(
+                id=str(uuid.uuid4()),
+                node_id="start-node",
+                node_type=BuiltinNodeTypes.START,
+                node_run_result=mock_run_result,
+                start_at=naive_utc_now(),
+            )
+            mock_run.return_value = (mock_node, [mock_event])
+
+            mock_repo = MagicMock()
+            mock_repo_factory.create_workflow_node_execution_repository.return_value = mock_repo
+
+            service._node_execution_service_repo = MagicMock()
+            mock_execution_record = MagicMock()
+            mock_execution_record.node_type = "start"
+            mock_execution_record.node_id = "start-node"
+            mock_execution_record.load_full_outputs.return_value = {}
+            service._node_execution_service_repo.get_execution_by_id.return_value = mock_execution_record
+
+            # Act
+            result = service.run_draft_workflow_node(
+                app_model=app,
+                draft_workflow=draft_workflow,
+                account=account,
+                node_id=node_id,
+                user_inputs={"key": "val"},
+                query="hi",
+                files=[],
+            )
+
+            # Assert
+            assert result is not None
+            mock_run.assert_called_once()
+            mock_repo.save.assert_called_once()
+            mock_saver_cls.return_value.save.assert_called_once()
+
+    def test_run_draft_workflow_node_should_execute_non_start_node_successfully(
+        self, service: WorkflowService, sqlite_engine: Engine
+    ) -> None:
+        # Arrange
+        app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
+        account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
+        node_id = "llm-node"
+        draft_workflow = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="wf-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            graph={
+                "nodes": [
+                    {
+                        "id": node_id,
+                        "data": {
+                            "type": BuiltinNodeTypes.LLM,
+                            "title": "LLM",
+                            "model": {"provider": "openai", "name": "gpt-4"},
+                        },
+                    }
+                ],
+                "edges": [],
+            },
+        )
+
+        with (
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
+            patch("services.workflow_service.WorkflowDraftVariableService"),
+            patch("services.workflow_service.VariablePool") as mock_pool_cls,
+            patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
+            patch("services.workflow_service.build_bootstrap_variables") as mock_build_bootstrap_variables,
+            patch("services.workflow_service.add_variables_to_pool") as mock_add_variables_to_pool,
+            patch("services.workflow_service.DraftVarLoader"),
+            patch("services.workflow_service.WorkflowEntry.single_step_run") as mock_run,
+            patch("services.workflow_service.DifyCoreRepositoryFactory"),
+            patch("services.workflow_service.DraftVariableSaver"),
+            patch("services.workflow_service.storage"),
+        ):
+            mock_node = MagicMock()
+            mock_node.node_type = BuiltinNodeTypes.LLM
+            mock_node.title = "LLM Node"
+            mock_run_result = NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs={}, outputs={"result": "ok"}
+            )
+            mock_event = NodeRunSucceededEvent(
+                id=str(uuid.uuid4()),
+                node_id="llm-node",
+                node_type=BuiltinNodeTypes.LLM,
+                node_run_result=mock_run_result,
+                start_at=naive_utc_now(),
+            )
+            mock_run.return_value = (mock_node, [mock_event])
+
+            service._node_execution_service_repo = MagicMock()
+            mock_execution_record = MagicMock()
+            mock_execution_record.node_type = "llm"
+            mock_execution_record.node_id = "llm-node"
+            mock_execution_record.load_full_outputs.return_value = {"answer": "hello"}
+            service._node_execution_service_repo.get_execution_by_id.return_value = mock_execution_record
+
+            # Act
+            service.run_draft_workflow_node(
+                app_model=app,
+                draft_workflow=draft_workflow,
+                account=account,
+                node_id=node_id,
+                user_inputs={},
+                query="",
+                files=None,
+            )
+
+            # Assert
+            # For non-start nodes, bootstrap variables should be loaded into an empty pool.
+            mock_pool_cls.assert_called_once_with()
+            mock_default_system_variables.assert_called_once()
+            mock_build_bootstrap_variables.assert_called_once_with(
+                system_variables=mock_default_system_variables.return_value,
+                environment_variables=draft_workflow.environment_variables,
+            )
+            mock_add_variables_to_pool.assert_called_once_with(
+                mock_pool_cls.return_value, mock_build_bootstrap_variables.return_value
+            )
+
+
+# ===========================================================================
+# TestWorkflowServiceHumanInputOperations
+# Tests for Human Input related methods
+# ===========================================================================
+
+
+class TestWorkflowServiceHumanInputOperations:
+    @pytest.fixture
+    def service(self, sqlite_engine: Engine) -> WorkflowService:
+        return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+
+    @staticmethod
+    def _create_human_input_workflow() -> Workflow:
+        return TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="wf-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            graph={
+                "nodes": [
+                    {
+                        "id": "node-1",
+                        "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "title": "Human Input"},
+                    }
+                ],
+                "edges": [],
+            },
+        )
+
+    def test_get_human_input_form_preview_should_raise_if_workflow_not_init(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        service.get_draft_workflow = MagicMock(return_value=None)
+        with pytest.raises(ValueError, match="Workflow not initialized"):
+            service.get_human_input_form_preview(
+                app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                account=TestWorkflowAssociatedDataFactory.create_account(),
+                node_id="node-1",
+                session=sqlite_session,
+            )
+
+    def test_get_human_input_form_preview_should_raise_if_wrong_node_type(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        draft = TestWorkflowAssociatedDataFactory.create_workflow(
+            graph={"nodes": [{"id": "node-1", "data": {"type": "llm", "title": "LLM"}}], "edges": []}
+        )
+        service.get_draft_workflow = MagicMock(return_value=draft)
+        with pytest.raises(ValueError, match="Node type must be human-input"):
+            service.get_human_input_form_preview(
+                app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                account=TestWorkflowAssociatedDataFactory.create_account(),
+                node_id="node-1",
+                session=sqlite_session,
+            )
+
+    def test_get_human_input_form_preview_success(self, service: WorkflowService, sqlite_session: Session) -> None:
+        app_model = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
+        account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
+        draft = self._create_human_input_workflow()
+        service.get_draft_workflow = MagicMock(return_value=draft)
+
+        mock_node = MagicMock()
+        mock_node.render_form_content_before_submission.return_value = "rendered"
+        mock_node.resolve_default_values.return_value = {"def": 1}
+        mock_node.title = "Form Title"
+        mock_node.node_data = MagicMock()
+
+        with (
+            patch.object(service, "_build_human_input_variable_pool"),
+            patch("services.workflow_service.HumanInputNode", return_value=mock_node),
+            patch("services.workflow_service.HumanInputRequired") as mock_required_cls,
+        ):
+            service.get_human_input_form_preview(
+                app_model=app_model, account=account, node_id="node-1", session=sqlite_session
+            )
+            mock_node.render_form_content_before_submission.assert_called_once()
+            mock_required_cls.return_value.model_dump.assert_called_once()
+
+    def test_submit_human_input_form_preview_success(self, service: WorkflowService, sqlite_session: Session) -> None:
+        app_model = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
+        account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
+        draft = self._create_human_input_workflow()
+        service.get_draft_workflow = MagicMock(return_value=draft)
+
+        mock_node = MagicMock()
+        mock_node.node_data = MagicMock()
+        mock_node.node_data.user_actions = [
+            SimpleNamespace(id="submit", title="card_visa_enterprise_001"),
+        ]
+        mock_node.node_data.outputs_field_names.return_value = ["field1"]
+        mock_node.node_data.inputs = []
+        mock_node.render_form_content_before_submission.return_value = "Ticket: {{#$output.field1#}}"
+        mock_node.render_form_content_with_outputs.return_value = "Ticket: val1"
+
+        with (
+            patch("services.workflow_service.db"),
+            patch.object(service, "_build_human_input_variable_pool"),
+            patch("services.workflow_service.HumanInputNode", return_value=mock_node),
+            patch(
+                "services.workflow_service.HumanInputService.validate_and_normalize_submission",
+                return_value={"field1": "val1"},
+            ) as mock_validate,
+            patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
+        ):
+            result = service.submit_human_input_form_preview(
+                app_model=app_model,
+                account=account,
+                node_id="node-1",
+                form_inputs={"field1": "val1"},
+                action="submit",
+                session=sqlite_session,
+            )
+            assert result["__action_id"] == "submit"
+            mock_validate.assert_called_once()
+            assert result["__action_value"] == "card_visa_enterprise_001"
+            assert result["__rendered_content"] == "Ticket: val1"
+            mock_saver_cls.return_value.save.assert_called_once()
+
+    def test_test_human_input_delivery_success(self, service: WorkflowService, sqlite_session: Session) -> None:
+        draft = self._create_human_input_workflow()
+        service.get_draft_workflow = MagicMock(return_value=draft)
+
+        with (
+            patch("services.workflow_service.HumanInputNodeData.model_validate"),
+            patch.object(service, "_resolve_human_input_delivery_method") as mock_resolve,
+            patch("services.workflow_service.apply_dify_debug_email_recipient"),
+            patch.object(service, "_build_human_input_variable_pool"),
+            patch.object(service, "_build_human_input_node_for_debugging"),
+            patch.object(service, "_create_human_input_delivery_test_form", return_value=("form-1", [])),
+            patch("services.workflow_service.HumanInputDeliveryTestService") as mock_test_srv,
+        ):
+            mock_resolve.return_value = MagicMock()
+            service.test_human_input_delivery(
+                app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                account=TestWorkflowAssociatedDataFactory.create_account(),
+                node_id="node-1",
+                delivery_method_id="method-1",
+                session=sqlite_session,
+            )
+            mock_test_srv.return_value.send_test.assert_called_once()
+
+    def test_test_human_input_delivery_failure_cases(self, service: WorkflowService, sqlite_session: Session) -> None:
+        draft = self._create_human_input_workflow()
+        service.get_draft_workflow = MagicMock(return_value=draft)
+
+        with (
+            patch("services.workflow_service.HumanInputNodeData.model_validate"),
+            patch.object(service, "_resolve_human_input_delivery_method", return_value=None),
+        ):
+            with pytest.raises(ValueError, match="Delivery method not found"):
+                service.test_human_input_delivery(
+                    app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                    account=TestWorkflowAssociatedDataFactory.create_account(),
+                    node_id="node-1",
+                    delivery_method_id="none",
+                    session=sqlite_session,
+                )
+
+    def test_load_email_recipients_parsing_failure(self, service: WorkflowService, sqlite_session: Session) -> None:
+        """Malformed persisted recipient payloads are skipped instead of aborting delivery tests."""
+        recipient = HumanInputFormRecipient(
+            form_id="form-1",
+            delivery_id="delivery-1",
+            recipient_payload="invalid json",
+            recipient_type=RecipientType.EMAIL_MEMBER,
+            access_token="recipient-token",
+        )
+        sqlite_session.add(recipient)
+        sqlite_session.commit()
+
+        with patch("services.workflow_service.db") as mock_db:
+            mock_db.engine = sqlite_session.get_bind()
+            result = WorkflowService._load_email_recipients("form-1")
+
+        assert result == []
+
+    def test_build_human_input_variable_pool(self, service: WorkflowService, sqlite_engine: Engine) -> None:
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        node_data = MagicMock()
+        node_data.extract_variable_selector_to_variable_mapping.return_value = {}
+
+        with (
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
+            patch("services.workflow_service.WorkflowDraftVariableService"),
+            patch("services.workflow_service.VariablePool") as mock_pool_cls,
+            patch("services.workflow_service.DraftVarLoader"),
+            patch("services.workflow_service.HumanInputNodeData.model_validate", return_value=node_data),
+            patch("services.workflow_service.load_into_variable_pool"),
+            patch("services.workflow_service.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
+        ):
+            service._build_human_input_variable_pool(
+                app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                workflow=workflow,
+                node_config={"id": "node-1", "data": {}},
+                manual_inputs={},
+                user_id="user-1",
+            )
+            mock_pool_cls.assert_called_once()
+
+
+# ===========================================================================
+# TestWorkflowServiceFreeNodeExecution
+# Tests for run_free_workflow_node and handle_single_step_result
+# ===========================================================================
+
+
+class TestWorkflowServiceFreeNodeExecution:
+    @pytest.fixture
+    def service(self, sqlite_engine: Engine) -> WorkflowService:
+        return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+
+    def test_run_free_workflow_node_success(self, service: WorkflowService) -> None:
+        node_execution = MagicMock()
+        with (
+            patch.object(service, "_handle_single_step_result", return_value=node_execution),
+            patch("services.workflow_service.WorkflowEntry.run_free_node"),
+        ):
+            result = service.run_free_workflow_node({}, "tenant-1", "user-1", "node-1", {})
+            assert result == node_execution
+
+    def test_validate_graph_structure_coexist_error(self, service: WorkflowService) -> None:
+        graph = {
+            "nodes": [
+                {"data": {"type": "start"}},
+                {"data": {"type": "trigger-webhook"}},  # is_trigger_node=True
+            ]
+        }
+        with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
+            service.validate_graph_structure(graph)
+
+    def test_validate_features_structure_success(self, service: WorkflowService) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app(mode=AppMode.WORKFLOW)
+        features = {}
+        with patch("services.workflow_service.WorkflowAppConfigManager.config_validate") as mock_val:
+            service.validate_features_structure(app, features)
+            mock_val.assert_called_once()
+
+    def test_validate_features_structure_invalid_mode(self, service: WorkflowService) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        app.mode = "invalid"
+        with pytest.raises(ValueError, match="Invalid app mode"):
+            service.validate_features_structure(app, {})
+
+    def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
+        with patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")):
+            with pytest.raises(ValueError, match="Invalid HumanInput node data"):
+                service._validate_human_input_node_data({})
+
+    def test_rebuild_single_file_unreachable(self) -> None:
+        # Test line 1523 (unreachable)
+        with pytest.raises(Exception, match="unreachable"):
+            _rebuild_single_file("tenant-1", {}, cast(Any, "invalid_type"))
+
+    def test_build_human_input_node_for_debugging(self, service: WorkflowService) -> None:
+        """Cover _build_human_input_node_for_debugging."""
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow()
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        node_config = {"id": "n-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "title": "Human Input"}}
+        variable_pool = MagicMock()
+        node_data = MagicMock()
+        node_data.title = "Human Input"
+
+        with (
+            patch(
+                "services.workflow_service.adapt_human_input_node_data_for_graph",
+                return_value=sentinel.adapted_node_data,
+            ) as mock_adapt_node_data,
+            patch("services.workflow_service.HumanInputNodeData.model_validate", return_value=node_data),
+        ):
+            node = service._build_human_input_node_for_debugging(
+                workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
+            )
+            mock_adapt_node_data.assert_called_once_with(node_config["data"])
+            assert node.node_id == "n-1"
+            assert node.title == "Human Input"
+            assert node.node_data is node_data
+            assert node.variable_pool is variable_pool
+
+
+def _env(variable_id: str, name: str) -> StringVariable:
+    return StringVariable(id=variable_id, name=name, value="v", selector=["env", name])
+
+
+@pytest.mark.parametrize(
+    "upsert",
+    [_env("new-id", "TAKEN"), _env("other-id", "TAKEN")],
+    ids=["new id reuses a name", "rename onto another variable's name"],
+)
+def test_environment_patch_rejects_a_name_another_id_uses(upsert: StringVariable) -> None:
+    current = [_env("taken-id", "TAKEN"), _env("other-id", "OTHER")]
+    with pytest.raises(ValueError, match="Environment variable names must be unique"):
+        _merge_environment_variable_patch(current, [upsert], [])

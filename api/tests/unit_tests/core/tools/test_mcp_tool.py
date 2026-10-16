@@ -295,3 +295,4 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
             # Should not raise; should not call enterprise.
             with contextlib.suppress(Exception):
                 tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
+        inject.assert_not_called()

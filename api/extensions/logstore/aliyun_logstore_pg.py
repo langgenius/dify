@@ -229,3 +229,33 @@ class AliyunLogStorePG:
                         for col, val in zip(columns, row, strict=False):
                             row_dict[col] = "" if val is None else str(val)
                         result.append(row_dict)
+
+            except psycopg2.Error as e:
+                if not self._is_retriable_error(e):
+                    logger.exception(
+                        "Failed to execute SQL on logstore %s (non-retriable error): sql=%s",
+                        logstore,
+                        sql,
+                    )
+                    raise
+
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        "Failed to execute SQL on logstore %s (attempt %d/%d): %s. Retrying...",
+                        logstore,
+                        attempt + 1,
+                        max_retries,
+                        str(e),
+                    )
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    logger.exception(
+                        "Failed to execute SQL on logstore %s after %d attempts: sql=%s",
+                        logstore,
+                        max_retries,
+                        sql,
+                    )
+                    raise
+
+        return []
