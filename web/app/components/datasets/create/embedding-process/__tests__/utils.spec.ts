@@ -1,37 +1,6 @@
-import type {
-  DataSourceInfo,
-  IndexingStatusResponse,
-  InitialDocumentDetail,
-} from '@/models/datasets'
+import type { IndexingStatusResponse, InitialDocumentDetail } from '@/models/datasets'
 import { describe, expect, it } from 'vite-plus/test'
-import {
-  createDocumentLookup,
-  getFileType,
-  getSourcePercent,
-  isLegacyDataSourceInfo,
-  isSourceEmbedding,
-} from '../utils'
-
-describe('isLegacyDataSourceInfo', () => {
-  it('should return true when upload_file object exists', () => {
-    const info = { upload_file: { id: '1', name: 'test.pdf' } } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(true)
-  })
-
-  it('should return false when upload_file is absent', () => {
-    const info = { notion_page_icon: 'icon' } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(false)
-  })
-
-  it('should return false for null', () => {
-    expect(isLegacyDataSourceInfo(null as unknown as DataSourceInfo)).toBe(false)
-  })
-
-  it('should return false when upload_file is a string', () => {
-    const info = { upload_file: 'not-an-object' } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(false)
-  })
-})
+import { createDocumentLookup, getFileType, getSourcePercent, isSourceEmbedding } from '../utils'
 
 describe('isSourceEmbedding', () => {
   const embeddingStatuses = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting']

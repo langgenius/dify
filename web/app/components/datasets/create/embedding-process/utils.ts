@@ -1,20 +1,8 @@
-import type {
-  DataSourceInfo,
-  IndexingStatusResponse,
-  InitialDocumentDetail,
-  LegacyDataSourceInfo,
-} from '@/models/datasets'
+import type { IndexingStatusResponse, InitialDocumentDetail } from '@/models/datasets'
 import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
 import { getNotionPageIcon } from '@/app/components/datasets/documents/document-source'
 
 const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
-
-/**
- * Type guard for legacy data source info with upload_file property
- */
-export const isLegacyDataSourceInfo = (info: DataSourceInfo): info is LegacyDataSourceInfo => {
-  return info != null && typeof (info as LegacyDataSourceInfo).upload_file === 'object'
-}
 
 /**
  * Check if a status indicates the source is being embedded
