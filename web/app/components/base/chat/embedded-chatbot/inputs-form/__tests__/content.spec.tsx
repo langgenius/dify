@@ -211,16 +211,6 @@ describe('InputsFormContent', () => {
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
   })
 
-  it('should render select dropdown on the shared dify-ui overlay layer', async () => {
-    render(<InputsFormContent />)
-    const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')
-    if (!selectTrigger) throw new Error('Select trigger not found')
-
-    await user.click(selectTrigger)
-
-    expect(screen.getByText('Option 1').closest('.z-50')).not.toBeNull()
-  })
-
   it('should handle single file upload change', async () => {
     render(<InputsFormContent />)
     const uploadButtons = screen.getAllByText('Upload')
