@@ -199,7 +199,7 @@ describe('Tracing overview panel', () => {
     act(() =>
       client.setQueryData(
         consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-        { enabled: false, tracing_provider: null },
+        { enabled: false, tracing_provider: null, capture_content: false, capture_agent: true },
       ),
     )
     const user = userEvent.setup()
@@ -246,7 +246,12 @@ describe('Tracing overview panel', () => {
     act(() =>
       client.setQueryData(
         consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-        { enabled: true, tracing_provider: 'langsmith' },
+        {
+          enabled: true,
+          tracing_provider: 'langsmith',
+          capture_content: false,
+          capture_agent: true,
+        },
       ),
     )
     const user = await openConfiguredPanel()
