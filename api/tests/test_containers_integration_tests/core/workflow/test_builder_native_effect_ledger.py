@@ -183,7 +183,12 @@ def migrated_native_tables(flask_app_with_containers):
 
     with flask_app_with_containers.app_context(), db.engine.begin() as connection:
         assert connection.dialect.name == "postgresql"
+        # Imported module fixtures rerun after later migrations have installed
+        # triggers. Remove their dependent tables before resetting the functions.
         for table in (
+            "effect_dispatch_claims",
+            "payload_objects",
+            "invocation_states",
             "pending_actions",
             "continuations",
             "outcomes",
@@ -193,8 +198,13 @@ def migrated_native_tables(flask_app_with_containers):
             "invocations",
             "scopes",
         ):
-            connection.execute(text("DROP TABLE dify_builder_native_" + table))
+            connection.execute(text("DROP TABLE IF EXISTS dify_builder_native_" + table))
         connection.execute(text("DROP FUNCTION IF EXISTS public.builder_native_immutable_ledger()"))
+        connection.execute(text("DROP FUNCTION IF EXISTS public.builder_native_immutable_read_owner()"))
+        # Consumers and teardown require all original create_all tables. Their
+        # owning fixtures still replace these through the real later migrations.
+        for table in ("effect_dispatch_claims", "payload_objects", "invocation_states"):
+            db.metadata.tables["dify_builder_native_" + table].create(connection)
         # create_all/other test modules may have installed a different generation
         # of the request table. Rebuild it via its real predecessor, including
         # naming convention; never hand-create or conditionally drop the CHECK.
