@@ -3093,7 +3093,7 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetMetadataBuiltInFieldsResponse
 
@@ -3108,7 +3108,7 @@ Enum class for custom configuration status.
 | count | integer |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetMetadataListResponse
 
@@ -3123,7 +3123,7 @@ Enum class for custom configuration status.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| type | string |  | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### DatasetNameDuplicateError
 
