@@ -13,10 +13,6 @@ describe('Collapse', () => {
 
   const mockOnSelect = vi.fn()
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('toggles its items and reports the selected item', async () => {
     const user = userEvent.setup()
     render(
@@ -32,7 +28,7 @@ describe('Collapse', () => {
     expect(screen.queryByText('Item 1')).not.toBeInTheDocument()
 
     await user.click(trigger)
-    await user.click(screen.getByText('Item 1'))
+    await user.click(screen.getByRole('button', { name: 'Item 1' }))
     expect(mockOnSelect).toHaveBeenCalledWith(mockItems[0])
 
     await user.click(trigger)

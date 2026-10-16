@@ -11,6 +11,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -201,23 +202,19 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             onOpenChange={(open) => !open && setShowUseGPT4Confirm(false)}
           >
             <AlertDialogContent>
-              <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
                   {t(($) => $['trailUseGPT4Info.title'], { ns: 'appDebug' })}
                 </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                <AlertDialogDescription>
                   {t(($) => $['trailUseGPT4Info.description'], { ns: 'appDebug' })}
                 </AlertDialogDescription>
-              </div>
+              </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancelButton tone="default">
+                <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  variant="primary"
-                  tone="default"
-                  onClick={onConfirmUseGPT4}
-                >
+                <AlertDialogConfirmButton tone="default" onClick={onConfirmUseGPT4}>
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogFooter>

@@ -3,7 +3,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import * as React from 'react'
-import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
@@ -17,20 +17,13 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-vi.mock('@/app/components/plugins/update-plugin', () => ({
-  default: ({ onSave }: { onSave: () => void | Promise<void> }) => (
-    <button data-testid="save-plugin-update" onClick={onSave}>
+vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
+  default: ({ onSuccess }: { onSuccess: () => void | Promise<void> }) => (
+    <button data-testid="save-plugin-update" onClick={onSuccess}>
       Save plugin update
     </button>
   ),
 }))
-
-const mockConsoleStateReader = vi.fn()
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleStateReader())
-})
 
 const ModalBlockingState = () => {
   const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
@@ -55,7 +48,6 @@ const UpdatePluginTrigger = ({
         setShowUpdatePluginModal({
           onSaveCallback: onSave,
           payload: {
-            type: PluginSource.github,
             category,
             github: {
               originalPackageInfo: {
@@ -82,6 +74,7 @@ const renderProvider = (
 ) => {
   const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
+    currentWorkspace: { id: 'workspace-1' },
   })
   seedFeatures(queryClient, features)
   const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper()
@@ -100,13 +93,10 @@ const renderProvider = (
 
 describe('ModalContextProvider trigger events limit modal', () => {
   beforeEach(() => {
-    mockConsoleStateReader.mockReset()
-    window.localStorage.clear()
-    mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: {
-        id: 'workspace-1',
-      },
-    })
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('trigger-events-limit-dismissed-workspace-1-'))
+        localStorage.removeItem(key)
+    }
   })
 
   afterEach(() => {
@@ -161,9 +151,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
       billing: { subscription: { plan: 'professional' as const } },
       trigger_event: { usage: 3000, limit: 3000, reset_date: dayjs().add(5, 'day').unix() },
     }
-    // Note: vitest.setup.ts replaces localStorage with a mock object that has vi.fn() methods
-    // We need to spy on the mock's setItem, not Storage.prototype.setItem
-    const setItemSpy = vi.spyOn(localStorage, 'setItem')
+    const dismissalKey = `trigger-events-limit-dismissed-workspace-1-professional-3000-${dayjs().add(5, 'day').format('YYYY-MM-DD')}`
     const user = userEvent.setup()
 
     renderProvider(undefined, features)
@@ -176,12 +164,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.getByText('clear')).toBeInTheDocument()
-    await waitFor(() => {
-      expect(setItemSpy.mock.calls.length).toBeGreaterThan(0)
-    })
-    const [key, value] = (setItemSpy.mock.calls[0] ?? []) as [string, string]
-    expect(key).toContain('trigger-events-limit-dismissed-workspace-1-professional-3000-')
-    expect(value).toBe('1')
+    expect(localStorage.getItem(dismissalKey)).toBe('1')
   })
 
   it('relies on the in-memory guard when localStorage reads throw', async () => {
@@ -258,12 +241,10 @@ describe('ModalContextProvider trigger events limit modal', () => {
 
 describe('ModalContextProvider plugin update modal', () => {
   beforeEach(() => {
-    mockConsoleStateReader.mockReset()
-    mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: {
-        id: 'workspace-1',
-      },
-    })
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('trigger-events-limit-dismissed-workspace-1-'))
+        localStorage.removeItem(key)
+    }
   })
 
   it('keeps a model plugin update open until its refresh callback finishes', async () => {

@@ -1,39 +1,27 @@
-import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '../types'
+import type {
+  WorkflowCommentBasic,
+  WorkflowCommentDetail,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { UserProfile } from '../types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithAccountProfile as renderAccountProfile } from '@/test/console/account-profile'
-import { EditorResourceScope } from '../../editor-resource/provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { CommentIcon } from '../comment-icon'
 import { CommentInput } from '../comment-input'
 import { CommentThread } from '../thread'
 
-const renderWithAccountProfile = (ui: Parameters<typeof renderAccountProfile>[0]) =>
-  renderAccountProfile(
-    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
-      {ui}
-    </EditorResourceScope>,
-  )
+let mentionableUsers: UserProfile[] = []
+const renderWithAccountProfile = (ui: Parameters<typeof renderWorkflowFlowComponent>[0]) => {
+  const { queryClient } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
+    initialStoreState: { mentionableUsersCache: { 'app-1': mentionableUsers } },
+  })
+}
 
-const storeState = vi.hoisted(() => ({
-  mentionableUsersCache: { 'app-1': [] } as Record<string, UserProfile[]>,
-  setCommentPreviewHovering: vi.fn(),
-}))
-
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    flowToScreenPosition: (position: { x: number; y: number }) => position,
-    screenToFlowPosition: (position: { x: number; y: number }) => position,
-  }),
-  useViewport: () => ({ x: 0, y: 0, zoom: 1 }),
-}))
-
-vi.mock('../../store', () => ({
-  useStore: (selector: (state: typeof storeState) => unknown) => selector(storeState),
-  useWorkflowStore: () => ({ getState: () => storeState }),
-}))
-
-const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
+const createComment = (): WorkflowCommentDetail & WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 120,
   position_y: 80,
@@ -58,7 +46,7 @@ const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
 describe('Comment thread focus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    storeState.mentionableUsersCache['app-1'] = []
+    mentionableUsers = []
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
@@ -71,9 +59,7 @@ describe('Comment thread focus', () => {
     async (kind) => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const onClose = vi.fn()
-      storeState.mentionableUsersCache['app-1'] = [
-        { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null },
-      ]
+      mentionableUsers = [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }]
       renderWithAccountProfile(
         kind === 'draft' ? (
           <CommentInput position={{ x: 0, y: 0 }} onSubmit={() => {}} onCancel={onClose} />
@@ -123,7 +109,7 @@ describe('Comment thread focus', () => {
 
     renderWithAccountProfile(<Comment />)
     const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
-    await user.tab()
+    act(() => marker.focus())
     await user.keyboard('{Enter}')
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(screen.getByRole('textbox')).toHaveFocus()

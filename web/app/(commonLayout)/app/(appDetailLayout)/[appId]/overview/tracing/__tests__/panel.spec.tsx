@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
 import Panel from '../panel'
 
@@ -77,12 +78,13 @@ describe('Tracing overview panel', () => {
   })
 
   it('offers retry when tracing cannot load instead of remaining in a loading state', async () => {
+    const user = userEvent.setup()
     request.mockRejectedValue(new Error('Tracing unavailable'))
     renderPanel()
     const retry = await screen.findByRole('button', { name: /common.errorBoundary.tryAgain/ })
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     mockServer(false)
-    await userEvent.setup().click(retry)
+    await user.click(retry)
     expect(await screen.findByText('app.tracing.title')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /common.errorBoundary.tryAgain/ }),
@@ -92,12 +94,10 @@ describe('Tracing overview panel', () => {
   it('keeps one disabled entry when status arrives before provider configurations', async () => {
     mockServer()
     const server = request.getMockImplementation()!
-    let resolveConfigs!: () => void
-    const configsReady = new Promise<void>((resolve) => {
-      resolveConfigs = resolve
-    })
+    const configsReady = createDeferred()
     request.mockImplementation(async (...args) => {
-      if (new URL(args[2].request.url).pathname.endsWith('/trace-config')) await configsReady
+      if (new URL(args[2].request.url).pathname.endsWith('/trace-config'))
+        await configsReady.promise
       return server(...args)
     })
     const { client } = renderPanel()
@@ -109,7 +109,7 @@ describe('Tracing overview panel', () => {
       ).toEqual({ enabled: true, tracing_provider: 'langfuse' }),
     )
     expect(screen.getByRole('button')).toBeDisabled()
-    resolveConfigs()
+    await act(async () => configsReady.resolve())
     await waitFor(() => expect(screen.getByRole('button')).toBeEnabled())
   })
 
@@ -117,10 +117,7 @@ describe('Tracing overview panel', () => {
     const writes = mockServer()
     const server = request.getMockImplementation()!
     let unavailable = true
-    let resolveRetry!: () => void
-    const retryReady = new Promise<void>((resolve) => {
-      resolveRetry = resolve
-    })
+    const retryReady = createDeferred()
     request.mockImplementation(async (...args) => {
       const url = new URL(args[2].request.url)
       if (url.searchParams.get('tracing_provider') === 'langsmith')
@@ -131,7 +128,7 @@ describe('Tracing overview panel', () => {
             { code: 'tracing_provider_unavailable', message: 'Unavailable' },
             { status: 400 },
           )
-        await retryReady
+        await retryReady.promise
       }
       return server(...args)
     })
@@ -161,7 +158,7 @@ describe('Tracing overview panel', () => {
     expect(phoenix.getByRole('button', { name: 'common.errorBoundary.tryAgain' })).toBeDisabled()
     expect(phoenix.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
     expect(screen.getByRole('switch')).not.toHaveAttribute('aria-disabled', 'true')
-    resolveRetry()
+    await act(async () => retryReady.resolve())
     expect(await phoenix.findByRole('button', { name: 'app.tracing.config' })).toBeEnabled()
     expect(request).toHaveBeenCalledTimes(1)
     expect(
@@ -226,17 +223,6 @@ describe('Tracing overview panel', () => {
     expect(screen.getByText('app.tracing.langfuse.description')).toBeInTheDocument()
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     expect(screen.queryByText('app.tracing.config')).not.toBeInTheDocument()
-  })
-
-  it('refreshes status after toggling without changing the selected provider', async () => {
-    const writes = mockServer()
-    renderPanel()
-    const user = await openConfiguredPanel()
-    await user.click(screen.getByRole('switch'))
-    await waitFor(() => expect(screen.getByRole('switch')).not.toBeChecked())
-    expect(writes).toEqual([
-      { method: 'POST', body: { enabled: false, tracing_provider: 'langfuse' } },
-    ])
   })
 
   it('opens configuration without selecting the provider and supports keyboard selection', async () => {

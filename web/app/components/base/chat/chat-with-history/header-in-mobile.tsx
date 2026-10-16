@@ -6,6 +6,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -129,7 +130,7 @@ const HeaderInMobile = () => {
         <DialogPortal>
           <DialogBackdrop />
           <DialogViewport className="flex p-1">
-            <DialogPopup className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl backdrop-blur-xs">
+            <DialogPopup className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-xs">
               <DialogTitle className="sr-only">
                 {appData?.site.title || t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
               </DialogTitle>
@@ -154,18 +155,19 @@ const HeaderInMobile = () => {
         <DialogPortal>
           <DialogBackdrop />
           <DialogViewport className="flex justify-end p-1">
-            <DialogPopup className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl backdrop-blur-xs">
+            <DialogPopup className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl backdrop-blur-xs">
               <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
                 <div
                   aria-hidden="true"
                   className="i-custom-public-other-message-3-fill size-6 shrink-0"
                 />
-                <DialogTitle className="grow system-xl-semibold text-text-secondary">
-                  {t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}
-                </DialogTitle>
+                <DialogTitle>{t(($) => $['chat.chatSettingsTitle'], { ns: 'share' })}</DialogTitle>
                 <DialogClose
                   render={
-                    <IconButton aria-label={t(($) => $['operation.close'], { ns: 'common' })}>
+                    <IconButton
+                      className="ms-auto"
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    >
                       <span aria-hidden="true" className="i-ri-close-line size-4" />
                     </IconButton>
                   }
@@ -180,14 +182,14 @@ const HeaderInMobile = () => {
       </Dialog>
       <AlertDialog open={!!showConfirm} onOpenChange={(open) => !open && handleCancelConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['chat.deleteConversation.title'], { ns: 'share' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

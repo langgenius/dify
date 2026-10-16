@@ -52,7 +52,14 @@ export type DatasetDetailResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -65,17 +72,18 @@ export type DatasetDetailResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
+  keyword_number?: number | null
   maintainer?: string | null
   name: string
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -127,7 +135,18 @@ export type PipelineNotFoundError = ErrorResponse & {
   status: 404
 }
 
-export type RagPipelineOpaqueResponse = unknown
+export type RagPipelineRecommendedPluginsResponse = {
+  installed_recommended_plugins: Array<ToolProviderApiEntityResponse>
+  uninstalled_recommended_plugins: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type RagPipelineTransformResponse = {
+  dataset_id: string
+  pipeline_id: string
+  status: string
+}
 
 export type WorkflowRunPaginationResponse = {
   data: Array<WorkflowRunForListResponse>
@@ -243,6 +262,8 @@ export type DatasourceNodeRunPayload = {
   }
 }
 
+export type RagPipelineOpaqueResponse = unknown
+
 export type DatasourceVariablesPayload = {
   datasource_info: {
     [key: string]: unknown
@@ -299,10 +320,10 @@ export type WorkflowDraftVariableListResponse = {
 }
 
 export type RagPipelineStepParametersResponse = {
-  variables: unknown
+  variables: Array<PipelineVariableResponse>
 }
 
-export type DraftWorkflowRunPayload = {
+export type RagPipelineDraftWorkflowRunPayload = {
   datasource_info_list: Array<{
     [key: string]: unknown
   }>
@@ -332,7 +353,7 @@ export type WorkflowDraftVariableResponse = {
   name: string
   selector: Array<string>
   type: string
-  value: JsonValue
+  value: RecursiveJsonValue
   value_type: string
   visible: boolean
 }
@@ -347,7 +368,7 @@ export type RagPipelineWorkflowPublishResponse = {
   result: string
 }
 
-export type Parser = {
+export type DatasourceContentPreviewPayload = {
   credential_id?: string | null
   datasource_type: string
   inputs: {
@@ -369,6 +390,8 @@ export type PublishedWorkflowRunPayload = {
   start_node_id: string
 }
 
+export type RagPipelinePublishedRunResponse = PipelineGenerateResponse | WorkflowAppBlockingResponse
+
 export type WorkflowUpdatePayload = {
   marked_comment?: string | null
   marked_name?: string | null
@@ -379,7 +402,7 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 export type DatasetDocMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetExternalKnowledgeInfoResponse = {
@@ -402,13 +425,15 @@ export type DatasetIconInfoResponse = {
   icon_url?: string | null
 }
 
+export type IndexTechniqueType = 'economy' | 'high_quality'
+
 export type DatasetRetrievalModelResponse = {
   reranking_enable: boolean
   reranking_mode?: string | null
   reranking_model?: DatasetRerankingModelResponse
   score_threshold?: number | null
   score_threshold_enabled: boolean
-  search_method: string
+  search_method: RetrievalMethod
   top_k: number
   weights?: DatasetWeightedScoreResponse | null
 }
@@ -450,7 +475,49 @@ export type RagPipelineDatasourceProviderResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
-  value: Github | Marketplace | Package
+  value: PluginDependencyGithub | PluginDependencyMarketplace | PluginDependencyPackage
+}
+
+export type ToolProviderApiEntityResponse = {
+  allow_delete?: boolean
+  authentication?: McpAuthentication | null
+  author: string
+  configuration?: McpConfiguration | null
+  description: I18nObject
+  icon:
+    | string
+    | {
+        [key: string]: string
+      }
+  icon_dark?:
+    | string
+    | {
+        [key: string]: string
+      }
+  id: string
+  identity_mode?: string
+  is_dynamic_registration?: boolean
+  is_team_authorization?: boolean
+  label: I18nObject
+  labels?: Array<string>
+  masked_headers?: {
+    [key: string]: string
+  } | null
+  name: string
+  original_headers?: {
+    [key: string]: string
+  } | null
+  plugin_id?: string | null
+  plugin_unique_identifier?: string | null
+  server_identifier?: string | null
+  server_url?: string | null
+  team_credentials?: {
+    [key: string]: unknown
+  }
+  tools?: Array<ToolApiEntity>
+  type: ToolProviderType
+  updated_at?: number
+  workflow_app_id?: string | null
 }
 
 export type WorkflowRunForListResponse = {
@@ -545,21 +612,39 @@ export type WorkflowDraftVariableFullContentResponse = {
   value_type: string
 }
 
-export type JsonValue =
+export type RecursiveJsonValue =
   | string
   | number
   | number
   | boolean
   | {
-      [key: string]: unknown
+      [key: string]: RecursiveJsonValue
     }
-  | Array<unknown>
+  | Array<RecursiveJsonValue>
   | null
+
+export type PipelineGenerateResponse = {
+  batch: string
+  dataset: PipelineDataset
+  documents: Array<PipelineDocument>
+}
+
+export type WorkflowAppBlockingResponse = {
+  data: WorkflowAppBlockingResponseData
+  task_id: string
+  workflow_run_id: string
+}
 
 export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
 }
+
+export type RetrievalMethod =
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'keyword_search'
+  | 'semantic_search'
 
 export type DatasetWeightedScoreResponse = {
   keyword_setting?: DatasetKeywordSettingResponse
@@ -577,21 +662,94 @@ export type DatasourceProviderEntityWithPlugin = {
 
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
-export type Github = {
+export type PluginDependencyGithub = {
   github_plugin_unique_identifier: string
   package: string
   repo: string
   version: string
 }
 
-export type Marketplace = {
+export type PluginDependencyMarketplace = {
   marketplace_plugin_unique_identifier: string
   version?: string | null
 }
 
-export type Package = {
+export type PluginDependencyPackage = {
   plugin_unique_identifier: string
   version?: string | null
+}
+
+export type McpAuthentication = {
+  client_id: string
+  client_secret?: string | null
+}
+
+export type McpConfiguration = {
+  sse_read_timeout?: number
+  timeout?: number
+}
+
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type ToolApiEntity = {
+  author: string
+  description: I18nObject
+  label: I18nObject
+  labels?: Array<string>
+  name: string
+  output_schema?: {
+    [key: string]: unknown
+  }
+  parameters?: Array<ToolParameter> | null
+}
+
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
+export type PipelineDataset = {
+  chunk_structure: string
+  description?: string
+  id: string
+  name: string
+}
+
+export type PipelineDocument = {
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
+  data_source_type: string
+  enabled: boolean
+  error?: string | null
+  id: string
+  indexing_status: string
+  name: string
+  position: number
+}
+
+export type WorkflowAppBlockingResponseData = {
+  created_at: number
+  elapsed_time: number
+  error?: string | null
+  finished_at: number | null
+  id: string
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  status: WorkflowExecutionStatus
+  total_steps: number
+  total_tokens: number
+  workflow_id: string
 }
 
 export type DatasetKeywordSettingResponse = {
@@ -629,9 +787,9 @@ export type DatasourceEntity = {
 
 export type DatasourceProviderIdentity = {
   author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  description: I18nObject
   icon: string
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: I18nObject
   name: string
   tags?: Array<ToolLabelEnum> | null
 }
@@ -647,12 +805,46 @@ export type DatasourceProviderType =
   | 'online_drive'
   | 'website_crawl'
 
-export type I18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
+export type ToolParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+        [key: string]: unknown
+      }
+    | null
+  form: ToolParameterForm
+  human_description?: I18nObject | null
+  input_schema?: {
+    [key: string]: unknown
+  } | null
+  label: I18nObject
+  llm_description?: string | null
+  max?: number | number | null
+  min?: number | number | null
+  multiple?: boolean
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: ToolParameterType
 }
+
+export type WorkflowExecutionStatus =
+  | 'failed'
+  | 'partial-succeeded'
+  | 'paused'
+  | 'running'
+  | 'scheduled'
+  | 'stopped'
+  | 'succeeded'
 
 export type Option = {
   label: I18nObject
@@ -715,13 +907,6 @@ export type DatasourceParameter = {
   type: DatasourceParameterType
 }
 
-export type CoreToolsEntitiesCommonEntitiesI18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
-}
-
 export type ToolLabelEnum =
   | 'business'
   | 'design'
@@ -745,6 +930,8 @@ export type PluginParameterAutoGenerate = {
   type: PluginParameterAutoGenerateType
 }
 
+export type ToolParameterForm = 'form' | 'llm' | 'schema'
+
 export type PluginParameterOption = {
   icon?: string | null
   label: I18nObject
@@ -754,6 +941,25 @@ export type PluginParameterOption = {
 export type PluginParameterTemplate = {
   enabled?: boolean
 }
+
+export type ToolParameterType =
+  | 'any'
+  | 'app-selector'
+  | 'array'
+  | 'boolean'
+  | 'checkbox'
+  | 'date'
+  | 'date-range'
+  | 'dynamic-select'
+  | 'file'
+  | 'files'
+  | 'model-selector'
+  | 'number'
+  | 'object'
+  | 'secret-input'
+  | 'select'
+  | 'string'
+  | 'system-files'
 
 export type DatasourceParameterType =
   | 'boolean'
@@ -1039,7 +1245,7 @@ export type GetRagPipelinesRecommendedPluginsError =
   GetRagPipelinesRecommendedPluginsErrors[keyof GetRagPipelinesRecommendedPluginsErrors]
 
 export type GetRagPipelinesRecommendedPluginsResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelineRecommendedPluginsResponse
 }
 
 export type GetRagPipelinesRecommendedPluginsResponse =
@@ -1063,7 +1269,7 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdError =
   PostRagPipelinesTransformDatasetsByDatasetIdErrors[keyof PostRagPipelinesTransformDatasetsByDatasetIdErrors]
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelineTransformResponse
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponse =
@@ -1627,7 +1833,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersRespons
   GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
-  body: DraftWorkflowRunPayload
+  body: RagPipelineDraftWorkflowRunPayload
   path: {
     pipeline_id: string
   }
@@ -1876,7 +2082,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse =
   PostRagPipelinesByPipelineIdWorkflowsPublishResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewData = {
-  body: Parser
+  body: DatasourceContentPreviewPayload
   path: {
     node_id: string
     pipeline_id: string
@@ -1999,7 +2205,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunError =
   PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelinePublishedRunResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse =

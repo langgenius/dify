@@ -36,13 +36,11 @@ export type RETRIEVE_METHOD =
   | 'semantic_search'
   | 'full_text_search'
   | 'hybrid_search'
-  | 'invertedIndex'
   | 'keyword_search'
 export const RETRIEVE_METHOD = {
   semantic: 'semantic_search' as RETRIEVE_METHOD,
   fullText: 'full_text_search' as RETRIEVE_METHOD,
   hybrid: 'hybrid_search' as RETRIEVE_METHOD,
-  invertedIndex: 'invertedIndex' as RETRIEVE_METHOD,
   keywordSearch: 'keyword_search' as RETRIEVE_METHOD,
 } as const
 
@@ -155,7 +153,7 @@ export type AgentTool = {
   credential_id?: string
 }
 
-export type ToolItem =
+type ToolItem =
   | {
       dataset: {
         enabled: boolean
@@ -353,7 +351,7 @@ export type RetrievalConfig = {
   }
   top_k: number
   score_threshold_enabled: boolean
-  score_threshold: number
+  score_threshold?: number
   reranking_mode?: RerankingModeEnum
   weights?: {
     weight_type: WeightedScoreEnum

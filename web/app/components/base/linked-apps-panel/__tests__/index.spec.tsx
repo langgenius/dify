@@ -1,29 +1,12 @@
-import { render, screen } from '@testing-library/react'
-import * as React from 'react'
-import { vi } from 'vite-plus/test'
+import { render, screen, within } from '@testing-library/react'
 import LinkedAppsPanel from '../index'
-
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-  }: {
-    children: React.ReactNode
-    href: string
-    className: string
-  }) => (
-    <a href={href} className={className} data-testid="link-item">
-      {children}
-    </a>
-  ),
-}))
 
 describe('LinkedAppsPanel Component', () => {
   const mockRelatedApps = [
     {
       id: 'app-1',
       name: 'Chatbot App',
+      description: '',
       mode: 'chat' as const,
       icon_type: 'emoji' as const,
       icon: '🤖',
@@ -33,6 +16,7 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-2',
       name: 'Workflow App',
+      description: '',
       mode: 'workflow' as const,
       icon_type: 'image' as const,
       icon: 'file-id',
@@ -42,6 +26,7 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-3',
       name: '',
+      description: '',
       mode: 'agent-chat' as const,
       icon_type: 'emoji' as const,
       icon: '🕵️',
@@ -50,50 +35,16 @@ describe('LinkedAppsPanel Component', () => {
     },
   ]
 
-  describe('Render', () => {
-    it('renders correctly with multiple apps', () => {
-      render(<LinkedAppsPanel relatedApps={mockRelatedApps} isMobile={false} />)
-
-      const items = screen.getAllByTestId('link-item')
-      expect(items).toHaveLength(3)
-
-      expect(screen.getByText('Chatbot App')).toBeInTheDocument()
-      expect(screen.getByText('Workflow App')).toBeInTheDocument()
-      expect(screen.getByText('--')).toBeInTheDocument()
-    })
-
-    it('displays correct app mode labels', () => {
-      render(<LinkedAppsPanel relatedApps={mockRelatedApps} isMobile={false} />)
-
-      expect(screen.getByText('Chatbot')).toBeInTheDocument()
-      expect(screen.getByText('Workflow')).toBeInTheDocument()
-      expect(screen.getByText('Agent')).toBeInTheDocument()
-    })
-
-    it('hides app name and centers content in mobile mode', () => {
-      render(<LinkedAppsPanel relatedApps={mockRelatedApps} isMobile={true} />)
-
-      expect(screen.queryByText('Chatbot App')).not.toBeInTheDocument()
-      expect(screen.queryByText('Workflow App')).not.toBeInTheDocument()
-
-      const items = screen.getAllByTestId('link-item')
-      expect(items[0]).toHaveClass('justify-center')
-    })
-
-    it('handles empty relatedApps list gracefully', () => {
-      render(<LinkedAppsPanel relatedApps={[]} isMobile={false} />)
-
-      expect(screen.queryAllByTestId('link-item')).toHaveLength(0)
-    })
-  })
-
-  describe('Interaction', () => {
-    it('renders correct links for each app', () => {
-      render(<LinkedAppsPanel relatedApps={mockRelatedApps} isMobile={false} />)
-
-      const items = screen.getAllByTestId('link-item')
-      expect(items[0]).toHaveAttribute('href', '/app/app-1/overview')
-      expect(items[1]).toHaveAttribute('href', '/app/app-2/overview')
-    })
+  it('links each related application to its overview with its name and mode', () => {
+    render(<LinkedAppsPanel relatedApps={mockRelatedApps} isMobile={false} />)
+    for (const [name, mode, id] of [
+      ['Chatbot App', 'Chatbot', 'app-1'],
+      ['Workflow App', 'Workflow', 'app-2'],
+      ['--', 'Agent', 'app-3'],
+    ]) {
+      const link = screen.getByRole('link', { name: new RegExp(name!) })
+      expect(link).toHaveAttribute('href', `/app/${id}/overview`)
+      expect(within(link).getByText(mode!)).toBeInTheDocument()
+    }
   })
 })

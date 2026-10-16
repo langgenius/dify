@@ -8,10 +8,10 @@ import { WriteMode, writeModeTypesNum } from './types'
 type Params = {
   id: string
   payload: AssignerNodeType
-  runInputData: Record<string, any>
-  runInputDataRef: RefObject<Record<string, any>>
+  runInputData: Record<string, unknown>
+  runInputDataRef: RefObject<Record<string, unknown>>
   getInputVars: (textList: string[]) => InputVar[]
-  setRunInputData: (data: Record<string, any>) => void
+  setRunInputData: (data: Record<string, unknown>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
   varSelectorsToVarInputs: (variables: ValueSelector[]) => InputVar[]
 }

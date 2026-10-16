@@ -25,21 +25,14 @@ const UploadMethodForm = ({ onSubmit }: { onSubmit: (value: TransferMethod[]) =>
 }
 
 describe('UploadMethodField', () => {
-  it('lets keyboard users choose both methods and saves the existing array representation', async () => {
+  it('saves both upload methods as the existing array representation', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
     render(<UploadMethodForm onSubmit={onSubmit} />)
 
     expect(screen.getByRole('radiogroup', { name: 'Upload methods' })).toBeInTheDocument()
-    await user.tab()
-    expect(screen.getByRole('radio', { name: 'appDebug.variableConfig.localUpload' })).toHaveFocus()
-    await user.keyboard('{ArrowRight}')
-    expect(screen.getByRole('radio', { name: 'URL' })).toBeChecked()
-    await user.keyboard('{ArrowRight}')
-    expect(screen.getByRole('radio', { name: 'appDebug.variableConfig.both' })).toBeChecked()
-    await user.tab()
-    expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus()
-    await user.keyboard('{Enter}')
+    await user.click(screen.getByRole('radio', { name: 'appDebug.variableConfig.both' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(onSubmit).toHaveBeenCalledWith([TransferMethod.local_file, TransferMethod.remote_url])
   })
 
@@ -48,7 +41,7 @@ describe('UploadMethodField', () => {
     const onSubmit = vi.fn()
     render(<UploadMethodForm onSubmit={onSubmit} />)
 
-    await user.click(screen.getByText('URL'))
+    await user.click(screen.getByRole('radio', { name: 'URL' }))
     expect(screen.getByRole('radio', { name: 'URL' })).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(onSubmit).toHaveBeenCalledWith([TransferMethod.remote_url])

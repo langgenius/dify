@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { zAppLegacyDatasetToolResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { PromptMode } from '@/models/debug'
 import { consoleClient } from '@/service/console'
@@ -29,7 +29,7 @@ export async function loadConfigurationState({
   if (!backendModelConfig) throw new Error(`App ${appId} has no model configuration`)
   const nextPromptMode =
     backendModelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
-  let nextDataSets: DataSet[] = []
+  let nextDataSets: DatasetDetailWithPartialMembersResponse[] = []
   const agentDatasets = (backendModelConfig.agent_mode.tools ?? []).flatMap((tool) => {
     const result = zAppLegacyDatasetToolResponse.safeParse(tool)
     return result.success ? [result.data.dataset] : []
@@ -41,7 +41,6 @@ export async function loadConfigurationState({
 
   if (datasetIds.length) {
     const { data } = await fetchDatasets({
-      url: '/datasets',
       params: {
         page: 1,
         ids: datasetIds,

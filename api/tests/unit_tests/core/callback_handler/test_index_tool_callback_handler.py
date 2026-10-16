@@ -19,11 +19,9 @@ from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource, DataSourceType, DocumentCreatedFrom
 
 
+@dataclass(eq=False, repr=False)
 class _DatabaseBinding:
     engine: Engine
-
-    def __init__(self, engine: Engine) -> None:
-        self.engine = engine
 
 
 @dataclass(frozen=True)

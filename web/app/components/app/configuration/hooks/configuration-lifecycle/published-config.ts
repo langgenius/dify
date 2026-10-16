@@ -2,10 +2,10 @@ import type {
   AppModelConfigResponse,
   DeletedTool,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ConfigurationPublishConfig } from './types'
 import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Collection } from '@/app/components/tools/types'
-import type { DataSet } from '@/models/datasets'
 import type { AnnotationReplyConfig, DatasetConfigs, ModelConfig } from '@/models/debug'
 import {
   zAppExternalDataToolPayload,
@@ -52,7 +52,7 @@ function buildPublishedModelConfig({
   collectionList: Collection[]
   deletedTools?: DeletedTool[]
   mode: ConfigurationAppMode
-  nextDataSets: DataSet[]
+  nextDataSets: DatasetDetailWithPartialMembersResponse[]
 }): ModelConfig {
   const model = backendModelConfig.model
   const externalDataTools = backendModelConfig.external_data_tools.map((tool) => {
@@ -172,7 +172,7 @@ export function buildPublishedConfig({
   datasetConfigs: DatasetConfigs
   deletedTools?: DeletedTool[]
   mode: ConfigurationAppMode
-  nextDataSets: DataSet[]
+  nextDataSets: DatasetDetailWithPartialMembersResponse[]
 }): ConfigurationPublishConfig {
   const modelConfig = buildPublishedModelConfig({
     backendModelConfig,

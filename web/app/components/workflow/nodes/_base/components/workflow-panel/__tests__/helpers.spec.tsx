@@ -53,7 +53,7 @@ describe('workflow-panel helpers', () => {
 
   describe('tool and provider lookup', () => {
     it('should prefer fresh built-in tool data when it is available', () => {
-      const storeTools = [{ id: 'legacy/tool', allow_delete: false }]
+      const storeTools = [{ id: 'provider/tool', allow_delete: false }]
       const queryTools = [{ id: 'provider/tool', allow_delete: true }]
 
       expect(

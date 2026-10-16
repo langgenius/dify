@@ -41,7 +41,9 @@ const mocks = vi.hoisted(() => ({
     | undefined,
   skillDetail: undefined as SkillDetailResponse | undefined,
   skillDetailGetFn: vi.fn(),
-  skillDetailKey: vi.fn((_options: unknown): unknown[] => ['skill-detail']),
+  skillDetailKey: vi.fn((_options: { input?: unknown; type?: string }): unknown[] => [
+    'skill-detail',
+  ]),
   skillDetailQueryOptions: vi.fn((_options: unknown) => ({})),
   agentSkillBindingsKey: vi.fn((_options: unknown): unknown[] => ['agent-skill-bindings']),
   skillListKey: vi.fn((_options: unknown): unknown[] => ['skills']),
@@ -209,6 +211,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       workspaces: {
         current: {
           models: actual.consoleQuery.workspaces.current.models,
+          modelProviders: actual.consoleQuery.workspaces.current.modelProviders,
           agents: {
             byAgentId: {
               skills: {
@@ -525,16 +528,9 @@ export function getBuilderAttachmentInput(container: HTMLElement) {
 }
 
 export function getSourceEditor() {
-  const editors = screen.getAllByRole('textbox')
-  const sourceEditor = editors.find(
-    (editor): editor is HTMLTextAreaElement =>
-      editor instanceof HTMLTextAreaElement &&
-      editor.value.includes('name: github-actions-failure-debugging'),
-  )
-
-  if (!sourceEditor) throw new Error('source editor not found')
-
-  return sourceEditor
+  return screen.getByRole<HTMLTextAreaElement>('textbox', {
+    name: 'skill.skillManagement.detail.markdownSourceMode',
+  })
 }
 
 export function getLiveMarkdownEditor() {
@@ -688,6 +684,8 @@ export function resetDetailPageFixture() {
   mocks.request.mockImplementation(async (_url, _init, options) => {
     const req = options.request
     const pathname = new URL(req.url).pathname
+    // Model parameter rules go through the console client and land on the fetch mock.
+    if (pathname.endsWith('/models/parameter-rules')) return mocks.modelParameterRulesFetch(req)
     if (req.method === 'POST' && /\/skills\/[^/]+\/restore$/.test(pathname))
       return Response.json(mocks.skillDetail)
     if (req.method === 'DELETE' && /\/skills\/[^/]+\/versions\/[^/]+$/.test(pathname))
@@ -725,7 +723,7 @@ export function resetDetailPageFixture() {
   }))
   mocks.skillDetail = createSkillDetail()
   mocks.skillDetailGetFn.mockImplementation(async () => mocks.skillDetail)
-  mocks.skillDetailKey.mockImplementation((options) => ['skill-detail', options])
+  mocks.skillDetailKey.mockImplementation(({ input }) => ['skill-detail', { input }])
   mocks.agentSkillBindingsKey.mockImplementation((options) => ['agent-skill-bindings', options])
   mocks.skillVersionsKey.mockImplementation((options) => ['skill-versions', options])
   mocks.skillListKey.mockImplementation((options) => ['skills', options])

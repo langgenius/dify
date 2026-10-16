@@ -10,7 +10,7 @@ Tests coverage for:
 import io
 import uuid
 from inspect import unwrap
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask, request
@@ -170,11 +170,8 @@ class TestAudioServiceMockedBehavior:
 
     @pytest.fixture
     def mock_file(self):
-        """Create mock file upload."""
-        mock = Mock()
-        mock.filename = "test_audio.mp3"
-        mock.content_type = "audio/mpeg"
-        return mock
+        """Create a file upload."""
+        return FileStorage(stream=io.BytesIO(b"audio"), filename="test_audio.mp3", content_type="audio/mpeg")
 
     @patch.object(AudioService, "transcript_asr")
     def test_transcript_asr_returns_response(self, mock_asr, mock_app, mock_file, sqlite_session: Session):

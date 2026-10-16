@@ -4,12 +4,15 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogClose,
+  DialogBody,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -261,28 +264,18 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           />
         }
         backdropProps={{ forceRender: true }}
-        className="flex max-h-[calc(100dvh-2rem)] w-120 max-w-120 flex-col overflow-hidden rounded-2xl p-0"
+        className="max-h-[calc(100dvh-2rem)] max-w-120"
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'modelProvider' })}
           </DialogTitle>
-          <p className="mt-1 system-xs-regular text-text-tertiary">
+          <DialogDescription>
             {t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'modelProvider' })}
-          </p>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+          </DialogDescription>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
+        <DialogBody>
           {isSystemModelListLoading ? (
             <div
               role="status"
@@ -397,8 +390,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               </div>
             </div>
           )}
-        </div>
-        <div className="flex h-19 shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
+        </DialogBody>
+        <DialogFooter>
           <Button className="min-w-18" onClick={() => handleOpenChange(false)}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
@@ -410,7 +403,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           >
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

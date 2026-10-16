@@ -76,41 +76,28 @@ export const useImageFiles = () => {
     const index = files.findIndex((file) => file._id === imageFileId)
     if (index > -1) {
       const currentImageFile = files[index]!
+      const updateCurrentFile = (patch: Partial<ImageFile>) => {
+        const latestFile = filesRef.current.find((file) => file._id === imageFileId)
+        if (!latestFile || latestFile.deleted) return
+        handleUpload({ ...latestFile, ...patch })
+      }
       imageUpload(
         {
           file: currentImageFile!.file!,
           onProgressCallback: (progress) => {
-            const newFiles = [
-              ...files.slice(0, index),
-              { ...currentImageFile, progress },
-              ...files.slice(index + 1),
-            ]
-            filesRef.current = newFiles
-            setFiles(newFiles)
+            updateCurrentFile({ progress })
           },
           onSuccessCallback: (res) => {
-            const newFiles = [
-              ...files.slice(0, index),
-              { ...currentImageFile, fileId: res.id, progress: 100 },
-              ...files.slice(index + 1),
-            ]
-            filesRef.current = newFiles
-            setFiles(newFiles)
+            updateCurrentFile({ fileId: res.id, progress: 100 })
           },
-          onErrorCallback: (error?: any) => {
+          onErrorCallback: (error) => {
             const errorMessage = getImageUploadErrorMessage(
               error,
               t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
               t,
             )
             toast.error(errorMessage)
-            const newFiles = [
-              ...files.slice(0, index),
-              { ...currentImageFile, progress: -1 },
-              ...files.slice(index + 1),
-            ]
-            filesRef.current = newFiles
-            setFiles(newFiles)
+            updateCurrentFile({ progress: -1 })
           },
         },
         !!params?.token,
@@ -182,7 +169,7 @@ export const useLocalFileUploader = ({
               onSuccessCallback: (res) => {
                 onUpload({ ...imageFile, fileId: res.id, progress: 100 })
               },
-              onErrorCallback: (error?: any) => {
+              onErrorCallback: (error) => {
                 const errorMessage = getImageUploadErrorMessage(
                   error,
                   t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),

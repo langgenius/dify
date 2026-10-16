@@ -33,13 +33,11 @@ const mockPatch = vi.hoisted(() => vi.fn())
 const mockPost = vi.hoisted(() => vi.fn())
 const mockRequest = vi.hoisted(() => vi.fn())
 
-vi.mock('../base', () => ({
+vi.mock('../base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../base')>()),
   request: (...args: unknown[]) => mockRequest(...args),
-  del: vi.fn(),
-  get: vi.fn(),
   patch: (...args: unknown[]) => mockPatch(...args),
   post: (...args: unknown[]) => mockPost(...args),
-  put: vi.fn(),
 }))
 
 const createWrapper = (queryClient: QueryClient) =>
@@ -47,13 +45,23 @@ const createWrapper = (queryClient: QueryClient) =>
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   }
 
-const createQueryClient = () =>
-  new QueryClient({
+const clients: QueryClient[] = []
+afterEach(() => {
+  clients.splice(0).forEach((client) => client.clear())
+  vi.restoreAllMocks()
+})
+
+const createQueryClient = () => {
+  const client = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
       queries: { retry: false },
     },
   })
+
+  clients.push(client)
+  return client
+}
 
 const createWorkflow = (overrides: Partial<WorkflowResponse> = {}): WorkflowResponse => ({
   conversation_variables: [],
@@ -156,6 +164,10 @@ describe('useUpdateWorkflow', () => {
 
   it('should invalidate workflow version history after updating version information', async () => {
     const queryClient = createQueryClient()
+    const legacyHistoryKey = ['workflow', 'versionHistory', 'app-1']
+    const generatedHistoryKey = appWorkflowVersionsInfiniteQueryOptions('app-1').queryKey
+    queryClient.setQueryData(legacyHistoryKey, { items: [] })
+    queryClient.setQueryData(generatedHistoryKey, { pages: [], pageParams: [] })
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const { result } = renderHook(() => useUpdateWorkflow(), {
       wrapper: createWrapper(queryClient),
@@ -169,6 +181,11 @@ describe('useUpdateWorkflow', () => {
       })
     })
 
+    expect(mockPatch).toHaveBeenCalledWith('/apps/app-1/workflows/workflow-1', {
+      body: { marked_name: 'Release 1', marked_comment: 'Notes' },
+    })
+    expect(queryClient.getQueryState(legacyHistoryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(generatedHistoryKey)?.isInvalidated).toBe(true)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['workflow', 'versionHistory'],
     })
