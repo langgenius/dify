@@ -113,6 +113,9 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         elif tracing_provider == "databricks":
             encrypted_config["host"] = decrypted_config["host"]
             encrypted_config["experiment_id"] = decrypted_config["experiment_id"]
+        elif tracing_provider == "opik":
+            for key in ("url", "workspace", "project"):
+                encrypted_config[key] = decrypted_config[key]
         # Re-resolve after destination changes; never retain a previous project's link.
         project_url = self._get_project_url(decrypted_config, tracing_provider)
         if project_url:
@@ -142,7 +145,16 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         except Exception as error:
             raise AppTracingConfigProcessingError from error
 
-        if tracing_provider == "databricks":
+        if tracing_provider == "opik":
+            from dify_trace_opik.config import OpikConfig
+            from dify_trace_opik.configuration import console_url, project_url
+
+            try:
+                config = OpikConfig.model_validate(decrypted_config)
+                presented_config["project_url"] = project_url(config) or console_url(config)
+            except ValueError:
+                presented_config["project_url"] = _PROJECT_URL_FALLBACKS["opik"]
+        elif tracing_provider == "databricks":
             from dify_trace_mlflow.config import DatabricksConfig
             from dify_trace_mlflow.configuration import project_url
 
@@ -212,6 +224,19 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "opik":
+            from dify_trace_opik.config import OpikConfig
+            from dify_trace_opik.configuration import OpikConfigurationError, verify_configuration
+
+            try:
+                resolved = verify_configuration(OpikConfig.model_validate(tracing_config))
+            except OpikConfigurationError as error:
+                logger.warning("Opik configuration verification failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from error
+            tracing_config["url"] = resolved.url
+            tracing_config["workspace"] = resolved.workspace
+            tracing_config["project"] = resolved.project
+            return
         if tracing_provider == "databricks":
             from dify_trace_mlflow.config import DatabricksConfig
             from dify_trace_mlflow.configuration import DatabricksConfigurationError, verify_configuration
@@ -247,6 +272,12 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
     @staticmethod
     def _get_project_url(tracing_config: dict[str, Any], tracing_provider: str) -> str | None:
         try:
+            if tracing_provider == "opik":
+                from dify_trace_opik.config import OpikConfig
+                from dify_trace_opik.configuration import console_url, project_url
+
+                config = OpikConfig.model_validate(tracing_config)
+                return project_url(config) or console_url(config)
             if tracing_provider == "databricks":
                 from dify_trace_mlflow.config import DatabricksConfig
                 from dify_trace_mlflow.configuration import project_url
