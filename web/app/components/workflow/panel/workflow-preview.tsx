@@ -2,6 +2,7 @@ import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/a
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
@@ -10,6 +11,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import ResizeHandle from '@/app/components/base/resize-handle'
 import { toast } from '@/app/notifications'
 import { submitHumanInputForm } from '@/service/workflow'
+import { editorAppIdAtom } from '../editor-resource/state'
 import { useWorkflowInteractions } from '../hooks/use-workflow-panel-interactions'
 import ResultPanel from '../run/result-panel'
 import ResultText from '../run/result-text'
@@ -27,7 +29,7 @@ const WorkflowPreview = () => {
   const panelId = useId()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
-  const appId = useStore((s) => s.appId)
+  const appId = useAtomValue(editorAppIdAtom)
   const isListening = useStore((s) => s.isListening)
   const showInputsPanel = useStore((s) => s.showInputsPanel)
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)

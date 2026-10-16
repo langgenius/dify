@@ -10,13 +10,18 @@ import {
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { request } from '@/service/base'
 import { submitHumanInputForm } from '@/service/workflow'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPreview from '../workflow-preview'
 
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: vi.fn(),
+}))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   submitHumanInputForm: vi.fn(),
@@ -94,6 +99,7 @@ const createHumanInputFilledFormData = (
 })
 
 beforeEach(() => {
+  vi.mocked(request).mockReset()
   mockSubmitHumanInputForm.mockReset().mockResolvedValue({ result: 'success' })
   vi.mocked(copy).mockReset().mockResolvedValue(true)
   vi.spyOn(toast, 'success')
@@ -278,4 +284,41 @@ it('opens the trace from the partial-success warning', async () => {
   await user.click(screen.getByRole('link', { name: /TRACING/ }))
   expect(screen.getByText('Recoverable error')).toBeInTheDocument()
   expect(screen.queryByRole('link', { name: /TRACING/ })).not.toBeInTheDocument()
+})
+
+it('loads nested tool traces using the editor app identity and preview run ID', async () => {
+  const user = userEvent.setup()
+  vi.mocked(request).mockImplementation(async () => Response.json({ data: [] }))
+  renderPreview({
+    resource: { kind: 'app', appId: 'preview-app', mode: 'workflow' },
+    initialStoreState: {
+      workflowRunningData: createPreviewRunningData({
+        result: createWorkflowResult({
+          id: 'preview-run',
+          status: WorkflowRunningStatus.Succeeded,
+        }),
+        resultText: 'Completed',
+        tracing: [
+          createNodeTracing({
+            id: 'preview-tool',
+            node_type: BlockEnum.Tool,
+            title: 'Nested workflow',
+            status: 'succeeded',
+            expand: true,
+            extras: { workflow_tool: true },
+          }),
+        ],
+      }),
+    },
+  })
+
+  await user.click(await screen.findByRole('button', { name: 'runLog.tracing' }))
+  expect(await screen.findByText('common.noData')).toBeInTheDocument()
+  expect(request).toHaveBeenCalledWith(
+    expect.stringContaining(
+      '/apps/preview-app/workflow-runs/preview-run/node-executions/preview-tool/children',
+    ),
+    expect.anything(),
+    expect.anything(),
+  )
 })

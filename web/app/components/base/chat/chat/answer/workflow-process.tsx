@@ -1,8 +1,10 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useStore as useAtomStore } from 'jotai'
 import { use, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowContext } from '@/app/components/workflow/context'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
@@ -24,7 +26,8 @@ const WorkflowProcessItem = ({
 }: WorkflowProcessProps) => {
   const { t } = useTranslation(['workflow'])
   const workflowStore = use(WorkflowContext)
-  const appId = workflowStore?.getState().appId
+  const atomStore = useAtomStore()
+  const appId = workflowStore ? atomStore.get(editorAppIdAtom) : undefined
   const [collapse, setCollapse] = useState(!expand)
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
