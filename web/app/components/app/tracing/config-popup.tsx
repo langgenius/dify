@@ -156,18 +156,14 @@ export function ConfigPopup({
               initialFocus={firstInputRef}
               className="max-h-[calc(100dvh-2rem)] w-160 p-0"
             >
-              {provider && (
+              {provider && policy && (
                 <ProviderConfigModal
                   resource={resource}
                   type={provider}
                   payload={configs[provider]}
                   firstInputRef={firstInputRef}
                   onSaved={closeConfig}
-                  onChosen={chooseProvider}
-                  onBeforeRemove={async () => {
-                    if (provider === policy?.tracing_provider)
-                      await onPolicyChange({ enabled: false, tracing_provider: null })
-                  }}
+                  policy={policy}
                   onRemoved={closeConfig}
                 />
               )}
