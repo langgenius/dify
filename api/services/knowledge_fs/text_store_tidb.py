@@ -55,7 +55,7 @@ class TidbTextStore:
             port=port,
             user=binding.account,
             password=binding.password,
-            database=None if allow_create else "ai",
+            database=None,
             ssl=ssl.create_default_context(),
             connect_timeout=10,
             read_timeout=120,
@@ -108,6 +108,9 @@ class TidbTextStore:
                         # A simultaneous initializer can win; every other DDL failure stays fatal.
                         if error.args[0] != 1061:
                             raise
+            else:
+                # An interrupted first write may leave no database; select it only after finding the index.
+                self.connection.select_db("ai")
             if payload.operation in {"upsert", "search"}:
                 cursor.execute(
                     "SELECT AVAILABLE FROM information_schema.TIFLASH_REPLICA WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s",
