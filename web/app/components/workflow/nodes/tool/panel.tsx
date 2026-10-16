@@ -1,9 +1,11 @@
 import type { FC } from 'react'
 import type { ToolNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
@@ -18,7 +20,7 @@ import useConfig from './hooks/use-config'
 const i18nPrefix = 'nodes.tool'
 
 const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation(['workflow'])
+  const { t } = useTranslation(['workflow'] as const)
   const {
     readOnly,
     inputs,
@@ -36,7 +38,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
   } = useConfig(id, data)
 
   const [collapsed, setCollapsed] = React.useState(false)
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
 
@@ -62,7 +64,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({ id, data }) => {
                 onChange={setInputVar}
                 currentProvider={currCollection}
                 currentTool={currTool}
-                showManageInputField={!!pipelineId}
+                showManageInputField={resourceKind === 'knowledge-pipeline'}
                 onManageInputField={() => setShowInputFieldPanel?.(true)}
               />
             </div>

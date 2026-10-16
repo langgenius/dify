@@ -104,6 +104,30 @@ describe('ReuseFromNode', () => {
     },
   )
 
+  it('shows the current source icon and retains it when the source is removed', () => {
+    const sourceNode = {
+      ...workspaceNode,
+      icon: { content: 'rocket', background: '#E0F2FE' },
+    }
+    const staleReference = {
+      ...reference(sourceNode),
+      icon: { content: 'robot_face', background: '#FFEAD5' },
+    }
+    const { rerender } = renderReuse({ nodes: [sourceNode], value: staleReference })
+
+    expect(
+      within(screen.getByRole('combobox', { name: selectNodeLabel })).getByText('🚀'),
+    ).toBeVisible()
+    expect(screen.queryByText('🤖')).not.toBeInTheDocument()
+
+    rerender(<ReuseFromNode nodes={[]} value={reference(sourceNode)} />)
+
+    expect(
+      within(screen.getByRole('combobox', { name: selectNodeLabel })).getByText('🚀'),
+    ).toBeVisible()
+    expect(screen.getByText('plugin.auth.reuse.removed')).toBeVisible()
+  })
+
   it('disables source selection when there are no candidate nodes', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

@@ -11,10 +11,12 @@ export default function ProviderIcon({ provider, size = 'medium' }: Props) {
   return (
     <AppIcon
       size={size === 'small' ? 'small' : size === 'large' ? 'xl' : 'large'}
-      background="var(--color-background-default-dodge)"
       className="rounded-lg"
       decorative
-      innerIcon={<span className={cn('size-6 text-text-secondary', provider.iconClassName)} />}
+      fallback={{
+        content: <span className={cn('size-6 text-text-secondary', provider.iconClassName)} />,
+        background: 'var(--color-background-default-dodge)',
+      }}
     />
   )
 }

@@ -1,12 +1,9 @@
 'use client'
 
-import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
 // Libraries
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -21,8 +18,6 @@ import {
 } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
-import { NewKnowledgeList } from '@/features/new-rag/new-knowledge-list'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
@@ -39,13 +34,7 @@ import Datasets from './datasets'
 import DatasetFirstEmptyState from './first-empty-state'
 import DatasetListHeader from './header'
 
-const knowledgeViewParser = parseAsStringLiteral(['legacy', 'new']).withDefault('legacy')
-
-function LegacyList({
-  knowledgeViewSwitcherProps,
-}: {
-  knowledgeViewSwitcherProps?: KnowledgeViewSwitcherProps
-}) {
+function List() {
   const { t } = useTranslation(['dataset'])
   const { push } = useRouter()
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
@@ -158,7 +147,6 @@ function LegacyList({
         stepByStepTourCreateMenuHighlightPart={
           STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
         }
-        knowledgeViewSwitcherProps={knowledgeViewSwitcherProps}
       />
       <div role="status" aria-atomic="true" className="sr-only">
         {announceFilteredEmptyState ? filteredEmptyMessage : ''}
@@ -204,35 +192,6 @@ function LegacyList({
       )}
     </div>
   )
-}
-
-function KnowledgeFsList() {
-  const [view, setView] = useQueryState('view', knowledgeViewParser)
-  const onViewChange = (nextView: 'legacy' | 'new') => {
-    void setView(nextView)
-  }
-
-  if (view === 'new') return <NewKnowledgeList view={view} onViewChange={onViewChange} />
-
-  return (
-    <LegacyList
-      knowledgeViewSwitcherProps={{
-        value: view,
-        onChange: onViewChange,
-      }}
-    />
-  )
-}
-
-function List() {
-  const { data: knowledgeFsEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ knowledge_fs_enabled }) => knowledge_fs_enabled,
-  })
-
-  if (!knowledgeFsEnabled) return <LegacyList />
-
-  return <KnowledgeFsList />
 }
 
 export default List

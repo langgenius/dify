@@ -28,7 +28,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { toast } from '@/app/notifications'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
-import { useInvalidLastRun } from '@/service/use-workflow'
+import { useInvalidateLastRun } from '@/service/use-workflow'
 import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../../../../../hooks/use-nodes-sync-draft'
@@ -140,7 +140,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   )
   const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
 
-  const { id, flowId, flowType, data } = oneStepRunParams
+  const { id, resource, data } = oneStepRunParams
   const { disabledReason: singleRunDisabledReason, usesAppUserAuth } = useSingleRunAuthorization(
     id,
     data,
@@ -237,7 +237,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
 
     setInitShowLastRunTab(false)
   }, [initShowLastRunTab, setInitShowLastRunTab])
-  const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
+  const invalidLastRun = useInvalidateLastRun(resource, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
     if (singleRunDisabledReason) return

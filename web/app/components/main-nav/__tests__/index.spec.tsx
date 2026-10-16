@@ -37,7 +37,6 @@ import {
   renderWithConsoleQuery as renderWithoutPricing,
 } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
-import { AppModeEnum } from '@/types/app'
 import { MainNav } from '../index'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
@@ -471,7 +470,7 @@ const createInstalledApp = (
   is_pinned: overrides.is_pinned ?? false,
   app: {
     id: overrides.app?.id ?? 'app-1',
-    mode: overrides.app?.mode ?? AppModeEnum.CHAT,
+    mode: overrides.app?.mode ?? 'chat',
     icon_type: overrides.app?.icon_type ?? 'emoji',
     icon: overrides.app?.icon ?? '🤖',
     icon_background: overrides.app?.icon_background ?? '#fff',

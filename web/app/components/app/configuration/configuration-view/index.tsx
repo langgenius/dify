@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ConfigurationViewModel } from '../hooks/configuration-view-model'
 import type { InstallBundleCompleteCallback } from '@/app/components/plugins/install-plugin/install-bundle'
@@ -40,7 +41,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import ConfigContext from '@/context/debug-configuration'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { LegacyAgentBadge } from './legacy-agent-badge'
 
 const ConfigurationView: FC<ConfigurationViewModel> = ({
@@ -80,7 +81,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
 }) => {
   const { t } = useTranslation(['appDebug', 'common'])
   const debugWithMultipleModel = appPublisherProps.debugWithMultipleModel
-  const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === AppModeEnum.AGENT_CHAT
+  const showLegacyAgentBadge = isAgentV2Enabled() && contextValue.mode === 'agent-chat'
   const handlePluginInstallComplete: InstallBundleCompleteCallback = (plugins, installStatus) => {
     if (!installStatus.some((status) => status.success)) return
 
@@ -289,7 +290,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               show
               inWorkflow={false}
               showFileUpload={false}
-              isChatMode={contextValue.mode !== AppModeEnum.COMPLETION}
+              isChatMode={contextValue.mode !== 'completion'}
               disabled={!!contextValue.readonly}
               onChange={onFeaturesChange}
               onClose={onCloseFeaturePanel}

@@ -1,4 +1,7 @@
-import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AgentSoulDifyToolConfig,
+  AppDetailWithSite,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { ToolNodeType } from '../../nodes/tool/types'
@@ -12,7 +15,7 @@ import { createElement, Fragment } from 'react'
 import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
 import { CollectionType } from '@/app/components/tools/types'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -131,14 +134,10 @@ vi.mock('../../nodes/_base/components/variable/utils', () => ({
   isSpecialVar: () => false,
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const state = { appDetail: { mode: 'workflow' } }
-  return {
-    useStore: {
-      getState: () => state,
-    },
-  }
-})
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 vi.mock('../../datasets-detail-store/store', () => ({
   useDatasetsDetailStore: () => ({}),
@@ -327,12 +326,9 @@ function buildInlineAgentGraph({
     nodes: [startNode, agentNode],
     options: {
       queryClient,
+      resource: { kind: 'app' as const, appId, mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: appId,
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     },
   }
@@ -725,7 +721,7 @@ describe('useChecklist', () => {
     })
   })
 
-  it('should pass flow type to node validators', () => {
+  it('should pass editor resource kind to node validators', () => {
     const checkValid = vi.fn(() => ({ errorMessage: '' }))
     mockNodesMap[BlockEnum.LLM] = {
       checkValid,
@@ -737,14 +733,14 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    renderWorkflowHook(() =>
-      useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
-    )
+    renderWorkflowHook(() => useChecklist([startNode, llmNode], edges), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     expect(checkValid).toHaveBeenCalledWith(
       expect.objectContaining({ type: BlockEnum.LLM }),
       expect.any(Function),
-      expect.objectContaining({ flowType: FlowType.snippet }),
+      expect.objectContaining({ resourceKind: 'snippet' }),
     )
   })
 
@@ -1055,7 +1051,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         'query',
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
+      select?: (data: AppDetailWithSite) => unknown
     }) => {
+      if (options.queryKey[0].join('.') === 'console.apps.byAppId.get') {
+        const appDetail = createAppDetailFixture({ mode: 'workflow' as const })
+        return { data: options.select ? options.select(appDetail) : appDetail }
+      }
       if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
         return { data: mockModelProviders }
       if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)

@@ -1,5 +1,6 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createHttpError } from '@/service/http-error'
 import { usePipelineInit } from '../use-pipeline-init'
 
@@ -90,17 +91,20 @@ describe('usePipelineInit', () => {
 
   describe('hook initialization', () => {
     it('should return data and isLoading', async () => {
-      const { result } = renderHook(() => usePipelineInit())
+      const { result } = renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(result.current.isLoading).toBe(true)
       expect(result.current.data).toBeUndefined()
     })
 
-    it('should set pipelineId in workflow store on mount', () => {
-      renderHook(() => usePipelineInit())
+    it('should initialize the knowledge presentation metadata', () => {
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        pipelineId: 'test-pipeline-id',
         knowledgeName: 'Test Knowledge',
         knowledgeIcon: { icon: 'test-icon' },
       })
@@ -109,7 +113,9 @@ describe('usePipelineInit', () => {
 
   describe('data fetching', () => {
     it('should fetch workflow draft on mount', async () => {
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
@@ -119,7 +125,9 @@ describe('usePipelineInit', () => {
     })
 
     it('should set data after successful fetch', async () => {
-      const { result } = renderHook(() => usePipelineInit())
+      const { result } = renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(result.current.data).toBeDefined()
@@ -127,7 +135,9 @@ describe('usePipelineInit', () => {
     })
 
     it('should set isLoading to false after fetch', async () => {
-      const { result } = renderHook(() => usePipelineInit())
+      const { result } = renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
@@ -135,7 +145,9 @@ describe('usePipelineInit', () => {
     })
 
     it('should set draft updated at', async () => {
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
@@ -143,7 +155,9 @@ describe('usePipelineInit', () => {
     })
 
     it('should set tool published status', async () => {
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetToolPublished).toHaveBeenCalledWith(true)
@@ -151,7 +165,9 @@ describe('usePipelineInit', () => {
     })
 
     it('should set sync hash', async () => {
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('test-hash')
@@ -159,7 +175,9 @@ describe('usePipelineInit', () => {
     })
 
     it('should mark workflow data as loaded after a successful fetch', async () => {
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
@@ -181,7 +199,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': 'secret-value' })
@@ -201,7 +221,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
@@ -221,7 +243,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetEnvSecrets).toHaveBeenCalledWith({})
@@ -241,7 +265,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
@@ -260,7 +286,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: undefined,
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([])
@@ -270,8 +298,10 @@ describe('usePipelineInit', () => {
 
   describe('draft not exist error handling', () => {
     it('should create initial workflow when draft does not exist', async () => {
-      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+      const mockJsonError = createHttpError(new Response(null, { status: 404 }), {
         code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 404,
       })
       mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
       mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })
@@ -285,7 +315,9 @@ describe('usePipelineInit', () => {
         rag_pipeline_variables: [],
       })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
@@ -296,13 +328,17 @@ describe('usePipelineInit', () => {
     })
 
     it('should sync initial workflow with template nodes', async () => {
-      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+      const mockJsonError = createHttpError(new Response(null, { status: 404 }), {
         code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 404,
       })
       mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
       mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
@@ -328,7 +364,9 @@ describe('usePipelineInit', () => {
         },
       )
 
-      renderHook(() => usePipelineInit())
+      renderHook(() => usePipelineInit(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       await waitFor(() => {
         expect(mockFetchWorkflowDraft).toHaveBeenCalled()

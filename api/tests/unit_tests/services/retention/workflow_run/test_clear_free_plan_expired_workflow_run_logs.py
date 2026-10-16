@@ -407,8 +407,8 @@ class TestTriggerLogMethods:
     def test_delete_trigger_logs(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
-        ) as RepoClass:
-            instance = RepoClass.return_value
+        ) as repo_class:
+            instance = repo_class.return_value
             instance.delete_by_run_ids.return_value = 5
             result = cleanup._delete_trigger_logs(sqlite_session, ["r1", "r2"])
         assert result == 5
@@ -417,8 +417,8 @@ class TestTriggerLogMethods:
     def test_count_trigger_logs(self, cleanup, sqlite_session: Session):
         with patch(
             "services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs.SQLAlchemyWorkflowTriggerLogRepository"
-        ) as RepoClass:
-            instance = RepoClass.return_value
+        ) as repo_class:
+            instance = repo_class.return_value
             instance.count_by_run_ids.return_value = 3
             result = cleanup._count_trigger_logs(sqlite_session, ["r1"])
         assert result == 3

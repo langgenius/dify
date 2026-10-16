@@ -1,6 +1,5 @@
 import consistentPlaceholders from './rules/consistent-placeholders.js'
 import i18nFlatKey from './rules/i18n-flat-key.js'
-import noAppStoreImports from './rules/no-app-store-imports.js'
 import noExtraKeys from './rules/no-extra-keys.js'
 import noFileWideDisable from './rules/no-file-wide-disable.js'
 import preferTailwindIcons from './rules/prefer-tailwind-icons.js'
@@ -18,7 +17,6 @@ const plugin = {
   rules: {
     'consistent-placeholders': consistentPlaceholders,
     'i18n-flat-key': i18nFlatKey,
-    'no-app-store-imports': noAppStoreImports,
     'no-extra-keys': noExtraKeys,
     'no-file-wide-disable': noFileWideDisable,
     'prefer-tailwind-icons': preferTailwindIcons,

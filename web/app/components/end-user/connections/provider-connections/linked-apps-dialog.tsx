@@ -31,7 +31,11 @@ function LinkedAppItem({ app }: { app: LinkedApp }) {
         aria-describedby={descriptionId}
         className="-ml-2 flex h-full items-center gap-3 rounded-md py-3 pl-2 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
       >
-        <AppIcon size="small" icon={app.icon} background={app.iconBackground} decorative />
+        <AppIcon
+          size="small"
+          icon={{ icon_type: 'emoji', icon: app.icon, icon_background: app.iconBackground }}
+          decorative
+        />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span id={nameId} className="truncate system-md-semibold text-text-secondary">
             {app.name}

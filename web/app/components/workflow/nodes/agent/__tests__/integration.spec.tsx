@@ -62,10 +62,6 @@ vi.mock('@/service/use-tools', () => ({
   useAllMCPTools: () => ({ data: mockMcpTools }),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon, background }: any) => <div>{`app-icon:${background}:${icon}`}</div>,
-}))
-
 vi.mock('@/utils/get-icon', () => ({
   getIconFromMarketPlace: () => mockMarketplaceIcon,
 }))
@@ -246,7 +242,7 @@ const createConfigResult = (
   availableNodesWithParent: [],
   outputSchema: [{ name: 'jsonField', type: 'String', description: 'json output' }],
   handleMemoryChange: vi.fn(),
-  isChatMode: true,
+  isChatflow: true,
   ...overrides,
 })
 
@@ -315,7 +311,7 @@ describe('agent path', () => {
 
       unmount()
       const secondRender = render(<ToolIcon id="tool-1" providerName="author/tool-b" />)
-      expect(screen.getByText('app-icon:#fff:B')).toBeInTheDocument()
+      expect(screen.getByText('B')).toBeInTheDocument()
       expect(screen.getByText('indicator:warning')).toBeInTheDocument()
 
       mockBuiltInTools = undefined

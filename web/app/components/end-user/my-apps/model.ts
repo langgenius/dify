@@ -1,14 +1,13 @@
-import type { AppModeEnum } from '@/types/app'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppIconProps } from '@/app/components/base/app-icon'
 
 // UI data for the end-user list, independent of Console's management app model.
 export type EndUserApp = {
   id: string
   name: string
   description: string
-  mode: AppModeEnum
-  icon: string
-  iconBackground: string
-  iconUrl?: string
+  mode: AppMode
+  icon: NonNullable<AppIconProps['icon']>
   starred: boolean
   connectionStatus: 'ready' | 'not-configured' | 'action-required'
   lastUsedAt: number

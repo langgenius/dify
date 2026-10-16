@@ -2,12 +2,13 @@ import type { TFunction } from 'i18next'
 import type { Dispatch, SetStateAction } from 'react'
 import type { ConfigurationPublishConfig } from './types'
 import type { AppPublisherPublishParams } from '@/app/components/app/app-publisher/types'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs, ModelConfig, PromptMode } from '@/models/debug'
 import type { ConsoleClient } from '@/service/console'
-import type { AppModeEnum, ModelModeType } from '@/types/app'
+import type { ModelModeType } from '@/types/app'
 import { useCallback } from 'react'
 import { createPublishHandler } from './publish'
 
@@ -25,7 +26,7 @@ type UseConfigurationPublishParams = {
   hasSetBlockStatus: { history: boolean; query: boolean }
   isAdvancedMode: boolean
   isFunctionCall: boolean
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   modelConfig: ModelConfig
   promptEmpty: boolean
   promptMode: PromptMode

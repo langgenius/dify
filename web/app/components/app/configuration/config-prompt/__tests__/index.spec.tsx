@@ -5,7 +5,7 @@ import * as React from 'react'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import { PromptRole } from '@/models/debug'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import Prompt from '../index'
 
 type DebugConfiguration = {
@@ -113,7 +113,7 @@ const renderComponent = (
   contextOverrides: Partial<DebugConfiguration> = {},
 ) => {
   const mergedProps: IPromptProps = {
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     promptTemplate: 'initial template',
     promptVariables: defaultPromptVariables,
     onChange: vi.fn(),
@@ -144,7 +144,7 @@ describe('Prompt config component', () => {
 
     const simplePrompt = screen.getByTestId('simple-prompt-input')
     expect(simplePrompt)!.toBeInTheDocument()
-    expect(simplePrompt)!.toHaveAttribute('data-mode', AppModeEnum.CHAT)
+    expect(simplePrompt)!.toHaveAttribute('data-mode', 'chat')
     expect(mockSimplePromptInputProps?.promptTemplate).toBe('initial template')
     fireEvent.click(simplePrompt)
     expect(onChange).toHaveBeenCalledWith('mocked prompt', defaultPromptVariables)

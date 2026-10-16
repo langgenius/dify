@@ -87,7 +87,7 @@ export function AppListHeader({
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <AppTypeFilter value={category} onChange={onCategoryChange} />
+          <AppTypeFilter value={category} onValueChange={onCategoryChange} />
           <TagFilter
             type="app"
             value={tagIDs}

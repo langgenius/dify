@@ -40,7 +40,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: () => ({ nodesReadOnly: false }),
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getLoopNodeChildren: (...args: unknown[]) => mockGetLoopNodeChildren(...args),
     }),
@@ -254,4 +254,11 @@ describe('useConfig', () => {
       }),
     )
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

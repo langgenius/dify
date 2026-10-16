@@ -80,7 +80,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
       getNodesReadOnly: () => false,
       nodesReadOnly: false,
     }),
-    useIsChatMode: () => false,
   }
 })
 
@@ -649,4 +648,11 @@ describe('DSL Import with Human Input Node', () => {
       expect((hiNode.data as HumanInputNodeType).delivery_methods).toHaveLength(2)
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

@@ -22,15 +22,7 @@ export default function EndUserAppCard({ app, href, onToggleStar, onRemove }: Pr
     <li className="relative flex min-w-0 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative" aria-hidden="true">
-          <AppIcon
-            size="large"
-            icon={app.icon}
-            background={app.iconBackground}
-            decorative
-            innerIcon={
-              app.iconUrl ? <img src={app.iconUrl} width={24} height={24} alt="" /> : undefined
-            }
-          />
+          <AppIcon size="large" icon={app.icon} decorative />
           <AppTypeIcon
             type={app.mode}
             wrapperClassName="absolute -right-0.5 -bottom-0.5 size-4 rounded-md"

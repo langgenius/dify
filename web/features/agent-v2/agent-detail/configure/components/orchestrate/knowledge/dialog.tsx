@@ -1,4 +1,5 @@
 'use client'
+
 import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type {
@@ -46,7 +47,7 @@ import {
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type MetadataFilteringConditions = {
@@ -576,7 +577,7 @@ function AgentKnowledgeRetrievalDialogContent({
                         model: {
                           provider: model.provider,
                           name: model.modelId,
-                          mode: model.mode ?? singleRetrievalConfig?.model.mode ?? AppModeEnum.CHAT,
+                          mode: model.mode ?? singleRetrievalConfig?.model.mode ?? 'chat',
                           completion_params: singleRetrievalConfig?.model.completion_params ?? {
                             temperature: 0.7,
                           },
@@ -590,7 +591,7 @@ function AgentKnowledgeRetrievalDialogContent({
                         model: {
                           provider: singleRetrievalConfig?.model.provider ?? '',
                           name: singleRetrievalConfig?.model.name ?? '',
-                          mode: singleRetrievalConfig?.model.mode ?? AppModeEnum.CHAT,
+                          mode: singleRetrievalConfig?.model.mode ?? 'chat',
                           completion_params: completionParams,
                         },
                       },
@@ -688,7 +689,7 @@ function AgentKnowledgeRetrievalDialogContent({
                 metadataModelConfig: {
                   provider: model.provider,
                   name: model.modelId,
-                  mode: model.mode ?? metadataModelConfig?.mode ?? AppModeEnum.CHAT,
+                  mode: model.mode ?? metadataModelConfig?.mode ?? 'chat',
                   completion_params: metadataModelConfig?.completion_params ?? { temperature: 0.7 },
                 },
               })
@@ -698,7 +699,7 @@ function AgentKnowledgeRetrievalDialogContent({
                 metadataModelConfig: {
                   provider: metadataModelConfig?.provider ?? '',
                   name: metadataModelConfig?.name ?? '',
-                  mode: metadataModelConfig?.mode ?? AppModeEnum.CHAT,
+                  mode: metadataModelConfig?.mode ?? 'chat',
                   completion_params: completionParams,
                 },
               })

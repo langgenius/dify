@@ -117,13 +117,7 @@ const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
       )}
     >
       <div className="relative shrink-0">
-        <AppIcon
-          size="large"
-          iconType={iconInfo.icon_type}
-          icon={iconInfo.icon}
-          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-        />
+        <AppIcon size="large" icon={iconInfo} />
         {(isShowChunkingModeIcon || isExternalProvider) && (
           <div className="absolute -right-1 -bottom-1 z-5">
             <span aria-hidden className={cn(iconClassName, 'size-4')} />

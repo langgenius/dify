@@ -1,6 +1,8 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { ORPCError } from '@orpc/client'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
@@ -12,13 +14,13 @@ export const usePipelineInit = () => {
   const { nodes: nodesTemplate, edges: edgesTemplate } = usePipelineTemplate()
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
-  const datasetId = useDatasetDetailContextWithSelector((s) => s.dataset)?.pipeline_id
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const knowledgeName = useDatasetDetailContextWithSelector((s) => s.dataset)?.name
   const knowledgeIcon = useDatasetDetailContextWithSelector((s) => s.dataset)?.icon_info
 
   useEffect(() => {
-    workflowStore.setState({ pipelineId: datasetId, knowledgeName, knowledgeIcon })
-  }, [datasetId, workflowStore, knowledgeName, knowledgeIcon])
+    workflowStore.setState({ knowledgeName, knowledgeIcon })
+  }, [pipelineId, workflowStore, knowledgeName, knowledgeIcon])
 
   usePipelineConfig()
 
@@ -32,7 +34,7 @@ export const usePipelineInit = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     try {
-      const res = await fetchWorkflowDraft(`/rag/pipelines/${datasetId}/workflows/draft`)
+      const res = await fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
       setData(res)
       setDraftUpdatedAt(res.updated_at)
       setToolPublished(res.tool_published)
@@ -56,15 +58,15 @@ export const usePipelineInit = () => {
       setRagPipelineVariables?.(res.rag_pipeline_variables || [])
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
-    } catch (error: any) {
-      if (error instanceof ORPCError && datasetId) {
+    } catch (error: unknown) {
+      if (error instanceof ORPCError && pipelineId) {
         if (error.code === 'draft_workflow_not_exist') {
           workflowStore.setState({
             notInitialWorkflow: true,
             shouldAutoOpenStartNodeSelector: true,
           })
           syncWorkflowDraft({
-            url: `/rag/pipelines/${datasetId}/workflows/draft`,
+            url: `/rag/pipelines/${pipelineId}/workflows/draft`,
             params: {
               graph: {
                 nodes: nodesTemplate,
@@ -80,7 +82,7 @@ export const usePipelineInit = () => {
         }
       }
     }
-  }, [nodesTemplate, edgesTemplate, workflowStore, datasetId])
+  }, [nodesTemplate, edgesTemplate, workflowStore, pipelineId])
 
   useEffect(() => {
     handleGetInitialWorkflowData()

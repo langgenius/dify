@@ -66,11 +66,14 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
                   <AppIcon
                     size="tiny"
                     className="size-5 rounded-md bg-background-default-dodge"
-                    iconType={typeof reference.icon === 'string' ? 'image' : 'emoji'}
-                    imageUrl={typeof reference.icon === 'string' ? reference.icon : undefined}
-                    icon={typeof reference.icon === 'object' ? reference.icon.content : undefined}
-                    background={
-                      typeof reference.icon === 'object' ? reference.icon.background : undefined
+                    icon={
+                      typeof reference.icon === 'string'
+                        ? { icon_type: 'image', icon_url: reference.icon }
+                        : {
+                            icon_type: 'emoji',
+                            icon: reference.icon?.content,
+                            icon_background: reference.icon?.background,
+                          }
                     }
                     decorative
                   />

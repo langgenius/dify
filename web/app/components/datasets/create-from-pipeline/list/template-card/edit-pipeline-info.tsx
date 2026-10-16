@@ -124,9 +124,15 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
           <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
             <IconPickerTrigger
               aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}`}
-              className="group/edit-icon shrink-0 cursor-pointer rounded-2xl"
+              className="group/edit-icon relative shrink-0 cursor-pointer rounded-2xl"
             >
-              <IconPickerIcon size="xxl" showEditIcon />
+              <IconPickerIcon size="xxl" />
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+              >
+                <span className="i-ri-edit-line size-8 text-text-primary-on-surface" />
+              </span>
             </IconPickerTrigger>
             <IconPickerContent />
           </IconPicker>

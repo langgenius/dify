@@ -3,7 +3,6 @@ import type { CustomRunFormProps, DataSourceNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { DatasourceType } from '@/models/pipeline'
-import { FlowType } from '@/types/common'
 import { BlockEnum } from '../../../types'
 import BeforeRunForm from '../before-run-form'
 import useBeforeRunForm from '../hooks/use-before-run-form'
@@ -120,8 +119,8 @@ const createData = (overrides: Partial<DataSourceNodeType> = {}): DataSourceNode
 
 const createProps = (overrides: Partial<CustomRunFormProps> = {}): CustomRunFormProps => ({
   nodeId: 'data-source-node',
-  flowId: 'flow-id',
-  flowType: FlowType.ragPipeline,
+  resource: { kind: 'knowledge-pipeline', pipelineId: 'flow-id' },
+
   payload: createData(),
   setRunResult: vi.fn(),
   setIsRunAfterSingleRun: vi.fn(),
