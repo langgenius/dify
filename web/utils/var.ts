@@ -130,7 +130,7 @@ export const getVars = (value: string) => {
         return item.replace('{{', '').replace('}}', '')
       })
       .filter((key) => key.length <= MAX_VAR_KEY_LENGTH) || []
-  const keyObj: Record<string, boolean> = {}
+  const keyObj: Record<string, boolean> = Object.create(null)
   // remove duplicate keys
   const res: string[] = []
   keys.forEach((key) => {
