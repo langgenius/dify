@@ -1890,6 +1890,218 @@ describe('SourcesPage', () => {
     )
   })
 
+  it('discards pending connected-source pagination after the parameters change', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [notionDatasourcePlugin]
+    useConnectedSourceConnection()
+    const notionDocument = (id: string, name: string, workspaceId: string) => ({
+      last_edited_time: '2026-08-30T10:00:00Z',
+      name,
+      page_id: id,
+      provider_item_id: `opaque-${id}`,
+      type: 'page',
+      workspace_id: workspaceId,
+      workspace_name: workspaceId,
+    })
+    let resolveStalePage: (value: unknown) => void = () => {}
+    clientMock.previewConnectedSource
+      .mockResolvedValueOnce({
+        documents: [notionDocument('old-1', 'Old plan', 'workspace-old')],
+        next_page_parameters: { cursor: 'page-2' },
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveStalePage = resolve
+          }),
+      )
+      .mockResolvedValueOnce({
+        documents: [notionDocument('new-1', 'New plan', 'workspace-new')],
+        next_page_parameters: null,
+      })
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-notion',
+              metadata: {
+                parameters: { workspace: 'old' },
+                providerId: 'plugin-daemon-online-document',
+                providerKind: 'online-document',
+                providerName: 'Notion',
+              },
+              type: 'connector',
+              uri: 'notion://connection-notion',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    await user.click(await screen.findByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    const workspace = screen.getByRole('textbox', { name: /Workspace/ })
+    await user.clear(workspace)
+    await user.type(workspace, 'new')
+    await act(async () => {
+      resolveStalePage({
+        documents: [notionDocument('old-2', 'Stale plan', 'workspace-old')],
+        next_page_parameters: null,
+      })
+    })
+
+    expect(screen.queryByRole('checkbox', { name: 'Stale plan' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    expect(await screen.findByRole('checkbox', { name: 'New plan' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Stale plan' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Old plan' })).not.toBeInTheDocument()
+  })
+
+  it('submits the connected-source editor from its form boundary', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [notionDatasourcePlugin]
+    useConnectedSourceConnection()
+    clientMock.previewConnectedSource.mockResolvedValue({
+      documents: [
+        {
+          last_edited_time: '2026-08-30T10:00:00Z',
+          name: 'Product plan',
+          page_id: 'page-1',
+          provider_item_id: 'opaque-provider-page-1',
+          type: 'page',
+          workspace_id: 'workspace-1',
+          workspace_name: 'Product',
+        },
+      ],
+      next_page_parameters: null,
+    })
+    const connectorSource = source({
+      connectionId: 'connection-notion',
+      metadata: {
+        parameters: { workspace: 'product' },
+        providerId: 'plugin-daemon-online-document',
+        providerKind: 'online-document',
+        providerName: 'Notion',
+      },
+      type: 'connector',
+      uri: 'notion://connection-notion',
+    })
+    sourcesQuery.data = { pages: [{ items: [connectorSource] }] }
+    clientMock.patchSource.mockResolvedValue(source({ ...connectorSource, version: 4 }))
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Product plan' }))
+
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toHaveAttribute(
+      'type',
+      'submit',
+    )
+    await user.type(screen.getByRole('textbox', { name: /knowledgeSources.sourceName/ }), '{Enter}')
+
+    await waitFor(() => expect(clientMock.patchSource).toHaveBeenCalledOnce())
+  })
+
+  it('restores the website Preview action after parameters change during a preview', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    useWebsitePreview()
+    clientMock.getPreviewJob.mockReturnValueOnce(new Promise(() => {}))
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    await waitFor(() => expect(clientMock.getPreviewJob).toHaveBeenCalledOnce())
+    await user.type(screen.getByRole('textbox', { name: 'Starting URL' }), 'guide')
+
+    expect(clientMock.deletePreviewJob).toHaveBeenCalledWith({
+      params: { job_id: 'preview-job-1' },
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    expect(await screen.findByRole('checkbox', { name: /Guide/ })).toBeInTheDocument()
+    expect(clientMock.startPreviewJob).toHaveBeenCalledTimes(2)
+  })
+
+  it('cancels a website preview job that returns after its edit session ends', async () => {
+    const user = userEvent.setup()
+    datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]
+    useWebsitePreview()
+    let resolveStaleJob: (value: { job_id: string }) => void = () => {}
+    clientMock.startPreviewJob.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStaleJob = resolve
+        }),
+    )
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              connectionId: 'connection-1',
+              metadata: {
+                datasourceParameterMode: 'exact',
+                parameters: { url: 'https://docs.example.com/' },
+                providerName: 'Firecrawl',
+              },
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.edit' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.preview' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await act(async () => {
+      resolveStaleJob({ job_id: 'stale-job' })
+    })
+
+    expect(clientMock.deletePreviewJob).toHaveBeenCalledWith({ params: { job_id: 'stale-job' } })
+    expect(clientMock.getPreviewJob).not.toHaveBeenCalled()
+  })
+
   it('requires a new selection only after changing crawl parameters or requesting a preview', async () => {
     const user = userEvent.setup()
     datasourcePluginsQuery.data = [firecrawlDatasourcePlugin]

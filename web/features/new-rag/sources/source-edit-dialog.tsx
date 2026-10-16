@@ -619,6 +619,7 @@ function WebsiteSourceEditDialogContent({
         .catch(() => {})
     setPreviewPages([])
     setSelectedPageIds(new Set())
+    setPreviewing(false)
     setPreviewRequested(false)
     setPreviewError(false)
   }
@@ -644,7 +645,12 @@ function WebsiteSourceEditDialogContent({
           providerDisplayName: providerOption.label,
         },
       })
-      if (previewAttemptRef.current !== attempt) return
+      if (previewAttemptRef.current !== attempt) {
+        void consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId
+          .delete({ params: { job_id: job.job_id } })
+          .catch(() => {})
+        return
+      }
       previewJobIdRef.current = job.job_id
       let response = await consoleClient.knowledgeFs.sourceProviderPreview.jobs.byJobId.get({
         params: { job_id: job.job_id },

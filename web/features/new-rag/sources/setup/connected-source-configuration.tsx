@@ -12,7 +12,7 @@ import type { InstalledSourceProviderOption } from './provider-options'
 import type { NewKnowledgeSourceDraft } from './source-draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleClient } from '@/service/console'
@@ -92,23 +92,23 @@ export function ConnectedSourceEditForm({
       draft={draft}
       previewBinding={previewBinding}
       providerOption={providerOption}
-      renderActions={(initialSource) => (
-        <div className="mt-6 flex justify-end gap-2">
-          <Button disabled={disabled} onClick={onCancel} type="button">
-            {tCommon(($) => $['operation.cancel'])}
-          </Button>
-          <Button
-            disabled={!initialSource}
-            loading={disabled}
-            type="button"
-            variant="primary"
-            onClick={() => {
-              if (initialSource && !disabled) void onSubmit(initialSource)
-            }}
-          >
-            {tCommon(($) => $['operation.save'])}
-          </Button>
-        </div>
+      renderBoundary={(initialSource, fields) => (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (initialSource && !disabled) void onSubmit(initialSource)
+          }}
+        >
+          {fields}
+          <div className="mt-6 flex justify-end gap-2">
+            <Button disabled={disabled} onClick={onCancel} type="button">
+              {tCommon(($) => $['operation.cancel'])}
+            </Button>
+            <Button disabled={!initialSource} loading={disabled} type="submit" variant="primary">
+              {tCommon(($) => $['operation.save'])}
+            </Button>
+          </div>
+        </form>
       )}
       onDraftChange={(nextDraft) => {
         if (nextDraft.sourceType === 'onlineDocuments' || nextDraft.sourceType === 'onlineDrive')
@@ -123,7 +123,7 @@ function ConnectedSourceConfigurationFields({
   draft,
   previewBinding,
   providerOption,
-  renderActions,
+  renderBoundary,
   onDraftChange,
   selection,
   onSelectionChange,
@@ -132,7 +132,7 @@ function ConnectedSourceConfigurationFields({
   draft: ConnectedDraft
   previewBinding: ConnectedSourceConfigurationBinding
   providerOption: InstalledSourceProviderOption
-  renderActions?: (source?: ConnectedInitialSource) => ReactNode
+  renderBoundary?: (source: ConnectedInitialSource | undefined, fields: ReactNode) => ReactNode
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   selection?: ConnectedSourceSelection
   onSelectionChange?: (selection: ConnectedSourceSelection) => void
@@ -156,6 +156,9 @@ function ConnectedSourceConfigurationFields({
   const [nextPageRequests, setNextPageRequests] = useState<Map<string, NextPageRequest>>(
     () => new Map(),
   )
+  // Every response belongs to the parameter session that issued it; parameter edits and fresh
+  // previews start a new session so pending root or pagination responses are discarded.
+  const previewSessionRef = useRef(0)
   const driveTransport = providerOption.providerType === 'online_drive'
   const parameterSchemas = useMemo(
     () => datasourceParameterSchemas(providerOption.datasource),
@@ -214,9 +217,11 @@ function ConnectedSourceConfigurationFields({
     } = {}) => {
       if (!parametersValid) return
       if (!append) {
+        previewSessionRef.current += 1
         if (onSelectionChange) onSelectionChange([])
         else setLocalSelection([])
       }
+      const session = previewSessionRef.current
       append ? setLoadingMore(true) : setLoading(true)
       setError(false)
       try {
@@ -235,6 +240,7 @@ function ConnectedSourceConfigurationFields({
             provider,
           },
         })
+        if (previewSessionRef.current !== session) return
         const nextResources: PreviewResource[] = driveTransport
           ? (response.files ?? []).map((file) => ({
               depth,
@@ -274,10 +280,12 @@ function ConnectedSourceConfigurationFields({
         })
         setPreviewed(true)
       } catch {
-        setError(true)
+        if (previewSessionRef.current === session) setError(true)
       } finally {
-        setLoading(false)
-        setLoadingMore(false)
+        if (previewSessionRef.current === session) {
+          setLoading(false)
+          setLoadingMore(false)
+        }
       }
     },
     [
@@ -338,170 +346,171 @@ function ConnectedSourceConfigurationFields({
       onDraftChange(nextDraft)
   }
 
-  return (
-    <>
-      <div className="space-y-4">
-        <SourceNameField
-          disabled={disabled}
-          draft={draft}
-          preventSubmitOnEnter
-          onDraftChange={handleDraftChange}
-        />
-        <DatasourceParameterForm
-          disabled={disabled || loading}
-          parameters={parameters}
-          schemas={parameterSchemas}
-          onChange={(nextParameters) => {
-            setResources([])
-            updateSelection(new Set())
-            setExpanded(new Set())
-            setNextPageRequests(new Map())
-            setPreviewed(false)
-            onDraftChange({ ...draft, parameters: nextParameters })
-          }}
-        />
-        {!previewed && (
-          <Button
-            type="button"
-            variant="primary"
-            className="w-full"
-            loading={loading}
-            disabled={disabled || !parametersValid}
-            onClick={() => void requestPreview()}
-          >
-            {t(($) => $.preview)}
+  const fields = (
+    <div className="space-y-4">
+      <SourceNameField
+        disabled={disabled}
+        draft={draft}
+        preventSubmitOnEnter={!renderBoundary}
+        onDraftChange={handleDraftChange}
+      />
+      <DatasourceParameterForm
+        disabled={disabled || loading}
+        parameters={parameters}
+        schemas={parameterSchemas}
+        onChange={(nextParameters) => {
+          previewSessionRef.current += 1
+          setLoading(false)
+          setLoadingMore(false)
+          setError(false)
+          setResources([])
+          updateSelection(new Set())
+          setExpanded(new Set())
+          setNextPageRequests(new Map())
+          setPreviewed(false)
+          onDraftChange({ ...draft, parameters: nextParameters })
+        }}
+      />
+      {!previewed && (
+        <Button
+          type="button"
+          variant="primary"
+          className="w-full"
+          loading={loading}
+          disabled={disabled || !parametersValid}
+          onClick={() => void requestPreview()}
+        >
+          {t(($) => $.preview)}
+        </Button>
+      )}
+      {loading && (
+        <div className="flex min-h-40 items-center justify-center rounded-lg border border-divider-subtle">
+          <LoadingPlaceholder />
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="rounded-lg bg-background-section p-4">
+          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <Button className="mt-3" type="button" onClick={() => void requestPreview()}>
+            {t(($) => $.retryProviderLoad)}
           </Button>
-        )}
-        {loading && (
-          <div className="flex min-h-40 items-center justify-center rounded-lg border border-divider-subtle">
-            <LoadingPlaceholder />
+        </div>
+      )}
+      {previewed && !loading && (
+        <section className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
+          <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
+            <Checkbox
+              aria-label={t(($) => $.selectAll, { ns: 'knowledgeSources' })}
+              aria-describedby={selectionAtLimit ? SELECTION_LIMIT_ID : undefined}
+              checked={
+                selectableResources.length > 0 &&
+                selectableResources.every((resource) => selected.has(resource.key))
+              }
+              disabled={
+                disabled ||
+                !selectableResources.length ||
+                (selectionAtLimit &&
+                  !selectableResources.every((resource) => selected.has(resource.key)))
+              }
+              indeterminate={
+                selected.size > 0 &&
+                !selectableResources.every((resource) => selected.has(resource.key))
+              }
+              onCheckedChange={toggleAll}
+            />
+            <span className="system-xs-medium text-text-secondary">
+              {draft.sourceType === 'onlineDocuments'
+                ? t(($) => $.selectPagesToSync, { ns: 'knowledgeSources' })
+                : t(($) => $.selectFilesAndFolders, { ns: 'knowledgeSources' })}
+            </span>
+            <span role="status" className="ml-auto system-xs-regular text-text-tertiary">
+              {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selected.size })}
+              {selectionAtLimit && (
+                <span id={SELECTION_LIMIT_ID} className="ml-2 text-text-destructive">
+                  {t(($) => $.maxPages, { ns: 'knowledgeSources' })}: {MAX_SELECTION}
+                </span>
+              )}
+            </span>
           </div>
-        )}
-        {error && (
-          <div role="alert" className="rounded-lg bg-background-section p-4">
-            <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
-            <Button className="mt-3" onClick={() => void requestPreview()}>
-              {t(($) => $.retryProviderLoad)}
-            </Button>
-          </div>
-        )}
-        {previewed && !loading && (
-          <section className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
-            <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
-              <Checkbox
-                aria-label={t(($) => $.selectAll, { ns: 'knowledgeSources' })}
-                aria-describedby={selectionAtLimit ? SELECTION_LIMIT_ID : undefined}
-                checked={
-                  selectableResources.length > 0 &&
-                  selectableResources.every((resource) => selected.has(resource.key))
-                }
-                disabled={
-                  disabled ||
-                  !selectableResources.length ||
-                  (selectionAtLimit &&
-                    !selectableResources.every((resource) => selected.has(resource.key)))
-                }
-                indeterminate={
-                  selected.size > 0 &&
-                  !selectableResources.every((resource) => selected.has(resource.key))
-                }
-                onCheckedChange={toggleAll}
-              />
-              <span className="system-xs-medium text-text-secondary">
-                {draft.sourceType === 'onlineDocuments'
-                  ? t(($) => $.selectPagesToSync, { ns: 'knowledgeSources' })
-                  : t(($) => $.selectFilesAndFolders, { ns: 'knowledgeSources' })}
-              </span>
-              <span role="status" className="ml-auto system-xs-regular text-text-tertiary">
-                {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selected.size })}
-                {selectionAtLimit && (
-                  <span id={SELECTION_LIMIT_ID} className="ml-2 text-text-destructive">
-                    {t(($) => $.maxPages, { ns: 'knowledgeSources' })}: {MAX_SELECTION}
-                  </span>
-                )}
-              </span>
-            </div>
-            <ul className="max-h-64 overflow-y-auto p-1.5">
-              {visibleResources.map((resource) => {
-                const container = resource.kind === 'file' && isDriveContainer(resource.file)
-                return (
-                  <li
-                    key={resource.key}
-                    className="flex min-h-8 items-center gap-2 rounded-md px-2 hover:bg-state-base-hover"
-                    style={{ paddingLeft: `${8 + resource.depth * 20}px` }}
-                  >
-                    {container ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="small"
-                        className="size-5 px-0"
-                        aria-label={resourceName(resource)}
-                        aria-expanded={expanded.has(resource.key)}
-                        disabled={disabled || loadingMore}
-                        onClick={() => expandContainer(resource)}
-                      >
-                        <span
-                          aria-hidden
-                          className={`i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none ${
-                            expanded.has(resource.key) ? 'rotate-90' : ''
-                          }`}
-                        />
-                      </Button>
-                    ) : (
-                      <Checkbox
-                        aria-label={resourceName(resource)}
-                        aria-describedby={
-                          selectionAtLimit && !selected.has(resource.key)
-                            ? SELECTION_LIMIT_ID
-                            : undefined
-                        }
-                        checked={selected.has(resource.key)}
-                        disabled={disabled || (selectionAtLimit && !selected.has(resource.key))}
-                        onCheckedChange={() => toggle(resource.key)}
+          <ul className="max-h-64 overflow-y-auto p-1.5">
+            {visibleResources.map((resource) => {
+              const container = resource.kind === 'file' && isDriveContainer(resource.file)
+              return (
+                <li
+                  key={resource.key}
+                  className="flex min-h-8 items-center gap-2 rounded-md px-2 hover:bg-state-base-hover"
+                  style={{ paddingLeft: `${8 + resource.depth * 20}px` }}
+                >
+                  {container ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="small"
+                      className="size-5 px-0"
+                      aria-label={resourceName(resource)}
+                      aria-expanded={expanded.has(resource.key)}
+                      disabled={disabled || loadingMore}
+                      onClick={() => expandContainer(resource)}
+                    >
+                      <span
+                        aria-hidden
+                        className={`i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none ${
+                          expanded.has(resource.key) ? 'rotate-90' : ''
+                        }`}
                       />
-                    )}
-                    <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
-                    <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
-                      {resourceName(resource)}
-                    </span>
-                  </li>
+                    </Button>
+                  ) : (
+                    <Checkbox
+                      aria-label={resourceName(resource)}
+                      aria-describedby={
+                        selectionAtLimit && !selected.has(resource.key)
+                          ? SELECTION_LIMIT_ID
+                          : undefined
+                      }
+                      checked={selected.has(resource.key)}
+                      disabled={disabled || (selectionAtLimit && !selected.has(resource.key))}
+                      onCheckedChange={() => toggle(resource.key)}
+                    />
+                  )}
+                  <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
+                  <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
+                    {resourceName(resource)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          {visibleNextPageRequests.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 border-t border-divider-subtle px-3 py-2 text-center">
+              {visibleNextPageRequests.map(([scope, request]) => {
+                const parent =
+                  scope === ROOT_PAGE_SCOPE ? undefined : resources.find(({ key }) => key === scope)
+                return (
+                  <Button
+                    key={scope}
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    loading={loadingMore}
+                    onClick={() => void requestPreview({ append: true, ...request })}
+                  >
+                    {t(($) => $.loadMore)}
+                    {parent ? ` · ${resourceName(parent)}` : ''}
+                  </Button>
                 )
               })}
-            </ul>
-            {visibleNextPageRequests.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2 border-t border-divider-subtle px-3 py-2 text-center">
-                {visibleNextPageRequests.map(([scope, request]) => {
-                  const parent =
-                    scope === ROOT_PAGE_SCOPE
-                      ? undefined
-                      : resources.find(({ key }) => key === scope)
-                  return (
-                    <Button
-                      key={scope}
-                      type="button"
-                      size="small"
-                      variant="ghost"
-                      loading={loadingMore}
-                      onClick={() => void requestPreview({ append: true, ...request })}
-                    >
-                      {t(($) => $.loadMore)}
-                      {parent ? ` · ${resourceName(parent)}` : ''}
-                    </Button>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-        )}
-        <SourceSyncPolicyField
-          disabled={disabled}
-          draft={draft}
-          size="medium"
-          onDraftChange={handleDraftChange}
-        />
-      </div>
-      {renderActions?.(initialSource)}
-    </>
+            </div>
+          )}
+        </section>
+      )}
+      <SourceSyncPolicyField
+        disabled={disabled}
+        draft={draft}
+        size="medium"
+        onDraftChange={handleDraftChange}
+      />
+    </div>
   )
+
+  return renderBoundary ? renderBoundary(initialSource, fields) : fields
 }

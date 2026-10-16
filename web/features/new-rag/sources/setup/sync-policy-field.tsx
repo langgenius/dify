@@ -138,6 +138,35 @@ function CustomIntervalPopover({
   onApply: (seconds: number) => void
   onOpenChange: (open: boolean) => void
 }) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverPortal>
+        <PopoverPositioner anchor={anchorRef} placement="bottom-start" sideOffset={4}>
+          <PopoverPopup className="w-75 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-3.5 shadow-lg">
+            <CustomIntervalEditor
+              disabled={disabled}
+              initialSeconds={initialSeconds}
+              onApply={onApply}
+              onCancel={() => onOpenChange(false)}
+            />
+          </PopoverPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
+    </Popover>
+  )
+}
+
+function CustomIntervalEditor({
+  disabled,
+  initialSeconds,
+  onApply,
+  onCancel,
+}: {
+  disabled: boolean
+  initialSeconds: number
+  onApply: (seconds: number) => void
+  onCancel: () => void
+}) {
   const { i18n, t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const tCommon = useTranslation(['common']).t
   const initial = initialEditorValue(initialSeconds)
@@ -153,82 +182,76 @@ function CustomIntervalPopover({
   })
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverPortal>
-        <PopoverPositioner anchor={anchorRef} placement="bottom-start" sideOffset={4}>
-          <PopoverPopup className="w-75 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-3.5 shadow-lg">
-            <PopoverTitle className="system-sm-medium text-text-primary">
-              {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
-            </PopoverTitle>
-            <div className="mt-3 flex items-center gap-2">
-              <span className="shrink-0 system-sm-regular text-text-secondary">
-                {t(($) => $.syncPolicyEvery, { ns: 'knowledgeSources' })}
-              </span>
-              <NumberField
-                disabled={disabled}
-                min={1}
-                max={maximum}
-                step={1}
-                value={amount}
-                onValueChange={(next) => setAmount(next)}
-              >
-                <NumberFieldGroup className="w-18">
-                  <NumberFieldInput
-                    aria-label={`${t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })} ${t(($) => $[`syncPolicyUnit.${unit}`])}`}
-                    onBlur={() => setAmount(normalizedAmount)}
-                  />
-                  <NumberFieldControls>
-                    <NumberFieldIncrement />
-                    <NumberFieldDecrement />
-                  </NumberFieldControls>
-                </NumberFieldGroup>
-              </NumberField>
-              <Select<IntervalUnit>
-                disabled={disabled}
-                value={unit}
-                onValueChange={(nextUnit) => {
-                  if (!nextUnit) return
-                  setUnit(nextUnit)
-                  setAmount(Math.min(nextUnit === 'days' ? 30 : 720, normalizedAmount))
-                }}
-              >
-                <SelectLabel className="sr-only">
-                  {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
-                </SelectLabel>
-                <SelectTrigger>{t(($) => $[`syncPolicyUnit.${unit}`])}</SelectTrigger>
-                <SelectContent>
-                  {(['hours', 'days'] as const).map((option) => (
-                    <SelectItem key={option} value={option}>
-                      <SelectItemText>{t(($) => $[`syncPolicyUnit.${option}`])}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <p className="mt-3 system-xs-regular leading-3.75 text-text-tertiary">
-              {t(($) => $.syncPolicyCustomHelp, {
-                ns: 'knowledgeSources',
-                interval: intervalLabel,
-              })}
-            </p>
-            <div className="mt-3 flex justify-end gap-2">
-              <Button size="small" disabled={disabled} onClick={() => onOpenChange(false)}>
-                {tCommon(($) => $['operation.cancel'])}
-              </Button>
-              <Button
-                size="small"
-                variant="primary"
-                disabled={disabled}
-                onClick={() => onApply(intervalSeconds)}
-              >
-                {t(($) => $.syncPolicyApply, { ns: 'knowledgeSources' })}
-              </Button>
-            </div>
-          </PopoverPopup>
-        </PopoverPositioner>
-      </PopoverPortal>
-    </Popover>
+    <>
+      <PopoverTitle className="system-sm-medium text-text-primary">
+        {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
+      </PopoverTitle>
+      <div className="mt-3 flex items-center gap-2">
+        <span className="shrink-0 system-sm-regular text-text-secondary">
+          {t(($) => $.syncPolicyEvery, { ns: 'knowledgeSources' })}
+        </span>
+        <NumberField
+          disabled={disabled}
+          min={1}
+          max={maximum}
+          step={1}
+          value={amount}
+          onValueChange={(next) => setAmount(next)}
+        >
+          <NumberFieldGroup className="w-18">
+            <NumberFieldInput
+              aria-label={`${t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })} ${t(($) => $[`syncPolicyUnit.${unit}`])}`}
+              onBlur={() => setAmount(normalizedAmount)}
+            />
+            <NumberFieldControls>
+              <NumberFieldIncrement />
+              <NumberFieldDecrement />
+            </NumberFieldControls>
+          </NumberFieldGroup>
+        </NumberField>
+        <Select<IntervalUnit>
+          disabled={disabled}
+          value={unit}
+          onValueChange={(nextUnit) => {
+            if (!nextUnit) return
+            setUnit(nextUnit)
+            setAmount(Math.min(nextUnit === 'days' ? 30 : 720, normalizedAmount))
+          }}
+        >
+          <SelectLabel className="sr-only">
+            {t(($) => $.syncPolicyCustom, { ns: 'knowledgeSources' })}
+          </SelectLabel>
+          <SelectTrigger>{t(($) => $[`syncPolicyUnit.${unit}`])}</SelectTrigger>
+          <SelectContent>
+            {(['hours', 'days'] as const).map((option) => (
+              <SelectItem key={option} value={option}>
+                <SelectItemText>{t(($) => $[`syncPolicyUnit.${option}`])}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <p className="mt-3 system-xs-regular leading-3.75 text-text-tertiary">
+        {t(($) => $.syncPolicyCustomHelp, {
+          ns: 'knowledgeSources',
+          interval: intervalLabel,
+        })}
+      </p>
+      <div className="mt-3 flex justify-end gap-2">
+        <Button size="small" disabled={disabled} onClick={onCancel}>
+          {tCommon(($) => $['operation.cancel'])}
+        </Button>
+        <Button
+          size="small"
+          variant="primary"
+          disabled={disabled}
+          onClick={() => onApply(intervalSeconds)}
+        >
+          {t(($) => $.syncPolicyApply, { ns: 'knowledgeSources' })}
+        </Button>
+      </div>
+    </>
   )
 }
 
@@ -338,19 +361,17 @@ export function SyncPolicyField({
           )}
         </SelectContent>
       </Select>
-      {customOpen && (
-        <CustomIntervalPopover
-          anchorRef={anchorRef}
-          disabled={disabled}
-          initialSeconds={committedCustomSeconds}
-          open
-          onApply={(seconds) => {
-            onChange({ customIntervalSeconds: seconds, mode: 'custom' })
-            setCustomOpen(false)
-          }}
-          onOpenChange={setCustomOpen}
-        />
-      )}
+      <CustomIntervalPopover
+        anchorRef={anchorRef}
+        disabled={disabled}
+        initialSeconds={committedCustomSeconds}
+        open={customOpen}
+        onApply={(seconds) => {
+          onChange({ customIntervalSeconds: seconds, mode: 'custom' })
+          setCustomOpen(false)
+        }}
+        onOpenChange={setCustomOpen}
+      />
       {customIntervalSelected && (
         <p className="system-xs-regular text-text-tertiary">
           {t(($) => $.syncPolicyCustomDescription, {
