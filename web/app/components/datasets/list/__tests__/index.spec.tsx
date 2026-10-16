@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { ReactElement, ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,7 +8,8 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/list/storage'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -15,6 +17,8 @@ import List from '../index'
 
 const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
 const knowledgeFsUpgradeMutationMock = vi.hoisted(() => vi.fn())
+// Set to make every KnowledgeFS availability request fail, including refetches on mount.
+const knowledgeFsFeaturesFailure = vi.hoisted(() => ({ error: undefined as Error | undefined }))
 const systemFeaturesQueryKey = ['console', 'systemFeatures', 'get'] as const
 const useInfiniteQueryMock = vi.hoisted(() =>
   vi.fn(() => ({
@@ -55,7 +59,22 @@ vi.mock('@/service/console', async (importOriginal) => {
       },
       knowledgeFs: {
         ...original.consoleQuery.knowledgeFs,
-        features: original.consoleQuery.knowledgeFs.features,
+        features: {
+          get: {
+            queryKey: original.consoleQuery.knowledgeFs.features.get.queryKey,
+            queryOptions: (
+              options?: Parameters<
+                typeof original.consoleQuery.knowledgeFs.features.get.queryOptions
+              >[0],
+            ) => {
+              const queryOptions =
+                original.consoleQuery.knowledgeFs.features.get.queryOptions(options)
+              const error = knowledgeFsFeaturesFailure.error
+              if (!error) return queryOptions
+              return { ...queryOptions, queryFn: () => Promise.reject(error), retry: false }
+            },
+          },
+        },
         spaces: {
           ...original.consoleQuery.knowledgeFs.spaces,
           get: {
@@ -131,11 +150,15 @@ vi.mock('@/context/permission-state', async () => {
 const renderList = (
   ui: ReactElement,
   options: Parameters<typeof createNuqsTestWrapper>[0] = {},
+  queryClient?: QueryClient,
 ) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
-    knowledgeFsFeatures: {
-      enabled: mockConsoleState.knowledgeFsEnabled,
-    },
+    queryClient,
+    knowledgeFsFeatures: queryClient
+      ? undefined
+      : {
+          enabled: mockConsoleState.knowledgeFsEnabled,
+        },
   })
   const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper(options)
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -289,6 +312,7 @@ describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     localStorage.clear()
+    knowledgeFsFeaturesFailure.error = undefined
     mockConsoleState = {
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
@@ -346,6 +370,21 @@ describe('List', () => {
 
       const { useDatasetList } = await import('../use-dataset-list')
       expect(useDatasetList).toHaveBeenCalled()
+    })
+
+    it('should keep the legacy list when KnowledgeFS availability cannot be loaded', async () => {
+      knowledgeFsFeaturesFailure.error = new Error('KnowledgeFS availability unavailable')
+      const queryClient = createConsoleQueryClient()
+      const featuresQueryKey = consoleQuery.knowledgeFs.features.get.queryKey()
+
+      renderWithNuqs(<List />, { searchParams: '?view=agent' }, queryClient)
+
+      await waitFor(() => expect(queryClient.getQueryState(featuresQueryKey)?.status).toBe('error'))
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('radio', { name: 'knowledgeSpace.view.agent' }),
+      ).not.toBeInTheDocument()
+      expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
     })
 
     it('should switch to Agent and persist the selected view in the URL', async () => {

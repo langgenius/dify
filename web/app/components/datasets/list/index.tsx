@@ -2,7 +2,6 @@
 
 import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/list/knowledge-view-switcher'
 // Libraries
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -21,7 +20,7 @@ import {
 } from '@/app/components/step-by-step-tour/target-registry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
-import { knowledgeFsFeaturesQueryOptions } from '@/features/knowledge-fs-availability/client'
+import { knowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { NewKnowledgeList } from '@/features/new-rag/list/new-knowledge-list'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
@@ -231,10 +230,8 @@ function KnowledgeFsList() {
 }
 
 function List() {
-  const { data: knowledgeFsEnabled } = useSuspenseQuery({
-    ...knowledgeFsFeaturesQueryOptions(),
-    select: ({ enabled }) => enabled,
-  })
+  // The legacy list stays usable while KnowledgeFS availability is loading or unavailable.
+  const knowledgeFsEnabled = useAtomValue(knowledgeFsEnabledAtom)
 
   if (!knowledgeFsEnabled) return <LegacyList />
 
