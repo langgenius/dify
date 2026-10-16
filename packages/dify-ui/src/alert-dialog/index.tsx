@@ -80,7 +80,6 @@ function AlertDialogHeader({ className, ...props }: AlertDialogHeaderProps) {
 
 type AlertDialogTitleProps = BaseAlertDialog.Title.Props
 
-// Wraps instead of truncating: the title often names the object being acted on.
 function AlertDialogTitle({ className, ...props }: AlertDialogTitleProps) {
   return (
     <BaseAlertDialog.Title
@@ -124,9 +123,6 @@ function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
 
 type AlertDialogCancelButtonProps = ButtonProps
 
-// Action buttons keep an 80px minimum so short labels still read as a pair.
-const actionButtonClassName = 'min-w-20'
-
 function AlertDialogCancelButton({
   children,
   className,
@@ -136,7 +132,7 @@ function AlertDialogCancelButton({
     <BaseAlertDialog.Close
       render={
         <Button
-          className={(state) => cn(actionButtonClassName, resolveClassName(className, state))}
+          className={(state) => cn('min-w-20', resolveClassName(className, state))}
           {...buttonProps}
         />
       }
@@ -158,7 +154,7 @@ function AlertDialogConfirmButton({
     <Button
       variant={variant}
       tone={tone}
-      className={(state) => cn(actionButtonClassName, resolveClassName(className, state))}
+      className={(state) => cn('min-w-20', resolveClassName(className, state))}
       {...props}
     />
   )

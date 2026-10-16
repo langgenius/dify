@@ -25,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose `AlertDialogTitle` and `AlertDialogDescription` in `AlertDialogHeader`, and the actions in `AlertDialogFooter` with `AlertDialogCancelButton` and `AlertDialogConfirmButton`. The title wraps rather than truncates, so a long object name stays readable.',
+          'Compound alert dialog built on Base UI AlertDialog. Use it for destructive or high-risk confirmations that require an explicit user decision. Compose `AlertDialogTitle` and `AlertDialogDescription` in `AlertDialogHeader`, and the actions in `AlertDialogFooter` with `AlertDialogCancelButton` and `AlertDialogConfirmButton`.',
       },
     },
   },
