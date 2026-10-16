@@ -366,7 +366,8 @@ describe('EditMetadataBatchModal', () => {
       })
     })
 
-    it('should show success toast when saving with valid name', async () => {
+    it('returns to the metadata picker after creating a field without a success toast', async () => {
+      const user = userEvent.setup()
       mockCheckNameResult = { errorMsg: '' }
 
       render(<EditMetadataBatchModal {...defaultProps} />)
@@ -375,19 +376,32 @@ describe('EditMetadataBatchModal', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      await createMetadata()
+      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
+      await user.click(
+        await screen.findByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
+      )
+      await user.type(
+        screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+        'created_field',
+      )
+      const saveButtons = screen.getAllByRole('button', { name: 'common.operation.save' })
+      await user.click(saveButtons[saveButtons.length - 1]!)
 
       await waitFor(() => {
-        expect(mockDoAddMetaData).toHaveBeenCalled()
+        expect(mockDoAddMetaData).toHaveBeenCalledWith({
+          params: { dataset_id: 'ds-1' },
+          body: { name: 'created_field', type: DataType.string },
+        })
       })
 
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
+        expect(
+          screen.queryByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
+        ).not.toBeInTheDocument()
       })
+
+      expect(screen.getByRole('option', { name: /existing_field/ })).toBeInTheDocument()
+      expect(mockToastNotify).not.toHaveBeenCalled()
     })
 
     it('should show error toast when saving with invalid name', async () => {

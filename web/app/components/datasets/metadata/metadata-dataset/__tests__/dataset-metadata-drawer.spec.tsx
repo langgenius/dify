@@ -362,42 +362,33 @@ describe('DatasetMetadataDrawer', () => {
       })
     })
 
-    it('should call onRemove when delete is confirmed', async () => {
+    it('shows the updated metadata list after deletion without a success toast', async () => {
+      const user = userEvent.setup()
       const onRemove = vi.fn().mockResolvedValue({})
-      render(<DatasetMetadataDrawer {...defaultProps} onRemove={onRemove} />)
+      const { rerender } = render(<DatasetMetadataDrawer {...defaultProps} onRemove={onRemove} />)
 
       await waitFor(() => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      clickFirstMetadataAction('common.operation.remove')
-
-      // Wait for confirm dialog
-      await waitFor(() => {
-        const confirmBtns = screen.getAllByRole('button')
-        const hasConfirmBtn = confirmBtns.some((btn) =>
-          btn.textContent?.toLowerCase().includes('confirm'),
-        )
-        expect(hasConfirmBtn).toBe(true)
-      })
-
-      const confirmBtns = screen.getAllByRole('button')
-      const confirmBtn = confirmBtns.find((btn) =>
-        btn.textContent?.toLowerCase().includes('confirm'),
-      )
-      if (confirmBtn) fireEvent.click(confirmBtn)
+      await user.click(screen.getAllByRole('button', { name: 'common.operation.remove' })[0]!)
+      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => {
         expect(onRemove).toHaveBeenCalledWith('1')
       })
 
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
-      })
+      rerender(
+        <DatasetMetadataDrawer
+          {...defaultProps}
+          userMetadata={mockUserMetadata.filter((item) => item.id !== '1')}
+          onRemove={onRemove}
+        />,
+      )
+
+      expect(screen.queryByText('field_one')).not.toBeInTheDocument()
+      expect(screen.getByText('field_two')).toBeInTheDocument()
+      expect(mockToastNotify).not.toHaveBeenCalled()
     })
 
     it('should close confirm dialog when cancel is clicked', async () => {
