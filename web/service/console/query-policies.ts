@@ -564,8 +564,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   )
                 },
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    ...(error
+                      ? [
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.apps.byAppId.traceConfig.get.key({
+                              input: { params: variables.params },
+                            }),
+                          }),
+                        ]
+                      : []),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
                         input: { params: variables.params },
@@ -585,8 +594,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             post: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
                         input: {
@@ -607,8 +621,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             patch: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
                         input: {
@@ -629,8 +648,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             delete: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
                         input: {
@@ -1254,8 +1278,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   )
                 },
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    ...(error
+                      ? [
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.agent.byAgentId.traceConfig.get.key({
+                              input: { params: variables.params },
+                            }),
+                          }),
+                        ]
+                      : []),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
                         input: { params: variables.params },
@@ -1275,8 +1308,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             post: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
                         input: {
@@ -1297,8 +1335,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             patch: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
                         input: {
@@ -1319,8 +1362,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             delete: {
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
-                  if (error) return
+                  if (error && getHttpErrorStatus(error) !== 409) return
                   return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.agent.byAgentId.trace.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
                     context.client.invalidateQueries({
                       queryKey: consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
                         input: {
