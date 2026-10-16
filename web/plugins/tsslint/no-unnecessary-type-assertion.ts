@@ -17,7 +17,9 @@ import type * as ts from 'typescript'
  *   statement whose target type is not a union.
  * - Narrowing: `x as T` is not a reference, so control flow never narrows `x` through it.
  *   References in narrowing positions (type predicates, `typeof`, comparisons, conditions,
- *   `switch`) keep their assertion.
+ *   `switch`), directly or through a property access chain, keep their assertion. So does a
+ *   boolean assertion in the return value of an unannotated function, which would otherwise
+ *   let TypeScript infer a type predicate.
  *
  * For `value as unknown as T`, the `unknown` step is dropped when `value` and `T` are
  * assignable in one direction, which assignment guarantees to type-check as a single `as T`.
@@ -171,8 +173,20 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
   // Whether control flow narrows a reference at this position. An assertion turns the
   // reference into an expression, so removing it would start narrowing the variable.
   const isNarrowingPosition = (node: ts.Expression): boolean => {
-    let current = node
-    while (tsApi.isParenthesizedExpression(current.parent)) current = current.parent
+    // Walk up the access chain: a discriminant check like `(x as T).kind === 'a'` or a
+    // `this is` method guard like `(x as T).isFoo()` narrows `x` itself.
+    let current: ts.Expression = node
+    for (;;) {
+      const parent = current.parent
+      if (tsApi.isParenthesizedExpression(parent) || tsApi.isNonNullExpression(parent))
+        current = parent
+      else if (
+        (tsApi.isPropertyAccessExpression(parent) || tsApi.isElementAccessExpression(parent)) &&
+        parent.expression === current
+      )
+        current = parent
+      else break
+    }
     const parent = current.parent
     if (tsApi.isTypeOfExpression(parent)) return true
     if (tsApi.isPrefixUnaryExpression(parent))
@@ -187,9 +201,34 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
       return parent.expression === current
     if (tsApi.isForStatement(parent)) return parent.condition === current
     if (tsApi.isConditionalExpression(parent)) return parent.condition === current
-    if (tsApi.isCallExpression(parent) && parent.arguments.includes(current)) {
+    if (
+      tsApi.isCallExpression(parent) &&
+      (parent.arguments.includes(current) || parent.expression === current)
+    ) {
       const signature = checker.getResolvedSignature(parent)
       return !signature || !!checker.getTypePredicateOfSignature(signature)
+    }
+    return false
+  }
+
+  // TypeScript infers a type predicate for an unannotated function that returns a boolean
+  // narrowing expression; a boolean assertion in the returned value is what prevents that.
+  const blocksPredicateInference = (node: ts.Expression, targetType: ts.Type): boolean => {
+    if (!(targetType.flags & tsApi.TypeFlags.BooleanLike)) return false
+    for (let current: ts.Node = node; current.parent; current = current.parent) {
+      const parent = current.parent
+      if (tsApi.isReturnStatement(parent)) {
+        const fn = tsApi.findAncestor(parent, tsApi.isFunctionLike)
+        return !!fn && !fn.type
+      }
+      if (tsApi.isArrowFunction(parent)) return parent.body === current && !parent.type
+      if (
+        tsApi.isFunctionLike(parent) ||
+        tsApi.isBlock(parent) ||
+        tsApi.isSourceFile(parent) ||
+        tsApi.isCaseOrDefaultClause(parent)
+      )
+        return false
     }
     return false
   }
@@ -223,7 +262,8 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     if (
       sourceType === targetType &&
       !hasLiteralType(sourceType) &&
-      !(isNarrowableReference(value) && isNarrowingPosition(node))
+      !(isNarrowableReference(value) && isNarrowingPosition(node)) &&
+      !blocksPredicateInference(node, targetType)
     ) {
       reportFix(
         node,
@@ -255,6 +295,7 @@ const noUnnecessaryTypeAssertion: Rule = ({ typescript: tsApi, program, file, re
     const sourceType = checker.getTypeAtLocation(value)
     const targetType = checker.getTypeFromTypeNode(node.type)
     if (sourceType.flags & tsApi.TypeFlags.Any) return
+    if (blocksPredicateInference(node, targetType)) return
 
     if (sourceType === targetType && !hasLiteralType(sourceType)) {
       reportFix(

@@ -266,7 +266,8 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
           if (errorMessage) return
 
           const rawParam =
-            payload.event_parameters?.[field.variable] ?? payload.config?.[field.variable]
+            payload.event_parameters?.[field.variable] ??
+            (payload.config as Record<string, any> | undefined)?.[field.variable]
           if (!rawParam) {
             errorMessage = t(($) => $['errorMsg.fieldRequired'], {
               ns: 'workflow',

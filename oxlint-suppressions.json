@@ -3253,7 +3253,7 @@
   },
   "web/app/components/workflow/nodes/trigger-plugin/default.ts": {
     "typescript/no-explicit-any": {
-      "count": 9
+      "count": 10
     }
   },
   "web/app/components/workflow/nodes/trigger-plugin/node.tsx": {

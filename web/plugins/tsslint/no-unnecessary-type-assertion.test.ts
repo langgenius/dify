@@ -128,6 +128,41 @@ describe('no-unnecessary-type-assertion', () => {
     expect(lint(`${prelude}if (value as string | number) {}\n`)).toEqual([])
   })
 
+  it('keeps an assertion that stops a discriminant check from narrowing the object', () => {
+    const prelude = [
+      "type State = { kind: 'idle' } | { kind: 'busy'; id: number }",
+      'declare let state: State',
+      '',
+    ].join('\n')
+    expect(lint(`${prelude}if ((state as State).kind === 'idle') {}\n`)).toEqual([])
+    expect(lint(`${prelude}switch ((state as State).kind) {}\n`)).toEqual([])
+    const guard = [
+      'declare class Shape {',
+      '  isCircle(): this is Shape & { radius: number }',
+      '}',
+      'declare let shape: Shape',
+      '',
+    ].join('\n')
+    expect(lint(`${guard}if ((shape as Shape).isCircle()) {}\n`)).toEqual([])
+  })
+
+  it('keeps a boolean assertion that stops a type predicate from being inferred', () => {
+    const arrow = "const isString = (x: string | number) => (typeof x === 'string') as boolean\n"
+    expect(lint(arrow)).toEqual([])
+    const block = [
+      'function isString(x: string | number) {',
+      "  return (typeof x === 'string') as boolean",
+      '}',
+    ].join('\n')
+    expect(lint(block)).toEqual([])
+    const annotated = [
+      'function isString(x: string | number): boolean {',
+      "  return (typeof x === 'string') as boolean",
+      '}',
+    ].join('\n')
+    expect(lint(annotated)).toHaveLength(1)
+  })
+
   describe('double assertions', () => {
     it('keeps the unknown step for a value typed by its context', () => {
       const code = [
