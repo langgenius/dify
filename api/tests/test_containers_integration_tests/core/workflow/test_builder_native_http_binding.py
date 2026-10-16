@@ -29,9 +29,10 @@ from models.workflow import Workflow
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.approval_contracts import NativeApprovalProposal, NativeApprovalTerms
 from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+from services.dify_builder.native_testing.call_adapter import NativeCallAdapter
 from services.dify_builder.native_testing.contracts import ApprovalWait, DispatchPermit, PolicyStop, operation_digest
 from services.dify_builder.native_testing.control import BoundaryOwnerState
-from services.dify_builder.native_testing.http_adapter import NativeHttpClient
+from services.dify_builder.native_testing.http_adapter import NativeHttpClient, PreparedHttpBinding
 from services.dify_builder.native_testing.http_binding import (
     DeferredNativeHttpClient,
     NativeHttpBindingProducer,
@@ -185,17 +186,23 @@ def http_case(native_owner, no_live, migrated_continuation_tables, migrated_disp
 
 
 def prepare(c, execution_id=None, *, ref=None):
+    """Compose the SQL component fixture; this does not establish actual host ownership."""
     selected_ref = ref or c.ref
     journal = NodeOperationJournal(state=c.store, authorization=c.auth)
-    captured = {}
+    captured = {"prepared": []}
     files = RefusingNativeHttpFiles()
+
+    def on_prepared(*, binding: PreparedHttpBinding) -> None:
+        captured["prepared"].append(binding)
 
     def collaborators(*, association):
         producer = NativeHttpBindingProducer(
             association=association, loader=c.loader, state_store=c.store, journal=journal
         )
         captured["producer"] = producer
-        client = DeferredNativeHttpClient(producer=producer, authorization=c.auth)
+        client = DeferredNativeHttpClient(
+            producer=producer, authorization=c.auth, calls_factory=NativeCallAdapter, on_prepared=on_prepared
+        )
         return NativeCollaborators(
             **{name: client if name == "http" else files for name in NativeCollaborators.__dataclass_fields__}
         )
