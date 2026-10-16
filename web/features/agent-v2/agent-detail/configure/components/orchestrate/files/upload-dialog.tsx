@@ -22,7 +22,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { getSupportFileType } from '@/app/components/base/file-uploader/utils'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
@@ -53,7 +53,7 @@ function AgentFileUploader({ file, onChange }: { file?: File; onChange: (file?: 
   const { t: tCommon } = useTranslation(['common'])
   const { data: fileUploadConfig } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
-    useFileSizeLimit(fileUploadConfig)
+    getFileSizeLimit(fileUploadConfig)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)

@@ -817,11 +817,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/file-uploader/hooks.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 1
-    }
-  },
   "web/app/components/base/file-uploader/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
@@ -1731,11 +1726,6 @@
       "count": 6
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/use-custom-models.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/use-model-form-schemas.ts": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -1799,11 +1789,6 @@
       "count": 4
     }
   },
-  "web/app/components/plugins/install-plugin/hooks/use-fold-anim-into.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/install-plugin/install-bundle/index.tsx": {
     "react/only-export-components": {
       "count": 1
@@ -1860,11 +1845,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-auth/hooks/use-get-api.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
       "count": 1
     }
   },
@@ -2554,11 +2534,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/variable/variable-label/hooks.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/variable/variable-label/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 5
@@ -2581,9 +2556,6 @@
     }
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/use-last-run.ts": {
-    "eslint-react/no-unnecessary-use-prefix": {
-      "count": 2
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },

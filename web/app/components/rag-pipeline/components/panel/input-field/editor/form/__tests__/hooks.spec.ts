@@ -11,7 +11,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/app/components/base/file-uploader/hooks', () => ({
-  useFileSizeLimit: () => ({
+  getFileSizeLimit: () => ({
     imgSizeLimit: 10 * 1024 * 1024,
     docSizeLimit: 15 * 1024 * 1024,
     audioSizeLimit: 50 * 1024 * 1024,
