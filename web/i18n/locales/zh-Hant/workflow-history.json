@@ -2,7 +2,7 @@
   "changeHistory.clearHistory": "清除歷史記錄",
   "changeHistory.currentState": "當前狀態",
   "changeHistory.hint": "提示",
-  "changeHistory.hintText": "您的編輯操作將被跟踪並存儲在您的設備上，直到您離開編輯器。此歷史記錄將在您離開編輯器時被清除。",
+  "changeHistory.hintText": "您的編輯操作將被跟蹤並存儲在您的設備上，直到您離開編輯器。此歷史記錄將在您離開編輯器時被清除。",
   "changeHistory.placeholder": "尚未更改任何內容",
   "changeHistory.sessionStart": "會話開始",
   "changeHistory.stepBackward_one": "{{count}} 步後退",

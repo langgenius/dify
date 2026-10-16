@@ -135,7 +135,7 @@
   "language.displayLanguage": "介面語言",
   "language.timezone": "時區",
   "license.expiring": "將在 1 天內過期",
-  "license.expiring_plural": "將在 {{count}} 天后過期",
+  "license.expiring_plural": "將在 {{count}} 天後過期",
   "license.unlimited": "無限制",
   "loading": "載入中",
   "mcpPage.description": "連接並管理 MCP 伺服器，讓你的應用可以存取外部工具和服務。",
