@@ -11,6 +11,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
 import { ConfigPopup } from './config-popup'
 import { configurableProviders, tracingProviders } from './providers'
@@ -131,26 +132,33 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
     )
   }
   const isLoading =
-    statusQuery.isPending ||
-    (!readOnly && configQueries.some((query) => query.isPending && !query.isFetched))
+    statusQuery.isPending || configQueries.some((query) => query.isPending && !query.isFetched)
+
+  if (isLoading) {
+    return (
+      <div role="status" aria-label={t(($) => $['tracing.title'], { ns: 'app' })}>
+        <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
+        <SkeletonRectangle aria-hidden="true" className="my-0 h-10 w-56 rounded-xl" />
+      </div>
+    )
+  }
 
   if (resource.kind === 'app' && readOnly && !hasConfiguredTracing) return null
 
   return (
     <Popover
       key={resource.kind === 'agent' ? resource.agentId : resource.appId}
-      open={destination === 'configure' && !isLoading}
+      open={destination === 'configure'}
       onOpenChange={(open) => {
         void setDestination(open ? 'configure' : null)
       }}
     >
       <PopoverTrigger
-        disabled={isLoading}
         render={
           <Button className="h-auto gap-0 rounded-xl bg-background-default-lighter p-2 inset-ring-components-panel-border hover:bg-background-default-dodge" />
         }
       >
-        {!isLoading && hasConfiguredTracing ? (
+        {hasConfiguredTracing ? (
           <span className="flex items-center gap-2">
             {inUseProviderIconClassName && (
               <span aria-hidden className="flex items-center pr-2 pl-1">
