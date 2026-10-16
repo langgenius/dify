@@ -32,6 +32,7 @@ from .agent import llm as _agent_llm
 from .agent import runtime_usage as _agent_runtime_usage
 from .agent import tools as _agent_tools
 from .agent import tracing as _agent_tracing
+from .app import app as _app_app
 from .app import dsl as _app_dsl
 from .app import file_grants as _app_file_grants
 from .knowledge import retrieval as _knowledge_retrieval
@@ -49,6 +50,7 @@ __all__ = [
     "_agent_runtime_usage",
     "_agent_tools",
     "_agent_tracing",
+    "_app_app",
     "_app_dsl",
     "_app_file_grants",
     "_knowledge_retrieval",

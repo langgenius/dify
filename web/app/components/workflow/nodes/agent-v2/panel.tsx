@@ -81,7 +81,7 @@ function FloatingOutputEditor({
 
   return createPortal(
     <div
-      className="fixed z-50 w-100"
+      className="fixed w-100"
       style={{
         left: position.left,
         top: position.top,
@@ -738,7 +738,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onChange={handleDeclaredOutputsChange}
           />
         </div>
-        {resource.kind === 'app' && <InheritedTracingSummary appId={resource.appId} />}
+        {resource.kind === 'app' && (
+          <InheritedTracingSummary
+            resource={{ kind: 'app', appId: resource.appId, mode: resource.mode }}
+          />
+        )}
       </div>
     </div>
   )
