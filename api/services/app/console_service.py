@@ -121,8 +121,6 @@ class ConsoleApps(Protocol):
 
     def get_trace(self, context: RequestContext, app_id: str) -> AppTraceSettings: ...
 
-    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None: ...
-
 
 class AppTransfers(Protocol):
     def download_import(self, url: str) -> AbstractContextManager[BinaryIO]: ...
@@ -171,10 +169,8 @@ class CreatorsPlatform(Protocol):
     def redirect_url(self, claim_code: str, oauth_code: str | None) -> str: ...
 
 
-class AppTraceProvider(Protocol):
-    def validate_provider(self, tracing_provider: str) -> None: ...
-
-    def require_provider_available(self, tracing_provider: str) -> None: ...
+class AppTracingSettings(Protocol):
+    def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None: ...
 
 
 class AppLifecycle(Protocol):
@@ -203,7 +199,7 @@ class ConsoleAppService:
         access: ConsoleAppAccess,
         transfers: AppTransfers,
         creators: CreatorsPlatform,
-        tracing: AppTraceProvider,
+        tracing: AppTracingSettings,
         lifecycle: AppLifecycle,
     ) -> None:
         self._apps = apps
@@ -457,9 +453,4 @@ class ConsoleAppService:
 
     def set_trace(self, context: RequestContext, app_id: str, settings: AppTraceSettings) -> None:
         self._apps.get_reference(context, app_id)
-        if settings.tracing_provider is not None:
-            if settings.enabled:
-                self._tracing.require_provider_available(settings.tracing_provider)
-            else:
-                self._tracing.validate_provider(settings.tracing_provider)
-        self._apps.set_trace(context, app_id, settings)
+        self._tracing.set_trace(context, app_id, settings)

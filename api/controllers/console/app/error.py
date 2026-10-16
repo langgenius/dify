@@ -187,3 +187,9 @@ class AgentNotBoundError(BaseHTTPException):
     error_code = "agent_not_bound"
     description = "no agent is bound for this app/node"
     code = 400
+
+
+class TracingConfigConflictError(BaseHTTPException):
+    error_code = "tracing_config_conflict"
+    description = "Tracing configuration changed. Refresh and try again."
+    code = 409
