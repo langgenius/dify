@@ -942,6 +942,107 @@ describe('ConnectedSourceWorkflow', () => {
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
   })
 
+  it('stops the import and cleans up the renamed source when canceled while the rename is pending', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    const rename = deferred<KnowledgeFsSourceResponse>()
+    clientMock.patchSource.mockReturnValue(rename.promise)
+    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+    await waitFor(() => expect(clientMock.patchSource).toHaveBeenCalledOnce())
+
+    view.unmount()
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+
+    await act(async () => {
+      rename.resolve(sourceResponse({ name: 'Team wiki', version: 4 }))
+    })
+
+    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledOnce())
+    expect(clientMock.deleteSource).toHaveBeenCalledWith({
+      body: { expectedRevision: 4 },
+      headers: { 'Idempotency-Key': expect.any(String) },
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { documents: 'cascade' },
+    })
+    expect(clientMock.createWorkflowImport).not.toHaveBeenCalled()
+    expect(view.onCompleted).not.toHaveBeenCalled()
+  })
+
+  it('submits the source from the source name field through the form boundary', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.patchSource.mockResolvedValue(
+      sourceResponse({ metadata: { preview: false }, name: 'Team wiki', version: 4 }),
+    )
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.addSource' })).toHaveAttribute(
+      'type',
+      'submit',
+    )
+    expect(
+      screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }),
+    ).toHaveAttribute('type', 'button')
+    await user.type(screen.getByRole('textbox', { name: /sourceName/i }), '{Enter}')
+
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledOnce()
+  })
+
   it('reconciles an accepted import when the response is lost before navigation', async () => {
     const user = userEvent.setup()
     clientMock.listDatasourceAuth.mockResolvedValue({
