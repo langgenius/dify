@@ -395,9 +395,9 @@ class NativeTestLifecycleService:
                 ):
                     raise BuilderExecutionPolicyError("native_pending_unresolved")
             else:
-                pending_owned, _ = self.loader._load(session, ref=pending_ref, lock=False)
                 if self.resolution is None:
                     raise BuilderExecutionPolicyError("native_pending_resolver_required")
+                pending_owned, _ = self.loader._load(session, ref=pending_ref, lock=False)
                 resolution = NativePendingResolution.model_validate(
                     self.resolution.resolve(session=session, owned=pending_owned, pending=pending).model_dump(
                         mode="json"

@@ -732,18 +732,57 @@ def test_permit_returns_only_after_commit_and_releases_request_lock(ledger_case)
         assert scope.spent_cost_units == 2
 
 
+def _create_real_child(case):
+    """Use the actual C03 child owner; no synthetic state/context reference."""
+    from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
+    from services.dify_builder.native_testing.repository import OwnedNativeTestLoader
+    from services.dify_builder.native_testing.state_store import NativeExecutionStateStore
+
+    store = NativeExecutionStateStore(OwnedNativeTestLoader(case.factory, actor=case.actor, resolver=case.metadata))
+    parent = store.load_context(ref=case.ref)
+    inputs = {"child": True}
+    key = case.intent.key.model_copy(update={"occurrence_path": ("actual-child-" + str(uuid4()),)})
+    input_ref = store.store_result(ref=case.ref, key=key, result=inputs)
+
+    class ChildOwner:
+        def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
+            assert (child_app_id, child_workflow_revision) == (parent.app_id, parent.graph_revision)
+            return parent.model_copy(
+                update={
+                    "ref": ref,
+                    "parent_invocation_id": parent.ref.invocation_id,
+                    "call_depth": parent.call_depth + 1,
+                    "inputs": inputs,
+                    "input_revision": canonical_digest(inputs),
+                    "native_run_id": "child-" + ref.invocation_id,
+                }
+            )
+
+    return NativeChildInvocationService(store, resolver=ChildOwner()).get_or_create(
+        parent_ref=case.ref,
+        key=key,
+        child_app_id=parent.app_id,
+        child_workflow_revision=parent.graph_revision,
+        input_digest=canonical_digest(inputs),
+        input_result_ref=input_ref,
+    )
+
+
 def test_child_invocation_shares_root_budget(ledger_case):
     from models.dify_builder_native_tests import NativeTestInvocation, NativeTestScope
     from services.dify_builder.native_testing.repository import NativeBinding
 
     ledger_case.confirm(max_calls=2, max_dispatches=2)
-    child_ref = ledger_case.ref.model_copy(update={"invocation_id": "child"})
+    child_ref = _create_real_child(ledger_case)
     child_intent = ledger_case.intent.model_copy(
-        update={"key": ledger_case.intent.key.model_copy(update={"invocation_id": "child"})}
+        update={"key": ledger_case.intent.key.model_copy(update={"invocation_id": child_ref.invocation_id})}
     )
     with ledger_case.factory.begin() as session:
         row = session.scalar(
-            select(NativeTestInvocation).where(NativeTestInvocation.request_id == ledger_case.ref.request_id)
+            select(NativeTestInvocation).where(
+                NativeTestInvocation.request_id == ledger_case.ref.request_id,
+                NativeTestInvocation.invocation_id == ledger_case.ref.invocation_id,
+            )
         )
         base = NativeBinding.model_validate(row.bindings[operation_digest(ledger_case.intent.key)])
         binding = base.model_copy(
@@ -753,15 +792,13 @@ def test_child_invocation_shares_root_budget(ledger_case):
                 "invocation_digest": "d" * 64,
             }
         )
-        session.add(
-            NativeTestInvocation(
-                tenant_id=ledger_case.actor.tenant_id,
-                request_id=ledger_case.ref.request_id,
-                invocation_id="child",
-                active=True,
-                bindings={operation_digest(child_intent.key): binding.model_dump(mode="json")},
+        child = session.scalar(
+            select(NativeTestInvocation).where(
+                NativeTestInvocation.request_id == child_ref.request_id,
+                NativeTestInvocation.invocation_id == child_ref.invocation_id,
             )
         )
+        child.bindings = {operation_digest(child_intent.key): binding.model_dump(mode="json")}
         scope = session.get(NativeTestScope, ledger_case.ref.request_id)
         scope.budget_limits = {"cpu_ms": 10}
     assert isinstance(ledger_case.guard.before_call(ref=ledger_case.ref, intent=ledger_case.intent), DispatchPermit)

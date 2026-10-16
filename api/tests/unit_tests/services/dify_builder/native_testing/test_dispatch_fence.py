@@ -609,3 +609,160 @@ def test_existing_nested_child_lookup_requires_actual_parent_private_authority(m
         }[fault]
         with pytest.raises(BuilderExecutionPolicyError, match=reason):
             service.get_or_create(**args)
+
+
+@pytest.mark.parametrize("has_operation", [False, True])
+@pytest.mark.parametrize("decision", ["denied", "approved"])
+def test_waiting_immutable_denial_is_negative_evidence_without_fresh_admission(monkeypatch, has_operation, decision):
+    from models.dify_builder_native_tests import NativeEffectGrant, NativeEffectOperation
+    from services.dify_builder.execution_contracts import canonical_digest
+    from services.dify_builder.native_testing.authorization import EffectAuthorizationService
+    from services.dify_builder.native_testing.contracts import PolicyStop
+    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import binding, intent
+
+    effect = intent().model_copy(update={"key": intent().key.model_copy(update={"invocation_id": "root"})})
+    operation = SimpleNamespace(intent_digest=canonical_digest(effect.model_dump(mode="json")), state="pending")
+    session = SQLDouble([state(state="waiting", pending_ids=["pending"], checkpoint_id="checkpoint")], [pending()])
+    session.rows.update(
+        {
+            NativeEffectGrant: [SimpleNamespace(decision=decision)],
+            NativeEffectOperation: [operation] if has_operation else [],
+        }
+    )
+    writes = []
+    session.add = writes.append
+    session.flush = lambda: None
+    scope = session.rows[NativeTestScope][0]
+    scope.spent_calls = scope.spent_dispatches = scope.spent_cost_units = 0
+    owned = SimpleNamespace(ref=REF, tenant_id="tenant", actor_id="actor", app_id="app", task_approved=False)
+    service = EffectAuthorizationService(None, clock=lambda: NOW)
+    monkeypatch.setattr(service, "_binding", lambda *_: binding(effect))
+    if decision == "denied":
+        assert service._claim(session, owned, scope, effect) == PolicyStop(reason_code="effect_denied")
+    else:
+        with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_closed"):
+            service._claim(session, owned, scope, effect)
+    assert writes == []
+    assert (scope.spent_calls, scope.spent_dispatches, scope.spent_cost_units) == (0, 0, 0)
+    assert operation.state == "pending"
+
+
+@pytest.mark.parametrize("ancestor_state", ["unknown", "cancelled", "completed"])
+@pytest.mark.parametrize("fault", [None, "intent", "permit"])
+def test_physical_claim_validates_permit_then_preserves_ancestor_refusal(monkeypatch, ancestor_state, fault):
+    from models.dify_builder_native_tests import NativeEffectOperation
+    from services.dify_builder.execution_contracts import canonical_digest
+    from services.dify_builder.native_testing.authorization import EffectAuthorizationService, _scope_digest
+    from services.dify_builder.native_testing.contracts import DispatchPermit, operation_digest
+    from tests.unit_tests.services.dify_builder.native_testing.test_authorization import binding, intent
+
+    child_ref = REF.model_copy(update={"invocation_id": "child"})
+    effect = intent().model_copy(update={"key": intent().key.model_copy(update={"invocation_id": "child"})})
+    trusted = binding(effect)
+    operation = SimpleNamespace(
+        operation_digest=operation_digest(effect.key),
+        intent_digest="wrong" if fault == "intent" else canonical_digest(effect.model_dump(mode="json")),
+        scope_digest=_scope_digest(effect, trusted),
+        state="claimed",
+    )
+    session = SQLDouble([state(state=ancestor_state), state("child", "root")])
+    session.rows[NativeEffectOperation] = [operation]
+    scope = session.rows[NativeTestScope][0]
+    attempt = SimpleNamespace(expires_at=NOW + timedelta(hours=1))
+    permit = DispatchPermit(
+        permit_id="permit", attempt_id="attempt", operation_id="operation", expires_at=attempt.expires_at.isoformat()
+    )
+    service = EffectAuthorizationService(None, clock=lambda: NOW)
+
+    def load_attempt(*_):
+        if fault == "permit":
+            raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        return attempt
+
+    monkeypatch.setattr(service, "_attempt", load_attempt)
+    monkeypatch.setattr(service, "_binding", lambda *_: trusted)
+    expected = "invalid_dispatch_permit" if fault else "native_ancestor_quarantined"
+    with pytest.raises(BuilderExecutionPolicyError, match=expected):
+        service._validate_dispatch_locked(
+            session=session,
+            owned=SimpleNamespace(ref=child_ref, tenant_id="tenant"),
+            scope=scope,
+            intent=effect,
+            permit=permit,
+        )
+
+
+@pytest.mark.parametrize("category", ["configuration", "interaction"])
+def test_terminal_child_settlement_without_resolution_owner_commits_and_keeps_parent_waiting(category):
+    from contextlib import contextmanager
+
+    from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
+    from services.dify_builder.native_testing.runtime_contracts import NativeWorkflowOutcome
+
+    child_ref = REF.model_copy(update={"invocation_id": "child"})
+    root = state(
+        state="waiting", pending_ids=["pending"], wait_reason=category, checkpoint_id="parent-checkpoint", outcome=None
+    )
+    child = state(
+        "child",
+        "root",
+        state="waiting",
+        pending_ids=["pending"],
+        wait_reason=category,
+        checkpoint_id="child-checkpoint",
+        outcome=None,
+    )
+
+    class SettlementSQL(SQLDouble):
+        def scalar(self, statement):
+            entity = statement.column_descriptions[0]["entity"]
+            if entity in {NativeInvocationState, NativeTestInvocation}:
+                rows = self.rows[entity]
+                params = statement.compile().params
+                if "invocation_id_1" in params:
+                    rows = [r for r in rows if r.invocation_id == params["invocation_id_1"]]
+                if "state_1" in params:
+                    rows = [r for r in rows if r.state == params["state_1"]]
+                return rows[0] if rows else None
+            return super().scalar(statement)
+
+    session = SettlementSQL([root, child], [pending(invocation_id="child", category=category)])
+    writes, committed = [], []
+    session.add = writes.append
+    owned = SimpleNamespace(ref=child_ref, tenant_id="tenant")
+    scope = session.rows[NativeTestScope][0]
+    scope.generation = 3
+
+    @contextmanager
+    def locked(**_):
+        yield session, owned, scope
+        committed.append(True)
+
+    def load(_session, *, ref, **_):
+        current = next(row for row in session.rows[NativeTestInvocation] if row.invocation_id == ref.invocation_id)
+        if not current.active:
+            raise BuilderExecutionPolicyError("native_invocation_mismatch")
+        return SimpleNamespace(ref=ref, tenant_id="tenant"), scope
+
+    store = SimpleNamespace(
+        loader=SimpleNamespace(locked=locked, _load=load),
+        load_recovery_context=lambda **_: SimpleNamespace(native_run_id="child-run"),
+    )
+    service = NativeChildInvocationService(store, resolver=SimpleNamespace())
+    outcome = NativeWorkflowOutcome(
+        status="completed",
+        ref=child_ref,
+        native_run_id="child-run",
+        checkpoint_ref=None,
+        pending_operation_ids=(),
+        reason_code=None,
+        wait_reason=None,
+        native_status="succeeded",
+        output_result_ref=None,
+    )
+    service.complete(child_ref=child_ref, outcome=outcome)
+    assert committed == [True]
+    assert (child.state, child.outcome) == ("completed", outcome.model_dump(mode="json"))
+    assert (root.state, root.pending_ids, root.checkpoint_id) == ("waiting", ["pending"], "parent-checkpoint")
+    assert not session.rows[NativeTestInvocation][1].active
+    assert writes == []

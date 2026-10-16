@@ -18,7 +18,6 @@ from models.dify_builder_native_tests import (
     NativeEffectOutcome,
     NativeInvocationState,
     NativePendingAction,
-    NativeTestInvocation,
     NativeTestScope,
 )
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
@@ -77,25 +76,8 @@ def _pending(c, category, ref=None):
         return service.configuration(ref=ref, requirements_ref="configuration-1", expected_generation=generation)
     if category == "interaction":
         return service.interaction(ref=ref, native_form_ref="form-1", expected_generation=generation)
-    effect = c.ledger.intent if ref == c.ref else _bind_child_effect(c, ref)
-    if ref != c.ref:
-        _operation_scope(c, ref, effect)
+    effect = c.ledger.intent if ref == c.ref else _bind_child_effect(c, ref, approval_scope="operation")
     return c.ledger.guard.before_call(ref=ref, intent=effect)
-
-
-def _operation_scope(c, ref, effect):
-    from services.dify_builder.native_testing.contracts import operation_digest
-
-    # Trusted synthetic fixture classification, before any operation is created.
-    with c.factory.begin() as session:
-        row = session.scalar(
-            select(NativeTestInvocation).where(
-                NativeTestInvocation.request_id == ref.request_id,
-                NativeTestInvocation.invocation_id == ref.invocation_id,
-            )
-        )
-        identity = operation_digest(effect.key)
-        row.bindings = {**row.bindings, identity: {**row.bindings[identity], "approval_scope": "operation"}}
 
 
 def _fence(c, pending_id, ref=None):
@@ -220,12 +202,12 @@ def test_real_root_lock_orders_fence_against_reservation_or_physical_claim(fence
 def test_foreign_invocation_fence_and_ancestor_work_never_inherit_pending_identity(fence_case):
     c = fence_case
     service, child = _child_case(c)
+    effect = _bind_child_effect(c, child)
     child_wait = _pending(c, "configuration", child)
     with pytest.raises(BuilderExecutionPolicyError, match="native_pending_mismatch"):
         _fence(c, child_wait.pending_operation_id)
     root_wait = _pending(c, "configuration")
     _fence(c, root_wait.pending_operation_id)
-    effect = _bind_child_effect(c, child)
     decision = c.ledger.guard.before_call(ref=child, intent=effect)
     assert isinstance(decision, PolicyStop)
     assert _count(c, NativeEffectAttempt) == 0
@@ -337,8 +319,7 @@ def test_real_protected_child_approval_local_zero_shared_one_and_stale_local_rej
     assert c.lifecycle.claim_dispatch(ref=c.ref, generation=receipt.generation, dispatch_id=receipt.dispatch_id)
     context = c.store.load_context(ref=child)
     assert context.generation == 0
-    effect = _bind_child_effect(c, child)
-    _operation_scope(c, child, effect)
+    effect = _bind_child_effect(c, child, approval_scope="operation", input_digest=canonical_digest({"limit": 1}))
     selected = SimpleNamespace(
         ref=child,
         store=c.store,

@@ -34,6 +34,7 @@ from services.dify_builder.native_testing.repository import OwnedNativeTestLoade
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
     LedgerCase,
     MetadataOwner,
+    _create_real_child,
     _migration,
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
@@ -326,58 +327,44 @@ def test_current_authority_failure_leaves_no_claim_or_io(claim_case, blocked):
 @pytest.mark.parametrize("state", ["unknown", "cancelled", "completed"])
 def test_blocked_ancestor_prevents_child_claim(claim_case, state):
     case, permit = claim_case
-    with case.factory.begin() as session:
-        root = session.scalar(
-            select(NativeInvocationState).where(NativeInvocationState.request_id == case.ref.request_id)
-        )
-        # Existing ownership is immutable; build a child claim under a new
-        # invocation using the trusted fixture producer, preserving the parent.
-        root.state = state
-        binding = session.scalar(
-            select(NativeTestInvocation).where(NativeTestInvocation.request_id == case.ref.request_id)
-        )
-        child_intent = case.intent.model_copy(
-            update={"key": case.intent.key.model_copy(update={"invocation_id": "child"})}
-        )
-        from services.dify_builder.execution_contracts import canonical_digest
-        from services.dify_builder.native_testing.contracts import operation_digest
+    child_ref = _create_real_child(case)
+    child_intent = case.intent.model_copy(
+        update={"key": case.intent.key.model_copy(update={"invocation_id": child_ref.invocation_id})}
+    )
+    from services.dify_builder.execution_contracts import canonical_digest
+    from services.dify_builder.native_testing.contracts import operation_digest
 
+    with case.factory.begin() as session:
+        binding = session.scalar(
+            select(NativeTestInvocation).where(
+                NativeTestInvocation.request_id == case.ref.request_id,
+                NativeTestInvocation.invocation_id == case.ref.invocation_id,
+            )
+        )
         raw = dict(next(iter(binding.bindings.values())))
         raw["intent_digest"] = canonical_digest(child_intent.model_dump(mode="json"))
-        session.add(
-            NativeTestInvocation(
-                tenant_id=case.actor.tenant_id,
-                request_id=case.ref.request_id,
-                invocation_id="child",
-                active=True,
-                bindings={operation_digest(child_intent.key): raw},
+        child_row = session.scalar(
+            select(NativeTestInvocation).where(
+                NativeTestInvocation.request_id == child_ref.request_id,
+                NativeTestInvocation.invocation_id == child_ref.invocation_id,
             )
         )
-        session.add(
-            NativeInvocationState(
-                tenant_id=case.actor.tenant_id,
-                request_id=case.ref.request_id,
-                invocation_id="child",
-                app_id=root.app_id,
-                workflow_id=root.workflow_id,
-                context_object_id=str(uuid4()),
-                parent_invocation_id=case.ref.invocation_id,
-                parent_operation_digest="a" * 64,
-                child_identity_digest="b" * 64,
-                generation=0,
-                state="running",
-                pending_ids=[],
-                resolution=[],
-                cleanup_complete=False,
-            )
-        )
-    child = LedgerCase(
-        case.factory, case.actor, case.ref.model_copy(update={"invocation_id": "child"}), child_intent, case.metadata
-    )
+        child_row.bindings = {operation_digest(child_intent.key): raw}
+    child = LedgerCase(case.factory, case.actor, child_ref, child_intent, case.metadata)
     # The approved scope permits two identical occurrences but each invocation
     # still needs its own permit. No IO occurs in before_call.
     child_permit = child.guard.before_call(ref=child.ref, intent=child.intent)
     assert isinstance(child_permit, DispatchPermit)
+    # The real child reserves while its parent is still running. Close the
+    # ancestor only after reservation, at the physical-consumption boundary.
+    with case.factory.begin() as session:
+        root = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == case.ref.request_id,
+                NativeInvocationState.invocation_id == case.ref.invocation_id,
+            )
+        )
+        root.state = state
     observed = []
     with pytest.raises(BuilderExecutionPolicyError, match="native_ancestor_quarantined"):
         _claim(child, child_permit, io=lambda: observed.append("io"))

@@ -156,6 +156,15 @@ class EffectAuthorizationService:
             return self._existing(session, owned, operation, now)
         if now >= scope.expires_at:
             return PolicyStop(reason_code="native_scope_expired")
+        grant = session.scalar(
+            select(NativeEffectGrant).where(
+                NativeEffectGrant.tenant_id == owned.tenant_id,
+                NativeEffectGrant.request_id == owned.ref.request_id,
+                NativeEffectGrant.scope_digest == scoped,
+            )
+        )
+        if grant is not None and grant.decision == "denied":
+            return PolicyStop(reason_code="effect_denied")
         fence = dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now, coalesce_self=True)
         if fence is not None:
             return ApprovalWait(pending_operation_id=fence.id, wait_reason=fence.category)
@@ -170,13 +179,6 @@ class EffectAuthorizationService:
             )
             session.add(operation)
             session.flush()
-        grant = session.scalar(
-            select(NativeEffectGrant).where(
-                NativeEffectGrant.tenant_id == owned.tenant_id,
-                NativeEffectGrant.request_id == owned.ref.request_id,
-                NativeEffectGrant.scope_digest == scoped,
-            )
-        )
         if grant is None and task_grant_allowed(binding, task_approved=owned.task_approved):
             grant = NativeEffectGrant(
                 tenant_id=owned.tenant_id,
@@ -194,9 +196,6 @@ class EffectAuthorizationService:
             )
             session.add(grant)
             session.flush()
-        if grant is not None and grant.decision == "denied":
-            operation.state = "denied"
-            return PolicyStop(reason_code="effect_denied")
         if grant is None or grant.expires_at <= now or not self._fits(grant, binding.cost_units):
             return self._pending(session, owned, operation)
         if not self._fits(scope, binding.cost_units):
@@ -552,7 +551,6 @@ class EffectAuthorizationService:
         )
         binding = self._binding(session, owned, intent)
         now = self.clock()
-        dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now)
         if (
             operation is None
             or operation.operation_digest != operation_digest(intent.key)
@@ -564,6 +562,8 @@ class EffectAuthorizationService:
             or now >= scope.expires_at
         ):
             raise BuilderExecutionPolicyError("invalid_dispatch_permit")
+        require_ancestor_authority(session, owned.ref, owned.tenant_id)
+        dispatch_readiness(session, ref=owned.ref, tenant_id=owned.tenant_id, now=now)
         return attempt
 
     def record_outcome(self, *, permit: DispatchPermit, outcome: Outcome, result_ref: str | None) -> EffectReceipt:

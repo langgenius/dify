@@ -999,12 +999,10 @@ def test_claim_recovery_requires_native_fencing_proof(continuation_case):
     assert c.ledger.dispatched_attempt_count() == 0
 
 
-def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation_case):
-    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+def _form_waiting_child_and_parent(c):
+    from models.dify_builder_native_tests import NativeDispatch
     from services.dify_builder.native_testing.child_invocations import NativeChildInvocationService
     from services.dify_builder.native_testing.pending_actions import NativePendingActionService
-
-    c = continuation_case
 
     class ChildOwner:
         def resolve_child(self, *, parent, ref, child_app_id, child_workflow_revision, inputs):
@@ -1075,20 +1073,25 @@ def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation
     assert receipt.wait_reason == "interaction"
     with c.factory() as session:
         assert session.scalar(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id)) is None
-    service.complete(
-        child_ref=child,
-        outcome=NativeWorkflowOutcome(
-            status="completed",
-            ref=child,
-            native_run_id="child-run",
-            checkpoint_ref=None,
-            pending_operation_ids=(),
-            wait_reason=None,
-            reason_code=None,
-            native_status="succeeded",
-            output_result_ref=None,
-        ),
+    return service, child, pending, child_checkpoint, parent_checkpoint
+
+
+def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation_case):
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
+    from services.dify_builder.native_testing.transitions import dispatch_readiness
+
+    c = continuation_case
+    service, child, pending, child_checkpoint, parent_checkpoint = _form_waiting_child_and_parent(c)
+    # C04 records a genuine protected answer while its child owner is active.
+    answer_key = c.ledger.intent.key.model_copy(
+        update={
+            "invocation_id": child.invocation_id,
+            "occurrence_path": ("form-answer",),
+        }
     )
+    c.resolution.answer_ref = c.store.store_result(ref=child, key=answer_key, result={"answer": "continue"})
+    c.resolution.resolved = True
+    resumed = c.resume()
     with c.factory() as session:
         dispatch = session.scalar(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id))
         assert dispatch.invocation_id == c.ref.invocation_id
@@ -1100,6 +1103,109 @@ def test_child_wait_requires_committed_child_and_parent_checkpoints(continuation
         )
         assert state.checkpoint_id == parent_checkpoint.checkpoint_id
         assert state.state == "queued"
+        child_state = session.scalar(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == child.request_id,
+                NativeInvocationState.invocation_id == child.invocation_id,
+            )
+        )
+        assert (child_state.state, child_state.generation, child_state.checkpoint_id) == (
+            "queued",
+            resumed.generation,
+            child_checkpoint.checkpoint_id,
+        )
+    assert c.lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
+    outcome = NativeWorkflowOutcome(
+        status="completed",
+        ref=child,
+        native_run_id="child-run",
+        checkpoint_ref=None,
+        pending_operation_ids=(),
+        wait_reason=None,
+        reason_code=None,
+        native_status="succeeded",
+        output_result_ref=None,
+    )
+    service.complete(child_ref=child, outcome=outcome)
+    assert not c.lifecycle.claim_dispatch(ref=c.ref, generation=resumed.generation, dispatch_id=resumed.dispatch_id)
+    service.complete(child_ref=child, outcome=outcome)
+    assert service.get_outcome(child_ref=child) == outcome
+    with c.factory() as session:
+        states = {
+            row.invocation_id: row
+            for row in session.scalars(
+                select(NativeInvocationState).where(
+                    NativeInvocationState.request_id == c.ref.request_id,
+                )
+            )
+        }
+        assert (states[c.ref.invocation_id].state, states[c.ref.invocation_id].checkpoint_id) == (
+            "running",
+            parent_checkpoint.checkpoint_id,
+        )
+        assert states[c.ref.invocation_id].pending_ids == [pending.pending_operation_id]
+        assert (states[child.invocation_id].state, states[child.invocation_id].generation) == (
+            "completed",
+            resumed.generation,
+        )
+        assert (
+            len(session.scalars(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id)).all()) == 1
+        )
+        assert dispatch_readiness(session, ref=c.ref, tenant_id=c.ledger.actor.tenant_id, now=datetime.now(UTC)) is None
+
+
+def test_terminal_child_with_unresolved_form_commits_without_parent_dispatch(continuation_case):
+    from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState, NativeTestInvocation
+
+    c = continuation_case
+    service, child, pending, child_checkpoint, parent_checkpoint = _form_waiting_child_and_parent(c)
+    outcome = NativeWorkflowOutcome(
+        status="completed",
+        ref=child,
+        native_run_id="child-run",
+        checkpoint_ref=None,
+        pending_operation_ids=(),
+        wait_reason=None,
+        reason_code=None,
+        native_status="succeeded",
+        output_result_ref=None,
+    )
+    service.complete(child_ref=child, outcome=outcome)
+    assert service.get_outcome(child_ref=child) == outcome
+    with c.factory() as session:
+        states = {
+            row.invocation_id: row
+            for row in session.scalars(
+                select(NativeInvocationState).where(
+                    NativeInvocationState.request_id == c.ref.request_id,
+                )
+            )
+        }
+        assert (
+            states[c.ref.invocation_id].state,
+            states[c.ref.invocation_id].checkpoint_id,
+            states[c.ref.invocation_id].pending_ids,
+        ) == (
+            "waiting",
+            parent_checkpoint.checkpoint_id,
+            [pending.pending_operation_id],
+        )
+        assert (
+            states[child.invocation_id].state,
+            states[child.invocation_id].generation,
+            states[child.invocation_id].checkpoint_id,
+        ) == ("completed", 0, child_checkpoint.checkpoint_id)
+        assert states[child.invocation_id].pending_ids == [pending.pending_operation_id]
+        assert (
+            session.scalar(
+                select(NativeTestInvocation.active).where(
+                    NativeTestInvocation.request_id == child.request_id,
+                    NativeTestInvocation.invocation_id == child.invocation_id,
+                )
+            )
+            is False
+        )
+        assert session.scalar(select(NativeDispatch).where(NativeDispatch.request_id == c.ref.request_id)) is None
 
 
 def test_cancellation_of_unclaimed_dispatch_never_launches(continuation_case):
@@ -1412,7 +1518,7 @@ def _unknown_outcome(c, ref):
     )
 
 
-def _bind_child_effect(c, ref):
+def _bind_child_effect(c, ref, *, approval_scope="batch", input_digest=None):
     from models.dify_builder_native_tests import NativeTestInvocation
     from services.dify_builder.native_testing.contracts import operation_digest
     from services.dify_builder.native_testing.repository import NativeBinding
@@ -1420,6 +1526,8 @@ def _bind_child_effect(c, ref):
     intent = c.ledger.intent.model_copy(
         update={"key": c.ledger.intent.key.model_copy(update={"invocation_id": ref.invocation_id})}
     )
+    if input_digest is not None:
+        intent = intent.model_copy(update={"input_digest": input_digest})
     with c.factory.begin() as session:
         root = session.scalar(
             select(NativeTestInvocation).where(
@@ -1436,7 +1544,10 @@ def _bind_child_effect(c, ref):
         binding = NativeBinding.model_validate(root.bindings[operation_digest(c.ledger.intent.key)])
         child.bindings = {
             operation_digest(intent.key): binding.model_copy(
-                update={"intent_digest": canonical_digest(intent.model_dump(mode="json"))}
+                update={
+                    "intent_digest": canonical_digest(intent.model_dump(mode="json")),
+                    "approval_scope": approval_scope,
+                }
             ).model_dump(mode="json")
         }
     # A valid owned occurrence reaches approval before quarantine; mismatch-based
@@ -1875,6 +1986,9 @@ def test_child_dispatch_recovery_requires_controlling_ancestor_fence(continuatio
     runtime.quarantine_during_child_proof = False
     c.lifecycle.recover_dispatch(ref=c.ref, dispatch_id=root_dispatch.dispatch_id)
     c.lifecycle.recover_dispatch(ref=child, dispatch_id=child_id)
+    assert c.lifecycle.claim_dispatch(
+        ref=c.ref, generation=root_dispatch.generation, dispatch_id=root_dispatch.dispatch_id
+    )
     assert c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
     assert not c.lifecycle.claim_dispatch(ref=child, generation=generation, dispatch_id=child_id)
     assert c.store.read_checkpoint(ref=child, checkpoint=checkpoint).graph_runtime_state_json == '{"cursor":7}'
