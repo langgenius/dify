@@ -8,7 +8,6 @@ import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
-import { selectAgentTracingEnabled } from './capabilities'
 import { ProviderCapabilities } from './provider-capabilities'
 import { tracingProviders } from './providers'
 import { usesAgentTracePipeline } from './resource'
@@ -43,7 +42,9 @@ export function ProviderPanel({
 }: ProviderPanelProps) {
   const { t } = useTranslation(['app', 'common'])
   const { data: agentTracingEnabled } = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectAgentTracingEnabled }),
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.agent_tracing_api_collection_enabled,
+    }),
   )
   const iconClassName = tracingProviders[type].panelIcon
   const hasConfigured = !!config
