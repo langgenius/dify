@@ -2,12 +2,14 @@
 SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 """
 
+from __future__ import annotations
+
 import dataclasses
 import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import psycopg2.errors
 from sqlalchemy import UnaryExpression, asc, desc, select
@@ -38,6 +40,11 @@ from models.workflow import WorkflowNodeExecutionOffload
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
 
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.observation_adapters import NativeObservationGuard
+    from services.dify_builder.native_testing.observation_repository import NativeRepositoryObservation
+    from services.dify_builder.native_testing.runtime_contracts import ResolvedNativeTestContext
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,6 +66,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     This implementation also includes an in-memory cache for node executions to improve
     performance by reducing database queries.
     """
+
+    _native_observation: NativeRepositoryObservation | None = None
+    _native_observation_started: bool = False
+
+    def bind_native_observation(self, *, context: ResolvedNativeTestContext, guard: NativeObservationGuard) -> None:
+        from services.dify_builder.native_testing.observation_repository import NativeRepositoryObservation
+
+        self._native_observation = NativeRepositoryObservation.bind(
+            repository=self, cache=self._node_execution_cache, context=context, guard=guard
+        )
 
     def __init__(
         self,
@@ -118,6 +135,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         )
 
     def _to_domain_model(self, db_model: WorkflowNodeExecutionModel) -> WorkflowNodeExecution:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.to_domain_node(self, db_model)
+        return self._ordinary_to_domain_model(db_model)
+
+    def _ordinary_to_domain_model(self, db_model: WorkflowNodeExecutionModel) -> WorkflowNodeExecution:
         """
         Convert a database model to a domain model.
 
@@ -188,6 +211,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         return domain_model
 
     def _load_file(self, file: UploadFile) -> Mapping[str, Any]:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            self._native_observation.guard.fail()  # Bound offloads require the complete SQL owner chain.
         content = storage.load(file.key)
         return json.loads(content)
 
@@ -197,6 +223,11 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         return json.dumps(json_converter.to_json_encodable(values))
 
     def _to_db_model(self, domain_model: WorkflowNodeExecution) -> WorkflowNodeExecutionModel:
+        if self._native_observation is not None:
+            return self._native_observation.to_db_node(self, domain_model)
+        return self._ordinary_to_db_model(domain_model)
+
+    def _ordinary_to_db_model(self, domain_model: WorkflowNodeExecution) -> WorkflowNodeExecutionModel:
         """
         Convert a domain model to a database model. This copies the inputs /
         process_data / outputs from domain model directly without applying truncation.
@@ -280,6 +311,17 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         execution_id: str,
         type_: ExecutionOffLoadType,
     ) -> _InputsOutputsTruncationResult | None:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            self._native_observation.guard.fail()  # Standalone upload lacks a bound Run/node owner.
+        return self._ordinary_truncate_and_upload(values, execution_id, type_)
+
+    def _ordinary_truncate_and_upload(
+        self,
+        values: Mapping[str, Any] | None,
+        execution_id: str,
+        type_: ExecutionOffLoadType,
+    ) -> _InputsOutputsTruncationResult | None:
         if values is None:
             return None
 
@@ -340,6 +382,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Only the final call contains the complete inputs and outputs payloads, so earlier invocations
         # must tolerate missing data without attempting to offload variables.
 
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.save_node(self, execution)
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)
 
@@ -389,6 +434,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Args:
             db_model: The database model to persist
         """
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.persist_node(self, db_model)
         with self._session_factory() as session:
             # Check if record already exists
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
@@ -418,6 +466,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution):
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.save_node(self, execution, data=True)
         domain_model = execution
         with self._session_factory(expire_on_commit=False) as session:
             query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
@@ -488,6 +539,19 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         order_config: OrderConfig | None = None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
     ) -> Sequence[WorkflowNodeExecutionModel]:
+        self._native_observation_started = True
+        if self._native_observation is not None:
+            return self._native_observation.get_nodes(self, workflow_run_id, order_config, triggered_from)
+        return self._ordinary_get_db_models_by_workflow_run(workflow_run_id, order_config, triggered_from)
+
+    def _ordinary_get_db_models_by_workflow_run(
+        self,
+        workflow_run_id: str,
+        order_config: OrderConfig | None = None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        *,
+        cache: bool = True,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
 
@@ -537,9 +601,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_models = session.scalars(stmt).all()
 
             # Update the cache with the retrieved DB models
-            for model in db_models:
-                if model.node_execution_id:
-                    self._node_execution_cache[model.node_execution_id] = model
+            if cache:
+                for model in db_models:
+                    if model.node_execution_id:
+                        self._node_execution_cache[model.node_execution_id] = model
 
             return db_models
 
