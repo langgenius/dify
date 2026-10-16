@@ -29,6 +29,21 @@ from tasks.annotation.update_annotation_to_index_task import update_annotation_t
 logger = logging.getLogger(__name__)
 
 
+def _decode_redis_str(value: object) -> str | None:
+    """Decode a Redis value to str; the client is configured with decode_responses=False."""
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        return value.decode("utf-8")
+    return str(value)
+
+
+# Reservation key shared by enable/disable annotation-reply jobs: at most one
+# annotation mutation may be in flight per app. Holds the in-flight job_id.
+def _app_annotation_job_key(app_id: str) -> str:
+    return f"app_annotation_job_{app_id}"
+
+
 class AnnotationJobStatusDict(TypedDict):
     job_id: str
     job_status: str
@@ -178,42 +193,66 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:
-        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
-        cache_result = redis_client.get(enable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
+        app_annotation_job_key = _app_annotation_job_key(app_id)
+        cached_job_id = _decode_redis_str(redis_client.get(app_annotation_job_key))
+        if cached_job_id is not None:
+            return {"job_id": cached_job_id, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
+        # Atomically reserve the app for this job. A concurrent caller loses the
+        # race and reuses the winner's job instead of enqueueing a duplicate.
+        if not redis_client.set(app_annotation_job_key, job_id, ex=600, nx=True):
+            winner_job_id = _decode_redis_str(redis_client.get(app_annotation_job_key)) or job_id
+            return {"job_id": winner_job_id, "job_status": "processing"}
+
         enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
-        # send batch add segments task
-        redis_client.setnx(enable_app_annotation_job_key, "waiting")
-        current_user, current_tenant_id = current_account_with_tenant()
-        enable_annotation_reply_task.delay(
-            job_id,
-            app_id,
-            current_user.id,
-            current_tenant_id,
-            args["score_threshold"],
-            args["embedding_provider_name"],
-            args["embedding_model_name"],
-        )
+        try:
+            # send batch add segments task; the key expires so a dead worker
+            # cannot leave the job stuck at "waiting" forever.
+            redis_client.set(enable_app_annotation_job_key, "waiting", ex=600, nx=True)
+            current_user, current_tenant_id = current_account_with_tenant()
+            enable_annotation_reply_task.delay(
+                job_id,
+                app_id,
+                current_user.id,
+                current_tenant_id,
+                args["score_threshold"],
+                args["embedding_provider_name"],
+                args["embedding_model_name"],
+            )
+        except Exception:
+            # Never leave a reservation behind for a job that was not enqueued.
+            redis_client.delete(app_annotation_job_key)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> AnnotationJobStatusDict:
-        _, current_tenant_id = current_account_with_tenant()
-        disable_app_annotation_key = f"disable_app_annotation_{app_id}"
-        cache_result = redis_client.get(disable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
+        app_annotation_job_key = _app_annotation_job_key(app_id)
+        cached_job_id = _decode_redis_str(redis_client.get(app_annotation_job_key))
+        if cached_job_id is not None:
+            return {"job_id": cached_job_id, "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
+        # Atomically reserve the app for this job; shared with enable so the two
+        # actions cannot mutate the same app concurrently.
+        if not redis_client.set(app_annotation_job_key, job_id, ex=600, nx=True):
+            winner_job_id = _decode_redis_str(redis_client.get(app_annotation_job_key)) or job_id
+            return {"job_id": winner_job_id, "job_status": "processing"}
+
         disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
-        # send batch add segments task
-        redis_client.setnx(disable_app_annotation_job_key, "waiting")
-        disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
+        try:
+            # send batch delete segments task; the key expires so a dead worker
+            # cannot leave the job stuck at "waiting" forever.
+            redis_client.set(disable_app_annotation_job_key, "waiting", ex=600, nx=True)
+            _, current_tenant_id = current_account_with_tenant()
+            disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
+        except Exception:
+            # Never leave a reservation behind for a job that was not enqueued.
+            redis_client.delete(app_annotation_job_key)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod

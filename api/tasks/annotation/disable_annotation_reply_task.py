@@ -22,6 +22,8 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     """
     logger.info(click.style(f"Start delete app annotations index: {app_id}", fg="green"))
     start_at = time.perf_counter()
+    app_annotation_job_key = f"app_annotation_job_{app_id}"
+    disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
     # get app info
     with session_factory.create_session() as session:
         app = session.scalar(
@@ -30,6 +32,9 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         annotations_exists = session.scalar(select(exists().where(MessageAnnotation.app_id == app_id)))
         if not app:
             logger.info(click.style(f"App not found: {app_id}", fg="red"))
+            # Terminal state: nothing left to do, release the app reservation.
+            redis_client.setex(disable_app_annotation_job_key, 600, "completed")
+            redis_client.delete(app_annotation_job_key)
             return
 
         app_annotation_setting = session.scalar(
@@ -38,10 +43,10 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
 
         if not app_annotation_setting:
             logger.info(click.style(f"App annotation setting not found: {app_id}", fg="red"))
+            # Already in the desired end state; mark completed and release.
+            redis_client.setex(disable_app_annotation_job_key, 600, "completed")
+            redis_client.delete(app_annotation_job_key)
             return
-
-        disable_app_annotation_key = f"disable_app_annotation_{app_id}"
-        disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
 
         try:
             dataset = Dataset(
@@ -76,4 +81,4 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             disable_app_annotation_error_key = f"disable_app_annotation_error_{job_id}"
             redis_client.setex(disable_app_annotation_error_key, 600, str(e))
         finally:
-            redis_client.delete(disable_app_annotation_key)
+            redis_client.delete(app_annotation_job_key)

@@ -342,7 +342,8 @@ class TestAppAnnotationServiceEnableDisable:
             result = AppAnnotationService.enable_app_annotation(args, "app-1")
 
         assert result == {"job_id": "uuid-1", "job_status": "waiting"}
-        redis.setnx.assert_called_once_with("enable_app_annotation_job_uuid-1", "waiting")
+        redis.set.assert_any_call("app_annotation_job_app-1", "uuid-1", ex=600, nx=True)
+        redis.set.assert_any_call("enable_app_annotation_job_uuid-1", "waiting", ex=600, nx=True)
         task.delay.assert_called_once_with("uuid-1", "app-1", current_user.id, TENANT_ID, 0.5, "p", "m")
 
     def test_disable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
@@ -366,8 +367,137 @@ class TestAppAnnotationServiceEnableDisable:
             result = AppAnnotationService.disable_app_annotation("app-1")
 
         assert result == {"job_id": "uuid-2", "job_status": "waiting"}
-        redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
+        redis.set.assert_any_call("app_annotation_job_app-1", "uuid-2", ex=600, nx=True)
+        redis.set.assert_any_call("disable_app_annotation_job_uuid-2", "waiting", ex=600, nx=True)
         task.delay.assert_called_once_with("uuid-2", "app-1", TENANT_ID)
+
+
+class _FakeRedis:
+    """Minimal in-memory Redis stand-in supporting the calls under test."""
+
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
+
+    def get(self, key: str) -> str | None:
+        return self.store.get(key)
+
+    def set(self, key: str, value: str, ex: int | None = None, nx: bool = False) -> bool | None:
+        if nx and key in self.store:
+            return None
+        self.store[key] = value
+        return True
+
+    def setex(self, key: str, ttl: int, value: str) -> None:
+        self.store[key] = value
+
+    def setnx(self, key: str, value: str) -> bool:
+        if key in self.store:
+            return False
+        self.store[key] = value
+        return True
+
+    def delete(self, key: str) -> None:
+        self.store.pop(key, None)
+
+
+class TestAnnotationReplyJobReservation:
+    """Regression tests for https://github.com/langgenius/dify/issues/40595.
+
+    Annotation reply mutations must have one application-scoped job lifecycle:
+    duplicate enable calls reuse the in-flight job, a disable cannot start while
+    an enable is in flight (and vice versa), and early task exits still reach a
+    terminal job status and release the reservation.
+    """
+
+    @staticmethod
+    def _enable_args() -> dict:
+        return {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
+
+    def test_concurrent_enable_calls_share_one_job(self, current_user: Account) -> None:
+        fake = _FakeRedis()
+        with (
+            patch.object(annotation_service_module, "redis_client", fake),
+            patch.object(annotation_service_module, "enable_annotation_reply_task") as task,
+        ):
+            first = AppAnnotationService.enable_app_annotation(self._enable_args(), "app-1")
+            second = AppAnnotationService.enable_app_annotation(self._enable_args(), "app-1")
+
+        assert first["job_status"] == "waiting"
+        assert second == {"job_id": first["job_id"], "job_status": "processing"}
+        task.delay.assert_called_once()
+        assert fake.get("app_annotation_job_app-1") == first["job_id"]
+
+    def test_disable_does_not_start_while_enable_in_flight(self, current_user: Account) -> None:
+        fake = _FakeRedis()
+        with (
+            patch.object(annotation_service_module, "redis_client", fake),
+            patch.object(annotation_service_module, "enable_annotation_reply_task") as enable_task,
+            patch.object(annotation_service_module, "disable_annotation_reply_task") as disable_task,
+        ):
+            enable_result = AppAnnotationService.enable_app_annotation(self._enable_args(), "app-1")
+            disable_result = AppAnnotationService.disable_app_annotation("app-1")
+
+        assert disable_result == {"job_id": enable_result["job_id"], "job_status": "processing"}
+        disable_task.delay.assert_not_called()
+        enable_task.delay.assert_called_once()
+
+    def test_enable_does_not_start_while_disable_in_flight(self, current_user: Account) -> None:
+        fake = _FakeRedis()
+        with (
+            patch.object(annotation_service_module, "redis_client", fake),
+            patch.object(annotation_service_module, "enable_annotation_reply_task") as enable_task,
+            patch.object(annotation_service_module, "disable_annotation_reply_task") as disable_task,
+        ):
+            disable_result = AppAnnotationService.disable_app_annotation("app-1")
+            enable_result = AppAnnotationService.enable_app_annotation(self._enable_args(), "app-1")
+
+        assert enable_result == {"job_id": disable_result["job_id"], "job_status": "processing"}
+        enable_task.delay.assert_not_called()
+        disable_task.delay.assert_called_once()
+
+    def test_enable_task_reaches_terminal_status_when_app_missing(self) -> None:
+        from tasks.annotation import enable_annotation_reply_task as enable_task_module
+
+        fake = _FakeRedis()
+        fake.set("app_annotation_job_app-1", "job-1", ex=600)
+        fake.set("enable_app_annotation_job_job-1", "waiting", ex=600)
+
+        session = MagicMock()
+        session.scalar.return_value = None  # app was deleted before the task ran
+        session_ctx = MagicMock()
+        session_ctx.__enter__.return_value = session
+        with (
+            patch.object(enable_task_module, "redis_client", fake),
+            patch.object(enable_task_module, "session_factory") as session_factory,
+        ):
+            session_factory.create_session.return_value = session_ctx
+            enable_task_module.enable_annotation_reply_task.run("job-1", "app-1", "user-1", "tenant-1", 0.5, "p", "m")
+
+        assert fake.get("enable_app_annotation_job_job-1") == "completed"
+        assert fake.get("app_annotation_job_app-1") is None
+
+    def test_disable_task_reaches_terminal_status_when_setting_missing(self) -> None:
+        from tasks.annotation import disable_annotation_reply_task as disable_task_module
+
+        fake = _FakeRedis()
+        fake.set("app_annotation_job_app-1", "job-2", ex=600)
+        fake.set("disable_app_annotation_job_job-2", "waiting", ex=600)
+
+        app = SimpleNamespace(id="app-1")
+        session = MagicMock()
+        # app exists, but the annotation setting is already absent
+        session.scalar.side_effect = [app, True, None]
+        session_ctx = MagicMock()
+        session_ctx.__enter__.return_value = session
+        with (
+            patch.object(disable_task_module, "redis_client", fake),
+            patch.object(disable_task_module, "session_factory") as session_factory,
+        ):
+            session_factory.create_session.return_value = session_ctx
+            disable_task_module.disable_annotation_reply_task.run("job-2", "app-1", "tenant-1")
+
+        assert fake.get("disable_app_annotation_job_job-2") == "completed"
+        assert fake.get("app_annotation_job_app-1") is None
 
 
 class TestAppAnnotationServiceListAndExport:
