@@ -8,6 +8,7 @@ from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import NoFileUploadedError
 from controllers.common.fields import BinaryFileResponse
@@ -95,6 +96,7 @@ class SkillResponse(ResponseModel):
     latest_published_version_number: int | None = None
     latest_published_at: int | None = None
     reference_count: int = 0
+    maintainer: str | None = None
     created_by: str | None = None
     created_by_name: str | None = None
     updated_by: str | None = None
@@ -458,9 +460,7 @@ class WorkspaceSkillApi(Resource):
     @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
-    @console_account_admission(
-        rbac_checks=[RBACCheck(RBACPermission.SKILL_DELETE, Workspace())],
-    )
+    @console_account_admission()
     @edit_permission_required
     @with_session
     def delete(self, session: Session, request_context: RequestContext, skill_id: str):
@@ -468,6 +468,7 @@ class WorkspaceSkillApi(Resource):
             payload = SkillDeletePayload.model_validate(console_ns.payload or {})
             result = SkillManagementService(session=session).delete_skill(
                 tenant_id=request_context.active_workspace_id,
+                user_id=request_context.account_id,
                 skill_id=skill_id,
                 confirmation_name=payload.confirmation_name,
             )
@@ -475,6 +476,8 @@ class WorkspaceSkillApi(Resource):
         except ValidationError as exc:
             raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
+            if exc.code == "skill_delete_forbidden":
+                raise Forbidden() from exc
             raise _relayed_error(exc) from exc
 
 
