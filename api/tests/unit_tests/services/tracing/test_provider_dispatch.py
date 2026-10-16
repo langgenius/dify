@@ -198,6 +198,38 @@ def test_other_http_providers_have_native_semantics(
 
 
 @pytest.mark.parametrize(
+    ("endpoint_url", "suffix"),
+    [
+        ("https://log.aliyuncs.com", "api/v1/traces"),
+        ("https://cn-hangzhou.log.aliyuncs.com", "api/v1/traces"),
+        ("https://project.cn-heyuan.log.aliyuncs.com/apm/trace/opentelemetry", "api/v1/traces"),
+        ("https://project.cn-heyuan-intranet.log.aliyuncs.com/apm/trace/opentelemetry", "api/v1/traces"),
+        ("https://cn-shanghai-share.log.aliyuncs.com", "api/v1/traces"),
+        ("https://cn-beijing.dualstack.log.aliyuncs.com", "api/v1/traces"),
+        ("https://CN-HANGZHOU.LOG.ALIYUNCS.COM.:443", "api/v1/traces"),
+        ("https://tracing-analysis-dc-hz.aliyuncs.com", "api/otlp/traces"),
+        ("https://collector.example.test:4318/custom-prefix", "api/otlp/traces"),
+        ("https://evil-log.aliyuncs.com.evil.test", "api/otlp/traces"),
+        ("https://log.aliyuncs.com.evil.test", "api/otlp/traces"),
+        ("https://evil-log.aliyuncs.com", "api/otlp/traces"),
+        ("https://collector.example.test/log.aliyuncs.com", "api/otlp/traces"),
+    ],
+)
+def test_aliyun_endpoint_family_uses_dns_labels_and_preserves_custom_destinations(
+    trace: CanonicalTrace, http_calls: list[HTTPCall], endpoint_url: str, suffix: str
+) -> None:
+    result = export_trace(
+        "aliyun", {"endpoint": endpoint_url, "license_key": "synthetic-license", "app_name": "test-app"}, trace
+    )
+    assert result.status == "accepted"
+    assert len(http_calls) == 1
+    assert http_calls[0][1] == f"{endpoint_url}/adapt_synthetic-license/{suffix}"
+    spans = spans_from_call(http_calls[0])
+    assert [span.span_id.hex() for span in spans] == [span.id for span in trace.spans]
+    assert spans[1].parent_span_id == spans[0].span_id
+
+
+@pytest.mark.parametrize(
     ("provider", "config", "header"),
     [
         (
