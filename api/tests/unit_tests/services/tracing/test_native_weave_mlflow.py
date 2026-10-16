@@ -77,8 +77,9 @@ def _response(url: str, *, body: object = None, content: bytes | None = None, st
     return httpx.Response(status, request=request, json=body or {})
 
 
+@pytest.mark.parametrize("host", ["https://api.wandb.ai", "https://API.WANDB.AI:443"])
 def test_weave_sdk_exports_tree_session_usage_without_global_credentials(
-    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace
+    monkeypatch: pytest.MonkeyPatch, trace: CanonicalTrace, host: str
 ) -> None:
     calls = []
     before = dict(os.environ)
@@ -90,7 +91,7 @@ def test_weave_sdk_exports_tree_session_usage_without_global_credentials(
         return _response(url, body={"id": start["id"], "trace_id": start["trace_id"]} if start else {})
 
     monkeypatch.setattr(ssrf_proxy, "make_request", send)
-    result = export_trace("weave", {"api_key": "tenant-key", "entity": "team", "project": "demo"}, trace)
+    result = export_trace("weave", {"api_key": "tenant-key", "entity": "team", "project": "demo", "host": host}, trace)
     assert len(calls) == 4
     root, child = calls[0][3]["start"], calls[1][3]["start"]
     assert child["parent_id"] == root["id"]
