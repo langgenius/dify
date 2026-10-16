@@ -139,3 +139,17 @@ def test_stats_by_app_ids_skips_the_queries_without_apps() -> None:
 
     assert repository.get_stats_by_app_ids({}, _SOURCES, datetime.datetime(2026, 10, 14)) == {}
     assert client.sql == []
+
+
+@pytest.mark.parametrize("elapsed_time", ["0.0", "5.5"])
+def test_dict_to_workflow_run_prefers_stored_active_duration(elapsed_time: str) -> None:
+    model = _dict_to_workflow_run({**_BASE, "started_at": _START, "finished_at": _FINISH, "elapsed_time": elapsed_time})
+
+    assert model.elapsed_time == float(elapsed_time)
+
+
+@pytest.mark.parametrize("elapsed_time", [None, "null"])
+def test_dict_to_workflow_run_defaults_legacy_unfinished_duration_to_zero(elapsed_time: str | None) -> None:
+    model = _dict_to_workflow_run({**_BASE, "elapsed_time": elapsed_time})
+
+    assert model.elapsed_time == 0.0
