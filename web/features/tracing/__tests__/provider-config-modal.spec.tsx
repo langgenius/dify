@@ -8,8 +8,7 @@ import { toast } from '@/app/notifications'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
-import ConfigBtn from '../config-button'
-import ProviderConfigModal from '../provider-config-modal'
+import { ProviderConfigModal } from '../provider-config-modal'
 import { configurableProviders } from '../providers'
 
 const { request } = vi.hoisted(() => ({
@@ -203,27 +202,6 @@ const invalidConfigCases: Array<{
   },
 ]
 
-const renderConfigButton = () => {
-  return render(
-    <ConfigBtn
-      resource={{ kind: 'app', appId: 'app-id' }}
-      readOnly={false}
-      hasConfigured={false}
-      enabled={false}
-      onStatusChange={vi.fn()}
-      chosenProvider={null}
-      onChooseProvider={vi.fn()}
-      configs={{}}
-      pending={false}
-      onPolicyChange={vi.fn()}
-      onBeforeRemove={vi.fn()}
-    >
-      Open tracing
-    </ConfigBtn>,
-    { wrapper: createQueryClientWrapper(createTestQueryClient()) },
-  )
-}
-
 const renderProviderConfigModal = ({
   type = 'langfuse',
   payload,
@@ -276,6 +254,7 @@ describe('ProviderConfigModal', () => {
     )
   })
 
+<<<<<<< HEAD
   describe('Nested Overlay Behavior', () => {
     it('keeps the provider list open and starts a fresh draft after closing the dialog', async () => {
       const user = userEvent.setup()
@@ -310,6 +289,28 @@ describe('ProviderConfigModal', () => {
       await user.click(configButton)
       expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
     })
+=======
+  describe('Rendering', () => {
+    it.each(providerFieldLabels)(
+      'should render %s fields when adding a provider',
+      async (provider, expectedLabels) => {
+        renderProviderConfigModal({ type: provider })
+
+        expect(
+          screen.getByText(`app.tracing.configProvider.titleapp.tracing.${provider}.title`),
+        ).toBeInTheDocument()
+        expectedLabels.forEach((label) => {
+          expect(screen.getByRole('textbox', { name: label })).toBeInTheDocument()
+        })
+        await waitFor(() =>
+          expect(screen.getByRole('textbox', { name: expectedLabels[0] })).toHaveFocus(),
+        )
+        expect(
+          screen.getByRole('button', { name: 'common.operation.saveAndEnable' }),
+        ).toBeInTheDocument()
+      },
+    )
+>>>>>>> eee0f2136a (refactor: simplify tracing component ownership and remove legacy code)
   })
 
   describe('Saving', () => {
