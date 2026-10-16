@@ -447,13 +447,6 @@ function ActivityDrawer({
       enabled: open,
       getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
-      queryKey: [
-        'knowledge-fs-overview-activity',
-        knowledgeSpaceId,
-        activityFrom,
-        activityTo,
-        operator,
-      ],
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {
@@ -468,7 +461,18 @@ function ActivityDrawer({
     }),
   )
   const activities = activityQuery.data?.pages.flatMap((page) => page.data) ?? []
-  const loading = activityQuery.isPending || activityQuery.isRefetching
+  // Background refreshes, including task-completion invalidation, keep the loaded rows visible.
+  const loading = activityQuery.isPending
+  const retryButton = (
+    <Button
+      loading={activityQuery.isRefetching}
+      size="small"
+      variant="secondary"
+      onClick={() => void activityQuery.refetch()}
+    >
+      {tCommon(($) => $['operation.retry'])}
+    </Button>
+  )
   const rangeTriggerRef = useRef<HTMLButtonElement>(null)
   const restoreFilterFocusRef = useRef(false)
   const now = dayjs()
@@ -659,6 +663,17 @@ function ActivityDrawer({
                   </div>
                 ) : activities.length ? (
                   <>
+                    {activityQuery.isError && (
+                      <div
+                        role="alert"
+                        className="mx-5 mt-3 flex items-center justify-between gap-3 rounded-lg bg-background-section px-3 py-2"
+                      >
+                        <p className="min-w-0 system-xs-regular text-text-tertiary">
+                          {t(($) => $.tasksErrorDescription)}
+                        </p>
+                        {retryButton}
+                      </div>
+                    )}
                     {Object.entries(groups).map(([key, group]) => (
                       <section key={key}>
                         <h3 className="sticky top-0 z-10 flex h-11 items-end bg-components-panel-bg px-5 pb-2 system-xs-regular text-text-tertiary">
@@ -717,6 +732,20 @@ function ActivityDrawer({
                       )}
                     </div>
                   </>
+                ) : activityQuery.isError ? (
+                  <div
+                    role="alert"
+                    className="flex h-72.25 flex-col items-center justify-end pb-0 text-center"
+                  >
+                    <span
+                      aria-hidden
+                      className="i-ri-error-warning-line size-6 text-text-tertiary"
+                    />
+                    <p className="mt-3 body-sm-regular text-text-tertiary">
+                      {t(($) => $.tasksErrorDescription)}
+                    </p>
+                    <div className="mt-4">{retryButton}</div>
+                  </div>
                 ) : (
                   <div className="flex h-72.25 flex-col items-center justify-end pb-0 text-center">
                     <span className="flex size-11 items-center justify-center rounded-xl bg-background-section text-text-tertiary">

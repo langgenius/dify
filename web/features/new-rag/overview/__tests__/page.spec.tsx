@@ -793,15 +793,9 @@ describe('KnowledgeOverviewPage', () => {
       input: (cursor: string | null) => {
         query: Record<string, unknown>
       }
-      queryKey: unknown[]
     }
-    expect(memberOptions.queryKey).toEqual([
-      'knowledge-fs-overview-activity',
-      'space-1',
-      expect.any(String),
-      expect.any(String),
-      'member:member-1',
-    ])
+    // The generated key carries the filters through input, inside the task-sync invalidation scope.
+    expect(memberOptions).not.toHaveProperty('queryKey')
     expect(memberOptions.input(null).query).toMatchObject({
       actor_id: 'dify-account:member-1',
       actor_type: 'member',
@@ -821,9 +815,7 @@ describe('KnowledgeOverviewPage', () => {
       input: (cursor: string | null) => {
         query: Record<string, unknown>
       }
-      queryKey: unknown[]
     }
-    expect(todayOptions.queryKey[4]).toBe('member:member-1')
     expect(todayOptions.input(null).query).toMatchObject({
       actor_id: 'dify-account:member-1',
       actor_type: 'member',

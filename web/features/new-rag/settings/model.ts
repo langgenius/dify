@@ -10,8 +10,10 @@ export const TOP_K_MAX = 10
 export const SCORE_THRESHOLD_MIN = 0
 export const SCORE_THRESHOLD_MAX = 1
 
+/** API Access drives two independent backend channels; keep both so mixed states survive edits. */
 export type ExternalAccessDraft = {
-  apiEnabled: boolean
+  agentEnabled: boolean
+  serviceApiEnabled: boolean
   workflowEnabled: boolean
 }
 

@@ -59,6 +59,7 @@ const queryKeys = {
   permissions: ['knowledge-fs', 'permissions'],
   settings: ['knowledge-fs', 'settings'],
   space: ['knowledge-fs', 'space'],
+  spacesList: ['knowledge-fs', 'spaces'],
   systemFeatures: ['console', 'system-features'],
 }
 
@@ -109,6 +110,7 @@ vi.mock('@/service/console', async () => {
       },
       knowledgeFs: {
         spaces: {
+          get: { key: () => queryKeys.spacesList },
           byControlSpaceId: {
             delete: {
               mutationOptions: () => ({ mutationFn: serviceMock.deleteSpace }),
@@ -623,6 +625,25 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
+  it('marks every cached knowledge-space list variant stale after saving basic information', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderForm()
+    const listKeys = [
+      [...queryKeys.spacesList, { keyword: '' }],
+      [...queryKeys.spacesList, { keyword: 'camera' }],
+    ]
+    for (const queryKey of listKeys) queryClient.setQueryData(queryKey, { data: [space] })
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Updated camera specs')
+    await saveChanges(user)
+
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess'))
+    for (const queryKey of listKeys)
+      expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
+  })
+
   it('keeps fields locked while Cancel refreshes the saved server data', async () => {
     const user = userEvent.setup()
     let finishRefresh!: () => void
@@ -930,6 +951,41 @@ describe('KnowledgeSettingsPage workflows', () => {
     await waitFor(() => expect(workflowAccessSwitch).toHaveAttribute('aria-checked', 'true'))
   })
 
+  it('shows a partially enabled API channel as on and disables both channels directly', async () => {
+    const user = userEvent.setup()
+    renderForm({
+      externalAccess: {
+        ...externalAccess,
+        agent_enabled: false,
+        service_api_enabled: true,
+      },
+    })
+
+    const apiAccessSwitch = screen.getByRole('switch', {
+      name: 'knowledgeSpace.apiAgentAccess',
+    })
+    expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'true')
+    await user.click(apiAccessSwitch)
+    expect(apiAccessSwitch).toHaveAttribute('aria-checked', 'false')
+    expectNoWrites()
+    await saveChanges(user)
+
+    await waitFor(() => {
+      expect(serviceMock.patchExternalAccess).toHaveBeenCalledWith(
+        {
+          body: {
+            agent_enabled: false,
+            mcp_enabled: true,
+            service_api_enabled: false,
+            workflow_enabled: true,
+          },
+          params: { control_space_id: 'space-1' },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
   it('keeps the Workflow access edit and shows an error toast after failure', async () => {
     const user = userEvent.setup()
     serviceMock.patchExternalAccess.mockRejectedValueOnce(new Error('network error'))
@@ -1016,6 +1072,26 @@ describe('KnowledgeSettingsPage workflows', () => {
       )
     })
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent')
+  })
+
+  it('marks cached knowledge-space lists stale before returning after deletion', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderForm()
+    const listKey = [...queryKeys.spacesList, { keyword: '' }]
+    queryClient.setQueryData(listKey, { data: [space] })
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.type(
+      within(dialog).getByRole('textbox', {
+        name: /^knowledgeSettings\.settings\.deleteConfirmPrompt/,
+      }),
+      'Camera Technical Spec',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=agent'))
+    expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
   })
 
   it('keeps the deletion dialog modal until the pending deletion settles', async () => {

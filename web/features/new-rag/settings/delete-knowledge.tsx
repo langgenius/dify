@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +26,7 @@ export function DeleteKnowledgeAction() {
   const { t } = useTranslation(['knowledgeSettings'])
   const { t: tCommon } = useTranslation(['common'])
   const router = useRouter()
+  const queryClient = useQueryClient()
   const space = useAtomValue(knowledgeSettingsSpaceAtom)
   const hasPendingSave = useAtomValue(knowledgeSettingsHasPendingSaveAtom)
   const [open, setOpen] = useState(false)
@@ -47,6 +48,9 @@ export function DeleteKnowledgeAction() {
         params: { control_space_id: space.control_space_id },
       })
       setOpen(false)
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+      })
       router.replace(newKnowledgeListPath)
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))
