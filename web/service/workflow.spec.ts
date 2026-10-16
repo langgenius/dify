@@ -75,9 +75,10 @@ const createWorkflowResponse = () => ({
   tool_published: false,
   environment_variables: [
     { id: 'env-1', name: 'key', description: '', value_type: 'secret', value: '***' },
-    { id: 'env-2', name: 'list', description: '', value_type: 'array[string]', value: [] },
   ],
-  conversation_variables: [],
+  conversation_variables: [
+    { id: 'conv-1', name: 'token', description: '', value_type: 'secret', value: '***' },
+  ],
   rag_pipeline_variables: [],
 })
 
@@ -111,6 +112,9 @@ describe('fetchWorkflowDraft', () => {
       NOTE_NODE_DATA_TYPE,
     ])
     expect(draft.environment_variables.map((variable) => variable.id)).toEqual(['env-1'])
+    expect(draft.conversation_variables).toEqual([
+      { id: 'conv-1', name: 'token', description: '', value_type: 'secret', value: '***' },
+    ])
   })
 })
 

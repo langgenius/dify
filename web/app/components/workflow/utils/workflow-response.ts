@@ -150,51 +150,102 @@ const toEnvironmentVariableValue = (
   }
 }
 
-// Variables of a type the environment panel cannot edit stay on the server untouched.
+/**
+ * Thrown when a draft holds a variable this client cannot represent. Draft syncs write the
+ * variable lists back whole, so loading without it would delete it on the next sync.
+ */
+export class UnsupportedWorkflowVariableError extends Error {
+  readonly variable: string
+
+  constructor(kind: string, variable: string, detail: string) {
+    super(`Unsupported ${kind} variable "${variable}": ${detail}`)
+    this.name = 'UnsupportedWorkflowVariableError'
+    this.variable = variable
+  }
+}
+
 export const toEnvironmentVariables = (
   variables: WorkflowEnvironmentVariableResponse[],
 ): EnvironmentVariable[] =>
-  variables.flatMap((variable) => {
-    if (!isOneOf(ENVIRONMENT_VARIABLE_TYPES, variable.value_type)) return []
+  variables.map((variable) => {
+    if (!isOneOf(ENVIRONMENT_VARIABLE_TYPES, variable.value_type))
+      throw new UnsupportedWorkflowVariableError(
+        'environment',
+        variable.name,
+        `type "${variable.value_type}"`,
+      )
     const value = toEnvironmentVariableValue(variable.value_type, variable.value)
-    if (value === undefined) return []
-    return [
-      {
-        id: variable.id,
-        name: variable.name,
-        description: variable.description,
-        value_type: variable.value_type,
-        value,
-      },
-    ]
+    if (value === undefined)
+      throw new UnsupportedWorkflowVariableError(
+        'environment',
+        variable.name,
+        `value does not match type "${variable.value_type}"`,
+      )
+    return {
+      id: variable.id,
+      name: variable.name,
+      description: variable.description,
+      value_type: variable.value_type,
+      value,
+    }
   })
 
 export const toConversationVariables = (
   variables: WorkflowConversationVariableResponse[],
 ): ConversationVariable[] =>
-  variables.flatMap((variable) =>
-    isOneOf(ChatVarType, variable.value_type)
-      ? [
-          {
-            id: variable.id,
-            name: variable.name,
-            description: variable.description,
-            value_type: variable.value_type,
-            value: variable.value,
-          },
-        ]
-      : [],
-  )
+  variables.map((variable) => {
+    if (!isOneOf(ChatVarType, variable.value_type))
+      throw new UnsupportedWorkflowVariableError(
+        'conversation',
+        variable.name,
+        `type "${variable.value_type}"`,
+      )
+    return {
+      id: variable.id,
+      name: variable.name,
+      description: variable.description,
+      value_type: variable.value_type,
+      value: variable.value,
+    }
+  })
 
-const toDefaultValue = (value: unknown) =>
+const isDefaultValue = (value: unknown): value is string | number | boolean =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
-    ? value
-    : undefined
 
-// Variables of a type the input forms cannot render are left out.
-export const toPipelineVariables = (variables: PipelineVariableResponse[]): RAGPipelineVariable[] =>
+type PipelineVariableOptions = {
+  /**
+   * Refuse variables that would lose data, for lists written back to the draft. Read-only
+   * forms leave such variables (or unknown entries) out instead.
+   */
+  strict?: boolean
+}
+
+export const toPipelineVariables = (
+  variables: PipelineVariableResponse[],
+  { strict = false }: PipelineVariableOptions = {},
+): RAGPipelineVariable[] =>
   variables.flatMap((variable) => {
-    if (!isOneOf(PipelineInputVarType, variable.type)) return []
+    const unsupported = (detail: string) => {
+      if (strict) throw new UnsupportedWorkflowVariableError('pipeline', variable.variable, detail)
+      return []
+    }
+    if (!isOneOf(PipelineInputVarType, variable.type)) return unsupported(`type "${variable.type}"`)
+    const defaultValue = variable.default_value
+    if (defaultValue != null && !isDefaultValue(defaultValue))
+      return unsupported('default value is not a string, number or boolean')
+    const allowedFileTypes = variable.allowed_file_types?.filter((type) =>
+      isOneOf(SupportUploadFileTypes, type),
+    )
+    const allowedUploadMethods = variable.allowed_file_upload_methods?.filter((method) =>
+      isOneOf(TransferMethod, method),
+    )
+    if (
+      strict &&
+      (allowedFileTypes?.length !== variable.allowed_file_types?.length ||
+        allowedUploadMethods?.length !== variable.allowed_file_upload_methods?.length)
+    )
+      return unsupported('unknown file type or upload method')
+
     return [
       {
         belong_to_node_id: variable.belong_to_node_id,
@@ -203,18 +254,14 @@ export const toPipelineVariables = (variables: PipelineVariableResponse[]): RAGP
         variable: variable.variable,
         required: variable.required,
         max_length: variable.max_length ?? undefined,
-        default_value: toDefaultValue(variable.default_value),
+        default_value: isDefaultValue(defaultValue) ? defaultValue : undefined,
         placeholder: variable.placeholder ?? undefined,
         unit: variable.unit ?? undefined,
         tooltips: variable.tooltips ?? undefined,
         options: variable.options ?? undefined,
-        allowed_file_types: variable.allowed_file_types?.filter((type) =>
-          isOneOf(SupportUploadFileTypes, type),
-        ),
+        allowed_file_types: allowedFileTypes,
         allowed_file_extensions: variable.allowed_file_extensions ?? undefined,
-        allowed_file_upload_methods: variable.allowed_file_upload_methods?.filter((method) =>
-          isOneOf(TransferMethod, method),
-        ),
+        allowed_file_upload_methods: allowedUploadMethods,
       },
     ]
   })
@@ -296,7 +343,7 @@ export const toWorkflowDraft = (workflow: WorkflowResponse): FetchWorkflowDraftR
   graph: toCanvasGraph(workflow.graph),
   environment_variables: toEnvironmentVariables(workflow.environment_variables),
   conversation_variables: toConversationVariables(workflow.conversation_variables),
-  rag_pipeline_variables: toPipelineVariables(workflow.rag_pipeline_variables),
+  rag_pipeline_variables: toPipelineVariables(workflow.rag_pipeline_variables, { strict: true }),
 })
 
 export const toWorkflowRunDetail = (

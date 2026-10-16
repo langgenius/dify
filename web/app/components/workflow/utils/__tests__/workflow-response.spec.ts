@@ -1,4 +1,5 @@
 import type {
+  PipelineVariableResponse,
   WorkflowGraphResponse,
   WorkflowRunNodeExecutionResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
@@ -13,7 +14,9 @@ import {
   toEnvironmentVariables,
   toFeaturesData,
   toNodeTracing,
+  toPipelineVariables,
   UnknownWorkflowBlockError,
+  UnsupportedWorkflowVariableError,
 } from '../workflow-response'
 
 describe('toCanvasGraph', () => {
@@ -69,30 +72,67 @@ describe('toCanvasGraph', () => {
 })
 
 describe('variables', () => {
-  it('keeps only environment variables whose value matches their type', () => {
+  it('maps environment variables, including LLM values', () => {
     expect(
       toEnvironmentVariables([
         { id: '1', name: 'key', description: '', value_type: 'secret', value: '***' },
-        { id: '2', name: 'count', description: '', value_type: 'number', value: 'nope' },
-        { id: '3', name: 'list', description: '', value_type: 'array[string]', value: [] },
         {
-          id: '4',
+          id: '2',
           name: 'model',
           description: '',
           value_type: 'llm',
           value: { provider: 'openai', name: 'gpt', mode: 'chat' },
         },
-      ]).map((variable) => variable.id),
-    ).toEqual(['1', '4'])
+      ]).map((variable) => [variable.id, variable.value_type]),
+    ).toEqual([
+      ['1', 'secret'],
+      ['2', 'llm'],
+    ])
   })
 
-  it('drops conversation variables of unknown types', () => {
+  it.each([
+    { id: '1', name: 'count', description: '', value_type: 'number', value: 'nope' },
+    { id: '2', name: 'list', description: '', value_type: 'array[string]', value: [] },
+  ])('refuses environment variables it cannot keep: %o', (variable) => {
+    expect(() => toEnvironmentVariables([variable])).toThrow(UnsupportedWorkflowVariableError)
+  })
+
+  it('keeps secret conversation variables', () => {
     expect(
       toConversationVariables([
         { id: '1', name: 'a', description: '', value_type: 'string', value: '' },
-        { id: '2', name: 'b', description: '', value_type: 'unknown', value: '' },
-      ]).map((variable) => variable.id),
-    ).toEqual(['1'])
+        { id: '2', name: 'token', description: '', value_type: 'secret', value: '***' },
+      ]).map((variable) => variable.value_type),
+    ).toEqual(['string', 'secret'])
+  })
+
+  it('refuses conversation variables of unknown types', () => {
+    expect(() =>
+      toConversationVariables([
+        { id: '1', name: 'b', description: '', value_type: 'unknown', value: '' },
+      ]),
+    ).toThrow(UnsupportedWorkflowVariableError)
+  })
+
+  const pipelineVariable = (overrides: Partial<PipelineVariableResponse> = {}) => ({
+    variable: 'doc',
+    label: 'Doc',
+    type: 'file',
+    belong_to_node_id: 'shared',
+    required: true,
+    ...overrides,
+  })
+
+  it.each([
+    pipelineVariable({ type: 'future-input' }),
+    pipelineVariable({ default_value: ['a'] }),
+    pipelineVariable({ allowed_file_types: ['image', 'hologram'] }),
+    pipelineVariable({ allowed_file_upload_methods: ['local_file', 'carrier_pigeon'] }),
+  ])('refuses lossy pipeline variables only when strict: %o', (variable) => {
+    expect(() => toPipelineVariables([variable], { strict: true })).toThrow(
+      UnsupportedWorkflowVariableError,
+    )
+    expect(toPipelineVariables([variable]).length).toBeLessThanOrEqual(1)
   })
 })
 
