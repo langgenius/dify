@@ -1,20 +1,19 @@
 'use client'
+
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
 import type { ConfigModalValidationError } from './utils'
-import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
-import type { FileUploadConfigResponse } from '@/models/common'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ConfigContext from '@/context/debug-configuration'
-import { commonQueryKeys } from '@/service/use-common'
-import { AppModeEnum } from '@/types/app'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import {
   checkKeys,
   getNewVarInWorkflow,
@@ -56,15 +55,19 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation(['appDebug', 'workflow'])
   const [tempPayload, setTempPayload] = useState<InputVar>(() =>
-    normalizeSelectDefaultValue(payload || (getNewVarInWorkflow('') as any)),
+    normalizeSelectDefaultValue(payload || getNewVarInWorkflow('')),
   )
   const [validationError, setValidationError] = useState<ConfigModalValidationError>()
   const queryClient = useQueryClient()
   const { type, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
-  const appDetail = useAppStore((state) => state.appDetail)
-  const isBasicApp =
-    appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
+  const { appId } = useParams<{ appId?: string }>()
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
+  const isBasicApp = appDetail?.mode !== 'advanced-chat' && appDetail?.mode !== 'workflow'
   const jsonSchemaStr = useMemo(
     () => getJsonSchemaEditorValue(type, tempPayload.json_schema),
     [tempPayload.json_schema, type],
@@ -96,7 +99,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     [t],
   )
   const handlePayloadChange = useCallback((key: string) => {
-    return (value: any) => {
+    return (value: unknown) => {
       setTempPayload((prev) => updatePayloadField(prev, key, value))
       setValidationError((prev) => (prev?.field === key ? undefined : prev))
     }
@@ -130,12 +133,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleTypeChange = useCallback((item: SelectItem) => {
-    setTempPayload((prev) => createPayloadForType(prev, item.value as InputVarType))
+    setTempPayload((prev) => createPayloadForType(prev, item.value))
     setValidationError(undefined)
   }, [])
 
   const handleVarKeyBlur = useCallback(
-    (e: any) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       const varName = e.target.value
       if (!checkVariableName(varName, true) || tempPayload.label) return
 
@@ -151,7 +154,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleVarNameChange = useCallback(
-    (e: ChangeEvent<any>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       replaceSpaceWithUnderscoreInVarNameInput(e.target)
       const value = e.target.value
       const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
@@ -172,9 +175,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleConfirm = () => {
-    const fileUploadConfig = queryClient.getQueryData<FileUploadConfigResponse>(
-      commonQueryKeys.fileUploadConfig,
-    )
+    const fileUploadConfig = queryClient.getQueryData(consoleQuery.files.upload.get.queryKey())
     const { errorMessage, errorField, moreInfo, payloadToSave } = validateConfigModalPayload({
       tempPayload,
       payload,

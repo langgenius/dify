@@ -46,7 +46,7 @@ type FileUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
   onSuccessCallback: (res: FileUploadResponse) => void
-  onErrorCallback: (error?: any) => void
+  onErrorCallback: (error?: unknown) => void
 }
 type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
 export const fileUpload: FileUpload = (

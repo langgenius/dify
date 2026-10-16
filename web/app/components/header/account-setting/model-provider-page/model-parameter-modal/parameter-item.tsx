@@ -114,12 +114,11 @@ function ParameterItem({
     let num = +e.target.value
 
     if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!) {
-      num = parameterRule.max as number
+      num = parameterRule.max
       numberInputRef.current!.value = `${num}`
     }
 
-    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!)
-      num = parameterRule.min as number
+    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!) num = parameterRule.min
 
     handleInputChange(num)
   }

@@ -1,74 +1,50 @@
-import type { DataSourceInfo, FullDocumentDetail, IndexingStatusResponse } from '@/models/datasets'
+import type {
+  DocumentResponse,
+  DocumentStatusResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import { describe, expect, it } from 'vite-plus/test'
-import {
-  createDocumentLookup,
-  getFileType,
-  getSourcePercent,
-  isLegacyDataSourceInfo,
-  isSourceEmbedding,
-} from '../utils'
-
-describe('isLegacyDataSourceInfo', () => {
-  it('should return true when upload_file object exists', () => {
-    const info = { upload_file: { id: '1', name: 'test.pdf' } } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(true)
-  })
-
-  it('should return false when upload_file is absent', () => {
-    const info = { notion_page_icon: 'icon' } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(false)
-  })
-
-  it('should return false for null', () => {
-    expect(isLegacyDataSourceInfo(null as unknown as DataSourceInfo)).toBe(false)
-  })
-
-  it('should return false when upload_file is a string', () => {
-    const info = { upload_file: 'not-an-object' } as unknown as DataSourceInfo
-    expect(isLegacyDataSourceInfo(info)).toBe(false)
-  })
-})
+import { createDocumentLookup, getFileType, getSourcePercent, isSourceEmbedding } from '../utils'
 
 describe('isSourceEmbedding', () => {
   const embeddingStatuses = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting']
   const nonEmbeddingStatuses = ['completed', 'error', 'paused', 'unknown']
 
   it.each(embeddingStatuses)('should return true for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as IndexingStatusResponse)).toBe(true)
+    expect(isSourceEmbedding({ indexing_status: status } as DocumentStatusResponse)).toBe(true)
   })
 
   it.each(nonEmbeddingStatuses)('should return false for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as IndexingStatusResponse)).toBe(false)
+    expect(isSourceEmbedding({ indexing_status: status } as DocumentStatusResponse)).toBe(false)
   })
 })
 
 describe('getSourcePercent', () => {
   it('should calculate correct percentage', () => {
     expect(
-      getSourcePercent({ completed_segments: 50, total_segments: 100 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 50, total_segments: 100 } as DocumentStatusResponse),
     ).toBe(50)
   })
 
   it('should return 0 when total is 0', () => {
     expect(
-      getSourcePercent({ completed_segments: 0, total_segments: 0 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 0, total_segments: 0 } as DocumentStatusResponse),
     ).toBe(0)
   })
 
   it('should cap at 100', () => {
     expect(
-      getSourcePercent({ completed_segments: 150, total_segments: 100 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 150, total_segments: 100 } as DocumentStatusResponse),
     ).toBe(100)
   })
 
   it('should round to nearest integer', () => {
     expect(
-      getSourcePercent({ completed_segments: 1, total_segments: 3 } as IndexingStatusResponse),
+      getSourcePercent({ completed_segments: 1, total_segments: 3 } as DocumentStatusResponse),
     ).toBe(33)
   })
 
   it('should handle undefined segments as 0', () => {
-    expect(getSourcePercent({} as IndexingStatusResponse)).toBe(0)
+    expect(getSourcePercent({} as DocumentStatusResponse)).toBe(0)
   })
 })
 
@@ -110,7 +86,7 @@ describe('createDocumentLookup', () => {
         notion_page_icon: 'https://icon.url',
       },
     },
-  ] as unknown as FullDocumentDetail[]
+  ] as unknown as DocumentResponse[]
 
   it('should get document by id', () => {
     const lookup = createDocumentLookup(documents)
@@ -143,7 +119,7 @@ describe('createDocumentLookup', () => {
         id: 'doc-3',
         data_source_info: { some_other: 'field' },
       },
-    ] as unknown as FullDocumentDetail[]
+    ] as unknown as DocumentResponse[]
     const lookup = createDocumentLookup(docs)
     expect(lookup.getNotionIcon('doc-3')).toBeUndefined()
   })

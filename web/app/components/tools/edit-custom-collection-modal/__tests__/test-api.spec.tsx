@@ -22,7 +22,6 @@ describe('TestApi', () => {
     icon: { background: '', content: '' },
     privacy_policy: '',
     custom_disclaimer: '',
-    id: 'test-id',
     labels: [],
   }
 

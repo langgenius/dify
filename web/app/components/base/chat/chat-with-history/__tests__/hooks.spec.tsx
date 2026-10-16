@@ -663,9 +663,7 @@ describe('useChatWithHistory', () => {
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
       // First call blocks, second call should be rejected by guard
-      mockDelConversation.mockReturnValueOnce(
-        deletePromise as unknown as ReturnType<typeof mockDelConversation>,
-      )
+      mockDelConversation.mockReturnValueOnce(deletePromise)
       const onSuccess = vi.fn()
 
       const { result } = await renderWithClient(() => useChatWithHistory())
@@ -773,9 +771,7 @@ describe('useChatWithHistory', () => {
       })
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockResolvedValue({ data: [] })
-      mockRenameConversation.mockReturnValueOnce(
-        renamePromise as unknown as ReturnType<typeof mockRenameConversation>,
-      )
+      mockRenameConversation.mockReturnValueOnce(renamePromise)
       const onSuccess = vi.fn()
 
       const { result } = await renderWithClient(() => useChatWithHistory())

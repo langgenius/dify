@@ -8,8 +8,10 @@ const { mockEditAnnotation } = vi.hoisted(() => ({
 }))
 
 // Mock only external dependencies
-vi.mock('@/service/annotation', () => ({
-  editAnnotation: mockEditAnnotation,
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: { byAppId: { annotations: { byAnnotationId: { post: mockEditAnnotation } } } },
+  },
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -197,7 +199,6 @@ describe('EditAnnotationModal', () => {
       const props = {
         ...defaultProps,
         annotationId: 'test-annotation-id',
-        messageId: 'test-message-id',
         onEdited: mockOnEdited,
       }
       const user = userEvent.setup()
@@ -217,10 +218,9 @@ describe('EditAnnotationModal', () => {
       await user.click(saveButton)
 
       // Assert
-      expect(mockEditAnnotation).toHaveBeenCalledWith('test-app-id', 'test-annotation-id', {
-        message_id: 'test-message-id',
-        question: 'Modified query',
-        answer: 'Test answer',
+      expect(mockEditAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'test-app-id', annotation_id: 'test-annotation-id' },
+        body: { question: 'Modified query', answer: 'Test answer' },
       })
     })
   })
@@ -413,7 +413,6 @@ describe('EditAnnotationModal', () => {
       const props = {
         ...defaultProps,
         annotationId: 'test-annotation-id',
-        messageId: 'test-message-id',
         onEdited: mockOnEdited,
       }
       const user = userEvent.setup()
@@ -453,7 +452,6 @@ describe('EditAnnotationModal', () => {
       const props = {
         ...defaultProps,
         annotationId: 'test-annotation-id',
-        messageId: 'test-message-id',
         onEdited: mockOnEdited,
       }
       const user = userEvent.setup()

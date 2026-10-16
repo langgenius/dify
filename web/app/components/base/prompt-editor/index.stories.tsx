@@ -1,6 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 
+type PromptEditorMockProps = {
+  value?: string
+  onChange?: (value: string) => void
+  placeholder?: string
+  editable?: boolean
+  compact?: boolean
+  className?: string
+  wrapperClassName?: string
+}
+
 // Mock component to avoid complex initialization issues
 const PromptEditorMock = ({
   value,
@@ -10,7 +20,7 @@ const PromptEditorMock = ({
   compact,
   className,
   wrapperClassName,
-}: any) => {
+}: PromptEditorMockProps) => {
   const [content, setContent] = useState(value || '')
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -77,7 +87,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 // Interactive demo wrapper
-const PromptEditorDemo = (args: any) => {
+const PromptEditorDemo = (args: PromptEditorMockProps) => {
   const [value, setValue] = useState(args.value || '')
 
   return (

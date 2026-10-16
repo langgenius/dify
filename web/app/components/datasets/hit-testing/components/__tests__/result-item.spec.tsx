@@ -1,42 +1,20 @@
-import type { HitTesting } from '@/models/datasets'
+import type { HitTestingRecord } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vite-plus/test'
+import { createHitTestingRecordFixture } from '@/test/fixtures/hit-testing'
 import { ResultItem } from '../result-item'
 
 function makePayload(
-  overrides: Partial<Omit<HitTesting, 'segment' | 'content'>> & {
-    segment?: Partial<HitTesting['segment']>
+  overrides: Partial<Omit<HitTestingRecord, 'segment'>> & {
+    segment?: Partial<HitTestingRecord['segment']>
   } = {},
-): HitTesting {
-  const segment: HitTesting['segment'] = {
-    id: 'segment-1',
-    position: 1,
-    word_count: 100,
-    content: 'Preview content',
-    sign_content: '',
-    keywords: [],
-    document: {
-      id: 'document-1',
-      name: 'file.pdf',
-      data_source_type: 'upload_file',
-      doc_type: 'book',
-    },
-    answer: '',
-    tokens: 20,
-    hit_count: 1,
-    index_node_hash: 'hash-1',
-    ...overrides.segment,
-  }
-  return {
+): HitTestingRecord {
+  return createHitTestingRecordFixture({
     score: 0.95,
-    tsne_position: { x: 0, y: 0 },
-    child_chunks: [],
-    files: [],
     ...overrides,
-    segment,
-    content: segment,
-  }
+    segment: { content: 'Preview content', ...overrides.segment },
+  })
 }
 
 const dialogName = 'datasetHitTesting.chunkDetail'

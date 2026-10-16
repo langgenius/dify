@@ -6,6 +6,24 @@ import { render } from 'vitest-browser-react'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import SnippetList from '..'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({
+      data: {
+        accounts: [
+          {
+            avatar_url: null,
+            id: 'creator-1',
+            name: 'Alice',
+            status: 'active',
+          },
+        ],
+      },
+    }),
+  })
+})
+
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
 const mockQueryState = vi.hoisted(() => ({
   creatorIDs: [] as string[],
@@ -48,21 +66,6 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          avatar_url: null,
-          id: 'creator-1',
-          name: 'Alice',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryFn: async () => ({ profile: { id: 'creator-1' } }),
@@ -83,6 +86,18 @@ vi.mock('@/service/console', () => ({
     },
   },
   consoleQuery: {
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: (options: { input?: unknown }) => ({
+              ...options,
+              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
+            }),
+          },
+        },
+      },
+    },
     tags: {
       get: {
         key: () => ['tags'],

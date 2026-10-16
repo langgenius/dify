@@ -89,7 +89,7 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
 
         if dify_config.ANALYTICDB_HOST is None:
             # implemented through OpenAPI
-            apiConfig = AnalyticdbVectorOpenAPIConfig(
+            api_config = AnalyticdbVectorOpenAPIConfig(
                 access_key_id=dify_config.ANALYTICDB_KEY_ID or "",
                 access_key_secret=dify_config.ANALYTICDB_KEY_SECRET or "",
                 region_id=dify_config.ANALYTICDB_REGION_ID or "",
@@ -99,10 +99,10 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
                 namespace=dify_config.ANALYTICDB_NAMESPACE or "",
                 namespace_password=dify_config.ANALYTICDB_NAMESPACE_PASSWORD,
             )
-            sqlConfig = None
+            sql_config = None
         else:
             # implemented through sql
-            sqlConfig = AnalyticdbVectorBySqlConfig(
+            sql_config = AnalyticdbVectorBySqlConfig(
                 host=dify_config.ANALYTICDB_HOST,
                 port=dify_config.ANALYTICDB_PORT,
                 account=dify_config.ANALYTICDB_ACCOUNT or "",
@@ -111,9 +111,9 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
                 max_connection=dify_config.ANALYTICDB_MAX_CONNECTION,
                 namespace=dify_config.ANALYTICDB_NAMESPACE or "",
             )
-            apiConfig = None
+            api_config = None
         return AnalyticdbVector(
             collection_name,
-            apiConfig,
-            sqlConfig,
+            api_config,
+            sql_config,
         )

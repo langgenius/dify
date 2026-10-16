@@ -5,6 +5,20 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import SnippetList from '..'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({
+      data: {
+        accounts: [
+          { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+          { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+        ],
+      },
+    }),
+  })
+})
+
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
 const mockSetKeywords = vi.hoisted(() => vi.fn())
 const mockSetTagIDs = vi.hoisted(() => vi.fn())
@@ -57,6 +71,18 @@ vi.mock('@/service/console', () => ({
     systemFeatures: vi.fn(),
   },
   consoleQuery: {
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: (options: { input?: unknown }) => ({
+              ...options,
+              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
+            }),
+          },
+        },
+      },
+    },
     account: {
       profile: {
         get: {
@@ -98,17 +124,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
-      ],
-    },
-  }),
-}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),

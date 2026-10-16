@@ -1,16 +1,16 @@
-import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiAddLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { selectPipelineTemplate } from '@/app/components/rag-pipeline/utils/query-select'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { usePipelineTemplateById } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import ChunkStructureCard from './chunk-structure-card'
 import { useChunkStructureConfig } from './hooks'
 
@@ -25,21 +25,12 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
   const structureLabelId = React.useId()
 
   const { t } = useTranslation(['datasetPipeline', 'common'])
-  const { data: pipelineTemplateInfo } = usePipelineTemplateById(
-    {
-      template_id: id,
-      type,
-    },
-    true,
+  const { data: pipelineTemplateInfo } = useQuery(
+    consoleQuery.rag.pipeline.templates.byTemplateId.get.queryOptions({
+      input: { params: { template_id: id }, query: { type } },
+      select: selectPipelineTemplate,
+    }),
   )
-
-  const appIcon = useMemo(() => {
-    if (!pipelineTemplateInfo) return { type: 'emoji', icon: '📙', background: '#FFF4ED' }
-    const iconInfo = pipelineTemplateInfo.icon_info
-    return iconInfo.icon_type === 'image'
-      ? { type: 'image', url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
-      : { type: 'icon', icon: iconInfo.icon || '', background: iconInfo.icon_background || '' }
-  }, [pipelineTemplateInfo])
 
   const chunkStructureConfig = useChunkStructureConfig()
 
@@ -66,13 +57,7 @@ const Details = ({ id, type, name, onApplyTemplate }: DetailsProps) => {
           </div>
           <div className="relative flex w-90 shrink-0 flex-col">
             <div className="flex items-start gap-x-3 pt-6 pr-12 pb-2 pl-4">
-              <AppIcon
-                size="large"
-                iconType={appIcon.type as AppIconType}
-                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                background={appIcon.type === 'image' ? undefined : appIcon.background}
-                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-              />
+              <AppIcon size="large" icon={pipelineTemplateInfo.icon_info} />
               <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
                 <DialogTitle
                   className="truncate system-md-semibold text-text-secondary"

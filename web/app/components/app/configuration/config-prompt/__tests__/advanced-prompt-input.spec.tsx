@@ -4,7 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum } from '@/types/app'
 import AdvancedPromptInput from '../advanced-prompt-input'
 
 const mockEmit = vi.fn()
@@ -82,7 +81,7 @@ vi.mock('../prompt-editor-height-resize-wrap', () => ({
 
 const createContextValue = () =>
   ({
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     hasSetBlockStatus: {
       context: false,
       history: false,

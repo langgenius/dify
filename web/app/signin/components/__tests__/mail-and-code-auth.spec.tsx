@@ -69,8 +69,13 @@ vi.mock('@/config', async () => {
   }
 })
 
-vi.mock('@/service/common', () => ({
-  sendEMailLoginCode: (...args: unknown[]) => mocks.sendEMailLoginCode(...args),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    emailCodeLogin: {
+      post: (...args: unknown[]) => mocks.sendEMailLoginCode(...args),
+    },
+  },
 }))
 
 describe('MailAndCodeAuth', () => {
@@ -149,11 +154,9 @@ describe('MailAndCodeAuth', () => {
     await user.click(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
 
     await waitFor(() => {
-      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith(
-        'user@example.com',
-        'en-US',
-        'turnstile-token',
-      )
+      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith({
+        body: { email: 'user@example.com', language: 'en-US', turnstile_token: 'turnstile-token' },
+      })
     })
     expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
   })
@@ -177,11 +180,13 @@ describe('MailAndCodeAuth', () => {
     await user.click(continueButton)
 
     await waitFor(() => {
-      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith(
-        'user@example.com',
-        'en-US',
-        'consumed-turnstile-token',
-      )
+      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: 'en-US',
+          turnstile_token: 'consumed-turnstile-token',
+        },
+      })
     })
     await waitFor(() => {
       expect(continueButton).toBeDisabled()
@@ -195,11 +200,13 @@ describe('MailAndCodeAuth', () => {
     await user.click(continueButton)
 
     await waitFor(() => {
-      expect(mocks.sendEMailLoginCode).toHaveBeenLastCalledWith(
-        'user@example.com',
-        'en-US',
-        'fresh-turnstile-token',
-      )
+      expect(mocks.sendEMailLoginCode).toHaveBeenLastCalledWith({
+        body: {
+          email: 'user@example.com',
+          language: 'en-US',
+          turnstile_token: 'fresh-turnstile-token',
+        },
+      })
     })
     expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
   })

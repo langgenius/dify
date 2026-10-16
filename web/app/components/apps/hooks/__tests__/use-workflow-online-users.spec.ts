@@ -39,7 +39,7 @@ vi.mock('@/service/console', () => ({
 const getLastQueryOptions = () => {
   const lastCall = mockQueryOptions.mock.lastCall
   if (!lastCall) throw new Error('workflows.onlineUsers.post.queryOptions was not called')
-  return lastCall[0] as QueryOptions
+  return lastCall[0]
 }
 
 describe('useWorkflowOnlineUsers', () => {

@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
-from typing import Literal, Union, overload
+from typing import Literal, overload
 
 from flask import Flask
 
@@ -96,9 +96,9 @@ class Storage:
 
     # Keep a bool fallback overload for callers that forward a runtime bool flag.
     @overload
-    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]: ...
+    def load(self, filename: str, /, *, stream: bool = False) -> bytes | Generator: ...
 
-    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
+    def load(self, filename: str, /, *, stream: bool = False) -> bytes | Generator:
         if stream:
             return self.load_stream(filename)
         else:

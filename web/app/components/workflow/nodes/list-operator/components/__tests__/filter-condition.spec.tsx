@@ -172,7 +172,7 @@ describe('FilterCondition', () => {
       value: 'draft next',
     })
 
-    const config = mockUseAvailableVarList.mock.calls[0]?.[1] as unknown as {
+    const config = mockUseAvailableVarList.mock.calls[0]?.[1] as {
       filterVar: (varPayload: { type: VarType }) => boolean
     }
     expect(config.filterVar({ type: VarType.string })).toBe(true)

@@ -69,51 +69,22 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: mocks.fileUploadConfig }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['console', 'systemFeatures', 'get'],
-        queryOptions: (options?: Record<string, unknown>) => ({
-          queryKey: ['console', 'systemFeatures', 'get'],
-          queryFn: () => new Promise(() => {}),
-          ...options,
-        }),
-      },
-    },
-    agent: {
-      byAgentId: {
-        config: {
-          files: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
-            },
-            byName: {
-              delete: {
-                mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
-              },
-              preview: {
-                get: {
-                  queryOptions: mocks.previewQueryOptions,
-                },
-              },
-              download: {
-                get: {
-                  queryOptions: mocks.downloadQueryOptions,
-                },
-              },
-            },
-          },
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      systemFeatures: {
+        get: {
+          queryKey: () => ['console', 'systemFeatures', 'get'],
+          queryOptions: (options?: Record<string, unknown>) => ({
+            queryKey: ['console', 'systemFeatures', 'get'],
+            queryFn: () => new Promise(() => {}),
+            ...options,
+          }),
         },
       },
-    },
-    apps: {
-      byAppId: {
-        agent: {
+      agent: {
+        byAgentId: {
           config: {
             files: {
               post: {
@@ -138,30 +109,59 @@ vi.mock('@/service/console', () => ({
           },
         },
       },
-    },
-    trialApps: {
-      byAppId: {
-        agent: {
-          config: {
-            files: {
-              byName: {
-                preview: { get: { queryOptions: mocks.previewQueryOptions } },
-                download: { get: { queryOptions: mocks.downloadQueryOptions } },
+      apps: {
+        byAppId: {
+          agent: {
+            config: {
+              files: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.commitFileMutationFn }),
+                },
+                byName: {
+                  delete: {
+                    mutationOptions: () => ({ mutationFn: mocks.deleteFileMutationFn }),
+                  },
+                  preview: {
+                    get: {
+                      queryOptions: mocks.previewQueryOptions,
+                    },
+                  },
+                  download: {
+                    get: {
+                      queryOptions: mocks.downloadQueryOptions,
+                    },
+                  },
+                },
               },
             },
           },
         },
       },
-    },
-    files: {
-      upload: {
-        post: {
-          mutationOptions: () => ({ mutationFn: mocks.uploadFileMutationFn }),
+      trialApps: {
+        byAppId: {
+          agent: {
+            config: {
+              files: {
+                byName: {
+                  preview: { get: { queryOptions: mocks.previewQueryOptions } },
+                  download: { get: { queryOptions: mocks.downloadQueryOptions } },
+                },
+              },
+            },
+          },
+        },
+      },
+      files: {
+        upload: {
+          get: consoleOperationStub('files.upload.get'),
+          post: {
+            mutationOptions: () => ({ mutationFn: mocks.uploadFileMutationFn }),
+          },
         },
       },
     },
-  },
-}))
+  }
+})
 
 function ConfigSnapshotProbe() {
   const draft = useAtomValue(agentComposerDraftAtom)
@@ -237,6 +237,13 @@ function renderAgentFiles({
     queryClient,
   }
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({ data: mocks.fileUploadConfig }),
+  })
+})
 
 describe('AgentFiles', () => {
   beforeEach(() => {

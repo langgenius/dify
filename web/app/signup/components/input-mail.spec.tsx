@@ -4,9 +4,19 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useLocale } from '#i18n'
 import { useSearchParams } from '@/next/navigation'
-import { useSendMail } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SignupEmailForm from './input-mail'
+
+const { mockSendMailHook } = vi.hoisted(() => ({
+  mockSendMailHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'emailRegister.sendEmail.post': (options: unknown) => mockSendMailHook(options),
+  })
+})
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
@@ -40,15 +50,11 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useSendMail: vi.fn(),
-}))
+type UseSendMailResult = ReturnType<typeof mockSendMailHook>
 
-type UseSendMailResult = ReturnType<typeof useSendMail>
-
-const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
+const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
+const mockUseSendMail = mockSendMailHook
 
 const renderForm = ({
   brandingEnabled = false,
@@ -70,9 +76,7 @@ const renderForm = ({
 describe('InputMail Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchParams.mockReturnValue(
-      new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
-    )
+    mockUseSearchParams.mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
     mockSubmitMail.mockResolvedValue({ result: 'success', data: 'token' })
   })
 
@@ -122,8 +126,10 @@ describe('InputMail Form', () => {
       await user.type(input, 'test@example.com{Enter}')
 
       expect(mockSubmitMail).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        language: 'en-US',
+        body: {
+          email: 'test@example.com',
+          language: 'en-US',
+        },
       })
       expect(mockSubmitMail).toHaveBeenCalledTimes(1)
 
@@ -137,9 +143,9 @@ describe('InputMail Form', () => {
   describe('Registration Navigation', () => {
     it('should preserve the current query when navigating to sign in', () => {
       mockUseSearchParams.mockReturnValue(
-        new URLSearchParams(
-          'redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing',
-        ) as unknown as ReturnType<typeof useSearchParams>,
+        new URLSearchParams('redirect_url=%2Fapps%3Ftag%3Dworkflow&source=pricing') as ReturnType<
+          typeof useSearchParams
+        >,
       )
 
       renderForm()

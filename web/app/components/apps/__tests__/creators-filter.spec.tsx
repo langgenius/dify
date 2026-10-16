@@ -5,6 +5,24 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({
+      data: {
+        accounts: [
+          { id: 'member-1', name: 'Zoe', avatar_url: null, status: 'active' },
+          { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
+          { id: 'member-3', name: 'Bob', avatar_url: null, status: 'active' },
+          { id: 'member-4', name: 'Pending User', avatar_url: null, status: 'pending' },
+          { id: 'member-5', name: 'Charlie', avatar_url: null, status: 'active' },
+          { id: 'member-6', name: 'Robin', avatar_url: null, status: 'active' },
+        ],
+      },
+    }),
+  })
+})
+
 const mockOnChange = vi.hoisted(() => vi.fn())
 
 const render = (ui: Parameters<typeof renderWithConsoleState>[0]) =>
@@ -16,21 +34,6 @@ const StatefulCreatorsFilter = ({ initialValue }: { initialValue: string[] }) =>
   const [value, setValue] = useState(initialValue)
   return <CreatorsFilter value={value} onChange={setValue} />
 }
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'member-1', name: 'Zoe', avatar_url: null, status: 'active' },
-        { id: 'member-2', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'member-3', name: 'Bob', avatar_url: null, status: 'active' },
-        { id: 'member-4', name: 'Pending User', avatar_url: null, status: 'pending' },
-        { id: 'member-5', name: 'Charlie', avatar_url: null, status: 'active' },
-        { id: 'member-6', name: 'Robin', avatar_url: null, status: 'active' },
-      ],
-    },
-  }),
-}))
 
 describe('CreatorsFilter', () => {
   beforeEach(() => {

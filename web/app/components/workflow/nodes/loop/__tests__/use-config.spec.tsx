@@ -27,12 +27,15 @@ vi.mock('@/app/components/workflow/store', () => ({
     }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
@@ -40,7 +43,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: () => ({ nodesReadOnly: false }),
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getLoopNodeChildren: (...args: unknown[]) => mockGetLoopNodeChildren(...args),
     }),
@@ -254,4 +257,11 @@ describe('useConfig', () => {
       }),
     )
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

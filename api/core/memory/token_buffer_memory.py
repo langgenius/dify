@@ -217,10 +217,7 @@ class TokenBufferMemory:
         # fetch limited messages, and return reversed
         stmt = select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at.desc())
 
-        if message_limit and message_limit > 0:
-            message_limit = min(message_limit, 500)
-        else:
-            message_limit = 500
+        message_limit = min(message_limit, 500) if message_limit and message_limit > 0 else 500
 
         msg_limit_stmt = stmt.limit(message_limit)
 

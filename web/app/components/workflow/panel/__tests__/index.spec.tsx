@@ -55,7 +55,7 @@ class MockResizeObserver {
   observe = vi.fn(() => {
     if (!mockResizeModes.length) return
 
-    this.callback(mockResizeModes.map(createResizeEntry), this as unknown as ResizeObserver)
+    this.callback(mockResizeModes.map(createResizeEntry), this)
   })
 
   disconnect = vi.fn()
@@ -199,7 +199,6 @@ describe('Panel', () => {
         }}
         versionHistoryPanelProps={{
           latestVersionId: 'version-1',
-          restoreVersionUrl: (versionId) => `/apps/app-1/workflows/${versionId}/restore`,
         }}
       />,
     )
@@ -243,7 +242,7 @@ describe('Panel', () => {
 
     act(() => {
       mockResizeObservers.forEach((observer) => {
-        observer.callback([createResizeEntry('borderBox')], observer as unknown as ResizeObserver)
+        observer.callback([createResizeEntry('borderBox')], observer)
       })
     })
 
@@ -257,7 +256,7 @@ describe('Panel', () => {
 
     act(() => {
       mockResizeObservers.forEach((observer) => {
-        observer.callback([createResizeEntry('contentRect')], observer as unknown as ResizeObserver)
+        observer.callback([createResizeEntry('contentRect')], observer)
       })
     })
 
@@ -271,7 +270,7 @@ describe('Panel', () => {
 
     act(() => {
       mockResizeObservers.forEach((observer) => {
-        observer.callback([createResizeEntry('fallback')], observer as unknown as ResizeObserver)
+        observer.callback([createResizeEntry('fallback')], observer)
       })
     })
 

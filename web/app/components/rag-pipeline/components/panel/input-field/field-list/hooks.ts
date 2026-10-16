@@ -64,7 +64,7 @@ export const useFieldList = ({
       if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])) {
         showRemoveVarConfirm()
         setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove!.variable || ''])
-        setRemoveIndex(index as number)
+        setRemoveIndex(index)
         return
       }
       const newInputFields = inputFieldsRef.current.filter((_, i) => i !== index)

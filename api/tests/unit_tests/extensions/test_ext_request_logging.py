@@ -95,9 +95,9 @@ class TestRequestLoggingExtension:
         mock_request_receiver.assert_not_called()
         mock_response_receiver.assert_not_called()
 
+    @pytest.mark.usefixtures("enable_request_logging")
     def test_receiver_should_be_called_if_enabled(
         self,
-        enable_request_logging: None,
         mock_request_receiver: MagicMock,
         mock_response_receiver: MagicMock,
     ) -> None:
@@ -117,9 +117,7 @@ class TestRequestLoggingExtension:
 
 class TestLoggingLevel:
     @pytest.mark.usefixtures("enable_request_logging")
-    def test_logging_should_be_skipped_if_level_is_above_debug(
-        self, enable_request_logging: None, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    def test_logging_should_be_skipped_if_level_is_above_debug(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.INFO, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
@@ -130,10 +128,8 @@ class TestLoggingLevel:
 
 
 class TestRequestReceiverLogging:
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_non_json_request(
-        self, enable_request_logging: None, caplog: pytest.LogCaptureFixture, mock_response_receiver: mock.Mock
-    ) -> None:
+    @pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
+    def test_non_json_request(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
@@ -147,10 +143,8 @@ class TestRequestReceiverLogging:
         assert record.args == ("POST", "/")
         assert "Request Body" not in record.msg
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request(
-        self, enable_request_logging: None, caplog: pytest.LogCaptureFixture, mock_response_receiver: mock.Mock
-    ) -> None:
+    @pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
+    def test_json_request(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
@@ -167,10 +161,8 @@ class TestRequestReceiverLogging:
         assert args[1] == "/"
         assert _KEY_NEEDLE in args[2]
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request_with_empty_body(
-        self, enable_request_logging: None, caplog: pytest.LogCaptureFixture, mock_response_receiver: mock.Mock
-    ) -> None:
+    @pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
+    def test_json_request_with_empty_body(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
@@ -185,10 +177,8 @@ class TestRequestReceiverLogging:
         assert "Request Body" not in record.msg
         assert record.args == ("POST", "/")
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request_with_invalid_json_as_body(
-        self, enable_request_logging: None, caplog: pytest.LogCaptureFixture, mock_response_receiver: mock.Mock
-    ) -> None:
+    @pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
+    def test_json_request_with_invalid_json_as_body(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
@@ -207,7 +197,7 @@ class TestRequestReceiverLogging:
 
 class TestResponseReceiverLogging:
     @pytest.mark.usefixtures("enable_request_logging")
-    def test_non_json_response(self, enable_request_logging: None, caplog: pytest.LogCaptureFixture) -> None:
+    def test_non_json_response(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         response = Response(
@@ -224,10 +214,8 @@ class TestResponseReceiverLogging:
         assert args[1] == "text/plain"
         assert "Response Body" not in record.msg
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_response(
-        self, enable_request_logging: None, caplog: pytest.LogCaptureFixture, mock_response_receiver: mock.Mock
-    ) -> None:
+    @pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
+    def test_json_response(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         response = Response(
@@ -245,10 +233,8 @@ class TestResponseReceiverLogging:
         assert args[1] == "application/json"
         assert _KEY_NEEDLE in args[2]
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request_with_invalid_json_as_body(
-        self, enable_request_logging: None, caplog: pytest.LogCaptureFixture, mock_response_receiver: mock.Mock
-    ) -> None:
+    @pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
+    def test_json_request_with_invalid_json_as_body(self, caplog: pytest.LogCaptureFixture) -> None:
         caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
 
@@ -278,7 +264,7 @@ class TestResponseUnmodified:
         assert response.status_code == 200
 
     @pytest.mark.usefixtures("enable_request_logging")
-    def test_when_request_logging_enabled(self, enable_request_logging: None) -> None:
+    def test_when_request_logging_enabled(self) -> None:
         app = _get_test_app()
         init_app(app)
 

@@ -6,12 +6,11 @@ import type { ReactNode, Ref } from 'react'
 import type { AgentBuildDraftChangeSummary } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-changes-context'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { renderEditor as renderWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
 
 const mocks = vi.hoisted(() => ({
@@ -204,7 +203,13 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   }),
 }))
 
-vi.mock('@/service/console', async () => {
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
   return {
     consoleClient: {
@@ -360,6 +365,7 @@ vi.mock('@/service/console', async () => {
       },
       apps: {
         byAppId: {
+          get: actual.consoleQuery.apps.byAppId.get,
           workflowRuns: {
             byWorkflowRunId: {
               agentNodes: {
@@ -483,6 +489,12 @@ function createInlineComposerState({
   } as WorkflowAgentComposerResponse
 }
 
+const render: typeof renderWithConsoleQuery = (ui, options = {}) => {
+  const queryClient = createConsoleQueryClient()
+  seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'workflow' as const }))
+  return renderWithConsoleQuery(ui, { queryClient, ...options })
+}
+
 function createDeferredPromise<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((resolvePromise) => {
@@ -495,7 +507,6 @@ function createDeferredPromise<T>() {
 describe('WorkflowInlineAgentConfigureWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.getState().setAppDetail({ mode: AppModeEnum.WORKFLOW } as never)
     mocks.completeBuildConversation = undefined
     permission.canCreateAgents = true
     mocks.loadBuildDraft.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
@@ -554,8 +565,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     return render(
       <WorkflowInlineAgentConfigureWorkspace
         agentId="agent-1"
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         inlineComposerState={props.inlineComposerState ?? createInlineComposerState()}
         nodeId="node-1"
         onSaveInlineToRoster={props.onSaveInlineToRoster}
@@ -573,8 +583,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     render(
       <WorkflowInlineAgentConfigureWorkspace
         agentId="agent-1"
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         nodeId="node-1"
         open
       />,
@@ -589,8 +598,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     render(
       <WorkflowInlineAgentConfigureWorkspace
         agentId="agent-1"
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         inlineComposerState={createInlineComposerState()}
         nodeId="node-1"
         open={false}
@@ -1484,8 +1492,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       rerender(
         <WorkflowInlineAgentConfigureWorkspace
           agentId="agent-1"
-          flowId="app-1"
-          flowType={FlowType.appFlow}
+          resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
           inlineComposerState={createInlineComposerState({ snapshotId: 'snapshot-2' })}
           nodeId="node-1"
           open

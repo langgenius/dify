@@ -22,8 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AgentFileTree } from '../files/tree'
 
-type AgentSkillFileNode = AgentFileNode
-
 type AgentSkillDetailSection = {
   id: string
   title: string
@@ -42,8 +40,8 @@ export type AgentSkillDetail = {
   fileListTreeClassName?: string
   fileListTreeListClassName?: string
   fileListTitle?: string
-  files: AgentSkillFileNode[]
-  folderOpenState?: (context: { file: AgentSkillFileNode; depth: number }) => boolean
+  files: AgentFileNode[]
+  folderOpenState?: (context: { file: AgentFileNode; depth: number }) => boolean
   filePreview?: {
     binary?: boolean
     content?: string
@@ -57,11 +55,11 @@ export type AgentSkillDetail = {
     isImage?: boolean
     isLoading?: boolean
   }
-  onFolderOpenChange?: (context: { file: AgentSkillFileNode; depth: number; open: boolean }) => void
-  onFolderEnter?: (context: { file: AgentSkillFileNode; depth: number }) => void
+  onFolderOpenChange?: (context: { file: AgentFileNode; depth: number; open: boolean }) => void
+  onFolderEnter?: (context: { file: AgentFileNode; depth: number }) => void
   onDownloadFile?: (action: AgentSkillDetailDownloadAction) => void
-  onSelectFile?: (file: AgentSkillFileNode) => void
-  renderFolderSuffix?: (context: { file: AgentSkillFileNode; depth: number }) => ReactNode
+  onSelectFile?: (file: AgentFileNode) => void
+  renderFolderSuffix?: (context: { file: AgentFileNode; depth: number }) => ReactNode
   selectedFileId?: string
   sections: AgentSkillDetailSection[]
 }
@@ -87,11 +85,11 @@ function AgentSkillFileList({
   fileListTreeClassName?: string
   fileListTreeListClassName?: string
   fileListTitle?: string
-  files: AgentSkillFileNode[]
+  files: AgentFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
   onFolderEnter?: AgentSkillDetail['onFolderEnter']
-  onSelectFile?: (file: AgentSkillFileNode) => void
+  onSelectFile?: (file: AgentFileNode) => void
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
 }) {

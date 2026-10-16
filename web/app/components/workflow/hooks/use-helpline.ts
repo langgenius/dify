@@ -155,7 +155,7 @@ export const useHelpline = () => {
 
   // Check if a node is an entry node (Start or Trigger)
   const isEntryNode = useCallback((node: Node): boolean => {
-    return isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
+    return isTriggerNode(node.data.type) || node.data.type === BlockEnum.Start
   }, [])
 
   // Get the actual alignment position of a node (accounting for wrapper offset)

@@ -5,16 +5,16 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
-import { useConfigsMap } from '../hooks/use-configs-map'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
+import { useFileSettings } from '../hooks/use-file-settings'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
-import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
 import { usePipelineRefreshDraft } from '../hooks/use-pipeline-refresh-draft'
 import { usePipelineRunByCanEdit } from '../hooks/use-pipeline-run'
@@ -84,10 +84,8 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
     datasetACLCapabilities.canEdit,
   )
 
-  const configsMap = useConfigsMap()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    ...configsMap,
-  })
+  const fileSettings = useFileSettings()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const {
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -143,7 +141,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
         canImportExportDSL: datasetACLCapabilities.canImportExportDSL,
         canReleaseAndVersion: datasetACLCapabilities.canPipelineRelease,
       },
-      configsMap,
+      fileSettings,
     }
   }, [
     availableNodesMetaData,
@@ -177,7 +175,7 @@ const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
     resetConversationVar,
     invalidateConversationVarValues,
     datasetACLCapabilities,
-    configsMap,
+    fileSettings,
   ])
 
   return (

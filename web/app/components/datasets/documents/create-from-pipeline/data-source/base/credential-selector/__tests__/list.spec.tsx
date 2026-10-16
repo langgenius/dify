@@ -1,4 +1,4 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import List from '../list'
@@ -8,9 +8,9 @@ vi.mock('@/app/components/datasets/common/credential-icon', () => ({
 }))
 
 describe('CredentialSelectorList', () => {
-  const mockCredentials: DataSourceCredential[] = [
-    { id: 'cred-1', name: 'Account A', avatar_url: '' } as DataSourceCredential,
-    { id: 'cred-2', name: 'Account B', avatar_url: '' } as DataSourceCredential,
+  const mockCredentials: DatasourceCredentialResponse[] = [
+    { id: 'cred-1', name: 'Account A', avatar_url: '' } as DatasourceCredentialResponse,
+    { id: 'cred-2', name: 'Account B', avatar_url: '' } as DatasourceCredentialResponse,
   ]
 
   const defaultProps = {

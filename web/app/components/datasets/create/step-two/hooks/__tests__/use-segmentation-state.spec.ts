@@ -1,4 +1,5 @@
-import type { PreProcessingRule, Rules } from '@/models/datasets'
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
+import type { Rules } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, ProcessMode } from '@/models/datasets'

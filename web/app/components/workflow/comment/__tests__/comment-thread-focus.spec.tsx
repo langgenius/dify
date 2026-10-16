@@ -1,19 +1,27 @@
-import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '../types'
+import type {
+  WorkflowCommentBasic,
+  WorkflowCommentDetail,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { UserProfile } from '../types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithAccountProfile } from '@/test/console/account-profile'
+import { renderWithAccountProfile as renderAccountProfile } from '@/test/console/account-profile'
+import { EditorResourceScope } from '../../editor-resource/provider'
 import { CommentIcon } from '../comment-icon'
 import { CommentInput } from '../comment-input'
 import { CommentThread } from '../thread'
 
+const renderWithAccountProfile = (ui: Parameters<typeof renderAccountProfile>[0]) =>
+  renderAccountProfile(
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
+  )
+
 const storeState = vi.hoisted(() => ({
   mentionableUsersCache: { 'app-1': [] } as Record<string, UserProfile[]>,
   setCommentPreviewHovering: vi.fn(),
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
 }))
 
 vi.mock('reactflow', () => ({
@@ -29,7 +37,7 @@ vi.mock('../../store', () => ({
   useWorkflowStore: () => ({ getState: () => storeState }),
 }))
 
-const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
+const createComment = (): WorkflowCommentDetail & WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 120,
   position_y: 80,

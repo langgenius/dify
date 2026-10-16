@@ -1,6 +1,6 @@
 'use client'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
 import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
-import type { AnnotationItem } from './type'
 import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
@@ -15,8 +15,8 @@ import { RemoveAnnotationConfirmContent } from './remove-annotation-confirm-moda
 
 type Props = Readonly<{
   appId: string
-  list: AnnotationItem[]
-  onView: (item: AnnotationItem) => void
+  list: Annotation[]
+  onView: (item: Annotation) => void
   onRemoved: () => void
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
@@ -25,9 +25,9 @@ type Props = Readonly<{
 
 type AnnotationTableRowProps = {
   appId: string
-  item: AnnotationItem
+  item: Annotation
   formattedCreatedAt: string
-  onView: (item: AnnotationItem) => void
+  onView: (item: Annotation) => void
   onRemoved: () => void
 }
 
@@ -60,10 +60,10 @@ function AnnotationTableRow({
           <Checkbox className="shrink-0" value={item.id} aria-labelledby={questionId} />
         </div>
       </td>
-      <td className="max-w-62.5 truncate p-3 pr-2" title={item.question}>
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.question ?? undefined}>
         <span id={questionId}>{item.question}</span>
       </td>
-      <td className="max-w-62.5 truncate p-3 pr-2" title={item.answer}>
+      <td className="max-w-62.5 truncate p-3 pr-2" title={item.answer ?? undefined}>
         {item.answer}
       </td>
       <td className="p-3 pr-2">{formattedCreatedAt}</td>
@@ -160,10 +160,14 @@ export function List({
                 <AnnotationTableRow
                   key={item.id}
                   item={item}
-                  formattedCreatedAt={formatTime(
-                    item.created_at,
-                    t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
-                  )}
+                  formattedCreatedAt={
+                    item.created_at
+                      ? formatTime(
+                          item.created_at,
+                          t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                        )
+                      : '-'
+                  }
                   appId={appId}
                   onView={onView}
                   onRemoved={onRemoved}

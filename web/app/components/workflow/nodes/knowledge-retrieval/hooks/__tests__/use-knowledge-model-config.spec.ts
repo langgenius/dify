@@ -1,17 +1,21 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { MutableRefObject } from 'react'
 import type { KnowledgeRetrievalNodeType } from '../../types'
-import type { DataSet } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import useKnowledgeModelConfig from '../use-knowledge-model-config'
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -19,33 +23,22 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -169,7 +162,7 @@ describe('use-knowledge-model-config', () => {
           model: {
             provider: 'anthropic',
             name: 'claude-sonnet',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           },
         },
@@ -221,7 +214,7 @@ describe('use-knowledge-model-config', () => {
         currentModel: {
           model: 'gpt-4o-mini',
           model_properties: {
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           },
         },
         fallbackRerankModel,
@@ -236,7 +229,7 @@ describe('use-knowledge-model-config', () => {
             model: {
               provider: 'openai',
               name: 'gpt-4o-mini',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
               completion_params: {},
             },
           },
@@ -308,7 +301,7 @@ describe('use-knowledge-model-config', () => {
           model: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           },
         },
@@ -322,7 +315,7 @@ describe('use-knowledge-model-config', () => {
           model: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           },
         },
@@ -348,7 +341,7 @@ describe('use-knowledge-model-config', () => {
         currentModel: {
           model: 'gpt-4o-mini',
           model_properties: {
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           },
         },
         fallbackRerankModel,

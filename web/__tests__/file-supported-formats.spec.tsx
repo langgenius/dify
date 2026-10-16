@@ -9,18 +9,21 @@ import { LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: { file_size_limit: 15, batch_count_limit: 5, file_upload_limit: 10 },
+    }),
+  })
+})
+
 let mockLocale = 'en-US'
 const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
 
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15, batch_count_limit: 5, file_upload_limit: 10 },
-  }),
 }))
 
 vi.mock('#i18n', async (importOriginal) => ({

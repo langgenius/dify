@@ -1,4 +1,4 @@
-import type { ProcessRuleResponse } from '@/models/datasets'
+import type { ProcessRuleResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ProcessMode } from '@/models/datasets'

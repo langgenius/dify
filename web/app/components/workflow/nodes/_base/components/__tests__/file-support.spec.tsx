@@ -4,17 +4,23 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useFileUploadConfig } from '@/service/use-common'
 import { TransferMethod } from '@/types/app'
 import FileTypeItem from '../file-type-item'
 import FileUploadSetting from '../file-upload-setting'
 
-const mockUseFileUploadConfig = vi.mocked(useFileUploadConfig)
-const mockUseFileSizeLimit = vi.mocked(useFileSizeLimit)
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(),
+const { mockFileUploadConfigHook } = vi.hoisted(() => ({
+  mockFileUploadConfigHook: vi.fn(),
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': (options: unknown) => mockFileUploadConfigHook(options),
+  })
+})
+
+const mockUseFileUploadConfig = mockFileUploadConfigHook
+const mockUseFileSizeLimit = vi.mocked(useFileSizeLimit)
 
 vi.mock('@/app/components/base/file-uploader/hooks', () => ({
   useFileSizeLimit: vi.fn(),
@@ -40,7 +46,9 @@ const createPayload = (overrides: Partial<UploadFileSetting> = {}): UploadFileSe
 describe('File upload support components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseFileUploadConfig.mockReturnValue({ data: {} } as ReturnType<typeof useFileUploadConfig>)
+    mockUseFileUploadConfig.mockReturnValue({ data: {} } as ReturnType<
+      typeof mockFileUploadConfigHook
+    >)
     mockUseFileSizeLimit.mockReturnValue({
       imgSizeLimit: 10 * 1024 * 1024,
       docSizeLimit: 20 * 1024 * 1024,

@@ -22,10 +22,16 @@ import ModelLoadBalancingConfigs from '../model-load-balancing-configs'
 
 const { mockPost } = vi.hoisted(() => ({ mockPost: vi.fn() }))
 
+// Requests go through the console client, whose browser transport uses `request`.
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
-  get: vi.fn().mockResolvedValue({ credentials: {} }),
-  post: mockPost,
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method !== 'POST') return Response.json({ credentials: {} })
+    mockPost(new URL(request.url).pathname.replace(/^\/console\/api/, ''), {
+      body: await request.json(),
+    })
+    return Response.json({ result: 'success' })
+  },
 }))
 
 vi.mock('../../hooks', async (importOriginal) => ({
