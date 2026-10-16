@@ -29,6 +29,7 @@ const metadataTypeIcon = {
 export function DocumentMetadataPicker({
   allowedExistingName,
   creating,
+  disabled = false,
   error,
   fields,
   loading,
@@ -39,6 +40,7 @@ export function DocumentMetadataPicker({
 }: {
   allowedExistingName?: string
   creating: boolean
+  disabled?: boolean
   error: boolean
   fields: DocumentMetadataField[]
   loading: boolean
@@ -71,7 +73,8 @@ export function DocumentMetadataPicker({
             type="button"
             aria-expanded={open}
             aria-label={t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}
-            className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="flex h-6 w-full cursor-pointer items-center justify-center rounded-md border-0 bg-components-button-tertiary-bg px-2 text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-tertiary-bg"
+            disabled={disabled}
           >
             <span aria-hidden className="mr-1 i-ri-add-line size-3.5" />
             <span className="truncate system-xs-medium">
@@ -128,7 +131,7 @@ export function DocumentMetadataPicker({
                       <span className="min-w-0 grow truncate">{field.name}</span>
                     </ComboboxItemText>
                     <span className="shrink-0 system-xs-regular text-text-tertiary">
-                      {field.type}
+                      {t(($) => $[`metadata.type.${field.type}`], { ns: 'dataset' })}
                     </span>
                   </ComboboxItem>
                 )}

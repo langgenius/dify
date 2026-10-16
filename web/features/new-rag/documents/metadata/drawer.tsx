@@ -205,7 +205,9 @@ function MetadataItem({
             aria-hidden="true"
           />
           <div className="max-w-62.5 truncate system-sm-medium text-text-primary">{field.name}</div>
-          <div className="shrink-0 system-xs-regular">{field.type}</div>
+          <div className="shrink-0 system-xs-regular">
+            {t(($) => $[`metadata.type.${field.type}`], { ns: 'dataset' })}
+          </div>
         </div>
         <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary">
           {t(($) => $['metadata.datasetMetadata.values'], {

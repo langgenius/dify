@@ -1,6 +1,6 @@
 'use client'
 
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import type { DocumentMetadataType } from '../../metadata/editor-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
@@ -149,6 +149,8 @@ function DocumentMetadataCardContent() {
           body: { name, type },
           params: { control_space_id: controlSpaceId },
         })
+        // Only a confirmed field lets a retry skip creation and go straight to the document update.
+        markCreateRetryable(name)
       }
       const response =
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
@@ -160,8 +162,12 @@ function DocumentMetadataCardContent() {
         })
       return { document: logicalDocumentFromApi(response), name, type, value: defaultValue }
     },
-    onError: (_error, { name }) => {
-      markCreateRetryable(name)
+    onError: () => {
+      // A failed creation may still have reached the server. Refresh the catalog so a retry
+      // reports the existing field instead of skipping creation for a field that may not exist.
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.key(),
+      })
       toast.error(t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }))
     },
     onSuccess: async (createdField) => {
@@ -211,7 +217,8 @@ function DocumentMetadataCardContent() {
     await createFieldMutation.mutateAsync({ name, type })
   }
 
-  const save = () => {
+  const save = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     if (!canEdit || saveMutation.isPending || !editBaseline) return
     const patch: Record<string, unknown> = {}
     const original = new Map(editableDocumentMetadataEntries(editBaseline.metadata))
@@ -220,6 +227,7 @@ function DocumentMetadataCardContent() {
       if (!nextNames.has(name)) patch[name] = null
     }
     for (const draft of resolvedDrafts) {
+      if (original.has(draft.name) && draft.value === draft.initialValue) continue
       const value = metadataValueFromInput(draft.value, draft.type)
       if (!original.has(draft.name) || !Object.is(original.get(draft.name), value))
         patch[draft.name] = value
@@ -251,6 +259,55 @@ function DocumentMetadataCardContent() {
       </section>
     )
 
+  const metadataList = (
+    <dl className="mt-3 space-y-1">
+      {renderedItems.map((item) => {
+        return (
+          <div key={item.id} className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2">
+            <dt className="truncate system-xs-medium text-text-secondary" title={item.name}>
+              {item.name}
+            </dt>
+            <dd className="min-w-0">
+              {editing ? (
+                <div className="flex items-center gap-0.5">
+                  <Input
+                    aria-label={item.name}
+                    className="h-6 min-w-0 flex-1"
+                    disabled={saving}
+                    type={
+                      item.type === 'number'
+                        ? 'number'
+                        : item.type === 'time'
+                          ? 'datetime-local'
+                          : 'text'
+                    }
+                    value={String(item.value)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      updateDraftValue({ draftId: item.id, value: event.target.value })
+                    }
+                  />
+                  <button
+                    type="button"
+                    aria-label={`${tCommon(($) => $['operation.remove'])} ${item.name}`}
+                    className="shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent"
+                    disabled={saving}
+                    onClick={() => removeDraft(item.id)}
+                  >
+                    <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="py-1 system-xs-regular wrap-break-word text-text-secondary">
+                  {metadataDisplayValue(item.value, locale)}
+                </div>
+              )}
+            </dd>
+          </div>
+        )
+      })}
+    </dl>
+  )
+
   return (
     <section>
       <div className="flex items-center justify-between gap-2">
@@ -265,83 +322,43 @@ function DocumentMetadataCardContent() {
         )}
       </div>
 
-      {editing && (
-        <div className="mt-3">
-          <DocumentMetadataPicker
-            allowedExistingName={retryableCreateName}
-            creating={creating}
-            error={Boolean(metadataFieldsQuery.error)}
-            fields={fields}
-            loading={metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching}
-            onCreate={createField}
-            onManage={() => router.push(`${newKnowledgeDocumentsPath(controlSpaceId)}?metadata=1`)}
-            onRetry={() => void metadataFieldsQuery.refetch()}
-            onSelect={selectField}
-          />
-          {drafts.length > 0 && <div className="my-3 h-px bg-divider-subtle" />}
-        </div>
-      )}
-
-      <dl className="mt-3 space-y-1">
-        {renderedItems.map((item) => {
-          return (
-            <div key={item.id} className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2">
-              <dt className="truncate system-xs-medium text-text-secondary" title={item.name}>
-                {item.name}
-              </dt>
-              <dd className="min-w-0">
-                {editing ? (
-                  <div className="flex items-center gap-0.5">
-                    <Input
-                      aria-label={item.name}
-                      className="h-6 min-w-0 flex-1"
-                      type={
-                        item.type === 'number'
-                          ? 'number'
-                          : item.type === 'time'
-                            ? 'datetime-local'
-                            : 'text'
-                      }
-                      value={String(item.value)}
-                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        updateDraftValue({ draftId: item.id, value: event.target.value })
-                      }
-                    />
-                    <button
-                      type="button"
-                      aria-label={`${tCommon(($) => $['operation.remove'])} ${item.name}`}
-                      className="shrink-0 cursor-pointer rounded-md border-0 bg-transparent p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={() => removeDraft(item.id)}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="py-1 system-xs-regular wrap-break-word text-text-secondary">
-                    {metadataDisplayValue(item.value, locale)}
-                  </div>
-                )}
-              </dd>
-            </div>
-          )
-        })}
-      </dl>
-
-      {editing && (
-        <div className="mt-3 flex justify-end gap-2">
-          <Button disabled={saving || creating} onClick={cancelEditing} size="small">
-            {tCommon(($) => $['operation.cancel'])}
-          </Button>
-          <Button
-            disabled={creating}
-            loading={saving}
-            onClick={save}
-            size="small"
-            variant="primary"
-          >
-            {tCommon(($) => $['operation.save'])}
-          </Button>
-        </div>
+      {editing ? (
+        <form onSubmit={save}>
+          <div className="mt-3">
+            <DocumentMetadataPicker
+              allowedExistingName={retryableCreateName}
+              creating={creating}
+              disabled={saving}
+              error={Boolean(metadataFieldsQuery.error)}
+              fields={fields}
+              loading={metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching}
+              onCreate={createField}
+              onManage={() =>
+                router.push(`${newKnowledgeDocumentsPath(controlSpaceId)}?metadata=1`)
+              }
+              onRetry={() => void metadataFieldsQuery.refetch()}
+              onSelect={selectField}
+            />
+            {drafts.length > 0 && <div className="my-3 h-px bg-divider-subtle" />}
+          </div>
+          {metadataList}
+          <div className="mt-3 flex justify-end gap-2">
+            <Button disabled={saving || creating} onClick={cancelEditing} size="small">
+              {tCommon(($) => $['operation.cancel'])}
+            </Button>
+            <Button
+              disabled={creating}
+              loading={saving}
+              size="small"
+              type="submit"
+              variant="primary"
+            >
+              {tCommon(($) => $['operation.save'])}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        metadataList
       )}
     </section>
   )

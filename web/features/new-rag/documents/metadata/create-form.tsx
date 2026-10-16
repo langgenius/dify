@@ -62,6 +62,8 @@ export function DocumentMetadataCreateForm({
       className="px-3 pt-3.5 pb-4"
       onSubmit={(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
+        // The form renders in a portal; keep its submit from reaching an enclosing React form.
+        event.stopPropagation()
         void create()
       }}
     >
@@ -90,14 +92,14 @@ export function DocumentMetadataCreateForm({
                 type="button"
                 aria-pressed={type === candidate}
                 className={cn(
-                  'h-8 cursor-pointer rounded-md border px-2 system-sm-regular text-text-secondary capitalize focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                  'h-8 cursor-pointer rounded-md border px-2 system-sm-regular text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
                   type === candidate
                     ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs'
                     : 'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
                 )}
                 onClick={() => setType(candidate)}
               >
-                {candidate}
+                {t(($) => $[`metadata.type.${candidate}`], { ns: 'dataset' })}
               </button>
             ))}
           </div>

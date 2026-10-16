@@ -5,6 +5,10 @@ import { documentMetadataType, editableDocumentMetadataEntries } from '../../met
 
 type MetadataDraft = {
   id: string
+  // Input value the draft opened with. While `value` still equals it, the field is untouched and
+  // its stored value is kept as-is, because input formatting (such as minute-precision
+  // datetime-local) cannot represent every stored value exactly.
+  initialValue?: string
   name: string
   type: DocumentMetadataType
   value: string
@@ -58,13 +62,20 @@ function metadataDrafts(document: LogicalDocument, fields: readonly MetadataFiel
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([name, value]) => {
       const type = fieldTypes.get(name) ?? documentMetadataType(value)
+      const inputValue = metadataValueForInput(value, type)
       return {
         id: `field-${name}`,
+        initialValue: inputValue,
         name,
         type,
-        value: metadataValueForInput(value, type),
+        value: inputValue,
       }
     })
+}
+
+function createdMetadataDraft(name: string, type: DocumentMetadataType, value: unknown) {
+  const inputValue = metadataValueForInput(value, type)
+  return { id: `field-${name}`, initialValue: inputValue, name, type, value: inputValue }
 }
 
 const initialMetadataEditorState: MetadataEditorState = {
@@ -142,10 +153,7 @@ export const recordCreatedMetadataFieldAtom = atom(
       baseline: { metadata: document.userMetadata, rowVersion: document.rowVersion },
       drafts: current.drafts.some((draft) => draft.name === name)
         ? current.drafts
-        : [
-            ...current.drafts,
-            { id: `field-${name}`, name, type, value: metadataValueForInput(value, type) },
-          ],
+        : [...current.drafts, createdMetadataDraft(name, type, value)],
       retryableCreateName: undefined,
     })
   },

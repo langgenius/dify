@@ -1838,7 +1838,7 @@ describe('DocumentDetailPage', () => {
     await user.click(
       screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
     )
-    await user.click(screen.getByRole('button', { name: 'number' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.type.number' }))
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
       'priority',
@@ -1885,7 +1885,7 @@ describe('DocumentDetailPage', () => {
     await user.click(
       screen.getByRole('button', { name: 'dataset.metadata.selectMetadata.newAction' }),
     )
-    await user.click(screen.getByRole('button', { name: 'number' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.metadata.type.number' }))
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.metadata.createMetadata.name' }),
       'priority',
