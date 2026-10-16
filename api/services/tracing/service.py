@@ -596,16 +596,53 @@ class ApplicationTracingService:
     def status(
         self, *, tenant_id: str, app_id: str, source_kind: str, source_id: str, node_execution_id: str | None = None
     ) -> dict[str, Any]:
-        if self.repository._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id) is None:
+        run, node_execution_id = self._resolve_status_source(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            source_kind=source_kind,
+            source_id=source_id,
+            node_execution_id=node_execution_id,
+        )
+        return self._status_for_run(run, source_kind, source_id, node_execution_id)
+
+    def _resolve_status_source(
+        self, *, tenant_id: str, app_id: str, source_kind: str, source_id: str, node_execution_id: str | None
+    ) -> tuple[ApplicationTraceRun | None, str | None]:
+        """Resolve node log aliases through their owned workflow, outside SQL transactions."""
+        source = self.repository._source(tenant_id=tenant_id, app_id=app_id, kind=source_kind, source_id=source_id)
+        if source is None:
             raise TraceCollectionError("tracing_source_not_found", 404)
+        if source_kind == "node" and node_execution_id is not None and node_execution_id != source_id:
+            raise TraceCollectionError("tracing_node_not_found", 404)
         run = self._run_for_source(tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id)
+        # A standalone preview (including a frozen disabled decision) owns its
+        # status even if its source later carries a workflow run reference.
+        if run is None and isinstance(source, WorkflowNodeExecutionModel) and source.workflow_run_id:
+            workflow = self.repository._source(
+                tenant_id=tenant_id, app_id=app_id, kind="workflow", source_id=source.workflow_run_id
+            )
+            if (
+                not isinstance(workflow, WorkflowRun)
+                or not source.workflow_id
+                or workflow.workflow_id != source.workflow_id
+            ):
+                raise TraceCollectionError("tracing_source_not_found", 404)
+            run = self.repository.source_run(
+                tenant_id=tenant_id, app_id=app_id, source_kind="workflow", source_id=workflow.id
+            )
+            node_execution_id = source.id
+        return run, node_execution_id
+
+    def _status_for_run(
+        self, run: ApplicationTraceRun | None, source_kind: str, source_id: str, node_execution_id: str | None
+    ) -> dict[str, Any]:
         if run is None or run.state == "not_collected":
             return {"status": "not_collected", "source_kind": source_kind, "source_id": source_id}
         invocations, _ = self.repository.collected(run.id)
         selected = (
             [inv for inv in invocations if inv.node_execution_id == node_execution_id] if node_execution_id else []
         )
-        if node_execution_id and not selected:
+        if node_execution_id and not selected and not (source_kind == "node" and run.source_kind == "workflow"):
             raise TraceCollectionError("tracing_node_not_found", 404)
         return {
             "status": run.state,
@@ -637,26 +674,19 @@ class ApplicationTracingService:
         acknowledge_possible_duplicates: bool,
         node_execution_id: str | None = None,
     ) -> dict[str, Any]:
-        # Reuse source/node owner validation before obtaining the durable ID.
-        self.status(
+        run, node_execution_id = self._resolve_status_source(
             tenant_id=tenant_id,
             app_id=app_id,
             source_kind=source_kind,
             source_id=source_id,
             node_execution_id=node_execution_id,
         )
-        run = self._run_for_source(tenant_id=tenant_id, app_id=app_id, source_kind=source_kind, source_id=source_id)
         if run is None:
             raise TraceCollectionError("tracing_run_not_found", 404)
+        self._status_for_run(run, source_kind, source_id, node_execution_id)
         self.repository.retry(run_id=run.id, acknowledge_possible_duplicates=acknowledge_possible_duplicates)
         self.schedule(run.id)
-        return self.status(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            source_kind=source_kind,
-            source_id=source_id,
-            node_execution_id=node_execution_id,
-        )
+        return self._status_for_run(self.repository.get(run.id), source_kind, source_id, node_execution_id)
 
 
 def application_tracing_service() -> ApplicationTracingService:
