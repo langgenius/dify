@@ -8,6 +8,7 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
 2. **Environment Setup**:
    - Navigate to the `docker` directory.
    - Copy `.env.example` to `.env`.
+   - Set `SANDBOX_API_KEY` in `.env` to a unique random secret (for example, generate one with `openssl rand -hex 32`). Compose supplies the same key to the sandbox and API services. Rotate an existing `dify-sandbox` key when upgrading.
    - Customize `.env` when you need to change essential startup defaults. Copy optional files from `envs/` without the `.example` suffix when you need advanced settings.
    - **Optional (for advanced deployments)**:
      If you maintain a full `.env` file copied from `.env.example`, you may use the environment synchronization tool to keep it aligned with the latest `.env.example` updates while preserving your custom settings.
@@ -17,6 +18,7 @@ Run Dify with Docker Compose. Configuration templates live in `.env.example` and
    - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`. See `envs/vectorstores/` for the full list of supported options.
    ```bash
    cp .env.example .env
+   # Set SANDBOX_API_KEY in .env to a unique random secret before starting.
    docker compose up -d
    ```
 
@@ -146,9 +148,16 @@ use multiple real addresses.
    - Use the `docker-compose.middleware.yaml` for setting up essential middleware services like databases and caches.
    - Navigate to the `docker` directory.
    - Ensure the `middleware.env` file is created by running `cp envs/middleware.env.example middleware.env` (refer to the `envs/middleware.env.example` file).
+   - Set `SANDBOX_API_KEY` in `middleware.env` to a unique random secret. If the API runs on your host, set its `CODE_EXECUTION_API_KEY` to the same value.
 2. **Running Middleware Services**:
    - Navigate to the `docker` directory.
    - Execute `docker compose --env-file middleware.env -f docker-compose.middleware.yaml -p dify up -d` to start PostgreSQL/MySQL (per `DB_TYPE`) plus the bundled Weaviate instance.
+
+The middleware stack does not publish the code sandbox on the host by default. For a locally running API that needs sandbox access, add the opt-in override below. It binds port 8194 to localhost only; use a tunnel if the API runs on another host.
+
+```bash
+docker compose --env-file middleware.env -f docker-compose.middleware.yaml -f docker-compose.middleware.sandbox-port.yaml -p dify up -d
+```
 
 > Compose automatically loads `COMPOSE_PROFILES=${DB_TYPE:-postgresql},weaviate` from `middleware.env`, so no extra `--profile` flags are needed. Adjust variables in `middleware.env` if you want a different combination of services.
 
