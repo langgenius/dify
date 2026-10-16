@@ -321,6 +321,25 @@ describe('Tracing overview panel', () => {
     )
   })
 
+  it('keeps the provider list open and discards the cancelled form draft', async () => {
+    mockServer(false)
+    renderPanel()
+    const user = userEvent.setup()
+    const trigger = await screen.findByRole('button', { name: 'app.tracing.title' })
+    await waitFor(() => expect(trigger).toBeEnabled())
+    await user.click(trigger)
+    const provider = within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' }))
+    await user.click(provider.getByRole('button', { name: 'app.tracing.config' }))
+    await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://draft.langfuse.com')
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() =>
+      expect(provider.getByRole('button', { name: 'app.tracing.config' })).toHaveFocus(),
+    )
+    expect(screen.getByRole('dialog', { name: 'app.tracing.tracing' })).toBeInTheDocument()
+    await user.click(provider.getByRole('button', { name: 'app.tracing.config' }))
+    expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
+  })
+
   it('saves a new provider before enabling it', async () => {
     const writes = mockServer(false)
     renderPanel()
