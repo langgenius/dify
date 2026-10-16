@@ -43,7 +43,10 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
       appMode={appDetail.mode}
       headerRight={
         appACLCapabilities.canConfigureTracing ? (
-          <TracingConfiguration resource={{ kind: 'app', appId }} readOnly={false} />
+          <TracingConfiguration
+            resource={{ kind: 'app', appId, mode: appDetail.mode }}
+            readOnly={false}
+          />
         ) : null
       }
     />
