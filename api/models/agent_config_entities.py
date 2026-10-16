@@ -8,6 +8,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    JsonValue,
     WithJsonSchema,
     field_validator,
     model_validator,
@@ -133,7 +134,9 @@ _OUTPUT_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z_][A-Za-z0-9
 _CONFIG_SKILL_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 JsonPrimitive = str | int | float | bool | None
-RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | list[bool]
+# JSON values, including model-selector / app-selector objects. Those selectors
+# are dictionaries at the plugin boundary (provider + model + model_type).
+RuntimeParameterValue = JsonValue
 
 
 class AgentFlexibleConfig(BaseModel):
