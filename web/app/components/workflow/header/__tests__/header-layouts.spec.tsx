@@ -91,6 +91,43 @@ describe('Header layout components', () => {
   afterEach(() => vi.restoreAllMocks())
 
   describe('HeaderInNormal', () => {
+    it.each([false, true])(
+      'keeps an existing Builder session toggle available with canvasReadOnly=%s',
+      async (canvasReadOnly) => {
+        const user = userEvent.setup()
+        const { store } = renderWorkflowComponent(
+          <HeaderInNormal
+            controls={{ showDifyBuilderButton: true, hasDifyBuilderSession: true }}
+          />,
+          { initialStoreState: { canvasReadOnly, workflowDraftSyncPhase: 'builder' } },
+        )
+        const toggle = screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })
+        expect(toggle).toBeEnabled()
+        await user.click(toggle)
+        expect(store.getState().showDifyBuilderPanel).toBe(true)
+        await user.click(toggle)
+        expect(store.getState().showDifyBuilderPanel).toBe(false)
+      },
+    )
+
+    it.each([
+      { canvasReadOnly: true, canEdit: true, hasSession: false },
+      { canvasReadOnly: false, canEdit: false, hasSession: true },
+    ])(
+      'keeps Builder unavailable without edit access or an unlocked canvas: %j',
+      ({ canvasReadOnly, canEdit, hasSession }) => {
+        renderWorkflowComponent(
+          <HeaderInNormal
+            controls={{ showDifyBuilderButton: true, hasDifyBuilderSession: hasSession }}
+          />,
+          {
+            initialStoreState: { canvasReadOnly },
+            hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit } },
+          },
+        )
+        expect(screen.getByRole('button', { name: 'difyBuilder.buttonTooltip' })).toBeDisabled()
+      },
+    )
     it('opens version history, backs up the draft, and closes editing panels', async () => {
       const user = userEvent.setup()
 
@@ -140,6 +177,17 @@ describe('Header layout components', () => {
       renderWorkflowComponent(<HeaderInNormal />, { initialStoreState: { canvasReadOnly: true } })
       expect(screen.getByRole('button', { name: 'workflow.env.envPanelTitle' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'workflow.globalVar.title' })).toBeDisabled()
+    })
+
+    it('clears the node selected when version history is opened', async () => {
+      const user = userEvent.setup()
+      renderWorkflowComponent(<HeaderInNormal />)
+
+      mockGetNodes.mockReturnValue([{ ...createSelectedNode(), id: 'newly-selected-node' }])
+      await user.click(screen.getByRole('button', { name: 'version-history' }))
+
+      expect(mockHandleNodeSelect).toHaveBeenCalledExactlyOnceWith('newly-selected-node', true)
+      expect(mockHandleBackupDraft).toHaveBeenCalledOnce()
     })
 
     it('should hide env and global variable buttons when the controls are disabled', () => {
