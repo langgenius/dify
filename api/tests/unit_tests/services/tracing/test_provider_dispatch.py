@@ -326,6 +326,52 @@ def test_opik_real_sdk_preserves_tree_thread_and_native_usage(
 
 
 @pytest.mark.parametrize(
+    ("value", "wire_value"),
+    [
+        (None, None),
+        ("323", "323"),
+        ({"result": 323}, {"result": 323}),
+        ([{"result": 323}], [{"result": 323}]),
+        ([], []),
+        (323, "323"),
+        (0, "0"),
+        (-5, "-5"),
+        (3.5, "3.5"),
+        (True, "true"),
+        (False, "false"),
+        ([1, 2], "[1, 2]"),
+        (["one", "two"], '["one", "two"]'),
+        ([{"result": 1}, "text"], '[{"result": 1}, "text"]'),
+        ([[1], [2]], "[[1], [2]]"),
+    ],
+)
+def test_opik_real_sdk_preserves_json_content_across_trace_and_span_boundaries(
+    trace: CanonicalTrace, http_calls: list[HTTPCall], value: object, wire_value: object
+) -> None:
+    content_trace = trace.model_copy(
+        update={"spans": tuple(span.model_copy(update={"inputs": value, "outputs": value}) for span in trace.spans)}
+    )
+    result = export_trace(
+        "opik",
+        {"api_key": "synthetic-key", "url": "https://opik.test/api", "workspace": "team", "project": "one"},
+        content_trace,
+    )
+    assert result.status == "accepted"
+    assert len(http_calls) == 2
+    root = json.loads(http_calls[0][2]["content"])
+    spans = json.loads(http_calls[1][2]["content"])["spans"]
+    for payload in [root, *spans]:
+        assert payload.get("input") == wire_value
+        assert payload.get("output") == wire_value
+    assert spans[1]["parent_span_id"] == spans[0]["id"]
+    assert spans[2]["parent_span_id"] == spans[0]["id"]
+    assert root["thread_id"] == trace.session_id
+    assert spans[1]["usage"]["total_tokens"] == 12
+    assert not spans[0].get("usage")
+    assert not spans[2].get("usage")
+
+
+@pytest.mark.parametrize(
     ("status", "error"),
     [(401, TraceExportRejectedError), (429, RetryableTraceDispatchError), (503, RetryableTraceDispatchError)],
 )
