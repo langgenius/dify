@@ -13,13 +13,14 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -65,18 +66,16 @@ function SaveInlineAgentToRosterFormSession({
 
   return (
     <>
-      <div className="shrink-0 ps-6 pe-14 pt-6 pb-3">
+      <DialogHeader>
         <DialogTitle>
           {t(($) => $['roster.saveToRosterDialog.title'], { ns: 'agentRoster' })}
         </DialogTitle>
         <DialogDescription className="sr-only">
           {t(($) => $['roster.saveToRosterDialog.description'], { ns: 'agentRoster' })}
         </DialogDescription>
-      </div>
-      <Form<AgentFormValues>
-        className="flex min-h-0 flex-1 flex-col"
-        onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
-      >
+        <DialogCloseButton aria-label={tCommon(($) => $['operation.close'])} disabled={pending} />
+      </DialogHeader>
+      <Form<AgentFormValues> onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}>
         <AgentFormFields
           ref={nameInputRef}
           defaultValues={initialValues.fields}
@@ -84,14 +83,14 @@ function SaveInlineAgentToRosterFormSession({
           iconAriaLabel={t(($) => $['roster.saveToRosterForm.changeIcon'], { ns: 'agentRoster' })}
           onIconChange={setAgentIcon}
         />
-        <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
+        <DialogFooter>
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
             {tCommon(($) => $['operation.cancel'])}
           </Button>
           <Button type="submit" variant="primary" className="min-w-18" loading={pending}>
             {tCommon(($) => $['operation.save'])}
           </Button>
-        </div>
+        </DialogFooter>
       </Form>
     </>
   )
@@ -105,7 +104,6 @@ export function SaveInlineAgentToRosterDialog({
   onOpenChange,
   onSaved,
 }: SaveInlineAgentToRosterDialogProps) {
-  const { t } = useTranslation(['common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const appSaveToRosterMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),
@@ -174,22 +172,7 @@ export function SaveInlineAgentToRosterDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent
-          initialFocus={nameInputRef}
-          className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden"
-        >
-          <DialogClose
-            disabled={isSavingToRoster}
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-5 top-5"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
+        <DialogContent initialFocus={nameInputRef} className="max-h-[calc(100dvh-2rem)] w-130">
           <SaveInlineAgentToRosterFormSession
             initialAgent={initialAgent}
             nameInputRef={nameInputRef}
