@@ -1,5 +1,7 @@
 from unittest.mock import ANY, MagicMock, patch
 
+import pytest
+
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -439,6 +441,30 @@ class TestConvertMcpSchemaToParameter:
     def test_list_type_uses_first_element(self):
         schema = {"type": "object", "properties": {"f": {"type": ["string", "null"]}}, "required": []}
         assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "string"
+
+    def test_mixed_type_union_attaches_input_schema(self):
+        prop = {"anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]}
+        schema = {"type": "object", "properties": {"domain": prop}, "required": []}
+        param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
+        assert param.type.value == "string"
+        assert param.input_schema == prop
+
+    def test_mixed_type_list_attaches_input_schema(self):
+        prop = {"type": ["string", "array", "null"]}
+        schema = {"type": "object", "properties": {"f": prop}, "required": []}
+        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].input_schema == prop
+
+    @pytest.mark.parametrize(
+        "prop",
+        [
+            {"type": ["string", "null"]},
+            {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            {"oneOf": [{"type": "integer"}, {"type": "number"}]},
+        ],
+    )
+    def test_single_type_union_has_no_input_schema(self, prop):
+        schema = {"type": "object", "properties": {"f": prop}, "required": []}
+        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].input_schema is None
 
     def test_missing_description_defaults_empty(self):
         schema = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
