@@ -140,19 +140,26 @@ function ContactRow({
 
 function DirectoryState({
   action,
+  className,
   description,
   icon,
   iconSrc,
   title,
 }: {
   action?: ReactNode
+  className?: string
   description: string
   icon: string
   iconSrc?: string
   title: string
 }) {
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+    <div
+      className={cn(
+        'flex min-h-full flex-1 flex-col items-center justify-center px-6 py-16 text-center',
+        className,
+      )}
+    >
       <span className="flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg backdrop-blur-[6px]">
         {iconSrc ? (
           <img alt="" aria-hidden className="size-6" src={iconSrc} />
@@ -450,11 +457,14 @@ export function ContactsDirectoryPage() {
                         <Button onClick={clearFilters}>{t(($) => $['action.clearFilters'])}</Button>
                       ) : context.permissions.canManageContacts ? (
                         <Button onClick={() => setExternalDialogOpen(true)}>
-                          <span aria-hidden className="mr-1 i-ri-add-line size-4" />
+                          <span aria-hidden className="i-ri-add-line size-4" />
                           {t(($) => $['directory.addExternal'])}
                         </Button>
                       ) : undefined
                     }
+                    className={cn(
+                      !(hasFilters && !(kind === 'external' && !search)) && 'pt-1 pb-12',
+                    )}
                     description={t(
                       ($) =>
                         $[
