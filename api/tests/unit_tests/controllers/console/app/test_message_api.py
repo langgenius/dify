@@ -44,29 +44,10 @@ def _app(*, app_id: str = "app-1") -> App:
     )
 
 
-def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1") -> Message:
-    conversation = Conversation(
-        app_id=app_id,
-        app_model_config_id=None,
-        model_provider=None,
-        override_model_configs=None,
-        model_id=None,
-        mode=AppMode.CHAT,
-        name="Conversation",
-        inputs={},
-        introduction="",
-        system_instruction="",
-        system_instruction_tokens=0,
-        status="normal",
-        invoke_from=InvokeFrom.DEBUGGER,
-        from_source=ConversationFromSource.CONSOLE,
-        from_end_user_id=None,
-        from_account_id="account-1",
-    )
-    conversation.id = "conversation-1"
+def _message(*, message_id: str, app_id: str, conversation_id: str) -> Message:
     message = Message(
         app_id=app_id,
-        conversation_id=conversation.id,
+        conversation_id=conversation_id,
         inputs={},
         query="query",
         message="",
@@ -87,6 +68,30 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         app_mode=AppMode.CHAT,
     )
     message.id = message_id
+    return message
+
+
+def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1") -> Message:
+    conversation = Conversation(
+        app_id=app_id,
+        app_model_config_id=None,
+        model_provider=None,
+        override_model_configs=None,
+        model_id=None,
+        mode=AppMode.CHAT,
+        name="Conversation",
+        inputs={},
+        introduction="",
+        system_instruction="",
+        system_instruction_tokens=0,
+        status="normal",
+        invoke_from=InvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
+        from_end_user_id=None,
+        from_account_id="account-1",
+    )
+    conversation.id = "conversation-1"
+    message = _message(message_id=message_id, app_id=app_id, conversation_id=conversation.id)
     session.add_all([_account(), _app(app_id=app_id), conversation, message])
     session.flush()
     return message
@@ -184,6 +189,44 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
 
     assert result is response_source
     response_source_factory.assert_called_once_with(message, session=session)
+
+
+@pytest.mark.parametrize("limit", [1, 2])
+def test_list_chat_messages_returns_messages_sharing_created_at(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, limit: int
+) -> None:
+    # Messages sent within the same second share created_at.
+    message_ids = [f"550e8400-e29b-41d4-a716-44665544000{index}" for index in range(5)]
+    first = _persist_message(sqlite_session, message_id=message_ids[0])
+    created_at = datetime(2026, 1, 2, 3, 4, 5)
+    first.created_at = created_at
+    for message_id in message_ids[1:]:
+        message = _message(message_id=message_id, app_id=first.app_id, conversation_id=first.conversation_id)
+        message.created_at = created_at
+        sqlite_session.add(message)
+    sqlite_session.flush()
+    monkeypatch.setattr(message_module, "attach_message_extra_contents", MagicMock())
+    monkeypatch.setattr(message_module, "MessageResponseSource", lambda message, **_kwargs: message.id)
+    monkeypatch.setattr(message_module, "dump_response", lambda _model, value: value)
+
+    collected: list[str] = []
+    first_id = None
+    for _ in range(len(message_ids) + 1):
+        page = message_module._list_chat_messages(
+            args=message_module.ChatMessagesQuery.model_construct(
+                conversation_id=first.conversation_id, first_id=first_id, limit=limit
+            ),
+            session=sqlite_session,
+            app_model=_app(),
+        )
+        assert page.data
+        collected = page.data + collected
+        assert page.has_more is (len(collected) < len(message_ids))
+        if not page.has_more:
+            break
+        first_id = page.data[0]
+
+    assert collected == sorted(message_ids)
 
 
 def test_message_response_source_uses_caller_session_for_nested_fields(sqlite_session: Session) -> None:
