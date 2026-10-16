@@ -15,13 +15,10 @@ import ModelLoadBalancingConfigs from '../model-load-balancing-configs'
 
 let mockModelLoadBalancingEnabled = true
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { modelLoadBalancingEnabled: boolean }) => boolean,
-  ) => selector({ modelLoadBalancingEnabled: mockModelLoadBalancingEnabled }),
-}))
+  renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { model_load_balancing_enabled: mockModelLoadBalancingEnabled },
+  })
 
 vi.mock('../cooldown-timer', () => ({
   default: ({
@@ -168,12 +165,14 @@ describe('ModelLoadBalancingConfigs', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('should enable load balancing by clicking the main panel when disabled and without switch', async () => {
+  it('should enable load balancing from the named mode button with the keyboard', async () => {
     const user = userEvent.setup()
     render(<StatefulHarness initialConfig={createDraftConfig(false)} withSwitch={false} />)
 
-    const panel = screen.getByTestId('load-balancing-main-panel')
-    await user.click(panel)
+    const modeButton = screen.getByTestId('load-balancing-select-mode')
+    expect(modeButton).toHaveAccessibleName('modelProvider.modelProvider.loadBalancing')
+    modeButton.focus()
+    await user.keyboard('[Space]')
     expect(screen.getByText('Key 1')).toBeInTheDocument()
   })
 
@@ -181,8 +180,9 @@ describe('ModelLoadBalancingConfigs', () => {
     const user = userEvent.setup()
     render(<StatefulHarness initialConfig={createDraftConfig(true)} />)
 
-    const removeBtn = screen.getByTestId('load-balancing-remove-cfg-1')
-    await user.click(removeBtn)
+    const removeBtn = screen.getByRole('button', { name: 'common.operation.remove Key 1' })
+    removeBtn.focus()
+    await user.keyboard('{Enter}')
 
     expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
   })
@@ -192,6 +192,7 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(true)} />)
 
     const entrySwitch = screen.getByTestId('load-balancing-switch-cfg-1')
+    expect(screen.getByRole('switch', { name: 'Key 1' })).toBe(entrySwitch)
     await user.click(entrySwitch)
     // Internal state transitions are verified by successful interactions
   })
@@ -201,9 +202,14 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(true)} withSwitch />)
 
     const mainSwitch = screen.getByTestId('load-balancing-switch-main')
+    expect(screen.getByRole('switch', { name: 'modelProvider.modelProvider.loadBalancing' })).toBe(
+      mainSwitch,
+    )
     await user.click(mainSwitch)
     // Check if description is still there (it should be)
-    expect(screen.getByText('common.modelProvider.loadBalancingDescription')).toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.loadBalancingDescription'),
+    ).toBeInTheDocument()
   })
 
   it('should disable main switch when load balancing is not permitted', async () => {
@@ -292,8 +298,8 @@ describe('ModelLoadBalancingConfigs', () => {
       />,
     )
 
-    expect(screen.getByText('common.modelProvider.providerManaged')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.providerManaged')).toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
   })
 
   it('should remove credential at index 0', async () => {
@@ -354,8 +360,10 @@ describe('ModelLoadBalancingConfigs', () => {
       />,
     )
 
-    expect(screen.getByText('common.modelProvider.defaultConfig')).toBeInTheDocument()
-    expect(screen.queryByText('common.modelProvider.providerManaged')).not.toBeInTheDocument()
+    expect(screen.getByText('modelProvider.modelProvider.defaultConfig')).toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.providerManaged'),
+    ).not.toBeInTheDocument()
   })
 
   it('should show upgrade panel when modelLoadBalancingEnabled=false and not CE edition', () => {
@@ -364,7 +372,9 @@ describe('ModelLoadBalancingConfigs', () => {
     render(<StatefulHarness initialConfig={createDraftConfig(false)} />)
 
     expect(screen.getByText('upgrade')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.upgradeForLoadBalancing')).toBeInTheDocument()
+    expect(
+      screen.getByText('modelProvider.modelProvider.upgradeForLoadBalancing'),
+    ).toBeInTheDocument()
   })
 
   it('should pass explicit boolean state to toggleConfigEntryEnabled (typeof state === boolean branch)', async () => {
@@ -472,14 +482,12 @@ describe('ModelLoadBalancingConfigs', () => {
 
   it('should not toggle load balancing when modelLoadBalancingEnabled=false and clicking panel to enable', async () => {
     // Arrange: load balancing not enabled in context, draftConfig.enabled=false (so panel is clickable)
-    const user = userEvent.setup()
     mockModelLoadBalancingEnabled = false
     render(<StatefulHarness initialConfig={createDraftConfig(false)} withSwitch={false} />)
 
     // Act: clicking the panel calls toggleModalBalancing(true)
     // but (modelLoadBalancingEnabled || !enabled) = (false || false) = false → condition fails
-    const panel = screen.getByTestId('load-balancing-main-panel')
-    await user.click(panel)
+    expect(screen.queryByTestId('load-balancing-select-mode')).not.toBeInTheDocument()
 
     expect(screen.queryByText('Key 1')).not.toBeInTheDocument()
   })

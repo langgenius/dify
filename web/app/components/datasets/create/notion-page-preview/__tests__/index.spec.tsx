@@ -1,6 +1,6 @@
 import type { MockedFunction } from 'vite-plus/test'
 import type { NotionPage } from '@/models/common'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { fetchNotionPagePreview } from '@/service/datasets'
 import NotionPagePreview from '../index'
 
@@ -78,7 +78,7 @@ const renderNotionPagePreview = async (
   if (waitForContent && defaultProps.currentPage) {
     await waitFor(() => {
       // Wait for loading to finish
-      expect(result.container.querySelector('.spin-animation')).not.toBeInTheDocument()
+      expect(within(result.container).queryByRole('progressbar')).not.toBeInTheDocument()
     })
   }
 
@@ -90,7 +90,7 @@ const renderNotionPagePreview = async (
 
 // Helper to find the loading spinner element
 const findLoadingSpinner = (container: HTMLElement) => {
-  return container.querySelector('.spin-animation')
+  return within(container).queryByRole('progressbar')
 }
 
 // NotionPagePreview Component Tests
@@ -170,10 +170,11 @@ describe('NotionPagePreview', () => {
     it('should render image icon when page_icon has url type', async () => {
       const page = createMockNotionPageWithUrlIcon('https://example.com/icon.png')
 
-      const { container } = await renderNotionPagePreview({ currentPage: page })
+      await renderNotionPagePreview({ currentPage: page })
 
-      const img = container.querySelector('img[alt="page icon"]')
-      expect(img).toBeInTheDocument()
+      const img = screen.getByRole('presentation')
+      expect(img).toBeVisible()
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
       expect(img).toHaveAttribute('src', 'https://example.com/icon.png')
     })
   })
@@ -861,10 +862,11 @@ describe('NotionPagePreview', () => {
     it('should handle page with url icon object', async () => {
       const page = createMockNotionPageWithUrlIcon('https://example.com/custom-icon.png')
 
-      const { container } = await renderNotionPagePreview({ currentPage: page })
+      await renderNotionPagePreview({ currentPage: page })
 
-      const img = container.querySelector('img[alt="page icon"]')
-      expect(img).toBeInTheDocument()
+      const img = screen.getByRole('presentation')
+      expect(img).toBeVisible()
+      expect(screen.queryByRole('img')).not.toBeInTheDocument()
       expect(img).toHaveAttribute('src', 'https://example.com/custom-icon.png')
     })
   })

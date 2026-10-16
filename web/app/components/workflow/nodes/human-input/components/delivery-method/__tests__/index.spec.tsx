@@ -1,5 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodForm from '../index'
@@ -134,3 +136,14 @@ describe('DeliveryMethodForm', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })
+
+function render(ui: React.ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}

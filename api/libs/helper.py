@@ -7,7 +7,8 @@ import struct
 import subprocess
 import time
 import uuid
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Callable, Generator, Iterable, Mapping
+from contextlib import contextmanager
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
@@ -328,9 +329,7 @@ class StrLen:
     def __call__(self, value):
         length = len(value)
         if length > self.max_length:
-            error = "Invalid {arg}: {val}. {arg} cannot exceed length {length}".format(
-                arg=self.argument, val=value, length=self.max_length
-            )
+            error = f"Invalid {self.argument}: {value}. {self.argument} cannot exceed length {self.max_length}"
             raise ValueError(error)
 
         return value
@@ -345,9 +344,7 @@ class DatetimeString:
         try:
             datetime.strptime(value, self.format)
         except ValueError:
-            error = "Invalid {arg}: {val}. {arg} must be conform to the format {format}".format(
-                arg=self.argument, val=value, format=self.format
-            )
+            error = f"Invalid {self.argument}: {value}. {self.argument} must be conform to the format {self.format}"
             raise ValueError(error)
 
         return value
@@ -400,12 +397,8 @@ def generate_string(n):
 
 
 def extract_remote_ip(request: Request) -> str:
-    if request.headers.get("CF-Connecting-IP"):
-        return cast(str, request.headers.get("CF-Connecting-IP"))
-    elif request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        return cast(str, request.remote_addr)
+    """Use the WSGI address, normalized by opt-in trusted proxy middleware."""
+    return cast(str, request.remote_addr)
 
 
 def generate_text_hash(text: str) -> str:
@@ -414,7 +407,7 @@ def generate_text_hash(text: str) -> str:
 
 
 def compact_generate_response(
-    response: Mapping[str, Any] | Generator[str, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | Iterable[str],
 ) -> Response:
     if isinstance(response, Mapping):
         return Response(
@@ -425,7 +418,7 @@ def compact_generate_response(
     else:
         stream_response = response
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             yield from stream_response
 
         return Response(
@@ -437,7 +430,7 @@ def compact_generate_response(
 
 def length_prefixed_response(
     magic_number: int,
-    response: Mapping[str, Any] | BaseModel | Generator[str | bytes, None, None] | RateLimitGenerator,
+    response: Mapping[str, Any] | BaseModel | Generator[str | bytes] | RateLimitGenerator,
 ) -> Response:
     """
     This function is used to return a response with a length prefix.
@@ -485,7 +478,7 @@ def length_prefixed_response(
 
     stream_response = response
 
-    def generate() -> Generator[bytes, None, None]:
+    def generate() -> Generator[bytes]:
         for chunk in stream_response:
             if isinstance(chunk, str):
                 yield pack_response_with_length_prefix(chunk.encode("utf-8"))
@@ -571,7 +564,11 @@ class TokenManager:
 
 
 class _RateLimiterRedisClient(Protocol):
+    def register_script(self, script: str) -> Callable[..., Any]: ...
+
     def zadd(self, name: str | bytes, mapping: dict[str | bytes | int | float, float | int | str | bytes]) -> int: ...
+
+    def zrem(self, name: str | bytes, *values: str | bytes) -> int: ...
 
     def zremrangebyscore(self, name: str | bytes, min: str | float, max: str | float) -> int: ...
 
@@ -603,6 +600,30 @@ class RateLimiter:
     def _get_key(self, email: str) -> str:
         return f"{self.prefix}:{email}"
 
+    @contextmanager
+    def reserve(self, email: str) -> Generator[bool]:
+        """Reserve a slot atomically, releasing only this slot if the operation fails."""
+        key = self._get_key(email)
+        member = self._member_factory()
+        script = self._redis_client.register_script("""
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1] - ARGV[2])
+            if redis.call('ZSCORE', KEYS[1], ARGV[4]) then return 1 end
+            if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+            redis.call('ZADD', KEYS[1], ARGV[1], ARGV[4])
+            redis.call('EXPIRE', KEYS[1], ARGV[2] * 2)
+            return 1
+        """)
+        acquired = bool(script(keys=[key], args=[int(time.time()), self.time_window, self.max_attempts, member]))
+        try:
+            yield acquired
+        except BaseException:
+            if acquired:
+                try:
+                    self._redis_client.zrem(key, member)
+                except Exception:
+                    logger.exception("Failed to release rate limit reservation")
+            raise
+
     def is_rate_limited(self, email: str) -> bool:
         key = self._get_key(email)
         current_time = int(time.time())
@@ -611,9 +632,7 @@ class RateLimiter:
         self._redis_client.zremrangebyscore(key, "-inf", window_start_time)
         attempts = self._redis_client.zcard(key)
 
-        if attempts and int(attempts) >= self.max_attempts:
-            return True
-        return False
+        return bool(attempts and int(attempts) >= self.max_attempts)
 
     def increment_rate_limit(self, email: str):
         key = self._get_key(email)

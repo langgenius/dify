@@ -1,44 +1,55 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
 import type { QueryParam } from '../index'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
 import Filter, { TIME_PERIOD_MAPPING } from '../filter'
 
 let mockAnnotationsCountLoading = false
 let mockAnnotationsCountData: { count: number } | null = { count: 10 }
-const mockRuntime = vi.hoisted(() => ({
-  deploymentEdition: 'CLOUD',
-  enableBilling: true,
-  isFetchedPlan: true,
-  isFetchedPlanInfo: true,
-  planType: 'professional',
-}))
+const scenario = {
+  deploymentEdition: 'CLOUD' as DeploymentEdition,
+  pending: false,
+  planType: 'professional' as CloudPlan,
+}
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({ data: mockRuntime.deploymentEdition }),
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  if (scenario.pending) {
+    void queryClient.query({
+      queryKey: consoleQuery.features.get.queryKey(),
+      queryFn: () => new Promise(() => {}),
+    })
+  } else seedFeatures(queryClient, { billing: { subscription: { plan: scenario.planType } } })
+  const annotationsCountQueryKey = consoleQuery.apps.byAppId.annotations.count.get.queryKey({
+    input: { params: { app_id: 'test-app-id' } },
+  })
+  if (mockAnnotationsCountLoading) {
+    void queryClient.query({
+      queryKey: annotationsCountQueryKey,
+      queryFn: () => new Promise(() => {}),
+    })
+  } else if (mockAnnotationsCountData) {
+    queryClient.setQueryData(annotationsCountQueryKey, mockAnnotationsCountData)
+  } else {
+    void queryClient
+      .query({
+        queryKey: annotationsCountQueryKey,
+        queryFn: () => Promise.reject(new Error('annotations count unavailable')),
+      })
+      .catch(() => {})
   }
-})
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: () => ({
-      enableBilling: mockRuntime.enableBilling,
-      isFetchedPlan: mockRuntime.isFetchedPlan,
-      isFetchedPlanInfo: mockRuntime.isFetchedPlanInfo,
-      plan: { type: mockRuntime.planType },
-    }),
-  }
-})
-
-vi.mock('@/service/use-log', () => ({
-  useAnnotationsCount: () => ({
-    data: mockAnnotationsCountData,
-    isLoading: mockAnnotationsCountLoading,
-  }),
-}))
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: scenario.deploymentEdition },
+  })
+}
 
 vi.mock('@/app/components/base/chip', async () => {
   const { useState } = await import('react')
@@ -102,11 +113,9 @@ describe('Filter', () => {
     vi.clearAllMocks()
     mockAnnotationsCountLoading = false
     mockAnnotationsCountData = { count: 10 }
-    mockRuntime.deploymentEdition = 'CLOUD'
-    mockRuntime.enableBilling = true
-    mockRuntime.isFetchedPlan = true
-    mockRuntime.isFetchedPlanInfo = true
-    mockRuntime.planType = 'professional'
+    scenario.deploymentEdition = 'CLOUD'
+    scenario.pending = false
+    scenario.planType = 'professional'
   })
 
   describe('Rendering', () => {
@@ -179,8 +188,8 @@ describe('Filter', () => {
 
   describe('User Interactions', () => {
     it('should only show supported periods for Cloud sandbox workspaces', () => {
-      mockRuntime.deploymentEdition = 'CLOUD'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
 
       render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
 
@@ -194,11 +203,12 @@ describe('Filter', () => {
       ])
     })
 
-    it('should only show supported periods while the Cloud plan is pending', () => {
-      mockRuntime.isFetchedPlan = false
-      mockRuntime.isFetchedPlanInfo = false
+    it('should keep periods restricted until the Cloud plan resolves, then follow cache updates', async () => {
+      scenario.pending = true
 
-      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+      const { queryClient } = render(
+        <Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />,
+      )
 
       fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
 
@@ -208,36 +218,36 @@ describe('Filter', () => {
         expect.stringMatching(/(?:^|\.)filter\.period\.last7days(?=$|:)/),
         expect.stringMatching(/(?:^|\.)filter\.period\.last30days(?=$|:)/),
       ])
+
+      act(() => {
+        seedFeatures(queryClient, { billing: { subscription: { plan: 'professional' } } })
+      })
+      await waitFor(() => expect(periodOptions.getAllByRole('listitem')).toHaveLength(9))
+
+      act(() => {
+        seedFeatures(queryClient, { billing: { subscription: { plan: 'sandbox' } } })
+      })
+      await waitFor(() => expect(periodOptions.getAllByRole('listitem')).toHaveLength(3))
     })
 
-    it('should keep all periods when Cloud billing is known to be disabled', () => {
-      mockRuntime.enableBilling = false
-      mockRuntime.isFetchedPlan = false
-      mockRuntime.isFetchedPlanInfo = true
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+      'should keep all periods for sandbox workspaces in %s',
+      (edition) => {
+        scenario.deploymentEdition = edition
+        scenario.planType = 'sandbox'
 
-      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
+        render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
+        fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
 
-      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
-      expect(periodOptions.getAllByRole('listitem')).toHaveLength(9)
-    })
-
-    it('should keep all periods for sandbox workspaces outside Cloud', () => {
-      mockRuntime.deploymentEdition = 'COMMUNITY'
-      mockRuntime.planType = 'sandbox'
-
-      render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'open-options-1' }))
-
-      const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
-      expect(periodOptions.getAllByRole('listitem')).toHaveLength(9)
-    })
+        const periodOptions = within(screen.getByRole('list', { name: 'options-1' }))
+        expect(periodOptions.getAllByRole('listitem')).toHaveLength(9)
+      },
+    )
 
     it('should reset the Cloud sandbox period to today when cleared', () => {
-      mockRuntime.deploymentEdition = 'CLOUD'
-      mockRuntime.planType = 'sandbox'
+      scenario.deploymentEdition = 'CLOUD'
+      scenario.planType = 'sandbox'
 
       render(<Filter {...defaultProps} queryParams={{ ...defaultQueryParams, period: '2' }} />)
 
@@ -351,7 +361,7 @@ describe('Filter', () => {
     it('should display annotated status with count when annotation_status is annotated', () => {
       const propsWithAnnotation = {
         ...defaultProps,
-        queryParams: { ...defaultQueryParams, annotation_status: 'annotated' },
+        queryParams: { ...defaultQueryParams, annotation_status: 'annotated' as const },
       }
 
       render(<Filter {...propsWithAnnotation} />)
@@ -364,7 +374,7 @@ describe('Filter', () => {
     it('should display not_annotated status when annotation_status is not_annotated', () => {
       const propsWithNotAnnotated = {
         ...defaultProps,
-        queryParams: { ...defaultQueryParams, annotation_status: 'not_annotated' },
+        queryParams: { ...defaultQueryParams, annotation_status: 'not_annotated' as const },
       }
 
       render(<Filter {...propsWithNotAnnotated} />)
@@ -395,7 +405,7 @@ describe('Filter', () => {
       const propsWithSort = {
         ...defaultProps,
         isChatMode: true,
-        queryParams: { ...defaultQueryParams, sort_by: 'created_at' },
+        queryParams: { ...defaultQueryParams, sort_by: 'created_at' as const },
       }
 
       render(<Filter {...propsWithSort} />)
@@ -409,7 +419,7 @@ describe('Filter', () => {
       const propsWithDescSort = {
         ...defaultProps,
         isChatMode: true,
-        queryParams: { ...defaultQueryParams, sort_by: '-created_at' },
+        queryParams: { ...defaultQueryParams, sort_by: '-created_at' as const },
       }
 
       render(<Filter {...propsWithDescSort} />)

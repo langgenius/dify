@@ -9,13 +9,13 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, selectinload
 from werkzeug.exceptions import NotFound
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -106,7 +106,7 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=AppMode.COMPLETION)
     @model_validate(CompletionConversationQuery)
@@ -140,7 +140,7 @@ class CompletionConversationApi(Resource):
 
         if end_datetime_utc:
             end_datetime_utc = end_datetime_utc.replace(second=59)
-            query = query.where(Conversation.created_at < end_datetime_utc)
+            query = query.where(Conversation.created_at <= end_datetime_utc)
 
         # FIXME, the type ignore in this file
         if req_data.annotation_status == "annotated":
@@ -187,7 +187,7 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
@@ -209,7 +209,7 @@ class CompletionConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
@@ -236,7 +236,7 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @model_validate(ChatConversationQuery)
@@ -356,7 +356,7 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, session: Session, current_user: Account, app_model: App, conversation_id: UUID):
@@ -378,7 +378,7 @@ class ChatConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @with_current_user
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
@@ -406,9 +406,11 @@ def _get_conversation(session: Session, current_user: Account, app_model, conver
         .where(Conversation.id == conversation_id, Conversation.read_at.is_(None))
         # Keep updated_at unchanged when only marking a conversation as read.
         .values(
-            read_at=naive_utc_now(),
-            read_account_id=current_user.id,
-            updated_at=Conversation.updated_at,
+            {
+                Conversation.read_at: naive_utc_now(),
+                Conversation.read_account_id: current_user.id,
+                Conversation.updated_at: Conversation.updated_at,
+            }
         )
     )
     session.flush()

@@ -28,7 +28,7 @@ const {
   useDocumentTitleMock: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: notifyMock,
   },
@@ -48,7 +48,7 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: useDocumentTitleMock,
 }))
 
-vi.mock('@/i18n-config/client', () => ({
+vi.mock('@/i18n/client', () => ({
   changeLanguage: changeLanguageMock,
 }))
 

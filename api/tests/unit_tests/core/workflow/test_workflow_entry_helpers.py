@@ -1,4 +1,3 @@
-import json
 from collections import UserString
 from datetime import datetime
 from types import SimpleNamespace
@@ -21,8 +20,9 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
 from tests.unit_tests.config_override import config_overrides_context
+from tests.unit_tests.model_factories import make_workflow
 
 
 def _build_typed_node_config(node_type: NodeType):
@@ -31,16 +31,7 @@ def _build_typed_node_config(node_type: NodeType):
 
 def _workflow() -> Workflow:
     """Build a real transient workflow for single-step orchestration tests."""
-    return Workflow(
-        id="workflow-id",
-        tenant_id="tenant-id",
-        app_id="app-id",
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph=json.dumps({"nodes": [], "edges": []}),
-        _features="{}",
-        created_by="user-id",
-    )
+    return make_workflow(workflow_id="workflow-id", tenant_id="tenant-id", app_id="app-id", created_by="user-id")
 
 
 def _build_minimal_workflow_entry(
@@ -193,6 +184,11 @@ class TestWorkflowEntryRun:
             ) as response_stream_filter_cls,
             patch.object(
                 workflow_entry,
+                "HumanInputFormEventFilter",
+                return_value=sentinel.human_input_filter,
+            ),
+            patch.object(
+                workflow_entry,
                 "filter_graph_events",
                 return_value=iter([sentinel.filtered_event]),
             ) as filter_graph_events,
@@ -205,7 +201,7 @@ class TestWorkflowEntryRun:
         filter_graph_events.assert_called_once_with(
             graph_engine.run.return_value,
             context=sentinel.filter_context,
-            filters=[sentinel.response_stream_filter],
+            filters=[sentinel.human_input_filter, sentinel.response_stream_filter],
         )
 
     def test_run_delegates_to_dify_event_iterator(self):

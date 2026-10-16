@@ -11,12 +11,16 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { SearchInput } from '@/app/components/base/search-input'
-import { useLocale } from '@/context/i18n'
-import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { getAccessControlTemplateLanguage } from '@/i18n/language'
+import {
+  createSelectedRolePlaceholder,
+  workspaceRoleListInfiniteOptions,
+} from './workspace-role-list-query'
 
 type WorkspaceRoleCheckboxListProps = {
   selectedRoleIds: string[]
@@ -38,18 +42,6 @@ const LEGACY_ROLE_DESCRIPTION_KEY_MAP = {
 
 type LegacyRoleKey = keyof typeof LEGACY_ROLE_DESCRIPTION_KEY_MAP
 
-const createSelectedRolePlaceholder = (id: string): Role => ({
-  id,
-  tenant_id: '',
-  type: 'workspace',
-  category: 'global_custom',
-  name: id,
-  description: '',
-  is_builtin: false,
-  permission_keys: [],
-  role_tag: '',
-})
-
 const normalizeLegacyRoleKey = (value: string) => value.trim().toLowerCase()
 
 const isLegacyRoleKey = (value: string): value is LegacyRoleKey =>
@@ -69,7 +61,7 @@ const WorkspaceRoleCheckboxList = ({
   onSelectedRolesChange,
   includeOwner = false,
 }: WorkspaceRoleCheckboxListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['permission', 'workspaceMembers'])
   const locale = useLocale()
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -83,12 +75,14 @@ const WorkspaceRoleCheckboxList = ({
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useWorkspaceRoleList({
-    page: 1,
-    limit: PAGE_SIZE,
-    include_owner: includeOwner ? 1 : 0,
-    language,
-  })
+  } = useInfiniteQuery(
+    workspaceRoleListInfiniteOptions({
+      page: 1,
+      limit: PAGE_SIZE,
+      include_owner: includeOwner ? 1 : 0,
+      language,
+    }),
+  )
 
   useEffect(() => {
     const hasMore = hasNextPage ?? true
@@ -131,7 +125,7 @@ const WorkspaceRoleCheckboxList = ({
     if (selectedRoles) return selectedRoles
 
     return selectedRoleIds.map(
-      (roleId) => roleById.get(roleId) ?? createSelectedRolePlaceholder(roleId),
+      (roleId) => roleById.get(roleId) ?? createSelectedRolePlaceholder({ id: roleId }),
     )
   }, [roleById, selectedRoleIds, selectedRoles])
 
@@ -189,7 +183,7 @@ const WorkspaceRoleCheckboxList = ({
 
     if (legacyRoleDescriptionKey)
       return t(($) => $[LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey]], {
-        ns: 'common',
+        ns: 'workspaceMembers',
       })
 
     return t(($) => $['role.noDescription'], { ns: 'permission' })
@@ -271,7 +265,7 @@ const WorkspaceRoleCheckboxList = ({
                       const disabled = disabledRoleIdSet.has(role.id)
 
                       return (
-                        <li key={role.id}>
+                        <li key={role.id} role="presentation">
                           <RadioItem
                             value={role.id}
                             disabled={disabled}

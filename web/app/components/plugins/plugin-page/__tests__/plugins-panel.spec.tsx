@@ -42,7 +42,8 @@ vi.mock('@tanstack/react-query', () => ({
   queryOptions: (options: unknown) => options,
   useSuspenseQuery: () => ({ data: mockSystemFeatures.enableMarketplace }),
 }))
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   renderI18nObject: (value: Record<string, string>, locale: string) => value[locale] || '',
 }))
 
@@ -543,10 +544,7 @@ describe('PluginsPanel', () => {
     expect(builtinToolCard).toHaveTextContent('builtin-tool')
     expect(builtinToolCard).toHaveAttribute('data-show-built-in-badge', 'true')
     expect(pluginList).toContainElement(builtinToolCard)
-    expect(screen.getByRole('button', { name: 'builtin-tool' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    expect(screen.getByRole('button', { name: 'builtin-tool' })).not.toHaveAttribute('aria-current')
     expect(
       pluginItem.compareDocumentPosition(builtinToolCard) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
@@ -599,7 +597,7 @@ describe('PluginsPanel', () => {
 
     await user.click(builtinToolCard)
 
-    expect(builtinToolCard).toHaveAttribute('aria-pressed', 'true')
+    expect(builtinToolCard).toHaveAttribute('aria-current', 'true')
     expect(pluginCard).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByTestId('builtin-tool-detail')).toHaveTextContent('builtin-tool')
     expect(screen.queryByTestId('plugin-detail-panel')).not.toBeInTheDocument()
@@ -607,7 +605,7 @@ describe('PluginsPanel', () => {
     await user.click(pluginCard)
 
     expect(pluginCard).toHaveAttribute('aria-pressed', 'true')
-    expect(builtinToolCard).toHaveAttribute('aria-pressed', 'false')
+    expect(builtinToolCard).not.toHaveAttribute('aria-current')
     expect(screen.getByTestId('plugin-detail-panel')).toHaveTextContent('tool-plugin')
     expect(screen.queryByTestId('builtin-tool-detail')).not.toBeInTheDocument()
   })
@@ -948,6 +946,32 @@ describe('PluginsPanel', () => {
     })
 
     expect(mockLoadNextPage).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps an installed-results status through pagination without giving the spinner live-region ownership', () => {
+    mockPluginListWithLatestVersion.mockReturnValue([createPlugin('tool-plugin', 'Tool Plugin')])
+    const query = {
+      data: { plugins: [] },
+      isLoading: false,
+      isFetching: false,
+      isLastPage: false,
+      loadNextPage: mockLoadNextPage,
+    }
+    mockUseInstalledPluginList.mockReturnValue(query)
+    const view = render(<PluginsPanel fixedCategory={PluginCategoryEnum.tool} />)
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('plugin.marketplace.pluginsResult')
+
+    mockUseInstalledPluginList.mockReturnValue({ ...query, isFetching: true })
+    view.rerender(<PluginsPanel fixedCategory={PluginCategoryEnum.tool} />)
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('common.loading')
+    expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-live')
+
+    mockUseInstalledPluginList.mockReturnValue({ ...query, isLastPage: true })
+    view.rerender(<PluginsPanel fixedCategory={PluginCategoryEnum.tool} />)
+    expect(screen.getByRole('status')).toBe(status)
+    expect(status).toHaveTextContent('plugin.marketplace.pluginsResult')
   })
 
   it('does not observe the Tool Plugin list while the next page is loading', () => {

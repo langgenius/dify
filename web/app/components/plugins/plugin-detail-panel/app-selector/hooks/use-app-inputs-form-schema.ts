@@ -1,6 +1,8 @@
 'use client'
+
 import type {
   AppDetailWithSite,
+  AppPartial,
   WorkflowResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
@@ -9,10 +11,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { consoleQuery } from '@/service/client'
-import { useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { useAppWorkflow } from '@/service/use-workflow'
-import { AppModeEnum, Resolution } from '@/types/app'
+import { Resolution } from '@/types/app'
 
 const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
   paragraph: 'paragraph',
@@ -26,7 +27,10 @@ const BASIC_INPUT_TYPE_MAP: Record<string, string> = {
 
 const FILE_INPUT_TYPES = new Set(['file-list', 'file'])
 
-const WORKFLOW_FILE_VAR_TYPES = new Set([InputVarType.multiFiles, InputVarType.singleFile])
+const WORKFLOW_FILE_VAR_TYPES = new Set<InputVarType>([
+  InputVarType.multiFiles,
+  InputVarType.singleFile,
+])
 
 type InputSchemaItem = {
   label?: string
@@ -45,11 +49,11 @@ type WorkflowNodeWithVariables = {
 }
 
 function isBasicAppMode(mode: string): boolean {
-  return mode !== AppModeEnum.ADVANCED_CHAT && mode !== AppModeEnum.WORKFLOW
+  return mode !== 'advanced-chat' && mode !== 'workflow'
 }
 
 function supportsImageUpload(mode: string): boolean {
-  return mode === AppModeEnum.COMPLETION || mode === AppModeEnum.WORKFLOW
+  return mode === 'completion' || mode === 'workflow'
 }
 
 function buildFileConfig(fileConfig: FileUpload | undefined) {
@@ -159,7 +163,7 @@ function buildWorkflowSchema(
 }
 
 type UseAppInputsFormSchemaParams = {
-  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
+  appDetail: Pick<AppPartial, 'id' | 'mode'>
 }
 
 type UseAppInputsFormSchemaResult = {
@@ -175,7 +179,7 @@ export function useAppInputsFormSchema({
 }: UseAppInputsFormSchemaParams): UseAppInputsFormSchemaResult {
   const isBasicApp = isBasicAppMode(appDetail.mode)
 
-  const fileUploadConfigQuery = useFileUploadConfig()
+  const fileUploadConfigQuery = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { data: fileUploadConfig } = fileUploadConfigQuery
   const appQuery = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({

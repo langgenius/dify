@@ -1,9 +1,9 @@
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { screen } from '@testing-library/react'
 import { vi } from 'vite-plus/test'
-import { useWorkspacePermissions } from '@/service/use-workspace'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import InviteButton from '../invite-button'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { InviteButton } from '../invite-button'
 
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
@@ -14,9 +14,8 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-workspace')
-
 describe('InviteButton', () => {
+  let queryClient = createConsoleQueryClient()
   const setupPermissions = ({
     isFetching,
     allowInvite,
@@ -24,14 +23,22 @@ describe('InviteButton', () => {
     isFetching: boolean
     allowInvite?: boolean
   }) => {
-    vi.mocked(useWorkspacePermissions).mockReturnValue({
-      data: allowInvite === undefined ? null : { allow_member_invite: allowInvite },
-      isFetching,
-    } as unknown as ReturnType<typeof useWorkspacePermissions>)
+    queryClient = createConsoleQueryClient()
+    const { queryKey } = consoleQuery.workspaces.current.permission.get.queryOptions()
+    if (isFetching) {
+      void queryClient.query({ queryKey, queryFn: () => new Promise(() => {}) })
+      return
+    }
+    queryClient.setQueryData(queryKey, {
+      workspace_id: 'workspace-id',
+      allow_member_invite: allowInvite ?? false,
+      allow_owner_transfer: false,
+    })
   }
 
   const renderInviteButton = (brandingEnabled: boolean) =>
     renderWithConsoleQuery(<InviteButton />, {
+      queryClient,
       systemFeatures: { branding: { enabled: brandingEnabled } },
     })
 
@@ -55,7 +62,7 @@ describe('InviteButton', () => {
 
     renderInviteButton(true)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should hide invite button when permission is denied', () => {

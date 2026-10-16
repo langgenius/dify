@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zRecommendedAppNotFoundError } from './zod.gen.ts'
 import {
   zGetExploreAppsByAppIdPath,
   zGetExploreAppsByAppIdResponse,
@@ -11,7 +12,7 @@ import {
   zGetExploreAppsResponse,
   zGetExploreBannersQuery,
   zGetExploreBannersResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 export const get = oc
   .route({
@@ -38,6 +39,7 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetExploreAppsByAppIdPath }))
   .output(zGetExploreAppsByAppIdResponse)
+  .errors({ recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError } })
 
 export const byAppId = {
   get: get2,

@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import ToolItem from '../tool-item'
 
-vi.mock('@/i18n-config/language', () => ({ getLanguage: () => 'en_US' }))
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
+  getPluginLanguage: () => 'en_US',
+}))
 vi.mock(
   '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool',
   () => ({
@@ -41,7 +44,7 @@ const tool = {
 describe('ToolItem', () => {
   it('opens and closes tool details from the keyboard', async () => {
     const user = userEvent.setup()
-    render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} />)
+    render(<ToolItem collection={collection} tool={tool} isBuiltIn />)
 
     const toolButton = screen.getByRole('button', { name: 'Tool label' })
     toolButton.focus()
@@ -59,7 +62,7 @@ describe('ToolItem', () => {
 
   it('does not open tool details when disabled', async () => {
     const user = userEvent.setup()
-    render(<ToolItem collection={collection} tool={tool} isBuiltIn isModel={false} disabled />)
+    render(<ToolItem collection={collection} tool={tool} isBuiltIn disabled />)
 
     const toolButton = screen.getByRole('button', { name: 'Tool label' })
     expect(toolButton).toBeDisabled()

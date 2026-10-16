@@ -1,14 +1,8 @@
-type CloudProps = {
-  isActive: boolean
-}
-
-const Cloud = ({ isActive }: CloudProps) => {
-  const color = isActive ? 'var(--color-saas-dify-blue-accessible)' : 'var(--color-text-primary)'
-
+const Cloud = () => {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="17" viewBox="0 0 16 17" fill="none">
       <g clipPath="url(#clip0_1_4630)">
-        <rect y="0.5" width="4" height="4" rx="2" fill={color} />
+        <rect y="0.5" width="4" height="4" rx="2" fill="currentColor" />
         <rect
           opacity="0.18"
           x="6"
@@ -18,7 +12,7 @@ const Cloud = ({ isActive }: CloudProps) => {
           rx="2"
           fill="var(--color-text-quaternary)"
         />
-        <rect x="12" y="0.5" width="4" height="4" rx="2" fill={color} />
+        <rect x="12" y="0.5" width="4" height="4" rx="2" fill="currentColor" />
         <rect
           opacity="0.18"
           y="6.5"
@@ -27,7 +21,7 @@ const Cloud = ({ isActive }: CloudProps) => {
           rx="2"
           fill="var(--color-text-quaternary)"
         />
-        <rect x="6" y="6.5" width="4" height="4" rx="2" fill={color} />
+        <rect x="6" y="6.5" width="4" height="4" rx="2" fill="currentColor" />
         <rect
           opacity="0.18"
           x="12"
@@ -37,7 +31,7 @@ const Cloud = ({ isActive }: CloudProps) => {
           rx="2"
           fill="var(--color-text-quaternary)"
         />
-        <rect y="12.5" width="4" height="4" rx="2" fill={color} />
+        <rect y="12.5" width="4" height="4" rx="2" fill="currentColor" />
         <rect
           opacity="0.18"
           x="6"
@@ -47,7 +41,7 @@ const Cloud = ({ isActive }: CloudProps) => {
           rx="2"
           fill="var(--color-text-quaternary)"
         />
-        <rect x="12" y="12.5" width="4" height="4" rx="2" fill={color} />
+        <rect x="12" y="12.5" width="4" height="4" rx="2" fill="currentColor" />
       </g>
       <defs>
         <clipPath id="clip0_1_4630">

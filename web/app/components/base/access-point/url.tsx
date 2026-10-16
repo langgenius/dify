@@ -60,7 +60,8 @@ export function AccessPointUrl({
   unavailableLabel,
   value,
 }: AccessPointUrlProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
+  const regenerateActionLabel = regenerateLabel || t(($) => $['operation.regenerate'])
   const detailsAvailable = !loading && !unavailable
   const disabledOpenButton = (
     <Button
@@ -119,7 +120,6 @@ export function AccessPointUrl({
       ) : (
         <CopyFeedback
           content={value}
-          className="size-6"
           copyLabel={copyLabel}
           copiedLabel={copiedLabel}
           onCopyError={onCopyError}
@@ -139,16 +139,24 @@ export function AccessPointUrl({
           />
         ))}
       {showRegenerate && (
-        <IconButton
-          aria-label={regenerateLabel || t(($) => $['operation.regenerate'], { ns: 'common' })}
-          disabled={regenerateDisabled || regenerating}
-          onClick={onRegenerate}
-        >
-          <span
-            aria-hidden
-            className={`i-ri-loop-left-line size-4 ${regenerating ? 'animate-spin' : ''}`}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <IconButton
+                aria-label={regenerateActionLabel}
+                disabled={regenerateDisabled || regenerating}
+                focusableWhenDisabled
+                onClick={onRegenerate}
+              >
+                <span
+                  aria-hidden
+                  className={`i-ri-loop-left-line size-4 ${regenerating ? 'animate-spin' : ''}`}
+                />
+              </IconButton>
+            }
           />
-        </IconButton>
+          <TooltipContent>{regenerateActionLabel}</TooltipContent>
+        </Tooltip>
       )}
       {showOpen && (
         <>

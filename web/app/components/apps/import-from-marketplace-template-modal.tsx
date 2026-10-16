@@ -2,11 +2,12 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import {
   fetchMarketplaceTemplateDSL,
@@ -24,7 +25,7 @@ const ImportFromMarketplaceTemplateModal = ({
   onClose,
   onConfirm,
 }: ImportFromMarketplaceTemplateModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common'])
   const { data, isLoading, isError } = useMarketplaceTemplateDetail(templateId)
   const template = data?.data
   const [importing, setImporting] = useState(false)
@@ -79,13 +80,13 @@ const ImportFromMarketplaceTemplateModal = ({
           </DialogTitle>
           <DialogClose
             render={
-              <button
-                type="button"
+              <IconButton
+                size="lg"
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-8 cursor-pointer items-center border-none bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="mr-1.5"
               >
-                <RiCloseLine aria-hidden className="size-5 text-text-tertiary" />
-              </button>
+                <RiCloseLine aria-hidden className="size-5" />
+              </IconButton>
             }
           />
         </div>
@@ -112,15 +113,14 @@ const ImportFromMarketplaceTemplateModal = ({
               <div className="flex items-center gap-3">
                 <AppIcon
                   size="large"
-                  iconType={template.icon_file_key ? 'image' : 'emoji'}
-                  icon={template.icon || 'page_facing_up'}
-                  background={template.icon_file_key ? undefined : template.icon_background}
-                  decorative
-                  imageUrl={
-                    template.icon_file_key
+                  icon={{
+                    icon_type: template.icon_file_key ? 'image' : 'emoji',
+                    icon: template.icon || 'page_facing_up',
+                    icon_url: template.icon_file_key
                       ? `${MARKETPLACE_API_PREFIX}/templates/${template.id}/icon`
-                      : undefined
-                  }
+                      : undefined,
+                    icon_background: template.icon_file_key ? undefined : template.icon_background,
+                  }}
                 />
                 <div className="flex flex-col">
                   <div className="system-md-semibold text-text-primary">
@@ -171,7 +171,7 @@ const ImportFromMarketplaceTemplateModal = ({
           </Button>
           <Button
             variant="primary"
-            disabled={isLoading || isError || importing}
+            disabled={isLoading || isError}
             loading={importing}
             onClick={handleConfirm}
           >

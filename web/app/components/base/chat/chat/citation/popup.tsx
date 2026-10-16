@@ -1,11 +1,12 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Fragment, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
 import Link from '@/next/link'
-import { useDocumentDownload } from '@/service/knowledge/use-document'
+import { consoleQuery } from '@/service/console'
 import { downloadUrl } from '@/utils/download'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
@@ -16,12 +17,13 @@ type PopupProps = {
 }
 
 const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['common'])
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
-  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.download.get.mutationOptions(),
+  )
 
   const handleDownloadUploadFile = async (e: MouseEvent<HTMLElement>) => {
     e.preventDefault()
@@ -32,12 +34,14 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
     const documentId = data.documentId || data.sources?.[0]?.document_id
     if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
-    const res = await downloadDocument({ datasetId, documentId })
+    const res = await downloadDocument({
+      params: { dataset_id: datasetId, document_id: documentId },
+    })
     if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover>
       <PopoverTrigger
         nativeButton={false}
         render={

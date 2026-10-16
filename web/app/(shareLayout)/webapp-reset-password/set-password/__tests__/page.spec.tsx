@@ -42,10 +42,10 @@ describe('Webapp Reset Password Set Password Page', () => {
 
     expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
 
-    fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
+    fireEvent.change(screen.getByLabelText('accountSettings.account.newPassword'), {
       target: { value: 'ValidPass123!' },
     })
-    fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
+    fireEvent.change(screen.getByLabelText('accountSettings.account.confirmPassword'), {
       target: { value: 'ValidPass123!' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))

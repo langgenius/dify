@@ -9,7 +9,7 @@ import VectorSpaceInfo from '../usage-info/vector-space-info'
 import s from './style.module.css'
 
 const VectorSpaceFull: FC = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['billing'])
 
   return (
     <GridMask
@@ -25,7 +25,9 @@ const VectorSpaceFull: FC = () => {
           </div>
           <UpgradeBtn loc="knowledge-add-file" />
         </div>
-        <VectorSpaceInfo className="pt-4" />
+        <React.Suspense fallback={null}>
+          <VectorSpaceInfo className="pt-4" />
+        </React.Suspense>
       </div>
     </GridMask>
   )

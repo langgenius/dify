@@ -9,18 +9,22 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from controllers.common.errors import NoFileUploadedError
 from controllers.common.fields import BinaryFileResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
+from controllers.console.workspace.error import SkillFilenameMissingError, SkillRequestError
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     edit_permission_required,
 )
 from fields.base import ResponseModel
 from libs import helper
+from libs.exception import RelayedHTTPError
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.skill_management_service import (
@@ -286,11 +290,8 @@ register_response_schema_models(
 )
 
 
-def _error_response(exc: SkillManagementServiceError) -> tuple[dict[str, object], int]:
-    body: dict[str, object] = {"code": exc.code, "message": exc.message}
-    if exc.details:
-        body["details"] = exc.details
-    return body, exc.status_code
+def _relayed_error(exc: SkillManagementServiceError) -> RelayedHTTPError:
+    return RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message, details=exc.details)
 
 
 @console_ns.route("/workspaces/current/skills")
@@ -298,9 +299,7 @@ class WorkspaceSkillsApi(Resource):
     @console_ns.doc(params=query_params_from_model(WorkspaceSkillsQuery))
     @console_ns.response(200, "Workspace skills", console_ns.models[SkillListResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext):
@@ -322,12 +321,11 @@ class WorkspaceSkillsApi(Resource):
         )
         return dump_response(SkillListResponse, result)
 
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillCreatePayload.__name__])
     @console_ns.response(201, "Skill created", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -341,15 +339,16 @@ class WorkspaceSkillsApi(Resource):
             )
             return dump_response(SkillDetailResponse, result), 201
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/files/upload")
 class WorkspaceSkillFileUploadApi(Resource):
+    @error_responses(NoFileUploadedError, RelayedHTTPError, SkillFilenameMissingError)
     @console_ns.doc(consumes=["multipart/form-data"], params=_FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "Skill draft file uploaded", console_ns.models[SkillFileUploadResponse.__name__])
     @console_account_admission()
@@ -357,11 +356,11 @@ class WorkspaceSkillFileUploadApi(Resource):
     @with_session
     def post(self, session: Session, request_context: RequestContext):
         if "file" not in request.files:
-            return {"code": "no_file_uploaded", "message": "no file uploaded"}, 400
+            raise NoFileUploadedError("no file uploaded")
 
         file = request.files["file"]
         if not file.filename:
-            return {"code": "filename_missing", "message": "filename is required"}, 400
+            raise SkillFilenameMissingError()
 
         try:
             result = SkillManagementService(session=session).upload_file(
@@ -373,7 +372,7 @@ class WorkspaceSkillFileUploadApi(Resource):
             )
             return dump_response(SkillFileUploadResponse, result), 201
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/tags")
@@ -388,19 +387,18 @@ class WorkspaceSkillTagsApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/import")
 class WorkspaceSkillImportApi(Resource):
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.doc(description="Import a Skill zip package from multipart form field `file`.")
     @console_ns.response(201, "Skill imported", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
     def post(self, session: Session, request_context: RequestContext):
         upload = request.files.get("file")
         if upload is None:
-            return {"code": "invalid_request", "message": "file is required"}, 400
+            raise SkillRequestError("file is required")
         try:
             payload = SkillImportPayload(content=upload.read(), filename=upload.filename or "skill.zip")
             result = SkillManagementService(session=session).import_skill(
@@ -410,18 +408,17 @@ class WorkspaceSkillImportApi(Resource):
             )
             return dump_response(SkillDetailResponse, result), 201
         except (ValidationError, ValueError) as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>")
 class WorkspaceSkillApi(Resource):
+    @error_responses(RelayedHTTPError)
     @console_ns.response(200, "Skill detail", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
@@ -431,14 +428,13 @@ class WorkspaceSkillApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillMetadataPayload.__name__])
     @console_ns.response(200, "Skill updated", console_ns.models[SkillResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -453,18 +449,17 @@ class WorkspaceSkillApi(Resource):
             )
             return dump_response(SkillResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_DELETE,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_DELETE, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -478,18 +473,17 @@ class WorkspaceSkillApi(Resource):
             )
             return dump_response(SkillDeleteResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/duplicate")
 class WorkspaceSkillDuplicateApi(Resource):
+    @error_responses(RelayedHTTPError)
     @console_ns.response(201, "Skill duplicated", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_EDIT,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_EDIT, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -502,21 +496,20 @@ class WorkspaceSkillDuplicateApi(Resource):
             )
             return dump_response(SkillDetailResponse, result), 201
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/export")
 class WorkspaceSkillExportApi(Resource):
-    @console_ns.response(200, "Published Skill zip archive")
+    @error_responses(RelayedHTTPError)
+    @console_ns.response(200, "Draft Skill zip archive")
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_VIEW,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_VIEW, Workspace())],
     )
     @with_session(write=False)
     def get(self, session: Session, request_context: RequestContext, skill_id: str):
         try:
-            result = SkillManagementService(session=session).pull_published_archive(
+            result = SkillManagementService(session=session).export_draft_archive(
                 tenant_id=request_context.active_workspace_id, skill_id=skill_id
             )
             return send_file(
@@ -526,13 +519,14 @@ class WorkspaceSkillExportApi(Resource):
                 download_name=result.filename,
             )
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/assist/messages")
 class WorkspaceSkillAssistMessageApi(Resource):
     """Stream read-only Skill Authoring suggestions from the default workspace model."""
 
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillAssistMessagePayload.__name__])
     @console_ns.response(200, "Skill Authoring assistant event stream")
     @console_account_admission()
@@ -551,14 +545,15 @@ class WorkspaceSkillAssistMessageApi(Resource):
                 target_path=payload.target_path,
             )
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
         return helper.compact_generate_response(response)
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/check")
 class WorkspaceSkillFilesCheckApi(Resource):
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDraftFileCheckPayload.__name__])
     @console_ns.response(200, "Draft files checked", console_ns.models[SkillFileCheckResponse.__name__])
     @console_account_admission()
@@ -574,15 +569,16 @@ class WorkspaceSkillFilesCheckApi(Resource):
             )
             return dump_response(SkillFileCheckResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files")
 class WorkspaceSkillFilesApi(Resource):
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDraftFileOperationPayload.__name__])
     @console_ns.response(200, "Draft file operation applied", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission()
@@ -599,12 +595,13 @@ class WorkspaceSkillFilesApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDraftTreePayload.__name__])
     @console_ns.response(200, "Draft files replaced", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission()
@@ -621,15 +618,16 @@ class WorkspaceSkillFilesApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/preview")
 class WorkspaceSkillFilePreviewApi(Resource):
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.doc(params=query_params_from_model(SkillFileQuery))
     @console_ns.response(200, "Skill file text preview", console_ns.models[SkillFilePreviewResponse.__name__])
     @console_account_admission()
@@ -650,15 +648,16 @@ class WorkspaceSkillFilePreviewApi(Resource):
             )
             return dump_response(SkillFilePreviewResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/content")
 class WorkspaceSkillFileContentApi(Resource):
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.doc(params={**query_params_from_model(SkillFileQuery), "download": "Return as an attachment when 1."})
     @console_ns.response(200, "Skill file content", console_ns.models[BinaryFileResponse.__name__])
     @console_account_admission()
@@ -684,21 +683,20 @@ class WorkspaceSkillFileContentApi(Resource):
                 download_name=result.filename,
             )
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/publish")
 class WorkspaceSkillPublishApi(Resource):
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillPublishPayload.__name__])
     @console_ns.response(200, "Skill published", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_PUBLISH,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -713,19 +711,18 @@ class WorkspaceSkillPublishApi(Resource):
             )
             return dump_response(SkillVersionResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/restore")
 class WorkspaceSkillRestoreApi(Resource):
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillRestorePayload.__name__])
     @console_ns.response(200, "Skill version restored to draft", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
-        rbac_resource_scope=RBACResourceScope.WORKSPACE,
-        rbac_permission=RBACPermission.SKILL_PUBLISH,
-        rbac_resource_required=False,
+        rbac_checks=[RBACCheck(RBACPermission.SKILL_PUBLISH, Workspace())],
     )
     @edit_permission_required
     @with_session
@@ -740,13 +737,14 @@ class WorkspaceSkillRestoreApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/references")
 class WorkspaceSkillReferencesApi(Resource):
+    @error_responses(RelayedHTTPError)
     @console_ns.response(200, "Skill references", console_ns.models[SkillReferenceListResponse.__name__])
     @console_account_admission()
     @with_session
@@ -757,11 +755,12 @@ class WorkspaceSkillReferencesApi(Resource):
             )
             return dump_response(SkillReferenceListResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/versions")
 class WorkspaceSkillVersionsApi(Resource):
+    @error_responses(RelayedHTTPError)
     @console_ns.response(200, "Skill versions", console_ns.models[SkillVersionListResponse.__name__])
     @console_account_admission()
     @with_session
@@ -772,11 +771,12 @@ class WorkspaceSkillVersionsApi(Resource):
             )
             return dump_response(SkillVersionListResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/versions/<string:version_id>")
 class WorkspaceSkillVersionApi(Resource):
+    @error_responses(RelayedHTTPError)
     @console_ns.response(200, "Skill version detail", console_ns.models[SkillVersionDetailResponse.__name__])
     @console_account_admission()
     @with_session
@@ -789,8 +789,9 @@ class WorkspaceSkillVersionApi(Resource):
             )
             return dump_response(SkillVersionDetailResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[SkillVersionUpdatePayload.__name__])
     @console_ns.response(200, "Skill version updated", console_ns.models[SkillVersionResponse.__name__])
     @console_account_admission()
@@ -807,10 +808,11 @@ class WorkspaceSkillVersionApi(Resource):
             )
             return dump_response(SkillVersionResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
+    @error_responses(RelayedHTTPError)
     @console_ns.response(200, "Skill version deleted", console_ns.models[SkillVersionDeleteResponse.__name__])
     @console_account_admission()
     @edit_permission_required
@@ -825,7 +827,7 @@ class WorkspaceSkillVersionApi(Resource):
             )
             return dump_response(SkillVersionDeleteResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/agents/<string:agent_id>/skills")
@@ -839,6 +841,7 @@ class WorkspaceAgentSkillBindingsApi(Resource):
         )
         return dump_response(AgentSkillBindingsResponse, result)
 
+    @error_responses(RelayedHTTPError, SkillRequestError)
     @console_ns.expect(console_ns.models[AgentSkillBindingsPayload.__name__])
     @console_ns.response(200, "Agent Skill bindings replaced", console_ns.models[AgentSkillBindingsResponse.__name__])
     @console_account_admission()
@@ -855,9 +858,9 @@ class WorkspaceAgentSkillBindingsApi(Resource):
             )
             return dump_response(AgentSkillBindingsResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 __all__ = [

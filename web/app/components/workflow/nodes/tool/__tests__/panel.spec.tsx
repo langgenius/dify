@@ -2,9 +2,10 @@ import type { ReactNode } from 'react'
 import type { ToolNodeType } from '../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 
@@ -146,7 +147,9 @@ const renderPanel = (data: ToolNodeType = createNodeData()) => {
     },
   }
 
-  return render(<Panel {...props} />)
+  return render(<Panel {...props} />, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+  })
 }
 
 const createConfigResult = (overrides: Record<string, unknown> = {}) => ({
@@ -195,7 +198,7 @@ describe('ToolPanel', () => {
 
       renderPanel()
 
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
       expect(screen.queryByText('workflow.nodes.tool.inputVars')).not.toBeInTheDocument()
       expect(mockToolForm).not.toHaveBeenCalled()
     })

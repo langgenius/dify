@@ -10,7 +10,20 @@ from werkzeug.exceptions import BadRequest, Forbidden
 from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
+from controllers.console.wraps import (
+    RBACPermission,
+    account_initialization_required,
+    edit_permission_required,
+    is_admin_or_owner_required,
+    model_validate,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -21,6 +34,7 @@ from core.trigger.entities.api_entities import (
 )
 from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
@@ -31,20 +45,6 @@ from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
-
-from .. import console_ns
-from ..wraps import (
-    RBACPermission,
-    RBACResourceScope,
-    account_initialization_required,
-    edit_permission_required,
-    is_admin_or_owner_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +199,7 @@ class TriggerSubscriptionListApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -213,6 +213,7 @@ class TriggerSubscriptionListApi(Resource):
                     tenant_id=tenant_id,
                     provider_id=TriggerProviderID(provider),
                     user=user,
+                    credential_query=application_services().credential_queries,
                 ),
             )
         except ValueError as e:
@@ -235,7 +236,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -271,7 +272,7 @@ class TriggerSubscriptionBuilderGetApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -299,7 +300,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -344,7 +345,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -389,7 +390,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -420,7 +421,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -464,7 +465,7 @@ class TriggerSubscriptionUpdateApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(TriggerSubscriptionBuilderUpdatePayload)
@@ -524,7 +525,7 @@ class TriggerSubscriptionDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, subscription_id: str):
@@ -716,7 +717,7 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
@@ -763,7 +764,7 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(TriggerOAuthClientPayload)
@@ -792,7 +793,7 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, provider: str):
@@ -826,7 +827,7 @@ class TriggerSubscriptionVerifyApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.PLUGIN_PREFERENCES, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id

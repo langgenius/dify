@@ -1,9 +1,8 @@
 import type { ChatConfig, ChatItem, OnFeedback } from '../types'
-/* oxlint-disable typescript/no-explicit-any */
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
-import type { Locale } from '@/i18n-config'
+import type { Locale } from '@/i18n'
 import type { AppData, ConversationItem } from '@/models/share'
-import { toast } from '@langgenius/dify-ui/toast'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -11,8 +10,10 @@ import { useTranslation } from 'react-i18next'
 import { useConversationSelection } from '@/app/components/base/chat/storage'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
-import { changeLanguage } from '@/i18n-config/client'
+import { changeLanguage } from '@/i18n/client'
+import { consoleQuery } from '@/service/console'
 import { AppSourceType, updateFeedback } from '@/service/share'
 import {
   useInvalidateShareConversations,
@@ -20,7 +21,7 @@ import {
   useShareConversationName,
   useShareConversations,
 } from '@/service/use-share'
-import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
+import { useGetTryAppParams } from '@/service/use-try-app'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
@@ -70,7 +71,11 @@ function getFormattedChatList(messages: any[]) {
 export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: string) => {
   const isInstalledApp = false // just can be webapp and try app
   const isTryApp = appSourceType === AppSourceType.tryApp
-  const { data: tryAppInfo } = useGetTryAppInfo(isTryApp ? tryAppId! : '')
+  const { data: tryAppInfo } = useQuery(
+    consoleQuery.trialApps.byAppId.get.queryOptions({
+      input: isTryApp && tryAppId ? { params: { app_id: tryAppId } } : skipToken,
+    }),
+  )
   const webAppInfo = useWebAppStore((s) => s.appInfo)
   const appInfo = isTryApp ? tryAppInfo : webAppInfo
   const appMeta = useWebAppStore((s) => s.appMeta)
@@ -165,7 +170,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const pinnedConversationList = useMemo(() => {
     return appPinnedConversationData?.data || []
   }, [appPinnedConversationData])
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'share'])
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
   const [initInputs, setInitInputs] = useState<Record<string, any>>({})
@@ -190,10 +195,16 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
           }
         }
         if (item.number) {
-          const convertedNumber = Number(initInputs[item.number.variable])
+          const rawNumber = initInputs[item.number.variable]
+          const convertedNumber =
+            rawNumber === undefined || rawNumber === null || rawNumber === ''
+              ? Number.NaN
+              : Number(rawNumber)
           return {
             ...item.number,
-            default: convertedNumber || item.default || item.number.default,
+            default: Number.isNaN(convertedNumber)
+              ? (item.default ?? item.number.default)
+              : convertedNumber,
             type: 'number',
           }
         }
@@ -259,7 +270,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   useEffect(() => {
     const conversationInputs: Record<string, InputValueTypes> = {}
     inputsForms.forEach((item) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
@@ -334,7 +345,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!newConversationInputsRef.current[variable] && !silent)
+          const inputValue = newConversationInputsRef.current[variable]
+          if ((inputValue === undefined || inputValue === null || inputValue === '') && !silent)
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -422,9 +434,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
         appSourceType,
         appId,
       )
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
     },
-    [appSourceType, appId, t],
+    [appSourceType, appId],
   )
   return {
     appSourceType,

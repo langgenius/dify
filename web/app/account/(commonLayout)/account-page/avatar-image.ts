@@ -1,5 +1,5 @@
 import type { Area } from 'react-easy-crop'
-import { createImage, getMimeType } from '@/app/components/base/app-icon-picker/utils'
+import { createImage, getMimeType } from '@/app/components/base/icon-picker/image-crop'
 
 const AVATAR_IMAGE_MAX_SIZE = 256
 const AVATAR_IMAGE_QUALITY = 0.85

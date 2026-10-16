@@ -8,15 +8,14 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Tabs, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQueries } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { ACCESS_POINT_ORDER } from '@/app/components/app/deploy/utils/access-point'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { AppModeEnum } from '@/types/app'
+import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInAccessPoints } from './built-in-access-points'
 import { DeployedEnvironmentAccessPoints } from './deployed-environment-access-points'
@@ -53,7 +52,7 @@ function AccessPointContent({
   canReleaseAndVersion,
   showEnvironmentTabs,
 }: AccessPointContentProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'deployments', 'workflow'])
   const environments = useAtomValue(inUseAppEnvironmentsAtom)
   const [queryStates, setQueryStates] = useQueryStates(accessPointQueryStates)
   const { accessPoint: highlightedAccessPoint, environment } = queryStates
@@ -67,7 +66,7 @@ function AccessPointContent({
     environment === selectedEnvironment ? highlightedAccessPoint : null
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-components-panel-bg">
+    <div className="flex h-full min-h-0 flex-col bg-components-panel-bg">
       <header className="flex shrink-0 flex-col gap-3 px-6 pt-3 pb-2">
         <div className="flex flex-col gap-0.5">
           <div className="flex h-6 items-center">
@@ -135,7 +134,6 @@ function AccessPointContent({
                 appId={appId}
                 environmentId={selectedEnvironment}
                 canManageAccessPoint={canManageAccessPoint}
-                canReleaseAndVersion={canReleaseAndVersion}
                 highlightedAccessPoint={selectedHighlightedAccessPoint}
               />
             )}
@@ -145,24 +143,25 @@ function AccessPointContent({
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
       </ScrollArea>
-    </main>
+    </div>
   )
 }
 
 export default function AccessPoint({ appId }: AccessPointProps) {
-  const appDetail = useAppStore((state) => state.appDetail)
-  const { data: currentUserId } = useSuspenseQuery({
-    ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+  const [{ data: appDetail }, { data: userProfile }] = useSuspenseQueries({
+    queries: [
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+      userProfileQueryOptions(),
+    ],
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const capabilities = getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
+    currentUserId: userProfile.profile.id,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
   const showEnvironmentTabs =
-    (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) &&
+    (appDetail?.mode === 'workflow' || appDetail?.mode === 'advanced-chat') &&
     capabilities.canViewAccessPoint
 
   return (

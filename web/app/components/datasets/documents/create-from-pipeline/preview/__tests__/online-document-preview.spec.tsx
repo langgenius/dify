@@ -9,8 +9,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -33,9 +33,13 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock usePreviewOnlineDocument hook - needs mock to control mutation behavior
 const mockMutateAsync = vi.fn()
 const mockUsePreviewOnlineDocument = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePreviewOnlineDocument: () => mockUsePreviewOnlineDocument(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.preview.post': () =>
+      mockUsePreviewOnlineDocument(),
+  })
+})
 
 // Mock data source store - needs mock to control store state
 const mockCurrentCredentialId = 'credential-123'
@@ -124,12 +128,12 @@ describe('OnlineDocumentPreview', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           {
-            workspaceID: 'ws-123',
-            pageID: 'pg-456',
-            pageType: 'page',
-            pipelineId: 'pipeline-123',
-            datasourceNodeId: 'node-789',
-            credentialId: mockCurrentCredentialId,
+            params: { pipeline_id: 'pipeline-123', node_id: 'node-789' },
+            body: {
+              datasource_type: 'online_document',
+              credential_id: mockCurrentCredentialId,
+              inputs: { workspace_id: 'ws-123', page_id: 'pg-456', type: 'page' },
+            },
           },
           expect.objectContaining({
             onSuccess: expect.any(Function),
@@ -166,7 +170,7 @@ describe('OnlineDocumentPreview', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({
-            pipelineId: '',
+            params: expect.objectContaining({ pipeline_id: '' }),
           }),
           expect.anything(),
         )
@@ -338,7 +342,7 @@ describe('OnlineDocumentPreview', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({
-            credentialId: 'custom-credential',
+            body: expect.objectContaining({ credential_id: 'custom-credential' }),
           }),
           expect.anything(),
         )

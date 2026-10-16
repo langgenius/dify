@@ -1,4 +1,5 @@
-from unittest.mock import MagicMock
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 
 import pytest
 from redis import RedisError
@@ -10,13 +11,60 @@ from extensions.ext_redis import (
     _get_cluster_connection_health_params,
     _get_connection_health_params,
     _normalize_redis_key_prefix,
+    _parse_redis_nodes,
     _serialize_redis_name,
     redis_fallback,
 )
 
+type _RecordedCall = tuple[str, tuple[object, ...], dict[str, object]]
+
+
+@dataclass
+class _RecordingRedisClient:
+    calls: list[_RecordedCall] = field(default_factory=list)
+
+    def _record(self, method: str, *args: object, **kwargs: object) -> None:
+        self.calls.append((method, args, kwargs))
+
+    def register_script(self, script: str) -> Callable[..., str]:
+        self._record("register_script", script)
+
+        def execute(*, keys: object, args: object, client: object) -> str:
+            self._record("script", keys, args, client)
+            return "result"
+
+        return execute
+
+    def get(self, name: str | bytes) -> None:
+        self._record("get", name)
+
+    def delete(self, *names: str | bytes) -> None:
+        self._record("delete", *names)
+
+    def lock(self, name: str, **kwargs: object) -> None:
+        self._record("lock", name, **kwargs)
+
+    def hset(self, name: str | bytes, *args: object, **kwargs: object) -> None:
+        self._record("hset", name, *args, **kwargs)
+
+    def hgetall(self, name: str | bytes) -> None:
+        self._record("hgetall", name)
+
+    def hkeys(self, name: str | bytes) -> None:
+        self._record("hkeys", name)
+
+    def hexists(self, name: str | bytes, key: str | bytes) -> None:
+        self._record("hexists", name, key)
+
+    def zadd(self, name: str | bytes, mapping: Mapping[object, object], **kwargs: object) -> None:
+        self._record("zadd", name, mapping, **kwargs)
+
+    def zrem(self, name: str | bytes, *values: str | bytes) -> None:
+        self._record("zrem", name, *values)
+
 
 @pytest.fixture(autouse=True)
-def _redis_config(config_overrides) -> None:
+def _redis_config(config_overrides: Callable[..., None]) -> None:
     config_overrides(
         REDIS_USERNAME=None,
         REDIS_PASSWORD=None,
@@ -38,7 +86,7 @@ def _redis_config(config_overrides) -> None:
 
 
 class TestGetConnectionHealthParams:
-    def test_includes_all_health_params(self):
+    def test_includes_all_health_params(self) -> None:
         params = _get_connection_health_params()
 
         assert "retry" in params
@@ -46,14 +94,14 @@ class TestGetConnectionHealthParams:
         assert "socket_connect_timeout" in params
         assert "health_check_interval" in params
         assert isinstance(params["retry"], Retry)
-        assert params["retry"]._retries == 3
+        assert params["retry"]._retries == 3  # pyrefly: ignore[missing-attribute]
         assert params["socket_timeout"] == 5.0
         assert params["socket_connect_timeout"] == 5.0
         assert params["health_check_interval"] == 30
 
 
 class TestGetClusterConnectionHealthParams:
-    def test_excludes_health_check_interval(self):
+    def test_excludes_health_check_interval(self) -> None:
         params = _get_cluster_connection_health_params()
 
         assert "retry" in params
@@ -63,7 +111,7 @@ class TestGetClusterConnectionHealthParams:
 
 
 class TestGetBaseRedisParams:
-    def test_includes_retry_and_health_params(self):
+    def test_includes_retry_and_health_params(self) -> None:
         params = _get_base_redis_params()
 
         assert "retry" in params
@@ -78,45 +126,61 @@ class TestGetBaseRedisParams:
         assert params["encoding"] == "utf-8"
 
 
+class TestParseRedisNodes:
+    def test_trims_nodes(self) -> None:
+        assert _parse_redis_nodes("redis-a:6379, redis-b:6380") == [("redis-a", 6379), ("redis-b", 6380)]
+
+    def test_supports_bracketed_ipv6(self) -> None:
+        assert _parse_redis_nodes("[2001:db8::10]:6379") == [("2001:db8::10", 6379)]
+
+
 class TestRedisFallback:
-    def test_redis_fallback_success(self):
+    def test_redis_fallback_success(self) -> None:
         @redis_fallback(default_return=None)
-        def test_func():
+        def test_func() -> str:
             return "success"
 
         assert test_func() == "success"
 
-    def test_redis_fallback_error(self):
+    def test_redis_fallback_error(self) -> None:
         @redis_fallback(default_return="fallback")
-        def test_func():
+        def test_func() -> None:
             raise RedisError("Redis error")
 
         assert test_func() == "fallback"
 
-    def test_redis_fallback_none_default(self):
+    def test_redis_fallback_none_default(self) -> None:
         @redis_fallback()
-        def test_func():
+        def test_func() -> None:
             raise RedisError("Redis error")
 
         assert test_func() is None
 
-    def test_redis_fallback_with_args(self):
+    def test_redis_fallback_with_args(self) -> None:
+        received: list[tuple[int, int]] = []
+
         @redis_fallback(default_return=0)
-        def test_func(x, y):
+        def test_func(x: int, y: int) -> None:
+            received.append((x, y))
             raise RedisError("Redis error")
 
         assert test_func(1, 2) == 0
+        assert received == [(1, 2)]
 
-    def test_redis_fallback_with_kwargs(self):
-        @redis_fallback(default_return={})
-        def test_func(x=None, y=None):
+    def test_redis_fallback_with_kwargs(self) -> None:
+        received: list[tuple[int | None, int | None]] = []
+
+        @redis_fallback(default_return=dict[str, object]())
+        def test_func(x: int | None = None, y: int | None = None) -> None:
+            received.append((x, y))
             raise RedisError("Redis error")
 
         assert test_func(x=1, y=2) == {}
+        assert received == [(1, 2)]
 
-    def test_redis_fallback_preserves_function_metadata(self):
+    def test_redis_fallback_preserves_function_metadata(self) -> None:
         @redis_fallback(default_return=None)
-        def test_func():
+        def test_func() -> None:
             """Test function docstring"""
             pass
 
@@ -125,57 +189,81 @@ class TestRedisFallback:
 
 
 class TestRedisKeyPrefixHelpers:
-    def test_normalize_redis_key_prefix_trims_whitespace(self):
+    def test_normalize_redis_key_prefix_trims_whitespace(self) -> None:
         assert _normalize_redis_key_prefix("  enterprise-a  ") == "enterprise-a"
 
-    def test_normalize_redis_key_prefix_treats_whitespace_only_as_empty(self):
+    def test_normalize_redis_key_prefix_treats_whitespace_only_as_empty(self) -> None:
         assert _normalize_redis_key_prefix("   ") == ""
 
-    def test_serialize_redis_name_returns_original_when_prefix_empty(self):
+    def test_serialize_redis_name_returns_original_when_prefix_empty(self) -> None:
         assert _serialize_redis_name("model_lb_index:test", "") == "model_lb_index:test"
 
-    def test_serialize_redis_name_adds_single_colon_separator(self):
+    def test_serialize_redis_name_adds_single_colon_separator(self) -> None:
         assert _serialize_redis_name("model_lb_index:test", "enterprise-a") == "enterprise-a:model_lb_index:test"
 
 
 class TestRedisClientWrapperKeyPrefix:
-    def test_wrapper_get_prefixes_string_keys(self, config_overrides):
-        mock_client = MagicMock()
+    def test_wrapper_zrem_prefixes_key_but_not_members(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+
+        wrapper.zrem("reset:user@example.com", "reservation")
+
+        assert client.calls == [("zrem", ("enterprise-a:reset:user@example.com", "reservation"), {})]
+
+    def test_wrapper_registered_script_prefixes_key_arguments(self, config_overrides: Callable[..., None]) -> None:
+        raw_client = _RecordingRedisClient()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(raw_client)  # type: ignore[arg-type]
+
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        script = wrapper.register_script("return redis.call('GET', KEYS[1])")
+
+        assert script(keys=["device_code:abc"], args=["argument"]) == "result"
+        assert raw_client.calls == [
+            ("register_script", ("return redis.call('GET', KEYS[1])",), {}),
+            ("script", (("enterprise-a:device_code:abc",), ["argument"], raw_client), {}),
+        ]
+
+    def test_wrapper_get_prefixes_string_keys(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.get("oauth_state:abc")
 
-        mock_client.get.assert_called_once_with("enterprise-a:oauth_state:abc")
+        assert client.calls == [("get", ("enterprise-a:oauth_state:abc",), {})]
 
-    def test_wrapper_delete_prefixes_multiple_keys(self, config_overrides):
-        mock_client = MagicMock()
+    def test_wrapper_delete_prefixes_multiple_keys(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.delete("key:a", "key:b")
 
-        mock_client.delete.assert_called_once_with("enterprise-a:key:a", "enterprise-a:key:b")
+        assert client.calls == [("delete", ("enterprise-a:key:a", "enterprise-a:key:b"), {})]
 
-    def test_wrapper_lock_prefixes_lock_name(self, config_overrides):
-        mock_client = MagicMock()
+    def test_wrapper_lock_prefixes_lock_name(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.lock("resource-lock", timeout=10)
 
-        mock_client.lock.assert_called_once()
-        args, kwargs = mock_client.lock.call_args
+        method, args, kwargs = client.calls[0]
+        assert method == "lock"
         assert args == ("enterprise-a:resource-lock",)
         assert kwargs["timeout"] == 10
 
-    def test_wrapper_hash_operations_prefix_key_name(self, config_overrides):
-        mock_client = MagicMock()
+    def test_wrapper_hash_operations_prefix_key_name(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.hset("hash:key", "field", "value")
@@ -183,30 +271,32 @@ class TestRedisClientWrapperKeyPrefix:
         wrapper.hkeys("hash:key")
         wrapper.hexists("hash:key", "field")
 
-        mock_client.hset.assert_called_once_with("enterprise-a:hash:key", "field", "value")
-        mock_client.hgetall.assert_called_once_with("enterprise-a:hash:key")
-        mock_client.hkeys.assert_called_once_with("enterprise-a:hash:key")
-        mock_client.hexists.assert_called_once_with("enterprise-a:hash:key", "field")
+        assert client.calls == [
+            ("hset", ("enterprise-a:hash:key", "field", "value"), {}),
+            ("hgetall", ("enterprise-a:hash:key",), {}),
+            ("hkeys", ("enterprise-a:hash:key",), {}),
+            ("hexists", ("enterprise-a:hash:key", "field"), {}),
+        ]
 
-    def test_wrapper_zadd_prefixes_sorted_set_name(self, config_overrides):
-        mock_client = MagicMock()
+    def test_wrapper_zadd_prefixes_sorted_set_name(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="enterprise-a")
         wrapper.zadd("zset:key", {"member": 1})
 
-        mock_client.zadd.assert_called_once()
-        args, kwargs = mock_client.zadd.call_args
+        method, args, kwargs = client.calls[0]
+        assert method == "zadd"
         assert args == ("enterprise-a:zset:key", {"member": 1})
         assert kwargs["nx"] is False
 
-    def test_wrapper_preserves_keys_when_prefix_is_empty(self, config_overrides):
-        mock_client = MagicMock()
+    def test_wrapper_preserves_keys_when_prefix_is_empty(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()
-        wrapper.initialize(mock_client)
+        wrapper.initialize(client)  # type: ignore[arg-type]
 
         config_overrides(REDIS_KEY_PREFIX="   ")
         wrapper.get("plain:key")
 
-        mock_client.get.assert_called_once_with("plain:key")
+        assert client.calls == [("get", ("plain:key",), {})]

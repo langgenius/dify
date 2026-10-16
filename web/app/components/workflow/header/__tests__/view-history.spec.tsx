@@ -17,9 +17,7 @@ const mockFormatWorkflowRunIdentifier = vi.fn(
 
 let mockIsChatMode = false
 
-vi.mock('../../hooks/use-workflow', () => ({
-  useIsChatMode: () => mockIsChatMode,
-}))
+vi.mock('../../hooks/use-workflow', () => ({}))
 
 vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
@@ -56,11 +54,11 @@ vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div data-testid="loading" />,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div data-testid="loading" />,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -255,4 +253,11 @@ describe('ViewHistory', () => {
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

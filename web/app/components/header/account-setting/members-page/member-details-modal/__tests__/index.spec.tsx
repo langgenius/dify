@@ -3,12 +3,20 @@ import type { Member } from '@/models/common'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { useRolesOfMember } from '@/service/access-control/use-member-roles'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import MemberDetailsModal from '../index'
 
-vi.mock('@/service/access-control/use-member-roles')
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook, mockRolesOfMemberHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+  mockRolesOfMemberHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+    'workspaces.current.rbac.members.byMemberId.rbacRoles.get': () => mockRolesOfMemberHook(),
+  })
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -31,23 +39,23 @@ const member: Member = {
   avatar_url: '',
   role: 'admin',
   roles: [createRole({ id: 'role-1', name: 'Custom role' })],
-  last_active_at: '1731000000',
-  last_login_at: '1731000000',
-  created_at: '1731000000',
+  last_active_at: 1731000000,
+  last_login_at: 1731000000,
+  created_at: 1731000000,
   status: 'active',
 }
 
 describe('MemberDetailsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useRolesOfMember).mockReturnValue({
+    vi.mocked(mockRolesOfMemberHook).mockReturnValue({
       data: {
         account_id: member.id,
         roles: [createRole({ id: 'role-1', name: 'Custom role' })],
       },
       isLoading: false,
-    } as unknown as ReturnType<typeof useRolesOfMember>)
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    })
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -70,7 +78,7 @@ describe('MemberDetailsModal', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   describe('Rendering', () => {
@@ -105,17 +113,19 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.getByText(/common\.members\.memberDetails\.assignedRole:/i)).toBeInTheDocument()
       expect(
-        screen.queryByText(/common\.members\.memberDetails\.assignedRoles/i),
+        screen.getByText(/workspaceMembers\.members\.memberDetails\.assignedRole:/i),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(/workspaceMembers\.members\.memberDetails\.assignedRoles/i),
       ).not.toBeInTheDocument()
     })
 
     it('should render role loading state without assigned role chips or count', () => {
-      vi.mocked(useRolesOfMember).mockReturnValue({
+      vi.mocked(mockRolesOfMemberHook).mockReturnValue({
         data: undefined,
         isLoading: true,
-      } as unknown as ReturnType<typeof useRolesOfMember>)
+      })
 
       render(
         <MemberDetailsModal
@@ -126,7 +136,7 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: /members\.memberDetails\.assign/i }),
       ).toBeInTheDocument()
@@ -180,7 +190,7 @@ describe('MemberDetailsModal', () => {
       const user = userEvent.setup()
       const handleAssignSubmit = vi.fn()
 
-      vi.mocked(useRolesOfMember).mockReturnValue({
+      vi.mocked(mockRolesOfMemberHook).mockReturnValue({
         data: {
           account_id: member.id,
           roles: [
@@ -188,7 +198,7 @@ describe('MemberDetailsModal', () => {
             createRole({ id: 'role-2', name: 'Second role' }),
           ],
         },
-      } as unknown as ReturnType<typeof useRolesOfMember>)
+      })
 
       render(
         <MemberDetailsModal

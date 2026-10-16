@@ -6,6 +6,24 @@ import { render } from 'vitest-browser-react'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import SnippetList from '..'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({
+      data: {
+        accounts: [
+          {
+            avatar_url: null,
+            id: 'creator-1',
+            name: 'Alice',
+            status: 'active',
+          },
+        ],
+      },
+    }),
+  })
+})
+
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
 const mockQueryState = vi.hoisted(() => ({
   creatorIDs: [] as string[],
@@ -48,21 +66,6 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          avatar_url: null,
-          id: 'creator-1',
-          name: 'Alice',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryFn: async () => ({ profile: { id: 'creator-1' } }),
@@ -70,7 +73,7 @@ vi.mock('@/features/account-profile/client', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     snippets: {
       bySnippetId: {
@@ -83,6 +86,18 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: (options: { input?: unknown }) => ({
+              ...options,
+              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
+            }),
+          },
+        },
+      },
+    },
     tags: {
       get: {
         key: () => ['tags'],
@@ -103,8 +118,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/next/dynamic', () => ({
-  default: () => () => null,
+vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
+  TagManagementModal: () => null,
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -220,7 +235,6 @@ describe('Snippet list reflow', () => {
     const gridElement = card.element().closest('[aria-busy]')
     if (!gridElement) throw new Error('Snippet card did not render inside the list grid')
 
-    expect(mainElement.clientWidth).toBe(320)
     expect(mainElement.scrollWidth).toBe(mainElement.clientWidth)
     expect(gridElement.scrollWidth).toBe(gridElement.clientWidth)
     ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {

@@ -2,8 +2,7 @@ import dataclasses
 import json
 import secrets
 import uuid
-from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -14,13 +13,16 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account
-from models.enums import DraftVariableType
+from models.enums import CreatorUserRole, DraftVariableType
+from models.model import UploadFile
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
@@ -28,6 +30,7 @@ from models.workflow import (
     WorkflowNodeExecutionModel,
     is_system_variable_editable,
 )
+from services.variable_truncator import TruncationResult
 from services.workflow_draft_variable_service import (
     DraftVariableSaver,
     VariableResetError,
@@ -60,8 +63,8 @@ class TestDraftVariableSaver:
             node_execution_id="test_execution_id",
             user=mock_user,
         )
-        assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") == False
-        assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") == True
+        assert saver._should_variable_be_visible("123_456", BuiltinNodeTypes.IF_ELSE, "output") is False
+        assert saver._should_variable_be_visible("123", BuiltinNodeTypes.START, "output") is True
 
     def test__normalize_variable_for_start_node(self, sqlite_session: Session):
         @dataclasses.dataclass(frozen=True)
@@ -72,52 +75,53 @@ class TestDraftVariableSaver:
             expected_node_id: str
             expected_name: str
 
-        _NODE_ID = "1747228642872"
+        _node_id = "1747228642872"
         cases = [
             TestCase(
                 name="name with `sys.` prefix should return the system node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="sys.workflow_id",
                 expected_node_id=SYSTEM_VARIABLE_NODE_ID,
                 expected_name="workflow_id",
             ),
             TestCase(
                 name="name without `sys.` prefix should return the original input node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="start_input",
-                expected_node_id=_NODE_ID,
+                expected_node_id=_node_id,
                 expected_name="start_input",
             ),
             TestCase(
                 name="name with `env.` prefix should return the environment node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="env.API_KEY",
                 expected_node_id=ENVIRONMENT_VARIABLE_NODE_ID,
                 expected_name="API_KEY",
             ),
             TestCase(
                 name="name with `conversation.` prefix should return the conversation node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="conversation.session_id",
                 expected_node_id=CONVERSATION_VARIABLE_NODE_ID,
                 expected_name="session_id",
             ),
             TestCase(
                 name="dummy_variable should return the original input node_id",
-                input_node_id=_NODE_ID,
+                input_node_id=_node_id,
                 input_name="__dummy__",
-                expected_node_id=_NODE_ID,
+                expected_node_id=_node_id,
                 expected_name="__dummy__",
             ),
         ]
 
-        mock_user = MagicMock()
+        mock_user = Account(name="Test Account", email="test@example.com")
+        mock_user.id = str(uuid.uuid4())
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=sqlite_session,
             tenant_id="test-tenant-id",
             app_id=test_app_id,
-            node_id=_NODE_ID,
+            node_id=_node_id,
             node_type=BuiltinNodeTypes.START,
             node_execution_id="test_execution_id",
             user=mock_user,
@@ -229,15 +233,28 @@ class TestDraftVariableSaver:
             node_execution_id="test-execution-id",
             user=mock_user,
         )
-        upload_file = SimpleNamespace(id="upload-file-id")
-        truncation_result = SimpleNamespace(result=StringSegment(value="..."), truncated=True)
+        upload_file = UploadFile(
+            tenant_id="app-tenant-id",
+            storage_type=StorageType.LOCAL,
+            key="workflow/draft-variable.txt",
+            name="draft-variable.txt",
+            size=11,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=mock_user.id,
+            created_at=naive_utc_now(),
+            used=True,
+        )
+        sqlite_session.add(upload_file)
+        sqlite_session.commit()
+        truncation_result = TruncationResult(result=StringSegment(value="..."), truncated=True)
 
         with (
             patch(
                 "services.workflow_draft_variable_service.VariableTruncator.truncate", return_value=truncation_result
             ),
             patch("services.workflow_draft_variable_service.FileService") as file_service_class,
-            patch("services.workflow_draft_variable_service.sessionmaker") as sessionmaker_mock,
         ):
             file_service_class.return_value.upload_file.return_value = upload_file
             result = saver._try_offload_large_variable("large_var", StringSegment(value="large value"))
@@ -246,9 +263,10 @@ class TestDraftVariableSaver:
         _, variable_file = result
         assert file_service_class.return_value.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
         assert variable_file.tenant_id == "app-tenant-id"
-        sessionmaker_mock.return_value.begin.return_value.__enter__.return_value.add.assert_called_once_with(
-            variable_file
-        )
+        sqlite_session.expire_all()
+        stored_variable_file = sqlite_session.get(WorkflowDraftVariableFile, variable_file.id)
+        assert stored_variable_file is not None
+        assert stored_variable_file.upload_file_id == upload_file.id
 
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_save_method_integration(self, mock_batch_upsert, draft_saver):
@@ -596,13 +614,13 @@ class TestWorkflowDraftVariableService:
     def test_system_variable_editability_check(self):
         """Test the system variable editability function directly"""
         # Test editable system variables
-        assert is_system_variable_editable("files") == True
-        assert is_system_variable_editable("query") == True
+        assert is_system_variable_editable("files") is True
+        assert is_system_variable_editable("query") is True
 
         # Test non-editable system variables
-        assert is_system_variable_editable("workflow_id") == False
-        assert is_system_variable_editable("conversation_id") == False
-        assert is_system_variable_editable("user_id") == False
+        assert is_system_variable_editable("workflow_id") is False
+        assert is_system_variable_editable("conversation_id") is False
+        assert is_system_variable_editable("user_id") is False
 
     def test_workflow_draft_variable_factory_methods(self):
         """Test that factory methods create proper instances"""
@@ -614,7 +632,7 @@ class TestWorkflowDraftVariableService:
             app_id=test_app_id, name="conv_var", value=test_value, description="Test conversation variable"
         )
         assert conv_var.get_variable_type() == DraftVariableType.CONVERSATION
-        assert conv_var.editable == True
+        assert conv_var.editable is True
         assert conv_var.node_execution_id is None
 
         # Test system variable factory
@@ -622,7 +640,7 @@ class TestWorkflowDraftVariableService:
             app_id=test_app_id, name="workflow_id", value=test_value, node_execution_id="exec-id", editable=False
         )
         assert sys_var.get_variable_type() == DraftVariableType.SYS
-        assert sys_var.editable == False
+        assert sys_var.editable is False
         assert sys_var.node_execution_id == "exec-id"
 
         # Test node variable factory
@@ -636,8 +654,8 @@ class TestWorkflowDraftVariableService:
             editable=True,
         )
         assert node_var.get_variable_type() == DraftVariableType.NODE
-        assert node_var.visible == True
-        assert node_var.editable == True
+        assert node_var.visible is True
+        assert node_var.editable is True
         assert node_var.node_execution_id == "exec-id"
 
 

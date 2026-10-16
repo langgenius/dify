@@ -6,7 +6,7 @@ import { SkillBuilderGridTexture } from './builder-grid-texture'
 export function DetailSkeleton() {
   return (
     <div aria-busy="true" className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
-      <aside aria-hidden className="flex h-full w-62 shrink-0 bg-background-body p-1">
+      <div aria-hidden className="flex h-full w-62 shrink-0 bg-background-body p-1">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg">
           <div className="flex h-12 shrink-0 items-center gap-1 px-2">
             <SkeletonRectangle className="my-0 size-6 rounded-md opacity-12" />
@@ -38,9 +38,9 @@ export function DetailSkeleton() {
             <SkeletonRectangle className="my-0 h-8 w-full rounded-lg opacity-12" />
           </div>
         </div>
-      </aside>
+      </div>
 
-      <main
+      <div
         aria-hidden
         className="my-1 mr-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-background-default inset-ring-[0.5px] inset-ring-divider-subtle"
       >
@@ -68,9 +68,9 @@ export function DetailSkeleton() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      <aside
+      <div
         aria-hidden
         className="relative my-1 mr-1 flex w-99 shrink-0 flex-col overflow-hidden rounded-lg inset-ring-[0.5px] inset-ring-divider-subtle"
       >
@@ -99,7 +99,7 @@ export function DetailSkeleton() {
             </div>
           </div>
         </div>
-      </aside>
+      </div>
     </div>
   )
 }

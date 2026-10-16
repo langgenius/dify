@@ -18,14 +18,12 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   renderI18nObject: (obj: Record<string, string>, locale: string) => {
     return obj?.[locale] || obj?.['en-US'] || ''
   },
-}))
-
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: (locale: string) => locale || 'en-US',
+  getPluginLanguage: (locale: string) => locale || 'en-US',
 }))
 
 const mockCategoriesMap: Record<string, { label: string }> = {
@@ -51,53 +49,6 @@ vi.mock('@/utils/format', () => ({
 vi.mock('@/utils/mcp', () => ({
   shouldUseMcpIcon: (src: unknown) =>
     typeof src === 'object' && src !== null && (src as { content?: string })?.content === '🔗',
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({
-    icon,
-    background,
-    innerIcon,
-    size,
-    iconType,
-  }: {
-    icon?: string
-    background?: string
-    innerIcon?: React.ReactNode
-    size?: string
-    iconType?: string
-  }) => (
-    <div
-      data-testid="app-icon"
-      data-icon={icon}
-      data-background={background}
-      data-size={size}
-      data-icon-type={iconType}
-    >
-      {!!innerIcon && <div data-testid="inner-icon">{innerIcon}</div>}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/icons/src/vender/other', () => ({
-  Mcp: ({ className }: { className?: string }) => (
-    <div data-testid="mcp-icon" className={className}>
-      MCP
-    </div>
-  ),
-  Group: ({ className }: { className?: string }) => (
-    <div data-testid="group-icon" className={className}>
-      Group
-    </div>
-  ),
-}))
-
-vi.mock('../../../base/icons/src/vender/plugin', () => ({
-  LeftCorner: ({ className }: { className?: string }) => (
-    <div data-testid="left-corner" className={className}>
-      LeftCorner
-    </div>
-  ),
 }))
 
 vi.mock('../../base/badges/partner', () => ({

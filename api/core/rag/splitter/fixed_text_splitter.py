@@ -9,13 +9,10 @@ from typing import Any, Literal, override
 
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
-from graphon.model_runtime.model_providers.base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
-    """
-    This class is used to implement from_gpt2_encoder, to prevent using of tiktoken
-    """
+    """Create recursive splitters that measure chunk limits in characters."""
 
     @classmethod
     def from_encoder[T: EnhanceRecursiveCharacterTextSplitter](
@@ -25,22 +22,12 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
         disallowed_special: Literal["all"] | AbstractSet[str] = "all",
         **kwargs: Any,
     ) -> T:
-        def _token_encoder(texts: list[str]) -> list[int]:
-            if not texts:
-                return []
-
-            if embedding_model_instance:
-                return embedding_model_instance.get_text_embedding_num_tokens(texts=texts)
-            else:
-                return [GPT2Tokenizer.get_num_tokens(text) for text in texts]
-
         def _character_encoder(texts: list[str]) -> list[int]:
             if not texts:
                 return []
 
             return [len(text) for text in texts]
 
-        _ = _token_encoder  # kept for future token-length wiring
         return cls(length_function=_character_encoder, **kwargs)
 
 
@@ -54,14 +41,11 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
     @override
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
-        if self._fixed_separator:
-            chunks = text.split(self._fixed_separator)
-        else:
-            chunks = [text]
+        chunks = text.split(self._fixed_separator) if self._fixed_separator else [text]
 
         final_chunks = []
         chunks_lengths = self._length_function(chunks)
-        for chunk, chunk_length in zip(chunks, chunks_lengths):
+        for chunk, chunk_length in zip(chunks, chunks_lengths, strict=False):
             if chunk_length > self._chunk_size:
                 final_chunks.extend(self.recursive_split_text(chunk))
             else:
@@ -87,24 +71,18 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
 
         # Now that we have the separator, split the text
         if separator:
-            if separator == " ":
-                splits = re.split(r" +", text)
-            else:
-                splits = text.split(separator)
+            splits = re.split(r" +", text) if separator == " " else text.split(separator)
             if self._keep_separator:
                 splits = [s + separator for s in splits[:-1]] + splits[-1:]
         else:
             splits = list(text)
-        if separator == "\n":
-            splits = [s for s in splits if s != ""]
-        else:
-            splits = [s for s in splits if (s not in {"", "\n"})]
+        splits = [s for s in splits if s != ""] if separator == "\n" else [s for s in splits if s not in {"", "\n"}]
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator
         s_lens = self._length_function(splits)
         if separator != "":
-            for s, s_len in zip(splits, s_lens):
+            for s, s_len in zip(splits, s_lens, strict=False):
                 if s_len < self._chunk_size:
                     _good_splits.append(s)
                     _good_splits_lengths.append(s_len)
@@ -128,7 +106,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             current_length = 0
             overlap_part = ""
             overlap_part_length = 0
-            for s, s_len in zip(splits, s_lens):
+            for s, s_len in zip(splits, s_lens, strict=False):
                 if current_length + s_len <= self._chunk_size - self._chunk_overlap:
                     current_part += s
                     current_length += s_len

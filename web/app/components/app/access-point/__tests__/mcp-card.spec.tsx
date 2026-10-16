@@ -1,16 +1,16 @@
-import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { PublishedWorkflow } from '../shared/utils'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum } from '@/types/app'
 import { MCPAccessPointCard } from '../built-in-access-points/mcp-card'
 
 const mocks = vi.hoisted(() => ({
-  invalidateServerDetail: vi.fn(),
   serverDetail: {
     data: undefined as undefined | { id: string; server_code: string; status: string },
     isPending: false,
@@ -20,38 +20,45 @@ const mocks = vi.hoisted(() => ({
   updateServer: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
     success: vi.fn(),
   },
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    apps: {
-      byAppId: {
-        server: {
-          put: {
-            mutationOptions: (options = {}) => ({
-              mutationFn: mocks.updateServer,
-              ...options,
-            }),
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      apps: {
+        byAppId: {
+          server: {
+            get: consoleOperationStub('apps.byAppId.server.get'),
+            refresh: { post: consoleOperationStub('apps.byAppId.server.refresh.post') },
+            put: {
+              mutationOptions: (options = {}) => ({
+                mutationFn: mocks.updateServer,
+                ...options,
+              }),
+            },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateMCPServerDetail: () => mocks.invalidateServerDetail,
-  useMCPServerDetail: () => mocks.serverDetail,
-  useRefreshMCPServerCode: () => ({
-    isPending: false,
-    mutateAsync: mocks.refreshServerCode,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'apps.byAppId.server.get': () => mocks.serverDetail,
+    'apps.byAppId.server.refresh.post': () => ({
+      isPending: false,
+      mutateAsync: mocks.refreshServerCode,
+    }),
+  })
+})
 
 vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
   default: (props: Record<string, unknown>) => {
@@ -60,11 +67,11 @@ vi.mock('@/app/components/tools/mcp/mcp-server-modal', () => ({
   },
 }))
 
-const appInfo = {
+const appInfo = createAppDetailFixture({
   api_base_url: 'https://api.example.test/v1',
   id: 'app-1',
-  mode: AppModeEnum.CHAT,
-  model_config: {
+  mode: 'chat' as const,
+  model_config: createAppModelConfigFixture({
     updated_at: 1_710_000_000,
     user_input_form: [
       {
@@ -75,14 +82,14 @@ const appInfo = {
         },
       },
     ],
-  },
-} as AccessPointAppInfo
+  }),
+})
 
-const workflowAppInfo = {
+const workflowAppInfo = createAppDetailFixture({
   ...appInfo,
-  mode: AppModeEnum.WORKFLOW,
+  mode: 'workflow' as const,
   model_config: null,
-} as unknown as AccessPointAppInfo
+})
 
 const publishedWorkflow = {
   graph: {
@@ -108,10 +115,11 @@ function createDeferredPromise<T>() {
   return { promise, reject, resolve }
 }
 
-function renderCard(cardAppInfo: AccessPointAppInfo = appInfo, workflow?: PublishedWorkflow) {
+function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: PublishedWorkflow) {
   const queryClient = createTestQueryClient()
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
 
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <MCPAccessPointCard
         appInfo={cardAppInfo}
@@ -122,6 +130,7 @@ function renderCard(cardAppInfo: AccessPointAppInfo = appInfo, workflow?: Publis
       />
     </QueryClientProvider>,
   )
+  return { ...view, invalidateQueries }
 }
 
 describe('MCPAccessPointCard', () => {
@@ -226,7 +235,7 @@ describe('MCPAccessPointCard', () => {
     mocks.updateServer
       .mockReturnValueOnce(firstToggle.promise)
       .mockReturnValueOnce(secondToggle.promise)
-    renderCard()
+    const { invalidateQueries } = renderCard()
 
     const accessSwitch = screen.getByRole('switch')
     await user.click(accessSwitch)
@@ -248,7 +257,13 @@ describe('MCPAccessPointCard', () => {
     secondToggle.resolve()
 
     await waitFor(() => {
-      expect(mocks.invalidateServerDetail).toHaveBeenCalledTimes(2)
+      expect(invalidateQueries).toHaveBeenCalledTimes(2)
+      expect(invalidateQueries).toHaveBeenLastCalledWith({
+        queryKey: [
+          ['console', 'apps', 'byAppId', 'server', 'get'],
+          { type: 'query', input: { params: { app_id: 'app-1' } } },
+        ],
+      })
     })
     expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
   })

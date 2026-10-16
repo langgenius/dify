@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { serverConsoleQuery } from '@/service/server'
+import { consoleQuery } from '@/service/console'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { SystemFeaturesBootstrapBoundary } from '../bootstrap-boundary'
 
@@ -87,7 +87,7 @@ describe('SystemFeaturesBootstrapBoundary', () => {
   it('hydrates the server System Features query into the client boundary', () => {
     const serverQueryClient = createQueryClient()
     serverQueryClient.setQueryData(
-      serverConsoleQuery.systemFeatures.get.queryKey(),
+      consoleQuery.systemFeatures.get.queryKey(),
       createSystemFeaturesFixture(),
     )
     const queryClient = createQueryClient()

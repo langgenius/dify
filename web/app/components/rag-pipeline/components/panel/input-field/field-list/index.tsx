@@ -28,7 +28,7 @@ const FieldList = ({
   labelClassName,
   allVariableNames,
 }: FieldListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const onInputFieldsChange = useCallback(
     (value: InputVar[]) => {
       handleInputFieldsChange(nodeId, value)

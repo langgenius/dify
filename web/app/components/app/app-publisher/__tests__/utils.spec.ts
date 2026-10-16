@@ -1,17 +1,16 @@
 import type { TFunction } from 'i18next'
 import { withSelectorKey } from '@/test/i18n-mock'
-import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 import { getDisabledFunctionTooltip, getPublisherAppMode, getPublisherAppUrl } from '../utils'
 
 describe('app-publisher utils', () => {
   describe('getPublisherAppMode', () => {
     it('should normalize chat-like apps to chat mode', () => {
-      expect(getPublisherAppMode(AppModeEnum.AGENT_CHAT)).toBe(AppModeEnum.CHAT)
+      expect(getPublisherAppMode('agent-chat')).toBe('chat')
     })
 
     it('should keep completion mode unchanged', () => {
-      expect(getPublisherAppMode(AppModeEnum.COMPLETION)).toBe(AppModeEnum.COMPLETION)
+      expect(getPublisherAppMode('completion')).toBe('completion')
     })
   })
 
@@ -21,14 +20,14 @@ describe('app-publisher utils', () => {
         getPublisherAppUrl({
           appBaseUrl: 'https://example.com',
           accessToken: 'token-1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
         }),
       ).toBe(`https://example.com${basePath}/chat/token-1`)
     })
   })
 
   describe('getDisabledFunctionTooltip', () => {
-    const t = withSelectorKey((key: string) => key, 'app') as unknown as TFunction
+    const t = withSelectorKey((key: string) => key, 'app') as unknown as TFunction<['app']>
 
     it('should prioritize the unpublished hint', () => {
       expect(

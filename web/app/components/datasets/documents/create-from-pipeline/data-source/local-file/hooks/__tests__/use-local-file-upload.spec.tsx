@@ -2,8 +2,26 @@ import type { ReactElement } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  renderWithConsoleQuery,
+} from '@/test/console/query-data'
 import { PROGRESS_ERROR } from '../../constants'
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': vi.fn(() => ({
+      data: {
+        file_size_limit: 15,
+        batch_count_limit: 5,
+        file_upload_limit: 10,
+      },
+    })),
+  })
+})
 
 const { mockNotify, mockToast } = vi.hoisted(() => {
   const mockNotify = vi.fn()
@@ -19,7 +37,7 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
   return { mockNotify, mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -36,7 +54,7 @@ vi.mock('@/utils/format', () => ({
   },
 }))
 // Mock i18n config
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 
@@ -58,21 +76,6 @@ vi.mock('../../../store', () => ({
 }))
 
 // Mock file upload config
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      file_size_limit: 15,
-      batch_count_limit: 5,
-      file_upload_limit: 10,
-    },
-  })),
-  // Required by the shared useFileUpload hook
-  useFileSupportTypes: vi.fn(() => ({
-    data: {
-      allowed_extensions: ['pdf', 'docx', 'txt'],
-    },
-  })),
-}))
 
 // Mock upload service
 const mockUpload = vi.fn()
@@ -83,10 +86,23 @@ vi.mock('@/service/base', () => ({
 // Import after all mocks are set up
 const { useLocalFileUpload } = await import('../use-local-file-upload')
 
+const createQueryClient = () => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.supportType.get.queryOptions().queryKey, {
+    allowed_extensions: ['pdf', 'docx', 'txt'],
+  })
+  return queryClient
+}
 const createWrapper = () =>
-  createConsoleQueryWrapper({ systemFeatures: { deployment_edition: 'CLOUD' } }).wrapper
+  createConsoleQueryWrapper({
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  }).wrapper
 const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+  renderWithConsoleQuery(ui, {
+    queryClient: createQueryClient(),
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
 
 describe('useLocalFileUpload', () => {
   beforeEach(() => {

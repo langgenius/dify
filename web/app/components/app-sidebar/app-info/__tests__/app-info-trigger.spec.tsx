@@ -1,10 +1,10 @@
-import type { App, AppSSO } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum } from '@/types/app'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppInfoTrigger from '../app-info-trigger'
 
@@ -30,35 +30,17 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('../../../base/app-icon', () => ({
-  default: ({
-    size,
-    icon,
-    background,
-  }: {
-    size: string
-    icon: string
-    background: string
-    iconType?: string
-    imageUrl?: string
-  }) => (
-    <span data-size={size} data-icon={icon} data-bg={background}>
-      {icon}
-    </span>
-  ),
-}))
-
 const defaultAppPermissionKeys = [
   AppACLPermission.Edit,
   AppACLPermission.ImportExportDSL,
   AppACLPermission.Delete,
 ]
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
-  ({
+const createAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
+  createAppDetailFixture({
     id: 'app-1',
     name: 'Test App',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     icon: '🤖',
     icon_type: 'emoji',
     icon_background: '#FFEAD5',
@@ -68,7 +50,7 @@ const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
     permission_keys: defaultAppPermissionKeys,
     maintainer: 'user-1',
     ...overrides,
-  }) as App & Partial<AppSSO>
+  })
 
 const createProps = (overrides: Partial<React.ComponentProps<typeof AppInfoTrigger>> = {}) => ({
   appDetail: createAppDetail(),
@@ -91,11 +73,11 @@ describe('AppInfoTrigger', () => {
   it('renders expanded app metadata without making the app info clickable', async () => {
     const user = userEvent.setup()
     const props = createProps({
-      appDetail: createAppDetail({ name: 'My Chatbot', mode: AppModeEnum.ADVANCED_CHAT }),
+      appDetail: createAppDetail({ name: 'My Chatbot', mode: 'advanced-chat' as const }),
     })
     render(<AppInfoTrigger {...props} />)
 
-    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'large')
+    expect(screen.getByText('🤖')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot')).toBeInTheDocument()
     expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot').closest('button')).toBeNull()
@@ -106,10 +88,10 @@ describe('AppInfoTrigger', () => {
     expect(props.exportCheck).not.toHaveBeenCalled()
   })
 
-  it('renders only the medium app icon when collapsed', () => {
+  it('renders only the app icon when collapsed', () => {
     render(<AppInfoTrigger {...createProps({ expand: false })} />)
 
-    expect(screen.getByText('🤖')).toHaveAttribute('data-size', 'medium')
+    expect(screen.getByText('🤖')).toBeInTheDocument()
     expect(screen.queryByText('Test App')).not.toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
@@ -124,7 +106,7 @@ describe('AppInfoTrigger', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'app.editApp',
       'app.duplicate',
-      'app.export',
+      'app.exportApp',
       'common.operation.delete',
       'app.switch',
     ])
@@ -136,16 +118,16 @@ describe('AppInfoTrigger', () => {
   it('shows import DSL for workflow apps without a workflow conversion operation', async () => {
     const user = userEvent.setup()
     const props = createProps({
-      appDetail: createAppDetail({ mode: AppModeEnum.WORKFLOW }),
+      appDetail: createAppDetail({ mode: 'workflow' as const }),
     })
     render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
 
-    expect(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'app.importApp' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'app.switch' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'workflow.common.importDSL' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.importApp' }))
     expect(props.openModal).toHaveBeenCalledWith('importDSL')
   })
 
@@ -155,19 +137,19 @@ describe('AppInfoTrigger', () => {
     const { rerender } = render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
-    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'app.exportApp' })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
 
     const readyProps = createProps()
     rerender(<AppInfoTrigger {...readyProps} />)
-    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.exportApp' }))
 
     expect(readyProps.exportCheck).toHaveBeenCalledTimes(1)
   })
 
-  it('hides the operations trigger when no operation is permitted', () => {
+  it('keeps the operations trigger disabled when no operation is permitted', () => {
     mockWorkspacePermissionKeys.value = []
     render(
       <AppInfoTrigger
@@ -180,6 +162,6 @@ describe('AppInfoTrigger', () => {
       />,
     )
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(getOperationsTrigger()).toBeDisabled()
   })
 })

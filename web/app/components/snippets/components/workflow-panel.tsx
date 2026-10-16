@@ -2,10 +2,10 @@
 
 import type { PanelProps } from '@/app/components/workflow/panel'
 import type { SnippetInputField } from '@/models/snippet'
+import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
-import dynamic from '@/next/dynamic'
 
 const Record = dynamic(() => import('@/app/components/workflow/panel/record'), {
   ssr: false,
@@ -36,8 +36,6 @@ const SnippetWorkflowPanel = ({ snippetId, fields }: SnippetWorkflowPanelProps) 
     return {
       getVersionListUrl: `/snippets/${snippetId}/workflows`,
       deleteVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) =>
-        `/snippets/${snippetId}/workflows/${versionId}/restore`,
       updateVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
       latestVersionId: '',
     }

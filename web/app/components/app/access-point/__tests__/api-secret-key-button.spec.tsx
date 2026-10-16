@@ -1,14 +1,29 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-import { ApiSecretKeyButton } from '../shared/api-secret-key-button'
+import { ApiSecretKeyButton } from '../built-in-access-points/api-secret-key-button'
+import { EnvironmentApiKeyButton } from '../deployed-environment-access-points/environment-api-key-button'
 
 const appApiKeys = {
   data: [
-    { id: 'key-1', token: 'app-a', type: 'app', created_at: 1, last_used_at: 1, dataset_ids: [] },
-    { id: 'key-2', token: 'app-b', type: 'app', created_at: 2, last_used_at: 2, dataset_ids: [] },
+    {
+      id: 'key-1',
+      token: 'app-alpha-secret-0001',
+      type: 'app',
+      created_at: 1,
+      last_used_at: 1,
+      dataset_ids: [],
+    },
+    {
+      id: 'key-2',
+      token: 'app-beta-secret-0002',
+      type: 'app',
+      created_at: 2,
+      last_used_at: 2,
+      dataset_ids: [],
+    },
   ],
 }
 
@@ -23,25 +38,15 @@ const render = (ui: ReactElement) => {
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-vi.mock('@/app/components/api-key/api-key-modal', () => ({
-  ApiKeyModal: ({
-    canManage,
-    open,
-    scope,
-  }: {
-    canManage: boolean
-    open: boolean
-    scope:
-      | { type: 'app'; appId: string }
-      | { type: 'dataset' }
-      | { type: 'environment'; appId: string; environmentId: string }
-  }) =>
-    open ? (
-      <div role="dialog" aria-label="API key management">
-        {scope.type === 'dataset' ? '' : scope.appId}:
-        {scope.type === 'environment' ? scope.environmentId : ''}:{String(canManage)}
-      </div>
-    ) : null,
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: {
+    call: async (path: string[]) => {
+      if (path.join('.') === 'apps.byResourceId.apiKeys.get') return appApiKeys
+      if (path.join('.') === 'enterprise.appDeploy.accessService.listEnvironmentApiKeys')
+        return { data: [{ id: 'environment-key', token: 'env-secret-0001', created_at: 1 }] }
+      throw new Error(`Unexpected API call: ${path.join('.')}`)
+    },
+  },
 }))
 
 describe('ApiSecretKeyButton', () => {
@@ -56,14 +61,14 @@ describe('ApiSecretKeyButton', () => {
 
     await user.click(button)
 
-    expect(screen.getByRole('dialog', { name: 'API key management' })).toHaveTextContent(
-      'app-1::true',
-    )
+    expect(await screen.findByRole('cell', { name: 'app-a...0001' })).toBeVisible()
   })
 
   it('uses the environment API key count and opens environment-scoped key management', async () => {
     const user = userEvent.setup()
-    render(<ApiSecretKeyButton appId="app-1" environmentId="staging" apiKeyCount={5} canManage />)
+    render(
+      <EnvironmentApiKeyButton appId="app-1" environmentId="staging" apiKeyCount={5} canManage />,
+    )
 
     const button = screen.getByRole('button', {
       name: 'appApi.apiKeyModal.apiSecretKey 5',
@@ -72,9 +77,7 @@ describe('ApiSecretKeyButton', () => {
 
     await user.click(button)
 
-    expect(screen.getByRole('dialog', { name: 'API key management' })).toHaveTextContent(
-      'app-1:staging:true',
-    )
+    expect(await screen.findByRole('cell', { name: 'env-s...0001' })).toBeVisible()
   })
 
   it('keeps the current count visible when service access is disabled', () => {

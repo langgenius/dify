@@ -1,22 +1,22 @@
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/debug'
 import ChatWrapper from '../chat-wrapper'
 
 const mockUseChat = vi.hoisted(() => vi.fn())
 const mockUseSubscription = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/debug', () => ({
-  fetchSuggestedQuestions: vi.fn(),
-  stopChatMessageResponding: vi.fn(),
+const mockRequest = vi.hoisted(() => vi.fn())
+
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: mockRequest },
 }))
 
 vi.mock('@/app/components/base/chat/chat', () => ({
@@ -29,6 +29,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     onHumanInputFormSubmit,
     onFeatureBarClick,
     speechToTextTarget,
+    onOpenLog,
   }: {
     chatNode: React.ReactNode
     inputDisabled?: boolean
@@ -46,6 +47,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     ) => Promise<void>
     onFeatureBarClick?: (state: boolean) => void
     speechToTextTarget?: SpeechToTextTarget
+    onOpenLog?: (item: IChatItem) => void
   }) => (
     <div
       data-testid="chat-shell"
@@ -84,6 +86,13 @@ vi.mock('@/app/components/base/chat/chat', () => ({
       </button>
       <button type="button" onClick={() => onFeatureBarClick?.(true)}>
         open-feature-panel
+      </button>
+      <button
+        onClick={() =>
+          onOpenLog?.({ id: 'log-1', isAnswer: true, content: 'answer', workflow_run_id: 'run-1' })
+        }
+      >
+        open-log
       </button>
       {chatNode}
     </div>
@@ -129,9 +138,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-const mockFetchSuggestedQuestions = vi.mocked(fetchSuggestedQuestions)
-const mockStopChatMessageResponding = vi.mocked(stopChatMessageResponding)
-
 const createChatState = (overrides: Record<string, unknown> = {}) => ({
   conversationId: 'conversation-1',
   chatList: [],
@@ -152,15 +158,8 @@ const createChatWrapperRef = () =>
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({
-      appDetail: {
-        id: 'app-1',
-        site: {
-          access_token: 'site-token',
-          app_base_url: 'https://example.com',
-        },
-      } as ReturnType<typeof useAppStore.getState>['appDetail'],
-    })
+    mockRequest.mockReset()
+    mockRequest.mockResolvedValue({ data: [] })
     mockUseChat.mockReturnValue(createChatState())
   })
 
@@ -208,11 +207,15 @@ describe('ChatWrapper', () => {
       })
     })
 
+    await userEvent.click(screen.getByRole('button', { name: 'open-log' }))
+    expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
+
     act(() => {
       chatRef.current?.handleRestart()
     })
 
     expect(chatState.handleRestart).toHaveBeenCalledTimes(1)
+    expect(store.getState().messageLogItem).toBeUndefined()
     expect(store.getState().inputs).toEqual({
       name: 'Ada',
     })
@@ -315,16 +318,13 @@ describe('ChatWrapper', () => {
     )
 
     const sendCallbacks = handleSend.mock.calls[0]?.[1] as {
-      onGetSuggestedQuestions: (
-        messageId: string,
-        getAbortController: () => AbortController,
-      ) => void
+      onGetSuggestedQuestions: (messageId: string, onCancel: (cancel: () => void) => void) => void
     }
-    sendCallbacks.onGetSuggestedQuestions('message-1', () => new AbortController())
-    expect(mockFetchSuggestedQuestions).toHaveBeenCalledWith(
-      'app-1',
-      'message-1',
-      expect.any(Function),
+    await sendCallbacks.onGetSuggestedQuestions('message-1', () => {})
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'chatMessages', 'byMessageId', 'suggestedQuestions', 'get'],
+      { params: { app_id: 'app-1', message_id: 'message-1' } },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
 
     await user.click(screen.getByRole('button', { name: 'regenerate-chat' }))
@@ -346,8 +346,12 @@ describe('ChatWrapper', () => {
     )
 
     const stopResponding = mockUseChat.mock.calls[0]?.[3] as (taskId: string) => void
-    stopResponding('task-1')
-    expect(mockStopChatMessageResponding).toHaveBeenCalledWith('app-1', 'task-1')
+    await stopResponding('task-1')
+    expect(mockRequest).toHaveBeenCalledWith(
+      ['apps', 'byAppId', 'chatMessages', 'byTaskId', 'stop', 'post'],
+      { params: { app_id: 'app-1', task_id: 'task-1' } },
+      expect.any(Object),
+    )
 
     await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
     await waitFor(() => {
@@ -365,6 +369,48 @@ describe('ChatWrapper', () => {
     })
 
     expect(handleStop).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels only the requested message query through the chat cancellation callback', async () => {
+    const user = userEvent.setup()
+    const handleSend = vi.fn()
+    mockUseChat.mockReturnValue(createChatState({ handleSend }))
+    mockRequest.mockImplementation(() => new Promise(() => {}))
+
+    renderWorkflowFlowComponent(
+      <ChatWrapper
+        ref={createChatWrapperRef()}
+        showConversationVariableModal={false}
+        onConversationModalHide={vi.fn()}
+        showInputsFieldsPanel={false}
+        onHide={vi.fn()}
+      />,
+      { nodes: [createStartNode()], edges: [] },
+    )
+    await user.click(screen.getByRole('button', { name: 'send-chat' }))
+    const { onGetSuggestedQuestions } = handleSend.mock.calls[0]![1] as {
+      onGetSuggestedQuestions: (
+        messageId: string,
+        onCancel: (cancel: () => void) => void,
+      ) => Promise<unknown>
+    }
+    const onCancelFirst = vi.fn()
+    const onCancelSecond = vi.fn()
+    const firstRequest = onGetSuggestedQuestions('message-1', onCancelFirst)
+    const firstCancelled = expect(firstRequest).rejects.toThrow()
+    const secondRequest = onGetSuggestedQuestions('message-2', onCancelSecond)
+    const secondCancelled = expect(secondRequest).rejects.toThrow()
+
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledTimes(2))
+    const firstSignal = mockRequest.mock.calls[0]![2].signal as AbortSignal
+    const secondSignal = mockRequest.mock.calls[1]![2].signal as AbortSignal
+    onCancelFirst.mock.calls[0]![0]()
+    await firstCancelled
+    expect(firstSignal.aborted).toBe(true)
+    expect(secondSignal.aborted).toBe(false)
+
+    onCancelSecond.mock.calls[0]![0]()
+    await secondCancelled
   })
 
   it('collapses the side panel while the chat is responding', async () => {

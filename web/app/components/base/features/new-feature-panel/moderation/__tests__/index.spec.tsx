@@ -1,5 +1,4 @@
-import type { Features } from '../../../types'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { Features, OnFeaturesChange } from '../../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import Moderation from '../index'
@@ -13,9 +12,6 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowModerationSettingModal: mockSetShowModerationSettingModal,
   }),
-}))
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: { data: mockCodeBasedExtensionData } }),
 }))
 
 const defaultFeatures: Features = {
@@ -41,6 +37,13 @@ const renderWithProvider = (
     </FeaturesProvider>,
   )
 }
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => ({ data: { data: mockCodeBasedExtensionData } }),
+  })
+})
 
 describe('Moderation', () => {
   beforeEach(() => {

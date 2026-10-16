@@ -1,47 +1,44 @@
 'use client'
 
-import type { Collapsible as BaseCollapsibleNS } from '@base-ui/react/collapsible'
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
+import { focusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
-type CollapsibleProps = Omit<BaseCollapsibleNS.Root.Props, 'className'> & {
-  className?: string
-}
+type CollapsibleProps = BaseCollapsible.Root.Props
+type CollapsibleChangeEventReason = BaseCollapsible.Root.ChangeEventReason
+type CollapsibleChangeEventDetails = BaseCollapsible.Root.ChangeEventDetails
 function Collapsible({ className, ...props }: CollapsibleProps) {
-  return <BaseCollapsible.Root className={cn('flex min-w-0 flex-col', className)} {...props} />
-}
-
-type CollapsibleTriggerProps = Omit<BaseCollapsibleNS.Trigger.Props, 'className'> & {
-  className?: string
-}
-function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
   return (
-    <BaseCollapsible.Trigger
-      className={cn(
-        'group flex min-h-8 w-full touch-manipulation items-center justify-between gap-2 rounded-lg px-2.5 text-start system-sm-medium text-text-secondary outline-hidden select-none',
-        'hover:not-data-disabled:bg-components-panel-on-panel-item-bg-hover hover:not-data-disabled:text-text-primary',
-        'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        'data-panel-open:text-text-primary',
-        'data-disabled:cursor-not-allowed data-disabled:text-text-disabled data-disabled:hover:bg-transparent',
-        className,
-      )}
+    <BaseCollapsible.Root
+      className={(state) => cn('flex min-w-0 flex-col', resolveClassName(className, state))}
       {...props}
     />
   )
 }
 
-type CollapsiblePanelProps = Omit<BaseCollapsibleNS.Panel.Props, 'className'> & {
-  className?: string
+type CollapsibleTriggerProps = BaseCollapsible.Trigger.Props
+function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
+  return (
+    <BaseCollapsible.Trigger
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
 }
+
+type CollapsiblePanelProps = BaseCollapsible.Panel.Props
 function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps) {
   return (
     <BaseCollapsible.Panel
-      className={cn(
-        'h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-150 ease-out motion-reduce:transition-none',
-        "[&[hidden]:not([hidden='until-found'])]:hidden",
-        'data-ending-style:h-0 data-starting-style:h-0',
-        className,
-      )}
+      className={(state) =>
+        cn(
+          'h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-150 ease-out motion-reduce:transition-none',
+          "[&[hidden]:not([hidden='until-found'])]:hidden",
+          'data-ending-style:h-0 data-starting-style:h-0',
+          resolveClassName(className, state),
+        )
+      }
       {...props}
     />
   )
@@ -49,4 +46,10 @@ function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps) {
 
 export { Collapsible, CollapsiblePanel, CollapsibleTrigger }
 
-export type { CollapsiblePanelProps, CollapsibleProps, CollapsibleTriggerProps }
+export type {
+  CollapsibleChangeEventDetails,
+  CollapsibleChangeEventReason,
+  CollapsiblePanelProps,
+  CollapsibleProps,
+  CollapsibleTriggerProps,
+}

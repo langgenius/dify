@@ -4,24 +4,17 @@ from datetime import datetime
 from flask_restx import Resource
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_schema_models
-from extensions.ext_database import db
-from fields.base import ResponseModel
-from libs.helper import dump_response
-from libs.login import login_required
-from models.enums import AppTriggerStatus
-from models.model import App, AppMode
-from models.trigger import AppTrigger, WorkflowWebhookTrigger
-
-from .. import console_ns
-from ..app.wraps import get_app_model
-from ..wraps import (
+from controllers.common.session import with_session
+from controllers.console import console_ns
+from controllers.console.app.wraps import get_app_model
+from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     model_validate,
@@ -29,11 +22,17 @@ from ..wraps import (
     setup_required,
     with_current_tenant_id,
 )
+from fields.base import ResponseModel
+from libs.helper import dump_response
+from libs.login import login_required
+from models.enums import AppTriggerStatus
+from models.model import App, AppMode
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
 
 
-class Parser(BaseModel):
+class WebhookTriggerQuery(BaseModel):
     node_id: str
 
 
@@ -83,7 +82,7 @@ class WebhookTriggerResponse(ResponseModel):
 
 register_schema_models(
     console_ns,
-    Parser,
+    WebhookTriggerQuery,
     ParserEnable,
     WorkflowTriggerResponse,
     WorkflowTriggerListResponse,
@@ -95,34 +94,34 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.doc(params=query_params_from_model(Parser))
+    @console_ns.doc(params=query_params_from_model(WebhookTriggerQuery))
     @setup_required
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=AppMode.WORKFLOW)
-    @model_validate(Parser)
-    def get(self, req_data: Parser, app_model: App):
+    @model_validate(WebhookTriggerQuery)
+    def get(self, req_data: WebhookTriggerQuery, session: Session, app_model: App):
         """Get webhook trigger for a node"""
 
         node_id = req_data.node_id
 
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            # Get webhook trigger for this app and node
-            webhook_trigger = session.scalar(
-                select(WorkflowWebhookTrigger)
-                .where(
-                    WorkflowWebhookTrigger.app_id == app_model.id,
-                    WorkflowWebhookTrigger.node_id == node_id,
-                )
-                .limit(1)
+        # Get webhook trigger for this app and node
+        webhook_trigger = session.scalar(
+            select(WorkflowWebhookTrigger)
+            .where(
+                WorkflowWebhookTrigger.app_id == app_model.id,
+                WorkflowWebhookTrigger.node_id == node_id,
             )
+            .limit(1)
+        )
 
-            if not webhook_trigger:
-                raise NotFound("Webhook trigger not found for this node")
+        if not webhook_trigger:
+            raise NotFound("Webhook trigger not found for this node")
 
-            return dump_response(WebhookTriggerResponse, webhook_trigger)
+        return dump_response(WebhookTriggerResponse, webhook_trigger)
 
 
 @console_ns.route("/apps/<uuid:app_id>/triggers")
@@ -134,24 +133,24 @@ class AppTriggersApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
+    @with_session(write=False)
     @get_app_model(mode=AppMode.WORKFLOW)
-    def get(self, current_tenant_id: str, app_model: App):
+    def get(self, session: Session, current_tenant_id: str, app_model: App):
         """Get app triggers list"""
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            # Get all triggers for this app using select API
-            triggers = (
-                session.execute(
-                    select(AppTrigger)
-                    .where(
-                        AppTrigger.tenant_id == current_tenant_id,
-                        AppTrigger.app_id == app_model.id,
-                    )
-                    .order_by(AppTrigger.created_at.desc(), AppTrigger.id.desc())
+        # Get all triggers for this app using select API
+        triggers = (
+            session.execute(
+                select(AppTrigger)
+                .where(
+                    AppTrigger.tenant_id == current_tenant_id,
+                    AppTrigger.app_id == app_model.id,
                 )
-                .scalars()
-                .all()
+                .order_by(AppTrigger.created_at.desc(), AppTrigger.id.desc())
             )
+            .scalars()
+            .all()
+        )
 
         # Add computed icon field for each trigger
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
@@ -171,30 +170,30 @@ class AppTriggerEnableApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
     @with_current_tenant_id
+    @with_session
     @get_app_model(mode=AppMode.WORKFLOW)
     @model_validate(ParserEnable)
-    def post(self, req_data: ParserEnable, current_tenant_id: str, app_model: App):
+    def post(self, req_data: ParserEnable, session: Session, current_tenant_id: str, app_model: App):
         """Update app trigger (enable/disable)"""
 
         trigger_id = req_data.trigger_id
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
-            # Find the trigger using select
-            trigger = session.execute(
-                select(AppTrigger).where(
-                    AppTrigger.id == trigger_id,
-                    AppTrigger.tenant_id == current_tenant_id,
-                    AppTrigger.app_id == app_model.id,
-                )
-            ).scalar_one_or_none()
+        # Find the trigger using select
+        trigger = session.execute(
+            select(AppTrigger).where(
+                AppTrigger.id == trigger_id,
+                AppTrigger.tenant_id == current_tenant_id,
+                AppTrigger.app_id == app_model.id,
+            )
+        ).scalar_one_or_none()
 
-            if not trigger:
-                raise NotFound("Trigger not found")
+        if not trigger:
+            raise NotFound("Trigger not found")
 
-            # Update status based on enable_trigger boolean
-            trigger.status = AppTriggerStatus.ENABLED if req_data.enable_trigger else AppTriggerStatus.DISABLED
+        # Update status based on enable_trigger boolean
+        trigger.status = AppTriggerStatus.ENABLED if req_data.enable_trigger else AppTriggerStatus.DISABLED
 
         # Add computed icon field
         url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"

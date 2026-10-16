@@ -57,12 +57,24 @@ vi.mock('@/service/base', () => ({
   ssePost: (...args: unknown[]) => mocks.ssePost(...args),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (...args: unknown[]) => mocks.useGetDataSourceAuth(...args),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    // The credential query is keyed by `${pluginId}/${provider}`; report it as the two ids.
+    'auth.plugin.datasource.byProviderId.get': (options: { queryKey: unknown[] }) => {
+      const { input } = options.queryKey[1] as { input: { params: { provider_id: string } } }
+      const providerId = input.params.provider_id
+      const separator = providerId.lastIndexOf('/')
+      return mocks.useGetDataSourceAuth({
+        pluginId: providerId.slice(0, separator),
+        provider: providerId.slice(separator + 1),
+      })
+    },
+  })
+})
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {

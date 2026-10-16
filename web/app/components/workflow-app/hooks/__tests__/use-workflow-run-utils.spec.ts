@@ -1,6 +1,6 @@
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   applyRunningStateForMode,
   applyStoppedState,
@@ -31,7 +31,7 @@ vi.mock('@/service/base', () => ({
   handleStream: mockHandleStream,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
@@ -53,36 +53,32 @@ describe('useWorkflowRun utils', () => {
   })
 
   it('should resolve run history urls and run endpoints for workflow modes', () => {
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW })).toBe(
+    expect(buildRunHistoryUrl({ id: 'app-1', mode: 'workflow' as const })).toBe(
       '/apps/app-1/workflow-runs',
     )
-    expect(buildRunHistoryUrl({ id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT })).toBe(
+    expect(buildRunHistoryUrl({ id: 'app-1', mode: 'advanced-chat' as const })).toBe(
       '/apps/app-1/advanced-chat/workflow-runs',
     )
 
     expect(
       resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+        { id: 'app-1', mode: 'workflow' as const },
         TriggerType.UserInput,
         true,
       ),
     ).toBe('/apps/app-1/workflows/draft/run')
     expect(
       resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT },
+        { id: 'app-1', mode: 'advanced-chat' as const },
         TriggerType.UserInput,
         false,
       ),
     ).toBe('/apps/app-1/advanced-chat/workflows/draft/run')
     expect(
-      resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
-        TriggerType.Schedule,
-        true,
-      ),
+      resolveWorkflowRunUrl({ id: 'app-1', mode: 'workflow' as const }, TriggerType.Schedule, true),
     ).toBe('/apps/app-1/workflows/draft/trigger/run')
     expect(
-      resolveWorkflowRunUrl({ id: 'app-1', mode: AppModeEnum.WORKFLOW }, TriggerType.All, true),
+      resolveWorkflowRunUrl({ id: 'app-1', mode: 'workflow' as const }, TriggerType.All, true),
     ).toBe('/apps/app-1/workflows/draft/trigger/run-all')
   })
 
@@ -123,7 +119,7 @@ describe('useWorkflowRun utils', () => {
     expect(resolveWorkflowRunUrl(undefined, TriggerType.All, true)).toBe('')
     expect(
       resolveWorkflowRunUrl(
-        { id: 'app-1', mode: AppModeEnum.WORKFLOW },
+        { id: 'app-1', mode: 'workflow' as const },
         TriggerType.UserInput,
         false,
       ),
@@ -447,7 +443,7 @@ describe('useWorkflowRun utils', () => {
     expect(setWorkflowRunningData).not.toHaveBeenCalled()
   })
 
-  it('should handle Response and non-Response trigger debug exceptions correctly', async () => {
+  it('should report both HTTP and network trigger debug failures', async () => {
     const clearAbortController = vi.fn()
     const clearListeningStateSpy = vi.fn()
     const setAbortController = vi.fn()
@@ -455,9 +451,12 @@ describe('useWorkflowRun utils', () => {
     const controllerTarget: Record<string, unknown> = {}
 
     mockPost.mockRejectedValueOnce(
-      new Response(JSON.stringify({ error: 'Plugin failed' }), {
-        headers: { 'content-type': 'application/json' },
-      }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ error: 'Plugin failed' }), {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
     )
 
     await runTriggerDebug({
@@ -491,8 +490,11 @@ describe('useWorkflowRun utils', () => {
       setWorkflowRunningData,
     })
 
-    expect(clearAbortController).toHaveBeenCalledTimes(1)
-    expect(setWorkflowRunningData).toHaveBeenCalledTimes(1)
+    expect(mockToastError).toHaveBeenLastCalledWith('network failed')
+    expect(clearAbortController).toHaveBeenCalledTimes(2)
+    expect(setWorkflowRunningData).toHaveBeenLastCalledWith(
+      createFailedWorkflowState('network failed'),
+    )
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(2)
   })
 

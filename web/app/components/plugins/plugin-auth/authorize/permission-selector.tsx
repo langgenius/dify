@@ -1,5 +1,5 @@
 import type { CredentialPermission } from '@/models/permission'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { PermissionLevel } from '@/models/permission'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type PermissionSelectorProps = {
   disabled?: boolean
@@ -21,7 +22,7 @@ type PermissionSelectorProps = {
 }
 
 const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings', 'plugin'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -41,14 +42,17 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
         aria-label={`${permissionLabel}: ${selectedPermissionLabel}`}
         disabled={disabled}
         className={cn(
-          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt',
+          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
           'data-disabled:cursor-not-allowed! data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
         )}
       >
         {isOnlyMe && (
           <>
             <div className="flex size-6 shrink-0 items-center justify-center">
-              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
+              <Avatar size="xs" aria-hidden="true">
+                <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+              </Avatar>
             </div>
             <div className="grow p-1 system-sm-regular text-components-input-text-filled">
               {onlyMeLabel}
@@ -86,12 +90,10 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
             closeOnClick
             className="touch-manipulation"
           >
-            <Avatar
-              avatar={userProfile.avatar_url}
-              name={userProfile.name}
-              className="shrink-0"
-              size="sm"
-            />
+            <Avatar className="shrink-0" size="sm" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            </Avatar>
             <div className="min-w-0 grow px-1 system-md-regular text-text-secondary">
               {onlyMeLabel}
             </div>

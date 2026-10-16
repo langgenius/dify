@@ -5,14 +5,14 @@ description: Use only when the user explicitly requests a review or audit of fro
 
 # Frontend Code Review
 
-Review the requested scope for concrete, reproducible regressions. This skill owns the review phase and routes directly to its bundled rule packs. For a combined review-and-fix request, establish findings before applying implementation or testing guidance.
+Review the requested scope for concrete defects and violations of explicit project contracts. This skill owns review decisions; its references route to canonical rules without activating another skill's implementation workflow.
 
 ## Evidence First
 
 1. Establish the review scope from the requested files or current diff.
 2. Read the changed lines, their behavior owner, and the nearest scoped `AGENTS.md`.
 3. Trace public consumers, generated contracts, primitive APIs, or runtime configuration only when they decide correctness.
-4. Report only findings tied to an observable failure, violated contract, security boundary, or demonstrated maintenance risk.
+4. Report findings tied to an observable failure, violated contract, security boundary, or demonstrated maintenance risk. Explicit team conventions are contracts: establish their scope and exceptions, and do not invent user impact to justify a convention finding.
 
 ## Rule Routing
 
@@ -33,10 +33,10 @@ Read `packages/dify-ui/README.md`, `packages/dify-ui/AGENTS.md`, `packages/dify-
 
 - **P0**: security or privacy leak, data loss, production crash, or inaccessible critical workflow.
 - **P1**: user-visible regression, invalid API or authorization contract, hydration failure, or broken primary interaction.
-- **P2**: concrete maintainability, performance, test, or accessibility defect likely to cause incorrect behavior.
+- **P2**: concrete maintainability, performance, test, or accessibility defect, or a material violation of an explicit project contract.
 - **P3**: minor actionable cleanup; omit unless the user requested a thorough audit.
 
-Lead with findings ordered by severity. Include a tight file and line reference, the failing contract or reproduction path, impact, and a concrete fix direction. If there are no findings, say `No issues found.` and state any material verification gap. Do not add praise sections, speculative risks, or an unsolicited offer to implement fixes.
+Lead with findings ordered by severity. Include a tight file and line reference, the observed failure or applicable project rule, and a concrete fix direction. Explain the rule's applicability for convention findings; describe downstream consequences only when supported by evidence. When no findings remain, say so briefly and state any material verification gap. Do not add praise sections, speculative risks, or an unsolicited offer to implement fixes.
 
 [accessibility]: references/accessibility-ui.md
 [code-quality]: references/code-quality.md

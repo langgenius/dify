@@ -1,5 +1,39 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import ExternalDataToolModal from '../external-data-tool-modal'
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => ({
+      data: {
+        data: [
+          {
+            name: 'code-tool',
+            label: {
+              'en-US': 'Code Provider',
+              'zh-Hans': '代码提供方',
+            },
+            form_schema: [
+              {
+                variable: 'api_key',
+                default: 'default-key',
+                required: true,
+                type: 'text',
+                placeholder: '',
+                options: [],
+                label: {
+                  'en-US': 'API Key',
+                  'zh-Hans': '接口密钥',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }),
+  })
+})
 
 const mockToastError = vi.fn()
 
@@ -12,37 +46,11 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-  useLocale: () => mockLocale,
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({
-    data: {
-      data: [
-        {
-          name: 'code-tool',
-          label: {
-            'en-US': 'Code Provider',
-            'zh-Hans': '代码提供方',
-          },
-          form_schema: [
-            {
-              variable: 'api_key',
-              default: 'default-key',
-              required: true,
-              type: 'text',
-              placeholder: '',
-              options: [],
-              label: {
-                'en-US': 'API Key',
-                'zh-Hans': '接口密钥',
-              },
-            },
-          ],
-        },
-      ],
-    },
-  }),
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: () => mockLocale,
 }))
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -131,12 +139,12 @@ describe('ExternalDataToolModal', () => {
     fireEvent.click(screen.getByText('pick-extension'))
     fireEvent.click(screen.getByText('open-emoji-picker'))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    const emojiButton = document.querySelector('em-emoji')?.closest('button')
+    const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
     expect(emojiButton).toBeTruthy()
     fireEvent.click(emojiButton!)
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     fireEvent.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
 
@@ -148,7 +156,7 @@ describe('ExternalDataToolModal', () => {
           },
           enabled: true,
           icon: expect.any(String),
-          icon_background: '#E4FBCC',
+          icon_background: '#F3FEE7',
           label: 'Search',
           type: 'api',
           variable: 'search_api',
@@ -163,7 +171,7 @@ describe('ExternalDataToolModal', () => {
         },
         enabled: true,
         icon: expect.any(String),
-        icon_background: '#E4FBCC',
+        icon_background: '#F3FEE7',
         label: 'Search',
         type: 'api',
         variable: 'search_api',
@@ -228,3 +236,5 @@ describe('ExternalDataToolModal', () => {
     expect(mockOnCancel).toHaveBeenCalled()
   })
 })
+
+mockEmojiData()

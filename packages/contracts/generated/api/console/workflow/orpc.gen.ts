@@ -7,7 +7,7 @@ import {
   zGetWorkflowByWorkflowRunIdEventsResponse,
   zGetWorkflowByWorkflowRunIdPauseDetailsPath,
   zGetWorkflowByWorkflowRunIdPauseDetailsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get workflow execution events stream after resume

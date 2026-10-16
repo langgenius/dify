@@ -1,6 +1,8 @@
-import { renderHook } from '@testing-library/react'
+import { ORPCError } from '@orpc/client'
+import { act, renderHook } from '@testing-library/react'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { FlowType } from '@/types/common'
+import { toast } from '@/app/notifications'
+import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
 
 const mockWorkflowState = {
@@ -16,7 +18,7 @@ const mockWorkflowState = {
   setListeningTriggerIsAll: vi.fn(),
   setShowVariableInspectPanel: vi.fn(),
 }
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -42,7 +44,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getBeforeNodesInSameBranch: () => [
         {
@@ -91,26 +93,51 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidLastRun: () => vi.fn(),
+  useInvalidateLastRun: () => vi.fn(),
 }))
 
 vi.mock('@/service/workflow', () => ({
   fetchNodeInspectVars: vi.fn(),
-  getIterationSingleNodeRunUrl: vi.fn(),
-  getLoopSingleNodeRunUrl: vi.fn(),
   singleNodeRun: vi.fn(),
 }))
 
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleClient: {
+      apps: {
+        byAppId: {
+          workflows: { draft: { nodes: { byNodeId: { trigger: { run: { post: vi.fn() } } } } } },
+        },
+      },
+    },
+    consoleQuery: {
+      workspaces: {
+        current: {
+          tools: {
+            builtin: { get: consoleOperationStub('workspaces.current.tools.builtin.get') },
+            api: { get: consoleOperationStub('workspaces.current.tools.api.get') },
+            workflow: { get: consoleOperationStub('workspaces.current.tools.workflow.get') },
+            mcp: { get: consoleOperationStub('workspaces.current.tools.mcp.get') },
+          },
+        },
+      },
+    },
+  }
+})
+
 vi.mock('@/service/base', () => ({
-  post: vi.fn(),
   ssePost: vi.fn(),
 }))
 
@@ -180,14 +207,14 @@ vi.mock('@/app/components/workflow/nodes/variable-assigner/default', () => ({
   default: {},
 }))
 
-const renderUseOneStepRun = () =>
+const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
   renderHook(() =>
     useOneStepRun({
       id: 'if-else-node',
-      flowId: 'app-id',
-      flowType: FlowType.appFlow,
+      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+
       data: {
-        type: BlockEnum.IfElse,
+        type,
         title: 'IF/ELSE',
         desc: '',
       },
@@ -239,4 +266,80 @@ describe('useOneStepRun single-run input vars', () => {
       },
     ])
   })
+
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'runs %s with the app identity and supports aborting polling requests',
+    async (type) => {
+      const run = vi.mocked(
+        consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+      )
+      run.mockResolvedValueOnce({ id: 'execution-1', status: 'succeeded' })
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+      expect(run.mock.calls[0]?.[0]).toEqual({
+        params: { app_id: 'app-id', node_id: 'if-else-node' },
+      })
+      if (type !== BlockEnum.TriggerSchedule)
+        expect(run.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'aborts the pending %s request when listening stops',
+    async (type) => {
+      const run = vi.mocked(
+        consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+      )
+      run.mockImplementationOnce(
+        (_input, options) =>
+          new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener(
+              'abort',
+              () => reject(new DOMException('Aborted', 'AbortError')),
+              { once: true },
+            )
+          }),
+      )
+      const { result } = renderUseOneStepRun(type)
+      await act(async () => {
+        const pendingRun = result.current.handleRun({})
+        result.current.handleStop()
+        expect(await pendingRun).toBe(false)
+      })
+      expect(run.mock.calls[0]?.[1]?.signal?.aborted).toBe(true)
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
+
+  it('preserves the plugin request error and metadata when reporting a failed run', async () => {
+    const error = new ORPCError('forbidden', {
+      status: 403,
+      message: 'Plugin access denied',
+      data: { reason: 'PLUGIN_ACCESS_DENIED' },
+      cause: { headers: new Headers({ 'X-Request-Id': 'plugin-run-1' }) },
+    })
+    vi.mocked(
+      consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post,
+    ).mockRejectedValueOnce(error)
+    const reportError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { result } = renderUseOneStepRun(BlockEnum.TriggerPlugin)
+
+    await act(async () => {
+      expect(await result.current.handleRun({})).toBe(false)
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('Plugin access denied')
+    expect(reportError).toHaveBeenCalledWith(error)
+    expect(reportError.mock.calls[0]?.[0]).toBe(error)
+  })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

@@ -6,6 +6,7 @@ import type {
 } from '../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { PluginCategoryEnum } from '../../../types'
 import {
   convertRepoToUrl,
@@ -84,7 +85,7 @@ const createUpdatePayload = (
 
 // Mock external dependencies
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign((props: { type: string; message: string }) => mockNotify(props), {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -290,11 +291,12 @@ describe('InstallFromGitHub', () => {
   // Rendering Tests
   // ================================
   describe('Rendering', () => {
-    it('should render modal with correct initial state for new installation', () => {
+    it('should render and focus the URL for a new installation', async () => {
       render(<InstallFromGitHub {...defaultProps} />)
 
       expect(getRepoUrlInput()).toBeInTheDocument()
       expect(getRepoUrlInput()).toHaveValue('')
+      await waitFor(() => expect(getRepoUrlInput()).toHaveFocus())
     })
 
     it('should render modal with selectPackage step when updatePayload is provided', () => {
@@ -559,6 +561,7 @@ describe('InstallFromGitHub', () => {
       await waitFor(() => {
         expect(getRepoUrlInput()).toBeInTheDocument()
       })
+      expect(getRepoUrlInput()).not.toHaveFocus()
     })
 
     it('should go back from readyToInstall to selectPackage', async () => {
@@ -1120,9 +1123,9 @@ describe('InstallFromGitHub', () => {
   // ================================
   describe('Error Handling', () => {
     it('should handle API error with response message', async () => {
-      mockGetIconUrl.mockRejectedValue({
-        response: { message: 'API Error Message' },
-      })
+      mockGetIconUrl.mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { message: 'API Error Message' }),
+      )
 
       render(<InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />)
 
@@ -1145,9 +1148,7 @@ describe('InstallFromGitHub', () => {
       await waitFor(() => {
         expect(screen.getByTestId('installed-step')).toBeInTheDocument()
         expect(screen.getByTestId('is-failed')).toHaveTextContent('true')
-        expect(screen.getByTestId('error-msg')).toHaveTextContent(
-          'plugin.installModal.installFailedDesc',
-        )
+        expect(screen.getByTestId('error-msg')).toHaveTextContent('Generic error')
       })
     })
   })

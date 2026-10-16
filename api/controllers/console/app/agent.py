@@ -4,13 +4,13 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
+from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     model_validate,
     rbac_permission_required,
@@ -48,11 +48,11 @@ class AgentToolCallResponse(ResponseModel):
     error: str | None = None
     time_cost: float | int
     tool_name: str
-    tool_label: str
+    tool_label: str | dict[str, str] = Field(description="Tool name or its i18n labels keyed by locale")
     tool_input: dict[str, Any]
     tool_output: dict[str, Any]
     tool_parameters: dict[str, Any]
-    tool_icon: Any = Field(default=None)
+    tool_icon: str | dict[str, str] | None = Field(default=None, description="Icon URL or emoji icon")
 
 
 class AgentIterationLogResponse(ResponseModel):
@@ -84,7 +84,7 @@ class AgentLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     @with_session(write=False)
     @get_app_model(mode=[AppMode.AGENT_CHAT])
     @model_validate(AgentLogQuery)

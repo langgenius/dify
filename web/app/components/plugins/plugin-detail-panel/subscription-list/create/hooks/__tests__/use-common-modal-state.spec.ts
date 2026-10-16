@@ -93,14 +93,14 @@ vi.mock('@/service/use-triggers', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockToastNotify({ type: 'success', message }),
     error: (message: string) => mockToastNotify({ type: 'error', message }),
   },
 }))
 
-const mockParsePluginErrorMessage = vi.fn().mockResolvedValue(null)
+const mockParsePluginErrorMessage = vi.fn().mockReturnValue(null)
 vi.mock('@/utils/error-parser', () => ({
   parsePluginErrorMessage: (...args: unknown[]) => mockParsePluginErrorMessage(...args),
 }))

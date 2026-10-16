@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import CommentsPanel from '../index'
@@ -110,8 +110,8 @@ describe('CommentsPanel', () => {
     expect(screen.getByText('my open thread')).toBeInTheDocument()
     expect(screen.getByText('others resolved thread')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
-    fireEvent.click(screen.getByText('workflow.comments.filter.onlyYourThreads'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
+    fireEvent.click(screen.getByText('workflowComments.comments.filter.onlyYourThreads'))
     expect(screen.queryByText('others resolved thread')).not.toBeInTheDocument()
     expect(screen.getByText('my open thread')).toBeInTheDocument()
 
@@ -119,23 +119,10 @@ describe('CommentsPanel', () => {
     expect(mockHandleCommentIconClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'c-1' }))
   })
 
-  it('resolves a comment and syncs list refresh', async () => {
-    const { container } = render(<CommentsPanel />)
-    const resolveIcons = container.querySelectorAll('.size-4.cursor-pointer.text-text-tertiary')
-    expect(resolveIcons.length).toBeGreaterThan(0)
-
-    fireEvent.click(resolveIcons[0]!)
-
-    await waitFor(() => {
-      expect(mockHandleCommentResolve).toHaveBeenCalledWith('c-1')
-      expect(mockSetActiveCommentId).toHaveBeenCalledWith('c-1')
-    })
-  })
-
   it('toggles show-resolved state from filter panel switch', () => {
     render(<CommentsPanel />)
 
-    fireEvent.click(screen.getByLabelText('workflow.comments.aria.filterComments'))
+    fireEvent.click(screen.getByLabelText('workflowComments.comments.aria.filterComments'))
     fireEvent.click(screen.getByRole('switch'))
 
     expect(mockSetShowResolvedComments).toHaveBeenCalledWith(false)

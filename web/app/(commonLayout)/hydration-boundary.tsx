@@ -1,35 +1,17 @@
 import type { ReactNode } from 'react'
+import { ORPCError } from '@orpc/client'
 import { dehydrate, HydrationBoundary, noop } from '@tanstack/react-query'
 import { getQueryClient } from '@/app/get-query-client'
 import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
-import {
-  getServerConsoleClientContext,
-  resolveServerConsoleApiUrl,
-  serverConsoleQuery,
-} from '@/service/server'
+import { consoleQuery } from '@/service/console'
+import { resolveServerConsoleApiUrl } from '@/service/console/server'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const ACCOUNT_PROFILE_PATH = '/account/profile'
 const AUTH_REFRESH_PATH = '/auth/refresh'
-
-type ConsoleErrorPayload = {
-  code?: string
-}
-
-const isConsoleErrorPayload = (value: unknown): value is ConsoleErrorPayload =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-
-const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPayload | null> => {
-  try {
-    const payload: unknown = await error.clone().json()
-    return isConsoleErrorPayload(payload) ? payload : null
-  } catch {
-    return null
-  }
-}
 
 const getCurrentPath = async () => {
   const requestHeaders = await headers()
@@ -44,11 +26,10 @@ const redirectToAuthRefresh = async () => {
 }
 
 const handleProfileError = async (error: unknown) => {
-  if (!(error instanceof Response)) throw error
+  if (!(error instanceof ORPCError)) throw error
 
-  const errorData = await parseConsoleErrorPayload(error)
-  if (errorData?.code === 'not_setup') redirect('/install')
-  if (errorData?.code === 'not_init_validated') redirect('/init')
+  if (error.code === 'not_setup') redirect('/install')
+  if (error.code === 'not_init_validated') redirect('/init')
   if (error.status === 401) await redirectToAuthRefresh()
 
   throw error
@@ -60,22 +41,25 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
 
   if (accountProfileUrl) {
     try {
-      const context = await getServerConsoleClientContext()
-
       await Promise.all([
         queryClient.query(serverUserProfileQueryOptions()),
         queryClient
           .query(
-            serverConsoleQuery.workspaces.current.summary.get.queryOptions({
-              context,
+            consoleQuery.workspaces.current.summary.get.queryOptions({
               retry: false,
             }),
           )
           .catch(noop),
         queryClient
           .query(
-            serverConsoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions({
-              context,
+            consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions({
+              retry: false,
+            }),
+          )
+          .catch(noop),
+        queryClient
+          .query(
+            consoleQuery.features.get.queryOptions({
               retry: false,
             }),
           )

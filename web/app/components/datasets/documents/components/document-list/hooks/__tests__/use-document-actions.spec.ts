@@ -17,17 +17,28 @@ const mockRetryIndex = vi.fn()
 const mockDownloadZip = vi.fn()
 let mockIsDownloadingZip = false
 
+const statusMocks: Record<string, (input: unknown) => unknown> = {
+  archive: (input) => mockArchive(input),
+  enable: (input) => mockEnable(input),
+  disable: (input) => mockDisable(input),
+}
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.status.byAction.batch.patch': () => ({
+      mutateAsync: (input: { params: { action: string } }) =>
+        statusMocks[input.params.action]!(input),
+    }),
+    'datasets.byDatasetId.documents.generateSummary.post': () => ({ mutateAsync: mockSummary }),
+    'datasets.byDatasetId.documents.delete': () => ({ mutateAsync: mockDelete }),
+    'datasets.byDatasetId.retry.post': () => ({ mutateAsync: mockRetryIndex }),
+  })
+})
 vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentArchive: () => ({ mutateAsync: mockArchive }),
-  useDocumentSummary: () => ({ mutateAsync: mockSummary }),
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-  useDocumentBatchRetryIndex: () => ({ mutateAsync: mockRetryIndex }),
   useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -71,8 +82,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockArchive).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1', action: 'archive' },
+        query: { document_id: ['doc-1', 'doc-2'] },
       })
       expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
@@ -87,8 +98,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockEnable).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1', action: 'enable' },
+        query: { document_id: ['doc-1', 'doc-2'] },
       })
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
     })
@@ -162,8 +173,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockRetryIndex).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1' },
+        body: { document_ids: ['doc-1', 'doc-2'] },
       })
       expect(defaultOptions.onClearSelection).toHaveBeenCalled()
       expect(defaultOptions.onUpdate).toHaveBeenCalled()

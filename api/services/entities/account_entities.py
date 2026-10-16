@@ -1,4 +1,4 @@
-"""Framework-neutral contracts for Console account use cases."""
+"""Framework-neutral contracts shared by account use cases."""
 
 from __future__ import annotations
 
@@ -47,6 +47,15 @@ class AccountProfileChanges:
 
 @dataclass(frozen=True, slots=True)
 class AccountCredentials:
+    password_hash: str | None
+    password_salt: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountAuthenticationSnapshot:
+    id: str
+    email: str
+    status: str
     password_hash: str | None
     password_salt: str | None
 

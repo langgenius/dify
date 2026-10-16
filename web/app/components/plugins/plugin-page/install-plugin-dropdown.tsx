@@ -7,6 +7,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuGroupLabel,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -32,7 +34,6 @@ type Props = Readonly<{
   rootClassName?: string
   triggerClassName?: string
   triggerLabel?: string
-  triggerOpenClassName?: string
   triggerVariant?: ButtonProps['variant']
   installContextCategory?: PluginCategoryEnum
   showTriggerArrow?: boolean
@@ -51,12 +52,11 @@ const InstallPluginDropdown = ({
   rootClassName,
   triggerClassName,
   triggerLabel,
-  triggerOpenClassName = 'bg-state-base-hover',
   triggerVariant,
   installContextCategory,
   showTriggerArrow = true,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
@@ -160,18 +160,12 @@ const InstallPluginDropdown = ({
           accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
         />
         <DropdownMenuTrigger
-          render={(props, state) => (
+          render={
             <Button
-              {...props}
               variant={triggerVariant}
               disabled={disabled}
               title={buttonLabel}
-              className={cn(
-                'size-full p-2',
-                triggerClassName,
-                state.open && triggerOpenClassName,
-                props.className,
-              )}
+              className={cn('size-full p-2 data-popup-open:bg-state-base-hover', triggerClassName)}
             >
               <RiAddCircleFill className="size-4 shrink-0" />
               <span className={cn(!showTriggerArrow && 'min-w-0 flex-1 text-left')}>
@@ -179,28 +173,26 @@ const InstallPluginDropdown = ({
               </span>
               {showTriggerArrow && <RiArrowDownSLine className="size-4" />}
             </Button>
-          )}
+          }
         />
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={4}
           className={cn('w-50 pb-2', popupClassName)}
         >
-          <span className="flex items-start self-stretch px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
-            {t(($) => $.installFrom, { ns: 'plugin' })}
-          </span>
-          {installMethods.map(({ icon: Icon, text, action }) => (
-            <DropdownMenuItem
-              key={action}
-              className="gap-1 px-2"
-              onClick={() => handleInstallMethodSelect(action)}
-            >
-              <div className="flex items-center gap-1">
-                <Icon className="size-4 text-text-tertiary" />
-                <span className="px-1 system-md-regular text-text-secondary">{text}</span>
-              </div>
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            <DropdownMenuGroupLabel>
+              {t(($) => $.installFrom, { ns: 'plugin' })}
+            </DropdownMenuGroupLabel>
+            {installMethods.map(({ icon: Icon, text, action }) => (
+              <DropdownMenuItem key={action} onClick={() => handleInstallMethodSelect(action)}>
+                <div className="flex items-center gap-1">
+                  <Icon className="size-4 text-text-tertiary" />
+                  <span className="px-1 system-md-regular text-text-secondary">{text}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </div>
       {selectedAction === 'github' && (

@@ -7,13 +7,12 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.wraps import enforce_rbac_access
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     model_validate,
 )
 from extensions.ext_application_services import application_services
@@ -102,12 +101,10 @@ def _enforce_snippet_tag_rbac_if_needed(tag_type: TagType | str | None, context:
     if not dify_config.RBAC_ENABLED:
         return
 
-    enforce_rbac_access(
+    enforce_rbac_checks(
         tenant_id=context.active_workspace_id,
         account_id=context.account_id,
-        resource_type=RBACResourceScope.WORKSPACE,
-        scene=RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
-        resource_required=False,
+        checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
     )
 
 

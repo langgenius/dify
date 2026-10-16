@@ -1,12 +1,17 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
-import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
+import type { IndexingStatusResponse } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasourceType } from '@/models/pipeline'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import EmbeddingProcess from '../index'
 
@@ -29,14 +34,8 @@ vi.mock('@/next/link', () => ({
 }))
 
 // Mock provider context
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: CloudPlan = 'sandbox'
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableBilling: mockEnableBilling,
-    plan: { type: mockPlanType },
-  }),
-}))
 
 vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
   default: ({
@@ -54,26 +53,23 @@ vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => (
   ),
 }))
 
-// Mock useIndexingStatusBatch hook
+// Mock the batch indexing status request
 let mockFetchIndexingStatus: Mock
 let mockIndexingStatusData: IndexingStatusResponse[] = []
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useIndexingStatusBatch: () => ({
-    mutateAsync: mockFetchIndexingStatus,
-  }),
-  useProcessRule: () => ({
-    data: {
-      mode: 'custom',
-      rules: { parent_mode: 'paragraph' },
-    },
-  }),
-}))
-
-// Mock useInvalidDocumentList hook
-const mockInvalidDocumentList = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.batch.byBatch.indexingStatus.get': () => ({
+      mutateAsync: (...args: unknown[]) => mockFetchIndexingStatus(...args),
+    }),
+    'datasets.processRule.get': () => ({
+      data: {
+        mode: 'custom',
+        rules: { parent_mode: 'paragraph' },
+      },
+    }),
+  })
+})
 
 // Mock useDatasetApiAccessUrl hook
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -94,9 +90,9 @@ const createMockDocument = (
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
   data_source_info: {},
-  enable: true,
+  enabled: true,
   error: '',
-  indexing_status: 'waiting' as DocumentIndexingStatus,
+  indexing_status: 'waiting' as IndexingStatusResponse['indexing_status'],
   position: 0,
   ...overrides,
 })
@@ -108,7 +104,7 @@ const createMockIndexingStatus = (
   overrides: Partial<IndexingStatusResponse> = {},
 ): IndexingStatusResponse => ({
   id: `doc-${Math.random().toString(36).slice(2, 9)}`,
-  indexing_status: 'waiting' as DocumentIndexingStatus,
+  indexing_status: 'waiting' as IndexingStatusResponse['indexing_status'],
   processing_started_at: Date.now(),
   parsing_completed_at: 0,
   cleaning_completed_at: 0,
@@ -142,8 +138,23 @@ const createDefaultProps = (
   ...overrides,
 })
 
+function render(ui: ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}
+
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     vi.useFakeTimers({ shouldAdvanceTime: true })
 
@@ -151,7 +162,7 @@ describe('EmbeddingProcess', () => {
     documentIdCounter = 0
 
     // Reset mock states
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlanType = 'sandbox'
     mockIndexingStatusData = []
 
@@ -192,7 +203,7 @@ describe('EmbeddingProcess', () => {
   describe('Billing and Upgrade Banner', () => {
     // Tests for billing-related UI
     it('should not show upgrade banner when billing is disabled', () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const props = createDefaultProps()
 
       render(<EmbeddingProcess {...props} />)
@@ -203,7 +214,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner when billing is enabled and plan is not team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'sandbox'
       const props = createDefaultProps()
 
@@ -215,7 +226,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not show upgrade banner when plan is team', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const props = createDefaultProps()
 
@@ -227,7 +238,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should show upgrade banner for professional plan', () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'professional'
       const props = createDefaultProps()
 
@@ -379,7 +390,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not suggest an upgrade to team users', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'team'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
@@ -651,7 +662,9 @@ describe('EmbeddingProcess', () => {
       expect(link).toHaveAttribute('href', '/datasets/my-dataset-123/documents')
       fireEvent.click(link)
 
-      expect(mockInvalidDocumentList).toHaveBeenCalled()
+      expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+        queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+      })
     })
   })
 
@@ -836,23 +849,10 @@ describe('EmbeddingProcess', () => {
 
   describe('Edge Cases', () => {
     // Tests for boundary conditions
-    it('should throw error when documents array is empty', () => {
-      // The component accesses documents[0].id for useProcessRule (line 81-82),
-      // which throws TypeError when documents array is empty.
-      // This test documents this known limitation.
+    it('should render without documents', () => {
       const props = createDefaultProps({ documents: [] })
 
-      // Suppress console errors for expected error
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(Function.prototype as () => void)
-
-      // Act & Assert - explicitly assert the error behavior
-      expect(() => {
-        render(<EmbeddingProcess {...props} />)
-      }).toThrow(TypeError)
-
-      consoleError.mockRestore()
+      expect(() => render(<EmbeddingProcess {...props} />)).not.toThrow()
     })
 
     it('should handle empty indexing status response', async () => {
@@ -897,7 +897,7 @@ describe('EmbeddingProcess', () => {
       mockIndexingStatusData = [
         createMockIndexingStatus({
           id: 'doc-1',
-          indexing_status: undefined as unknown as DocumentIndexingStatus,
+          indexing_status: undefined as unknown as IndexingStatusResponse['indexing_status'],
         }),
       ]
       const props = createDefaultProps({ documents: [doc1] })
@@ -1052,7 +1052,7 @@ describe('EmbeddingProcess', () => {
   describe('Priority Label', () => {
     // Tests for priority label display
     it('should show priority label when billing is enabled', async () => {
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlanType = 'sandbox'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
@@ -1071,7 +1071,7 @@ describe('EmbeddingProcess', () => {
     })
 
     it('should not show priority label when billing is disabled', async () => {
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const doc1 = createMockDocument({ id: 'doc-1' })
       mockIndexingStatusData = [
         createMockIndexingStatus({ id: 'doc-1', indexing_status: 'indexing' }),

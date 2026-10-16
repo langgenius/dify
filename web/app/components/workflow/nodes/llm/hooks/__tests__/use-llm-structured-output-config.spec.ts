@@ -1,18 +1,15 @@
+import type { AvailableModelListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { MutableRefObject } from 'react'
 import type { LLMNodeType } from '../../types'
 import { act, renderHook } from '@testing-library/react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { Type } from '../../types'
 import useLLMStructuredOutputConfig from '../use-llm-structured-output-config'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: vi.fn(),
-}))
-
-const mockUseModelList = vi.mocked(useModelList)
+const mockModelListQuery = vi.hoisted(() =>
+  vi.fn<() => { data: AvailableModelListResponse['data'] }>(),
+)
 
 const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   type: BlockEnum.LLM,
@@ -21,7 +18,7 @@ const createPayload = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: [],
@@ -41,19 +38,27 @@ describe('use-llm-structured-output-config', () => {
   })
 
   it('detects supported models and updates structured output state', () => {
-    mockUseModelList.mockReturnValue({
+    mockModelListQuery.mockReturnValue({
       data: [
         {
           provider: 'openai',
+          tenant_id: 'test-workspace',
+          label: { en_US: 'OpenAI' },
+          status: 'active',
           models: [
             {
               model: 'gpt-4o',
+              label: { en_US: 'gpt-4o' },
+              model_type: 'llm',
+              fetch_from: 'predefined-model',
+              status: 'active',
+              model_properties: {},
               features: [ModelFeatureEnum.StructuredOutput],
             },
           ],
         },
       ],
-    } as ReturnType<typeof useModelList>)
+    })
 
     const inputRef = {
       current: createPayload(),
@@ -136,21 +141,27 @@ describe('use-llm-structured-output-config', () => {
   })
 
   it('returns undefined support when the model is missing from the list', () => {
-    mockUseModelList.mockReturnValue({
+    mockModelListQuery.mockReturnValue({
       data: [
         {
           provider: 'anthropic',
+          tenant_id: 'test-workspace',
+          label: { en_US: 'Anthropic' },
+          status: 'active',
           models: [
             {
               model: 'claude',
+              label: { en_US: 'claude' },
+              model_type: 'llm',
+              fetch_from: 'predefined-model',
+              status: 'active',
+              model_properties: {},
               features: [],
             },
           ],
         },
       ],
-      mutate: vi.fn(),
-      isLoading: false,
-    } as unknown as ReturnType<typeof useModelList>)
+    })
 
     const { result } = renderHook(() =>
       useLLMStructuredOutputConfig({
@@ -164,4 +175,9 @@ describe('use-llm-structured-output-config', () => {
 
     expect(result.current.isModelSupportStructuredOutput).toBeUndefined()
   })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return { ...actual, useQuery: mockModelListQuery }
 })

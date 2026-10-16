@@ -1,74 +1,38 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedFeatures,
+} from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import DuplicateAppModal from '../index'
 
-const { mockProviderContext, toastErrorMock } = vi.hoisted(() => ({
-  mockProviderContext: {
-    plan: {
-      usage: { buildApps: 0 },
-      total: { buildApps: 1 },
-    },
-    enableBilling: true,
-  },
+mockEmojiData()
+
+const { mockAppQuota, toastErrorMock } = vi.hoisted(() => ({
+  mockAppQuota: { size: 0, limit: 1 },
   toastErrorMock: vi.fn(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockProviderContext,
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (...args: unknown[]) => toastErrorMock(...args),
   },
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: () => <span>app-icon</span>,
 }))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  default: ({
-    onOpenChange,
-    onSelect,
-  }: {
-    onOpenChange: (open: boolean) => void
-    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
-  }) => {
-    let selectedBackground = '#FFEAD5'
-    return (
-      <div>
-        <input placeholder="Search emojis..." />
-        <button type="button" onClick={() => {}}>
-          <em-emoji />
-        </button>
-        <button
-          type="button"
-          aria-label="#E4FBCC"
-          onClick={() => {
-            selectedBackground = '#E4FBCC'
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => {
-            onSelect({ type: 'emoji', icon: '🤖', background: selectedBackground })
-            onOpenChange(false)
-          }}
-        >
-          iconPicker.ok
-        </button>
-        <button type="button" onClick={() => onOpenChange(false)}>
-          iconPicker.cancel
-        </button>
-      </div>
-    )
-  },
-}))
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: mockAppQuota },
+  })
+}
 
 describe('DuplicateAppModal', () => {
   const getIconButton = () =>
@@ -78,9 +42,33 @@ describe('DuplicateAppModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockProviderContext.plan.usage.buildApps = 0
-    mockProviderContext.plan.total.buildApps = 1
+    mockAppQuota.size = 0
+    mockAppQuota.limit = 1
   })
+
+  it.each([
+    { icon_type: null, icon: null, icon_background: null },
+    { icon_type: 'link' as const, icon: 'https://example.com/icon.png', icon_background: null },
+  ])(
+    'preserves the source icon when duplicating without a new selection: %j',
+    async (iconProps) => {
+      const user = userEvent.setup()
+      const onConfirm = vi.fn().mockResolvedValue(undefined)
+      render(
+        <DuplicateAppModal
+          appName="Copy"
+          {...iconProps}
+          show
+          onConfirm={onConfirm}
+          onHide={vi.fn()}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
+
+      expect(onConfirm).toHaveBeenCalledWith({ name: 'Copy', ...iconProps })
+    },
+  )
 
   it('should render a named dialog', () => {
     render(
@@ -130,7 +118,7 @@ describe('DuplicateAppModal', () => {
     expect(onHide).not.toHaveBeenCalled()
   })
 
-  it('should update the selected icon before confirming the duplicate', async () => {
+  it('keeps the picker independent of the name field and submits only its confirmed icon', async () => {
     const onConfirm = vi.fn()
     const onHide = vi.fn()
     const user = userEvent.setup()
@@ -149,20 +137,22 @@ describe('DuplicateAppModal', () => {
 
     await user.click(getIconButton())
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    await user.click(screen.getByRole('button', { name: '#E4FBCC', hidden: true }))
+    await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     await user.click(screen.getByRole('button', { name: /iconPicker\.ok/, hidden: true }))
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
+    expect(onConfirm).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })).toHaveValue('Demo App')
     await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
     expect(onConfirm).toHaveBeenCalledWith({
       name: 'Demo App',
       icon_type: 'emoji',
       icon: '🤖',
-      icon_background: '#E4FBCC',
+      icon_background: '#F3FEE7',
     })
     expect(onHide).toHaveBeenCalled()
   })
@@ -212,7 +202,7 @@ describe('DuplicateAppModal', () => {
     const onConfirm = vi.fn()
     const onHide = vi.fn()
     const user = userEvent.setup()
-    mockProviderContext.plan.usage.buildApps = 1
+    mockAppQuota.size = 1
 
     render(
       <DuplicateAppModal
@@ -249,34 +239,46 @@ describe('DuplicateAppModal', () => {
     )
 
     await user.click(getIconButton())
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-    })
-    const emojiButton = document.querySelector('em-emoji')?.closest('button')
-    expect(emojiButton).toBeTruthy()
-    await user.click(emojiButton!)
-    await user.click(screen.getByRole('button', { name: '#E4FBCC', hidden: true }))
-    await user.click(screen.getByRole('button', { name: /iconPicker\.ok/, hidden: true }))
-    await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-    })
-    await user.click(getIconButton())
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-    })
-    await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/, hidden: true }))
-    await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-    })
+    const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(picker).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
     expect(onConfirm).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Image App',
-        icon_type: 'emoji',
-        icon: expect.any(String),
-        icon_background: '#E4FBCC',
+        icon_type: 'image',
+        icon: 'original-file',
       }),
     )
   })
+})
+
+it('waits for the real Cloud quota and allows an unlimited quota without an upgrade notice', async () => {
+  const queryClient = createConsoleQueryClient()
+  void queryClient.query({
+    ...consoleQuery.features.get.queryOptions(),
+    queryFn: () => new Promise(() => {}),
+  })
+  const onConfirm = vi.fn()
+  renderWithConsoleQuery(
+    <DuplicateAppModal
+      appName="Existing"
+      icon_type="emoji"
+      icon="🤖"
+      show
+      onConfirm={onConfirm}
+      onHide={vi.fn()}
+    />,
+    { queryClient, systemFeatures: { deployment_edition: 'CLOUD' } },
+  )
+  const button = screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ })
+  expect(button).toBeDisabled()
+  expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
+  await act(async () => {
+    seedFeatures(queryClient, { apps: { size: 100, limit: 0 } })
+  })
+  await waitFor(() => expect(button).toBeEnabled())
+  await userEvent.setup().click(button)
+  expect(onConfirm).toHaveBeenCalledOnce()
 })

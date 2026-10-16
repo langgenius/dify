@@ -1,4 +1,5 @@
 'use client'
+
 import type {
   Collection,
   CustomCollectionBackend,
@@ -9,11 +10,11 @@ import type {
 import type { WorkflowToolDrawerPayload } from '@/app/components/tools/workflow-tool'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -27,14 +28,15 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { useLocale } from '#i18n'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
@@ -43,17 +45,15 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { getLanguage } from '@/i18n-config/language'
+import { getPluginLanguage } from '@/i18n/metadata'
+import { consoleQuery } from '@/service/console'
 import {
   deleteWorkflowTool,
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
-  fetchModelToolList,
   fetchWorkflowToolDetail,
   removeBuiltInToolCredential,
   removeCustomCollection,
@@ -61,8 +61,6 @@ import {
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
-import { modelProviderDetailsQueryOptions } from '@/service/use-common'
-import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import ToolItem from './tool-item'
@@ -74,9 +72,9 @@ type Props = Readonly<{
 }>
 
 const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin', 'tools'])
   const locale = useLocale()
-  const language = getLanguage(locale)
+  const language = getPluginLanguage(locale)
 
   const needAuth = collection.allow_delete || collection.type === CollectionType.model
   const isAuthed = collection.is_team_authorization
@@ -86,26 +84,28 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
   const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
-  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
-  const { modelProviders: providers } = useProviderContext()
+  const { data: modelProvider } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) => response.data.find((provider) => provider.provider === collection?.id),
+    }),
+  )
   const queryClient = useQueryClient()
   const showSettingAuthModal = async () => {
     if (!canOpenCredentialSettings) return
 
     if (isModel) {
-      const summary = providers.find((item) => item.provider === collection?.id)
-      if (!summary) return
+      if (!modelProvider) return
       try {
         const response = await queryClient.query({
           ...modelProviderDetailsQueryOptions(),
           staleTime: 'static',
         })
-        const provider = response.data.find((item) => item.provider === summary.provider)
+        const provider = response.data.find((item) => item.provider === modelProvider.provider)
         if (!provider) return
         setShowModelModal({
           payload: {
@@ -155,7 +155,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
@@ -163,7 +162,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
 
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
@@ -193,7 +191,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
 
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const updateWorkflowToolProvider = async (
@@ -206,10 +203,11 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     await saveWorkflowToolProvider(data)
-    invalidateAllWorkflowTools()
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
     onRefreshData()
     getWorkflowToolProvider()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
@@ -234,9 +232,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     try {
       if (collection.type === CollectionType.builtIn) {
         const list = await fetchBuiltInToolList(collection.name)
-        setToolList(list)
-      } else if (collection.type === CollectionType.model) {
-        const list = await fetchModelToolList(collection.name)
         setToolList(list)
       } else if (collection.type === CollectionType.workflow) {
         setToolList([])
@@ -373,7 +368,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                 <div className="flex min-h-0 flex-1 flex-col pt-3">
                   {isDetailLoading && (
                     <div className="flex h-50">
-                      <Loading type="app" />
+                      <LoadingPlaceholder className="h-full" />
                     </div>
                   )}
                   {!isDetailLoading && (
@@ -471,7 +466,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                               collection={collection}
                               tool={tool}
                               isBuiltIn={isBuiltIn}
-                              isModel={isModel}
                             />
                           ))}
                         {collection.type === CollectionType.workflow &&
@@ -511,7 +505,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canSaveCredentialSettings) return
 
                       await updateBuiltInToolCredential(collection.name, value)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -519,7 +512,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canManageCredential) return
 
                       await removeBuiltInToolCredential(collection.name)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -555,14 +547,14 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                         {t(($) => $['createTool.deleteToolConfirmContent'], { ns: 'tools' })}
                       </AlertDialogDescription>
                     </div>
-                    <AlertDialogActions>
+                    <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleConfirmDelete}>
                         {t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
-                    </AlertDialogActions>
+                    </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               </div>

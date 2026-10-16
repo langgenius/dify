@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import type { ExtraProps } from 'streamdown'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import Paragraph from '../paragraph'
@@ -8,125 +10,91 @@ vi.mock('@/app/components/base/image-gallery', () => ({
   ),
 }))
 
-type MockChildNode = {
-  tagName?: string
-  properties?: { src?: string }
-  children?: MockChildNode[]
-}
-
-type MockNode = {
-  children?: MockChildNode[]
-}
-
-type ParagraphProps = {
-  node: MockNode
-  children?: React.ReactNode
-}
-
-const renderParagraph = (props: ParagraphProps) => {
-  return render(<Paragraph {...props} />)
+const renderParagraph = (
+  nodeChildren: NonNullable<ExtraProps['node']>['children'],
+  children: ReactNode,
+) => {
+  const node: NonNullable<ExtraProps['node']> = {
+    type: 'element',
+    tagName: 'p',
+    properties: {},
+    children: nodeChildren,
+  }
+  return render(<Paragraph node={node}>{children}</Paragraph>)
 }
 
 describe('Paragraph', () => {
-  it('should render normal paragraph when no image child exists', () => {
-    renderParagraph({
-      node: { children: [] },
-      children: 'Hello world',
-    })
+  it('renders a normal paragraph for text and comment nodes', () => {
+    renderParagraph(
+      [
+        { type: 'comment', value: 'A comment' },
+        { type: 'text', value: 'Hello world' },
+      ],
+      'Hello world',
+    )
 
     expect(screen.getByText('Hello world').tagName).toBe('P')
   })
 
-  it('should render image gallery when first child is img', () => {
-    renderParagraph({
-      node: {
-        children: [
-          {
-            tagName: 'img',
-            properties: { src: 'test.png' },
-          },
-        ],
-      },
-      children: ['Image only'],
-    })
+  it('renders the image gallery when the first child is an image', () => {
+    renderParagraph(
+      [{ type: 'element', tagName: 'img', properties: { src: 'test.png' }, children: [] }],
+      ['Image only'],
+    )
 
-    expect(screen.getByTestId('image-gallery')).toBeInTheDocument()
     expect(screen.getByTestId('image-gallery')).toHaveTextContent('test.png')
   })
 
-  it('should render additional content after image when children length > 1', () => {
-    renderParagraph({
-      node: {
-        children: [
-          {
-            tagName: 'img',
-            properties: { src: 'test.png' },
-          },
-        ],
-      },
-      children: ['Image', <span key="1">Caption</span>],
-    })
+  it('preserves additional content after the leading image', () => {
+    renderParagraph(
+      [{ type: 'element', tagName: 'img', properties: { src: 'test.png' }, children: [] }],
+      ['Image', <span key="caption">Caption</span>],
+    )
 
-    expect(screen.getByTestId('image-gallery')).toBeInTheDocument()
+    expect(screen.getByTestId('image-gallery')).toHaveTextContent('test.png')
     expect(screen.getByText('Caption')).toBeInTheDocument()
   })
 
-  it('should render paragraph when first child exists but is not img', () => {
-    renderParagraph({
-      node: {
-        children: [
-          {
-            tagName: 'div',
-          },
-        ],
-      },
-      children: 'Not image',
-    })
+  it('renders a paragraph when its element children contain no image', () => {
+    renderParagraph(
+      [{ type: 'element', tagName: 'span', properties: {}, children: [] }],
+      'Not image',
+    )
 
     expect(screen.getByText('Not image').tagName).toBe('P')
   })
 
-  it('should render paragraph when children_node is undefined', () => {
-    renderParagraph({
-      node: {},
-      children: 'Fallback',
-    })
+  it('uses a block wrapper when an image follows text', () => {
+    renderParagraph(
+      [
+        { type: 'text', value: 'Text before' },
+        { type: 'element', tagName: 'img', properties: { src: 'test.png' }, children: [] },
+      ],
+      [<span key="text">Text before</span>, <img key="image" src="test.png" alt="Diagram" />],
+    )
 
-    expect(screen.getByText('Fallback').tagName).toBe('P')
+    expect(screen.getByText('Text before').parentElement?.tagName).toBe('DIV')
+    expect(screen.getByRole('img', { name: 'Diagram' })).toHaveAttribute('src', 'test.png')
   })
 
-  it('should render div instead of p when image is not the first child', () => {
-    renderParagraph({
-      node: {
-        children: [{ tagName: 'span' }, { tagName: 'img', properties: { src: 'test.png' } }],
-      },
-      children: [<span key="0">Text before</span>, <img key="1" src="test.png" alt="" />],
-    })
+  it('uses a block wrapper for an image nested inside a link', () => {
+    renderParagraph(
+      [
+        {
+          type: 'element',
+          tagName: 'a',
+          properties: { href: '#' },
+          children: [
+            { type: 'element', tagName: 'img', properties: { src: 'nested.png' }, children: [] },
+          ],
+        },
+      ],
+      <a href="#">
+        <img src="nested.png" alt="Linked diagram" />
+      </a>,
+    )
 
-    const wrapper = screen.getByText('Text before').closest('.markdown-p')
-    expect(wrapper).toBeInTheDocument()
-    expect(wrapper!.tagName).toBe('DIV')
-  })
-
-  it('should render div when image is nested inside a link', () => {
-    renderParagraph({
-      node: {
-        children: [
-          {
-            tagName: 'a',
-            children: [{ tagName: 'img', properties: { src: 'nested.png' } }],
-          },
-        ],
-      },
-      children: (
-        <a href="#">
-          <img src="nested.png" alt="" />
-        </a>
-      ),
-    })
-
-    const wrapper = screen.getByRole('link').closest('.markdown-p')
-    expect(wrapper).toBeInTheDocument()
-    expect(wrapper!.tagName).toBe('DIV')
+    expect(screen.getByRole('link').parentElement?.tagName).toBe('DIV')
+    expect(screen.getByRole('img', { name: 'Linked diagram' })).toHaveAttribute('src', 'nested.png')
   })
 })

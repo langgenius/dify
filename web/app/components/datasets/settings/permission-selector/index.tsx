@@ -1,20 +1,22 @@
 import type { Member } from '@/models/common'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DatasetPermission } from '@/models/datasets'
+import { getAvatarInitial } from '@/utils/avatar'
 import MemberItem from './member-item'
 import PermissionItem from './permission-item'
 
 type PermissionSelectorProps = {
+  'aria-labelledby'?: string
   disabled?: boolean
   permission?: DatasetPermission
   value: string[]
@@ -24,6 +26,7 @@ type PermissionSelectorProps = {
 }
 
 const PermissionSelector = ({
+  'aria-labelledby': labelledBy,
   disabled,
   permission,
   value,
@@ -31,7 +34,8 @@ const PermissionSelector = ({
   onChange,
   onMemberSelect,
 }: PermissionSelectorProps) => {
-  const { t } = useTranslation()
+  const triggerId = useId()
+  const { t } = useTranslation(['common', 'datasetSettings'])
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
@@ -78,9 +82,11 @@ const PermissionSelector = ({
   return (
     <Popover>
       <PopoverTrigger
+        id={triggerId}
+        aria-labelledby={labelledBy ? `${labelledBy} ${triggerId}` : undefined}
         disabled={isDisabled}
         className={cn(
-          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left outline-hidden hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover-alt',
+          'group/permission-trigger flex w-full cursor-pointer touch-manipulation items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
           'data-disabled:cursor-not-allowed! data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
         )}
       >
@@ -97,7 +103,10 @@ const PermissionSelector = ({
         {!isDisabledByRbac && isOnlyMe && (
           <>
             <div className="flex size-6 shrink-0 items-center justify-center">
-              <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
+              <Avatar size="xs" aria-hidden="true">
+                <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+              </Avatar>
             </div>
             <div className="grow p-1 system-sm-regular text-components-input-text-filled">
               {t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
@@ -118,26 +127,21 @@ const PermissionSelector = ({
           <>
             <div className="relative flex size-6 shrink-0 items-center justify-center">
               {selectedMembers.length === 1 && (
-                <Avatar
-                  avatar={selectedMembers[0]!.avatar_url}
-                  name={selectedMembers[0]!.name}
-                  size="xs"
-                />
+                <Avatar size="xs" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(selectedMembers[0]!.name)}</AvatarFallback>
+                  <AvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
+                </Avatar>
               )}
               {selectedMembers.length >= 2 && (
                 <>
-                  <Avatar
-                    avatar={selectedMembers[0]!.avatar_url}
-                    name={selectedMembers[0]!.name}
-                    className="absolute top-0 left-0 z-0"
-                    size="xxs"
-                  />
-                  <Avatar
-                    avatar={selectedMembers[1]!.avatar_url}
-                    name={selectedMembers[1]!.name}
-                    className="absolute right-0 bottom-0 z-10"
-                    size="xxs"
-                  />
+                  <Avatar className="absolute top-0 left-0 z-0" size="xxs" aria-hidden="true">
+                    <AvatarFallback>{getAvatarInitial(selectedMembers[0]!.name)}</AvatarFallback>
+                    <AvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
+                  </Avatar>
+                  <Avatar className="absolute right-0 bottom-0 z-10" size="xxs" aria-hidden="true">
+                    <AvatarFallback>{getAvatarInitial(selectedMembers[1]!.name)}</AvatarFallback>
+                    <AvatarImage src={selectedMembers[1]!.avatar_url || undefined} alt="" />
+                  </Avatar>
                 </>
               )}
             </div>
@@ -161,10 +165,10 @@ const PermissionSelector = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        className="border-none bg-transparent shadow-none"
+        className="max-w-(--available-width) border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
-        <div className="relative w-120 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+        <div className="relative w-120 max-w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
           <RadioGroup<DatasetPermission>
             value={permission}
             onValueChange={(nextPermission) => {
@@ -179,12 +183,10 @@ const PermissionSelector = ({
               value={DatasetPermission.onlyMe}
               closeOnSelect
               leftIcon={
-                <Avatar
-                  avatar={userProfile.avatar_url}
-                  name={userProfile.name}
-                  className="shrink-0"
-                  size="sm"
-                />
+                <Avatar className="shrink-0" size="sm" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                  <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                </Avatar>
               }
               text={t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
               isSelected={isOnlyMe}
@@ -231,12 +233,10 @@ const PermissionSelector = ({
                 {showMe && (
                   <MemberItem
                     leftIcon={
-                      <Avatar
-                        avatar={userProfile.avatar_url}
-                        name={userProfile.name}
-                        className="shrink-0"
-                        size="sm"
-                      />
+                      <Avatar className="shrink-0" size="sm" aria-hidden="true">
+                        <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+                        <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                      </Avatar>
                     }
                     name={userProfile.name}
                     email={userProfile.email}
@@ -248,12 +248,10 @@ const PermissionSelector = ({
                   <MemberItem
                     key={member.id}
                     leftIcon={
-                      <Avatar
-                        avatar={member.avatar_url}
-                        name={member.name}
-                        className="shrink-0"
-                        size="sm"
-                      />
+                      <Avatar className="shrink-0" size="sm" aria-hidden="true">
+                        <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+                        <AvatarImage src={member.avatar_url || undefined} alt="" />
+                      </Avatar>
                     }
                     name={member.name}
                     email={member.email}

@@ -1,19 +1,7 @@
 'use client'
 
-import type { QueryFunction } from '@tanstack/react-query'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
-import { normalizeDeploymentError } from './utils/deployment-error'
-
-function withNormalizedDeploymentError<TData>(queryFn: QueryFunction<TData>): QueryFunction<TData> {
-  return async (context) => {
-    try {
-      return await queryFn(context)
-    } catch (error) {
-      throw await normalizeDeploymentError(error)
-    }
-  }
-}
+import { consoleQuery } from '@/service/console'
 
 export function useDeploymentConfigurationQueries({
   appId,
@@ -37,10 +25,7 @@ export function useDeploymentConfigurationQueries({
         : skipToken,
       retry: false,
     })
-  const precheckQuery = useQuery({
-    ...precheckQueryOptions,
-    queryFn: withNormalizedDeploymentError(precheckQueryOptions.queryFn),
-  })
+  const precheckQuery = useQuery(precheckQueryOptions)
   const precheck = precheckQuery.data
   const precheckPassed =
     precheckQuery.isSuccess && !precheckQuery.isFetching && precheck?.unsupported_nodes.length === 0
@@ -60,10 +45,7 @@ export function useDeploymentConfigurationQueries({
       enabled: precheckPassed,
       retry: false,
     })
-  const deploymentOptionsQuery = useQuery({
-    ...deploymentOptionsQueryOptions,
-    queryFn: withNormalizedDeploymentError(deploymentOptionsQueryOptions.queryFn),
-  })
+  const deploymentOptionsQuery = useQuery(deploymentOptionsQueryOptions)
 
   const isPrechecking = Boolean(appId) && (precheckQuery.isLoading || precheckQuery.isFetching)
   const isLoadingDeploymentOptions =

@@ -1,22 +1,12 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useInvalidateDefaultModel,
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useProviderContext } from '@/context/provider-context'
-import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { consoleQuery } from '@/service/console'
 import {
   useInvalidateCheckInstalled,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
-import { useInvalidateStrategyProviders } from '@/service/use-strategy'
-import {
-  useInvalidateAllBuiltInTools,
-  useInvalidateAllToolProviders,
-  useInvalidateRAGRecommendedPlugins,
-} from '@/service/use-tools'
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
@@ -35,25 +25,35 @@ const SYSTEM_MODEL_TYPES = [
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
-  const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
-  const { mutate: refetchEmbeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { mutate: refetchRerankModelList } = useModelList(ModelTypeEnum.rerank)
-  const { mutate: refetchSpeech2textModelList } = useModelList(ModelTypeEnum.speech2text)
-  const { mutate: refetchTTSModelList } = useModelList(ModelTypeEnum.tts)
+  const { refetch: refetchLLMModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+  )
+  const { refetch: refetchEmbeddingModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+    }),
+  )
+  const { refetch: refetchRerankModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+    }),
+  )
+  const { refetch: refetchSpeech2textModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+    }),
+  )
+  const { refetch: refetchTTSModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+    }),
+  )
   const invalidateDefaultModel = useInvalidateDefaultModel()
-  const { refreshModelProviders } = useProviderContext()
-
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  const invalidateAllDataSources = useInvalidDataSourceList()
-
-  const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
-
-  const invalidateStrategyProviders = useInvalidateStrategyProviders()
+  const queryClient = useQueryClient()
 
   const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
-
-  const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
     refreshPluginList: (
       manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
@@ -66,9 +66,17 @@ const useRefreshPluginList = () => {
 
       // tool page, tool select
       if ((manifest && PluginCategoryEnum.tool.includes(manifest.category)) || refreshAllType) {
-        invalidateAllToolProviders()
-        invalidateAllBuiltInTools()
-        invalidateRAGRecommendedPlugins('tool')
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.toolProviders.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.recommendedPlugins.get.queryKey({
+            input: { query: { type: 'tool' } },
+          }),
+        })
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 
@@ -79,13 +87,22 @@ const useRefreshPluginList = () => {
         (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||
         refreshAllType
       ) {
-        invalidateAllDataSources()
-        invalidateDataSourceListAuth()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.auth.plugin.datasource.list.get.queryKey(),
+        })
       }
 
       // model select
       if ((manifest && PluginCategoryEnum.model.includes(manifest.category)) || refreshAllType) {
-        refreshModelProviders()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
+        })
         refetchLLMModelList()
         refetchEmbeddingModelList()
         refetchRerankModelList()
@@ -95,8 +112,14 @@ const useRefreshPluginList = () => {
       }
 
       // agent select
-      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType)
-        invalidateStrategyProviders()
+      if ((manifest && PluginCategoryEnum.agent.includes(manifest.category)) || refreshAllType) {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProviders.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.agentProvider.byProviderName.get.key(),
+        })
+      }
     },
   }
 }

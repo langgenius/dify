@@ -8,19 +8,20 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
 import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
+import { selectToolCollections } from '@/app/components/tools/utils/query-select'
 import { API_PREFIX } from '@/config'
-import { useGetLanguage, useLocale } from '@/context/i18n'
+import { useGetLanguage } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useTheme from '@/hooks/use-theme'
-import { useAllToolProviders } from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { getMarketplaceUrl } from '@/utils/var'
-import { AutoUpdateLine } from '../../../base/icons/src/vender/system'
 import Verified from '../../base/badges/verified'
 import DeprecationNotice from '../../base/deprecation-notice'
 import Icon from '../../card/base/card-icon'
@@ -84,7 +85,7 @@ const DetailHeader = ({
   onHide,
   onUpdate,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const openReadmePanel = useReadmePanelStore((s) => s.openReadmePanel)
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
@@ -134,7 +135,13 @@ const DetailHeader = ({
   const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
-  const { data: collectionList = [] } = useAllToolProviders(isTool)
+  const { data: collectionList = [] } = useQuery(
+    consoleQuery.workspaces.current.toolProviders.get.queryOptions({
+      input: { query: {} },
+      enabled: isTool,
+      select: selectToolCollections,
+    }),
+  )
   const provider = useMemo(() => {
     return collectionList.find((collection) => collection.name === providerKey)
   }, [collectionList, providerKey])
@@ -242,7 +249,10 @@ const DetailHeader = ({
                   render={
                     <div>
                       <Badge className="mr-1 cursor-pointer px-1">
-                        <AutoUpdateLine className="size-3" />
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-system-auto-update-line size-3"
+                        />
                       </Badge>
                     </div>
                   }

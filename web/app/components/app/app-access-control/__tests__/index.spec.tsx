@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
-import type { App } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import AccessControl from '../index'
 
 let mockWebappAuth = {
@@ -32,7 +32,7 @@ vi.mock('@/service/access-control', () => ({
     mockUseSearchForWhiteListCandidates(...args),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {
@@ -86,10 +86,10 @@ describe('AccessControl', () => {
     const user = userEvent.setup()
     const onConfirm = vi.fn()
     const toastSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
-    const app = {
+    const app = createAppDetailFixture({
       id: 'app-id-1',
       access_mode: AccessMode.PUBLIC,
-    } as App
+    })
 
     render(<AccessControl app={app} onClose={vi.fn()} onConfirm={onConfirm} />)
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -187,7 +187,7 @@ describe('AccessControl', () => {
 
     render(
       <AccessControl
-        app={{ id: 'app-id-4', access_mode: AccessMode.PUBLIC } as App}
+        app={createAppDetailFixture({ id: 'app-id-4', access_mode: AccessMode.PUBLIC })}
         onClose={vi.fn()}
       />,
     )
@@ -198,7 +198,7 @@ describe('AccessControl', () => {
 
   it('should preserve an unfinished selection when the parent rerenders', async () => {
     const user = userEvent.setup()
-    const app = { id: 'app-id-5', access_mode: AccessMode.PUBLIC } as App
+    const app = createAppDetailFixture({ id: 'app-id-5', access_mode: AccessMode.PUBLIC })
     const { rerender } = render(<AccessControl app={app} onClose={vi.fn()} />)
 
     const organization = screen.getByRole('radio', {
@@ -222,7 +222,10 @@ describe('AccessControl', () => {
 
     render(
       <AccessControl
-        app={{ id: 'app-id-6', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS } as App}
+        app={createAppDetailFixture({
+          id: 'app-id-6',
+          access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+        })}
         onClose={vi.fn()}
       />,
     )
@@ -232,7 +235,7 @@ describe('AccessControl', () => {
     })
     expect(publicOption).toHaveAttribute('aria-disabled', 'true')
     expect(
-      screen.getByLabelText('app.accessControlDialog.webAppPublicAccessDisabledTip'),
+      screen.getByRole('button', { name: 'app.accessControlDialog.accessItems.anyone' }),
     ).toBeInTheDocument()
   })
 })

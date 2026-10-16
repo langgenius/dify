@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
 import {
@@ -8,14 +9,14 @@ import {
 // oxlint-disable-next-line no-restricted-imports
 import { base } from './fetch'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     add: vi.fn(),
     error: vi.fn(),
   },
 }))
 
-const { toast } = await import('@langgenius/dify-ui/toast')
+const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
   beforeEach(() => {
@@ -134,8 +135,8 @@ describe('base', () => {
       }
 
       // Assert
-      expect(caughtError).toBeInstanceOf(Response)
-      await expect((caughtError as Response).json()).resolves.toEqual({
+      expect(caughtError).toBeInstanceOf(ORPCError)
+      expect(caughtError).toMatchObject({
         code: 'unauthorized',
         message: 'Unauthorized',
         status: 401,
@@ -159,7 +160,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
     })
@@ -180,7 +181,7 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
 
       expect(toast.error).not.toHaveBeenCalled()
     })
@@ -205,7 +206,7 @@ describe('base', () => {
       try {
         await expect(
           base(`/apps/${appId}/workflows/draft/system-variables`),
-        ).rejects.toBeInstanceOf(Response)
+        ).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).not.toHaveBeenCalled()
       } finally {
         markAppDeletionFailed(appId)
@@ -232,7 +233,7 @@ describe('base', () => {
 
       await expect(
         base(`/apps/${appId}/workflows/draft/conversation-variables`),
-      ).rejects.toBeInstanceOf(Response)
+      ).rejects.toBeInstanceOf(ORPCError)
       expect(toast.error).not.toHaveBeenCalled()
     })
 
@@ -255,7 +256,7 @@ describe('base', () => {
       )
 
       await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
-        Response,
+        ORPCError,
       )
       expect(toast.error).toHaveBeenCalledWith('Visible error')
     })
@@ -294,7 +295,7 @@ describe('base', () => {
       )
 
       try {
-        await expect(base(path)).rejects.toBeInstanceOf(Response)
+        await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
         expect(toast.error).toHaveBeenCalledWith('Visible error')
       } finally {
         markAppDeletionFailed(appId)

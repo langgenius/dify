@@ -13,9 +13,9 @@ const createMember = (overrides: Partial<Member>): Member => ({
   status: 'active',
   role: 'normal',
   roles: [],
-  created_at: '2026-01-01T00:00:00Z',
-  last_active_at: '2026-01-02T00:00:00Z',
-  last_login_at: '2026-01-03T00:00:00Z',
+  created_at: 1767225600,
+  last_active_at: 1767312000,
+  last_login_at: 1767398400,
   ...overrides,
 })
 
@@ -63,7 +63,7 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     expect(screen.getByText('Owner')).toBeInTheDocument()
     expect(
       screen.queryByText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.add',
       ),
     ).not.toBeInTheDocument()
 
@@ -71,7 +71,7 @@ describe('human-input/delivery-method/recipient/member-list', () => {
     await user.type(searchBox, 'pending')
 
     expect(screen.getByText('Pending User')).toBeInTheDocument()
-    expect(screen.getByText('common.members.pending')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.pending')).toBeInTheDocument()
     await user.click(screen.getByText('Pending User'))
     expect(handleSelect).toHaveBeenCalledWith('member-2')
   })
@@ -90,10 +90,10 @@ describe('human-input/delivery-method/recipient/member-list', () => {
       />,
     )
 
-    expect(screen.getByText('common.members.you')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.you')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.added',
       ),
     ).toBeInTheDocument()
 

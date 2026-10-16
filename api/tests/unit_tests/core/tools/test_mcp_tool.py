@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 from unittest.mock import patch
 
 import pytest
@@ -42,7 +43,7 @@ def _build_mcp_tool(*, with_output_schema: bool = True) -> MCPTool:
         tenant_id="tenant-1",
         icon="icon.svg",
         server_url="https://mcp.example.com",
-        provider_id="provider-id",
+        server_identifier="mcp_server",
         headers={"x-auth": "token"},
     )
 
@@ -54,7 +55,7 @@ def test_mcp_tool_provider_type_and_fork_runtime():
     forked = tool.fork_tool_runtime(ToolRuntime(tenant_id="tenant-2"))
     assert isinstance(forked, MCPTool)
     assert forked.runtime.tenant_id == "tenant-2"
-    assert forked.provider_id == "provider-id"
+    assert forked.server_identifier == "mcp_server"
 
 
 def test_mcp_tool_text_and_json_processing_helpers():
@@ -177,7 +178,7 @@ def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
         tenant_id="tenant-1",
         icon="icon.svg",
         server_url="https://mcp.example.com/mcp/",
-        provider_id="provider-id",
+        server_identifier="mcp_server",
         identity_mode=mode,
     )
 
@@ -288,8 +289,6 @@ def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
                 with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
                     with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
                         # Should not raise; should not call enterprise.
-                        try:
+                        with contextlib.suppress(Exception):
                             tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
-                        except Exception:
-                            pass
         inject.assert_not_called()

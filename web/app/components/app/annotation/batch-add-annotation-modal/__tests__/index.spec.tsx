@@ -1,18 +1,32 @@
-import type { Mock } from 'vite-plus/test'
+import type { ReactElement } from 'react'
 import type { IBatchModalProps } from '../index'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useProviderContext } from '@/context/provider-context'
-import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import BatchModal, { ProcessStatus } from '../index'
 
-vi.mock('@/service/annotation', () => ({
+let annotationQuota = { size: 0, limit: 10 }
+
+const mocks = vi.hoisted(() => ({
   annotationBatchImport: vi.fn(),
   checkAnnotationBatchImportProgress: vi.fn(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
+vi.mock('@/service/annotation', () => ({
+  annotationBatchImport: mocks.annotationBatchImport,
+}))
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotations: {
+          batchImportStatus: { byJobId: { get: mocks.checkAnnotationBatchImportProgress } },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../csv-downloader', () => ({
@@ -43,7 +57,7 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
 }))
 
 const mockNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockNotify(args),
   },
@@ -54,9 +68,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     info: (message: string) => mockNotify({ type: 'info', message }),
   },
 }))
-const useProviderContextMock = useProviderContext as Mock
-const annotationBatchImportMock = annotationBatchImport as Mock
-const checkAnnotationBatchImportProgressMock = checkAnnotationBatchImportProgress as Mock
+const annotationBatchImportMock = mocks.annotationBatchImport
+const checkAnnotationBatchImportProgressMock = mocks.checkAnnotationBatchImportProgress
 
 const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
   const mergedProps: IBatchModalProps = {
@@ -72,27 +85,22 @@ const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
   }
 }
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: annotationQuota },
+  })
+}
+
 describe('BatchModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lastUploadedFile = undefined
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 0 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: false,
-    })
+    annotationQuota = { size: 0, limit: 10 }
   })
 
   it('should disable run action and show billing hint when annotation quota is full', () => {
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 10 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: true,
-    })
+    annotationQuota = { size: 10, limit: 10 }
 
     renderComponent()
 
@@ -148,7 +156,7 @@ describe('BatchModal', () => {
       expect(annotationBatchImportMock).toHaveBeenCalledTimes(1)
     })
 
-    const formData = annotationBatchImportMock.mock.calls[0]![0].body as FormData
+    const formData = annotationBatchImportMock.mock.calls[0]![1] as FormData
     expect(formData.get('file')).toBe(lastUploadedFile)
 
     await waitFor(() => {

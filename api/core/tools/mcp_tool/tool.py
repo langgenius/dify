@@ -44,7 +44,7 @@ class MCPTool(Tool):
         tenant_id: str,
         icon: str,
         server_url: str,
-        provider_id: str,
+        server_identifier: str,
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
@@ -54,7 +54,7 @@ class MCPTool(Tool):
         self.tenant_id = tenant_id
         self.icon = icon
         self.server_url = server_url
-        self.provider_id = provider_id
+        self.server_identifier = server_identifier
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
@@ -74,7 +74,7 @@ class MCPTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         result = self.invoke_remote_mcp_tool(tool_parameters, user_id=user_id, app_id=app_id)
 
         # Extract usage metadata from MCP protocol's _meta field
@@ -111,7 +111,7 @@ class MCPTool(Tool):
         elif result.structuredContent:
             yield self.create_json_message(result.structuredContent)
 
-    def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage]:
         """Process text content and yield appropriate messages."""
         # Check if content looks like JSON before attempting to parse
         text = content.text.strip()
@@ -126,7 +126,7 @@ class MCPTool(Tool):
         # If not JSON or parsing failed, treat as plain text
         yield self.create_text_message(content.text)
 
-    def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage]:
         """Process JSON content based on its type."""
         match content_json:
             case dict():
@@ -137,7 +137,7 @@ class MCPTool(Tool):
                 # For primitive types (str, int, bool, etc.), convert to string
                 yield self.create_text_message(str(content_json))
 
-    def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
+    def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage]:
         """Process a list of JSON items."""
         if any(not isinstance(item, dict) for item in json_list):
             # If the list contains any non-dict item, treat the entire list as a text message.
@@ -170,7 +170,7 @@ class MCPTool(Tool):
         if result.meta:
             usage_dict = cls._extract_usage_dict(result.meta)
             if usage_dict is not None:
-                return LLMUsage.from_metadata(cast(LLMUsageMetadata, cast(object, dict(usage_dict))))
+                return LLMUsage.from_metadata(cast(LLMUsageMetadata, dict(usage_dict)))
 
         return LLMUsage.empty_usage()
 
@@ -250,7 +250,7 @@ class MCPTool(Tool):
             tenant_id=self.tenant_id,
             icon=self.icon,
             server_url=self.server_url,
-            provider_id=self.provider_id,
+            server_identifier=self.server_identifier,
             headers=self.headers,
             timeout=self.timeout,
             sse_read_timeout=self.sse_read_timeout,
@@ -299,7 +299,9 @@ class MCPTool(Tool):
         # This minimizes database connection hold time
         with Session(db.engine, expire_on_commit=False) as session:
             mcp_service = MCPToolManageService(session=session)
-            provider_entity = mcp_service.get_provider_entity(self.provider_id, self.tenant_id, by_server_id=True)
+            provider_entity = mcp_service.get_provider_entity_by_server_identifier(
+                server_identifier=self.server_identifier, tenant_id=self.tenant_id
+            )
 
             # Decrypt and prepare all credentials before closing session
             server_url = provider_entity.decrypt_server_url()

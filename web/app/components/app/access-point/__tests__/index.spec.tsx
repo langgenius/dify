@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppEnvironment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactNode } from 'react'
 import type { AccessPoint as AccessPointType } from '@/app/components/app/deploy/utils/access-point'
@@ -5,15 +6,16 @@ import { EnvironmentStatus } from '@dify/contracts/enterprise-app-deploy/types.g
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AccessPoint from '..'
 
-let appMode = 'workflow'
+let appMode: AppMode = 'workflow'
 let appPermissionKeys: string[] = [AppACLPermission.AccessPointView]
 const accessPointMocks = vi.hoisted(() => ({
   builtIn: vi.fn(),
@@ -30,18 +32,6 @@ vi.mock('react-i18next', async () => {
     'workflow.nodes.common.memories.builtIn': 'Built-in',
   })
 })
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      appDetail: {
-        id: 'app-1',
-        mode: appMode,
-        maintainer: 'user-2',
-        permission_keys: appPermissionKeys,
-      },
-    }),
-}))
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -65,7 +55,6 @@ vi.mock('@/app/components/app/access-point/deployed-environment-access-points', 
   DeployedEnvironmentAccessPoints: (props: {
     appId: string
     canManageAccessPoint: boolean
-    canReleaseAndVersion: boolean
     environmentId: string
     highlightedAccessPoint?: AccessPointType
   }) => {
@@ -107,6 +96,15 @@ const renderAccessPoint = ({
 } = {}) => {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({
+      id: 'app-1',
+      mode: appMode,
+      maintainer: 'user-2',
+      permission_keys: appPermissionKeys,
+    }),
+  )
   const queryOptions =
     consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
       input: {
@@ -225,7 +223,6 @@ describe('AccessPoint', () => {
       expect.objectContaining({
         appId: 'app-1',
         canManageAccessPoint: false,
-        canReleaseAndVersion: false,
         environmentId: 'canary',
       }),
     )
@@ -267,22 +264,21 @@ describe('AccessPoint', () => {
     expect(accessPointMocks.deployed).not.toHaveBeenCalled()
   })
 
-  it('opens deployed environments with Access Point management independently from deploy', () => {
+  it('does not grant Access Point view from management permission', () => {
     appPermissionKeys = [AppACLPermission.AccessPointManage]
 
     renderAccessPoint({ searchParams: '?environment=canary' })
 
-    expect(screen.getByRole('tab', { name: 'Canary' })).toHaveAttribute('aria-selected', 'true')
-    expect(accessPointMocks.deployed).toHaveBeenCalledWith(
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(accessPointMocks.builtIn).toHaveBeenCalledWith(
       expect.objectContaining({
         canManageAccessPoint: true,
-        canReleaseAndVersion: false,
-        environmentId: 'canary',
       }),
     )
+    expect(accessPointMocks.deployed).not.toHaveBeenCalled()
   })
 
-  it('passes Web App access management independently from Access Point management', () => {
+  it('does not grant Access Point management from release permission', () => {
     appPermissionKeys = [AppACLPermission.AccessPointView, AppACLPermission.ReleaseAndVersion]
 
     renderAccessPoint({ searchParams: '?environment=canary' })
@@ -290,7 +286,6 @@ describe('AccessPoint', () => {
     expect(accessPointMocks.deployed).toHaveBeenCalledWith(
       expect.objectContaining({
         canManageAccessPoint: false,
-        canReleaseAndVersion: true,
         environmentId: 'canary',
       }),
     )

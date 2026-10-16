@@ -1,31 +1,23 @@
 'use client'
+
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 // type
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
-import {
-  AlertDialog,
-  AlertDialogActions,
-  AlertDialogCancelButton,
-  AlertDialogConfirmButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from '@langgenius/dify-ui/alert-dialog'
+import type { CompletionParams, Model, ModelModeType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useBoolean, useSessionStorageState } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from './idea-output'
@@ -40,7 +32,7 @@ import useGenData from './use-gen-data'
 const i18nPrefix = 'generate'
 
 type IGetAutomaticResProps = {
-  mode: AppModeEnum
+  modelMode: ModelModeType
   isShow: boolean
   onClose: () => void
   onFinished: (res: GenRes) => void
@@ -69,7 +61,7 @@ const TryLabel: FC<{
 }
 
 const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
-  mode,
+  modelMode,
   isShow,
   onClose,
   flowId,
@@ -79,7 +71,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   isBasicMode,
   onFinished,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'appGeneration'])
+  const instructionLabelId = useId()
   const [storedModel, setStoredModel] = useAutoGenModel()
   const [selectedModel, setSelectedModel] = React.useState<Model>()
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
@@ -92,10 +85,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     return {
       name: defaultModel?.model ?? '',
       provider: defaultModel?.provider.provider ?? '',
-      mode: mode as unknown as ModelModeType,
+      mode: modelMode,
       completion_params: {} as CompletionParams,
     }
-  }, [defaultModel, mode, selectedModel, storedModel])
+  }, [defaultModel, modelMode, selectedModel, storedModel])
   const tryList = [
     {
       iconClassName: 'i-ri-terminal-box-line',
@@ -148,7 +141,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     (key: TemplateKey) => {
       return () => {
         const template = t(($) => $[`generate.template.${key}.instruction` as const], {
-          ns: 'appDebug',
+          ns: 'appGeneration',
         })
         setInstructionFromSessionStorage(template)
         setEditorKey(`${flowId}-${Date.now()}`)
@@ -172,7 +165,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       toast.error(
         t(($) => $['errorMsg.fieldRequired'], {
           ns: 'common',
-          field: t(($) => $['generate.instruction'], { ns: 'appDebug' }),
+          field: t(($) => $['generate.instruction'], { ns: 'appGeneration' }),
         }),
       )
       return false
@@ -188,10 +181,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   )
 
   const renderLoading = (
-    <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
-      <Loading />
+    <div className="flex min-w-0 flex-col items-center justify-center space-y-3 xl:h-full xl:flex-1">
+      <LoadingPlaceholder />
       <div className="text-[13px] text-text-tertiary">
-        {t(($) => $['generate.loading'], { ns: 'appDebug' })}
+        {t(($) => $['generate.loading'], { ns: 'appGeneration' })}
       </div>
     </div>
   )
@@ -264,11 +257,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     }
   }
 
-  const [
-    isShowConfirmOverwrite,
-    { setTrue: showConfirmOverwrite, setFalse: hideShowConfirmOverwrite },
-  ] = useBoolean(false)
-
   const isShowAutoPromptResPlaceholder = () => {
     return !isLoading && !current
   }
@@ -280,20 +268,20 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-285 max-w-none! min-w-285 overflow-hidden! border-none p-0! text-left align-middle">
-        <div className="flex h-full min-h-0 flex-wrap">
-          <div className="h-full w-142.5 shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-285 overflow-y-auto border-none p-0! text-left align-middle xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+        <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
+          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
             <div className="mb-5">
-              <div className={`text-lg leading-7 font-bold ${s.textGradient}`}>
-                {t(($) => $['generate.title'], { ns: 'appDebug' })}
-              </div>
+              <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+                {t(($) => $['generate.title'], { ns: 'appGeneration' })}
+              </DialogTitle>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
-                {t(($) => $['generate.description'], { ns: 'appDebug' })}
+                {t(($) => $['generate.description'], { ns: 'appGeneration' })}
               </div>
             </div>
             <div>
               <ModelParameterModal
-                popupClassName="w-[520px]!"
+                popupClassName="w-130! max-w-[calc(100vw-2rem)]"
                 isAdvancedMode={true}
                 provider={model.provider}
                 completionParams={model.completion_params}
@@ -307,7 +295,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               <div className="mt-4">
                 <div className="flex items-center">
                   <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
-                    {t(($) => $['generate.tryIt'], { ns: 'appDebug' })}
+                    {t(($) => $['generate.tryIt'], { ns: 'appGeneration' })}
                   </div>
                   <div
                     className="h-px grow"
@@ -322,7 +310,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                     <TryLabel
                       key={item.key}
                       iconClassName={item.iconClassName}
-                      text={t(($) => $[`generate.template.${item.key}.name`], { ns: 'appDebug' })}
+                      text={t(($) => $[`generate.template.${item.key}.name`], {
+                        ns: 'appGeneration',
+                      })}
                       onClick={handleChooseTemplate(item.key)}
                     />
                   ))}
@@ -333,11 +323,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             {/* inputs */}
             <div className="mt-4">
               <div>
-                <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
-                  {t(($) => $['generate.instruction'], { ns: 'appDebug' })}
+                <div
+                  id={instructionLabelId}
+                  className="mb-1.5 system-sm-semibold-uppercase text-text-secondary"
+                >
+                  {t(($) => $['generate.instruction'], { ns: 'appGeneration' })}
                 </div>
                 {isBasicMode ? (
                   <InstructionEditorInBasic
+                    aria-labelledby={instructionLabelId}
                     editorKey={instructionEditorKey}
                     generatorType={GeneratorType.prompt}
                     value={instruction}
@@ -349,6 +343,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   />
                 ) : (
                   <InstructionEditorInWorkflow
+                    aria-labelledby={instructionLabelId}
                     editorKey={instructionEditorKey}
                     generatorType={GeneratorType.prompt}
                     value={instruction}
@@ -360,9 +355,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               </div>
               <IdeaOutput value={ideaOutput} onChange={setIdeaOutput} />
 
-              <div className="mt-7 flex justify-end space-x-2">
+              <div className="mt-7 flex flex-wrap justify-end gap-2">
                 <Button onClick={onClose}>
-                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appDebug' })}
+                  {t(($) => $[`${i18nPrefix}.dismiss`], { ns: 'appGeneration' })}
                 </Button>
                 <Button
                   className="flex"
@@ -372,7 +367,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 >
                   <span aria-hidden className="i-custom-vender-other-generator size-4" />
                   <span className="text-xs font-semibold">
-                    {t(($) => $['generate.generate'], { ns: 'appDebug' })}
+                    {t(($) => $['generate.generate'], { ns: 'appGeneration' })}
                   </span>
                 </Button>
               </div>
@@ -380,7 +375,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           </div>
 
           {!isLoading && current && (
-            <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
+            <div className="min-w-0 bg-background-default-subtle p-6 pb-0 xl:h-full xl:flex-1">
               <Result
                 current={current!}
                 isBasicMode={isBasicMode}
@@ -388,41 +383,13 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 currentVersionIndex={currentVersionIndex || 0}
                 setCurrentVersionIndex={setCurrentVersionIndex}
                 versions={versions || []}
-                onApply={showConfirmOverwrite}
+                onApply={() => onFinished(current!)}
                 generatorType={GeneratorType.prompt}
               />
             </div>
           )}
           {isLoading && renderLoading}
           {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
-          <AlertDialog
-            open={isShowConfirmOverwrite}
-            onOpenChange={(open) => !open && hideShowConfirmOverwrite()}
-          >
-            <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['generate.overwriteTitle'], { ns: 'appDebug' })}
-                </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {t(($) => $['generate.overwriteMessage'], { ns: 'appDebug' })}
-                </AlertDialogDescription>
-              </div>
-              <AlertDialogActions>
-                <AlertDialogCancelButton>
-                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                </AlertDialogCancelButton>
-                <AlertDialogConfirmButton
-                  onClick={() => {
-                    hideShowConfirmOverwrite()
-                    onFinished(current!)
-                  }}
-                >
-                  {t(($) => $['operation.confirm'], { ns: 'common' })}
-                </AlertDialogConfirmButton>
-              </AlertDialogActions>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </DialogContent>
     </Dialog>

@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { fireEvent, screen, within } from '@testing-library/react'
@@ -12,7 +11,8 @@ import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowled
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
 
@@ -186,7 +186,7 @@ vi.mock(
 
 // Mock context
 const mockConfigContext: any = {
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   isAgent: false,
   dataSets: [],
@@ -244,9 +244,9 @@ vi.mock('use-context-selector', () => ({
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const defaultDataset: DataSet = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
-    indexing_status: 'completed' as any,
     icon_info: {
       icon: '📘',
       icon_type: 'emoji',
@@ -265,7 +265,6 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     app_count: 0,
     doc_form: 'text' as any,
     document_count: 10,
-    total_document_count: 10,
     total_available_documents: 10,
     word_count: 1000,
     provider: 'dify',
@@ -273,17 +272,6 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     embedding_model_provider: 'openai',
     embedding_available: true,
     retrieval_model_dict: {
-      search_method: 'semantic_search' as any,
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: 4,
-      score_threshold_enabled: false,
-      score_threshold: 0.7,
-    },
-    retrieval_model: {
       search_method: 'semantic_search' as any,
       reranking_enable: false,
       reranking_model: {
@@ -517,7 +505,7 @@ describe('DatasetConfig', () => {
     it('should show context variable selector in completion mode with datasets', () => {
       const dataset = createMockDataset()
       renderDatasetConfig({
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         dataSets: [dataset],
         modelConfig: {
           configs: {
@@ -538,7 +526,7 @@ describe('DatasetConfig', () => {
     it('should not show context variable selector in chat mode', () => {
       const dataset = createMockDataset()
       renderDatasetConfig({
-        mode: AppModeEnum.CHAT,
+        mode: 'chat' as const,
         dataSets: [dataset],
         modelConfig: {
           configs: {
@@ -556,7 +544,7 @@ describe('DatasetConfig', () => {
       const user = userEvent.setup()
       const dataset = createMockDataset()
       renderDatasetConfig({
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         dataSets: [dataset],
         modelConfig: {
           configs: {
@@ -878,7 +866,7 @@ describe('DatasetConfig', () => {
       // Context var is only shown when datasets exist AND there are prompt_variables
       // Test with no datasets to ensure context var is not shown
       renderDatasetConfig({
-        mode: AppModeEnum.COMPLETION,
+        mode: 'completion' as const,
         dataSets: [],
         modelConfig: {
           configs: {
@@ -961,7 +949,7 @@ describe('DatasetConfig', () => {
           metadata_model_config: {
             provider: 'openai',
             name: 'gpt-3.5-turbo',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: { temperature: 0.7 },
           },
         },
@@ -977,7 +965,7 @@ describe('DatasetConfig', () => {
           metadata_model_config: {
             provider: 'openai',
             name: 'gpt-4o-mini',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: { temperature: 0.7 },
           },
         }),
@@ -994,7 +982,7 @@ describe('DatasetConfig', () => {
           metadata_model_config: {
             provider: 'openai',
             name: 'gpt-3.5-turbo',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: { temperature: 0.5, max_tokens: 100 },
           },
         },
@@ -1058,31 +1046,9 @@ describe('DatasetConfig', () => {
       const datasets = [
         createMockDataset({
           id: 'ds1',
-          retrieval_model: {
-            search_method: 'semantic_search' as any,
-            reranking_enable: true,
-            reranking_model: {
-              reranking_provider_name: 'cohere',
-              reranking_model_name: 'rerank-v3.5',
-            },
-            top_k: 5,
-            score_threshold_enabled: true,
-            score_threshold: 0.8,
-          },
         }),
         createMockDataset({
           id: 'ds2',
-          retrieval_model: {
-            search_method: 'full_text_search' as any,
-            reranking_enable: false,
-            reranking_model: {
-              reranking_provider_name: '',
-              reranking_model_name: '',
-            },
-            top_k: 3,
-            score_threshold_enabled: false,
-            score_threshold: 0.5,
-          },
         }),
       ]
 

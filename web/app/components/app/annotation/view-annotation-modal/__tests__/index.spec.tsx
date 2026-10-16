@@ -1,8 +1,7 @@
-import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem, HitHistoryItem } from '../../type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { fetchHitHistoryList } from '@/service/annotation'
 import ViewAnnotationModal from '../index'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
@@ -13,8 +12,18 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  fetchHitHistoryList: vi.fn(),
+const { fetchHitHistoryListMock } = vi.hoisted(() => ({
+  fetchHitHistoryListMock: vi.fn(),
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotations: { byAnnotationId: { hitHistories: { get: fetchHitHistoryListMock } } },
+      },
+    },
+  },
 }))
 
 vi.mock('../../edit-annotation-modal/edit-item', () => {
@@ -43,8 +52,6 @@ vi.mock('../../edit-annotation-modal/edit-item', () => {
     EditItemType,
   }
 })
-
-const fetchHitHistoryListMock = fetchHitHistoryList as Mock
 
 const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
   id: overrides.id ?? 'annotation-id',
@@ -121,7 +128,8 @@ describe('ViewAnnotationModal', () => {
     })
   })
 
-  it('should switch to hit history tab and show no data message', async () => {
+  it('switches named panels with the keyboard while preserving the drawer name', async () => {
+    const user = userEvent.setup()
     // Arrange
     const { props } = renderComponent()
 
@@ -130,7 +138,19 @@ describe('ViewAnnotationModal', () => {
     })
 
     // Act
-    fireEvent.click(screen.getByText('appAnnotation.viewModal.hitHistory'))
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'appAnnotation.viewModal.annotatedResponse' }))
+    await user.keyboard('{ArrowRight}{Enter}')
+    expect(screen.getByRole('tab', { name: 'appAnnotation.viewModal.hitHistory' })).toHaveFocus()
+    expect(
+      screen.getByRole('tabpanel', { name: 'appAnnotation.viewModal.hitHistory' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('edit-query')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
 
     // Assert
     // Assert
@@ -138,7 +158,7 @@ describe('ViewAnnotationModal', () => {
     expect(mockFormatTime).toHaveBeenCalledWith(props.item.created_at, 'appLog.dateTimeFormat')
   })
 
-  it('should render hit history entries with pagination badge when data exists', async () => {
+  it('should render hit history entries with their hit count when data exists', async () => {
     const hits = [
       createHitHistoryItem({ question: 'user input' }),
       createHitHistoryItem({ id: 'hit-2', question: 'second' }),

@@ -16,9 +16,9 @@ import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { EnvVariablesTable } from '../../advanced/env'
 
@@ -52,8 +52,8 @@ export function CliToolDialog({
   onOpenChange: (open: boolean) => void
   tool?: AgentCliTool | null
 }) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation(['agentV2', 'common'])
+  const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const [installCommand, setInstallCommand] = useState(tool?.installCommand ?? '')
   const [toolName, setToolName] = useState(tool?.name ?? '')

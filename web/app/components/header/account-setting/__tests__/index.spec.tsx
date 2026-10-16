@@ -2,24 +2,30 @@ import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({ data: { accounts: [] }, refetch: vi.fn() }),
+    'auth.plugin.datasource.list.get': () => ({ data: { result: [] } }),
+  })
+})
+
+let canReplaceLogo = true
+
+const mockFeatureFlags = vi.hoisted(() => ({ NEXT_PUBLIC_ENABLE_ACCESS_TOKEN: true }))
+
+vi.mock('@/env', () => ({ env: mockFeatureFlags }))
+
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
-
-vi.mock('@/context/provider-context', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/context/provider-context')>()
-  return {
-    ...actual,
-    useProviderContext: vi.fn(),
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -73,21 +79,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   ),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceListAuth: vi.fn(() => ({ data: { result: [] } })),
-}))
-
 vi.mock('@/service/use-common', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/use-common')>()
   return {
     ...actual,
-    useMembers: vi.fn(() => ({ data: { accounts: [] }, refetch: vi.fn() })),
-    useProviderContext: vi.fn(),
   }
 })
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
   return {
     ...actual,
     consoleQuery: new Proxy(actual.consoleQuery, {
@@ -134,6 +134,11 @@ vi.mock('@/app/components/header/account-setting/access-rules-page', () => ({
   default: () => <div data-testid="access-rules-page" />,
 }))
 
+vi.mock('@/app/components/header/account-setting/resource-access-token-page', () => ({
+  __esModule: true,
+  default: () => <div data-testid="resource-access-token-page" />,
+}))
+
 const baseConsoleState: ConsoleStateFixture = {
   userProfile: {
     id: '1',
@@ -151,7 +156,6 @@ const baseConsoleState: ConsoleStateFixture = {
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
   isLoadingCurrentWorkspace: false,
@@ -197,26 +201,32 @@ describe('AccountSetting', () => {
       )
     }
 
-    return renderWithConsoleQuery(<StatefulAccountSetting />, {
-      accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
-      systemFeatures: {
-        deployment_edition: deploymentEdition,
-        webapp_auth: { enabled: true },
-        branding: { enabled: false },
-        enable_marketplace: true,
-        enable_collaboration_mode: false,
-        rbac_enabled: rbacEnabled,
+    return renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <StatefulAccountSetting />
+      </NuqsTestingAdapter>,
+      {
+        features: {
+          billing: { subscription: { plan: 'sandbox' } },
+          can_replace_logo: canReplaceLogo,
+        },
+        accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
+        systemFeatures: {
+          deployment_edition: deploymentEdition,
+          webapp_auth: { enabled: true },
+          branding: { enabled: false },
+          enable_marketplace: true,
+          enable_collaboration_mode: false,
+          rbac_enabled: rbacEnabled,
+        },
       },
-    })
+    )
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useProviderContext).mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      enableReplaceWebAppLogo: true,
-    })
+    canReplaceLogo = true
+    mockFeatureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = true
     mockConsoleState.current = baseConsoleState
     vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
   })
@@ -227,27 +237,32 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getByRole('dialog', { name: 'common.settings.settings' })).toBeInTheDocument()
-      expect(screen.getAllByText('common.settings.workspace').length).toBeGreaterThan(0)
-      expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
-      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
       expect(
-        screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' }),
+        screen.getByRole('dialog', { name: 'navigation.settings.settings' }),
+      ).toBeInTheDocument()
+      expect(screen.getAllByText('navigation.settings.workspace').length).toBeGreaterThan(0)
+      expect(screen.queryByText('navigation.settings.provider'))!.not.toBeInTheDocument()
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.rolesAndPermissions' }),
       ).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'common.settings.permissionSet' }),
+        screen.getByRole('button', { name: 'navigation.settings.permissionSet' }),
       ).toBeInTheDocument()
-      expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.billing'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
-      expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.customEndpoint'))!.not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.dataSource'))!.not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.customEndpoint'))!.not.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
       expect(
         screen
           .getByRole('button', { name: 'custom.custom' })
           .compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' })),
       ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-      expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.preferences'))!.toBeInTheDocument()
     })
 
     it('should hide sidebar labels on mobile', () => {
@@ -321,7 +336,7 @@ describe('AccountSetting', () => {
       // On mobile, the labels should not be rendered as per the implementation
       // Assert
       // On mobile, the labels should not be rendered as per the implementation
-      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.provider')).not.toBeInTheDocument()
     })
 
     it('should hide billing from dataset operators', () => {
@@ -336,20 +351,22 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' }),
+        screen.getByRole('button', { name: 'navigation.settings.members' }),
       ).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'common.settings.permissionSet' }),
+        screen.getByRole('button', { name: 'navigation.settings.rolesAndPermissions' }),
       ).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.settings.billing' }),
+        screen.getByRole('button', { name: 'navigation.settings.permissionSet' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.billing' }),
       ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: 'common.settings.preferences' }),
+        screen.getByRole('button', { name: 'navigation.settings.preferences' }),
       ).toBeInTheDocument()
     })
 
@@ -367,9 +384,9 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.dataSource')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.settings.customEndpoint')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.provider')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.dataSource')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.customEndpoint')).not.toBeInTheDocument()
     })
 
     it('should show custom tab when customization permission is missing', () => {
@@ -386,11 +403,13 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.provider')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.members' }),
+      ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
-      expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.preferences'))!.toBeInTheDocument()
     })
 
     it('should hide role and permission set entries when role management permission is missing', () => {
@@ -407,13 +426,18 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' }),
+        screen.getByRole('button', { name: 'navigation.settings.members' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.rolesAndPermissions' }),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.settings.permissionSet' }),
+        screen.queryByRole('button', { name: 'navigation.settings.permissionSet' }),
       ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).toBeInTheDocument()
     })
 
     it('should hide role and permission set entries when RBAC is disabled', () => {
@@ -421,12 +445,46 @@ describe('AccountSetting', () => {
       renderAccountSetting({ rbacEnabled: false })
 
       // Assert
-      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' }),
+        screen.getByRole('button', { name: 'navigation.settings.members' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.rolesAndPermissions' }),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'common.settings.permissionSet' }),
+        screen.queryByRole('button', { name: 'navigation.settings.permissionSet' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should hide access tokens and fall back to members when the feature is disabled', () => {
+      mockFeatureFlags.NEXT_PUBLIC_ENABLE_ACCESS_TOKEN = false
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.ACCESS_TOKEN })
+
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.accessToken' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('resource-access-token-page')).not.toBeInTheDocument()
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(1)
+    })
+
+    it('should hide access tokens from non-owner workspaces', () => {
+      mockConsoleState.current = {
+        ...baseConsoleState,
+        currentWorkspace: {
+          ...baseConsoleState.currentWorkspace,
+          role: 'admin' as const,
+        },
+        isCurrentWorkspaceOwner: false,
+      }
+
+      renderAccountSetting()
+
+      expect(
+        screen.queryByRole('button', { name: 'navigation.settings.accessToken' }),
       ).not.toBeInTheDocument()
     })
 
@@ -437,23 +495,19 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.queryByTestId('access-rules-page')).not.toBeInTheDocument()
       expect(screen.queryByTestId('permissions-page')).not.toBeInTheDocument()
-      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
     })
 
     it('should hide billing and custom tabs when disabled', () => {
       // Arrange
-      vi.mocked(useProviderContext).mockReturnValue({
-        ...baseProviderContextValue,
-        enableBilling: false,
-        enableReplaceWebAppLogo: false,
-      })
+      canReplaceLogo = false
 
       // Act
-      renderAccountSetting()
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
       // Assert
       // Assert
-      expect(screen.queryByText('common.settings.billing')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.billing')).not.toBeInTheDocument()
       expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
     })
 
@@ -476,7 +530,9 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getByRole('button', { name: 'common.settings.billing' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'navigation.settings.billing' }),
+      ).toBeInTheDocument()
     })
 
     it('should hide workflow log archives outside cloud edition', () => {
@@ -526,7 +582,7 @@ describe('AccountSetting', () => {
 
       // Assert
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()
-      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(0)
     })
 
     it('should render a direct billing entry for regular members without billing permission keys', () => {
@@ -569,11 +625,11 @@ describe('AccountSetting', () => {
       renderAccountSetting({ onTabChange: mockOnTabChange })
 
       // Act
-      fireEvent.click(screen.getByText('common.settings.billing'))
+      fireEvent.click(screen.getByText('navigation.settings.billing'))
 
       // Assert
       expect(mockOnTabChange).toHaveBeenCalledWith(ACCOUNT_SETTING_TAB.BILLING)
-      expect(screen.getAllByText('common.settings.billing').length).toBeGreaterThan(1)
+      expect(screen.getAllByText('navigation.settings.billing').length).toBeGreaterThan(1)
     })
 
     it('should navigate through various tabs and show correct details', () => {
@@ -581,10 +637,10 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Billing
-      fireEvent.click(screen.getByText('common.settings.billing'))
+      fireEvent.click(screen.getByText('navigation.settings.billing'))
       // Billing Page renders plansCommon.plan if data is loaded, or generic text.
       // Checking for title in header which is always there
-      expect(screen.getAllByText('common.settings.billing').length).toBeGreaterThan(1)
+      expect(screen.getAllByText('navigation.settings.billing').length).toBeGreaterThan(1)
 
       // Custom
       fireEvent.click(screen.getByText('custom.custom'))
@@ -596,28 +652,36 @@ describe('AccountSetting', () => {
       expect(screen.getByText('appLog.archives.upgradeTip.title')).toBeInTheDocument()
 
       // Members
-      fireEvent.click(screen.getAllByText('common.settings.members')[0]!)
-      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(1)
+      fireEvent.click(screen.getAllByText('navigation.settings.members')[0]!)
+      expect(screen.getAllByText('navigation.settings.members').length).toBeGreaterThan(1)
 
       // Roles & Permissions
-      fireEvent.click(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'navigation.settings.rolesAndPermissions' }),
+      )
       expect(screen.getByTestId('permissions-page')).toBeInTheDocument()
 
       // Permission Set
-      fireEvent.click(screen.getByRole('button', { name: 'common.settings.permissionSet' }))
-      expect(screen.getByText('common.settings.permissionSetDescription')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'navigation.settings.permissionSet' }))
+      expect(screen.getByText('navigation.settings.permissionSetDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
 
+      // Access Tokens
+      fireEvent.click(screen.getByRole('button', { name: 'navigation.settings.accessToken' }))
+      expect(screen.getByTestId('resource-access-token-page')).toBeInTheDocument()
+
       // Language
-      fireEvent.click(screen.getByText('common.settings.preferences'))
-      expect(screen.getByText('common.account.general')).toBeInTheDocument()
-      expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
+      fireEvent.click(screen.getByText('navigation.settings.preferences'))
+      expect(screen.getByText('accountSettings.account.general')).toBeInTheDocument()
+      expect(screen.getByText('accountSettings.account.appearanceLabel')).toBeInTheDocument()
     })
 
     it('should switch the preferences icon when the tab is active', () => {
       renderAccountSetting()
 
-      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
+      const preferencesButton = screen.getByRole('button', {
+        name: 'navigation.settings.preferences',
+      })
       expect(preferencesButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
 
       fireEvent.click(preferencesButton)
@@ -630,7 +694,7 @@ describe('AccountSetting', () => {
     it('should call onCancel when clicking close button', async () => {
       const user = userEvent.setup()
       renderAccountSetting()
-      const dialog = screen.getByRole('dialog', { name: 'common.settings.settings' })
+      const dialog = screen.getByRole('dialog', { name: 'navigation.settings.settings' })
 
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 

@@ -237,7 +237,7 @@ describe('AgentKnowledgeRetrieval', () => {
       ).toBeInTheDocument()
       expect(
         within(dialog).getByRole('button', {
-          name: 'workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title',
+          name: 'workflowModels.nodes.knowledgeRetrieval.metadata.options.disabled.title',
         }),
       ).toBeInTheDocument()
       expect(

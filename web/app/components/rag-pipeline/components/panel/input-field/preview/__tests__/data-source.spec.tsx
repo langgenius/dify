@@ -1,10 +1,11 @@
 import type { Datasource } from '../../../test-run/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import DataSource from '../data-source'
 
 const { mockOnSelect, mockUseDraftPipelinePreProcessingParams } = vi.hoisted(() => ({
   mockOnSelect: vi.fn(),
-  mockUseDraftPipelinePreProcessingParams: vi.fn(() => ({
+  mockUseDraftPipelinePreProcessingParams: vi.fn((_params?: unknown, _enabled?: boolean) => ({
     data: {
       variables: [{ variable: 'source' }],
     },
@@ -16,9 +17,19 @@ vi.mock('@/app/components/workflow/store', () => ({
     selector({ pipelineId: 'pipeline-1' }),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelinePreProcessingParams: mockUseDraftPipelinePreProcessingParams,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUseDraftPipelinePreProcessingParams(
+        { pipeline_id: o.input.params.pipeline_id, node_id: o.input.query.node_id },
+        o.enabled,
+      ),
+  })
+})
 
 vi.mock('../../../test-run/preparation/data-source-options', () => ({
   default: ({
@@ -48,7 +59,9 @@ describe('DataSource preview', () => {
   })
 
   it('should render the datasource selection step and forward selected values', () => {
-    render(<DataSource onSelect={mockOnSelect} dataSourceNodeId="node-1" />)
+    render(<DataSource onSelect={mockOnSelect} dataSourceNodeId="node-1" />, {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    })
 
     fireEvent.click(screen.getByText('select datasource'))
 

@@ -12,7 +12,7 @@ vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getTreeLeafNodes: () => [],
       getNodeById: () => undefined,
@@ -104,7 +104,7 @@ describe('assigner/var-list', () => {
   it('renders the empty placeholder when no operations are configured', () => {
     renderVarList()
 
-    expect(screen.getByText('workflow.nodes.assigner.noVarTip')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.assigner.noVarTip')).toBeInTheDocument()
   })
 
   it('switches a boolean assignment to constant mode and updates the selected value', async () => {
@@ -116,8 +116,8 @@ describe('assigner/var-list', () => {
       getToAssignedVarType: () => VarType.boolean,
     })
 
-    await user.click(screen.getByText('workflow.nodes.assigner.operations.over-write'))
-    await user.click(screen.getAllByText('workflow.nodes.assigner.operations.set').at(-1)!)
+    await user.click(screen.getByText('workflowLogic.nodes.assigner.operations.over-write'))
+    await user.click(screen.getAllByText('workflowLogic.nodes.assigner.operations.set').at(-1)!)
 
     expect(handleChange.mock.lastCall?.[0]).toEqual([
       createOperation({
@@ -172,4 +172,11 @@ describe('assigner/var-list', () => {
 
     expect(handleChange).toHaveBeenLastCalledWith([])
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

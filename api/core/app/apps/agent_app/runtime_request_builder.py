@@ -13,13 +13,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
     DifyExecutionContextInvokeFrom,
     DifyExecutionContextLayerConfig,
     DifyExecutionContextUserFrom,
 )
-from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
+from dify_agent.layers.user_prompt import (
+    DifyUserPromptDownloadConfig,
+    DifyUserPromptFileConfig,
+    DifyUserPromptFileType,
+    DifyUserPromptImageConfig,
+)
+from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
     AgentBackendAgentAppRunInput,
@@ -29,8 +35,9 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.app.llm.model_access import resolve_model_context_window
+from core.app.llm.model_access import resolve_model_context_window, resolve_model_supports_vision
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
+from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
     WorkflowAgentDifyToolsBuilder,
@@ -39,18 +46,17 @@ from core.workflow.nodes.agent_v2.dify_tools_builder import (
 )
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
-    build_ask_human_layer_config,
     build_config_aware_soul_mention_resolver,
     build_config_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
+from graphon.file import File, FileTransferMethod, FileType, file_manager
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import expand_prompt_mentions
-
-from .errors import AgentSessionSnapshotIncompatibleError
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -59,6 +65,9 @@ class AgentAppRuntimeRequestBuildError(ValueError):
     def __init__(self, error_code: str, message: str) -> None:
         self.error_code = error_code
         super().__init__(message)
+
+
+type _ReferenceFileTransferMethod = Literal["local_file", "tool_file", "datasource_file"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,10 +81,10 @@ class AgentAppRuntimeBuildContext:
     idempotency_key: str
     binding_id: str
     backend_binding_ref: str
+    files: tuple[File, ...] = ()
+    image_detail_config: ImagePromptMessageContent.DETAIL | None = None
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
-    session_snapshot: CompositorSessionSnapshot | None = None
-    # ENG-638: set when resuming a chat turn after a submitted ask_human form.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    session_snapshot: SessionSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +159,13 @@ class AgentAppRuntimeRequestBuilder:
             ModelProviderID(agent_soul.model.model_provider),
             agent_soul.model.plugin_id,
         )
+        user_files = self._build_user_files(
+            files=context.files,
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+            image_detail_config=context.image_detail_config,
+        )
 
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
@@ -180,20 +196,18 @@ class AgentAppRuntimeRequestBuilder:
                 or None,
                 agent_config_version_kind=context.agent_config_version_kind,
                 user_prompt=context.user_query,
+                user_files=user_files,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
                 config_layer_config=config_layer_config,
-                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
-                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
             )
         )
-        self._validate_session_snapshot_layers(request)
         redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
         return AgentAppRuntimeRequest(
             request=request,
@@ -203,22 +217,25 @@ class AgentAppRuntimeRequestBuilder:
         )
 
     @staticmethod
-    def _validate_session_snapshot_layers(request: CreateRunRequest) -> None:
-        """Reject stale snapshots before they reach the Agent backend.
-
-        Draft rows are updated in place, so their IDs cannot prove that a
-        retained snapshot still belongs to the current composition. Agenton
-        requires the ordered layer names to match exactly; enforce the same
-        invariant at the API boundary and return a product-level error.
-        """
-
-        snapshot = request.session_snapshot
-        if snapshot is None:
-            return
-        snapshot_layer_names = tuple(layer.name for layer in snapshot.layers)
-        composition_layer_names = tuple(layer.name for layer in request.composition.layers)
-        if snapshot_layer_names != composition_layer_names:
-            raise AgentSessionSnapshotIncompatibleError()
+    def _build_user_files(
+        *,
+        files: tuple[File, ...],
+        run_context: DifyRunContext,
+        provider_name: str,
+        model_name: str,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None,
+    ) -> list[DifyUserPromptFileConfig]:
+        supports_vision = any(file.type == FileType.IMAGE for file in files) and resolve_model_supports_vision(
+            run_context=run_context,
+            provider_name=provider_name,
+            model_name=model_name,
+        )
+        return [
+            _build_user_image(file, image_detail_config=image_detail_config)
+            if supports_vision and file.type == FileType.IMAGE
+            else _build_user_download(file)
+            for file in files
+        ]
 
     def _build_tool_layers(
         self,
@@ -249,6 +266,57 @@ class AgentAppRuntimeRequestBuilder:
             "agent_id": context.agent_id,
             "agent_config_snapshot_id": context.agent_config_snapshot_id,
         }
+
+
+def _build_user_image(
+    file: File,
+    *,
+    image_detail_config: ImagePromptMessageContent.DETAIL | None,
+) -> DifyUserPromptImageConfig:
+    content = file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+    if not isinstance(content, ImagePromptMessageContent):
+        raise AgentAppRuntimeRequestBuildError(
+            "agent_user_file_unsupported",
+            f"Agent App cannot send file '{file.filename or 'image'}' as vision content.",
+        )
+    detail = content.detail.value
+    return DifyUserPromptImageConfig(
+        filename=content.filename or file.filename or f"image.{content.format}",
+        mime_type=content.mime_type,
+        format=content.format,
+        url=content.url or None,
+        base64_data=content.base64_data or None,
+        detail=detail if detail in {"low", "high"} else None,
+    )
+
+
+def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
+    file_type = cast(DifyUserPromptFileType, file.type.value)
+    if file.transfer_method == FileTransferMethod.REMOTE_URL:
+        if file.remote_url is None:
+            raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "Remote user file is missing its URL.")
+        return DifyUserPromptDownloadConfig(type=file_type, transfer_method="remote_url", url=file.remote_url)
+    if file.reference is None:
+        raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file is missing its reference.")
+    reference = file.reference
+    if not reference.startswith("dify-file-ref:"):
+        reference = build_file_reference(record_id=reference)
+    elif not is_canonical_file_reference(reference):
+        raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file reference is invalid.")
+    transfer_method: _ReferenceFileTransferMethod
+    match file.transfer_method:
+        case FileTransferMethod.LOCAL_FILE:
+            transfer_method = "local_file"
+        case FileTransferMethod.TOOL_FILE:
+            transfer_method = "tool_file"
+        case FileTransferMethod.DATASOURCE_FILE:
+            transfer_method = "datasource_file"
+        case _:
+            raise AgentAppRuntimeRequestBuildError(
+                "agent_user_file_invalid",
+                f"User file transfer method '{file.transfer_method.value}' is unsupported.",
+            )
+    return DifyUserPromptDownloadConfig(type=file_type, transfer_method=transfer_method, reference=reference)
 
 
 __all__ = [

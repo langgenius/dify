@@ -9,7 +9,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import ConfigurationView from '../configuration-view'
 
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => false))
@@ -28,10 +28,6 @@ vi.mock('@/app/components/app/configuration/config', () => ({
 
 vi.mock('@/app/components/app/configuration/debug', () => ({
   default: () => <div data-testid="debug-panel" />,
-}))
-
-vi.mock('@/app/components/app/configuration/config/agent-setting-button', () => ({
-  default: () => <div data-testid="agent-setting-button" />,
 }))
 
 vi.mock(
@@ -98,9 +94,9 @@ const createDeletedAgentTool = (providerId: string): AgentTool => ({
 
 const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['value'] => ({
   appId: 'app-1',
-  isAPIKeySet: true,
+  onOpenFeatures: vi.fn(),
   isTrailFinished: false,
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   promptMode: 'simple' as never,
   setPromptMode: vi.fn(),
@@ -198,13 +194,6 @@ const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['va
     sensitive_word_avoidance: null,
     annotation_reply: null,
     external_data_tools: [],
-    system_parameters: {
-      audio_file_size_limit: 1,
-      file_size_limit: 1,
-      image_file_size_limit: 1,
-      video_file_size_limit: 1,
-      workflow_file_upload_limit: 1,
-    },
     dataSets: [],
     agentConfig: {
       enabled: false,
@@ -250,6 +239,7 @@ const createViewModel = (
   overrides: Partial<ConfigurationViewModel> = {},
 ): ConfigurationViewModel => ({
   appPublisherProps: {
+    appId: 'app-1',
     publishDisabled: false,
     publishedAt: 0,
     debugWithMultipleModel: false,
@@ -324,8 +314,16 @@ describe('ConfigurationView', () => {
   it('should render a loading state before configuration data is ready', () => {
     render(<ConfigurationView {...createViewModel({ showLoading: true })} />)
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('app-publisher')).not.toBeInTheDocument()
+  })
+
+  it('provides the page heading inside the parent-owned main landmark', () => {
+    render(<ConfigurationView {...createViewModel()} />)
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'appDebug.orchestrate' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
   it('should open the mobile debug panel from the header button', () => {
@@ -353,7 +351,7 @@ describe('ConfigurationView', () => {
   it('should show the legacy Agent badge for legacy Agent apps when Agent v2 is enabled', async () => {
     mockIsAgentV2Enabled.mockReturnValue(true)
     const contextValue = createContextValue()
-    contextValue.mode = AppModeEnum.AGENT_CHAT
+    contextValue.mode = 'agent-chat'
 
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 
@@ -377,7 +375,7 @@ describe('ConfigurationView', () => {
 
   it('should not show the legacy Agent badge when Agent v2 is disabled', () => {
     const contextValue = createContextValue()
-    contextValue.mode = AppModeEnum.AGENT_CHAT
+    contextValue.mode = 'agent-chat'
 
     render(<ConfigurationView {...createViewModel({ contextValue })} />)
 

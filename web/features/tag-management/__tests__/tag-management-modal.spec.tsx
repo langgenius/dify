@@ -20,7 +20,7 @@ const { mockNotify, mockToast } = vi.hoisted(() => {
   return { mockNotify, mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -52,7 +52,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       get: {
@@ -121,9 +121,10 @@ describe('TagManagementModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render the modal title when show is true', () => {
+    it('should name the dialog with its visible title', () => {
       render(<TagManagementModal {...defaultProps} />)
-      expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: i18n.manageTags })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: i18n.manageTags })).toBeVisible()
     })
 
     it('should render the new tag input with placeholder', () => {

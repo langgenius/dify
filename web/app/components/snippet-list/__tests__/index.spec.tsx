@@ -5,6 +5,20 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import SnippetList from '..'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({
+      data: {
+        accounts: [
+          { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
+          { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
+        ],
+      },
+    }),
+  })
+})
+
 const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
 const mockSetKeywords = vi.hoisted(() => vi.fn())
 const mockSetTagIDs = vi.hoisted(() => vi.fn())
@@ -52,11 +66,23 @@ vi.mock('../hooks/use-snippets-query-state', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     systemFeatures: vi.fn(),
   },
   consoleQuery: {
+    workspaces: {
+      current: {
+        members: {
+          get: {
+            queryOptions: (options: { input?: unknown }) => ({
+              ...options,
+              queryKey: [['console', 'workspaces', 'current', 'members', 'get'], options],
+            }),
+          },
+        },
+      },
+    },
     account: {
       profile: {
         get: {
@@ -77,7 +103,6 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 
@@ -100,23 +125,12 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
-        { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
-      ],
-    },
-  }),
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(''),
 }))
 
-vi.mock('@/next/dynamic', () => ({
+vi.mock('next/dynamic', () => ({
   default: () => {
     return function MockDynamicComponent(props: {
       show: boolean
@@ -263,7 +277,6 @@ describe('SnippetList', () => {
     mockQueryState.tagIDs = []
     mockQueryState.keywords = ''
     mockQueryState.creatorIDs = []
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
     mockUseInfiniteSnippetList.mockReturnValue({
@@ -277,8 +290,18 @@ describe('SnippetList', () => {
   it('renders the dedicated snippets list layout', () => {
     renderList()
 
-    expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
+      'href',
+      '/apps',
+    )
     expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
+    const path = within(screen.getByRole('navigation', { name: 'workflow.tabs.snippets' }))
+    expect(path.getByRole('link', { name: 'navigation.menus.apps' })).toHaveAttribute(
+      'href',
+      '/apps',
+    )
+    expect(path.getAllByRole('listitem')).toHaveLength(2)
+    expect(path.getByText('workflow.tabs.snippets')).toHaveAttribute('aria-current', 'page')
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }),
@@ -428,8 +451,7 @@ describe('SnippetList', () => {
     expect(within(list).getByText('workflow.tabs.noSnippetsFound')).toBeInTheDocument()
   })
 
-  it('shows the create button for users with snippet create permission even when they are not workspace editors', () => {
-    mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+  it('shows the create button for users with snippet create permission', () => {
     mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
 
     renderList()

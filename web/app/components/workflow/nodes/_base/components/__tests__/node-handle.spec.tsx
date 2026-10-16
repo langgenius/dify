@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 
 type MockHooksState = {
   availablePrevBlocks: BlockEnum[]
   availableNextBlocks: BlockEnum[]
-  isChatMode: boolean
+  isChatflow: boolean
   isReadOnly: boolean
 }
 
@@ -31,7 +32,7 @@ const {
   const mockHooksState: MockHooksState = {
     availablePrevBlocks: [],
     availableNextBlocks: [],
-    isChatMode: false,
+    isChatflow: false,
     isReadOnly: false,
   }
   const mockStoreState: MockStoreState = {
@@ -112,7 +113,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => mockHooksState.isChatMode,
+
     useNodesReadOnly: () => ({
       getNodesReadOnly: () => mockHooksState.isReadOnly,
     }),
@@ -129,7 +130,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      configsMap: { flowType: 'app-flow' },
+      configsMap: { resourceKind: 'app-flow' },
       availableNodesMetaData: { nodes: [] },
     }),
 }))
@@ -144,13 +145,15 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: () => ({ data: undefined }),
@@ -176,6 +179,7 @@ const renderTargetHandle = (dataOverrides: Partial<CommonNodeType> = {}) => {
       nodeSelectorClassName="custom-selector"
       handleClassName="custom-target-handle"
     />,
+    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
   )
 }
 
@@ -192,6 +196,7 @@ const renderSourceHandle = (
       handleClassName="custom-source-handle"
       {...propsOverrides}
     />,
+    { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
   )
 }
 
@@ -201,7 +206,7 @@ describe('node-handle', () => {
 
     mockHooksState.availablePrevBlocks = [BlockEnum.Code]
     mockHooksState.availableNextBlocks = [BlockEnum.Code]
-    mockHooksState.isChatMode = false
+    mockHooksState.isChatflow = false
     mockHooksState.isReadOnly = false
 
     mockStoreState.shouldAutoOpenStartNodeSelector = false
@@ -314,6 +319,22 @@ describe('node-handle', () => {
 
   // Auto-open tests cover workflow start-trigger variants, chat-mode bypass, and store fallback paths.
   describe('NodeSourceHandle auto-open', () => {
+    it('restores the previous focus when the start selector opens automatically', async () => {
+      const user = userEvent.setup()
+      render(<button type="button">Previous action</button>, {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
+      const previousAction = screen.getByRole('button', { name: 'Previous action' })
+      await user.click(previousAction)
+      mockStoreState.shouldAutoOpenStartNodeSelector = true
+
+      renderSourceHandle({ type: BlockEnum.Start })
+      await screen.findByRole('dialog')
+      await user.keyboard('{Escape}')
+
+      await waitFor(() => expect(previousAction).toHaveFocus())
+    })
+
     it.each([
       BlockEnum.Start,
       BlockEnum.TriggerSchedule,
@@ -333,7 +354,7 @@ describe('node-handle', () => {
     })
 
     it('should skip source auto-open in chat mode and only reset the start selector flag', () => {
-      mockHooksState.isChatMode = true
+      mockHooksState.isChatflow = true
       mockStoreState.shouldAutoOpenStartNodeSelector = true
 
       renderSourceHandle({ type: BlockEnum.Start })
@@ -367,4 +388,11 @@ describe('node-handle', () => {
       expect(mockWorkflowStoreSetState).not.toHaveBeenCalled()
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockHooksState.isChatflow) }
 })

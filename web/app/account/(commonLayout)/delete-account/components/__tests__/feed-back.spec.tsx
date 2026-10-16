@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FeedBack from '../feed-back'
 
-const mockPush = vi.fn()
+const mockUseLogout = vi.fn()
 const mockSendFeedback = vi.fn()
 const mockLogout = vi.fn()
 
@@ -20,16 +20,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
-
 vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: mockLogout }),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: { info: vi.fn() },
+  useLogout: (...args: unknown[]) => mockUseLogout(...args),
 }))
 
 vi.mock('../../state', () => ({
@@ -44,6 +36,7 @@ describe('FeedBack', () => {
     vi.clearAllMocks()
     mockSendFeedback.mockResolvedValue(undefined)
     mockLogout.mockResolvedValue(undefined)
+    mockUseLogout.mockReturnValue({ mutateAsync: mockLogout })
   })
 
   it('labels and submits the optional feedback field through the form', async () => {
@@ -52,7 +45,7 @@ describe('FeedBack', () => {
 
     render(<FeedBack onCancel={vi.fn()} onConfirm={onConfirm} />)
 
-    const feedback = screen.getByRole('textbox', { name: 'common.account.feedbackLabel' })
+    const feedback = screen.getByRole('textbox', { name: 'accountSettings.account.feedbackLabel' })
     await user.type(feedback, 'The workspace is no longer needed.')
     await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
 
@@ -64,6 +57,6 @@ describe('FeedBack', () => {
     })
     expect(onConfirm).toHaveBeenCalledOnce()
     expect(mockLogout).toHaveBeenCalledOnce()
-    expect(mockPush).toHaveBeenCalledWith('/signin')
+    expect(mockUseLogout).toHaveBeenCalledWith({ redirectTo: '/signin?account_deleted=true' })
   })
 })

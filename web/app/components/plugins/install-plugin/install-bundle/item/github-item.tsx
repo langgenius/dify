@@ -1,12 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
-import type { VersionProps } from '@/app/components/plugins/types'
+import type { GitHubItemAndMarketPlaceDependency, Plugin, VersionProps } from '../../../types'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useUploadGitHub } from '@/service/use-plugins'
 import Loading from '../../base/loading'
-import { pluginManifestToCardPluginProps } from '../../utils'
+import { pluginDeclarationToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
 
 type Props = Readonly<{
@@ -36,8 +35,7 @@ const Item: FC<Props> = ({
   useEffect(() => {
     if (data) {
       const payload = {
-        ...pluginManifestToCardPluginProps(data.manifest),
-        plugin_id: data.unique_identifier,
+        ...pluginDeclarationToCardPluginProps(data.manifest, data.unique_identifier),
       }
       onFetchedPayload(payload)
       setPayload({ ...payload, from: dependency.type })

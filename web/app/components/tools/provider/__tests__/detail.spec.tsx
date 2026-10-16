@@ -1,27 +1,57 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { commonQueryKeys } from '@/service/use-common'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
+import { consoleQuery } from '@/service/console'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
 
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
+
 const render = (ui: ReactElement) => {
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
-    data: [{ provider: 'model-collection-id' }],
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: [
+      {
+        ...providerSummaryFixture,
+        ...{ provider: 'model-collection-id' },
+      } satisfies ModelProviderSummaryResponse,
+    ],
+    plugins: {},
+  })
+  queryClient.setQueryData(modelProviderDetailsQueryOptions().queryKey, {
+    data: [createProviderResponseFixture({ provider: 'model-collection-id' })],
   })
   void queryClient.invalidateQueries({
-    queryKey: commonQueryKeys.modelProviderDetails,
+    queryKey: modelProviderDetailsQueryOptions().queryKey,
     exact: true,
     refetchType: 'none',
   })
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-vi.mock('@/i18n-config/language', () => ({
-  getLanguage: () => 'en_US',
+vi.mock('@/i18n/metadata', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
+  getPluginLanguage: () => 'en_US',
 }))
 
 const mockConsoleState = vi.hoisted(() => ({
@@ -48,15 +78,8 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    modelProviders: [{ provider: 'model-collection-id', name: 'TestModel' }],
-  }),
-}))
-
 const mockFetchBuiltInToolList = vi.fn().mockResolvedValue([])
 const mockFetchCustomToolList = vi.fn().mockResolvedValue([])
-const mockFetchModelToolList = vi.fn().mockResolvedValue([])
 const mockFetchCustomCollection = vi.fn().mockResolvedValue({
   credentials: { auth_type: 'none' },
 })
@@ -75,7 +98,6 @@ const mockSaveWorkflowToolProvider = vi.fn().mockResolvedValue({})
 vi.mock('@/service/tools', () => ({
   fetchBuiltInToolList: (...args: unknown[]) => mockFetchBuiltInToolList(...args),
   fetchCustomToolList: (...args: unknown[]) => mockFetchCustomToolList(...args),
-  fetchModelToolList: (...args: unknown[]) => mockFetchModelToolList(...args),
   fetchCustomCollection: (...args: unknown[]) => mockFetchCustomCollection(...args),
   fetchWorkflowToolDetail: (...args: unknown[]) => mockFetchWorkflowToolDetail(...args),
   updateBuiltInToolCredential: (...args: unknown[]) => mockUpdateBuiltInToolCredential(...args),
@@ -86,17 +108,13 @@ vi.mock('@/service/tools', () => ({
   saveWorkflowToolProvider: (...args: unknown[]) => mockSaveWorkflowToolProvider(...args),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidateAllWorkflowTools: () => vi.fn(),
-}))
-
 vi.mock('@/utils/var', () => ({
   basePath: '',
 }))
 
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -253,7 +271,6 @@ describe('ProviderDetail', () => {
       },
     ])
     mockFetchCustomToolList.mockResolvedValue([])
-    mockFetchModelToolList.mockResolvedValue([])
     mockConsoleState.workspacePermissionKeys = [
       'tool.manage',
       'credential.use',
@@ -320,7 +337,7 @@ describe('ProviderDetail', () => {
           onRefreshData={mockOnRefreshData}
         />,
       )
-      expect(screen.getByRole('status'))!.toBeInTheDocument()
+      expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
     })
 
     it('renders tool list after loading for builtIn type', async () => {
@@ -559,17 +576,6 @@ describe('ProviderDetail', () => {
 
   describe('Model Collection', () => {
     it('opens model modal when clicking auth button for model type', async () => {
-      mockFetchModelToolList.mockResolvedValue([
-        {
-          name: 'model-tool-1',
-          label: { en_US: 'MT1' },
-          description: { en_US: '' },
-          parameters: [],
-          labels: [],
-          author: '',
-          output_schema: {},
-        },
-      ])
       render(
         <ProviderDetail
           collection={createMockCollection({
@@ -619,19 +625,6 @@ describe('ProviderDetail', () => {
       )
       await waitFor(() => {
         expect(mockFetchBuiltInToolList).toHaveBeenCalledWith('test-collection')
-      })
-    })
-
-    it('calls fetchModelToolList for model type', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ type: CollectionType.model })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(mockFetchModelToolList).toHaveBeenCalledWith('test-collection')
       })
     })
 

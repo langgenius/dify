@@ -1,7 +1,16 @@
+import type { ReactElement } from 'react'
 import type { UserProfile } from '@/app/components/workflow/comment/types'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render as renderComponent, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
+import { EditorResourceScope } from '../editor-resource/provider'
 import { MentionInput } from './mention-input'
+
+const render = (ui: ReactElement) =>
+  renderComponent(
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
+  )
 
 const mockFetchMentionableUsers = vi.hoisted(() => vi.fn())
 const mockSetMentionableUsersLoading = vi.hoisted(() => vi.fn())
@@ -19,11 +28,7 @@ const mentionStoreState = vi.hoisted(() => ({
     mentionStoreState.mentionableUsersCache[appId] = users
   },
 }))
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
-}))
-
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     apps: {
       byAppId: {
@@ -99,7 +104,7 @@ describe('MentionInput', () => {
     render(<ControlledMentionInput onSubmit={onSubmit} />)
 
     const textarea = screen.getByPlaceholderText(
-      'workflow.comments.placeholder.add',
+      'workflowComments.comments.placeholder.add',
     ) as HTMLTextAreaElement
     textarea.focus()
     textarea.setSelectionRange(4, 4)
@@ -152,7 +157,7 @@ describe('MentionInput', () => {
       )
 
       const textarea = screen.getByPlaceholderText(
-        'workflow.comments.placeholder.add',
+        'workflowComments.comments.placeholder.add',
       ) as HTMLTextAreaElement
 
       act(() => {

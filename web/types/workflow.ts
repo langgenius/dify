@@ -1,3 +1,8 @@
+import type {
+  AppMode,
+  WorkflowDraftVariableResponse,
+  WorkflowDraftVariableWithoutValueResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
@@ -10,13 +15,11 @@ import type {
   EnvironmentVariable,
   InputVar,
   Node,
-  ValueSelector,
   Variable,
-  VarType,
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import type { AppModeEnum, TransferMethod } from '@/types/app'
+import type { TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
   node_execution_id: string
@@ -454,11 +457,9 @@ export type PublishWorkflowParams = {
   releaseNotes: string
 }
 
-export type WorkflowKind = 'standard'
-
 export type UpdateWorkflowParams = {
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   url: string
   title: string
   releaseNotes: string
@@ -484,23 +485,12 @@ export const VarInInspectType = {
 } as const
 export type VarInInspectType = (typeof VarInInspectType)[keyof typeof VarInInspectType]
 
-type FullContent = {
-  size_bytes: number
-  download_url: string
-}
-
-export type VarInInspect = {
-  id: string
-  type: VarInInspectType
-  name: string
-  description: string
-  selector: ValueSelector // can get node id from selector[0]
-  value_type: VarType
-  value: any
-  edited: boolean
-  visible: boolean
-  is_truncated: boolean
-  full_content: FullContent
+export type VarInInspect = WorkflowDraftVariableWithoutValueResponse & {
+  value?: WorkflowDraftVariableResponse['value']
+  full_content?: Pick<
+    NonNullable<WorkflowDraftVariableResponse['full_content']>,
+    'size_bytes' | 'download_url'
+  > | null
   schemaType?: string
 }
 

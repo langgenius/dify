@@ -138,15 +138,14 @@ def _list_provider_tool_names(
 
 
 def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
-    """Normalize MCP provider ids to the runtime-facing server identifier."""
+    """Normalize a persisted MCP provider reference to the runtime-facing server identifier."""
     service = MCPToolManageService(session=db.session())
     try:
-        return service.get_provider_entity(provider_id, tenant_id, by_server_id=True).provider_id
-    except ValueError:
-        try:
-            return service.get_provider_entity(provider_id, tenant_id, by_server_id=False).provider_id
-        except ValueError as exc:
-            raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
+        return service.get_provider_entity_by_persisted_reference(
+            id_or_server_identifier=provider_id, tenant_id=tenant_id
+        ).server_identifier
+    except ValueError as exc:
+        raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found") from exc
 
 
 class WorkflowAgentDifyToolsBuilder:

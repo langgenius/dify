@@ -1,25 +1,16 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode, RefObject } from 'react'
 import type { DebugWithSingleModelRefType } from '../index'
 import type { ChatItem } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Collection } from '@/app/components/tools/types'
-import type { ProviderContextState } from '@/context/provider-context'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  ConfigurationMethodEnum,
-  ModelFeatureEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { PromptMode } from '@/models/debug'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { AgentStrategy, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import DebugWithSingleModel from '../index'
 
 // ============================================================================
@@ -59,13 +50,6 @@ function createMockModelConfig(overrides: Partial<ModelConfig> = {}): ModelConfi
     retriever_resource: null,
     annotation_reply: null,
     external_data_tools: [],
-    system_parameters: {
-      audio_file_size_limit: 0,
-      file_size_limit: 0,
-      image_file_size_limit: 0,
-      video_file_size_limit: 0,
-      workflow_file_upload_limit: 0,
-    },
     dataSets: [],
     agentConfig: {
       enabled: false,
@@ -93,44 +77,6 @@ function createMockCollections(collections: Partial<Collection>[] = []): Collect
   )
 }
 
-/**
- * Factory function for creating mock Provider Context
- */
-function createMockProviderContext(
-  overrides: Partial<ProviderContextState> = {},
-): ProviderContextState {
-  return {
-    textGenerationModelList: [
-      {
-        provider: 'openai',
-        label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-        icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-        status: ModelStatusEnum.active,
-        models: [
-          {
-            model: 'gpt-3.5-turbo',
-            label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-            model_type: ModelTypeEnum.textGeneration,
-            features: [ModelFeatureEnum.vision],
-            fetch_from: ConfigurationMethodEnum.predefinedModel,
-            model_properties: {},
-            deprecated: false,
-          },
-        ],
-      },
-    ],
-    hasSettedApiKey: true,
-    modelProviders: [],
-    speech2textDefaultModel: null,
-    ttsDefaultModel: null,
-    agentThoughtDefaultModel: null,
-    updateModelList: vi.fn(),
-    onPlanInfoChanged: vi.fn(),
-    refreshModelProviders: vi.fn(),
-    ...overrides,
-  } as ProviderContextState
-}
-
 // ============================================================================
 // Mock External Dependencies ONLY (Following testing.md guidelines)
 // ============================================================================
@@ -153,7 +99,6 @@ vi.mock('@/service/base', () => ({
   get: vi.fn(() => Promise.resolve({ data: {} })),
   del: vi.fn(() => Promise.resolve({ data: {} })),
   patch: vi.fn(() => Promise.resolve({ data: {} })),
-  put: vi.fn(() => Promise.resolve({ data: {} })),
 }))
 
 vi.mock('@/service/fetch', () => ({
@@ -187,9 +132,9 @@ const mockDebugConfigContext = {
   readonly: false,
   canTestAndRun: true,
   appId: 'test-app-id',
-  isAPIKeySet: true,
+  onOpenFeatures: vi.fn(),
   isTrailFinished: false,
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
   setPromptMode: vi.fn(),
@@ -301,18 +246,6 @@ mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: mockUseDebugConfigurationContext,
-}))
-
-const mockProviderContext = createMockProviderContext()
-
-const { mockUseProviderContext } = vi.hoisted(() => ({
-  mockUseProviderContext: vi.fn(),
-}))
-
-mockUseProviderContext.mockReturnValue(mockProviderContext)
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: mockUseProviderContext,
 }))
 
 const mockConsoleState = {
@@ -616,6 +549,8 @@ vi.mock('@/app/components/base/chat/chat', () => ({
 // Tests
 // ============================================================================
 
+const logProps = { onOpenLog: vi.fn(), chatContainerRef: createRef<HTMLDivElement>() }
+
 describe('DebugWithSingleModel', () => {
   let ref: RefObject<DebugWithSingleModelRefType | null>
 
@@ -625,7 +560,6 @@ describe('DebugWithSingleModel', () => {
 
     // Reset mock implementations using module-level mocks
     mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
-    mockUseProviderContext.mockReturnValue(mockProviderContext)
     mockConsoleStateReader.mockReturnValue(mockConsoleState)
     mockUseConfigFromDebugContext.mockReturnValue(mockConfigFromDebugContext)
     mockUseFormattingChangedSubscription.mockReturnValue(undefined)
@@ -648,6 +582,7 @@ describe('DebugWithSingleModel', () => {
 
       render(
         <DebugWithSingleModel
+          {...logProps}
           ref={ref as RefObject<DebugWithSingleModelRefType>}
           checkCanSend={checkCanSend}
         />,
@@ -664,6 +599,7 @@ describe('DebugWithSingleModel', () => {
 
       render(
         <DebugWithSingleModel
+          {...logProps}
           ref={ref as RefObject<DebugWithSingleModelRefType>}
           checkCanSend={checkCanSend}
         />,
@@ -696,6 +632,7 @@ describe('DebugWithSingleModel', () => {
 
       render(
         <DebugWithSingleModel
+          {...logProps}
           ref={ref as RefObject<DebugWithSingleModelRefType>}
           checkCanSend={checkCanSend}
         />,
@@ -715,11 +652,13 @@ describe('DebugWithSingleModel', () => {
   // User Interactions
   describe('User Interactions', () => {
     it('should open feature configuration when feature bar is clicked', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('feature-bar-button'))
 
-      expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
+      expect(mockDebugConfigContext.onOpenFeatures).toHaveBeenCalledTimes(1)
     })
 
     it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', async () => {
@@ -729,7 +668,9 @@ describe('DebugWithSingleModel', () => {
         canTestAndRun: true,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-input')).not.toHaveAttribute('readonly')
       expect(screen.getByTestId('feature-bar-button')).toBeDisabled()
@@ -751,7 +692,9 @@ describe('DebugWithSingleModel', () => {
         canTestAndRun: false,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-input')).toHaveAttribute('readonly')
       expect(screen.getByTestId('chat-input')).toBeDisabled()
@@ -771,7 +714,9 @@ describe('DebugWithSingleModel', () => {
         opening: { enabled: true, opening_statement: 'Hello!', suggested_questions: ['Q1'] },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-button'))
 
@@ -794,7 +739,9 @@ describe('DebugWithSingleModel', () => {
         },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-button'))
 
@@ -808,53 +755,17 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should handle model without vision support', () => {
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'openai',
-              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [
-                {
-                  model: 'gpt-3.5-turbo',
-                  label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-                  model_type: ModelTypeEnum.textGeneration,
-                  features: [], // No vision support
-                  fetch_from: ConfigurationMethodEnum.predefinedModel,
-                  model_properties: {},
-                  deprecated: false,
-                  status: ModelStatusEnum.active,
-                  load_balancing_enabled: false,
-                },
-              ],
-            },
-          ],
-        }),
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
       )
-
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
 
     it('should handle missing model in provider list', () => {
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'different-provider',
-              label: { en_US: 'Different Provider', zh_Hans: '不同提供商' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [],
-            },
-          ],
-        }),
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
       )
-
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -877,7 +788,9 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       // Component should render successfully with filtered variables
       // Component should render successfully with filtered variables
@@ -895,7 +808,9 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -904,7 +819,9 @@ describe('DebugWithSingleModel', () => {
   // Tool Icons Tests
   describe('Tool Icons', () => {
     it('should map tool icons from collection list', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -922,7 +839,9 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -951,7 +870,9 @@ describe('DebugWithSingleModel', () => {
         collectionList: [],
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -965,7 +886,9 @@ describe('DebugWithSingleModel', () => {
         inputs: {} as any,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -981,7 +904,9 @@ describe('DebugWithSingleModel', () => {
         },
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -992,7 +917,9 @@ describe('DebugWithSingleModel', () => {
         completionParams: {} as any,
       })
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(screen.getByTestId('chat-component'))!.toBeInTheDocument()
     })
@@ -1001,7 +928,9 @@ describe('DebugWithSingleModel', () => {
   // Imperative Handle Tests
   describe('Imperative Handle', () => {
     it('should expose handleRestart method via ref', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       expect(ref.current).not.toBeNull()
       expect(ref.current?.handleRestart).toBeDefined()
@@ -1009,7 +938,9 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should call handleRestart when invoked via ref', () => {
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       act(() => {
         ref.current?.handleRestart()
@@ -1027,38 +958,14 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'openai',
-              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [
-                {
-                  model: 'gpt-3.5-turbo',
-                  label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-                  model_type: ModelTypeEnum.textGeneration,
-                  features: [ModelFeatureEnum.document],
-                  fetch_from: ConfigurationMethodEnum.predefinedModel,
-                  model_properties: {},
-                  deprecated: false,
-                  status: ModelStatusEnum.active,
-                  load_balancing_enabled: false,
-                },
-              ],
-            },
-          ],
-        }),
-      )
-
       mockFeaturesState = {
         ...defaultFeatures,
         file: { enabled: true },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-with-document'))
 
@@ -1085,38 +992,14 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'openai',
-              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [
-                {
-                  model: 'gpt-4-vision',
-                  label: { en_US: 'GPT-4 Vision', zh_Hans: 'GPT-4 Vision' },
-                  model_type: ModelTypeEnum.textGeneration,
-                  features: [ModelFeatureEnum.vision],
-                  fetch_from: ConfigurationMethodEnum.predefinedModel,
-                  model_properties: {},
-                  deprecated: false,
-                  status: ModelStatusEnum.active,
-                  load_balancing_enabled: false,
-                },
-              ],
-            },
-          ],
-        }),
-      )
-
       mockFeaturesState = {
         ...defaultFeatures,
         file: { enabled: true },
       }
 
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+      render(
+        <DebugWithSingleModel {...logProps} ref={ref as RefObject<DebugWithSingleModelRefType>} />,
+      )
 
       fireEvent.click(screen.getByTestId('send-with-files'))
 

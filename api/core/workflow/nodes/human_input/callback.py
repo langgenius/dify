@@ -17,6 +17,7 @@ from graphon.variables.segments import Segment
 from graphon.variables.template_resolution import convert_template
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 
+from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
 from .entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -65,11 +66,6 @@ class DifyHITLCallback:
 
     pause_requested_type = PauseRequested
 
-    _OUTPUT_FIELD_ACTION_ID = "__action_id"
-    _OUTPUT_FIELD_ACTION_VALUE = "__action_value"
-    _OUTPUT_FIELD_RENDERED_CONTENT = "__rendered_content"
-    _TIMEOUT_HANDLE = "__timeout"
-
     def __init__(
         self,
         *,
@@ -106,7 +102,7 @@ class DifyHITLCallback:
         status = self._normalize_status(form.status)
         if status == HumanInputFormStatus.TIMEOUT.value:
             return Expired(
-                selected_handle=self._TIMEOUT_HANDLE,
+                selected_handle=TIMEOUT_HANDLE,
                 outputs=self._build_special_outputs(
                     action_id="",
                     action_value="",
@@ -124,7 +120,7 @@ class DifyHITLCallback:
                 raise AssertionError(msg)
             if self._is_past_node_deadline(form.expiration_time):
                 return Expired(
-                    selected_handle=self._TIMEOUT_HANDLE,
+                    selected_handle=TIMEOUT_HANDLE,
                     outputs=self._build_special_outputs(
                         action_id="",
                         action_value="",
@@ -311,16 +307,15 @@ class DifyHITLCallback:
             raise ValueError("file_reference_factory is required to restore file submissions")
         return self._file_reference_factory.build_from_mapping(mapping=mapping)
 
-    @classmethod
+    @staticmethod
     def _build_special_outputs(
-        cls,
         *,
         action_id: str,
         action_value: str,
         rendered_content: str,
     ) -> dict[str, Segment]:
         return {
-            cls._OUTPUT_FIELD_ACTION_ID: build_segment(action_id),
-            cls._OUTPUT_FIELD_ACTION_VALUE: build_segment(action_value),
-            cls._OUTPUT_FIELD_RENDERED_CONTENT: build_segment(rendered_content),
+            OUTPUT_FIELD_ACTION_ID: build_segment(action_id),
+            OUTPUT_FIELD_ACTION_VALUE: build_segment(action_value),
+            OUTPUT_FIELD_RENDERED_CONTENT: build_segment(rendered_content),
         }

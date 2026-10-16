@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { Dependency } from '@/app/components/plugins/types'
 import { render, screen } from '@testing-library/react'
 import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
@@ -17,12 +16,6 @@ vi.mock('@/app/components/plugins/install-plugin/install-bundle', () => ({
 
 vi.mock('../feature-guard', () => ({
   guardAgentV2Route: () => mocks.guardAgentV2Route(),
-}))
-
-// Access control is covered by agents-access-guard.spec.tsx; this suite is
-// about the feature-flag guard only.
-vi.mock('../agents-access-guard', () => ({
-  AgentsAccessGuard: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
 describe('RosterLayout', () => {

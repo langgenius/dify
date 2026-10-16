@@ -1,5 +1,5 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type {
   ParametersSchema,
   PluginMeta,
@@ -86,7 +86,8 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   plugin_unique_identifier?: string
 }
 
-export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id'> & {
+export type DataSourceDefaultValue = {
+  provider_type: RagPipelineDatasourceProviderResponse['declaration']['provider_type']
   plugin_id: string
   provider_name: string
   datasource_name: string
@@ -137,40 +138,6 @@ export type ToolValue = {
   extra?: { description?: string } & Record<string, unknown>
   credential_id?: string
   type?: string
-}
-
-export type DataSourceItem = {
-  plugin_id: string
-  plugin_unique_identifier: string
-  provider: string
-  declaration: {
-    credentials_schema: unknown[]
-    provider_type: DatasourceProviderType
-    identity: {
-      author: string
-      description: TypeWithI18N
-      icon: string | { background: string; content: string }
-      label: TypeWithI18N
-      name: string
-      tags: string[]
-    }
-    datasources: {
-      description: TypeWithI18N
-      identity: {
-        author: string
-        icon?: string | { background: string; content: string }
-        label: TypeWithI18N
-        name: string
-        provider: string
-      }
-      parameters: unknown[]
-      output_schema?: {
-        type: string
-        properties: Record<string, unknown>
-      }
-    }[]
-  }
-  is_authorized: boolean
 }
 
 type TriggerCredentialField = {

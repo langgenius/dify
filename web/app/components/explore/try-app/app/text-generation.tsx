@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import Res from '@/app/components/share/text-generation/result'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
@@ -33,7 +33,7 @@ type Props = Readonly<{
 }>
 
 const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['explore', 'share'])
   const [descExpanded, setDescExpanded] = useState(false)
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
@@ -109,7 +109,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         transfer_methods:
           file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
         // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
+        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
         // oxlint-disable-next-line typescript/no-explicit-any
       } as any)
@@ -173,7 +173,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   if (!siteInfo || !promptConfig) {
     return (
       <div className={cn('flex h-screen items-center', className)}>
-        <Loading type="app" />
+        <LoadingPlaceholder className="h-full" />
       </div>
     )
   }
@@ -200,11 +200,9 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
         <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'p-8 pb-0' : 'p-4 pb-0')}>
           <div className="flex items-center gap-3">
             <AppIcon
+              fallback={{ content: '🤖', background: appDefaultIconBackground }}
               size={isPC ? 'large' : 'small'}
-              iconType={siteInfo.icon_type}
-              icon={siteInfo.icon}
-              background={siteInfo.icon_background || appDefaultIconBackground}
-              imageUrl={siteInfo.icon_url}
+              icon={siteInfo}
             />
             <div className="grow truncate system-md-semibold text-text-secondary">
               {siteInfo.title}

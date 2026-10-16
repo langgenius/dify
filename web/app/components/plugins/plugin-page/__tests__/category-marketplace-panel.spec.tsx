@@ -28,7 +28,7 @@ vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     workspaces: {
       current: {

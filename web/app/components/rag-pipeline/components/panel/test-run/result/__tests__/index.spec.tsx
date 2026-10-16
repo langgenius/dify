@@ -35,10 +35,18 @@ describe('Result', () => {
 
     expect(screen.getByRole('button', { name: 'Result preview' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'runLog.detail' }))
+    await user.tab()
+    expect(screen.getByRole('tab', { name: 'runLog.result', selected: true })).toHaveFocus()
+    await user.keyboard('{ArrowRight}{Enter}')
+    const detailTab = screen.getByRole('tab', { name: 'runLog.detail', selected: true })
+    expect(detailTab).toHaveFocus()
+    expect(screen.getByRole('tabpanel', { name: 'runLog.detail' })).toHaveAttribute(
+      'id',
+      detailTab.getAttribute('aria-controls'),
+    )
     expect(screen.getByText('Result detail')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'runLog.tracing' }))
+    await user.click(screen.getByRole('tab', { name: 'runLog.tracing' }))
     expect(screen.getByText('Tracing detail')).toBeInTheDocument()
   })
 })

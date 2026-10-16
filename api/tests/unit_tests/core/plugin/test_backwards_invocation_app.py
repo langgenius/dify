@@ -13,7 +13,8 @@ from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import App, AppMode, AppModelConfig, EndUser
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow
+from tests.unit_tests.model_factories import make_app, make_end_user, make_workflow
 
 
 class _Chunk(BaseModel):
@@ -25,6 +26,23 @@ class _DatabaseWithEngine:
         self.engine = engine
 
 
+class _EndUserProvisioner:
+    def __init__(self) -> None:
+        self.result: EndUser | None = None
+        self.calls: list[tuple[str, str, str | None]] = []
+
+    def get_or_create_end_user(
+        self,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None = None,
+    ) -> EndUser:
+        self.calls.append((tenant_id, app_id, user_id))
+        if self.result is None:
+            raise AssertionError("unexpected end-user provisioning")
+        return self.result
+
+
 def _app(
     *,
     app_id: str = "app-1",
@@ -33,30 +51,21 @@ def _app(
     workflow_id: str | None = None,
     app_model_config_id: str | None = None,
 ) -> App:
-    return App(
-        id=app_id,
+    return make_app(
+        app_id=app_id,
         tenant_id=tenant_id,
         name="Plugin app",
-        description="",
         mode=mode,
-        enable_site=False,
-        enable_api=False,
+        icon_type=None,
         workflow_id=workflow_id,
         app_model_config_id=app_model_config_id,
+        enable_site=False,
+        enable_api=False,
     )
 
 
 def _workflow(*, workflow_id: str = "workflow-1", app_id: str = "app-1", tenant_id: str = "tenant-1") -> Workflow:
-    return Workflow(
-        id=workflow_id,
-        tenant_id=tenant_id,
-        app_id=app_id,
-        type=WorkflowType.WORKFLOW,
-        version=Workflow.VERSION_DRAFT,
-        graph="{}",
-        _features="{}",
-        created_by="account-1",
-    )
+    return make_workflow(workflow_id=workflow_id, tenant_id=tenant_id, app_id=app_id, graph="{}")
 
 
 def _end_user(
@@ -66,14 +75,12 @@ def _end_user(
     app_id: str = "app-1",
     session_id: str = "browser-session",
 ) -> EndUser:
-    return EndUser(
-        id=user_id,
+    return make_end_user(
+        end_user_id=user_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        type=EndUserType.BROWSER,
         session_id=session_id,
         name="Browser user",
-        is_anonymous=True,
     )
 
 
@@ -114,6 +121,7 @@ class TestPluginAppBackwardsInvocation:
         self.session = sqlite_session
         self.session_factory = sqlite_session_factory
         self.sqlite_engine = sqlite_engine
+        self.end_users = _EndUserProvisioner()
         mocker.patch("core.plugin.backwards_invocation.app.create_session", side_effect=sqlite_session_factory)
 
     def test_fetch_app_info_workflow_path(self, mocker: MockerFixture):
@@ -177,6 +185,7 @@ class TestPluginAppBackwardsInvocation:
             inputs={"x": 1},
             files=[],
             session=self.session,
+            end_users=self.end_users,
         )
 
         assert result == {"routed": True}
@@ -188,10 +197,7 @@ class TestPluginAppBackwardsInvocation:
         workflow = _workflow()
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=workflow)
-        get_or_create = mocker.patch(
-            "core.plugin.backwards_invocation.app.EndUserService.get_or_create_end_user",
-            return_value=end_user,
-        )
+        self.end_users.result = end_user
         route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
@@ -204,10 +210,11 @@ class TestPluginAppBackwardsInvocation:
             inputs={},
             files=[],
             session=self.session,
+            end_users=self.end_users,
         )
 
         assert result == {"ok": True}
-        get_or_create.assert_called_once_with(app)
+        assert self.end_users.calls == [(app.tenant_id, app.id, None)]
         assert route.call_args.args[1] is workflow
         assert route.call_args.args[2] is end_user
 
@@ -226,6 +233,7 @@ class TestPluginAppBackwardsInvocation:
                 inputs={},
                 files=[],
                 session=self.session,
+                end_users=self.end_users,
             )
 
     def test_invoke_app_unexpected_mode_raises(self, mocker: MockerFixture):
@@ -247,6 +255,7 @@ class TestPluginAppBackwardsInvocation:
                 inputs={},
                 files=[],
                 session=self.session,
+                end_users=self.end_users,
             )
 
     @pytest.mark.parametrize(
@@ -384,6 +393,7 @@ class TestPluginAppBackwardsInvocation:
                 inputs={},
                 files=[],
                 session=self.session,
+                end_users=self.end_users,
             )
 
     def test_invoke_completion_app(self, mocker: MockerFixture):
@@ -520,10 +530,7 @@ class TestPluginAppBackwardsInvocation:
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=workflow)
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", side_effect=ValueError("user not found"))
-        get_or_create = mocker.patch(
-            "core.plugin.backwards_invocation.app.EndUserService.get_or_create_end_user",
-            return_value=end_user,
-        )
+        self.end_users.result = end_user
         route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
 
         result = PluginAppBackwardsInvocation.invoke_app(
@@ -536,10 +543,11 @@ class TestPluginAppBackwardsInvocation:
             inputs={},
             files=[],
             session=self.session,
+            end_users=self.end_users,
         )
 
         assert result == {"ok": True}
-        get_or_create.assert_called_once_with(app, user_id="wecom-sender-1")
+        assert self.end_users.calls == [(app.tenant_id, app.id, "wecom-sender-1")]
         assert route.call_args.args[2] is end_user
 
     def test_get_app_returns_app(self):

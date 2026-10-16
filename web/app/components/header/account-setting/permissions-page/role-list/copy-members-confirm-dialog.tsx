@@ -3,14 +3,15 @@
 import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useGetMembersOfRole } from '@/service/access-control/use-workspace-roles'
+import { consoleQuery } from '@/service/console'
 
 type CopyMembersConfirmDialogProps = {
   role: Role
@@ -25,13 +26,13 @@ export function CopyMembersConfirmDialog({
   onOpenChange,
   onDuplicate,
 }: CopyMembersConfirmDialogProps) {
-  const { t } = useTranslation()
-  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useGetMembersOfRole({
-    roleId: role.id,
-    page: 1,
-    limit: 9999,
-  })
-  const memberCount = membersOfRole?.pagination.total_count ?? 0
+  const { t } = useTranslation(['common', 'permission'])
+  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useQuery(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.members.get.queryOptions({
+      input: { params: { role_id: role.id }, query: { page: 1, limit: 9999 } },
+    }),
+  )
+  const memberCount = membersOfRole?.pagination?.total_count ?? 0
   const isLoadingMemberCount = isLoadingMembersOfRole && !membersOfRole
   const isActionDisabled = isCopyingRole || isLoadingMemberCount
 
@@ -52,7 +53,7 @@ export function CopyMembersConfirmDialog({
                 })}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <Button
             variant="secondary"
             disabled={isActionDisabled}
@@ -62,13 +63,13 @@ export function CopyMembersConfirmDialog({
           </Button>
           <Button
             variant="primary"
-            disabled={isActionDisabled}
+            disabled={isLoadingMemberCount}
             loading={isCopyingRole}
             onClick={() => onDuplicate(true)}
           >
             {t(($) => $['operation.copy'], { ns: 'common' })}
           </Button>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

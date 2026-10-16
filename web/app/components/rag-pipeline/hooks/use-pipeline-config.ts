@@ -1,14 +1,15 @@
-import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { useCallback } from 'react'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useDataSourceList } from '@/service/use-pipeline'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { useCallback, useEffect } from 'react'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { useWorkflowConfig } from '@/service/use-workflow'
-import { basePath } from '@/utils/var'
 
 export const usePipelineConfig = () => {
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const workflowStore = useWorkflowStore()
 
   const handleUpdateNodesDefaultConfigs = useCallback(
@@ -45,19 +46,6 @@ export const usePipelineConfig = () => {
     handleUpdatePublishedAt,
   )
 
-  const handleUpdateDataSourceList = useCallback(
-    (dataSourceList: DataSourceItem[]) => {
-      dataSourceList.forEach((item) => {
-        const icon = item.declaration.identity.icon
-        if (typeof icon == 'string' && !icon.includes(basePath))
-          item.declaration.identity.icon = `${basePath}${icon}`
-      })
-      const { setDataSourceList } = workflowStore.getState()
-      setDataSourceList!(dataSourceList)
-    },
-    [workflowStore],
-  )
-
   const handleUpdateWorkflowFileUploadConfig = useCallback(
     (config: FileUploadConfigResponse) => {
       const { setFileUploadConfig } = workflowStore.getState()
@@ -67,5 +55,13 @@ export const usePipelineConfig = () => {
   )
   useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
-  useDataSourceList(!!pipelineId, handleUpdateDataSourceList)
+  const { data: dataSourceList } = useQuery(
+    consoleQuery.rag.pipelines.datasourcePlugins.get.queryOptions({
+      enabled: !!pipelineId,
+    }),
+  )
+  useEffect(() => {
+    if (!pipelineId || !dataSourceList) return
+    workflowStore.getState().setDataSourceList?.(dataSourceList)
+  }, [dataSourceList, pipelineId, workflowStore])
 }

@@ -1,6 +1,8 @@
 import type { Node } from '@/app/components/workflow/types'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
@@ -11,9 +13,9 @@ type ConditionInputProps = {
   availableNodes: Node[]
 }
 const ConditionInput = ({ value, onChange, disabled, availableNodes }: ConditionInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowLogic'])
   const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
-  const pipelineId = useStore((s) => s.pipelineId)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   return (
@@ -21,7 +23,7 @@ const ConditionInput = ({ value, onChange, disabled, availableNodes }: Condition
       key={controlPromptEditorRerenderKey}
       compact
       value={value}
-      placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflow' }) || ''}
+      placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
       workflowVariableBlock={{
         show: true,
         variables: [],
@@ -38,7 +40,7 @@ const ConditionInput = ({ value, onChange, disabled, availableNodes }: Condition
           }
           return acc
         }, {} as any),
-        showManageInputField: !!pipelineId,
+        showManageInputField: resourceKind === 'knowledge-pipeline',
         onManageInputField: () => setShowInputFieldPanel?.(true),
       }}
       onChange={onChange}

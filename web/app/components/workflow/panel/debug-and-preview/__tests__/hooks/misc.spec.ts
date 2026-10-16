@@ -1,6 +1,6 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
@@ -20,14 +20,14 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -87,7 +87,9 @@ describe('useChat – handleSwitchSibling', () => {
     })
     mockSseGet.mockImplementation(() => {})
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -125,7 +127,9 @@ describe('useChat – handleSwitchSibling', () => {
       sendCallbacks = callbacks
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -152,7 +156,9 @@ describe('useChat – handleSwitchSibling', () => {
   })
 
   it('should return undefined from findMessageInTree when not found', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSwitchSibling('nonexistent-id', {})
@@ -168,7 +174,9 @@ describe('useChat – handleSwitchSibling', () => {
     })
     mockSseGet.mockImplementation(() => {})
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'parent' }, {})
@@ -231,7 +239,9 @@ describe('useChat – handleSubmitHumanInputForm', () => {
   })
 
   it('should call submitHumanInputForm with token and data', async () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleSubmitHumanInputForm('token-123', {
@@ -260,7 +270,9 @@ describe('useChat – getHumanInputNodeData', () => {
       { id: 'node-2', type: 'custom', data: { title: 'Other' } },
     ])
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const node = result.current.getHumanInputNodeData('node-1')
     expect(node).toEqual(mockNode)
   })
@@ -268,7 +280,9 @@ describe('useChat – getHumanInputNodeData', () => {
   it('should return undefined when no matching node', () => {
     mockGetNodes.mockReturnValue([{ id: 'node-2', type: 'custom', data: {} }])
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const node = result.current.getHumanInputNodeData('nonexistent')
     expect(node).toBeUndefined()
   })
@@ -279,7 +293,9 @@ describe('useChat – getHumanInputNodeData', () => {
       { id: 'node-1', type: 'custom', data: { found: true } },
     ])
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const node = result.current.getHumanInputNodeData('node-1')
     expect(node).toEqual({ id: 'node-1', type: 'custom', data: { found: true } })
   })
@@ -291,7 +307,9 @@ describe('useChat – conversationId and setTargetMessageId', () => {
   })
 
   it('should initially be an empty string', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     expect(result.current.conversationId).toBe('')
   })
 
@@ -329,7 +347,9 @@ describe('useChat – conversationId and setTargetMessageId', () => {
       },
     ]
 
-    const { result } = renderHook(() => useChat({}, undefined, prevChatTree))
+    const { result } = renderHook(() => useChat({}, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     const defaultList = result.current.chatList
     expect(defaultList.some((item) => item.id === 'a1')).toBe(true)
@@ -364,7 +384,9 @@ describe('useChat – updateCurrentQAOnTree with parent_message_id', () => {
   })
 
   it('should handle follow-up message with parent_message_id', async () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'first' }, {})

@@ -1,10 +1,11 @@
 import type { Recipient as RecipientItem } from '../../../types'
 import type { Member } from '@/models/common'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type Props = Readonly<{
   email: string
@@ -15,7 +16,7 @@ type Props = Readonly<{
 }>
 
 const EmailItem = ({ email, data, onDelete, disabled = false, isError }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workspaceMembers'])
 
   return (
     <div
@@ -26,12 +27,17 @@ const EmailItem = ({ email, data, onDelete, disabled = false, isError }: Props) 
       onClick={(e) => e.stopPropagation()}
     >
       {isError && <RiErrorWarningFill className="size-4 text-text-destructive" />}
-      {!isError && <Avatar avatar={data.avatar_url} size="xxs" name={data.name || data.email} />}
+      {!isError && (
+        <Avatar size="xxs" aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(data.name || data.email)}</AvatarFallback>
+          <AvatarImage src={data.avatar_url || undefined} alt="" />
+        </Avatar>
+      )}
       <div title={data.email} className="max-w-125 truncate system-xs-regular text-text-primary">
         {email === data.email ? data.name : data.email}
         {email === data.email && (
           <span className="system-xs-regular text-text-tertiary">
-            {t(($) => $['members.you'], { ns: 'common' })}
+            {t(($) => $['members.you'], { ns: 'workspaceMembers' })}
           </span>
         )}
       </div>

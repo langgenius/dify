@@ -5,14 +5,15 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Separator } from '@langgenius/dify-ui/separator'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
-import { useCreateMetaData } from '@/service/knowledge/use-metadata'
-import { Infotip } from '../../../base/infotip'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { UpdateType } from '../types'
@@ -40,7 +41,9 @@ const EditMetadataBatchModal: FC<Props> = ({
   onHide,
   onShowManage,
 }) => {
-  const { t } = useTranslation()
+  const applyToAllLabelId = React.useId()
+
+  const { t } = useTranslation(['common', 'dataset'])
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
   const handleTemplesChange = useCallback(
     (payload: MetadataItemWithEdit) => {
@@ -84,7 +87,9 @@ const EditMetadataBatchModal: FC<Props> = ({
     [list, templeList],
   )
   const { checkName } = useCheckMetadataName()
-  const { mutate: doAddMetaData } = useCreateMetaData(datasetId)
+  const { mutateAsync: createMetaData } = useMutation(
+    consoleQuery.datasets.byDatasetId.metadata.post.mutationOptions(),
+  )
   const handleAddMetaData = useCallback(
     async (payload: BuiltInMetadataItem) => {
       const errorMsg = checkName(payload.name).errorMsg
@@ -92,10 +97,10 @@ const EditMetadataBatchModal: FC<Props> = ({
         toast.error(errorMsg)
         return Promise.reject(new Error(errorMsg))
       }
-      await doAddMetaData(payload)
+      await createMetaData({ params: { dataset_id: datasetId }, body: payload })
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     },
-    [checkName, doAddMetaData, t],
+    [checkName, createMetaData, datasetId, t],
   )
   const [addedList, setAddedList] = useState<MetadataItemWithEdit[]>([])
   const handleAddedListChange = useCallback(
@@ -165,7 +170,7 @@ const EditMetadataBatchModal: FC<Props> = ({
               <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}
               </div>
-              <Divider bgStyle="gradient" />
+              <Separator decorative className="my-2 h-[0.5px]" variant="gradient" />
             </div>
             <div className="mt-2 space-y-2">
               {addedList.map((item, i) => (
@@ -200,18 +205,21 @@ const EditMetadataBatchModal: FC<Props> = ({
                 checked={isApplyToAllSelectDocument}
                 onCheckedChange={setIsApplyToAllSelectDocument}
               />
-              <span className="mr-1 ml-2 system-xs-medium text-text-secondary">
+              <span
+                id={applyToAllLabelId}
+                className="mr-1 ml-2 system-xs-medium text-text-secondary"
+              >
                 {t(($) => $[`${i18nPrefix}.applyToAllSelectDocument`], { ns: 'dataset' })}
               </span>
             </label>
-            <Infotip
-              aria-label={t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], {
-                ns: 'dataset',
-              })}
-              className="p-px text-text-tertiary"
-              popupClassName="max-w-[240px]"
-            >
-              {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
+            <Infotip>
+              <InfotipTrigger
+                aria-labelledby={applyToAllLabelId}
+                className="p-px text-text-tertiary"
+              />
+              <InfotipContent aria-labelledby={applyToAllLabelId} className="max-w-60">
+                {t(($) => $[`${i18nPrefix}.applyToAllSelectDocumentTip`], { ns: 'dataset' })}
+              </InfotipContent>
             </Infotip>
           </div>
           <div className="flex items-center space-x-2">

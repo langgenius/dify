@@ -20,7 +20,7 @@ import { EditionType, VarType } from '@/app/components/workflow/types'
 type Params = {
   inputs: LLMNodeType
   inputRef: MutableRefObject<LLMNodeType>
-  isChatMode: boolean
+  isChatflow: boolean
   isChatModel: boolean
   setInputs: (inputs: LLMNodeType) => void
 }
@@ -38,7 +38,7 @@ const ensurePromptConfig = (draft: Draft<LLMNodeType>): { jinja2_variables: Vari
 }
 
 const filterInputVar = (varPayload: Var) => {
-  return [
+  const basicPromptVariableTypes: readonly VarType[] = [
     VarType.number,
     VarType.string,
     VarType.secret,
@@ -46,11 +46,13 @@ const filterInputVar = (varPayload: Var) => {
     VarType.arrayNumber,
     VarType.file,
     VarType.arrayFile,
-  ].includes(varPayload.type)
+  ]
+
+  return basicPromptVariableTypes.includes(varPayload.type)
 }
 
 const filterJinja2InputVar = (varPayload: Var) => {
-  return [
+  const jinjaPromptVariableTypes: readonly VarType[] = [
     VarType.number,
     VarType.string,
     VarType.secret,
@@ -61,11 +63,13 @@ const filterJinja2InputVar = (varPayload: Var) => {
     VarType.object,
     VarType.array,
     VarType.boolean,
-  ].includes(varPayload.type)
+  ]
+
+  return jinjaPromptVariableTypes.includes(varPayload.type)
 }
 
 const filterMemoryPromptVar = (varPayload: Var) => {
-  return [
+  const memoryPromptVariableTypes: readonly VarType[] = [
     VarType.arrayObject,
     VarType.array,
     VarType.number,
@@ -75,17 +79,19 @@ const filterMemoryPromptVar = (varPayload: Var) => {
     VarType.arrayNumber,
     VarType.file,
     VarType.arrayFile,
-  ].includes(varPayload.type)
+  ]
+
+  return memoryPromptVariableTypes.includes(varPayload.type)
 }
 
-const useLLMPromptConfig = ({ inputs, inputRef, isChatMode, isChatModel, setInputs }: Params) => {
+const useLLMPromptConfig = ({ inputs, inputRef, isChatflow, isChatModel, setInputs }: Params) => {
   const hasSetBlockStatus = useMemo(() => {
     const promptTemplate = inputs.prompt_template
     const hasSetContext = isChatModel
       ? (promptTemplate as PromptItem[]).some((item) => checkHasContextBlock(item.text))
       : checkHasContextBlock((promptTemplate as PromptItem).text)
 
-    if (!isChatMode) {
+    if (!isChatflow) {
       return {
         history: false,
         query: false,
@@ -106,7 +112,7 @@ const useLLMPromptConfig = ({ inputs, inputRef, isChatMode, isChatModel, setInpu
       query: checkHasQueryBlock((promptTemplate as PromptItem).text),
       context: hasSetContext,
     }
-  }, [inputs.prompt_template, isChatMode, isChatModel])
+  }, [inputs.prompt_template, isChatflow, isChatModel])
 
   const shouldShowContextTip = !hasSetBlockStatus.context && inputs.context.enabled
 

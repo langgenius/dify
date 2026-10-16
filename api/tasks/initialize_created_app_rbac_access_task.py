@@ -1,16 +1,17 @@
 """Initialize default RBAC access for existing workspace members after app creation."""
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass
 
 from celery import shared_task
 from sqlalchemy import select
 
 from configs import dify_config
 from extensions.ext_database import db
-from models import App, Dataset, TenantAccountJoin, TenantAccountRole
-from services.account_service import TenantService
+from models import Agent, App, Dataset, TenantAccountJoin, TenantAccountRole
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.rbac import contracts as rbac_contracts
 
 logger = logging.getLogger(__name__)
 
@@ -30,43 +31,104 @@ def _owner_account_id(tenant_id: str) -> str | None:
     )
 
 
+@dataclass(frozen=True)
+class _WhitelistResourceKind[ItemT]:
+    resource_type: rbac_contracts.RBACResourceType
+    model: type[App] | type[Dataset] | type[Agent]
+    build_item: Callable[[str, Sequence[str]], ItemT]
+    append_members: Callable[[str, str | None, Sequence[ItemT]], None]
+
+    def iter_id_batches(self, tenant_id: str, batch_size: int) -> Iterator[list[str]]:
+        last_id: str | None = None
+        while True:
+            stmt = (
+                select(self.model.id)
+                .where(self.model.tenant_id == tenant_id)
+                .order_by(self.model.id.asc())
+                .limit(batch_size)
+            )
+            if last_id:
+                stmt = stmt.where(self.model.id > last_id)
+            ids = list(db.session().scalars(stmt).all())
+            if not ids:
+                return
+            yield ids
+            last_id = ids[-1]
+
+    def append_member(self, tenant_id: str, actor_account_id: str, resource_ids: list[str], member_account_id: str):
+        self.append_members(
+            tenant_id,
+            actor_account_id,
+            [self.build_item(resource_id, [member_account_id]) for resource_id in resource_ids],
+        )
+
+    def append_member_batch(
+        self,
+        tenant_id: str,
+        actor_account_id: str,
+        resource_id: str,
+        member_account_ids: Sequence[str],
+    ) -> None:
+        self.append_members(
+            tenant_id,
+            actor_account_id,
+            [self.build_item(resource_id, member_account_ids)],
+        )
+
+
+_WHITELIST_RESOURCE_KINDS = (
+    _WhitelistResourceKind(
+        resource_type=rbac_contracts.RBACResourceType.APP,
+        model=App,
+        build_item=lambda app_id, account_ids: rbac_contracts.AppendAppWhitelistMembersBatchItem(
+            app_id=app_id, account_ids=list(account_ids), policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+        ),
+        append_members=lambda tenant_id, account_id, data: (
+            enterprise_rbac_service.RBACService.AppAccess.append_whitelist_members_batch(
+                tenant_id=tenant_id, account_id=account_id, data=data
+            )
+        ),
+    ),
+    _WhitelistResourceKind(
+        resource_type=rbac_contracts.RBACResourceType.DATASET,
+        model=Dataset,
+        build_item=lambda dataset_id, account_ids: rbac_contracts.AppendDatasetWhitelistMembersBatchItem(
+            dataset_id=dataset_id, account_ids=list(account_ids), policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+        ),
+        append_members=lambda tenant_id, account_id, data: (
+            enterprise_rbac_service.RBACService.DatasetAccess.append_whitelist_members_batch(
+                tenant_id=tenant_id, account_id=account_id, data=data
+            )
+        ),
+    ),
+    _WhitelistResourceKind(
+        resource_type=rbac_contracts.RBACResourceType.AGENT,
+        model=Agent,
+        build_item=lambda agent_id, account_ids: rbac_contracts.AppendAgentWhitelistMembersBatchItem(
+            agent_id=agent_id, account_ids=list(account_ids), policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
+        ),
+        append_members=lambda tenant_id, account_id, data: (
+            enterprise_rbac_service.RBACService.AgentAccess.append_whitelist_members_batch(
+                tenant_id=tenant_id, account_id=account_id, data=data
+            )
+        ),
+    ),
+)
+_WHITELIST_RESOURCE_KIND_BY_TYPE = {kind.resource_type: kind for kind in _WHITELIST_RESOURCE_KINDS}
+
+
 def _iter_resource_config_batches(
     tenant_id: str,
     batch_size: int,
-) -> Iterator[list[enterprise_rbac_service.ResourceWhitelistConfigResource]]:
-    last_app_id: str | None = None
-    while True:
-        stmt = select(App.id).where(App.tenant_id == tenant_id).order_by(App.id.asc()).limit(batch_size)
-        if last_app_id:
-            stmt = stmt.where(App.id > last_app_id)
-        app_ids = [str(app_id) for app_id in db.session().scalars(stmt).all()]
-        if not app_ids:
-            break
-        yield [
-            enterprise_rbac_service.ResourceWhitelistConfigResource(
-                resource_type=enterprise_rbac_service.RBACResourceType.APP,
-                resource_id=app_id,
-            )
-            for app_id in app_ids
-        ]
-        last_app_id = app_ids[-1]
-
-    last_dataset_id: str | None = None
-    while True:
-        stmt = select(Dataset.id).where(Dataset.tenant_id == tenant_id).order_by(Dataset.id.asc()).limit(batch_size)
-        if last_dataset_id:
-            stmt = stmt.where(Dataset.id > last_dataset_id)
-        dataset_ids = [str(dataset_id) for dataset_id in db.session().scalars(stmt).all()]
-        if not dataset_ids:
-            break
-        yield [
-            enterprise_rbac_service.ResourceWhitelistConfigResource(
-                resource_type=enterprise_rbac_service.RBACResourceType.DATASET,
-                resource_id=dataset_id,
-            )
-            for dataset_id in dataset_ids
-        ]
-        last_dataset_id = dataset_ids[-1]
+) -> Iterator[list[rbac_contracts.ResourceWhitelistConfigResource]]:
+    for kind in _WHITELIST_RESOURCE_KINDS:
+        for ids in kind.iter_id_batches(tenant_id, batch_size):
+            yield [
+                rbac_contracts.ResourceWhitelistConfigResource(
+                    resource_type=kind.resource_type, resource_id=resource_id
+                )
+                for resource_id in ids
+            ]
 
 
 def _chunks[T](items: list[T], chunk_size: int) -> Iterator[list[T]]:
@@ -74,52 +136,62 @@ def _chunks[T](items: list[T], chunk_size: int) -> Iterator[list[T]]:
         yield items[index : index + chunk_size]
 
 
+def _resolve_target_resource(
+    resource_ids: dict[rbac_contracts.RBACResourceType, str | None],
+) -> tuple[_WhitelistResourceKind, str]:
+    provided = [(resource_type, rid) for resource_type, rid in resource_ids.items() if rid is not None]
+    if len(provided) != 1:
+        given = ", ".join(sorted(resource_type.value for resource_type, _ in provided)) or "none"
+        raise ValueError(f"exactly one of app_id, dataset_id, agent_id must be given, got: {given}")
+    resource_type, resource_id = provided[0]
+    return _WHITELIST_RESOURCE_KIND_BY_TYPE[resource_type], resource_id
+
+
 @shared_task(queue=APP_RBAC_QUEUE, bind=True, max_retries=3, default_retry_delay=60)
 def initialize_created_app_rbac_access_task(
-    self, tenant_id: str, account_id: str, app_id: str | None = None, dataset_id: str | None = None
+    self,
+    tenant_id: str,
+    account_id: str,
+    app_id: str | None = None,
+    dataset_id: str | None = None,
+    agent_id: str | None = None,
 ) -> None:
-    """Grant the default app policy to current workspace members.
+    """Grant the default policy on one app, dataset or agent to current workspace members.
 
-    App scope is persisted synchronously before this task is queued. Replacing
-    member policies is idempotent, so retrying the whole synchronization is safe
-    when the enterprise RBAC service is temporarily unavailable.
+    The resource scope is persisted synchronously before this task is queued. Member
+    bindings are appended through the whitelist batch endpoint so locked default
+    access-policy bindings remain immutable.
     """
     if not dify_config.RBAC_ENABLED:
         return
 
+    kind, resource_id = _resolve_target_resource(
+        {
+            rbac_contracts.RBACResourceType.APP: app_id,
+            rbac_contracts.RBACResourceType.DATASET: dataset_id,
+            rbac_contracts.RBACResourceType.AGENT: agent_id,
+        }
+    )
+
+    from extensions.ext_application_services import application_services
+
     try:
-        for account_ids in TenantService.iter_member_account_id_batches(
+        for account_ids in application_services().workspaces.management.iter_member_account_id_batches(
             tenant_id,
             APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
-            session=db.session(),
         ):
-            if app_id is not None:
-                enterprise_rbac_service.RBACService.AppAccess.replace_user_access_policies(
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    app_id=app_id,
-                    target_account_id=None,
-                    payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
-                        access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                        account_ids=account_ids,
-                    ),
-                )
-            elif dataset_id is not None:
-                enterprise_rbac_service.RBACService.DatasetAccess.replace_user_access_policies(
-                    tenant_id=tenant_id,
-                    account_id=account_id,
-                    dataset_id=dataset_id,
-                    target_account_id=None,
-                    payload=enterprise_rbac_service.ReplaceUserAccessPolicies(
-                        access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                        account_ids=account_ids,
-                    ),
-                )
+            kind.append_member_batch(
+                tenant_id,
+                account_id,
+                resource_id,
+                account_ids,
+            )
     except Exception as exc:
         logger.exception(
-            "Failed to initialize app RBAC access; retrying: tenant_id=%s app_id=%s attempt=%s",
+            "Failed to initialize RBAC access; retrying: tenant_id=%s resource_type=%s resource_id=%s attempt=%s",
             tenant_id,
-            app_id,
+            kind.resource_type.value,
+            resource_id,
             self.request.retries + 1,
         )
         raise self.retry(exc=exc)
@@ -146,8 +218,9 @@ def sync_joined_workspace_member_rbac_access_task(
             )
             return
 
-        app_ids: list[str] = []
-        dataset_ids: list[str] = []
+        auto_included: dict[rbac_contracts.RBACResourceType, list[str]] = {
+            kind.resource_type: [] for kind in _WHITELIST_RESOURCE_KINDS
+        }
         for resources in _iter_resource_config_batches(tenant_id, APP_RBAC_RESOURCE_CONFIG_BATCH_SIZE):
             configs = enterprise_rbac_service.RBACService.ResourceWhitelistConfigs.batch_get(
                 tenant_id=tenant_id,
@@ -157,38 +230,14 @@ def sync_joined_workspace_member_rbac_access_task(
             for config in configs.data:
                 if not config.automatic_include_workspace_members:
                     continue
-                if config.resource_type == enterprise_rbac_service.RBACResourceType.APP:
-                    app_ids.append(config.resource_id)
-                elif config.resource_type == enterprise_rbac_service.RBACResourceType.DATASET:
-                    dataset_ids.append(config.resource_id)
+                ids = auto_included.get(config.resource_type)
+                if ids is not None:
+                    ids.append(config.resource_id)
 
-        for app_id_batch in _chunks(app_ids, APP_RBAC_MEMBER_APPEND_BATCH_SIZE):
-            enterprise_rbac_service.RBACService.AppAccess.append_whitelist_members_batch(
-                tenant_id=tenant_id,
-                account_id=actor_account_id,
-                data=[
-                    enterprise_rbac_service.AppendAppWhitelistMembersBatchItem(
-                        app_id=app_id,
-                        account_ids=[member_account_id],
-                        policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID,
-                    )
-                    for app_id in app_id_batch
-                ],
-            )
-
-        for dataset_id_batch in _chunks(dataset_ids, APP_RBAC_MEMBER_APPEND_BATCH_SIZE):
-            enterprise_rbac_service.RBACService.DatasetAccess.append_whitelist_members_batch(
-                tenant_id=tenant_id,
-                account_id=actor_account_id,
-                data=[
-                    enterprise_rbac_service.AppendDatasetWhitelistMembersBatchItem(
-                        dataset_id=dataset_id,
-                        account_ids=[member_account_id],
-                        policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID,
-                    )
-                    for dataset_id in dataset_id_batch
-                ],
-            )
+        for resource_type, resource_ids in auto_included.items():
+            kind = _WHITELIST_RESOURCE_KIND_BY_TYPE[resource_type]
+            for id_batch in _chunks(resource_ids, APP_RBAC_MEMBER_APPEND_BATCH_SIZE):
+                kind.append_member(tenant_id, actor_account_id, id_batch, member_account_id)
     except Exception as exc:
         logger.exception(
             "Failed to sync joined member RBAC access; retrying: tenant_id=%s member=%s attempt=%s",

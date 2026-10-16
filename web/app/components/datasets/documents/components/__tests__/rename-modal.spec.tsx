@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import after mock
 import { renameDocumentName } from '@/service/datasets'
+import { createHttpError } from '@/service/http-error'
 import RenameModal from '../rename-modal'
 
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
@@ -15,7 +16,7 @@ vi.mock('@/service/datasets', () => ({
   renameDocumentName: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -23,6 +24,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 const mockRenameDocumentName = vi.mocked(renameDocumentName)
+
+// The rename endpoint answers with the renamed document.
+const renamedDocument = { id: 'doc-123', name: 'New Name', data_source_detail_dict: {} }
 
 describe('RenameModal', () => {
   const defaultProps = {
@@ -94,7 +98,7 @@ describe('RenameModal', () => {
     })
 
     it('should call renameDocumentName with correct params when save is clicked', async () => {
-      mockRenameDocumentName.mockResolvedValueOnce({ result: 'success' })
+      mockRenameDocumentName.mockResolvedValueOnce(renamedDocument)
 
       render(<RenameModal {...defaultProps} />)
       const input = screen.getByRole('textbox')
@@ -113,7 +117,7 @@ describe('RenameModal', () => {
     })
 
     it('should call onSaved and onClose on successful save', async () => {
-      mockRenameDocumentName.mockResolvedValueOnce({ result: 'success' })
+      mockRenameDocumentName.mockResolvedValueOnce(renamedDocument)
       const handleSaved = vi.fn()
       const handleClose = vi.fn()
 
@@ -125,7 +129,6 @@ describe('RenameModal', () => {
       await waitFor(() => {
         expect(handleSaved).toHaveBeenCalledTimes(1)
         expect(handleClose).toHaveBeenCalledTimes(1)
-        expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       })
     })
   })
@@ -133,8 +136,8 @@ describe('RenameModal', () => {
   describe('Loading State', () => {
     it('should not submit again while saving', async () => {
       // Create a promise that we can resolve manually
-      let resolvePromise: (value: { result: 'success' | 'fail' }) => void
-      const pendingPromise = new Promise<{ result: 'success' | 'fail' }>((resolve) => {
+      let resolvePromise: (value: typeof renamedDocument) => void
+      const pendingPromise = new Promise<typeof renamedDocument>((resolve) => {
         resolvePromise = resolve
       })
       mockRenameDocumentName.mockReturnValueOnce(pendingPromise)
@@ -151,7 +154,7 @@ describe('RenameModal', () => {
       await user.keyboard('{Enter}')
       expect(mockRenameDocumentName).toHaveBeenCalledTimes(1)
 
-      resolvePromise!({ result: 'success' })
+      resolvePromise!(renamedDocument)
       await waitFor(() => {
         expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
       })
@@ -160,7 +163,7 @@ describe('RenameModal', () => {
 
   describe('Error Handling', () => {
     it('should handle API error gracefully', async () => {
-      const error = new Error('API Error')
+      const error = createHttpError(new Response(null, { status: 500 }), { message: 'API Error' })
       mockRenameDocumentName.mockRejectedValueOnce(error)
       const handleSaved = vi.fn()
       const handleClose = vi.fn()
@@ -174,7 +177,7 @@ describe('RenameModal', () => {
         // onSaved and onClose should not be called on error
         expect(handleSaved).not.toHaveBeenCalled()
         expect(handleClose).not.toHaveBeenCalled()
-        expect(mockToastError).toHaveBeenCalledWith('Error: API Error')
+        expect(mockToastError).toHaveBeenCalledWith('API Error')
       })
     })
   })

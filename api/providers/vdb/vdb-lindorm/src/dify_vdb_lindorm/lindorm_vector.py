@@ -6,6 +6,7 @@ from typing import Any, override
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from tenacity import retry, stop_after_attempt, wait_exponential
 from typing_extensions import TypedDict
 
@@ -145,8 +146,7 @@ class LindormVectorStore(BaseVector):
                     action_header["index"]["routing"] = self._routing
                     action_values[ROUTING_FIELD] = self._routing
 
-                actions.append(action_header)
-                actions.append(action_values)
+                actions.extend((action_header, action_values))
 
             try:
                 _bulk_with_retry(actions)
@@ -388,7 +388,9 @@ class LindormVectorStore(BaseVector):
 
 class LindormVectorStoreFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> LindormVectorStore:
         lindorm_config = LindormVectorStoreConfig(
             hosts=dify_config.LINDORM_URL,
             username=dify_config.LINDORM_USERNAME,

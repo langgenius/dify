@@ -2,10 +2,18 @@ import type { Role, RoleListResponse } from '@/models/access-control'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { RoleSelector } from '../role-selector'
 
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+  })
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: overrides.id ?? overrides.name ?? 'role-id',
@@ -49,14 +57,14 @@ const mockUseWorkspaceRoleList = ({
   hasNextPage?: boolean
   fetchNextPage?: () => void
 } = {}) => {
-  vi.mocked(useWorkspaceRoleList).mockReturnValue({
+  vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
     data: { pages: [createPage(data)], pageParams: [1] },
     isLoading,
     error,
     hasNextPage,
     isFetchingNextPage: false,
     fetchNextPage,
-  } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+  })
 }
 
 const RoleSelectorWrapper = () => <RoleSelector />
@@ -73,7 +81,7 @@ describe('RoleSelector', () => {
   it('requires an explicit selection and exposes select semantics', () => {
     render(<RoleSelectorWrapper />)
 
-    expect(getTrigger()).toHaveTextContent(/members\.selectRole/i)
+    expect(getTrigger().textContent).toMatch(/members\.selectRole/i)
     expect(document.querySelector('input[name="role"]')).toBeRequired()
   })
 
@@ -109,9 +117,11 @@ describe('RoleSelector', () => {
 
     await user.click(getTrigger())
 
-    expect(within(getListbox()).getByText(/common\.members\.adminTip/i)).toBeInTheDocument()
     expect(
-      within(getListbox()).getByText(/common\.members\.datasetOperatorTip/i),
+      within(getListbox()).getByText(/workspaceMembers\.members\.adminTip/i),
+    ).toBeInTheDocument()
+    expect(
+      within(getListbox()).getByText(/workspaceMembers\.members\.datasetOperatorTip/i),
     ).toBeInTheDocument()
   })
 

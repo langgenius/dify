@@ -2,8 +2,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentLogDetailResponse } from '@/models/log'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { fetchAgentLogDetail } from '@/service/log'
+import { createHttpError } from '@/service/http-error'
 import AgentLogDetail from '../detail'
 
 const { mockToast } = vi.hoisted(() => {
@@ -19,16 +18,16 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@/service/log', () => ({
+const { fetchAgentLogDetail } = vi.hoisted(() => ({
   fetchAgentLogDetail: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: mockToast,
+vi.mock('@/service/console', () => ({
+  consoleClient: { apps: { byAppId: { agent: { logs: { get: fetchAgentLogDetail } } } } },
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector) => selector({ appDetail: { id: 'app-id' } })),
+vi.mock('@/app/notifications', () => ({
+  toast: mockToast,
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
@@ -71,12 +70,6 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: () => <div data-testid="block-icon" />,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => (
-    <div data-testid="chevron-right" className={props.className} />
-  ),
-}))
-
 const createMockLog = (overrides: Partial<IChatItem> = {}): IChatItem => ({
   id: 'msg-id',
   content: 'output content',
@@ -110,6 +103,10 @@ const createMockResponse = (
           tool_name: 'tool1',
           status: 'success',
           tool_icon: null,
+          time_cost: 0,
+          tool_input: {},
+          tool_output: {},
+          tool_parameters: {},
           tool_label: { 'en-US': 'Tool 1' },
         },
       ],
@@ -122,6 +119,7 @@ const createMockResponse = (
 describe('AgentLogDetail', () => {
   const renderComponent = (props: Partial<ComponentProps<typeof AgentLogDetail>> = {}) => {
     const defaultProps: ComponentProps<typeof AgentLogDetail> = {
+      appId: 'app-id',
       conversationID: 'conv-id',
       messageID: 'msg-id',
       log: createMockLog(),
@@ -134,7 +132,7 @@ describe('AgentLogDetail', () => {
   ) => {
     const result = renderComponent(props)
     await waitFor(() => {
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
     return result
   }
@@ -145,15 +143,15 @@ describe('AgentLogDetail', () => {
 
   describe('Rendering', () => {
     it('should show loading indicator while fetching data', async () => {
-      vi.mocked(fetchAgentLogDetail).mockReturnValue(new Promise(() => {}))
+      fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
 
       renderComponent()
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should display result panel after data loads', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData()
 
@@ -162,23 +160,20 @@ describe('AgentLogDetail', () => {
     })
 
     it('should call fetchAgentLogDetail with correct params', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData()
 
       expect(fetchAgentLogDetail).toHaveBeenCalledWith({
-        appID: 'app-id',
-        params: {
-          conversation_id: 'conv-id',
-          message_id: 'msg-id',
-        },
+        params: { app_id: 'app-id' },
+        query: { conversation_id: 'conv-id', message_id: 'msg-id' },
       })
     })
   })
 
   describe('Props', () => {
     it('should default to DETAIL tab when activeTab is not provided', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData()
 
@@ -187,7 +182,7 @@ describe('AgentLogDetail', () => {
     })
 
     it('should show TRACING tab when activeTab is TRACING', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData({ activeTab: 'TRACING' })
 
@@ -198,7 +193,7 @@ describe('AgentLogDetail', () => {
 
   describe('User Interactions', () => {
     it('should switch to TRACING tab when clicked', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData()
 
@@ -214,7 +209,7 @@ describe('AgentLogDetail', () => {
     })
 
     it('should switch back to DETAIL tab after switching to TRACING', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse())
 
       await renderAndWaitForData()
 
@@ -234,42 +229,30 @@ describe('AgentLogDetail', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should not fetch data when app detail is unavailable', async () => {
-      vi.mocked(useAppStore).mockImplementationOnce((selector) =>
-        selector({ appDetail: undefined } as never),
-      )
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse())
-
-      renderComponent()
-
-      await waitFor(() => {
-        expect(fetchAgentLogDetail).not.toHaveBeenCalled()
-      })
-      expect(screen.getByRole('status')).toBeInTheDocument()
-    })
-
     it('should notify on API error', async () => {
-      vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('API Error'))
+      fetchAgentLogDetail.mockRejectedValue(
+        createHttpError(new Response(null, { status: 500 }), { message: 'API Error' }),
+      )
 
       renderComponent()
 
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Error: API Error')
+        expect(mockToast.error).toHaveBeenCalledWith('API Error')
       })
     })
 
     it('should stop loading after API error', async () => {
-      vi.mocked(fetchAgentLogDetail).mockRejectedValue(new Error('Network failure'))
+      fetchAgentLogDetail.mockRejectedValue(new Error('Network failure'))
 
       renderComponent()
 
       await waitFor(() => {
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
       })
     })
 
     it('should handle response with empty iterations', async () => {
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(createMockResponse({ iterations: [] }))
+      fetchAgentLogDetail.mockResolvedValue(createMockResponse({ iterations: [] }))
 
       await renderAndWaitForData()
     })
@@ -288,12 +271,20 @@ describe('AgentLogDetail', () => {
                 tool_name: 'tool1',
                 status: 'success',
                 tool_icon: null,
+                time_cost: 0,
+                tool_input: {},
+                tool_output: {},
+                tool_parameters: {},
                 tool_label: { 'en-US': 'Tool 1' },
               },
               {
                 tool_name: 'tool2',
                 status: 'success',
                 tool_icon: null,
+                time_cost: 0,
+                tool_input: {},
+                tool_output: {},
+                tool_parameters: {},
                 tool_label: { 'en-US': 'Tool 2' },
               },
             ],
@@ -309,13 +300,17 @@ describe('AgentLogDetail', () => {
                 tool_name: 'tool1',
                 status: 'success',
                 tool_icon: null,
+                time_cost: 0,
+                tool_input: {},
+                tool_output: {},
+                tool_parameters: {},
                 tool_label: { 'en-US': 'Tool 1' },
               },
             ],
           },
         ],
       })
-      vi.mocked(fetchAgentLogDetail).mockResolvedValue(response)
+      fetchAgentLogDetail.mockResolvedValue(response)
 
       await renderAndWaitForData()
 

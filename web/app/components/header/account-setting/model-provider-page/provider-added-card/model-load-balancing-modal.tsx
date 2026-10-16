@@ -1,6 +1,7 @@
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
+  ModelCredential,
   ModelItem,
   ModelLoadBalancingConfig,
   ModelLoadBalancingConfigEntry,
@@ -8,21 +9,22 @@ import type {
 } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
 import { useRefreshModel } from '../hooks'
 import { useAuth } from '../model-auth/hooks/use-auth'
@@ -51,7 +53,8 @@ const ModelLoadBalancingModal = ({
   onClose,
   onSave,
 }: ModelLoadBalancingModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
+  const modelCredentialLabelId = useId()
   const { doingAction, deleteModel, openConfirmDelete, closeConfirmDelete, handleConfirmDelete } =
     useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, {
       isModelCredential: true,
@@ -59,15 +62,41 @@ const ModelLoadBalancingModal = ({
   const [loading, setLoading] = useState(false)
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const configFrom = providerFormSchemaPredefined ? 'predefined-model' : 'custom-model'
-  const { isLoading, data, refetch } = useGetModelCredential(
-    true,
-    provider.provider,
-    credential?.credential_id,
-    model.model,
-    model.model_type,
-    configFrom,
+  const { isLoading, data, refetch } = useQuery({
+    ...consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.queryOptions(
+      {
+        input: {
+          params: { provider: provider.provider },
+          query: {
+            model: model.model,
+            model_type: model.model_type,
+            config_from: configFrom,
+            credential_id: credential?.credential_id,
+          },
+        },
+      },
+    ),
+    staleTime: 0,
+    gcTime: 0,
+  })
+  const modelCredential = useMemo<ModelCredential | undefined>(
+    () =>
+      data && {
+        ...data,
+        current_credential_id: data.current_credential_id ?? undefined,
+        current_credential_name: data.current_credential_name ?? undefined,
+        load_balancing: {
+          enabled: data.load_balancing.enabled,
+          configs: data.load_balancing.configs.map((config) => ({
+            ...config,
+            credential_id: config.credential_id ?? undefined,
+            // Credential values are untyped JSON form values in the console API response.
+            credentials: config.credentials as ModelLoadBalancingConfigEntry['credentials'],
+          })),
+        },
+      },
+    [data],
   )
-  const modelCredential = data
   const { load_balancing, current_credential_id, available_credentials, current_credential_name } =
     modelCredential ?? {}
   const originalConfig = load_balancing
@@ -128,8 +157,8 @@ const ModelLoadBalancingModal = ({
     },
     [extendedSecretFormSchemas, originalConfigMap],
   )
-  const { mutateAsync: updateModelLoadBalancingConfig } = useUpdateModelLoadBalancingConfig(
-    provider.provider,
+  const { mutateAsync: updateModelLoadBalancingConfig } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions(),
   )
   const initialCustomModelCredential = useMemo(() => {
     if (!current_credential_id) return undefined
@@ -146,14 +175,17 @@ const ModelLoadBalancingModal = ({
     try {
       setLoading(true)
       const res = await updateModelLoadBalancingConfig({
-        credential_id: customModelCredential?.credential_id || current_credential_id,
-        config_from: configFrom,
-        model: model.model,
-        model_type: model.model_type,
-        load_balancing: {
-          ...draftConfig,
-          configs: draftConfig!.configs.map(encodeConfigEntrySecretValues),
-          enabled: Boolean(draftConfig?.enabled),
+        params: { provider: provider.provider },
+        body: {
+          credential_id: customModelCredential?.credential_id || current_credential_id,
+          config_from: configFrom,
+          model: model.model,
+          model_type: model.model_type,
+          load_balancing: {
+            ...draftConfig,
+            configs: draftConfig!.configs.map(encodeConfigEntrySecretValues),
+            enabled: Boolean(draftConfig?.enabled),
+          },
         },
       })
       if (res.result === 'success') {
@@ -254,8 +286,8 @@ const ModelLoadBalancingModal = ({
             <div className="pb-3 font-semibold">
               <div className="h-7.5">
                 {draftConfig?.enabled
-                  ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })
-                  : t(($) => $['modelProvider.auth.configModel'], { ns: 'common' })}
+                  ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })
+                  : t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
               </div>
               {Boolean(model) && (
                 <div className="flex h-5 items-center">
@@ -277,19 +309,26 @@ const ModelLoadBalancingModal = ({
           </DialogTitle>
 
           {!draftConfig ? (
-            <Loading type="area" />
+            <LoadingPlaceholder />
           ) : (
             <>
               <div className="py-2">
                 <div
                   className={cn(
-                    'min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+                    'relative min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
                     draftConfig.enabled
-                      ? 'cursor-pointer border-components-panel-border'
+                      ? 'border-components-panel-border'
                       : 'cursor-default border-util-colors-blue-blue-600',
                   )}
-                  onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
                 >
+                  {draftConfig.enabled && (
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"
+                      aria-labelledby={modelCredentialLabelId}
+                      onClick={() => toggleModalBalancing(false)}
+                    />
+                  )}
                   <div className="flex items-center gap-2 px-3.75 py-3 select-none">
                     <div className="flex size-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
                       {Boolean(model) && (
@@ -301,33 +340,39 @@ const ModelLoadBalancingModal = ({
                       )}
                     </div>
                     <div className="grow">
-                      <div className="text-sm text-text-secondary">
+                      <div id={modelCredentialLabelId} className="text-sm text-text-secondary">
                         {providerFormSchemaPredefined
-                          ? t(($) => $['modelProvider.auth.providerManaged'], { ns: 'common' })
+                          ? t(($) => $['modelProvider.auth.providerManaged'], {
+                              ns: 'modelProvider',
+                            })
                           : t(($) => $['modelProvider.auth.specifyModelCredential'], {
-                              ns: 'common',
+                              ns: 'modelProvider',
                             })}
                       </div>
                       <div className="text-xs text-text-tertiary">
                         {providerFormSchemaPredefined
-                          ? t(($) => $['modelProvider.auth.providerManagedTip'], { ns: 'common' })
+                          ? t(($) => $['modelProvider.auth.providerManagedTip'], {
+                              ns: 'modelProvider',
+                            })
                           : t(($) => $['modelProvider.auth.specifyModelCredentialTip'], {
-                              ns: 'common',
+                              ns: 'modelProvider',
                             })}
                       </div>
                     </div>
                     {!providerFormSchemaPredefined && (
-                      <SwitchCredentialInLoadBalancing
-                        provider={provider}
-                        customModelCredential={
-                          customModelCredential ?? initialCustomModelCredential
-                        }
-                        setCustomModelCredential={setCustomModelCredential}
-                        model={model}
-                        credentials={available_credentials}
-                        onUpdate={handleUpdateWhenSwitchCredential}
-                        onRemove={handleUpdateWhenSwitchCredential}
-                      />
+                      <div className="relative z-20">
+                        <SwitchCredentialInLoadBalancing
+                          provider={provider}
+                          customModelCredential={
+                            customModelCredential ?? initialCustomModelCredential
+                          }
+                          setCustomModelCredential={setCustomModelCredential}
+                          model={model}
+                          credentials={available_credentials}
+                          onUpdate={handleUpdateWhenSwitchCredential}
+                          onRemove={handleUpdateWhenSwitchCredential}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
@@ -367,7 +412,7 @@ const ModelLoadBalancingModal = ({
                       }
                       className="text-components-button-destructive-secondary-text"
                     >
-                      {t(($) => $['modelProvider.auth.removeModel'], { ns: 'common' })}
+                      {t(($) => $['modelProvider.auth.removeModel'], { ns: 'modelProvider' })}
                     </Button>
                   )}
                 </div>
@@ -396,17 +441,17 @@ const ModelLoadBalancingModal = ({
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                  {t(($) => $['modelProvider.confirmDelete'], { ns: 'common' })}
+                  {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
                 </AlertDialogTitle>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
                 <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </DialogContent>

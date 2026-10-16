@@ -1,21 +1,25 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ModelItem, ModelProvider } from '../../declarations'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { disableModel, enableModel } from '@/service/common'
+import { consoleClient } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { ModelStatusEnum } from '../../declarations'
 import ModelListItem from '../model-list-item'
 
-function createWrapper() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  )
-}
-
 let mockModelLoadBalancingEnabled = false
-let mockPlanType: string = 'pro'
+let mockPlanType: CloudPlan = 'professional'
 let mockWorkspacePermissionKeys: string[] = ['plugin.model_config']
+
+function createWrapper(deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
+  return createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: {
+      billing: { subscription: { plan: mockPlanType } },
+      model_load_balancing_enabled: mockModelLoadBalancingEnabled,
+    },
+  }).wrapper
+}
 
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
@@ -24,16 +28,26 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: { type: mockPlanType },
-  }),
-  useProviderContextSelector: () => mockModelLoadBalancingEnabled,
-}))
-
-vi.mock('@/service/common', () => ({
-  enableModel: vi.fn(),
-  disableModel: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              enable: {
+                patch: vi.fn(),
+              },
+              disable: {
+                patch: vi.fn(),
+              },
+            },
+          },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../../hooks', () => ({
@@ -45,8 +59,17 @@ vi.mock('../../model-icon', () => ({
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ children, nameClassName }: { children: React.ReactNode; nameClassName?: string }) => (
+  default: ({
+    children,
+    nameClassName,
+    nameId,
+  }: {
+    children: React.ReactNode
+    nameClassName?: string
+    nameId?: string
+  }) => (
     <div data-testid="model-name" className={nameClassName}>
+      <span id={nameId}>gpt-4</span>
       {children}
     </div>
   ),
@@ -78,8 +101,15 @@ describe('ModelListItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelLoadBalancingEnabled = false
-    mockPlanType = 'pro'
+    mockPlanType = 'professional'
     mockWorkspacePermissionKeys = ['plugin.model_config']
+  })
+
+  it('keeps model configuration available outside Cloud without a Sandbox placeholder', () => {
+    render(<ModelListItem model={mockModel} provider={mockProvider} isConfigurable />, {
+      wrapper: createWrapper('COMMUNITY'),
+    })
+    expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
   })
 
   it('should render model item with icon and name', () => {
@@ -88,6 +118,7 @@ describe('ModelListItem', () => {
     })
     expect(screen.getByTestId('model-icon')).toBeInTheDocument()
     expect(screen.getByTestId('model-name')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'gpt-4' })).toBeInTheDocument()
   })
 
   it('should disable an active model when switch is clicked', async () => {
@@ -105,7 +136,9 @@ describe('ModelListItem', () => {
 
     await waitFor(
       () => {
-        expect(disableModel).toHaveBeenCalled()
+        expect(
+          consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch,
+        ).toHaveBeenCalled()
         expect(onChange).toHaveBeenCalledWith('test-provider')
       },
       { timeout: 2000 },
@@ -128,7 +161,9 @@ describe('ModelListItem', () => {
 
     await waitFor(
       () => {
-        expect(enableModel).toHaveBeenCalled()
+        expect(
+          consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch,
+        ).toHaveBeenCalled()
         expect(onChange).toHaveBeenCalledWith('test-provider')
       },
       { timeout: 2000 },
@@ -247,7 +282,7 @@ describe('ModelListItem', () => {
   it('should hide ConfigModel for non-sandbox plan without load balancing enabled', () => {
     // Arrange - set plan type to non-sandbox and keep load balancing disabled
     mockModelLoadBalancingEnabled = false
-    mockPlanType = 'pro'
+    mockPlanType = 'professional'
 
     // Act
     render(<ModelListItem model={mockModel} provider={mockProvider} isConfigurable={false} />, {
@@ -278,8 +313,12 @@ describe('ModelListItem', () => {
     expect(statusSwitch).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(statusSwitch)
     expect(statusSwitch).toHaveAttribute('aria-checked', 'false')
-    expect(enableModel).not.toHaveBeenCalled()
-    expect(disableModel).not.toHaveBeenCalled()
+    expect(
+      consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch,
+    ).not.toHaveBeenCalled()
+    expect(
+      consoleClient.workspaces.current.modelProviders.byProvider.models.disable.patch,
+    ).not.toHaveBeenCalled()
   })
 
   // isConfigurable=true: hover class on row

@@ -4,7 +4,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { FlowType } from '@/types/common'
 import BlockSelector from '..'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
@@ -38,13 +37,15 @@ vi.mock('@/service/use-triggers', () => ({
   useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   metaData: {
@@ -64,14 +65,10 @@ type RenderBlockSelectorOptions = Parameters<typeof renderWorkflowComponent>[1]
 const renderBlockSelector = (ui: ReactElement, options?: RenderBlockSelectorOptions) => {
   return renderWorkflowComponent(ui, {
     ...options,
+    resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
     hooksStoreProps: {
       ...options?.hooksStoreProps,
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-        ...options?.hooksStoreProps?.configsMap,
-      },
+      fileSettings: {} as never,
     },
   })
 }
@@ -205,7 +202,10 @@ describe('BlockSelector', () => {
     await user.type(searchInput, 'webhook')
     await user.click(screen.getByRole('button', { name: 'selector-open' }))
 
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onOpenChange).toHaveBeenCalledWith(
+      false,
+      expect.objectContaining({ reason: 'trigger-press' }),
+    )
     expect(screen.getByRole('tab', { name: 'workflow.tabs.start' })).toHaveAttribute(
       'aria-selected',
       'true',

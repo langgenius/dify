@@ -3,9 +3,12 @@ from datetime import UTC, datetime
 from types import FunctionType
 from unittest.mock import patch
 
+import httpx
 import pytest
 from flask import Flask
+from flask_restx import Resource
 
+from controllers.common.rbac import Workspace
 from controllers.console import console_ns
 from controllers.console.workspace.endpoint import (
     DeprecatedEndpointCreateApi,
@@ -21,13 +24,16 @@ from controllers.console.workspace.endpoint import (
     EndpointListForPluginQuery,
     EndpointListForSinglePluginApi,
     EndpointListQuery,
+    EndpointMutationResponse,
     EndpointUpdatePayload,
     LegacyEndpointUpdatePayload,
 )
-from controllers.console.wraps import RBACPermission, RBACResourceScope
+from controllers.console.wraps import RBACPermission
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.plugin.entities.endpoint import EndpointEntityWithInstance, EndpointProviderDeclaration
-from core.plugin.impl.exc import PluginPermissionDeniedError
+from core.plugin.impl.exc import PluginDaemonInternalServerError, PluginPermissionDeniedError
+from libs.external_api import ExternalApi
+from tests.unit_tests.controllers.rbac_introspection import rbac_checks
 
 
 def _endpoint_entity() -> EndpointEntityWithInstance:
@@ -65,16 +71,42 @@ def test_endpoint_lists_require_management_permission(method: FunctionType) -> N
     )
     assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
 
-    rbac_wrapper = inspect.unwrap(
-        method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname
-    )
-    rbac_config = inspect.getclosurevars(rbac_wrapper).nonlocals
-    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
-    assert rbac_config["scene"] == RBACPermission.PLUGIN_MODEL_CONFIG
-    assert rbac_config["resource_required"] is False
+    [check] = rbac_checks(method)
+    assert check.scene == RBACPermission.PLUGIN_MODEL_CONFIG
+    assert isinstance(check.locator, Workspace)
 
 
 class TestEndpointCollectionApi:
+    @pytest.mark.parametrize("success", [True, False])
+    def test_daemon_result_uses_http_success_or_error(self, success: bool) -> None:
+        app = Flask(__name__)
+        api = ExternalApi(app)
+        method = inspect.unwrap(EndpointCollectionApi.post)
+        payload = EndpointCreatePayload(plugin_unique_identifier="plugin-1", name="endpoint", settings={})
+
+        @api.route("/workspaces/current/endpoints")
+        class EndpointMutationApi(Resource):
+            def post(self) -> dict[str, object]:
+                return method(EndpointCollectionApi(), payload, "t1", "u1")
+
+        with patch(
+            "core.plugin.impl.base.BasePluginClient._request",
+            return_value=httpx.Response(
+                200,
+                request=httpx.Request("POST", "https://daemon.test/endpoint/setup"),
+                json={"code": 0, "message": "success", "data": success},
+            ),
+        ):
+            response = app.test_client().post("/workspaces/current/endpoints")
+
+        if success:
+            assert response.status_code == 200
+            assert response.get_json() == {"success": True}
+        else:
+            assert response.status_code == 500
+            assert response.get_json()["status"] == 500
+            assert "success" not in response.get_json()
+
     def test_create_success(self, app: Flask):
         api = EndpointCollectionApi()
         method = inspect.unwrap(api.post)
@@ -255,11 +287,13 @@ class TestEndpointItemApi:
 
         with (
             app.test_request_context("/", method="DELETE"),
-            patch("controllers.console.workspace.endpoint.EndpointService.delete_endpoint", return_value=False),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.delete_endpoint",
+                side_effect=PluginDaemonInternalServerError("failed"),
+            ),
         ):
-            result = method(api, "t1", "u1", "e1")
-
-        assert result["success"] is False
+            with pytest.raises(PluginDaemonInternalServerError):
+                method(api, "t1", "u1", "e1")
 
     def test_update_success(self, app: Flask):
         api = EndpointItemApi()
@@ -313,11 +347,13 @@ class TestEndpointItemApi:
 
         with (
             app.test_request_context("/", method="PATCH", json=payload),
-            patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=False),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
+                side_effect=PluginDaemonInternalServerError("failed"),
+            ),
         ):
-            result = method(api, req_data, "t1", "u1", "e1")
-
-        assert result["success"] is False
+            with pytest.raises(PluginDaemonInternalServerError):
+                method(api, req_data, "t1", "u1", "e1")
 
 
 class TestDeprecatedEndpointDeleteApi:
@@ -355,11 +391,13 @@ class TestDeprecatedEndpointDeleteApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.endpoint.EndpointService.delete_endpoint", return_value=False),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.delete_endpoint",
+                side_effect=PluginDaemonInternalServerError("failed"),
+            ),
         ):
-            result = method(api, req_data, "t1", "u1")
-
-        assert result["success"] is False
+            with pytest.raises(PluginDaemonInternalServerError):
+                method(api, req_data, "t1", "u1")
 
 
 class TestDeprecatedEndpointUpdateApi:
@@ -407,14 +445,22 @@ class TestDeprecatedEndpointUpdateApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=False),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
+                side_effect=PluginDaemonInternalServerError("failed"),
+            ),
         ):
-            result = method(api, req_data, "t1", "u1")
-
-        assert result["success"] is False
+            with pytest.raises(PluginDaemonInternalServerError):
+                method(api, req_data, "t1", "u1")
 
 
 class TestEndpointRouteMetadata:
+    def test_mutation_response_only_documents_success(self) -> None:
+        success_schema = EndpointMutationResponse.model_json_schema()["properties"]["success"]
+
+        assert success_schema["const"] is True
+        assert success_schema["type"] == "boolean"
+
     def test_legacy_write_routes_are_marked_deprecated(self):
         assert DeprecatedEndpointCreateApi.post.__apidoc__["deprecated"] is True
         assert DeprecatedEndpointDeleteApi.post.__apidoc__["deprecated"] is True
@@ -479,11 +525,13 @@ class TestEndpointEnableApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.endpoint.EndpointService.enable_endpoint", return_value=False),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.enable_endpoint",
+                side_effect=PluginDaemonInternalServerError("failed"),
+            ),
         ):
-            result = method(api, req_data, "t1", "u1")
-
-        assert result["success"] is False
+            with pytest.raises(PluginDaemonInternalServerError):
+                method(api, req_data, "t1", "u1")
 
 
 class TestEndpointDisableApi:

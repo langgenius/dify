@@ -5,6 +5,7 @@ from werkzeug.exceptions import NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_application_services import application_services
@@ -48,12 +49,12 @@ class PassportResource(Resource):
         }
     )
     @web_ns.response(200, "Passport retrieved successfully", web_ns.models[PassportAccessTokenResponse.__name__])
-    def get(self):
+    @model_validate(PassportQuery)
+    def get(self, query: PassportQuery):
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
-        query = PassportQuery.model_validate(request.args.to_dict(flat=True))
         passport_request = WebPassportRequest(
             app_code=app_code,
             user_session_id=query.user_id,

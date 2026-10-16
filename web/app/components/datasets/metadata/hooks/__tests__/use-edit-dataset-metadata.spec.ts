@@ -8,39 +8,42 @@ const mockDoRenameMetaData = vi.fn().mockResolvedValue({})
 const mockDoDeleteMetaData = vi.fn().mockResolvedValue({})
 const mockToggleBuiltInStatus = vi.fn().mockResolvedValue({})
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [
-        { id: '1', name: 'field_one', type: DataType.string, count: 5 },
-        { id: '2', name: 'field_two', type: DataType.number, count: 3 },
-      ],
-      built_in_field_enabled: false,
-    },
-  }),
-  useCreateMetaData: () => ({
-    mutate: mockDoAddMetaData,
-  }),
-  useRenameMeta: () => ({
-    mutate: mockDoRenameMetaData,
-  }),
-  useDeleteMetaData: () => ({
-    mutateAsync: mockDoDeleteMetaData,
-  }),
-  useUpdateBuiltInStatus: () => ({
-    mutateAsync: mockToggleBuiltInStatus,
-  }),
-  useBuiltInMetaDataFields: () => ({
-    data: {
-      fields: [
-        { name: 'created_at', type: DataType.time },
-        { name: 'modified_at', type: DataType.time },
-      ],
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        doc_metadata: [
+          { id: '1', name: 'field_one', type: DataType.string, count: 5 },
+          { id: '2', name: 'field_two', type: DataType.number, count: 3 },
+        ],
+        built_in_field_enabled: false,
+      },
+    }),
+    'datasets.byDatasetId.metadata.post': () => ({
+      mutateAsync: mockDoAddMetaData,
+    }),
+    'datasets.byDatasetId.metadata.byMetadataId.patch': () => ({
+      mutateAsync: mockDoRenameMetaData,
+    }),
+    'datasets.byDatasetId.metadata.byMetadataId.delete': () => ({
+      mutateAsync: mockDoDeleteMetaData,
+    }),
+    'datasets.byDatasetId.metadata.builtIn.byAction.post': () => ({
+      mutateAsync: mockToggleBuiltInStatus,
+    }),
+    'datasets.metadata.builtIn.get': () => ({
+      data: {
+        fields: [
+          { name: 'created_at', type: DataType.time },
+          { name: 'modified_at', type: DataType.time },
+        ],
+      },
+    }),
+  })
+})
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: vi.fn(),
   },
@@ -264,7 +267,9 @@ describe('useEditDatasetMetadata', () => {
         await result.current.handleDeleteMetaData('1')
       })
 
-      expect(mockDoDeleteMetaData).toHaveBeenCalledWith('1')
+      expect(mockDoDeleteMetaData).toHaveBeenCalledWith({
+        params: { dataset_id: 'ds-1', metadata_id: '1' },
+      })
     })
 
     it('should call onUpdateDocList after delete', async () => {
@@ -291,7 +296,9 @@ describe('useEditDatasetMetadata', () => {
         await result.current.setBuiltInEnabled(true)
       })
 
-      expect(mockToggleBuiltInStatus).toHaveBeenCalledWith(true)
+      expect(mockToggleBuiltInStatus).toHaveBeenCalledWith({
+        params: { dataset_id: 'ds-1', action: 'enable' },
+      })
     })
   })
 

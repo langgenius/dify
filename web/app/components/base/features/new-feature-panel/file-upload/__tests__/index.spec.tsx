@@ -1,12 +1,14 @@
-import type { Features } from '../../../types'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { Features, OnFeaturesChange } from '../../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FeaturesProvider } from '../../../context'
 import FileUpload from '../index'
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: undefined }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({ data: undefined }),
+  })
+})
 
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },

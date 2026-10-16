@@ -1,3 +1,5 @@
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,7 +9,7 @@ type WeekdaySelectorProps = {
 }
 
 const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const weekdays = [
     { key: 'sun', label: 'Sun' },
@@ -30,27 +32,23 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
   const isDaySelected = (dayKey: string) => selectedDays.includes(dayKey)
 
   return (
-    <div className="space-y-2">
-      <label className="mb-2 block text-xs font-medium text-text-tertiary">
+    <Fieldset className="space-y-2">
+      <FieldsetLegend className="mb-2 py-0 text-xs font-medium text-text-tertiary">
         {t(($) => $['nodes.triggerSchedule.weekdays'], { ns: 'workflow' })}
-      </label>
+      </FieldsetLegend>
       <div className="flex gap-1.5">
         {weekdays.map((day) => (
-          <button
+          <Toggle
             key={day.key}
-            type="button"
-            className={`flex-1 rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
-              isDaySelected(day.key)
-                ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-            }`}
-            onClick={() => handleDaySelect(day.key)}
+            pressed={isDaySelected(day.key)}
+            onPressedChange={() => handleDaySelect(day.key)}
+            className="flex-1 rounded-lg border border-divider-subtle bg-components-option-card-option-bg py-1 text-xs text-text-tertiary outline-state-accent-solid transition-colors hover:border-divider-regular hover:text-text-secondary focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid data-pressed:border-util-colors-blue-brand-blue-brand-600 data-pressed:text-text-secondary data-pressed:hover:border-util-colors-blue-brand-blue-brand-600"
           >
             {day.label}
-          </button>
+          </Toggle>
         ))}
       </div>
-    </div>
+    </Fieldset>
   )
 }
 

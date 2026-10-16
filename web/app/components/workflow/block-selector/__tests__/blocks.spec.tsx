@@ -2,11 +2,12 @@ import type {
   AgentInviteOptionResponse,
   AgentInviteOptionsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { ReactElement } from 'react'
 import type { NodeDefault } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as baseRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FlowType } from '@/types/common'
+import { EditorResourceScope } from '../../editor-resource/provider'
 import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
 import { BlockEnum } from '../../types'
@@ -14,7 +15,6 @@ import Blocks from '../blocks'
 import { BlockClassification } from '../types'
 
 const runtimeState = vi.hoisted(() => ({
-  appType: 'workflow' as string | undefined,
   nodes: [] as Array<{ data: { type?: BlockEnum } }>,
 }))
 
@@ -31,29 +31,14 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) =>
-    selector({
-      appDetail: {
-        type: runtimeState.appType,
-      },
-    }),
-}))
-
 vi.mock('@/service/base', () => ({
   request: (...args: unknown[]) => queryMocks.request(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => queryMocks.toastError(message),
   },
-}))
-
-// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
-// this suite is about block insertion.
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
 }))
 
 const createBlock = (
@@ -131,7 +116,6 @@ const expectLastInviteOptionsRequest = () => {
 describe('Blocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    runtimeState.appType = 'workflow'
     runtimeState.nodes = []
   })
 
@@ -158,7 +142,7 @@ describe('Blocks', () => {
     expect(llmButton).toBeInTheDocument()
     expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
     await user.click(llmButton)
@@ -190,11 +174,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -211,12 +191,12 @@ describe('Blocks', () => {
     )
 
     const agentBlock = screen.getByRole('button', { name: /Agent/ })
-    expect(agentBlock).toHaveTextContent('common.menus.status')
+    expect(agentBlock).toHaveTextContent('navigation.menus.status')
 
     await user.hover(agentBlock)
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
   })
 
@@ -238,11 +218,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -269,13 +245,15 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }),
+    ).toBeInTheDocument()
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('Researcher')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
@@ -328,11 +306,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -351,11 +325,11 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.click(screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
       ).not.toBeInTheDocument()
     })
 
@@ -386,11 +360,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -409,7 +379,7 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
 
     await waitFor(() =>
       expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'),
@@ -429,11 +399,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -450,14 +416,16 @@ describe('Blocks', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
-    const consoleLink = await screen.findByRole('link', {
-      name: 'agentV2.roster.nodeSelector.manageInAgentConsole',
+    const consoleLink = await screen.findByRole('menuitem', {
+      name: 'agentRoster.roster.nodeSelector.manageInAgentConsole',
     })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(
-      await screen.findByRole('button', { name: 'agentV2.roster.nodeSelector.startFromScratch' }),
+      await screen.findByRole('menuitem', {
+        name: 'agentRoster.roster.nodeSelector.startFromScratch',
+      }),
     )
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
@@ -469,7 +437,7 @@ describe('Blocks', () => {
     })
   })
 
-  it('closes the agent selector when Escape closes the combobox', async () => {
+  it('closes the agent selector when Escape closes the menu', async () => {
     const user = userEvent.setup()
     mockInviteOptionsResponse([])
     const queryClient = new QueryClient({
@@ -480,11 +448,7 @@ describe('Blocks', () => {
       },
     })
     const hooksStore = createHooksStore({
-      configsMap: {
-        flowId: 'app-1',
-        flowType: FlowType.appFlow,
-        fileSettings: {} as never,
-      },
+      fileSettings: {} as never,
     })
 
     render(
@@ -503,16 +467,24 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.click(screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
       ).not.toBeInTheDocument()
     })
   })
 })
+
+function render(ui: ReactElement) {
+  return baseRender(
+    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      {ui}
+    </EditorResourceScope>,
+  )
+}

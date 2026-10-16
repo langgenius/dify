@@ -22,7 +22,6 @@ describe('TestApi', () => {
     icon: { background: '', content: '' },
     privacy_policy: '',
     custom_disclaimer: '',
-    id: 'test-id',
     labels: [],
   }
 
@@ -124,7 +123,7 @@ describe('TestApi', () => {
             limit: '5',
           },
         })
-        expect(screen.getByText('ok'))!.toBeInTheDocument()
+        expect(screen.getByRole('status')).toHaveTextContent('ok')
       })
     })
 
@@ -135,7 +134,7 @@ describe('TestApi', () => {
       fireEvent.click(screen.getByRole('button', { name: 'tools.test.title' }))
 
       await waitFor(() => {
-        expect(screen.getByText('API Error occurred'))!.toBeInTheDocument()
+        expect(screen.getByRole('status')).toHaveTextContent('API Error occurred')
       })
     })
 

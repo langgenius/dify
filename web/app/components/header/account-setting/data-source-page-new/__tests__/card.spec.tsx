@@ -7,13 +7,6 @@ import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import {
-  useGetDataSourceOAuthUrl,
-  useInvalidDataSourceAuth,
-  useInvalidDataSourceListAuth,
-  useInvalidDefaultDataSourceListAuth,
-} from '@/service/use-datasource'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { render } from '@/test/console/render'
 import Card from '../card'
 import { useDataSourceAuthUpdate } from '../hooks'
@@ -100,36 +93,32 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceOAuthUrl: vi.fn(),
-  useInvalidDataSourceAuth: vi.fn(() => vi.fn()),
-  useInvalidDataSourceListAuth: vi.fn(() => vi.fn()),
-  useInvalidDefaultDataSourceListAuth: vi.fn(() => vi.fn()),
-}))
+const { mockGetPluginOAuthUrl } = vi.hoisted(() => ({ mockGetPluginOAuthUrl: vi.fn() }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': () => ({
+      mutateAsync: mockGetPluginOAuthUrl,
+    }),
+  })
+})
 
 vi.mock('../hooks', () => ({
   useDataSourceAuthUpdate: vi.fn(),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: vi.fn(() => vi.fn()),
-}))
-
 type UsePluginAuthActionReturn = ReturnType<typeof usePluginAuthAction>
-type UseGetDataSourceOAuthUrlReturn = ReturnType<typeof useGetDataSourceOAuthUrl>
 type UseRenderI18nObjectReturn = ReturnType<typeof useRenderI18nObject>
 
 describe('Card Component', () => {
-  const mockGetPluginOAuthUrl = vi.fn()
   const mockRenderI18nObjectResult = vi.fn((obj: Record<string, string>) => obj.en_US)
   const mockInvalidateDataSourceListAuth = vi.fn()
   const mockInvalidDefaultDataSourceListAuth = vi.fn()
-  const mockInvalidateDataSourceList = vi.fn()
   const mockInvalidateDataSourceAuth = vi.fn()
   const mockHandleAuthUpdate = vi.fn(() => {
     mockInvalidateDataSourceListAuth()
     mockInvalidDefaultDataSourceListAuth()
-    mockInvalidateDataSourceList()
     mockInvalidateDataSourceAuth()
   })
 
@@ -168,6 +157,8 @@ describe('Card Component', () => {
       en_US: 'Test Description',
       zh_Hans: '',
     },
+    credential_schema: [],
+    oauth_schema: null,
     credentials_list: [
       {
         id: 'c1',
@@ -188,26 +179,16 @@ describe('Card Component', () => {
     mockPluginAuthActionReturn = createMockPluginAuthActionReturn()
 
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: mockHandleAuthUpdate })
-    vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(mockInvalidateDataSourceListAuth)
-    vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(
-      mockInvalidDefaultDataSourceListAuth,
-    )
-    vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
-    vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
 
     vi.mocked(usePluginAuthAction).mockReturnValue(mockPluginAuthActionReturn)
     vi.mocked(useRenderI18nObject).mockReturnValue(
       mockRenderI18nObjectResult as unknown as UseRenderI18nObjectReturn,
     )
-    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
-      mutateAsync: mockGetPluginOAuthUrl,
-    } as unknown as UseGetDataSourceOAuthUrlReturn)
   })
 
   const expectAuthUpdated = () => {
     expect(mockInvalidateDataSourceListAuth).toHaveBeenCalled()
     expect(mockInvalidDefaultDataSourceListAuth).toHaveBeenCalled()
-    expect(mockInvalidateDataSourceList).toHaveBeenCalled()
     expect(mockInvalidateDataSourceAuth).toHaveBeenCalled()
   }
 
@@ -218,6 +199,7 @@ describe('Card Component', () => {
 
       // Assert
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Test Label' })).toBeInTheDocument()
       expect(screen.queryByText(/Test Author/))!.not.toBeInTheDocument()
       expect(screen.queryByText(/test-name/))!.not.toBeInTheDocument()
       expect(screen.getByText('1.2.0'))!.toBeInTheDocument()
@@ -349,7 +331,9 @@ describe('Card Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
+        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith(
+          expect.objectContaining({ query: { credential_id: 'c1' } }),
+        )
         expect(openOAuthPopup).toHaveBeenCalledWith('https://oauth.url', mockHandleAuthUpdate)
       })
     })
@@ -374,7 +358,9 @@ describe('Card Component', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith('c1')
+        expect(mockGetPluginOAuthUrl).toHaveBeenCalledWith(
+          expect.objectContaining({ query: { credential_id: 'c1' } }),
+        )
       })
       expect(openOAuthPopup).not.toHaveBeenCalled()
     })
@@ -524,7 +510,12 @@ describe('Card Component', () => {
       const configurableItem: DataSourceAuth = {
         ...mockItem,
         credential_schema: [
-          { name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true },
+          {
+            name: 'api_key',
+            type: FormTypeEnum.textInput,
+            label: { en_US: 'API Key' },
+            required: true,
+          },
         ],
       }
 
@@ -545,12 +536,27 @@ describe('Card Component', () => {
       const configurableItem: DataSourceAuth = {
         ...mockItem,
         credential_schema: [
-          { name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true },
+          {
+            name: 'api_key',
+            type: FormTypeEnum.textInput,
+            label: { en_US: 'API Key' },
+            required: true,
+          },
         ],
         oauth_schema: {
           client_schema: [
-            { name: 'oauth_key', type: FormTypeEnum.textInput, label: 'OAuth Key', required: true },
+            {
+              name: 'oauth_key',
+              type: FormTypeEnum.textInput,
+              label: { en_US: 'OAuth Key' },
+              required: true,
+            },
           ],
+          credentials_schema: [],
+          is_oauth_custom_client_enabled: false,
+          is_system_oauth_params_exists: false,
+          oauth_custom_client_params: null,
+          redirect_uri: '',
         },
       }
 

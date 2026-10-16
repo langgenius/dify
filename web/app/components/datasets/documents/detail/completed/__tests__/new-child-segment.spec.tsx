@@ -1,6 +1,7 @@
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import NewChildSegmentModal from '../new-child-segment'
 
 vi.mock('@/next/navigation', () => ({
@@ -38,11 +39,14 @@ vi.mock('../index', () => ({
 
 // Mock useAddChildSegment
 const mockAddChildSegment = vi.fn()
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useAddChildSegment: () => ({
-    mutateAsync: mockAddChildSegment,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.post': () => ({
+      mutateAsync: mockAddChildSegment,
+    }),
+  })
+})
 
 vi.mock('../common/action-buttons', () => ({
   ActionButtons: ({
@@ -237,9 +241,11 @@ describe('NewChildSegmentModal', () => {
       await waitFor(() => {
         expect(mockAddChildSegment).toHaveBeenCalledWith(
           expect.objectContaining({
-            datasetId: 'test-dataset-id',
-            documentId: 'test-document-id',
-            segmentId: 'chunk-1',
+            params: {
+              dataset_id: 'test-dataset-id',
+              document_id: 'test-document-id',
+              segment_id: 'chunk-1',
+            },
             body: expect.objectContaining({
               content: 'Valid content',
             }),
@@ -385,7 +391,7 @@ describe('NewChildSegmentModal', () => {
 
       render(
         <>
-          <ToastHost timeout={0} />
+          <AppToastHost timeout={0} />
           <NewChildSegmentModal
             {...defaultProps}
             viewNewlyAddedChildChunk={mockViewNewlyAddedChildChunk}

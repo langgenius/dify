@@ -1,28 +1,41 @@
 import type { AnnotationReplyConfig } from '@/models/debug'
-import { act, renderHook } from '@testing-library/react'
-import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
+import { act } from '@testing-library/react'
+import { updateAnnotationStatus } from '@/service/annotation'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { sleep } from '@/utils'
 import useAnnotationConfig from '../use-annotation-config'
 
 let mockIsAnnotationFull = false
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: { annotatedResponse: mockIsAnnotationFull ? 100 : 5 },
-      total: { annotatedResponse: 100 },
-    },
-    enableBilling: true,
-  }),
+
+const { queryAnnotationJobStatus } = vi.hoisted(() => ({
+  queryAnnotationJobStatus: vi.fn().mockResolvedValue({ job_status: 'completed' }),
 }))
 
 vi.mock('@/service/annotation', () => ({
   updateAnnotationStatus: vi.fn().mockResolvedValue({ job_id: 'test-job-id' }),
-  queryAnnotationJobStatus: vi.fn().mockResolvedValue({ job_status: 'completed' }),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotationReply: { byAction: { status: { byJobId: { get: queryAnnotationJobStatus } } } },
+      },
+    },
+  },
 }))
 
 vi.mock('@/utils', () => ({
   sleep: vi.fn().mockResolvedValue(undefined),
 }))
+
+function renderHook<Result>(callback: () => Result) {
+  return renderHookWithConsoleQuery(callback, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: { size: mockIsAnnotationFull ? 100 : 5, limit: 100 } },
+  })
+}
 
 describe('useAnnotationConfig', () => {
   const defaultConfig: AnnotationReplyConfig = {
@@ -38,6 +51,27 @@ describe('useAnnotationConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsAnnotationFull = false
+  })
+
+  it('edits enabled annotation parameters without depending on unused creation quota', async () => {
+    const setAnnotationConfig = vi.fn()
+    const { result } = renderHookWithConsoleQuery(
+      () =>
+        useAnnotationConfig({
+          appId: 'test-app',
+          annotationConfig: { ...defaultConfig, enabled: true },
+          setAnnotationConfig,
+        }),
+      { systemFeatures: { deployment_edition: 'CLOUD' } },
+    )
+
+    act(() => result.current.setIsShowAnnotationConfigInit(true))
+    expect(result.current.isShowAnnotationConfigInit).toBe(true)
+    await act(async () => {
+      await result.current.handleEnableAnnotation(defaultConfig.embedding_model!)
+    })
+    expect(updateAnnotationStatus).toHaveBeenCalled()
+    expect(setAnnotationConfig).toHaveBeenCalled()
   })
 
   it('should initialize with annotation config init hidden', () => {
@@ -308,16 +342,12 @@ describe('useAnnotationConfig', () => {
 
   it('should poll job status until completed when enabling annotation', async () => {
     const setAnnotationConfig = vi.fn()
-    const queryJobStatusMock = vi.mocked(queryAnnotationJobStatus)
+    const queryJobStatusMock = queryAnnotationJobStatus
     const sleepMock = vi.mocked(sleep)
 
     queryJobStatusMock
-      .mockResolvedValueOnce({ job_status: 'pending' } as unknown as Awaited<
-        ReturnType<typeof queryAnnotationJobStatus>
-      >)
-      .mockResolvedValueOnce({ job_status: 'completed' } as unknown as Awaited<
-        ReturnType<typeof queryAnnotationJobStatus>
-      >)
+      .mockResolvedValueOnce({ job_status: 'pending' })
+      .mockResolvedValueOnce({ job_status: 'completed' })
 
     const { result } = renderHook(() =>
       useAnnotationConfig({

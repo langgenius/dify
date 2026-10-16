@@ -19,15 +19,20 @@ import {
   PluginCategory,
   RuntimeState,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
 } from '@/service/workflow-queries'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
@@ -641,18 +646,8 @@ function seedWorkflowDeploymentConfigurationQueries(queryClient: QueryClient) {
   })
 }
 
-const mockBuiltInEnvironment = vi.hoisted(() => ({
-  appDetail: {
-    enable_api: false,
-    enable_site: true,
-    id: 'app-1',
-    maintainer: 'user-2',
-    mode: 'workflow',
-  },
-  mcpServerDetail: {
-    status: 'active',
-  },
-  publishedWorkflow: {
+const mockBuiltInEnvironment = vi.hoisted(() => {
+  const publishedWorkflow: WorkflowResponse = {
     conversation_variables: [],
     created_at: 1_710_000_100,
     created_by: {
@@ -676,10 +671,25 @@ const mockBuiltInEnvironment = vi.hoisted(() => ({
       email: 'bob@example.com',
       id: 'user-3',
       name: 'Bob',
-    } as { email: string; id: string; name: string } | null,
+    },
     version: '2026-07-30.1',
-  },
-}))
+  }
+  return {
+    appDetail: {
+      enable_api: false,
+      enable_site: true,
+      id: 'app-1',
+      maintainer: 'user-2',
+      mode: 'workflow',
+    },
+    mcpServerDetail: {
+      status: 'active',
+    },
+    publishedWorkflow,
+  }
+})
+
+let appPermissionKeys: string[] = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
 
 function render(
   ui: ReactElement,
@@ -730,6 +740,14 @@ function render(
     ],
   })
   seedWorkflowDeploymentConfigurationQueries(queryClient)
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({
+      ...mockBuiltInEnvironment.appDetail,
+      mode: 'workflow',
+      permission_keys: appPermissionKeys,
+    }),
+  )
 
   return renderWithConsoleQuery(ui, { queryClient })
 }
@@ -749,8 +767,6 @@ function environmentTableProps(
   }
 }
 
-let appPermissionKeys: string[] = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
-let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
@@ -771,7 +787,6 @@ vi.mock('react-i18next', async () => {
       'The app will stop running in this environment, and all of its access points will become unavailable.',
     'deployments.studio.undeployConfirmTitle': 'Undeploy {{versionName}} from {{envName}}',
     'deployments.status.RUNTIME_INSTANCE_STATUS_DEPLOYING': 'Deploying',
-    'deployments.status.RUNTIME_INSTANCE_STATUS_FAILED': 'Deploy failed',
     'deployments.status.RUNTIME_INSTANCE_STATUS_INVALID': 'Invalid',
     'deployments.status.RUNTIME_INSTANCE_STATUS_READY': 'Running',
     'deployments.status.RUNTIME_INSTANCE_STATUS_UNDEPLOYED': 'Not deployed',
@@ -784,9 +799,9 @@ vi.mock('react-i18next', async () => {
     'deployments.studio.environmentVariablesDescription':
       "Use the value from the version you're deploying, keep the last deployed value, or enter a custom one.",
     'deployments.studio.precheck.from': 'From',
-    'deployments.studio.precheck.nodeCount_other': '{{count}} nodes',
+    'deployments.studio.precheck.nodeCount': '{{count}} nodes',
     'deployments.studio.updatedAtBy': 'Updated at {{time}} by {{name}}',
-    'workflow.common.workflowAsTool': 'Workflow as Tool',
+    'navigation.common.workflowAsTool': 'Workflow as Tool',
     'workflow.common.publishedBy': 'Published {{time}} by {{author}}',
   })
 })
@@ -807,36 +822,31 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({
-    data: [
-      {
-        icon: '/notion-mcp.svg',
-        id: 'notion',
-        name: 'Notion',
-        plugin_id: 'langgenius/notion',
-      },
-    ],
-  }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useMCPServerDetail: () => ({
-    data: mockBuiltInEnvironment.mcpServerDetail,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({
+      data: [
+        {
+          icon: '/notion-mcp.svg',
+          id: 'notion',
+          name: 'Notion',
+          plugin_id: 'langgenius/notion',
+        },
+      ],
+    }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'apps.byAppId.server.get': () => ({
+      data: mockBuiltInEnvironment.mcpServerDetail,
+    }),
+  })
+})
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    const appDetail = appDetailAvailable
-      ? {
-          ...mockBuiltInEnvironment.appDetail,
-          permission_keys: appPermissionKeys,
-        }
-      : undefined
-
-    return selector({ appDetail })
-  },
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: APP_ID }),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -846,10 +856,14 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/context/i18n', () => ({
   getEnterpriseDocUrl: mockGetEnterpriseDocUrl,
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'en-US',
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -859,13 +873,17 @@ describe('AppDeploy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appPermissionKeys = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
-    appDetailAvailable = true
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
     mockBuiltInEnvironment.mcpServerDetail.status = 'active'
     mockBuiltInEnvironment.publishedWorkflow.graph.nodes = [
       { data: { type: 'start' }, id: 'start' },
     ]
+    mockBuiltInEnvironment.publishedWorkflow.created_by = {
+      email: 'alice@example.com',
+      id: 'user-2',
+      name: 'Alice',
+    }
     mockBuiltInEnvironment.publishedWorkflow.updated_by = {
       email: 'bob@example.com',
       id: 'user-3',
@@ -1035,7 +1053,7 @@ describe('AppDeploy', () => {
     ).toHaveAttribute('href', '/app/app-1/access-point?environment=built-in&accessPoint=mcp')
     expect(
       builtInEnvironment.getByRole('button', {
-        name: 'common.settings.trigger · agentV2.agentDetail.access.status.outOfService',
+        name: 'navigation.settings.trigger · agentV2.agentDetail.access.status.outOfService',
       }),
     ).toBeDisabled()
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Bob')).toBeInTheDocument()
@@ -1088,7 +1106,7 @@ describe('AppDeploy', () => {
     ).toBeDisabled()
     expect(
       builtInEnvironment.getByRole('link', {
-        name: 'common.settings.trigger · agentV2.agentDetail.access.status.inService',
+        name: 'navigation.settings.trigger · agentV2.agentDetail.access.status.inService',
       }),
     ).toHaveAttribute('href', '/app/app-1/access-point?environment=built-in&accessPoint=trigger')
   })
@@ -1104,15 +1122,16 @@ describe('AppDeploy', () => {
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Alice')).toBeInTheDocument()
   })
 
-  it('shows loading while the app detail is unavailable', () => {
-    appDetailAvailable = false
+  it('shows a fallback when the workflow publisher and updater are unavailable', () => {
+    mockBuiltInEnvironment.publishedWorkflow.created_by = null
+    mockBuiltInEnvironment.publishedWorkflow.updated_by = null
 
     render(<AppDeploy />)
 
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
-    ).not.toBeInTheDocument()
+    const builtInEnvironment = within(
+      screen.getByRole('region', { name: 'deployments.studio.builtInTitle' }),
+    )
+    expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by --')).toBeInTheDocument()
   })
 
   it('does not render deployment controls without app deploy ACL permission', () => {
@@ -1187,7 +1206,7 @@ describe('AppDeploy', () => {
 
     const menu = await screen.findByRole('menu')
     expect(within(menu).getByRole('alert')).toHaveTextContent('deployments.common.loadFailed')
-    await user.click(within(menu).getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.retry' }))
 
     expect(await screen.findByText('8 of 12 environments in use')).toBeInTheDocument()
     expect(requestCount).toBe(2)
@@ -2120,7 +2139,7 @@ describe('AppDeploy', () => {
       { queryClient },
     )
 
-    expect(screen.getByRole('status', { name: /loading/ })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: /loading/ })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     await waitFor(() => {
       expect(deploymentRequests).toHaveLength(1)

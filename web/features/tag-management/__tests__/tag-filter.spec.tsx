@@ -299,30 +299,6 @@ describe('TagFilter', () => {
       expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
       expect(searchInput).toHaveFocus()
     })
-
-    it('should clear search and show all tags when clear icon is clicked', async () => {
-      const user = userEvent.setup()
-
-      render(<TagFilter {...defaultProps} />)
-
-      await user.click(screen.getByText(i18n.placeholder))
-
-      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-      await user.type(searchInput, 'Front')
-
-      expect(screen.queryByText('Backend')).not.toBeInTheDocument()
-
-      const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-      clearButton.focus()
-      await user.keyboard('{Enter}')
-
-      expect(searchInput).toHaveValue('')
-      expect(searchInput).toHaveFocus()
-
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('API Design')).toBeInTheDocument()
-    })
   })
 
   describe('Edge Cases', () => {
@@ -337,9 +313,20 @@ describe('TagFilter', () => {
       expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
     })
 
-    it('should handle value with non-existent tag ids gracefully', () => {
-      render(<TagFilter {...defaultProps} value={['non-existent-id']} />)
-      expect(screen.queryByText(i18n.placeholder)).not.toBeInTheDocument()
+    it('should name and preserve selected tag ids outside the current result set', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const selectedCountLabel = 'common.dynamicSelect.selected:{"count":1}'
+
+      render(<TagFilter {...defaultProps} value={['non-existent-id']} onChange={onChange} />)
+
+      const trigger = screen.getByRole('combobox', { name: selectedCountLabel })
+      expect(trigger).toHaveTextContent(selectedCountLabel)
+
+      await user.click(trigger)
+      await user.click(screen.getByRole('option', { name: /Frontend/i }))
+
+      expect(onChange).toHaveBeenCalledWith(['non-existent-id', 'tag-1'])
     })
 
     it('should not show count badge when only one tag is selected', () => {

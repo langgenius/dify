@@ -56,8 +56,8 @@ let mockCredentialData: CredentialData | undefined = {
   current_credential_name: 'Default',
 }
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     default: {
@@ -72,16 +72,40 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-models', () => ({
-  useGetModelCredential: () => ({
-    isLoading: false,
-    data: mockCredentialData,
-    refetch: mockRefetch,
-  }),
-  useUpdateModelLoadBalancingConfig: () => ({
-    mutateAsync: mockMutateAsync,
-  }),
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              credentials: { get: { queryOptions: () => ({ operation: 'model-credential' }) } },
+              post: { mutationOptions: () => ({ operation: 'update-load-balancing' }) },
+            },
+          },
+        },
+      },
+    },
+  },
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: (options: { operation?: string }) =>
+      options.operation === 'model-credential'
+        ? { isLoading: false, data: mockCredentialData, refetch: mockRefetch }
+        : actual.useQuery(options as Parameters<typeof actual.useQuery>[0]),
+    useMutation: (options: { operation?: string }) =>
+      options.operation === 'update-load-balancing'
+        ? {
+            mutateAsync: ({ params, body }: { params: { provider: string }; body: unknown }) =>
+              mockMutateAsync(body, params),
+          }
+        : actual.useMutation(options as Parameters<typeof actual.useMutation>[0]),
+  }
+})
 
 vi.mock('../../model-auth/hooks/use-auth', () => ({
   useAuth: () => ({
@@ -214,7 +238,7 @@ describe('ModelLoadBalancingModal', () => {
       />,
     )
 
-    expect(screen.getByRole('status'))!.toBeInTheDocument()
+    expect(screen.getByRole('progressbar'))!.toBeInTheDocument()
   })
 
   it('should render predefined model content', () => {
@@ -274,6 +298,9 @@ describe('ModelLoadBalancingModal', () => {
 
     await waitFor(() => {
       expect(mockRefetch).toHaveBeenCalled()
+      expect(mockMutateAsync).toHaveBeenCalledWith(expect.anything(), {
+        provider: 'test-provider',
+      })
       expect(mockMutateAsync).toHaveBeenCalled()
       const payload = mockMutateAsync.mock.calls[0]![0] as {
         load_balancing: { configs: Array<{ credentials: { api_key: string } }> }
@@ -601,7 +628,7 @@ describe('ModelLoadBalancingModal', () => {
     })
   })
 
-  it('should toggle modal from enabled to disabled when clicking the card', async () => {
+  it('should toggle to model credentials from the named mode button with the keyboard', async () => {
     renderModal(
       <ModelLoadBalancingModal
         provider={mockProvider}
@@ -615,12 +642,11 @@ describe('ModelLoadBalancingModal', () => {
     // draftConfig.enabled=true → title shows configLoadBalancing
     expect(screen.getByText(/modelProvider\.auth\.configLoadBalancing/))!.toBeInTheDocument()
 
-    // Clicking the card when enabled=true toggles to disabled
-    const card = screen
-      .getByText(/modelProvider\.auth\.providerManaged$/)
-      .closest('div[class]')!
-      .closest('div[class]')!
-    await user.click(card)
+    const modeButton = screen.getByRole('button', {
+      name: 'modelProvider.modelProvider.auth.providerManaged',
+    })
+    modeButton.focus()
+    await user.keyboard('{Enter}')
 
     // After toggling, title should show configModel (disabled state)
     // After toggling, title should show configModel (disabled state)

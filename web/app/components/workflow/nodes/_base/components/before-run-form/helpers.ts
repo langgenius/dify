@@ -1,14 +1,11 @@
-import type { SelectorParam } from 'i18next'
+import type { TFunction } from 'i18next'
 import type { Props as FormProps } from './form'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 
-export type BeforeRunFormTranslator = <Namespace extends 'workflow' | 'appDebug'>(
-  selector: SelectorParam<Namespace>,
-  options: { ns: Namespace } & Record<string, unknown>,
-) => string
+export type BeforeRunFormTranslator = TFunction<['appDebug', 'workflow']>
 
 export function formatValue(value: unknown, type: InputVarType) {
   if (type === InputVarType.checkbox) return !!value

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, isInaccessible, render, screen } from '@testing-library/react'
 import ImportFromMarketplaceTemplateModal from '../import-from-marketplace-template-modal'
 
 const mockUseMarketplaceTemplateDetail = vi.fn()
@@ -43,7 +43,7 @@ describe('ImportFromMarketplaceTemplateModal', () => {
 
     expect(screen.getByText('Human Input: Writing Assistant')).toBeInTheDocument()
     expect(screen.queryByText('technologist')).not.toBeInTheDocument()
-    expect(document.querySelector('em-emoji')?.parentElement).toHaveAttribute('aria-hidden', 'true')
+    expect(isInaccessible(screen.getByText('🧑‍💻'))).toBe(true)
     expect(
       screen.getByRole('dialog', { name: /marketplace\.template\.modalTitle/ }),
     ).toBeInTheDocument()

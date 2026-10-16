@@ -1,10 +1,10 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { toast } from '@/app/notifications'
 import { Uploader } from '../uploader'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -42,6 +42,60 @@ describe('Uploader', () => {
     expect(updateFile).toHaveBeenCalledWith(file)
   })
 
+  it.each(['picker', 'drop'])(
+    'rejects an unsupported file from %s and preserves the current state',
+    async (source) => {
+      const user = userEvent.setup({ applyAccept: false })
+      const file = new File(['app: demo'], 'demo.yml')
+      const { container } = render(
+        <ControlledUploader initialFile={source === 'drop' ? file : undefined} />,
+      )
+      const invalid = new File(['binary'], 'wrong.zip')
+      if (source === 'picker') await user.upload(getHiddenInput(), invalid)
+      else fireEvent.drop(getDropZone(container), { dataTransfer: { files: [invalid] } })
+      if (source === 'drop')
+        expect(screen.getByRole('group', { name: 'demo.yml' })).toBeInTheDocument()
+      else
+        expect(screen.getByRole('button', { name: 'app.dslUploader.browse' })).toBeInTheDocument()
+      expect(screen.queryByText('wrong.zip')).not.toBeInTheDocument()
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining('dslUploader.invalidFileType'),
+      )
+    },
+  )
+
+  it('honors the pipeline extension instead of treating every upload as an App package', () => {
+    const updateFile = vi.fn()
+    const { container } = render(
+      <Uploader file={undefined} updateFile={updateFile} importType="pipeline" />,
+    )
+    fireEvent.drop(getDropZone(container), {
+      dataTransfer: { files: [new File(['PK'], 'agent.ifpkg')] },
+    })
+    expect(updateFile).not.toHaveBeenCalled()
+    const pipeline = new File(['pipeline'], 'knowledge.PIPELINE')
+    fireEvent.drop(getDropZone(container), { dataTransfer: { files: [pipeline] } })
+    expect(updateFile).toHaveBeenCalledWith(pipeline)
+  })
+
+  it('updates App file metadata when replacing a package with DSL', () => {
+    const updateFile = vi.fn()
+    const { rerender } = render(
+      <Uploader importType="app" file={new File(['PK'], 'agent.IFPKG')} updateFile={updateFile} />,
+    )
+    expect(screen.getByText('app.appPackage')).toBeInTheDocument()
+
+    rerender(
+      <Uploader
+        importType="app"
+        file={new File(['app: demo'], 'app.yml')}
+        updateFile={updateFile}
+      />,
+    )
+    expect(screen.getByText('DSL')).toBeInTheDocument()
+    expect(screen.queryByText('app.appPackage')).not.toBeInTheDocument()
+  })
+
   it('should reject dropping multiple files', () => {
     const updateFile = vi.fn()
     const fileA = new File(['a'], 'a.yml', { type: 'text/yaml' })
@@ -66,7 +120,7 @@ describe('Uploader', () => {
     const updateFile = vi.fn()
     const file = new File(['name: demo'], 'demo.yml', { type: 'text/yaml' })
 
-    render(<Uploader file={file} updateFile={updateFile} displayName="DSL" />)
+    render(<Uploader file={file} updateFile={updateFile} importType="app" />)
 
     expect(screen.getByText(/(?:^|\.)demo\.yml(?=$|:)/)).toBeInTheDocument()
     expect(screen.getByText('DSL')).toBeInTheDocument()

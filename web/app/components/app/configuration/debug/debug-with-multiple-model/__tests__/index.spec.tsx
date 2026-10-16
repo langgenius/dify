@@ -1,4 +1,4 @@
-/* oxlint-disable typescript/no-explicit-any */
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { CSSProperties } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type { DebugWithMultipleModelContextType } from '../context'
@@ -8,13 +8,12 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Inputs, ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   DEFAULT_AGENT_SETTING,
   DEFAULT_CHAT_PROMPT_CONFIG,
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
-import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
 import DebugWithMultipleModel from '../index'
 
@@ -157,19 +156,13 @@ const createModelConfig = (promptVariables: PromptVariableWithMeta[] = []): Mode
   sensitive_word_avoidance: null,
   annotation_reply: null,
   external_data_tools: [],
-  system_parameters: {
-    audio_file_size_limit: 0,
-    file_size_limit: 0,
-    image_file_size_limit: 0,
-    video_file_size_limit: 0,
-    workflow_file_upload_limit: 0,
-  },
   dataSets: [],
   agentConfig: DEFAULT_AGENT_SETTING,
 })
 
 type DebugConfiguration = {
-  mode: AppModeEnum
+  onOpenFeatures: () => void
+  mode: AppMode
   inputs: Inputs
   modelConfig: ModelConfig
   readonly: boolean
@@ -179,7 +172,8 @@ type DebugConfiguration = {
 const createDebugConfiguration = (
   overrides: Partial<DebugConfiguration> = {},
 ): DebugConfiguration => ({
-  mode: AppModeEnum.CHAT,
+  onOpenFeatures: vi.fn(),
+  mode: 'chat' as const,
   inputs: {},
   modelConfig: createModelConfig(),
   readonly: false,
@@ -201,6 +195,7 @@ const createProps = (
   overrides: Partial<DebugWithMultipleModelContextType> = {},
 ): DebugWithMultipleModelContextType => ({
   multipleModelConfigs: [createModelAndParameter()],
+  onOpenLog: vi.fn(),
   onMultipleModelConfigsChange: vi.fn(),
   onDebugWithMultipleModelChange: vi.fn(),
   ...overrides,
@@ -497,7 +492,7 @@ describe('DebugWithMultipleModel', () => {
       expect(capturedChatInputProps?.showFileUpload).toBe(false)
       expect(capturedChatInputProps?.speechToTextConfig).toEqual(featureState.features.speech2text)
       expect(capturedChatInputProps?.visionConfig).toEqual(featureState.features.file)
-      expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
+      expect(debugConfiguration.onOpenFeatures).toHaveBeenCalledTimes(1)
     })
 
     it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', () => {
@@ -542,7 +537,7 @@ describe('DebugWithMultipleModel', () => {
       // Arrange
       mockUseDebugConfigurationContext.mockReturnValue(
         createDebugConfiguration({
-          mode: AppModeEnum.AGENT_CHAT,
+          mode: 'agent-chat' as const,
         }),
       )
 
@@ -558,7 +553,7 @@ describe('DebugWithMultipleModel', () => {
       // Arrange
       mockUseDebugConfigurationContext.mockReturnValue(
         createDebugConfiguration({
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         }),
       )
       const multipleModelConfigs = [createModelAndParameter()]
@@ -848,7 +843,7 @@ describe('DebugWithMultipleModel', () => {
     it('should set full height when chat input is hidden', () => {
       mockUseDebugConfigurationContext.mockReturnValue(
         createDebugConfiguration({
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         }),
       )
 

@@ -1,8 +1,8 @@
+import type { AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
 import type { CommonNodeType, Node } from './types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { DSLImportStatus } from '@/models/app'
-import { AppModeEnum } from '@/types/app'
 import { loadYaml } from '@/utils/yaml'
 import { BlockEnum, SupportUploadFileTypes } from './types'
 
@@ -44,8 +44,8 @@ type ImportNotificationPayload = {
   children?: string
 }
 
-export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
-  if (mode === AppModeEnum.ADVANCED_CHAT) {
+export const getInvalidNodeTypes = (mode?: AppMode): BlockEnum[] => {
+  if (mode === 'advanced-chat') {
     return [
       BlockEnum.End,
       BlockEnum.TriggerWebhook,
@@ -57,7 +57,7 @@ export const getInvalidNodeTypes = (mode?: AppModeEnum) => {
   return [BlockEnum.Answer]
 }
 
-export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
+export const validateDSLContent = (content: string, mode?: AppMode) => {
   try {
     const data = loadYaml(content) as ParsedDSL | undefined
     const nodes = data?.workflow?.graph?.nodes ?? []
@@ -68,13 +68,13 @@ export const validateDSLContent = (content: string, mode?: AppModeEnum) => {
   }
 }
 
-export const isImportCompleted = (status: DSLImportStatus) => {
+export const isImportCompleted = (status: Import['status']) => {
   return status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
 }
 
 export const getImportNotificationPayload = (
-  status: DSLImportStatus,
-  t: TFunction,
+  status: Import['status'],
+  t: TFunction<['workflow']>,
 ): ImportNotificationPayload => {
   return {
     type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',

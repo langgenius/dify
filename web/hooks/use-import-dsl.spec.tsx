@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import { useImportDSL } from './use-import-dsl'
 
 const mockPush = vi.hoisted(() => vi.fn())
@@ -16,7 +16,7 @@ const toastMocks = vi.hoisted(() => ({
   warning: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
@@ -38,8 +38,8 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-vi.mock('@/service/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/client')>()
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
 
   return {
     ...actual,
@@ -93,12 +93,34 @@ describe('useImportDSL', () => {
     mockResolveImportedAppRedirectionTarget.mockImplementation(async (target) => target)
   })
 
+  it('should preserve nullable app metadata in the import request', async () => {
+    mockImportDSL.mockResolvedValue({ id: 'import-1', status: DSLImportStatus.PENDING })
+    const payload = {
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: 'app: demo',
+      name: 'Imported app',
+      icon_type: null,
+      icon: null,
+      icon_background: null,
+      description: null,
+    }
+    const onPending = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(payload, { onPending })
+    })
+
+    expect(mockImportDSL).toHaveBeenCalledWith(payload)
+    expect(onPending).toHaveBeenCalledWith({ id: 'import-1', status: DSLImportStatus.PENDING })
+  })
+
   it('should show response warnings when an import completes with warnings', async () => {
     const completedResponse = {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-1',
-      app_mode: AppModeEnum.WORKFLOW,
+      app_mode: 'workflow',
       permission_keys: [],
       warnings: [
         {
@@ -138,7 +160,7 @@ describe('useImportDSL', () => {
     const pendingResponse = {
       id: 'import-1',
       status: DSLImportStatus.PENDING,
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       imported_dsl_version: '0.2.0',
       current_dsl_version: '0.1.0',
       permission_keys: [],
@@ -147,7 +169,7 @@ describe('useImportDSL', () => {
       id: 'import-1',
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-1',
-      app_mode: AppModeEnum.AGENT,
+      app_mode: 'agent',
       permission_keys: ['app.acl.view_layout'],
       warnings: [
         {
@@ -212,10 +234,151 @@ describe('useImportDSL', () => {
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith({
       id: 'app-1',
-      mode: AppModeEnum.AGENT,
+      mode: 'agent' as const,
       permission_keys: ['app.acl.view_layout'],
     })
     expect(mockGetRedirection).toHaveBeenCalledTimes(1)
+    expect(result.current.isFetching).toBe(false)
+  })
+
+  it('should toast the backend error when import status is failed', async () => {
+    const importError =
+      'Missing app data in YAML content. ' +
+      "Not a valid Dify app DSL: the top-level 'app' section is required (found: meta)."
+    mockImportDSL.mockResolvedValue({
+      id: 'import-failed',
+      status: DSLImportStatus.FAILED,
+      error: importError,
+    })
+    const onFailed = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'meta: {}\n',
+        },
+        { onFailed },
+      )
+    })
+
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith('app.newApp.appCreateFailed', {
+      description: importError,
+    })
+    expect(onFailed).toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      'JSON',
+      () => Response.json({ message: 'Missing app section' }, { status: 400 }),
+      'Missing app section',
+    ],
+    ['empty', () => new Response(null, { status: 500 }), 'HTTP 500'],
+    ['HTML', () => new Response('<html>Bad gateway</html>', { status: 502 }), 'HTTP 502'],
+  ] as const)(
+    'shows one failure toast for a %s import response',
+    async (_, response, description) => {
+      mockImportDSL.mockRejectedValue(await httpErrorFromResponse(response()))
+      const onFailed = vi.fn()
+      const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+      await act(async () => {
+        await result.current.handleImportDSL(
+          {
+            mode: DSLImportMode.YAML_CONTENT,
+            yaml_content: 'meta: {}\n',
+          },
+          { onFailed },
+        )
+      })
+
+      expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith('app.newApp.appCreateFailed', {
+        description,
+      })
+      expect(onFailed).toHaveBeenCalled()
+    },
+  )
+
+  it('should toast a generic failure when import throws before a response', async () => {
+    mockImportDSL.mockRejectedValue(new Error('network'))
+    const onFailed = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: 'meta: {}\n',
+        },
+        { onFailed },
+      )
+    })
+
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith('app.newApp.appCreateFailed', {
+      description: 'network',
+    })
+    expect(onFailed).toHaveBeenCalled()
+  })
+
+  it.each([undefined, 'Import confirmation expired'])(
+    'shows one error when a confirmed import fails (%s)',
+    async (importError) => {
+      mockImportDSL.mockResolvedValue({
+        id: 'import-1',
+        status: DSLImportStatus.PENDING,
+      })
+      mockImportDSLConfirm.mockResolvedValue({
+        id: 'import-1',
+        status: DSLImportStatus.FAILED,
+        error: importError,
+      })
+      const onFailed = vi.fn()
+      const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+      await act(async () => {
+        await result.current.handleImportDSL(
+          {
+            mode: DSLImportMode.YAML_CONTENT,
+            yaml_content: 'app: demo',
+          },
+          {},
+        )
+      })
+      await act(async () => {
+        await result.current.handleImportDSLConfirm({ onFailed })
+      })
+
+      expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith('app.newApp.appCreateFailed', {
+        description: importError,
+      })
+      expect(onFailed).toHaveBeenCalled()
+    },
+  )
+
+  it('shows the backend error when confirmation rejects with an HTTP response', async () => {
+    mockImportDSL.mockResolvedValue({ id: 'import-1', status: DSLImportStatus.PENDING })
+    mockImportDSLConfirm.mockRejectedValue(
+      await httpErrorFromResponse(
+        Response.json({ error: 'Import confirmation expired' }, { status: 400 }),
+      ),
+    )
+    const onFailed = vi.fn()
+    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+
+    await act(async () => {
+      await result.current.handleImportDSL(
+        { mode: DSLImportMode.YAML_CONTENT, yaml_content: 'app: demo' },
+        {},
+      )
+      await result.current.handleImportDSLConfirm({ onFailed })
+    })
+
+    expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith('app.newApp.appCreateFailed', {
+      description: 'Import confirmation expired',
+    })
+    expect(onFailed).toHaveBeenCalledExactlyOnceWith()
     expect(result.current.isFetching).toBe(false)
   })
 })

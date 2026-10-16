@@ -38,8 +38,8 @@ const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -54,9 +54,21 @@ const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
   mockUseGetDataSourceAuth: vi.fn(),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: mockUseGetDataSourceAuth,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    // The credential query is keyed by `${pluginId}/${provider}`; report it as the two ids.
+    'auth.plugin.datasource.byProviderId.get': (options: { queryKey: unknown[] }) => {
+      const { input } = options.queryKey[1] as { input: { params: { provider_id: string } } }
+      const providerId = input.params.provider_id
+      const separator = providerId.lastIndexOf('/')
+      return mockUseGetDataSourceAuth({
+        pluginId: providerId.slice(0, separator),
+        provider: providerId.slice(separator + 1),
+      })
+    },
+  })
+})
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
 
@@ -263,7 +275,7 @@ describe('OnlineDocuments', () => {
 
       render(<OnlineDocuments {...props} />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should render PageSelector when documentsData has content', () => {
@@ -273,7 +285,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       expect(screen.getByTestId('page-selector')).toBeInTheDocument()
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
 
     it('should render Title with datasource_label', () => {
@@ -654,7 +666,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading instead of PageSelector
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
   })
 
@@ -870,7 +882,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading when documentsData is undefined
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle undefined datasource_parameters (line 79 branch)', () => {
@@ -1119,7 +1131,7 @@ describe('OnlineDocuments', () => {
       })
 
       // Should still show loading since documentsData is empty
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should handle credential change and refetch documents', () => {

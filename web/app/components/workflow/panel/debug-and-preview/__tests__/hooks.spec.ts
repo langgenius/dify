@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { sseGet } from '@/service/base'
 import { submitHumanInputForm } from '@/service/workflow'
 import { useChat } from '../hooks'
@@ -21,14 +22,14 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -56,7 +57,7 @@ vi.mock('../../../hooks/use-set-workflow-vars-with-value', () => ({
 vi.mock('../../../hooks-store', () => ({
   useHooksStore: () => ({
     configsMap: {
-      flowType: 'appFlow',
+      resourceKind: 'appFlow',
       flowId: 'flow-1',
     },
   }),
@@ -99,7 +100,9 @@ describe('useChat', () => {
       sendCallbacks = callbacks
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -133,7 +136,9 @@ describe('useChat', () => {
   })
 
   it('submits human input forms through the workflow service', async () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await act(async () => {
       await result.current.handleSubmitHumanInputForm('token-123', {
@@ -153,7 +158,9 @@ describe('useChat', () => {
     const node = { id: 'node-1', type: 'custom', data: { title: 'Human Input' } }
     mockGetNodes.mockReturnValue([node, { id: 'node-2', type: 'custom', data: { title: 'Other' } }])
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(result.current.getHumanInputNodeData('node-1')).toEqual(node)
     expect(result.current.getHumanInputNodeData('missing')).toBeUndefined()

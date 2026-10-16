@@ -1,66 +1,56 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
-import UploadMethodField from '../upload-method'
+import { useAppForm } from '../../..'
 
-const mockField = {
-  name: 'upload-method',
-  state: {
-    value: [TransferMethod.local_file] as TransferMethod[],
-  },
-  handleChange: vi.fn(),
+const UploadMethodForm = ({ onSubmit }: { onSubmit: (value: TransferMethod[]) => void }) => {
+  const form = useAppForm({
+    defaultValues: { methods: [TransferMethod.local_file] as TransferMethod[] },
+    onSubmit: ({ value }) => onSubmit(value.methods),
+  })
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        void form.handleSubmit()
+      }}
+    >
+      <form.AppField name="methods">
+        {(field) => <field.UploadMethodField label="Upload methods" />}
+      </form.AppField>
+      <button type="submit">Save</button>
+    </form>
+  )
 }
 
-vi.mock('../../..', () => ({
-  useFieldContext: () => mockField,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({
-    title,
-    selected,
-    onSelect,
-  }: {
-    title: string
-    selected: boolean
-    onSelect: () => void
-  }) => (
-    <button aria-pressed={selected} onClick={onSelect}>
-      {title}
-    </button>
-  ),
-}))
-
 describe('UploadMethodField', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockField.state.value = [TransferMethod.local_file]
+  it('lets keyboard users choose both methods and saves the existing array representation', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<UploadMethodForm onSubmit={onSubmit} />)
+
+    expect(screen.getByRole('radiogroup', { name: 'Upload methods' })).toBeInTheDocument()
+    await user.tab()
+    expect(screen.getByRole('radio', { name: 'appDebug.variableConfig.localUpload' })).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('radio', { name: 'URL' })).toBeChecked()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('radio', { name: 'appDebug.variableConfig.both' })).toBeChecked()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(onSubmit).toHaveBeenCalledWith([TransferMethod.local_file, TransferMethod.remote_url])
   })
 
-  it('should show all upload method options', () => {
-    render(<UploadMethodField label="Upload methods" />)
+  it('lets users select a card by its visible label and saves only URL upload', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<UploadMethodForm onSubmit={onSubmit} />)
 
-    expect(screen.getByText('Upload methods')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'appDebug.variableConfig.localUpload' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'URL' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'appDebug.variableConfig.both' })).toBeInTheDocument()
-  })
-
-  it('should switch to URL-only when users select URL', () => {
-    render(<UploadMethodField label="Upload methods" />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'URL' }))
-    expect(mockField.handleChange).toHaveBeenCalledWith([TransferMethod.remote_url])
-  })
-
-  it('should enable both methods when users select both', () => {
-    render(<UploadMethodField label="Upload methods" />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.variableConfig.both' }))
-    expect(mockField.handleChange).toHaveBeenCalledWith([
-      TransferMethod.local_file,
-      TransferMethod.remote_url,
-    ])
+    await user.click(screen.getByText('URL'))
+    expect(screen.getByRole('radio', { name: 'URL' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSubmit).toHaveBeenCalledWith([TransferMethod.remote_url])
   })
 })

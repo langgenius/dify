@@ -1,7 +1,7 @@
 import type { PluginDetail } from '../types'
 import { useQuery } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { usePluginsWithLatestVersion } from '../hooks'
 import { PluginSource } from '../types'
 
@@ -9,7 +9,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     workspaces: {
       current: {

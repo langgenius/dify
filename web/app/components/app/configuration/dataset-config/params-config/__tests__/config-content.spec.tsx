@@ -17,6 +17,7 @@ import {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import ConfigContent from '../config-content'
 
@@ -77,15 +78,11 @@ const baseRetrievalConfig: RetrievalConfig = {
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
-  const { retrieval_model, retrieval_model_dict, icon_info, ...restOverrides } = overrides
+  const { retrieval_model_dict, icon_info, ...restOverrides } = overrides
 
   const resolvedRetrievalModelDict = {
     ...baseRetrievalConfig,
     ...retrieval_model_dict,
-  }
-  const resolvedRetrievalModel = {
-    ...baseRetrievalConfig,
-    ...(retrieval_model ?? retrieval_model_dict),
   }
 
   const defaultIconInfo = {
@@ -98,9 +95,9 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const resolvedIconInfo = 'icon_info' in overrides ? icon_info : defaultIconInfo
 
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Dataset Name',
-    indexing_status: 'completed',
     icon_info: resolvedIconInfo as DataSet['icon_info'],
     description: 'A test dataset',
     permission: DatasetPermission.onlyMe,
@@ -113,7 +110,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'dify',
@@ -121,7 +117,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     embedding_model_provider: 'openai',
     embedding_available: true,
     retrieval_model_dict: resolvedRetrievalModelDict,
-    retrieval_model: resolvedRetrievalModel,
     tags: [],
     external_knowledge_info: {
       external_knowledge_id: 'external-id',
@@ -247,7 +242,7 @@ describe('ConfigContent', () => {
 
       // Assert
       expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.rerankModel.key'))!.toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
       expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
       expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
     })
@@ -337,7 +332,7 @@ describe('ConfigContent', () => {
           selectedDatasets={selectedDatasets}
         />,
       )
-      await user.click(screen.getByText('common.modelProvider.rerankModel.key'))
+      await user.click(screen.getByText('modelProvider.modelProvider.rerankModel.key'))
 
       // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')

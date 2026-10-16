@@ -1,5 +1,5 @@
-/* oxlint-disable typescript/no-explicit-any */
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
@@ -19,14 +19,14 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -84,7 +84,9 @@ describe('useChat – handleSend SSE callbacks', () => {
   })
 
   function setupAndSend(config: any = {}) {
-    const hook = renderHook(() => useChat(config))
+    const hook = renderHook(() => useChat(config), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     act(() => {
       hook.result.current.handleSend(
         { query: 'test' },
@@ -340,8 +342,9 @@ describe('useChat – handleSend SSE callbacks', () => {
         getAbortCtrl(new AbortController())
         return Promise.resolve({ data: ['suggestion1'] })
       })
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
@@ -366,8 +369,9 @@ describe('useChat – handleSend SSE callbacks', () => {
 
     it('should set suggestedQuestions to empty array when fetch fails', async () => {
       const mockGetSuggested = vi.fn().mockRejectedValue(new Error('fail'))
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       mockHandleRun.mockImplementation((_params: any, callbacks: any) => {

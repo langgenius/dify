@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { CheckboxProps } from '.'
 import * as React from 'react'
 import { Checkbox, CheckboxSkeleton } from '.'
 
@@ -10,7 +11,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Checkbox primitive built on Base UI. It preserves Base UI checked, indeterminate, disabled, and hidden input semantics while applying the Dify 16px checkbox design from Figma. Import from `@langgenius/dify-ui/checkbox`.',
+          'Checkbox primitive built on Base UI. It preserves Base UI checked, indeterminate, disabled, and hidden input semantics while applying the Dify 16px checkbox design from Figma. Import from `@langgenius/dify-ui/checkbox`. Label it with a visible `FieldLabel` or `<label>`; use `aria-label` only when there is no visible label, because a non-blank `aria-label` takes precedence over any associated label.',
       },
     },
   },
@@ -39,7 +40,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function CheckboxDemo(args: Partial<React.ComponentProps<typeof Checkbox>>) {
+function CheckboxDemo(args: Partial<CheckboxProps>) {
   const [checked, setChecked] = React.useState(args.checked ?? false)
 
   return (

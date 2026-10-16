@@ -20,6 +20,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -29,7 +30,6 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     enterprise_license_required,
     is_admin_or_owner_required,
@@ -61,9 +61,12 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
     WorkflowToolParameterConfiguration,
 )
+from core.tools.errors import WorkflowToolHumanInputNotSupportedError
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import alphanumeric, dump_response, uuid_value
 from libs.login import login_required
 from models import Account
@@ -563,7 +566,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(BuiltinToolCredentialDeletePayload)
@@ -590,7 +593,7 @@ class ToolBuiltinProviderAddApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_CREATE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -621,7 +624,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -664,9 +667,9 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
-                session=db.session(),
                 user=user,
                 include_credential_ids=query.include_credential_ids or None,
+                credential_query=application_services().credential_queries,
             ),
         )
 
@@ -689,7 +692,7 @@ class ToolApiProviderAddApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.TOOL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -769,7 +772,7 @@ class ToolApiProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.TOOL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -800,7 +803,7 @@ class ToolApiProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.TOOL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -903,12 +906,13 @@ class ToolApiProviderPreviousTestApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/create")
 class ToolWorkflowProviderCreateApi(Resource):
+    @error_responses(WorkflowToolHumanInputNotSupportedError)
     @console_ns.expect(console_ns.models[WorkflowToolCreatePayload.__name__])
     @console_ns.response(200, "Workflow tool created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.TOOL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -933,12 +937,13 @@ class ToolWorkflowProviderCreateApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/update")
 class ToolWorkflowProviderUpdateApi(Resource):
+    @error_responses(WorkflowToolHumanInputNotSupportedError)
     @console_ns.expect(console_ns.models[WorkflowToolUpdatePayload.__name__])
     @console_ns.response(200, "Workflow tool updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.TOOL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -968,7 +973,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.TOOL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -1125,7 +1130,7 @@ class ToolPluginOAuthApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -1251,7 +1256,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_USE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(BuiltinProviderDefaultCredentialPayload)
@@ -1273,7 +1278,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ToolOAuthCustomClientPayload)
@@ -1297,7 +1302,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str, provider: str):
@@ -1309,7 +1314,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.CREDENTIAL_MANAGE, Workspace()))
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider: str):
@@ -1363,9 +1368,9 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
-                session=db.session(),
                 user=user,
                 include_credential_ids=query.include_credential_ids or None,
+                credential_query=application_services().credential_queries,
             ),
         )
 
@@ -1379,7 +1384,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
     @with_current_user
     @with_current_tenant_id
     @model_validate(MCPProviderCreatePayload)
@@ -1417,11 +1422,11 @@ class ToolProviderMCPApi(Resource):
             # Update just-created provider with authed/tools in a new short transaction
             with session_factory.create_session() as session, session.begin():
                 service = MCPToolManageService(session=session)
-                db_provider = service.get_provider(provider_id=result.id, tenant_id=tenant_id)
+                db_provider = service.get_provider_by_id(provider_id=result.id, tenant_id=tenant_id)
                 db_provider.authed = reconnect.authed
                 db_provider.tools = reconnect.tools
 
-                result = ToolTransformService.mcp_provider_to_user_provider(db_provider, for_list=True)
+                result = ToolTransformService.mcp_provider_to_user_provider(db_provider)
         except Exception:
             # Best-effort: if initial fetch fails (e.g., auth required), return created provider as-is
             logger.warning("Failed to fetch MCP tools after creation", exc_info=True)
@@ -1433,7 +1438,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
     @with_current_tenant_id
     @model_validate(MCPProviderUpdatePayload)
     def put(self, req_data: MCPProviderUpdatePayload, current_tenant_id: str):
@@ -1462,7 +1467,7 @@ class ToolProviderMCPApi(Resource):
             # Resolve "leave unchanged" (None) against the stored value, and gate
             # the result on the Enterprise edition — both are API-layer concerns, so
             # the service receives a concrete IdentityMode.
-            existing = service.get_provider(provider_id=req_data.provider_id, tenant_id=current_tenant_id)
+            existing = service.get_provider_by_id(provider_id=req_data.provider_id, tenant_id=current_tenant_id)
             identity_mode = _resolve_identity_mode(req_data.identity_mode, current=IdentityMode(existing.identity_mode))
             service.update_provider(
                 tenant_id=current_tenant_id,
@@ -1487,7 +1492,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
     @with_current_tenant_id
     @model_validate(MCPProviderDeletePayload)
     def delete(self, req_data: MCPProviderDeletePayload, current_tenant_id: str):
@@ -1505,7 +1510,7 @@ class ToolMCPAuthApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
     @with_current_tenant_id
     @model_validate(MCPAuthPayload)
     def post(self, req_data: MCPAuthPayload, tenant_id: str):
@@ -1513,7 +1518,7 @@ class ToolMCPAuthApi(Resource):
 
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
-            db_provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+            db_provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
             if not db_provider:
                 raise ValueError("provider not found")
 
@@ -1582,14 +1587,13 @@ class ToolMCPDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
     @with_current_tenant_id
     def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:
             service = MCPToolManageService(session=session)
-            provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
-            return _dump_tool_provider_payload(
-                ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True).to_dict()
-            )
+            provider = service.get_provider_by_id(provider_id=provider_id, tenant_id=tenant_id)
+            return _dump_tool_provider_payload(ToolTransformService.mcp_provider_to_user_provider(provider).to_dict())
 
 
 @console_ns.route("/workspaces/current/tools/mcp")
@@ -1617,7 +1621,7 @@ class ToolMCPUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACCheck(RBACPermission.MCP_MANAGE, Workspace()))
     @with_current_tenant_id
     def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:

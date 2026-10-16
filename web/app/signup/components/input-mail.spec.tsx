@@ -2,11 +2,21 @@ import type { MockedFunction } from 'vite-plus/test'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useSearchParams } from '@/next/navigation'
-import { useSendMail } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SignupEmailForm from './input-mail'
+
+const { mockSendMailHook } = vi.hoisted(() => ({
+  mockSendMailHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'emailRegister.sendEmail.post': (options: unknown) => mockSendMailHook(options),
+  })
+})
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
@@ -31,7 +41,8 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
@@ -39,15 +50,11 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useSendMail: vi.fn(),
-}))
-
-type UseSendMailResult = ReturnType<typeof useSendMail>
+type UseSendMailResult = ReturnType<typeof mockSendMailHook>
 
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseSendMail = useSendMail as unknown as MockedFunction<typeof useSendMail>
+const mockUseSendMail = mockSendMailHook
 
 const renderForm = ({
   brandingEnabled = false,
@@ -121,8 +128,10 @@ describe('InputMail Form', () => {
       await user.type(input, 'test@example.com{Enter}')
 
       expect(mockSubmitMail).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        language: 'en-US',
+        body: {
+          email: 'test@example.com',
+          language: 'en-US',
+        },
       })
       expect(mockSubmitMail).toHaveBeenCalledTimes(1)
 

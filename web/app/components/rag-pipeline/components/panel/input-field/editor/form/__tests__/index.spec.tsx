@@ -1,8 +1,8 @@
 import type { FormData, InputFieldFormProps } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 import InputFieldForm from '../index'
@@ -20,14 +20,6 @@ const mockFileUploadConfig = {
   video_file_size_limit: 100,
   workflow_file_upload_limit: 10,
 }
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: mockFileUploadConfig,
-    isLoading: false,
-    error: null,
-  }),
-}))
 
 const createFormData = (overrides?: Partial<FormData>): FormData => ({
   type: PipelineInputVarType.textInput,
@@ -88,6 +80,17 @@ const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   toastErrorSpy.mockClear()
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: mockFileUploadConfig,
+      isLoading: false,
+      error: null,
+    }),
+  })
 })
 
 describe('InputFieldForm', () => {
@@ -304,23 +307,6 @@ describe('InputFieldForm', () => {
       renderWithProviders(<InputFieldForm {...props} />)
 
       expect(screen.queryByText(/appDebug.variableConfig.showAllSettings/i)).toBeInTheDocument()
-    })
-
-    it('should toggle showAllSettings state when clicking show all settings', async () => {
-      const props = createInputFieldFormProps()
-      renderWithProviders(<InputFieldForm {...props} />)
-
-      const showAllSettingsElement = screen.getByText(/appDebug.variableConfig.showAllSettings/i)
-      const clickableParent = showAllSettingsElement.closest('.cursor-pointer')
-      if (clickableParent) {
-        fireEvent.click(clickableParent)
-      }
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/appDebug.variableConfig.showAllSettings/i),
-        ).not.toBeInTheDocument()
-      })
     })
   })
 

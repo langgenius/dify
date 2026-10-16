@@ -29,6 +29,7 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import { useCreatorCenterUrl } from '@/app/components/plugins/marketplace/creator-center-url'
 import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
 import {
   disableStepByStepTourForCurrentWorkspaceAtom,
@@ -38,6 +39,7 @@ import {
   stepByStepTourStateUpdatingAtom,
 } from '@/app/components/step-by-step-tour/state'
 import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { getLangGeniusVersionInfo } from '@/context/app-context-normalizers'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -48,7 +50,7 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import styles from './help-menu.module.css'
 import AccountAboutDialog from './help-menu/account-about-dialog'
 import SupportMenu from './support-menu'
@@ -89,8 +91,9 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
 )
 
 const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'navigation'])
   const docLink = useDocLink()
+  const creatorCenterUrl = useCreatorCenterUrl(MARKETPLACE_URL_PREFIX)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: profileMeta } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -155,12 +158,13 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
         <DropdownMenuTrigger
           ref={triggerRef}
           data-learn-dify-help-target
+          // The recovery pulse animates box-shadow, so focus is drawn with an outline instead of the ring.
+          className="focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid"
           render={
             <IconButton
               size={triggerSize ?? 'lg'}
-              aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
+              aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'navigation' })}
               className={cn(
-                'focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
                 usesDefaultTrigger && [
                   'rounded-full border border-components-card-border bg-components-card-bg text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted',
                   !triggerSize && 'size-7 p-0',
@@ -191,7 +195,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
               >
                 <MenuItemContent
                   iconClassName="i-ri-book-open-line"
-                  label={t(($) => $['mainNav.help.docs'], { ns: 'common' })}
+                  label={t(($) => $['mainNav.help.docs'], { ns: 'navigation' })}
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
@@ -219,7 +223,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                     className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary"
                   />
                   <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
-                    {t(($) => $['mainNav.help.learnDify'], { ns: 'common' })}
+                    {t(($) => $['mainNav.help.learnDify'], { ns: 'navigation' })}
                   </span>
                   <MenuSwitchIndicator checked={!learnDifyHidden} />
                 </DropdownMenuCheckboxItem>
@@ -237,7 +241,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
                     className="i-custom-vender-line-education-book-open-01 size-4 shrink-0 text-text-tertiary"
                   />
                   <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
-                    {t(($) => $['mainNav.help.stepByStepTour'], { ns: 'common' })}
+                    {t(($) => $['mainNav.help.stepByStepTour'], { ns: 'navigation' })}
                   </span>
                   <MenuSwitchIndicator checked={stepByStepTourEnabled} />
                 </DropdownMenuCheckboxItem>
@@ -252,6 +256,18 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: He
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />
             <DropdownMenuGroup className="p-1">
+              <DropdownMenuLinkItem
+                href={creatorCenterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-0 h-8 gap-1 px-3 py-1.5"
+              >
+                <MenuItemContent
+                  iconClassName="i-ri-user-star-line"
+                  label={t(($) => $['mainNav.help.creatorCenter'], { ns: 'navigation' })}
+                  trailing={<ExternalLinkIndicator />}
+                />
+              </DropdownMenuLinkItem>
               <DropdownMenuLinkItem
                 href="https://github.com/langgenius/dify"
                 target="_blank"

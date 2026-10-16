@@ -1,10 +1,9 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ReactNode } from 'react'
 import type { PromptRole } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum } from '@/types/app'
 import AdvancedPromptInput from '../advanced-prompt-input'
 
 const mockEmit = vi.fn()
@@ -30,11 +29,6 @@ vi.mock('@remixicon/react', async (importOriginal) => {
     RiErrorWarningFill: () => <span>warning-icon</span>,
   }
 })
-
-vi.mock('@/app/components/base/icons/src/vender/line/files', () => ({
-  Copy: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>copy-prompt</button>,
-  CopyCheck: () => <span>copy-checked</span>,
-}))
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -87,7 +81,7 @@ vi.mock('../prompt-editor-height-resize-wrap', () => ({
 
 const createContextValue = () =>
   ({
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     hasSetBlockStatus: {
       context: false,
       history: false,
@@ -116,7 +110,8 @@ describe('AdvancedPromptInput', () => {
     vi.clearAllMocks()
   })
 
-  it('should delegate prompt text and role changes to the parent callbacks', () => {
+  it('should delegate prompt text and role changes to the parent callbacks', async () => {
+    const user = userEvent.setup()
     render(
       <ConfigContext.Provider value={createContextValue()}>
         <AdvancedPromptInput
@@ -134,10 +129,15 @@ describe('AdvancedPromptInput', () => {
       </ConfigContext.Provider>,
     )
 
-    fireEvent.click(screen.getByText('change-advanced'))
-    fireEvent.click(screen.getByText('selector:user'))
-    fireEvent.click(screen.getByText('copy-prompt'))
-    fireEvent.click(screen.getByText('delete-prompt'))
+    await user.click(screen.getByText('change-advanced'))
+    await user.click(screen.getByText('selector:user'))
+    const copyButton = screen.getByRole('button', { name: 'common.operation.copy' })
+    await user.click(copyButton)
+    expect(copyButton).toHaveFocus()
+    expect(copyButton).toHaveAttribute('aria-disabled', 'true')
+    await user.keyboard('{Enter} ')
+    expect(mockCopy).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByText('delete-prompt'))
 
     expect(mockOnChange).toHaveBeenCalledWith('Updated {{new_var}}')
     expect(mockOnTypeChange).toHaveBeenCalledWith('assistant')

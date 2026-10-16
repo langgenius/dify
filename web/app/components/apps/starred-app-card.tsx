@@ -1,15 +1,14 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -27,7 +26,7 @@ type StarredAppCardProps = {
 
 export const StarredAppCard = memo(
   ({ app, stepByStepTourCardTarget, stepByStepTourCardHighlightPart }: StarredAppCardProps) => {
-    const { t } = useTranslation()
+    const { t } = useTranslation(['app', 'common', 'time'])
     const { data: currentUserId } = useSuspenseQuery({
       ...userProfileQueryOptions(),
       select: (data) => data.profile.id,
@@ -36,7 +35,6 @@ export const StarredAppCard = memo(
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const isRbacEnabled = systemFeatures.rbac_enabled
     const isPreviewOnly = hasOnlyAppPreviewPermission(app.permission_keys)
-    const appIconType = zIconType.safeParse(app.icon_type).data ?? null
 
     const editTimeText = useMemo(() => {
       const timestamp = app.updated_at || app.created_at
@@ -44,9 +42,9 @@ export const StarredAppCard = memo(
 
       const timeText = formatTime({
         date: timestamp * 1000,
-        dateFormat: `${t(($) => $['segment.dateTimeFormat'], { ns: 'datasetDocuments' })}`,
+        dateFormat: `${t(($) => $['dateFormats.compact'], { ns: 'time' })}`,
       })
-      return `${t(($) => $['segment.editedAt'], { ns: 'datasetDocuments' })} ${timeText}`
+      return `${t(($) => $.editedAt, { ns: 'common' })} ${timeText}`
     }, [app.created_at, app.updated_at, t])
     const href = getRedirectionPath(app, {
       currentUserId,
@@ -65,14 +63,7 @@ export const StarredAppCard = memo(
     const cardContent = (
       <>
         <div className="relative shrink-0">
-          <AppIcon
-            size="large"
-            iconType={appIconType}
-            icon={app.icon ?? undefined}
-            background={app.icon_background}
-            imageUrl={app.icon_url}
-            decorative
-          />
+          <AppIcon size="large" icon={app} />
           <AppTypeIcon
             type={app.mode}
             wrapperClassName="absolute -right-0.5 -bottom-0.5 h-4 w-4 shadow-sm"

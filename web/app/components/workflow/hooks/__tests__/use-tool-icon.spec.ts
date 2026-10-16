@@ -1,3 +1,4 @@
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { resetReactFlowMockState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -8,23 +9,26 @@ vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
 )
 
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock({
-    buildInTools: [
-      {
-        id: 'builtin-1',
-        name: 'builtin',
-        icon: '/builtin.svg',
-        icon_dark: '/builtin-dark.svg',
-        plugin_id: 'p1',
-      },
-    ],
-    customTools: [{ id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
-    workflowTools: [
-      { id: 'workflow-1', name: 'workflow-tool', icon: '/workflow.svg', plugin_id: 'p3' },
-    ],
-    mcpTools: [{ id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes({
+      buildInTools: [
+        {
+          id: 'builtin-1',
+          name: 'builtin',
+          icon: '/builtin.svg',
+          icon_dark: '/builtin-dark.svg',
+          plugin_id: 'p1',
+        },
+      ],
+      customTools: [{ id: 'custom-1', name: 'custom', icon: '/custom.svg', plugin_id: 'p2' }],
+      workflowTools: [
+        { id: 'workflow-1', name: 'workflow-tool', icon: '/workflow.svg', plugin_id: 'p3' },
+      ],
+      mcpTools: [{ id: 'mcp-1', name: 'mcp-tool', icon: '/mcp.svg', plugin_id: 'p4' }],
+    }),
+  ),
 )
 
 vi.mock('@/service/use-triggers', async () =>
@@ -36,6 +40,11 @@ vi.mock('@/service/use-triggers', async () =>
 let mockTheme = 'light'
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: mockTheme }),
+}))
+
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  basePath: '/dify',
 }))
 
 vi.mock('@/utils', () => ({
@@ -150,12 +159,10 @@ describe('useToolIcon', () => {
     expect(
       renderWorkflowHook(() => useToolIcon(dataSourceData), {
         initialStoreState: {
-          dataSourceList: [
-            { id: 'ds-1', plugin_id: 'datasource-1', icon: '/datasource.svg' },
-          ] as never,
+          dataSourceList: [createDatasourceProvider({ plugin_id: 'datasource-1' })],
         },
       }).result.current,
-    ).toBe('/datasource.svg')
+    ).toBe('/dify/datasource.svg')
   })
 
   it('should fallback to provider_icon when no collection match', () => {
@@ -237,9 +244,7 @@ describe('useGetToolIcon', () => {
         buildInTools: [
           { id: 'override-1', name: 'override', icon: '/override.svg', plugin_id: 'p1' },
         ] as never,
-        dataSourceList: [
-          { id: 'ds-1', plugin_id: 'datasource-1', icon: '/datasource-store.svg' },
-        ] as never,
+        dataSourceList: [createDatasourceProvider({ plugin_id: 'datasource-1' })],
       },
     })
 
@@ -258,7 +263,7 @@ describe('useGetToolIcon', () => {
         type: BlockEnum.DataSource,
         plugin_id: 'datasource-1',
       }),
-    ).toBe('/datasource-store.svg')
+    ).toBe('/dify/datasource.svg')
     expect(store.getState().buildInTools).toHaveLength(1)
   })
 

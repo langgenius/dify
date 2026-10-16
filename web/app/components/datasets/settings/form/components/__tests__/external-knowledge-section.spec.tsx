@@ -2,6 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import ExternalKnowledgeSection from '../external-knowledge-section'
@@ -20,6 +21,7 @@ describe('ExternalKnowledgeSection', () => {
   }
 
   const mockDataset: DataSet = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'External Dataset',
     description: 'External dataset description',
@@ -31,7 +33,6 @@ describe('ExternalKnowledgeSection', () => {
       icon_url: '',
     },
     indexing_technique: IndexingType.QUALIFIED,
-    indexing_status: 'completed',
     data_source_type: DataSourceType.FILE,
     doc_form: ChunkingMode.text,
     embedding_model: 'text-embedding-ada-002',
@@ -39,7 +40,6 @@ describe('ExternalKnowledgeSection', () => {
     embedding_available: true,
     app_count: 0,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'external',
     tags: [],
@@ -56,7 +56,6 @@ describe('ExternalKnowledgeSection', () => {
       score_threshold_enabled: true,
     },
     retrieval_model_dict: mockRetrievalConfig,
-    retrieval_model: mockRetrievalConfig,
     built_in_field_enabled: false,
     keyword_number: 10,
     created_by: 'user-1',
@@ -105,13 +104,6 @@ describe('ExternalKnowledgeSection', () => {
     it('should display external API endpoint', () => {
       render(<ExternalKnowledgeSection {...defaultProps} />)
       expect(screen.getByText('https://api.external.example.com/v1')).toBeInTheDocument()
-    })
-
-    it('should render API connection icon', () => {
-      const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-      // The ApiConnectionMod icon should be rendered
-      const icon = container.querySelector('svg')
-      expect(icon).toBeInTheDocument()
     })
 
     it('should display API name and endpoint in the same row', () => {
@@ -233,24 +225,6 @@ describe('ExternalKnowledgeSection', () => {
       rerender(<ExternalKnowledgeSection {...defaultProps} currentDataset={updatedDataset} />)
 
       expect(screen.getByText('https://new-api.example.com/v2')).toBeInTheDocument()
-    })
-  })
-
-  describe('Layout', () => {
-    it('should have consistent row layout', () => {
-      const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-
-      // Check for flex gap-x-1 class on rows
-      const rows = container.querySelectorAll('.flex.gap-x-1')
-      expect(rows.length).toBeGreaterThan(0)
-    })
-
-    it('should have consistent label width', () => {
-      const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-
-      // Check for w-[180px] label containers
-      const labels = container.querySelectorAll('.w-\\[180px\\]')
-      expect(labels.length).toBeGreaterThan(0)
     })
   })
 

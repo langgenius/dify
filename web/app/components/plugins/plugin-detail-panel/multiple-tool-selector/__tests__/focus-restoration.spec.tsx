@@ -1,23 +1,26 @@
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MultipleToolSelector from '../index'
 
 const mockTools = vi.hoisted(() => ({
   builtIn: [] as ToolWithProvider[],
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockTools.builtIn, isFetched: true }),
-  useAllCustomTools: () => ({ data: [], isFetched: true }),
-  useAllMCPTools: () => ({ data: [], isFetched: true }),
-  useAllWorkflowTools: () => ({ data: [], isFetched: true }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: mockTools.builtIn, isFetched: true }),
+    'workspaces.current.tools.api.get': () => ({ data: [], isFetched: true }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [], isFetched: true }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [], isFetched: true }),
+  })
+})
 
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: () => ({ data: undefined }),
@@ -77,7 +80,7 @@ function renderSelector(initialValue: ToolValue[]) {
     )
   }
 
-  return render(<Harness />)
+  return renderWithConsoleQuery(<Harness />)
 }
 
 describe('MultipleToolSelector focus restoration', () => {

@@ -1,10 +1,10 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement } from 'react'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
 import SwitchAppModal from '../index'
 
 const mockPush = vi.fn()
@@ -21,23 +21,27 @@ vi.mock('@/next/navigation', () => ({
 
 const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
 const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
-const mockMutationState = vi.hoisted(() => ({ hookIndex: 0 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
   return {
     ...actual,
-    useMutation: () => {
-      const mutationIndex = mockMutationState.hookIndex++ % 2
-      return {
-        mutateAsync: mutationIndex === 0 ? mockConvertToWorkflow : mockDeleteOriginalApp,
-      }
+    useMutation: (options: Parameters<typeof actual.useMutation>[0]) => {
+      const key = JSON.stringify(options.mutationKey)
+      return actual.useMutation({
+        ...options,
+        ...(key.includes('convertToWorkflow')
+          ? { mutationFn: (input: unknown) => mockConvertToWorkflow(input) }
+          : key.includes('delete')
+            ? { mutationFn: (input: unknown) => mockDeleteOriginalApp(input) }
+            : {}),
+      })
     },
   }
 })
 
-let mockEnableBilling = false
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlan = {
   type: 'sandbox',
   usage: {
@@ -59,12 +63,6 @@ let mockPlan = {
     vectorSpace: 0,
   },
 }
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: mockPlan,
-    enableBilling: mockEnableBilling,
-  }),
-}))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: ({ loc }: { loc: string }) => (
@@ -72,12 +70,6 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
       AppsFull
       {loc}
     </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>open-icon-picker</button>
   ),
 }))
 
@@ -91,11 +83,11 @@ const createMockApp = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   icon_background: '#FFEAD5',
   icon_url: null,
   use_icon_as_answer_icon: false,
-  mode: AppModeEnum.COMPLETION,
+  mode: 'completion' as const,
   created_at: Date.now(),
   updated_at: Date.now(),
   tags: [],
-  access_mode: 'public_access',
+  access_mode: 'public',
   ...overrides,
 })
 
@@ -106,7 +98,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string, options?: Record<string, unknown>) =>
       toastMocks.notify({ type: 'success', message, ...options }),
@@ -127,7 +119,7 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal show appDetail={appDetail} onClose={onClose} {...overrides} />,
+    <SwitchAppModal show sourceApp={appDetail} onClose={onClose} {...overrides} />,
   )
 
   return {
@@ -138,21 +130,19 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
   }
 }
 
-const setAppDetailSpy = vi.fn()
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { apps: { size: mockPlan.usage.buildApps, limit: mockPlan.total.buildApps } },
+  })
+}
 
 describe('SwitchAppModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockMutationState.hookIndex = 0
     mockConvertToWorkflow.mockReset()
     mockDeleteOriginalApp.mockReset()
-    // Spy on setAppDetail
-    const originalSetAppDetail = useAppStore.getState().setAppDetail
-    setAppDetailSpy.mockImplementation((...args: Parameters<typeof originalSetAppDetail>) => {
-      originalSetAppDetail(...args)
-    })
-    useAppStore.setState({ setAppDetail: setAppDetailSpy as typeof originalSetAppDetail })
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlan = {
       type: 'sandbox',
       usage: {
@@ -216,7 +206,7 @@ describe('SwitchAppModal', () => {
 
     it('should render the apps full warning when plan limits are reached', () => {
       // Arrange
-      mockEnableBilling = true
+      deploymentEdition = 'CLOUD'
       mockPlan = {
         ...mockPlan,
         usage: { ...mockPlan.usage, buildApps: 10 },
@@ -256,7 +246,7 @@ describe('SwitchAppModal', () => {
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail, notify, onClose } = renderComponent()
+      const { appDetail, onClose } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-001',
         permission_keys: ['app.acl.view_layout'],
@@ -277,7 +267,6 @@ describe('SwitchAppModal', () => {
           },
         })
         expect(onClose).toHaveBeenCalledTimes(1)
-        expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
         expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
         expect(mockReplace).not.toHaveBeenCalled()
       })
@@ -291,15 +280,15 @@ describe('SwitchAppModal', () => {
         permission_keys: ['app.acl.view_layout'],
       })
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
 
-      await user.click(screen.getByRole('button', { name: '#E4FBCC' }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
@@ -310,7 +299,7 @@ describe('SwitchAppModal', () => {
             body: expect.objectContaining({
               icon_type: 'emoji',
               icon: '🚀',
-              icon_background: '#E4FBCC',
+              icon_background: '#F3FEE7',
             }),
           }),
         )
@@ -321,15 +310,15 @@ describe('SwitchAppModal', () => {
       const user = userEvent.setup()
       renderComponent()
 
-      await user.click(screen.getByText('open-icon-picker'))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
-      await user.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+      await user.keyboard('{Escape}')
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
       await user.click(screen.getByText('app.removeOriginal'))
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
@@ -353,7 +342,7 @@ describe('SwitchAppModal', () => {
     it('should delete the original app and use replace when remove original is confirmed', async () => {
       const user = userEvent.setup()
       // Arrange
-      const { appDetail } = renderComponent({ inAppDetail: true })
+      const { appDetail } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-002',
         permission_keys: ['app.acl.view_layout'],
@@ -373,7 +362,6 @@ describe('SwitchAppModal', () => {
       })
       expect(mockReplace).toHaveBeenCalledWith('/app/new-app-002/workflow')
       expect(mockPush).not.toHaveBeenCalled()
-      expect(setAppDetailSpy).toHaveBeenCalledTimes(1)
     })
 
     it('should notify error when switch app fails', async () => {
@@ -396,3 +384,5 @@ describe('SwitchAppModal', () => {
     })
   })
 })
+
+mockEmojiData()

@@ -1,25 +1,34 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { LLMNodeType } from '../types'
-import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { PanelProps } from '@/types/workflow'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMockProviderContextValue } from '@/__mocks__/provider-context'
-import {
-  ConfigurationMethodEnum,
-  CurrentSystemQuotaTypeEnum,
-  CustomConfigurationStatusEnum,
-  ModelTypeEnum,
-  PreferredProviderTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { ProviderContext } from '@/context/provider-context'
-import { AppModeEnum } from '@/types/app'
-import { FlowType } from '@/types/common'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { BlockEnum } from '../../../types'
 import Panel from '../panel'
+
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
 const mockUseConfig = vi.fn()
 const mockFetchAndMergeValidCompletionParams = vi.mocked(fetchAndMergeValidCompletionParams)
@@ -82,37 +91,6 @@ vi.mock('../components/reasoning-format-config', () => ({
 
 type MockUseConfigReturn = ReturnType<typeof mockUseConfig>
 
-const createMockModelProvider = (provider: string): ModelProvider => ({
-  provider,
-  label: { en_US: provider, zh_Hans: provider },
-  help: {
-    title: { en_US: provider, zh_Hans: provider },
-    url: { en_US: '', zh_Hans: '' },
-  },
-  icon_small: { en_US: '', zh_Hans: '' },
-  supported_model_types: [ModelTypeEnum.textGeneration],
-  configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-  provider_credential_schema: {
-    credential_form_schemas: [],
-  },
-  model_credential_schema: {
-    model: {
-      label: { en_US: '', zh_Hans: '' },
-      placeholder: { en_US: '', zh_Hans: '' },
-    },
-    credential_form_schemas: [],
-  },
-  preferred_provider_type: PreferredProviderTypeEnum.system,
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-  },
-  system_configuration: {
-    enabled: true,
-    current_quota_type: CurrentSystemQuotaTypeEnum.free,
-    quota_configurations: [],
-  },
-})
-
 const baseNodeData: LLMNodeType = {
   type: BlockEnum.LLM,
   title: 'LLM',
@@ -120,7 +98,7 @@ const baseNodeData: LLMNodeType = {
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   },
   prompt_template: [],
@@ -142,7 +120,7 @@ const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
   environmentVariables: [],
   isEnvironmentModelSource: false,
   isChatModel: true,
-  isChatMode: true,
+  isChatflow: true,
   isCompletionModel: false,
   shouldShowContextTip: false,
   isVisionModel: false,
@@ -176,29 +154,35 @@ const buildUseConfigResult = (overrides?: Partial<MockUseConfigReturn>) => ({
   ...overrides,
 })
 
+let panelQueryClient = createConsoleQueryWrapper().queryClient
+
 const renderPanelElement = (data?: Partial<LLMNodeType>) => (
-  // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its special provider.
-  <ProviderContext.Provider
-    value={createMockProviderContextValue({
-      modelProviders: [
-        {
-          ...createMockModelProvider('openai'),
-          is_configured: true,
-          plugin_id: 'langgenius/openai',
-        } as unknown as ModelProviderSummaryResponse,
-      ],
-      isFetchedPlan: true,
-    })}
-  >
+  <QueryClientProvider client={panelQueryClient}>
     <Panel id="llm-node" data={{ ...baseNodeData, ...data }} panelProps={panelProps} />
-  </ProviderContext.Provider>
+  </QueryClientProvider>
 )
 
-const renderPanel = (data?: Partial<LLMNodeType>, flowType?: FlowType) => {
+const renderPanel = (data?: Partial<LLMNodeType>, resourceKind?: EditorResource['kind']) => {
+  panelQueryClient = createConsoleQueryWrapper().queryClient
+  panelQueryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(),
+    {
+      data: [
+        {
+          ...providerSummaryFixture,
+          ...{ provider: 'openai' },
+        } satisfies ModelProviderSummaryResponse,
+      ],
+      plugins: {},
+    },
+  )
   return renderWorkflowFlowComponent(renderPanelElement(data), {
-    hooksStoreProps: flowType
-      ? { configsMap: { flowId: 'test-flow', flowType, fileSettings: {} } }
-      : {},
+    resource:
+      resourceKind === 'snippet'
+        ? { kind: 'snippet', snippetId: 'test-snippet' }
+        : resourceKind === 'knowledge-pipeline'
+          ? { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline' }
+          : { kind: 'app', appId: 'test-app', mode: 'workflow' },
   })
 }
 
@@ -212,7 +196,7 @@ describe('LLM Panel', () => {
     it('should not show the model warning dot when the node only has a connection checklist issue', () => {
       renderPanel()
 
-      const modelField = screen.getByText('workflow.nodes.llm.model').parentElement
+      const modelField = screen.getByText('workflowModels.nodes.llm.model').parentElement
       expect(modelField?.querySelector('.bg-text-warning-secondary')).not.toBeInTheDocument()
     })
 
@@ -243,7 +227,7 @@ describe('LLM Panel', () => {
         },
       })
 
-      const modelField = screen.getByText('workflow.nodes.llm.model').parentElement
+      const modelField = screen.getByText('workflowModels.nodes.llm.model').parentElement
       expect(modelField?.querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
     })
   })
@@ -262,7 +246,7 @@ describe('LLM Panel', () => {
   })
 
   it('does not offer an environment model source in snippet flows', () => {
-    renderPanel(undefined, FlowType.snippet)
+    renderPanel(undefined, 'snippet')
 
     expect(
       screen.queryByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
@@ -283,7 +267,7 @@ describe('LLM Panel', () => {
       }),
     )
 
-    renderPanel({ model_selector: ['env', 'shared_model'] }, FlowType.snippet)
+    renderPanel({ model_selector: ['env', 'shared_model'] }, 'snippet')
     await user.click(screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.input' }))
 
     expect(handleModelSourceChange).toHaveBeenCalledWith(false)
@@ -307,7 +291,7 @@ describe('LLM Panel', () => {
             value: {
               provider: 'openai',
               name: 'gpt-4o',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             },
             description: '',
           },
@@ -363,7 +347,7 @@ describe('LLM Panel', () => {
             id: 'env-llm',
             name: 'for_summarize',
             value_type: 'llm',
-            value: { provider: 'openai', name: 'gpt-4o', mode: AppModeEnum.CHAT },
+            value: { provider: 'openai', name: 'gpt-4o', mode: 'chat' as const },
             description: '',
           },
         ],

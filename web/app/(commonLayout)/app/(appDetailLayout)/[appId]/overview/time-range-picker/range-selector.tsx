@@ -12,8 +12,8 @@ import {
   SelectPortal,
   SelectPositioner,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
-import { RiArrowDownSLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -34,8 +34,7 @@ type Props = Readonly<{
 }>
 
 const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const { t } = useTranslation(['appLog'])
   const items = useMemo<TimePeriodOption[]>(() => {
     return ranges.map((range) => ({
       ...range,
@@ -69,8 +68,6 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
   return (
     <Select<number>
       value={selectedItem?.value ?? null}
-      open={open}
-      onOpenChange={setOpen}
       onValueChange={(nextValue) => {
         if (nextValue == null) return
         const nextItem = items.find((item) => item.value === nextValue)
@@ -79,18 +76,15 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
         handleSelectRange(nextItem)
       }}
     >
-      <SelectTrigger className="h-auto w-fit max-w-none border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden">
-        <div className="flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pr-2 pl-3 group-data-popup-open:bg-state-base-hover-alt">
-          <div className="system-sm-regular text-components-input-text-filled">
-            {isCustomRange
-              ? t(($) => $['filter.period.custom'], { ns: 'appLog' })
-              : selectedItem?.name}
-          </div>
-          <RiArrowDownSLine className="size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
-        </div>
+      <SelectTrigger className="w-fit">
+        <SelectValue>
+          {isCustomRange
+            ? t(($) => $['filter.period.custom'], { ns: 'appLog' })
+            : selectedItem?.name}
+        </SelectValue>
       </SelectTrigger>
       <SelectPortal>
-        <SelectPositioner className="-translate-x-6">
+        <SelectPositioner>
           <SelectPopup className="w-50">
             <SelectList className="p-1">
               {items.map((item) => (
@@ -99,7 +93,7 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
                   value={item.value}
                   className="relative h-8 py-0 pr-2 pl-7 system-md-regular"
                 >
-                  <SelectItemText className="px-0">{item.name}</SelectItemText>
+                  <SelectItemText>{item.name}</SelectItemText>
                   <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
                 </SelectItem>
               ))}

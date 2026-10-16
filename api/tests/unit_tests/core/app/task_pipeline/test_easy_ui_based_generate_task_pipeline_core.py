@@ -55,12 +55,12 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager
-from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from tests.unit_tests.model_factories import make_upload_file
 
 
 class _DummyModelConf:
@@ -212,21 +212,17 @@ def _message_file(
 
 
 def _upload_file(*, file_id: str, name: str, mime_type: str, size: int, extension: str) -> UploadFile:
-    upload_file = UploadFile(
+    return make_upload_file(
+        file_id=file_id,
         tenant_id="tenant",
-        storage_type=StorageType.LOCAL,
         key=f"uploads/{file_id}",
         name=name,
         size=size,
         extension=extension,
         mime_type=mime_type,
-        created_by_role=CreatorUserRole.ACCOUNT,
         created_by="user",
         created_at=datetime.now(UTC),
-        used=False,
     )
-    upload_file.id = file_id
-    return upload_file
 
 
 def _agent_thought() -> MessageAgentThought:
@@ -419,7 +415,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "_save_message", lambda **kwargs: None)
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -593,7 +589,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return self._items
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def __enter__(self):
@@ -679,7 +675,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -767,7 +763,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         agent_thought = _agent_thought()
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1190,7 +1186,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1526,7 +1522,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return []
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1565,7 +1561,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return []
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):
@@ -1628,7 +1624,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
                 return self._items
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 self.calls = 0
 
             def __enter__(self):
@@ -1690,7 +1686,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Session:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def __enter__(self):

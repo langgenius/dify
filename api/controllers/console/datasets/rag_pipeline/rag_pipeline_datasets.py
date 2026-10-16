@@ -17,16 +17,20 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from extensions.ext_database import db
-from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
+from fields.dataset_fields import (
+    DatasetDetailResponse,
+)
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.dataset import DatasetPermissionEnum
-from services.dataset_service import DatasetPermissionService, DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
+from services.knowledge.dataset_read_service import load_dataset_detail
+from services.knowledge.dataset_service import DatasetPermissionService, DatasetService
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
+from services.rbac import contracts as rbac_contracts
 
 
 class RagPipelineDatasetImportPayload(BaseModel):
@@ -39,6 +43,7 @@ register_response_schema_models(console_ns, DatasetDetailResponse, RagPipelineIm
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @console_ns.response(
         201,
@@ -96,9 +101,14 @@ class CreateRagPipelineDatasetApi(Resource):
                 current_tenant_id,
                 current_user.id,
                 dataset_id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset_id)
+            enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+                current_tenant_id,
+                current_user.id,
+                rbac_contracts.RBACResourceType.DATASET,
+                dataset_id,
+            )
 
         return dump_response(RagPipelineImportResponse, import_info), 201
 
@@ -132,4 +142,4 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
             ),
             session=session,
         )
-        return dump_response(DatasetDetailResponse, dataset_detail_response_source(dataset, session=session)), 201
+        return dump_response(DatasetDetailResponse, load_dataset_detail(dataset, session=session)), 201

@@ -1,6 +1,9 @@
 import type { Node } from '../types'
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ReactFlowProvider } from 'reactflow'
 import { NodeContextmenu } from '../node-contextmenu'
 
 const mockUseNodes = vi.hoisted(() => vi.fn())
@@ -74,10 +77,23 @@ describe('NodeContextmenu', () => {
 
   const renderNodeContextmenu = () =>
     render(
-      <ContextMenu open>
-        <NodeContextmenu onClose={mockClose} />
-      </ContextMenu>,
+      <ReactFlowProvider>
+        <ContextMenu open>
+          <NodeContextmenu onClose={mockClose} />
+        </ContextMenu>
+      </ReactFlowProvider>,
     )
+
+  it.each(['c', 'd', 'Delete'])('runs %s from the node context menu owner', async (key) => {
+    const user = userEvent.setup()
+    contextMenuTarget = { type: 'node', nodeId: 'node-1' }
+    renderNodeContextmenu()
+    const item = screen.getByRole('menuitem', { name: /workflow.common.copy/ })
+    act(() => item.focus())
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
+    expect(mockClose).toHaveBeenCalledTimes(1)
+  })
 
   it('should stay hidden when the node menu is absent', () => {
     renderNodeContextmenu()

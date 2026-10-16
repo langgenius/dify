@@ -3,13 +3,46 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import SnippetCard from '../snippet-card'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.members.get': () => ({
+      data: {
+        accounts: [
+          {
+            id: 'creator-id',
+            name: 'Creator',
+            email: 'creator@example.com',
+            avatar: '',
+            avatar_url: null,
+            role: 'editor',
+            last_login_at: '',
+            created_at: '',
+            status: 'active',
+          },
+          {
+            id: 'updater-id',
+            name: 'Updater',
+            email: 'updater@example.com',
+            avatar: '',
+            avatar_url: null,
+            role: 'editor',
+            last_login_at: '',
+            created_at: '',
+            status: 'active',
+          },
+        ],
+      },
+    }),
+  })
+})
+
 const {
   mockDeleteMutate,
   mockDownloadBlob,
   mockExportMutateAsync,
   mockOnRefresh,
   mockRenderTagSelector,
-  mockIsCurrentWorkspaceEditor,
   mockWorkspacePermissionKeys,
   mockToastError,
   mockToastSuccess,
@@ -18,7 +51,6 @@ const {
   mockDeleteMutate: vi.fn(),
   mockDownloadBlob: vi.fn(),
   mockExportMutateAsync: vi.fn(),
-  mockIsCurrentWorkspaceEditor: vi.fn(() => true),
   mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
   mockOnRefresh: vi.fn(),
   mockRenderTagSelector: vi.fn(),
@@ -30,48 +62,15 @@ const {
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }))
 })
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          id: 'creator-id',
-          name: 'Creator',
-          email: 'creator@example.com',
-          avatar: '',
-          avatar_url: null,
-          role: 'editor',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-        {
-          id: 'updater-id',
-          name: 'Updater',
-          email: 'updater@example.com',
-          avatar: '',
-          avatar_url: null,
-          role: 'editor',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
 
 vi.mock('@/service/use-snippets', () => ({
   useDeleteSnippetMutation: () => ({
@@ -95,7 +94,7 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: mockDownloadBlob,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -146,7 +145,6 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
 describe('SnippetCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockWorkspacePermissionKeys.mockReturnValue([
       'snippets.create_and_modify',
       'snippets.management',
@@ -222,7 +220,6 @@ describe('SnippetCard', () => {
     })
 
     it('should show edit info with create-and-modify permission without management actions', async () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
 
       render(<SnippetCard snippet={createSnippet()} />)
@@ -245,7 +242,6 @@ describe('SnippetCard', () => {
     })
 
     it('should show delete with snippet management permission without create-and-modify actions', async () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
 
       render(<SnippetCard snippet={createSnippet()} />)

@@ -1,17 +1,21 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
 // Mock service/API calls
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: () => ({
-    data: {
-      doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.get': () => ({
+      data: {
+        doc_metadata: [{ id: '1', name: 'existing_field', type: DataType.string }],
+      },
+    }),
+  })
+})
 
 // Mock check name hook
 vi.mock('../../hooks/use-check-metadata-name', () => ({
@@ -21,7 +25,7 @@ vi.mock('../../hooks/use-check-metadata-name', () => ({
 }))
 
 const mockToastNotify = vi.fn()
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => mockToastNotify(args),
   },
@@ -121,13 +125,32 @@ describe('DatasetMetadataDrawer', () => {
     it('should render switch for built-in toggle', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {
-        const switchBtn = screen.getByRole('switch')
+        const switchBtn = screen.getByRole('switch', {
+          name: 'dataset.metadata.datasetMetadata.builtIn',
+        })
         expect(switchBtn)!.toBeInTheDocument()
       })
     })
   })
 
   describe('User Interactions', () => {
+    it('exposes actions only for editable metadata and lets keyboard users rename it', async () => {
+      const user = userEvent.setup()
+      render(<DatasetMetadataDrawer {...defaultProps} />)
+      const addButton = await screen.findByRole('button', {
+        name: 'dataset.metadata.datasetMetadata.addMetaData',
+      })
+      expect(screen.getAllByRole('button', { name: 'common.operation.edit' })).toHaveLength(2)
+      expect(screen.getAllByRole('button', { name: 'common.operation.remove' })).toHaveLength(2)
+      addButton.focus()
+      await user.tab()
+      expect(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(
+        await screen.findByRole('textbox', { name: 'dataset.metadata.datasetMetadata.name' }),
+      ).toHaveValue('field_one')
+    })
+
     it('should call onClose when drawer close button is clicked', async () => {
       const onClose = vi.fn()
       render(<DatasetMetadataDrawer {...defaultProps} onClose={onClose} />)
@@ -154,7 +177,9 @@ describe('DatasetMetadataDrawer', () => {
         expect(screen.getByRole('dialog'))!.toBeInTheDocument()
       })
 
-      const switchBtn = screen.getByRole('switch')
+      const switchBtn = screen.getByRole('switch', {
+        name: 'dataset.metadata.datasetMetadata.builtIn',
+      })
       fireEvent.click(switchBtn)
 
       expect(onIsBuiltInEnabledChange).toHaveBeenCalled()
@@ -176,7 +201,7 @@ describe('DatasetMetadataDrawer', () => {
       )!.toBeInTheDocument()
     })
 
-    it('should call onAdd and show success toast when metadata is added', async () => {
+    it('should call onAdd when metadata is added', async () => {
       const onAdd = vi.fn().mockResolvedValue({})
       render(<DatasetMetadataDrawer {...defaultProps} onAdd={onAdd} />)
 
@@ -192,14 +217,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onAdd).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 
@@ -265,14 +282,6 @@ describe('DatasetMetadataDrawer', () => {
 
       await waitFor(() => {
         expect(onRename).toHaveBeenCalled()
-      })
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
     })
 

@@ -1,32 +1,30 @@
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
-import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
-import { useConvertDatasetToPipeline } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
 const Conversion = () => {
-  const { t } = useTranslation()
-  const { datasetId } = useParams()
+  const { t } = useTranslation(['common', 'datasetPipeline'])
+  const { datasetId } = useParams<{ datasetId: string }>()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -34,8 +32,17 @@ const Conversion = () => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const { mutateAsync: convert, isPending } = useConvertDatasetToPipeline()
-  const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, datasetId])
+  const { mutateAsync: convert, isPending } = useMutation(
+    consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions(),
+  )
+  const queryClient = useQueryClient()
+  const invalidDatasetDetail = React.useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+        input: { params: { dataset_id: datasetId } },
+      }),
+    })
+  }, [queryClient, datasetId])
   const datasetACLCapabilities = React.useMemo(
     () =>
       getDatasetACLCapabilities(dataset?.permission_keys, {
@@ -49,20 +56,23 @@ const Conversion = () => {
   const handleConvert = useCallback(() => {
     if (!canConvertDataset || !datasetId) return
 
-    convert(datasetId as string, {
-      onSuccess: (res) => {
-        if (res.status === 'success') {
-          toast.success(t(($) => $['conversion.successMessage'], { ns: 'datasetPipeline' }))
-          setShowConfirmModal(false)
-          invalidDatasetDetail()
-        } else if (res.status === 'failed') {
+    convert(
+      { params: { dataset_id: datasetId } },
+      {
+        onSuccess: (res) => {
+          if (res.status === 'success') {
+            toast.success(t(($) => $['conversion.successMessage'], { ns: 'datasetPipeline' }))
+            setShowConfirmModal(false)
+            invalidDatasetDetail()
+          } else if (res.status === 'failed') {
+            toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
+          }
+        },
+        onError: () => {
           toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
-        }
+        },
       },
-      onError: () => {
-        toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
-      },
-    })
+    )
   }, [canConvertDataset, convert, datasetId, invalidDatasetDetail, t])
   const handleShowConfirmModal = useCallback(() => {
     if (!canConvertDataset) return
@@ -129,18 +139,18 @@ const Conversion = () => {
               {confirmContent}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={isPending}
-              disabled={isPending || !canConvertDataset}
+              disabled={!canConvertDataset}
               onClick={handleConvert}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

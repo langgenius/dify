@@ -74,7 +74,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(await screen.findByTestId('progress-tooltip-popup')).toHaveTextContent(/hitScore/i)
+      expect((await screen.findByTestId('progress-tooltip-popup')).textContent).toMatch(/hitScore/i)
     })
 
     it('should show the data value inside the tooltip popup', async () => {

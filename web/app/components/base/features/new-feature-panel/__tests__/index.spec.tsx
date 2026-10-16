@@ -1,7 +1,16 @@
 import type { Features } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => ({ data: undefined }),
+  })
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -60,10 +69,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: undefined }),
-}))
-
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },
   opening: { enabled: false },
@@ -87,20 +92,23 @@ const renderPanel = (
     showFileUpload: boolean
     showAnnotationReply: boolean
   }> = {},
+  searchParams = '',
 ) => {
-  return render(
-    <FeaturesProvider features={defaultFeatures}>
-      <NewFeaturePanel
-        show={props.show ?? true}
-        isChatMode={props.isChatMode ?? true}
-        disabled={props.disabled ?? false}
-        onChange={props.onChange}
-        onClose={props.onClose ?? vi.fn()}
-        inWorkflow={props.inWorkflow}
-        showFileUpload={props.showFileUpload}
-        showAnnotationReply={props.showAnnotationReply}
-      />
-    </FeaturesProvider>,
+  return renderWithConsoleQuery(
+    <NuqsTestingAdapter searchParams={searchParams}>
+      <FeaturesProvider features={defaultFeatures}>
+        <NewFeaturePanel
+          show={props.show ?? true}
+          isChatMode={props.isChatMode ?? true}
+          disabled={props.disabled ?? false}
+          onChange={props.onChange}
+          onClose={props.onClose ?? vi.fn()}
+          inWorkflow={props.inWorkflow}
+          showFileUpload={props.showFileUpload}
+          showAnnotationReply={props.showAnnotationReply}
+        />
+      </FeaturesProvider>
+    </NuqsTestingAdapter>,
   )
 }
 
@@ -110,6 +118,11 @@ describe('NewFeaturePanel', () => {
   })
 
   describe('Rendering', () => {
+    it('hides the feature drawer while pricing is open', () => {
+      renderPanel({ show: true }, '?pricing=open')
+      expect(screen.queryByText(/common\.featuresDescription/)).not.toBeInTheDocument()
+    })
+
     it('should not render when show is false', () => {
       renderPanel({ show: false })
 
@@ -120,8 +133,24 @@ describe('NewFeaturePanel', () => {
       renderPanel({ show: true })
 
       expect(screen.getByText(/common\.featuresDescription/)).toBeInTheDocument()
-      expect(screen.getAllByText(/common\.features/).length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByRole('dialog', { name: 'workflow.common.features' })).toBeInTheDocument()
     })
+  })
+
+  it('names each configuration feature switch from its visible title', () => {
+    renderPanel({ isChatMode: true, inWorkflow: false, showFileUpload: false })
+
+    for (const feature of [
+      'conversationOpener',
+      'suggestedQuestionsAfterAnswer',
+      'citation',
+      'moderation',
+      'annotation',
+    ]) {
+      expect(
+        screen.getByRole('switch', { name: `appDebug.feature.${feature}.title` }),
+      ).toBeInTheDocument()
+    }
   })
 
   describe('Chat Mode Features', () => {

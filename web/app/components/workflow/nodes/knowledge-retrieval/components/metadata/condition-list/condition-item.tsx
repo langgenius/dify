@@ -90,8 +90,7 @@ const ConditionItem = ({
   const valueAndValueMethod = useMemo(() => {
     if (
       (currentMetadata?.type === MetadataFilteringVariableType.string ||
-        currentMetadata?.type === MetadataFilteringVariableType.number ||
-        currentMetadata?.type === MetadataFilteringVariableType.select) &&
+        currentMetadata?.type === MetadataFilteringVariableType.number) &&
       typeof condition.value === 'string'
     ) {
       const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
@@ -163,8 +162,7 @@ const ConditionItem = ({
         </div>
         <div className="border-t border-t-divider-subtle">
           {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
-            (currentMetadata?.type === MetadataFilteringVariableType.string ||
-              currentMetadata?.type === MetadataFilteringVariableType.select) && (
+            currentMetadata?.type === MetadataFilteringVariableType.string && (
               <ConditionString
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}
@@ -183,7 +181,12 @@ const ConditionItem = ({
                 onValueMethodChange={handleValueMethodChange}
                 nodesOutputVars={availableNumberVars}
                 availableNodes={availableNumberNodesWithParent}
-                value={valueAndValueMethod.value}
+                value={
+                  typeof valueAndValueMethod.value === 'string' ||
+                  typeof valueAndValueMethod.value === 'number'
+                    ? valueAndValueMethod.value
+                    : undefined
+                }
                 onChange={handleValueChange}
                 isCommonVariable={isCommonVariable}
                 commonVariables={availableCommonNumberVars}
@@ -191,7 +194,11 @@ const ConditionItem = ({
             )}
           {!comparisonOperatorNotRequireValue(condition.comparison_operator) &&
             currentMetadata?.type === MetadataFilteringVariableType.time && (
-              <ConditionDate value={condition.value as number} onChange={handleValueChange} />
+              <ConditionDate
+                disabled={disabled}
+                value={condition.value as number}
+                onChange={handleValueChange}
+              />
             )}
         </div>
       </div>

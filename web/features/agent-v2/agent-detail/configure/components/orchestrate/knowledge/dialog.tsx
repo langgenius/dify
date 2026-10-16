@@ -1,4 +1,5 @@
 'use client'
+
 import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type {
@@ -46,7 +47,7 @@ import {
 } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type MetadataFilteringConditions = {
@@ -122,7 +123,6 @@ const createDatasetFromRef = (dataset: AgentKnowledgeDatasetConfig, index: numbe
   return {
     id,
     name,
-    indexing_status: 'completed',
     icon_info: {
       icon: '📙',
       icon_type: 'emoji',
@@ -134,29 +134,22 @@ const createDatasetFromRef = (dataset: AgentKnowledgeDatasetConfig, index: numbe
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     created_by: '',
+    author_name: null,
+    created_at: 0,
     updated_by: '',
     updated_at: 0,
     app_count: 0,
     doc_form: ChunkingMode.text,
+    chunk_structure: null,
     document_count: 0,
-    total_document_count: 0,
+    total_documents: 0,
+    total_available_documents: 0,
     word_count: 0,
     provider: '',
     embedding_model: '',
     embedding_model_provider: '',
     embedding_available: false,
     retrieval_model_dict: {
-      search_method: RETRIEVE_METHOD.semantic,
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: DATASET_DEFAULT.top_k,
-      score_threshold_enabled: false,
-      score_threshold: 0,
-    },
-    retrieval_model: {
       search_method: RETRIEVE_METHOD.semantic,
       reranking_enable: false,
       reranking_model: {
@@ -179,8 +172,11 @@ const createDatasetFromRef = (dataset: AgentKnowledgeDatasetConfig, index: numbe
       score_threshold: 0,
       score_threshold_enabled: false,
     },
+    doc_metadata: [],
     built_in_field_enabled: false,
+    pipeline_id: null,
     runtime_mode: 'general',
+    is_published: false,
     enable_api: false,
     is_multimodal: false,
   }
@@ -328,7 +324,7 @@ function AgentKnowledgeRetrievalDialogContent({
   onItemCreate,
   onItemChange,
 }: Omit<AgentKnowledgeRetrievalDialogProps, 'open' | 'onOpenChange'>) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2', 'common', 'datasetSettings'])
   const docLink = useDocLink()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const getValidationMessage = useKnowledgeValidationMessage()
@@ -458,8 +454,8 @@ function AgentKnowledgeRetrievalDialogContent({
           render={
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="sm"
-              className="static size-7 shrink-0 rounded-md"
+              size="lg"
+              className="-my-0.5 shrink-0"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
             </IconButton>
@@ -576,7 +572,7 @@ function AgentKnowledgeRetrievalDialogContent({
                         model: {
                           provider: model.provider,
                           name: model.modelId,
-                          mode: model.mode ?? singleRetrievalConfig?.model.mode ?? AppModeEnum.CHAT,
+                          mode: model.mode ?? singleRetrievalConfig?.model.mode ?? 'chat',
                           completion_params: singleRetrievalConfig?.model.completion_params ?? {
                             temperature: 0.7,
                           },
@@ -590,7 +586,7 @@ function AgentKnowledgeRetrievalDialogContent({
                         model: {
                           provider: singleRetrievalConfig?.model.provider ?? '',
                           name: singleRetrievalConfig?.model.name ?? '',
-                          mode: singleRetrievalConfig?.model.mode ?? AppModeEnum.CHAT,
+                          mode: singleRetrievalConfig?.model.mode ?? 'chat',
                           completion_params: completionParams,
                         },
                       },
@@ -688,7 +684,7 @@ function AgentKnowledgeRetrievalDialogContent({
                 metadataModelConfig: {
                   provider: model.provider,
                   name: model.modelId,
-                  mode: model.mode ?? metadataModelConfig?.mode ?? AppModeEnum.CHAT,
+                  mode: model.mode ?? metadataModelConfig?.mode ?? 'chat',
                   completion_params: metadataModelConfig?.completion_params ?? { temperature: 0.7 },
                 },
               })
@@ -698,7 +694,7 @@ function AgentKnowledgeRetrievalDialogContent({
                 metadataModelConfig: {
                   provider: metadataModelConfig?.provider ?? '',
                   name: metadataModelConfig?.name ?? '',
-                  mode: metadataModelConfig?.mode ?? AppModeEnum.CHAT,
+                  mode: metadataModelConfig?.mode ?? 'chat',
                   completion_params: completionParams,
                 },
               })

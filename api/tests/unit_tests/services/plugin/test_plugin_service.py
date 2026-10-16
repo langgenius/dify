@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
 
@@ -31,13 +32,25 @@ USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
 @pytest.fixture(autouse=True)
-def _plugin_config(config_overrides) -> None:
+def _plugin_config(config_overrides: Callable[..., None]) -> None:
     config_overrides(
         MARKETPLACE_ENABLED=True,
         PLUGIN_MODEL_PROVIDERS_CACHE_TTL=86400,
         PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=True,
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
     )
+
+
+@pytest.fixture(autouse=True)
+def _clear_parsed_provider_cache() -> Iterator[None]:
+    """Keep the process-local provider cache isolated between tests."""
+    from core.plugin.plugin_service import PluginService
+
+    with PluginService._parsed_plugin_model_providers_cache_lock:
+        PluginService._parsed_plugin_model_providers_cache.clear()
+    yield
+    with PluginService._parsed_plugin_model_providers_cache_lock:
+        PluginService._parsed_plugin_model_providers_cache.clear()
 
 
 def _build_provider_entity(
@@ -113,7 +126,7 @@ def _provider_generation_key(tenant_id: str) -> str:
 
 
 class TestFetchLatestPluginVersion:
-    def test_skips_marketplace_fetch_when_disabled(self, config_overrides) -> None:
+    def test_skips_marketplace_fetch_when_disabled(self, config_overrides: Callable[..., None]) -> None:
         """Cache misses stay None; marketplace is never called when disabled."""
         config_overrides(MARKETPLACE_ENABLED=False)
         with (
@@ -157,6 +170,57 @@ class TestFetchLatestPluginVersion:
 
 
 class TestPluginModelProviderCache:
+    def test_reuses_parsed_provider_payload_without_revalidating_json(self) -> None:
+        """An unchanged Redis payload should pay Pydantic validation only once per process."""
+        from core.plugin.plugin_service import PluginService, _provider_entities_adapter
+
+        payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json([_build_provider_entity()])
+        with patch.object(
+            _provider_entities_adapter,
+            "validate_json",
+            wraps=_provider_entities_adapter.validate_json,
+        ) as validate_json:
+            first = PluginService._get_or_parse_plugin_model_providers_cache_payload(payload)
+            second = PluginService._get_or_parse_plugin_model_providers_cache_payload(payload)
+
+        assert second is first
+        assert validate_json.call_count == 1
+
+    def test_changed_provider_payload_is_parsed_separately(self) -> None:
+        """Content-addressing must not return stale declarations after a Redis payload change."""
+        from core.plugin.plugin_service import PluginService, _provider_entities_adapter
+
+        first_payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json([_build_provider_entity()])
+        second_payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json(
+            [_build_provider_entity(provider="anthropic")]
+        )
+        with patch.object(
+            _provider_entities_adapter,
+            "validate_json",
+            wraps=_provider_entities_adapter.validate_json,
+        ) as validate_json:
+            first = PluginService._get_or_parse_plugin_model_providers_cache_payload(first_payload)
+            second = PluginService._get_or_parse_plugin_model_providers_cache_payload(second_payload)
+
+        assert first[0].provider == "langgenius/openai/openai"
+        assert second[0].provider == "langgenius/anthropic/anthropic"
+        assert validate_json.call_count == 2
+
+    def test_parsed_provider_cache_is_bounded(self) -> None:
+        """Distinct provider payloads should evict least-recently-used entries."""
+        from core.plugin.plugin_service import PluginService
+
+        for index in range(PluginService.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES + 1):
+            payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json(
+                [_build_provider_entity(provider=f"provider-{index}")]
+            )
+            PluginService._get_or_parse_plugin_model_providers_cache_payload(payload)
+
+        assert (
+            len(PluginService._parsed_plugin_model_providers_cache)
+            == PluginService.PLUGIN_MODEL_PROVIDERS_PARSED_CACHE_MAX_ENTRIES
+        )
+
     def test_store_cached_plugin_model_providers_compresses_large_payload(self) -> None:
         """Large provider metadata payloads are compressed before being stored in Redis."""
         large_provider = _build_provider_entity()
@@ -277,7 +341,9 @@ class TestPluginModelProviderCache:
             call([cache_key]),
         ]
 
-    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(self, config_overrides) -> None:
+    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(
+        self, config_overrides: Callable[..., None]
+    ) -> None:
         """With the cache disabled the daemon is the only source, and Redis is never touched."""
         config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
         with patch(f"{MODULE}.redis_client") as redis_client:
@@ -298,7 +364,9 @@ class TestPluginModelProviderCache:
         redis_client.setex.assert_not_called()
         redis_client.lock.assert_not_called()
 
-    def test_fetch_plugin_model_providers_resolves_missing_installation_source(self, config_overrides) -> None:
+    def test_fetch_plugin_model_providers_resolves_missing_installation_source(
+        self, config_overrides: Callable[..., None]
+    ) -> None:
         config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
         provider = _build_plugin_model_provider(installation_source=None)
         installation = SimpleNamespace(
@@ -668,7 +736,7 @@ class TestPluginModelProviderCache:
             redis_client.get.return_value = None
             redis_client.mget.return_value = [None]
             client = Mock()
-            client.fetch_model_providers.return_value = []
+            client.fetch_model_providers.return_value = list[object]()
 
             from core.plugin.plugin_service import PluginService
 
@@ -685,7 +753,7 @@ class TestPluginModelProviderCache:
             redis_client.get.side_effect = [None, None, "1"]
             redis_client.mget.return_value = [None]
             client = Mock()
-            client.fetch_model_providers.return_value = []
+            client.fetch_model_providers.return_value = list[object]()
 
             from core.plugin.plugin_service import PluginService
 
@@ -1343,7 +1411,7 @@ class TestPluginModelProviderCacheInvalidation:
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
             installer = installer_cls.return_value
-            installer.list_plugins.return_value = []
+            installer.list_plugins.return_value = list[object]()
             installer.uninstall.return_value = True
 
             from core.plugin.plugin_service import PluginService

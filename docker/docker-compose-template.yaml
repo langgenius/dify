@@ -220,9 +220,11 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.0
+    image: langgenius/dify-api:1.17.1
     environment:
       MODE: api
+      # The bundled Nginx supplies a verified client IP; keep direct API callers trusted.
+      RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
@@ -268,11 +270,12 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.0
+    image: langgenius/dify-api:1.17.1
     profiles:
       - collaboration
     environment:
       MODE: api
+      RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
       SERVER_WORKER_AMOUNT: ${API_WEBSOCKET_WORKER_AMOUNT:-1}
       SERVER_WORKER_CLASS: ${API_WEBSOCKET_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker}
       SERVER_WORKER_CONNECTIONS: ${API_WEBSOCKET_WORKER_CONNECTIONS:-1000}
@@ -299,7 +302,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.17.0
+    image: langgenius/dify-api:1.17.1
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -346,7 +349,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.17.0
+    image: langgenius/dify-api:1.17.1
     environment:
       MODE: beat
     depends_on:
@@ -379,7 +382,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.17.0
+    image: langgenius/dify-web:1.17.1
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -540,7 +543,8 @@ services:
   # on port 3128, which only allows agent_backend /agent-stub/ and the Dify API
   # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.17.0
+    image: langgenius/dify-agent-local-sandbox:1.17.1
+    command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--require-auth-token"]
     restart: always
     env_file:
       - path: ./envs/core-services/local-sandbox.env
@@ -652,7 +656,7 @@ services:
 
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.17.0
+    image: langgenius/dify-agent-backend:1.17.1
     restart: always
     env_file:
       - path: ./envs/core-services/dify-agent.env
@@ -706,6 +710,8 @@ services:
     environment:
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      SSRF_PROXY_ALLOW_PRIVATE_IPS: ${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}
+      SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-}
     networks:
       # Needs to reach api and agent_backend as forward-proxy destinations.
       - default
@@ -807,7 +813,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.27.0
+    image: cr.weaviate.io/semitechnologies/weaviate:1.39.2
     profiles:
       - weaviate
     restart: always

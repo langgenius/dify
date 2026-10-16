@@ -2,7 +2,7 @@ import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { updateWorkspaceInfo } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { render } from '@/test/console/render'
 import EditWorkspaceModal from '../index'
 
@@ -21,8 +21,17 @@ vi.mock('@/context/workspace-state', async () => {
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/common')
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    workspaces: {
+      info: {
+        post: vi.fn(),
+      },
+    },
+  },
+}))
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
   },
@@ -92,7 +101,7 @@ describe('EditWorkspaceModal', () => {
       assign: mockAssign,
       origin: 'http://localhost',
     })
-    vi.mocked(updateWorkspaceInfo).mockResolvedValue({
+    vi.mocked(consoleClient.workspaces.info.post).mockResolvedValue({
       result: 'success',
       tenant: { id: 'workspace-id' },
     })
@@ -105,8 +114,7 @@ describe('EditWorkspaceModal', () => {
     await user.click(getSaveButton())
 
     await waitFor(() => {
-      expect(updateWorkspaceInfo).toHaveBeenCalledWith({
-        url: '/workspaces/info',
+      expect(consoleClient.workspaces.info.post).toHaveBeenCalledWith({
         body: { name: 'Renamed Workspace' },
       })
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
@@ -115,10 +123,37 @@ describe('EditWorkspaceModal', () => {
     expect(mockOnCancel).not.toHaveBeenCalled()
   })
 
+  it('should expose the saving label and prevent duplicate form submission', async () => {
+    const user = userEvent.setup()
+    let rejectUpdate!: (reason: Error) => void
+    vi.mocked(consoleClient.workspaces.info.post).mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectUpdate = reject
+        }),
+    )
+    renderModal()
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Renamed Workspace')
+
+    await user.click(getSaveButton())
+
+    const savingButton = screen.getByRole('button', { name: /operation\.saving/i })
+    expect(savingButton).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.submit(savingButton.closest('form')!)
+    expect(consoleClient.workspaces.info.post).toHaveBeenCalledOnce()
+
+    rejectUpdate(new Error('update failed'))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /operation\.save/i })).toBeEnabled()
+    })
+  })
+
   it('should show error toast when update fails', async () => {
     const user = userEvent.setup()
 
-    vi.mocked(updateWorkspaceInfo).mockRejectedValue(new Error('update failed'))
+    vi.mocked(consoleClient.workspaces.info.post).mockRejectedValue(new Error('update failed'))
 
     renderModal()
 
@@ -166,7 +201,7 @@ describe('EditWorkspaceModal', () => {
 
     fireEvent.submit(form!)
 
-    expect(updateWorkspaceInfo).not.toHaveBeenCalled()
+    expect(consoleClient.workspaces.info.post).not.toHaveBeenCalled()
     expect(mockNotify).not.toHaveBeenCalled()
   })
 

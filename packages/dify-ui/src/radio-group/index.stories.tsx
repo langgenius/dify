@@ -12,7 +12,7 @@ const meta = {
     docs: {
       description: {
         component:
-          '`@langgenius/dify-ui/radio-group` exports the complete radio family. Every radio belongs to a `RadioGroup`, which owns single-selection state and group interaction. `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items.',
+          '`@langgenius/dify-ui/radio-group` exports the complete radio family. Every radio belongs to a `RadioGroup`, which owns single-selection state and group interaction. `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items. Label it with a visible `FieldLabel` or `<label>`; use `aria-label` only when there is no visible label, because a non-blank `aria-label` takes precedence over any associated label.',
       },
     },
   },
@@ -146,7 +146,7 @@ function OptionCardsDemo() {
               value={option.value}
               nativeButton
               render={<button type="button" />}
-              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -188,8 +188,7 @@ function DynamicFormFieldDemo() {
   return (
     <Field name="generation_mode" className="flex w-80 flex-col gap-2">
       <FieldDescription className="body-xs-regular text-text-tertiary">
-        This mirrors Dify dynamic form fields where radio options are controlled by schema and
-        persisted as a single value.
+        Choose one generation mode.
       </FieldDescription>
       <Fieldset
         render={
@@ -222,7 +221,7 @@ export const DynamicFormField: Story = {
     docs: {
       description: {
         story:
-          'Matches Dify form composition: Field and Fieldset provide group labeling while `RadioGroup` owns controlled single-selection state.',
+          '`Field` integrates the selection with a form field, and `Fieldset` provides group labeling. The example controls `RadioGroup` with a single selected value in React state.',
       },
     },
   },

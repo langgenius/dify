@@ -1,7 +1,7 @@
 import type { IterationNodeType } from '../types'
 import type { Var } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, ErrorHandleMode, VarType } from '@/app/components/workflow/types'
 import useConfig from '../use-config'
 
@@ -28,7 +28,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: () => mockUseNodesReadOnly(),
-    useIsChatMode: () => mockUseIsChatMode(),
+
     useWorkflow: () => mockUseWorkflow(),
   }
 })
@@ -43,12 +43,15 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   default: (...args: unknown[]) => mockUseNodeCrud(...args),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => mockUseAllBuiltInTools(),
-  useAllCustomTools: () => mockUseAllCustomTools(),
-  useAllWorkflowTools: () => mockUseAllWorkflowTools(),
-  useAllMCPTools: () => mockUseAllMCPTools(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => mockUseAllBuiltInTools(),
+    'workspaces.current.tools.api.get': () => mockUseAllCustomTools(),
+    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
+    'workspaces.current.tools.mcp.get': () => mockUseAllMCPTools(),
+  })
+})
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
   toNodeOutputVars: (...args: unknown[]) => mockToNodeOutputVars(...args),
@@ -263,4 +266,11 @@ describe('iteration/use-config', () => {
     )
     expect(mockDeleteNodeInspectorVars).toHaveBeenCalledWith('iteration-node')
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

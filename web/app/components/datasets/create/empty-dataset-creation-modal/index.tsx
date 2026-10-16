@@ -5,14 +5,15 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { createEmptyDataset } from '@/service/datasets'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import s from './index.module.css'
 
 type IProps = {
@@ -22,9 +23,12 @@ type IProps = {
 const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
   const [inputValue, setInputValue] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetCreation'])
   const router = useRouter()
-  const invalidDatasetList = useInvalidDatasetList()
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
   const submit = async () => {
     if (isSubmitting) return
 
@@ -76,7 +80,7 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
         </div>
         <div className={s.tip}>{t(($) => $['stepOne.modal.tip'], { ns: 'datasetCreation' })}</div>
         <Form onFormSubmit={() => void submit()}>
-          <Field name="datasetName" className={cn(s.form, 'gap-2')}>
+          <Field name="datasetName" className={s.form}>
             <FieldLabel className={s.label}>
               {t(($) => $['stepOne.modal.input'], { ns: 'datasetCreation' })}
             </FieldLabel>

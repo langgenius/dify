@@ -1,5 +1,5 @@
-import { ToastHost } from '@langgenius/dify-ui/toast'
 import { act, render, screen } from '@testing-library/react'
+import { AppToastHost } from '@/app/notifications/host'
 import Configuration from '../index'
 import { toast } from '../toast'
 
@@ -23,7 +23,7 @@ describe('Configuration', () => {
   it('should render configuration notifications in its offset viewport', async () => {
     render(
       <>
-        <ToastHost />
+        <AppToastHost />
         <Configuration />
       </>,
     )

@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
 import GetAutomaticRes from '../get-automatic-res'
 
 const mockGenerateBasicAppFirstTimeRule = vi.fn()
@@ -53,7 +52,9 @@ vi.mock(
     }) => (
       <div>
         <button
-          onClick={() => setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' })}
+          onClick={() =>
+            setModel({ modelId: 'gpt-4o-mini', provider: 'openai', mode: 'chat' as const })
+          }
         >
           change-model
         </button>
@@ -97,19 +98,8 @@ vi.mock('../res-placeholder', () => ({
   default: () => <div>result-placeholder</div>,
 }))
 
-vi.mock('../result', () => ({
-  default: ({
-    current,
-    onApply,
-  }: {
-    current: { modified?: string; prompt?: string }
-    onApply: () => void
-  }) => (
-    <div data-testid="result-panel">
-      <div>{current.modified || current.prompt}</div>
-      <button onClick={onApply}>apply-result</button>
-    </div>
-  ),
+vi.mock('../prompt-res', () => ({
+  default: ({ value }: { value: string }) => <div data-testid="result-panel">{value}</div>,
 }))
 
 describe('GetAutomaticRes', () => {
@@ -132,7 +122,7 @@ describe('GetAutomaticRes', () => {
   it('should apply a basic suggestion and persist model updates', async () => {
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -140,6 +130,8 @@ describe('GetAutomaticRes', () => {
         isBasicMode
       />,
     )
+
+    expect(screen.getByRole('dialog', { name: /generate\.title/ })).toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/(?:^|\.)generate\.template\.pythonDebugger\.name(?=$|:)/))
 
@@ -161,7 +153,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -185,7 +177,7 @@ describe('GetAutomaticRes', () => {
   it('should block generation when instruction is empty', () => {
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -212,7 +204,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -237,7 +229,7 @@ describe('GetAutomaticRes', () => {
       expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
     })
 
-    fireEvent.click(screen.getByText('apply-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.getByText(/(?:^|\.)generate\.overwriteTitle(?=$|:)/)).toBeInTheDocument()
@@ -263,7 +255,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -279,7 +271,7 @@ describe('GetAutomaticRes', () => {
       expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
     })
 
-    fireEvent.click(screen.getByText('apply-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
     const dialog = await screen.findByRole('alertdialog')
 
     fireEvent.click(
@@ -300,7 +292,7 @@ describe('GetAutomaticRes', () => {
 
     render(
       <GetAutomaticRes
-        mode={AppModeEnum.ADVANCED_CHAT}
+        modelMode="chat"
         isShow
         onClose={mockOnClose}
         onFinished={mockOnFinished}
@@ -324,6 +316,7 @@ describe('GetAutomaticRes', () => {
           current: 'current prompt',
           instruction: 'workflow instruction',
           ideal_output: 'ideal output',
+          model_config: expect.objectContaining({ mode: 'chat' }),
         }),
       )
     })

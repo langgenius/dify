@@ -4,9 +4,10 @@ import {
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
@@ -18,33 +19,33 @@ const MetadataFilterSelector = ({
   value = MetadataFilteringModeEnum.disabled,
   onSelect,
 }: MetadataFilterSelectorProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
   const options = [
     {
       key: MetadataFilteringModeEnum.disabled,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.disabled.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
     {
       key: MetadataFilteringModeEnum.automatic,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.automatic.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
     {
       key: MetadataFilteringModeEnum.manual,
       value: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.title'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
       desc: t(($) => $['nodes.knowledgeRetrieval.metadata.options.manual.subTitle'], {
-        ns: 'workflow',
+        ns: 'workflowModels',
       }),
     },
   ]
@@ -59,21 +60,17 @@ const MetadataFilterSelector = ({
         {selectedOption.value}
         <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        className="w-70 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-70 p-1">
         <DropdownMenuRadioGroup value={value} onValueChange={onSelect}>
           {options.map((option) => (
             <DropdownMenuRadioItem
               key={option.key}
               value={option.key}
               closeOnClick
-              className="h-auto items-start rounded-lg p-2 pr-3"
+              className="h-auto items-start p-2 pr-3"
             >
               <div className="w-4 shrink-0">
-                {option.key === value && <RiCheckLine className="size-4 text-text-accent" />}
+                <DropdownMenuRadioItemIndicator />
               </div>
               <div className="grow">
                 <div className="system-sm-semibold text-text-secondary">{option.value}</div>

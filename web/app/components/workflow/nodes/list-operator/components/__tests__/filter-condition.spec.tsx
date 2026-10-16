@@ -101,7 +101,7 @@ describe('FilterCondition', () => {
     expect(screen.getByText(/sub-variable:/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('combobox'))
-    await user.click(screen.getByText('workflow.nodes.ifElse.optionName.image'))
+    await user.click(screen.getByText('workflowLogic.nodes.ifElse.optionName.image'))
 
     expect(onChange).toHaveBeenCalledWith({
       key: 'type',
@@ -158,7 +158,10 @@ describe('FilterCondition', () => {
     )
 
     const variableInput = screen.getByRole('textbox', { name: 'variable-input' })
-    expect(variableInput).toHaveAttribute('placeholder', 'workflow.nodes.http.insertVarPlaceholder')
+    expect(variableInput).toHaveAttribute(
+      'placeholder',
+      'workflowIntegrations.nodes.http.insertVarPlaceholder',
+    )
 
     await user.click(variableInput)
 
@@ -270,7 +273,7 @@ describe('FilterCondition', () => {
     )
 
     await user.click(screen.getByRole('combobox'))
-    await user.click(screen.getByText('workflow.nodes.ifElse.optionName.url'))
+    await user.click(screen.getByText('workflowLogic.nodes.ifElse.optionName.url'))
     expect(onChange).toHaveBeenCalledWith({
       key: 'transfer_method',
       comparison_operator: ComparisonOperator.in,

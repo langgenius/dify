@@ -4,7 +4,6 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TransferMethod } from '@/types/app'
-import { FlowType } from '@/types/common'
 import { createStartNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { InputVarType, WorkflowRunningStatus } from '../../types'
@@ -17,7 +16,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+vi.mock('@/app/notifications', async (importOriginal) => ({
   ...(await importOriginal()),
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
@@ -56,11 +55,7 @@ const createHooksStoreProps = (
   overrides: Partial<HooksStoreShape> = {},
 ): Partial<HooksStoreShape> => ({
   handleRun: vi.fn(),
-  configsMap: {
-    flowId: 'flow-1',
-    flowType: FlowType.appFlow,
-    fileSettings: fileSettingsWithImage,
-  },
+  fileSettings: fileSettingsWithImage,
   ...overrides,
 })
 
@@ -115,7 +110,7 @@ describe('InputsPanel', () => {
       )
 
       expect(screen.getByDisplayValue('overridden question')).toHaveFocus()
-      expect(screen.getByRole('spinbutton')).toHaveValue(2)
+      expect(screen.getByRole('textbox', { name: 'Count' })).toHaveValue('2')
       expect(screen.getByText('common.imageUploader.pasteImageLink')).toBeInTheDocument()
     })
   })
@@ -236,12 +231,8 @@ describe('InputsPanel', () => {
           },
           hooksStoreProps: createHooksStoreProps({
             handleRun,
-            configsMap: {
-              flowId: 'flow-1',
-              flowType: FlowType.appFlow,
-              fileSettings: {
-                enabled: false,
-              },
+            fileSettings: {
+              enabled: false,
             },
           }),
         },
@@ -268,12 +259,8 @@ describe('InputsPanel', () => {
           files: [uploadingRunFile],
         },
         hooksStoreProps: createHooksStoreProps({
-          configsMap: {
-            flowId: 'flow-1',
-            flowType: FlowType.appFlow,
-            fileSettings: {
-              enabled: false,
-            },
+          fileSettings: {
+            enabled: false,
           },
         }),
       })

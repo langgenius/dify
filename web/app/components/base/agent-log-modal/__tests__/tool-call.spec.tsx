@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { useLocale } from '#i18n'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useLocale } from '@/context/i18n'
 import ToolCallItem from '../tool-call'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -18,7 +18,8 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ type }: { type: BlockEnum }) => <div data-testid="block-icon" data-type={type} />,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
 }))
 

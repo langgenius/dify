@@ -4,22 +4,23 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { SnippetCanvasData, SnippetDetailPayload, SnippetInputField } from '@/models/snippet'
 import type { SnippetDraftSyncPayload } from '@/types/snippet'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
-import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
+import { snippetIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
+import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useSnippetDraftStore } from '../draft-store'
-import { useConfigsMap } from '../hooks/use-configs-map'
+import { useFileSettings } from '../hooks/use-file-settings'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
-import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetRun } from '../hooks/use-snippet-run'
@@ -36,7 +37,6 @@ type SnippetMainProps = {
   draftPayload: SnippetDetailPayload
   hasInitialDraftChanges: boolean
   hasPublishedWorkflow: boolean
-  snippetId: string
   draftNodes: WorkflowProps['nodes']
   draftEdges: WorkflowProps['edges']
   draftViewport?: WorkflowProps['viewport']
@@ -51,7 +51,7 @@ type SnippetMainContentProps = {
   onSaved: (syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => void
 }
 
-const unsupportedSnippetBlockTypes = new Set([
+const unsupportedSnippetBlockTypes = new Set<BlockEnum>([
   BlockEnum.HumanInput,
   BlockEnum.End,
   BlockEnum.KnowledgeRetrieval,
@@ -81,7 +81,7 @@ const SnippetMainContent = ({
   onBeforePublish,
   onSaved,
 }: SnippetMainContentProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet'])
   const { handlePublish, isPublishing } = useSnippetPublish({
     snippetId,
   })
@@ -113,19 +113,9 @@ const SnippetMainContent = ({
   )
 }
 
-const SnippetMain = ({
-  draftPayload,
-  snippetId,
-  draftNodes,
-  draftEdges,
-  draftViewport,
-}: SnippetMainProps) => {
+const SnippetMain = ({ draftPayload, draftNodes, draftEdges, draftViewport }: SnippetMainProps) => {
+  const { snippetId } = useAtomValue(snippetIdentityAtom)
   const [localDraftState, setLocalDraftState] = useState<LocalDraftState>()
-  const [localDraftSnippetId, setLocalDraftSnippetId] = useState(snippetId)
-  if (localDraftSnippetId !== snippetId) {
-    setLocalDraftState(undefined)
-    setLocalDraftSnippetId(snippetId)
-  }
   const currentCanvasNodeCount = useStore(
     (state) => state.nodes.filter((node) => !node.data?._isTempNode).length,
   )
@@ -147,11 +137,9 @@ const SnippetMain = ({
     handleRestoreFromPublishedWorkflow,
     handleRun,
     handleStopRun,
-  } = useSnippetRun(snippetId)
-  const configsMap = useConfigsMap(snippetId)
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    ...configsMap,
-  })
+  } = useSnippetRun()
+  const fileSettings = useFileSettings()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const {
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -167,8 +155,8 @@ const SnippetMain = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
-  } = useInspectVarsCrud(snippetId)
-  const workflowAvailableNodesMetaData = useAvailableNodesMetaData()
+  } = useInspectVarsCrud()
+  const workflowAvailableNodesMetaData = useWorkflowNodeCatalog()
   const availableNodesMetaData = useMemo(() => {
     const nodes = workflowAvailableNodesMetaData.nodes.filter(
       (node) => !unsupportedSnippetBlockTypes.has(node.metaData.type),
@@ -346,13 +334,13 @@ const SnippetMain = ({
         canImportExportDSL: canEditSnippet,
         canReleaseAndVersion: canEditSnippet,
       },
-      configsMap,
+      fileSettings,
     }
   }, [
     appendNodeInspectVars,
     availableNodesMetaData,
     canEditSnippet,
-    configsMap,
+    fileSettings,
     deleteAllInspectorVars,
     deleteInspectVar,
     deleteNodeInspectorVars,

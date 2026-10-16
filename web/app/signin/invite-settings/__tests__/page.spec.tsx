@@ -1,14 +1,18 @@
+import type { useQuery } from '@tanstack/react-query'
 import type { MockedFunction } from 'vite-plus/test'
-import { useQuery } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { activateMember } from '@/service/common'
-import { useInvitationCheck } from '@/service/use-common'
+import { consoleClient } from '@/service/console'
 import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
+
+const { mockInvitationCheckHook, mockProfileQuery } = vi.hoisted(() => ({
+  mockInvitationCheckHook: vi.fn(),
+  mockProfileQuery: vi.fn(),
+}))
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
@@ -27,7 +31,12 @@ vi.mock('@tanstack/react-query', async () => {
     await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
-    useQuery: vi.fn(),
+    // The invitation check is answered separately from the account profile query.
+    useQuery: (options: { queryKey: unknown[] }) =>
+      Array.isArray(options.queryKey[0]) &&
+      options.queryKey[0].join('.') === 'console.activate.check.get'
+        ? mockInvitationCheckHook(options)
+        : mockProfileQuery(options),
     useQueryClient: vi.fn(() => ({
       resetQueries: vi.fn(),
     })),
@@ -42,14 +51,18 @@ vi.mock('@tanstack/react-query', async () => {
   }
 })
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
-vi.mock('@/i18n-config', () => ({
+vi.mock('@/i18n', () => ({
   i18n: {
     defaultLocale: 'en-US',
   },
+}))
+
+vi.mock('@/i18n/client', () => ({
   setLocaleOnClient: vi.fn(() => Promise.resolve()),
 }))
 
@@ -58,12 +71,13 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  activateMember: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useInvitationCheck: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    activate: {
+      post: vi.fn(),
+    },
+  },
 }))
 
 vi.mock('@/utils/timezone', () => ({
@@ -80,11 +94,9 @@ const mockRefetch = vi.fn()
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockActivateMember = activateMember as unknown as MockedFunction<typeof activateMember>
-const mockUseQuery = vi.mocked(useQuery)
-const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<
-  typeof useInvitationCheck
->
+const mockActivateMember = vi.mocked(consoleClient.activate.post)
+const mockUseQuery = mockProfileQuery
+const mockUseInvitationCheck = mockInvitationCheckHook
 const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
   typeof getBrowserTimezone
 >
@@ -113,7 +125,7 @@ describe('InviteSettingsPage', () => {
         },
       },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useInvitationCheck>)
+    })
     mockUseQuery.mockReturnValue({
       data: {
         profile: {
@@ -148,7 +160,7 @@ describe('InviteSettingsPage', () => {
         },
       },
       refetch: mockRefetch,
-    } as unknown as ReturnType<typeof useInvitationCheck>)
+    })
 
     render(<InviteSettingsPage />)
 
@@ -178,7 +190,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',
@@ -200,7 +211,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',
@@ -225,7 +235,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useInvitationCheck>)
+      })
 
       render(<InviteSettingsPage />)
 
@@ -234,7 +244,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
           },
@@ -255,7 +264,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useInvitationCheck>)
+      })
 
       render(<InviteSettingsPage />)
 
@@ -264,7 +273,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
           },
@@ -286,7 +294,7 @@ describe('InviteSettingsPage', () => {
           },
         },
         refetch: mockRefetch,
-      } as unknown as ReturnType<typeof useInvitationCheck>)
+      })
 
       render(<InviteSettingsPage />)
 
@@ -295,7 +303,6 @@ describe('InviteSettingsPage', () => {
 
       await waitFor(() => {
         expect(mockActivateMember).toHaveBeenCalledWith({
-          url: '/activate',
           body: {
             token: 'invite-token',
             name: 'Invitee',

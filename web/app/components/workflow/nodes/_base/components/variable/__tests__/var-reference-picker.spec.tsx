@@ -15,7 +15,7 @@ vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getTreeLeafNodes: () => [],
       getNodeById: () => undefined,
@@ -117,6 +117,7 @@ describe('VarReferencePicker', () => {
 
     fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
 
+    await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus())
     fireEvent.click(await screen.findByText('answer'))
 
     expect(onChange).toHaveBeenCalledWith(
@@ -172,4 +173,11 @@ describe('VarReferencePicker', () => {
     })
     expect(onChange).not.toHaveBeenCalled()
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

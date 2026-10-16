@@ -1,44 +1,34 @@
-import type {
-  AliyunConfig,
-  ArizeConfig,
-  DatabricksConfig,
-  LangFuseConfig,
-  LangSmithConfig,
-  MLflowConfig,
-  OpikConfig,
-  PhoenixConfig,
-  TencentConfig,
-  WeaveConfig,
-} from '../type'
-import { toast } from '@langgenius/dify-ui/toast'
+import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { createRef } from 'react'
+import { toast } from '@/app/notifications'
+import { httpErrorFromResponse } from '@/service/http-error'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createTestQueryClient } from '@/test/query-client'
 import ConfigBtn from '../config-button'
 import ProviderConfigModal from '../provider-config-modal'
 import { TracingProvider } from '../type'
 
-vi.mock('@/service/apps', () => ({
-  addTracingConfig: vi.fn(),
-  removeTracingConfig: vi.fn(),
-  updateTracingConfig: vi.fn(),
+const { request } = vi.hoisted(() => ({
+  request:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
+vi.mock('@/service/base', () => ({ request }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+const expectRequest = async (method: string, body?: unknown) => {
+  expect(request).toHaveBeenCalledOnce()
+  const sent = request.mock.calls[0]![2].request
+  expect(sent.method).toBe(method)
+  expect(new URL(sent.url).pathname).toMatch(/\/apps\/app-id\/trace-config$/)
+  if (body) expect(await sent.clone().json()).toEqual(body)
+  else expect(new URL(sent.url).searchParams.get('tracing_provider')).toBe(TracingProvider.langfuse)
+}
+
+vi.mock('@/app/notifications', () => ({
   toast: vi.fn(),
 }))
-
-type ProviderPayload =
-  | AliyunConfig
-  | ArizeConfig
-  | DatabricksConfig
-  | LangFuseConfig
-  | LangSmithConfig
-  | MLflowConfig
-  | OpikConfig
-  | PhoenixConfig
-  | TencentConfig
-  | WeaveConfig
 
 const validConfigs = {
   [TracingProvider.arize]: {
@@ -82,12 +72,12 @@ const validConfigs = {
   },
   [TracingProvider.mlflow]: {
     tracking_uri: 'http://localhost:5000',
-    experiment_id: 'experiment-id',
+    experiment_id: '123',
     username: 'mlflow-user',
     password: 'mlflow-password',
   },
   [TracingProvider.databricks]: {
-    experiment_id: 'experiment-id',
+    experiment_id: '123',
     host: 'https://workspace.cloud.databricks.com',
     client_id: 'client-id',
     client_secret: 'client-secret',
@@ -98,7 +88,7 @@ const validConfigs = {
     endpoint: 'https://your-region.cls.tencentcs.com',
     service_name: 'dify_app',
   },
-} satisfies Record<TracingProvider, ProviderPayload>
+} satisfies Record<TracingProvider, TraceConfigPayload['tracing_config']>
 
 const providerFieldLabels = [
   [
@@ -141,7 +131,7 @@ const providerFieldLabels = [
 
 const invalidConfigCases: Array<{
   provider: TracingProvider
-  payload: ProviderPayload
+  payload: TraceConfigPayload['tracing_config']
   missingField: string
 }> = [
   {
@@ -222,17 +212,17 @@ const invalidConfigCases: Array<{
   {
     provider: TracingProvider.mlflow,
     payload: { ...validConfigs[TracingProvider.mlflow], tracking_uri: '' },
-    missingField: 'Tracking URI',
+    missingField: 'app.tracing.configProvider.trackingUri',
   },
   {
     provider: TracingProvider.databricks,
     payload: { ...validConfigs[TracingProvider.databricks], experiment_id: '' },
-    missingField: 'Experiment ID',
+    missingField: 'app.tracing.configProvider.experimentId',
   },
   {
     provider: TracingProvider.databricks,
     payload: { ...validConfigs[TracingProvider.databricks], host: '' },
-    missingField: 'Host',
+    missingField: 'app.tracing.configProvider.databricksHost',
   },
   {
     provider: TracingProvider.tencent,
@@ -271,11 +261,11 @@ const renderConfigButton = () => {
       mlflowConfig={null}
       databricksConfig={null}
       tencentConfig={null}
-      onConfigUpdated={vi.fn()}
       onConfigRemoved={vi.fn()}
     >
-      <button type="button">Open tracing</button>
+      Open tracing
     </ConfigBtn>,
+    { wrapper: createQueryClientWrapper(createTestQueryClient()) },
   )
 }
 
@@ -284,7 +274,7 @@ const renderProviderConfigModal = ({
   payload,
 }: {
   type?: TracingProvider
-  payload?: ProviderPayload | null
+  payload?: TraceConfigPayload['tracing_config'] | null
 } = {}) => {
   const callbacks = {
     onCancel: vi.fn(),
@@ -293,16 +283,28 @@ const renderProviderConfigModal = ({
     onRemoved: vi.fn(),
   }
 
+  const firstInputRef = createRef<HTMLInputElement>()
   render(
-    <ProviderConfigModal
-      appId="app-id"
-      type={type}
-      payload={payload}
-      onCancel={callbacks.onCancel}
-      onSaved={callbacks.onSaved}
-      onChosen={callbacks.onChosen}
-      onRemoved={callbacks.onRemoved}
-    />,
+    <Dialog
+      defaultOpen
+      disablePointerDismissal
+      onOpenChangeComplete={(open) => {
+        if (!open) callbacks.onCancel()
+      }}
+    >
+      <DialogContent initialFocus={firstInputRef}>
+        <ProviderConfigModal
+          appId="app-id"
+          type={type}
+          payload={payload}
+          firstInputRef={firstInputRef}
+          onSaved={callbacks.onSaved}
+          onChosen={callbacks.onChosen}
+          onRemoved={callbacks.onRemoved}
+        />
+      </DialogContent>
+    </Dialog>,
+    { wrapper: createQueryClientWrapper(createTestQueryClient()) },
   )
 
   return callbacks
@@ -311,13 +313,15 @@ const renderProviderConfigModal = ({
 describe('ProviderConfigModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(addTracingConfig).mockResolvedValue({ result: 'success' })
-    vi.mocked(updateTracingConfig).mockResolvedValue({ result: 'success' })
-    vi.mocked(removeTracingConfig).mockResolvedValue({ result: 'success' })
+    request.mockImplementation(async (_url, _init, { request: sent }) =>
+      sent.method === 'DELETE'
+        ? new Response(null, { status: 204 })
+        : Response.json({ result: 'success' }),
+    )
   })
 
   describe('Nested Overlay Behavior', () => {
-    it('should keep the provider config modal open when clicking inside it', async () => {
+    it('keeps the provider list open and starts a fresh draft after closing the dialog', async () => {
       const user = userEvent.setup()
       renderConfigButton()
 
@@ -336,19 +340,27 @@ describe('ProviderConfigModal', () => {
       })
       expect(screen.getByRole('dialog')).toBeInTheDocument()
 
-      await user.click(screen.getByPlaceholderText('https://cloud.langfuse.com'))
-
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://draft.langfuse.com')
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'common.operation.close' }),
+        ).not.toBeInTheDocument(),
+      )
       expect(screen.getByText('app.tracing.tracing')).toBeInTheDocument()
-      expect(
-        screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
-      ).toBeInTheDocument()
+      const configButton = screen.getAllByRole('button', { name: 'app.tracing.config' })[0]!
+      await waitFor(() => expect(configButton).toHaveFocus())
+      await user.click(configButton)
+      expect(screen.getByRole('textbox', { name: 'Host' })).toHaveValue('')
     })
   })
 
   describe('Rendering', () => {
     it.each(providerFieldLabels)(
       'should render %s fields when adding a provider',
-      (provider, expectedLabels) => {
+      async (provider, expectedLabels) => {
         renderProviderConfigModal({ type: provider })
 
         expect(
@@ -357,6 +369,9 @@ describe('ProviderConfigModal', () => {
         expectedLabels.forEach((label) => {
           expect(screen.getByRole('textbox', { name: label })).toBeInTheDocument()
         })
+        await waitFor(() =>
+          expect(screen.getByRole('textbox', { name: expectedLabels[0] })).toHaveFocus(),
+        )
         expect(
           screen.getByRole('button', { name: 'common.operation.saveAndEnable' }),
         ).toBeInTheDocument()
@@ -365,7 +380,7 @@ describe('ProviderConfigModal', () => {
   })
 
   describe('Saving', () => {
-    it('should add and choose the provider when saving a new config', async () => {
+    it('submits a new config with Enter and chooses the provider', async () => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal({ type: TracingProvider.langfuse })
 
@@ -378,20 +393,15 @@ describe('ProviderConfigModal', () => {
         'public-key',
       )
       await user.type(screen.getByRole('textbox', { name: 'Host' }), 'https://cloud.langfuse.com')
-      await user.click(screen.getByRole('button', { name: 'common.operation.saveAndEnable' }))
+      await user.keyboard('{Enter}')
 
-      await waitFor(() => {
-        expect(addTracingConfig).toHaveBeenCalledWith({
-          appId: 'app-id',
-          body: {
-            tracing_provider: TracingProvider.langfuse,
-            tracing_config: validConfigs[TracingProvider.langfuse],
-          },
-        })
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('POST', {
+        tracing_provider: TracingProvider.langfuse,
+        tracing_config: validConfigs[TracingProvider.langfuse],
       })
-      expect(callbacks.onSaved).toHaveBeenCalledWith(validConfigs[TracingProvider.langfuse])
       expect(callbacks.onChosen).toHaveBeenCalledWith(TracingProvider.langfuse)
-      expect(toast).toHaveBeenCalledWith('common.api.success', { type: 'success' })
+      expect(toast).not.toHaveBeenCalled()
     })
 
     it.each(Object.values(TracingProvider))(
@@ -405,17 +415,136 @@ describe('ProviderConfigModal', () => {
 
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-        await waitFor(() => {
-          expect(updateTracingConfig).toHaveBeenCalledWith({
-            appId: 'app-id',
-            body: {
-              tracing_provider: provider,
-              tracing_config: validConfigs[provider],
-            },
-          })
+        await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+        await expectRequest('PATCH', {
+          tracing_provider: provider,
+          tracing_config: validConfigs[provider],
         })
-        expect(callbacks.onSaved).toHaveBeenCalledWith(validConfigs[provider])
         expect(callbacks.onChosen).not.toHaveBeenCalled()
+      },
+    )
+
+    it.each([
+      [TracingProvider.langfuse, 'host', 'HTTPS://cloud.langfuse.com'],
+      [TracingProvider.langSmith, 'endpoint', 'HTTPS://api.smith.langchain.com'],
+      [TracingProvider.opik, 'url', 'HTTPS://www.comet.com/opik/api/'],
+    ] as const)('accepts case-insensitive URL schemes for %s', async (provider, key, value) => {
+      const user = userEvent.setup()
+      const payload = { ...validConfigs[provider], [key]: value }
+      const callbacks = renderProviderConfigModal({ type: provider, payload })
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', { tracing_provider: provider, tracing_config: payload })
+    })
+
+    it('displays nullable provider fields as empty without changing their submitted values', async () => {
+      const user = userEvent.setup()
+      const payload = { ...validConfigs[TracingProvider.mlflow], username: null }
+      const callbacks = renderProviderConfigModal({ type: TracingProvider.mlflow, payload })
+
+      expect(
+        screen.getByRole('textbox', { name: 'app.tracing.configProvider.username' }),
+      ).toHaveValue('')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+      await expectRequest('PATCH', {
+        tracing_provider: TracingProvider.mlflow,
+        tracing_config: payload,
+      })
+    })
+
+    it('keeps the draft on failure, prevents duplicate saves while pending, and allows retry', async () => {
+      const user = userEvent.setup()
+      let resolveResponse!: (response: Response) => void
+      request.mockReturnValueOnce(
+        new Promise<Response>((resolve) => {
+          resolveResponse = resolve
+        }).then(async (response) => {
+          if (!response.ok) throw await httpErrorFromResponse(response)
+          return response
+        }),
+      )
+      const logError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const callbacks = renderProviderConfigModal({
+        payload: validConfigs[TracingProvider.langfuse],
+      })
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://draft.langfuse.com')
+      const save = screen.getByRole('button', { name: 'common.operation.save' })
+
+      try {
+        await user.click(save)
+        await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+        for (const input of screen.getAllByRole('textbox')) expect(input).toBeDisabled()
+        await user.type(host, '/unsaved')
+        expect(host).toHaveValue('https://draft.langfuse.com')
+        await user.click(save)
+        await waitFor(() => expect(request).toHaveBeenCalledOnce())
+        resolveResponse(Response.json({ message: 'Config rejected' }, { status: 400 }))
+
+        await waitFor(() => expect(save).not.toHaveAttribute('aria-disabled', 'true'))
+        for (const input of screen.getAllByRole('textbox')) expect(input).toBeEnabled()
+        expect(host).toHaveValue('https://draft.langfuse.com')
+        expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
+        expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
+        expect(toast).not.toHaveBeenCalled()
+        expect(callbacks.onSaved).not.toHaveBeenCalled()
+        expect(callbacks.onChosen).not.toHaveBeenCalled()
+
+        await user.click(save)
+        await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+        expect(request).toHaveBeenCalledTimes(2)
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      } finally {
+        logError.mockRestore()
+      }
+    })
+
+    it.each([
+      [TracingProvider.langfuse, 'host', 'Host', 'ftp://cloud.langfuse.com'],
+      [TracingProvider.langSmith, 'endpoint', 'Endpoint', 'http://api.smith.langchain.com'],
+      [TracingProvider.weave, 'endpoint', 'Endpoint', 'http://trace.wandb.ai'],
+      [TracingProvider.opik, 'url', 'Url', 'https://www.comet.com/opik/'],
+      [TracingProvider.mlflow, 'experiment_id', 'app.tracing.configProvider.experimentId', '1.5'],
+      [
+        TracingProvider.databricks,
+        'experiment_id',
+        'app.tracing.configProvider.experimentId',
+        '-1',
+      ],
+      [TracingProvider.aliyun, 'license_key', 'License Key', '   '],
+      [TracingProvider.tencent, 'token', 'Token', '   '],
+    ] as const)(
+      'validates %s %s inline before sending credentials',
+      async (provider, key, label, value) => {
+        const user = userEvent.setup()
+        const callbacks = renderProviderConfigModal({
+          type: provider,
+          payload: { ...validConfigs[provider], [key]: value },
+        })
+        const field = screen.getByRole('textbox', { name: label })
+        await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+        expect(request).not.toHaveBeenCalled()
+        expect(field).toBeInvalid()
+        expect(field).toHaveFocus()
+        expect(field).toHaveAccessibleDescription()
+
+        await user.clear(field)
+        const validConfig: TraceConfigPayload['tracing_config'] = validConfigs[provider]
+        await user.type(field, validConfig[key] ?? '')
+        await user.keyboard('{Enter}')
+
+        await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledOnce())
+        expect(field).toBeValid()
+        await expectRequest('PATCH', {
+          tracing_provider: provider,
+          tracing_config: validConfigs[provider],
+        })
       },
     )
 
@@ -430,18 +559,22 @@ describe('ProviderConfigModal', () => {
 
         await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-        expect(updateTracingConfig).not.toHaveBeenCalled()
-        expect(toast).toHaveBeenCalledWith(expect.stringContaining(missingField), { type: 'error' })
+        expect(request).not.toHaveBeenCalled()
+        const field = screen.getByRole('textbox', { name: missingField })
+        expect(field).toBeInvalid()
+        expect(field).toHaveFocus()
+        expect(field).toHaveAccessibleDescription()
+        expect(toast).not.toHaveBeenCalled()
       },
     )
   })
 
   describe('Closing And Removing', () => {
-    it('should cancel when the cancel button is clicked', async () => {
+    it.each(['cancel', 'close'])('should dismiss when the %s button is clicked', async (action) => {
       const user = userEvent.setup()
       const callbacks = renderProviderConfigModal()
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
 
       expect(callbacks.onCancel).toHaveBeenCalledTimes(1)
     })
@@ -473,27 +606,30 @@ describe('ProviderConfigModal', () => {
 
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-      await waitFor(() => {
-        expect(removeTracingConfig).toHaveBeenCalledWith({
-          appId: 'app-id',
-          provider: TracingProvider.langfuse,
-        })
-      })
-      expect(callbacks.onRemoved).toHaveBeenCalledTimes(1)
-      expect(toast).toHaveBeenCalledWith('common.api.remove', { type: 'success' })
+      await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce())
+      await expectRequest('DELETE')
+      expect(toast).not.toHaveBeenCalled()
     })
 
-    it('should return to the edit dialog when remove confirmation is canceled', async () => {
+    it('keeps the draft and returns focus to Remove when confirmation is canceled', async () => {
       const user = userEvent.setup()
       renderProviderConfigModal({
         type: TracingProvider.langfuse,
         payload: validConfigs[TracingProvider.langfuse],
       })
 
+      const host = screen.getByRole('textbox', { name: 'Host' })
+      await user.clear(host)
+      await user.type(host, 'https://draft.langfuse.com')
       await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
       await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-      expect(removeTracingConfig).not.toHaveBeenCalled()
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(host).toHaveValue('https://draft.langfuse.com')
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'common.operation.remove' })).toHaveFocus(),
+      )
+      expect(request).not.toHaveBeenCalled()
       expect(
         screen.getByText('app.tracing.configProvider.titleapp.tracing.langfuse.title'),
       ).toBeInTheDocument()

@@ -12,10 +12,6 @@ import LLMParamsPanel from '../llm-params-panel'
 
 // Mock useModelParameterRules hook
 const mockUseModelParameterRules = vi.fn()
-vi.mock('@/service/use-common', () => ({
-  useModelParameterRules: (provider: string, modelId: string) =>
-    mockUseModelParameterRules(provider, modelId),
-}))
 
 // Mock config constants with inline data
 vi.mock('@/config', () => ({
@@ -251,6 +247,19 @@ const setupModelParameterRulesMock = (
 
 // ==================== Tests ====================
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (options: {
+      queryKey: [unknown, { input?: { params: { provider: string }; query: { model: string } } }]
+    }) =>
+      mockUseModelParameterRules(
+        options.queryKey[1].input?.params?.provider,
+        options.queryKey[1].input?.query?.model,
+      ),
+  })
+})
+
 describe('LLMParamsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -268,7 +277,7 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert - Loading component uses aria-label instead of visible text
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should not render loading state when model is not configured and parameter rules query is pending but disabled', () => {
@@ -280,8 +289,8 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.parameters')).toBeInTheDocument()
     })
 
     it('should render parameters header', () => {
@@ -293,7 +302,7 @@ describe('LLMParamsPanel', () => {
       render(<LLMParamsPanel {...props} />)
 
       // Assert
-      expect(screen.getByText('common.modelProvider.parameters')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.parameters')).toBeInTheDocument()
     })
 
     it('should render PresetsParameter for openai provider', () => {
@@ -848,8 +857,8 @@ describe('LLMParamsPanel', () => {
       setupModelParameterRulesMock({ isPending: true })
       rerender(<LLMParamsPanel {...props} />)
 
-      // Assert - Loading component uses role="status" with aria-label
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      // Assert - Loading component uses role="progressbar" with aria-label
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should update when isAdvancedMode changes', () => {

@@ -1,7 +1,6 @@
 import type { AgentComposerAgentResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FlowType } from '@/types/common'
 import { SaveInlineAgentToRosterDialog } from '../save-inline-agent-to-roster-dialog'
 
 const mutationMock = vi.hoisted(() => ({
@@ -20,35 +19,13 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  __esModule: true,
-  default: ({
-    initialEmoji,
-    onSelect,
-    open,
-  }: {
-    initialEmoji?: { icon: string; background: string }
-    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
-    open: boolean
-  }) =>
-    open ? (
-      <div>
-        <span>{`${initialEmoji?.icon}:${initialEmoji?.background}`}</span>
-        <button
-          type="button"
-          onClick={() => onSelect({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
-        >
-          Select brain icon
-        </button>
-      </div>
-    ) : null,
-}))
+vi.mock('@/app/components/base/icon-picker', () => import('@/test/icon-picker-mock'))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apps: {
       byAppId: {
@@ -110,8 +87,7 @@ const renderDialog = (agent: AgentComposerAgentResponse = inlineAgent) => {
 
   render(
     <SaveInlineAgentToRosterDialog
-      flowId="app-1"
-      flowType={FlowType.appFlow}
+      resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
       initialAgent={agent}
       nodeId="node-1"
       open
@@ -133,18 +109,20 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: 'agentV2.roster.createForm.nameLabel',
+      name: 'agentRoster.roster.createForm.nameLabel',
     })
     expect(nameInput).toHaveValue('')
     expect(
       within(dialog).getByRole('textbox', {
-        name: 'agentV2.roster.createForm.roleLabel common.label.optional',
+        name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Tender Analyst')
     expect(
-      within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder'),
+      within(dialog).getByPlaceholderText('agentRoster.roster.createForm.descriptionPlaceholder'),
     ).toHaveValue('Drafts tender clarifications.')
 
     await user.type(nameInput, 'Roster Tender Agent')
@@ -179,8 +157,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const user = userEvent.setup()
     render(
       <SaveInlineAgentToRosterDialog
-        flowId="snippet-1"
-        flowType={FlowType.snippet}
+        resource={{ kind: 'snippet', snippetId: 'snippet-1' }}
         initialAgent={inlineAgent}
         nodeId="node-1"
         open
@@ -189,9 +166,11 @@ describe('SaveInlineAgentToRosterDialog', () => {
       />,
     )
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Snippet Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -223,9 +202,11 @@ describe('SaveInlineAgentToRosterDialog', () => {
       icon_type: null,
     })
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Roster Tender Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -257,16 +238,20 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    const dialog = screen.getByRole('dialog', {
+      name: 'agentRoster.roster.saveToRosterDialog.title',
+    })
     await user.click(
-      within(dialog).getByRole('button', { name: 'agentV2.roster.saveToRosterForm.changeIcon' }),
+      within(dialog).getByRole('button', {
+        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
+      }),
     )
 
     expect(screen.getByText('🤖:#F5F3FF')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Roster Tender Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -307,8 +292,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     }
     const { rerender } = render(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={inlineAgent}
         nodeId="node-1"
         open
@@ -319,8 +303,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open
@@ -330,24 +313,23 @@ describe('SaveInlineAgentToRosterDialog', () => {
     )
 
     let dialog = screen.getByRole('dialog', {
-      name: 'agentV2.roster.saveToRosterDialog.title',
+      name: 'agentRoster.roster.saveToRosterDialog.title',
     })
     expect(
       within(dialog).getByRole('textbox', {
-        name: 'agentV2.roster.createForm.roleLabel common.label.optional',
+        name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Tender Analyst')
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.saveToRosterForm.changeIcon',
+        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
       }),
     )
     expect(screen.getByText('🤖:#F5F3FF')).toBeInTheDocument()
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open={false}
@@ -361,8 +343,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
 
     rerender(
       <SaveInlineAgentToRosterDialog
-        flowId="app-1"
-        flowType={FlowType.appFlow}
+        resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}
         initialAgent={updatedInlineAgent}
         nodeId="node-1"
         open
@@ -371,16 +352,16 @@ describe('SaveInlineAgentToRosterDialog', () => {
       />,
     )
     dialog = screen.getByRole('dialog', {
-      name: 'agentV2.roster.saveToRosterDialog.title',
+      name: 'agentRoster.roster.saveToRosterDialog.title',
     })
     expect(
       within(dialog).getByRole('textbox', {
-        name: 'agentV2.roster.createForm.roleLabel common.label.optional',
+        name: 'agentRoster.roster.createForm.roleLabel common.label.optional',
       }),
     ).toHaveValue('Updated source role')
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.saveToRosterForm.changeIcon',
+        name: 'agentRoster.roster.saveToRosterForm.changeIcon',
       }),
     )
     expect(screen.getByText('🦊:#FFEDD5')).toBeInTheDocument()
@@ -391,10 +372,10 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const { onOpenChange, onSaved } = renderDialog()
 
     const dialog = screen.getByRole('dialog', {
-      name: 'agentV2.roster.saveToRosterDialog.title',
+      name: 'agentRoster.roster.saveToRosterDialog.title',
     })
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       'Roster Tender Agent',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))

@@ -1,14 +1,15 @@
 import type { FC } from 'react'
 import type { ChildChunkDetail, ChunkingMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import { formatTime } from '@/utils/time'
+import { useDocumentContext } from '../context'
 import { ActionButtons } from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import Dot from './common/dot'
@@ -33,7 +34,9 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   onCancel,
   docForm,
 }) => {
-  const { t } = useTranslation()
+  const editorRef = React.useRef<HTMLDivElement>(null)
+  const { t } = useTranslation(['common', 'datasetDocuments'])
+  const canEdit = useDocumentContext((s) => s.canEdit)
   const [content, setContent] = useState(childChunkInfo?.content || '')
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
@@ -67,7 +70,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   }, [childChunkInfo?.updated_at])
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex items-center justify-between',
@@ -76,7 +79,9 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
       >
         <div className="flex flex-col">
           <div className="system-xl-semibold text-text-primary">
-            {t(($) => $['segment.editChildChunk'], { ns: 'datasetDocuments' })}
+            {t(($) => $[canEdit ? 'segment.editChildChunk' : 'segment.chunkDetail'], {
+              ns: 'datasetDocuments',
+            })}
           </div>
           <div className="flex items-center gap-x-2">
             <SegmentIndexTag
@@ -90,15 +95,16 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           </div>
         </div>
         <div className="flex items-center">
-          {fullScreen && (
+          {canEdit && fullScreen && (
             <>
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel}
                 handleSave={handleSave}
                 loading={loading}
                 isChildChunk={true}
               />
-              <Divider type="vertical" className="mr-2 ml-4 h-3.5 bg-divider-regular" />
+              <Separator orientation="vertical" className="mr-2 ml-4 h-3.5" />
             </>
           )}
           <button
@@ -127,13 +133,14 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
       </div>
       <div
         className={cn(
-          'flex w-full grow',
+          'flex h-0 w-full grow',
           fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3',
         )}
       >
         <div
           className={cn(
-            'h-full overflow-hidden break-all whitespace-pre-line',
+            'h-full break-all whitespace-pre-line',
+            canEdit ? 'overflow-hidden' : 'overflow-y-auto',
             fullScreen ? 'w-1/2' : 'w-full',
           )}
         >
@@ -141,13 +148,14 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
             docForm={docForm}
             question={content}
             onQuestionChange={(content) => setContent(content)}
-            isEditMode={true}
+            isEditMode={canEdit}
           />
         </div>
       </div>
-      {!fullScreen && (
+      {canEdit && !fullScreen && (
         <div className="flex items-center justify-end border-t border-t-divider-subtle p-4 pt-3">
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel}
             handleSave={handleSave}
             loading={loading}

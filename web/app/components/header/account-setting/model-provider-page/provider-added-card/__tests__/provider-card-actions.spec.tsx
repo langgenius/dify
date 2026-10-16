@@ -6,8 +6,7 @@ import { zPostWorkspacesCurrentPluginListInstallationsIdsResponse } from '@dify/
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
-import { consoleQuery } from '@/service/client'
-import { commonQueryKeys } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ProviderCardActions from '../provider-card-actions'
 
@@ -286,7 +285,7 @@ describe('ProviderCardActions', () => {
       queryKey: consoleQuery.workspaces.current.plugin.list.latestVersions.post.key(),
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: commonQueryKeys.modelProviderDetails,
+      queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
     })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['marketplacePlugins'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['marketplaceCollectionPlugins'] })

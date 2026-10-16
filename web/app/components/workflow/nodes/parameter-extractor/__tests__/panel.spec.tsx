@@ -1,9 +1,8 @@
 import type { ParameterExtractorNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import Panel from '../panel'
 import { ParamType, ReasoningModeType } from '../types'
 import useConfig from '../use-config'
@@ -26,7 +25,7 @@ vi.mock(
             setModel({
               provider: 'anthropic',
               modelId: 'claude-3-7-sonnet',
-              mode: AppModeEnum.CHAT,
+              mode: 'chat' as const,
             })
           }
         >
@@ -97,20 +96,6 @@ vi.mock('../components/extract-parameter/import-from-tool', () => ({
   ),
 }))
 
-vi.mock('../components/extract-parameter/list', () => ({
-  __esModule: true,
-  default: () => <div>extract-parameter-list</div>,
-}))
-
-vi.mock('../components/extract-parameter/update', () => ({
-  __esModule: true,
-  default: ({ onSave }: { onSave: (value: unknown) => void }) => (
-    <button type="button" onClick={() => onSave({ name: 'city' })}>
-      add-parameter
-    </button>
-  ),
-}))
-
 vi.mock('../components/reasoning-mode-picker', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: ReasoningModeType) => void }) => (
@@ -151,7 +136,7 @@ const createData = (
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as ParameterExtractorNodeType['model'],
   query: ['node-1', 'query'],
@@ -191,7 +176,7 @@ describe('parameter-extractor/panel', () => {
       readOnly: false,
       handleInputVarChange,
       filterVar: vi.fn(() => true),
-      isChatMode: true,
+      isChatflow: true,
       inputs: createData(),
       isChatModel: true,
       isCompletionModel: false,
@@ -224,7 +209,25 @@ describe('parameter-extractor/panel', () => {
     await user.click(screen.getByRole('button', { name: 'vision-toggle' }))
     await user.click(screen.getByRole('button', { name: 'vision-config' }))
     await user.click(screen.getByRole('button', { name: 'import-from-tool' }))
-    await user.click(screen.getByRole('button', { name: 'add-parameter' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
+      }),
+      'budget',
+    )
+    await user.type(
+      screen.getByRole('textbox', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.description',
+      }),
+      'Budget amount',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'instruction-editor' }))
     await user.click(screen.getByRole('button', { name: 'memory-config' }))
     await user.click(screen.getByRole('button', { name: 'set-reasoning-mode' }))
@@ -232,14 +235,22 @@ describe('parameter-extractor/panel', () => {
     expect(handleModelChanged).toHaveBeenCalledWith({
       provider: 'anthropic',
       modelId: 'claude-3-7-sonnet',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
     })
     expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
     expect(handleInputVarChange).toHaveBeenCalledWith(['node-1', 'query'])
     expect(handleVisionResolutionEnabledChange).toHaveBeenCalledWith(true)
     expect(handleVisionResolutionChange).toHaveBeenCalledWith({ detail: 'high' })
     expect(handleImportFromTool).toHaveBeenCalledWith([{ name: 'budget' }])
-    expect(addExtractParameter).toHaveBeenCalledWith({ name: 'city' })
+    expect(addExtractParameter).toHaveBeenCalledExactlyOnceWith(
+      {
+        name: 'budget',
+        type: ParamType.string,
+        description: 'Budget amount',
+        required: false,
+      },
+      undefined,
+    )
     expect(handleInstructionChange).toHaveBeenCalledWith('Updated instruction')
     expect(handleMemoryChange).toHaveBeenCalledWith({ enabled: true })
     expect(handleReasoningModeChange).toHaveBeenCalledWith(ReasoningModeType.functionCall)

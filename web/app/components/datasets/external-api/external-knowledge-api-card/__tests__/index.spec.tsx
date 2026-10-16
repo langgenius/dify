@@ -38,7 +38,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     datasets: {
       externalKnowledgeApi: {
@@ -409,30 +409,6 @@ describe('ExternalKnowledgeAPICard', () => {
         />,
       )
       expect(screen.getByText('Test External API'))!.toBeInTheDocument()
-    })
-
-    it('should handle delete response with unsuccessful result', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      vi.mocked(checkUsageExternalAPI).mockResolvedValue({ is_using: false, count: 0 })
-      vi.mocked(deleteExternalAPI).mockResolvedValue({ result: 'error' })
-
-      render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = screen.getByRole('button', { name: deleteButtonName })
-
-      fireEvent.click(deleteButton!)
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /confirm/i }))!.toBeInTheDocument()
-      })
-
-      const confirmButton = screen.getByRole('button', { name: /confirm/i })
-      fireEvent.click(confirmButton)
-
-      await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Failed to delete external API')
-      })
-
-      consoleSpy.mockRestore()
     })
   })
 })

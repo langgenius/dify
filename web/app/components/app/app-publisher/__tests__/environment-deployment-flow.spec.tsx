@@ -14,7 +14,7 @@ import userEvent from '@testing-library/user-event'
 import { createStore, Provider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useEffect } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
@@ -67,12 +67,15 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
+    'workspaces.current.tools.api.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+  })
+})
 
 function publishedWorkflowVersion({
   id,
@@ -489,7 +492,7 @@ describe('PublisherEnvironmentFlow', () => {
     )
 
     expect(screen.getByText('Environment tabs')).toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
   it('formats deployed_at as a Unix timestamp in seconds', () => {

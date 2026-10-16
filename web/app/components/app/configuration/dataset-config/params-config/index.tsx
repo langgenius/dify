@@ -25,7 +25,7 @@ type ParamsConfigProps = {
   selectedDatasets: DataSet[]
 }
 const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common', 'dataset'])
   const { datasetConfigs, setDatasetConfigs, rerankSettingModalOpen, setRerankSettingModalOpen } =
     useContext(ConfigContext)
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)

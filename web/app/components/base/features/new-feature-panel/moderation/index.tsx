@@ -1,16 +1,16 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiEqualizer2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { ContentModeration } from '@/app/components/base/icons/src/vender/features'
-import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { useCodeBasedExtensions } from '@/service/use-common'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 
 type Props = Readonly<{
   disabled?: boolean
@@ -18,12 +18,12 @@ type Props = Readonly<{
 }>
 
 const Moderation = ({ disabled, onChange }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'common'])
   const { setShowModerationSettingModal } = useModalContext()
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures((s) => s.features.moderation)
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
+  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
   const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {
@@ -119,7 +119,10 @@ const Moderation = ({ disabled, onChange }: Props) => {
     <FeatureCard
       icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
-          <ContentModeration className="size-4 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-features-content-moderation size-4 text-text-primary-on-surface"
+          />
         </div>
       }
       title={t(($) => $['feature.moderation.title'], { ns: 'appDebug' })}

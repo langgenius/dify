@@ -1,11 +1,12 @@
+import type { Ref } from 'react'
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -20,7 +21,7 @@ import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/re
 import { useChatWithHistoryContext } from '../context'
 import Operation from './operation'
 
-const Header = () => {
+const Header = ({ toggleButtonRef }: { toggleButtonRef?: Ref<HTMLButtonElement> }) => {
   const {
     appData,
     currentConversationId,
@@ -37,7 +38,7 @@ const Header = () => {
     handleSidebarCollapse,
     isResponding,
   } = useChatWithHistoryContext()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const isSidebarCollapsed = sidebarCollapseState
 
   const isPin = pinnedConversationList.some((item) => item.id === currentConversationId)
@@ -84,12 +85,15 @@ const Header = () => {
     <>
       <div className="flex h-14 shrink-0 items-center justify-between p-3">
         <div
+          inert={!isSidebarCollapsed}
+          aria-hidden={!isSidebarCollapsed}
           className={cn(
             'flex items-center gap-1 transition-all duration-200 ease-in-out',
-            !isSidebarCollapsed && 'user-select-none opacity-0',
+            !isSidebarCollapsed && 'opacity-0',
           )}
         >
           <IconButton
+            ref={toggleButtonRef}
             aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
             className={cn(!isSidebarCollapsed && 'cursor-default')}
             size="lg"
@@ -98,13 +102,7 @@ const Header = () => {
             <RiLayoutRight2Line aria-hidden="true" className="h-4.5 w-4.5" />
           </IconButton>
           <div className="mr-1 shrink-0">
-            <AppIcon
-              size="large"
-              iconType={appData?.site.icon_type}
-              icon={appData?.site.icon}
-              background={appData?.site.icon_background}
-              imageUrl={appData?.site.icon_url}
-            />
+            <AppIcon size="large" icon={appData?.site} />
           </div>
           {!currentConversationId && (
             <div className={cn('grow truncate system-md-semibold text-text-secondary')}>
@@ -179,14 +177,14 @@ const Header = () => {
               {t(($) => $['chat.deleteConversation.content'], { ns: 'share' }) || ''}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={handleDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {showRename && (

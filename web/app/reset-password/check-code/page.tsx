@@ -3,21 +3,21 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocale } from '#i18n'
 import Countdown from '@/app/components/signin/countdown'
-import { useLocale } from '@/context/i18n'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 
 type CheckCodeFormValues = {
   code: string
 }
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
@@ -31,7 +31,7 @@ export default function CheckCode() {
     if (loading) return
     try {
       setLoading(true)
-      const ret = await verifyResetPasswordCode({ email, code, token })
+      const ret = await consoleClient.forgotPassword.validity.post({ body: { email, code, token } })
       if (ret.is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.token))
@@ -46,10 +46,10 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const res = await sendResetPasswordCode(email, locale)
+      const res = await consoleClient.forgotPassword.post({ body: { email, language: locale } })
       if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
-        params.set('token', encodeURIComponent(res.data))
+        params.set('token', encodeURIComponent(res.data ?? ''))
         router.replace(`/reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {

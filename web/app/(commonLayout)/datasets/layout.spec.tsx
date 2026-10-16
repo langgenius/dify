@@ -26,7 +26,6 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 type ConsoleStateFixture = {
-  isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   isLoadingCurrentWorkspace: boolean
   isLoadingWorkspacePermissionKeys: boolean
@@ -37,7 +36,6 @@ type ConsoleStateFixture = {
 }
 
 const baseContext: ConsoleStateFixture = {
-  isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   isLoadingCurrentWorkspace: false,
   isLoadingWorkspacePermissionKeys: false,
@@ -73,7 +71,7 @@ describe('DatasetsLayout', () => {
       </DatasetsLayout>,
     )
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('datasets')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
@@ -90,14 +88,13 @@ describe('DatasetsLayout', () => {
       </DatasetsLayout>,
     )
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('datasets')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('should render children without a page-level dataset permission', () => {
     setConsoleState({
-      isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceDatasetOperator: true,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     })
@@ -114,7 +111,6 @@ describe('DatasetsLayout', () => {
 
   it('should render children on the dataset list route without dataset permissions', () => {
     setConsoleState({
-      isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceDatasetOperator: false,
       workspacePermissionKeys: [],
     })
@@ -129,7 +125,7 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it.each(['/datasets/create', '/datasets/create-from-pipeline', '/datasets/new/create'])(
+  it.each(['/datasets/create', '/datasets/create-from-pipeline'])(
     'should redirect direct dataset creation route to /datasets without dataset.create_and_management: %s',
     async (pathname) => {
       mockPathname = pathname
@@ -166,23 +162,7 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should render direct new knowledge creation route when workspace has dataset.create_and_management', () => {
-    mockPathname = '/datasets/new/create'
-    setConsoleState({
-      workspacePermissionKeys: ['dataset.create_and_management'],
-    })
-
-    render(
-      <DatasetsLayout>
-        <div>datasets</div>
-      </DatasetsLayout>,
-    )
-
-    expect(screen.getByText('datasets')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  it.each(['/datasets/connect', '/datasets/new/space-1/sources/new'])(
+  it.each(['/datasets/connect', '/datasets/connect/'])(
     'should redirect direct external source route to /datasets without dataset.external.connect: %s',
     async (pathname) => {
       mockPathname = pathname
@@ -203,7 +183,7 @@ describe('DatasetsLayout', () => {
     },
   )
 
-  it.each(['/datasets/connect', '/datasets/new/space-1/sources/new'])(
+  it.each(['/datasets/connect', '/datasets/connect/'])(
     'should render direct external source route with dataset.external.connect: %s',
     (pathname) => {
       mockPathname = pathname

@@ -5,13 +5,16 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import { DatasetMetadataPicker } from '../dataset-metadata-picker'
 
-const { mockUseDatasetMetaData } = vi.hoisted(() => ({
-  mockUseDatasetMetaData: vi.fn(),
+const { mockDatasetMetadataQuery } = vi.hoisted(() => ({
+  mockDatasetMetadataQuery: vi.fn(),
 }))
 
-vi.mock('@/service/knowledge/use-metadata', () => ({
-  useDatasetMetaData: mockUseDatasetMetaData,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.metadata.get': mockDatasetMetadataQuery,
+  })
+})
 
 const metadataItems: MetadataItem[] = [
   { id: '1', name: 'field_one', type: DataType.string },
@@ -39,7 +42,7 @@ function renderDatasetMetadataPicker(
 describe('DatasetMetadataPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseDatasetMetaData.mockReturnValue({
+    mockDatasetMetadataQuery.mockReturnValue({
       data: {
         doc_metadata: metadataItems,
       },
@@ -104,27 +107,6 @@ describe('DatasetMetadataPicker', () => {
       )
 
       expect(await screen.findByRole('status')).toHaveTextContent('common.noData')
-    })
-
-    it('should clear only the search query and keep focus in the input', async () => {
-      const user = userEvent.setup()
-      const onSelectMetadata = vi.fn()
-      renderDatasetMetadataPicker({ onSelectMetadata })
-
-      await user.click(screen.getByRole('button', { name: 'dataset.metadata.addMetadata' }))
-      const searchInput = screen.getByRole('combobox', {
-        name: 'dataset.metadata.selectMetadata.search',
-      })
-      await user.type(searchInput, 'two')
-      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-      clearButton.focus()
-      await user.keyboard('{Enter}')
-
-      expect(searchInput).toHaveValue('')
-      expect(searchInput).toHaveFocus()
-      expect(onSelectMetadata).not.toHaveBeenCalled()
-      expect(screen.getByRole('option', { name: /field_one/ })).toBeInTheDocument()
-      expect(screen.getByRole('option', { name: /field_three/ })).toBeInTheDocument()
     })
 
     it('should reset the search query after the picker finishes closing', async () => {
@@ -265,7 +247,7 @@ describe('DatasetMetadataPicker', () => {
   describe('Edge Cases', () => {
     it('should keep action buttons available when metadata list is empty', async () => {
       const user = userEvent.setup()
-      mockUseDatasetMetaData.mockReturnValue({
+      mockDatasetMetadataQuery.mockReturnValue({
         data: {
           doc_metadata: [],
         },

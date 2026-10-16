@@ -1,8 +1,7 @@
 'use client'
 
-import type { AppImportPayload, Import } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppImportPayload, AppMode, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { AppModeEnum } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -17,23 +16,22 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { toast } from '@langgenius/dify-ui/toast'
-import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { AppModeEnum as AppMode } from '@/types/app'
+import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
 import DSLImportWarningDescription from './dsl-import-warning-description'
@@ -65,20 +63,20 @@ type ImportSource =
 
 const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
-function getImportedAppMode(mode?: string | null): AppModeEnum | undefined {
+function getImportedAppMode(mode?: string | null): AppMode | undefined {
   switch (mode) {
-    case AppMode.COMPLETION:
-      return AppMode.COMPLETION
-    case AppMode.WORKFLOW:
-      return AppMode.WORKFLOW
-    case AppMode.CHAT:
-      return AppMode.CHAT
-    case AppMode.ADVANCED_CHAT:
-      return AppMode.ADVANCED_CHAT
-    case AppMode.AGENT_CHAT:
-      return AppMode.AGENT_CHAT
-    case AppMode.AGENT:
-      return AppMode.AGENT
+    case 'completion':
+      return 'completion'
+    case 'workflow':
+      return 'workflow'
+    case 'chat':
+      return 'chat'
+    case 'advanced-chat':
+      return 'advanced-chat'
+    case 'agent-chat':
+      return 'agent-chat'
+    case 'agent':
+      return 'agent'
     default:
       return undefined
   }
@@ -93,17 +91,22 @@ function CreateFromDSLModal({
   droppedFile,
 }: CreateFromDSLModalProps) {
   const { push } = useRouter()
-  const { t } = useTranslation()
-  const formRef = useRef<HTMLFormElement>(null)
+  const { t } = useTranslation(['app', 'common'])
   const browseButtonRef = useRef<HTMLButtonElement>(null)
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions(),
+    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
   )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
+      if (
+        source.type === CreateFromDSLModalTab.FROM_FILE &&
+        source.file.name.toLowerCase().endsWith('.ifpkg')
+      )
+        return requestImport({ body: { file: source.file } })
+
       const body =
         source.type === CreateFromDSLModalTab.FROM_FILE
           ? ({
@@ -119,7 +122,9 @@ function CreateFromDSLModal({
     },
   })
   const confirmImportMutation = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -128,8 +133,27 @@ function CreateFromDSLModal({
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { plan, enableBilling } = useProviderContext()
-  const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
+  const deploymentEdition = systemFeatures.deployment_edition
+  const { data: appQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.apps,
+    }),
+  )
+  const isPackageImport =
+    currentTab === CreateFromDSLModalTab.FROM_FILE &&
+    currentFile?.name.toLowerCase().endsWith('.ifpkg') === true
+  // URL imports are classified by the server before applying the appropriate quota.
+  const requiresAppQuota = currentTab === CreateFromDSLModalTab.FROM_FILE && !isPackageImport
+  const isAppQuotaUnavailable =
+    requiresAppQuota && deploymentEdition === 'CLOUD' && appQuota === undefined
+  // A limit of 0 means unlimited.
+  const isAppsFull =
+    requiresAppQuota &&
+    deploymentEdition === 'CLOUD' &&
+    appQuota !== undefined &&
+    appQuota.limit > 0 &&
+    appQuota.size >= appQuota.limit
   const isImporting = importMutation.isPending
   const isConfirming = confirmImportMutation.isPending
 
@@ -157,6 +181,7 @@ function CreateFromDSLModal({
     )
     if (!response.app_id || !appMode) return
 
+    // Dependency checks own their error feedback; a created app remains navigable.
     await handleCheckPluginDependencies(response.app_id)
     const redirectionTarget = await resolveImportedAppRedirectionTarget({
       id: response.app_id,
@@ -186,12 +211,18 @@ function CreateFromDSLModal({
       return
     }
 
-    toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    toast.error(
+      t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+      {
+        description: response.error || undefined,
+      },
+    )
   }
 
   const handleSubmit = async (values: ImportFormValues) => {
-    if (isAppsFull || isImporting) return
+    if (isAppQuotaUnavailable || isAppsFull || isImporting) return
 
+    let response: Import
     try {
       let source: ImportSource
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
@@ -203,31 +234,48 @@ function CreateFromDSLModal({
         source = { type: CreateFromDSLModalTab.FROM_URL, url: yamlUrl }
       }
 
-      const response = await importMutation.mutateAsync(source)
-      await handleImportResponse(response)
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+      response = await importMutation.mutateAsync(source)
+    } catch (error) {
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        {
+          description: getErrorMessage(error),
+        },
+      )
+      return
     }
+    await handleImportResponse(response)
   }
 
   const handleConfirm = async () => {
     if (!pendingImport || isConfirming) return
 
+    let response: Import
     try {
-      const response = await confirmImportMutation.mutateAsync({
+      response = await confirmImportMutation.mutateAsync({
         params: { import_id: pendingImport.id },
       })
-      if (response.status === 'completed' || response.status === 'completed-with-warnings') {
-        setPendingImport(null)
-        await handleCompletedImport(response)
-        return
-      }
-
-      if (response.status === 'failed')
-        toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        {
+          description: getErrorMessage(error),
+        },
+      )
+      return
     }
+
+    if (response.status === 'completed' || response.status === 'completed-with-warnings') {
+      setPendingImport(null)
+      await handleCompletedImport(response)
+      return
+    }
+
+    if (response.status === 'failed')
+      toast.error(
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
+        { description: response.error || undefined },
+      )
   }
 
   const handleTabChange = (value: string | number) => {
@@ -236,12 +284,9 @@ function CreateFromDSLModal({
   }
 
   const createDisabled =
-    isAppsFull || (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
-
-  useHotkey(CREATE_FROM_DSL_HOTKEY, () => formRef.current?.requestSubmit(), {
-    enabled: show && !createDisabled && !isImporting && !pendingImport,
-    ignoreInputs: false,
-  })
+    isAppQuotaUnavailable ||
+    isAppsFull ||
+    (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
 
   return (
     <>
@@ -272,7 +317,27 @@ function CreateFromDSLModal({
                 <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
               </IconButton>
             </div>
-            <Form<ImportFormValues> ref={formRef} onFormSubmit={handleSubmit}>
+            <Form<ImportFormValues>
+              onFormSubmit={handleSubmit}
+              onKeyDown={(event) => {
+                if (
+                  !show ||
+                  createDisabled ||
+                  isImporting ||
+                  !!pendingImport ||
+                  event.defaultPrevented ||
+                  event.nativeEvent.isComposing ||
+                  !(event.target instanceof Node) ||
+                  !event.currentTarget.contains(event.target) ||
+                  !matchesKeyboardEvent(event.nativeEvent, CREATE_FROM_DSL_HOTKEY)
+                )
+                  return
+                event.preventDefault()
+                event.stopPropagation()
+                if (event.repeat) return
+                event.currentTarget.requestSubmit()
+              }}
+            >
               <Tabs value={currentTab} onValueChange={handleTabChange}>
                 <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
                   <TabsTab
@@ -280,7 +345,7 @@ function CreateFromDSLModal({
                     className="h-full pt-0 pb-0"
                     disabled={isImporting}
                   >
-                    {t(($) => $.importFromDSLFile, { ns: 'app' })}
+                    {t(($) => $.importFromFile, { ns: 'app' })}
                   </TabsTab>
                   <TabsTab
                     value={CreateFromDSLModalTab.FROM_URL}
@@ -296,6 +361,7 @@ function CreateFromDSLModal({
                   className="px-6 py-4"
                 >
                   <Uploader
+                    importType="app"
                     browseButtonRef={browseButtonRef}
                     className="mt-0"
                     file={currentFile}
@@ -316,7 +382,7 @@ function CreateFromDSLModal({
                       autoComplete="off"
                       required
                       disabled={isImporting}
-                      placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
+                      placeholder={t(($) => $.importAppUrlPlaceholder, { ns: 'app' }) || ''}
                       defaultValue={dslUrl}
                     />
                     <FieldError />
@@ -338,11 +404,11 @@ function CreateFromDSLModal({
                   loading={isImporting}
                   variant="primary"
                 >
-                  <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
+                  <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                   <KbdGroup>
-                    {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
+                    {formatForDisplay(CREATE_FROM_DSL_HOTKEY, { parts: true }).map((key) => (
                       <Kbd key={key} color="white">
-                        {formatForDisplay(key)}
+                        {key}
                       </Kbd>
                     ))}
                   </KbdGroup>

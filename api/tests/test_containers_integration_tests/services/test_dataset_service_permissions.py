@@ -10,6 +10,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from enums import DeploymentEdition
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -20,9 +21,10 @@ from models.dataset import (
     DatasetPermissionEnum,
 )
 from models.enums import DataSourceType
-from services.dataset_ref_service import DatasetRef, DatasetRefService
-from services.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
+from services.knowledge.dataset_service import DatasetCollectionBindingService, DatasetPermissionService, DatasetService
+from services.knowledge.resource_scope import DatasetRef
+from tests.unit_tests.config_override import config_overrides_context
 
 
 class DatasetPermissionIntegrationFactory:
@@ -194,7 +196,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             created_by=owner.id,
         )
 
-        with patch("services.dataset_service.dataset_was_deleted.send") as send_deleted_signal:
+        with patch("services.knowledge.dataset_service.dataset_was_deleted.send") as send_deleted_signal:
             result = DatasetService.delete_dataset(dataset.id, user=owner, session=db_session_with_containers)
 
         assert result is True
@@ -213,7 +215,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             dataset_id=dataset.id,
         )
 
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
         assert DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers) is True
 
@@ -225,7 +227,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             created_by=owner.id,
         )
 
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
         assert DatasetService.dataset_use_check(dataset_ref, session=db_session_with_containers) is False
 
@@ -398,7 +400,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
         now = datetime(2026, 4, 14, 18, 0, 0)
 
-        with patch("services.dataset_service.naive_utc_now", return_value=now):
+        with patch("services.knowledge.dataset_service.naive_utc_now", return_value=now):
             DatasetService.update_dataset_api_status(dataset, True, owner, session=db_session_with_containers)
 
         db_session_with_containers.refresh(dataset)
@@ -406,20 +408,18 @@ class TestDatasetServicePermissionsAndLifecycle:
         assert dataset.updated_by == owner.id
         assert dataset.updated_at == now
 
-    def test_get_dataset_auto_disable_logs_returns_empty_when_billing_is_disabled(
-        self, db_session_with_containers: Session
-    ):
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    def test_get_dataset_auto_disable_logs_returns_empty_outside_cloud(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=False, subscription=SimpleNamespace(plan="professional"))
-        )
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="professional")))
         dataset_ref = DatasetRef(tenant_id=tenant.id, dataset_id=str(uuid4()))
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=features):
+        with patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=features):
             result = DatasetService.get_dataset_auto_disable_logs(dataset_ref, session=db_session_with_containers)
 
         assert result == {"document_ids": [], "count": 0}
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_get_dataset_auto_disable_logs_returns_recent_document_ids(self, db_session_with_containers: Session):
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
         dataset = DatasetPermissionIntegrationFactory.create_dataset(
@@ -439,12 +439,10 @@ class TestDatasetServicePermissionsAndLifecycle:
             dataset_id=dataset.id,
             document_id=str(uuid4()),
         )
-        features = SimpleNamespace(
-            billing=SimpleNamespace(enabled=True, subscription=SimpleNamespace(plan="professional"))
-        )
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="professional")))
+        dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=features):
+        with patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=features):
             result = DatasetService.get_dataset_auto_disable_logs(dataset_ref, session=db_session_with_containers)
 
         assert result["count"] == 2

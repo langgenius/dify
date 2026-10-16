@@ -5,12 +5,22 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useMailRegister } from '@/service/use-common'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
+
+const { mockMailRegisterHook } = vi.hoisted(() => ({
+  mockMailRegisterHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'emailRegister.post': (options: unknown) => mockMailRegisterHook(options),
+  })
+})
 
 const {
   mockRememberCreateAppExternalAttribution,
@@ -22,17 +32,14 @@ const {
   mockSendGAEvent: vi.fn(),
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMailRegister: vi.fn(),
 }))
 
 vi.mock('@/utils/timezone', () => ({
@@ -58,7 +65,7 @@ const mockReplace = vi.fn()
 const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseMailRegister = useMailRegister as unknown as MockedFunction<typeof useMailRegister>
+const mockUseMailRegister = mockMailRegisterHook
 const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
   typeof getBrowserTimezone
 >
@@ -88,7 +95,7 @@ describe('Signup Set Password Page', () => {
     mockUseMailRegister.mockReturnValue({
       mutateAsync: mockRegister,
       isPending: false,
-    } as unknown as ReturnType<typeof useMailRegister>)
+    })
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
   })
@@ -104,8 +111,8 @@ describe('Signup Set Password Page', () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
 
       expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
       expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
@@ -116,11 +123,13 @@ describe('Signup Set Password Page', () => {
 
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith({
-          token: 'register-token',
-          new_password: 'ValidPass123!',
-          password_confirm: 'ValidPass123!',
-          language: 'zh-Hans',
-          timezone: 'Asia/Shanghai',
+          body: {
+            token: 'register-token',
+            new_password: 'ValidPass123!',
+            password_confirm: 'ValidPass123!',
+            language: 'zh-Hans',
+            timezone: 'Asia/Shanghai',
+          },
         })
       })
     })
@@ -129,12 +138,12 @@ describe('Signup Set Password Page', () => {
       const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const passwordInput = screen.getByLabelText('accountSettings.account.newPassword')
       await user.type(passwordInput, 'ValidPass123!')
-      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+      const confirmPasswordInput = screen.getByLabelText('accountSettings.account.confirmPassword')
       await user.type(confirmPasswordInput, 'DifferentPass123!{Enter}')
 
-      const error = await screen.findByText('common.account.notEqual')
+      const error = await screen.findByText('accountSettings.account.notEqual')
       expect(confirmPasswordInput).toHaveAttribute('aria-invalid', 'true')
       expect(confirmPasswordInput).toHaveAccessibleDescription(error.textContent ?? '')
       expect(confirmPasswordInput).toHaveFocus()
@@ -144,7 +153,7 @@ describe('Signup Set Password Page', () => {
       await user.type(passwordInput, 'DifferentPass123!')
 
       await waitFor(() => {
-        expect(screen.queryByText('common.account.notEqual')).not.toBeInTheDocument()
+        expect(screen.queryByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
       })
       expect(confirmPasswordInput).not.toHaveAttribute('aria-invalid', 'true')
       expect(mockRegister).not.toHaveBeenCalled()
@@ -156,8 +165,11 @@ describe('Signup Set Password Page', () => {
   describe('Registration success tracking', () => {
     const fillAndSubmit = async () => {
       const user = userEvent.setup()
-      await user.type(screen.getByLabelText('common.account.newPassword'), 'ValidPass123!')
-      await user.type(screen.getByLabelText('common.account.confirmPassword'), 'ValidPass123!')
+      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), 'ValidPass123!')
+      await user.type(
+        screen.getByLabelText('accountSettings.account.confirmPassword'),
+        'ValidPass123!',
+      )
       await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
     }
 

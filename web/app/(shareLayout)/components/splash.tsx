@@ -1,4 +1,5 @@
 'use client'
+
 import type { PropsWithChildren } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,10 +9,11 @@ import {
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
@@ -25,7 +27,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
 
 function Splash({ children }: PropsWithChildren) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'share'])
   const shareCode = useWebAppStore((s) => s.shareCode)
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const embeddedUserId = useWebAppStore((s) => s.embeddedUserId)
@@ -121,13 +123,13 @@ function Splash({ children }: PropsWithChildren) {
           setWebAppPassport(address, access_token)
           redirectOrFinish()
         } catch (error) {
-          if (error instanceof Response && error.status === 404) {
+          if (isNotFoundError(error)) {
             setUnavailableShareCode(effectiveShareCode)
             await webAppLogout(address)
             return
           }
           await webAppLogout(address)
-          proceedToAuth(error instanceof Response && error.status === 401)
+          proceedToAuth(getHttpErrorStatus(error) === 401)
         }
       }
     })()
@@ -176,7 +178,7 @@ function Splash({ children }: PropsWithChildren) {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
       </div>
     )
   }

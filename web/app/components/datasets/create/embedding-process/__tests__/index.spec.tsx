@@ -1,11 +1,14 @@
+import type { ReactElement } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
-import { render, screen } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EmbeddingProcess from '../index'
 
-const mockInvalidDocumentList = vi.fn()
-let mockEnableBilling = false
-let mockPlanType = 'sandbox'
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
+let mockPlanType: 'sandbox' | 'professional' | 'team' = 'sandbox'
 let mockPollingState: {
   statusList: IndexingStatusResponse[]
   isEmbedding: boolean
@@ -33,23 +36,15 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useProcessRule: () => ({ data: undefined }),
-}))
-
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.processRule.get': () => ({ data: undefined }),
+  })
+})
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.example.com/docs',
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableBilling: mockEnableBilling,
-    plan: { type: mockPlanType },
-  }),
 }))
 
 vi.mock('../use-indexing-status-polling', () => ({
@@ -84,10 +79,18 @@ vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => (
   ),
 }))
 
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlanType } } },
+  })
+}
+
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
-    mockEnableBilling = false
+    deploymentEdition = 'COMMUNITY'
     mockPlanType = 'sandbox'
     mockPollingState = {
       statusList: [],
@@ -101,7 +104,7 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByText('datasetDocuments.embedding.processing')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.processing')
   })
 
   it('shows that document indexing has completed', () => {
@@ -109,7 +112,7 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.completed')
   })
 
   it('shows the vector-space admission alert after processing completes', () => {
@@ -129,7 +132,7 @@ describe('EmbeddingProcess', () => {
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
-    expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('datasetDocuments.embedding.completed')
     expect(
       screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
     ).toBeInTheDocument()
@@ -156,7 +159,7 @@ describe('EmbeddingProcess', () => {
   })
 
   it('does not suggest an upgrade to team users', () => {
-    mockEnableBilling = true
+    deploymentEdition = 'CLOUD'
     mockPlanType = 'team'
     mockPollingState = {
       statusList: [
@@ -187,7 +190,9 @@ describe('EmbeddingProcess', () => {
     expect(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
     await user.click(link)
 
-    expect(mockInvalidDocumentList).toHaveBeenCalledOnce()
+    expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+    })
   })
 
   it('links to the dataset API reference', () => {
@@ -200,7 +205,7 @@ describe('EmbeddingProcess', () => {
   })
 
   it('offers a processing-priority upgrade outside the team plan', () => {
-    mockEnableBilling = true
+    deploymentEdition = 'CLOUD'
 
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 

@@ -1,4 +1,5 @@
 import type { Node } from '../../types'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
@@ -18,11 +19,14 @@ const workflowToolsState = vi.hoisted(
   () => [] as Array<{ id: string; author: string; description: Record<string, string> }>,
 )
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: buildInToolsState }),
-  useAllCustomTools: () => ({ data: customToolsState }),
-  useAllWorkflowTools: () => ({ data: workflowToolsState }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: buildInToolsState }),
+    'workspaces.current.tools.api.get': () => ({ data: customToolsState }),
+    'workspaces.current.tools.workflow.get': () => ({ data: workflowToolsState }),
+  })
+})
 
 const createNode = (overrides: Partial<Node> = {}): Node =>
   ({
@@ -109,13 +113,18 @@ describe('useNodesMetaData', () => {
       },
     })
 
-    const datasource = {
+    const provider = createDatasourceProvider()
+    const datasource = createDatasourceProvider({
       plugin_id: 'datasource-1',
-      author: 'Datasource Author',
-      description: {
-        'en-US': 'Datasource description',
+      declaration: {
+        ...provider.declaration,
+        identity: {
+          ...provider.declaration.identity,
+          author: 'Datasource Author',
+          description: { en_US: 'Datasource description', zh_Hans: null },
+        },
       },
-    }
+    })
 
     const metadataMap = {
       [BlockEnum.LLM]: {
@@ -130,7 +139,7 @@ describe('useNodesMetaData', () => {
 
     const datasourceResult = renderWorkflowHook(() => useNodeMetaData(datasourceNode), {
       initialStoreState: {
-        dataSourceList: [datasource as never],
+        dataSourceList: [datasource],
       },
       hooksStoreProps: {
         availableNodesMetaData: {

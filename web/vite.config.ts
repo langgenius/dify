@@ -1,26 +1,27 @@
 import { fileURLToPath } from 'node:url'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
-import {
-  createCodeInspectorPlugin,
-  createForceInspectorClientInjectionPlugin,
-} from './plugins/vite/code-inspector.ts'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
+import { i18nAnalysisPlugin } from './plugins/vite/i18n-analysis.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
-const browserTestPattern = 'app/**/*.browser.spec.{ts,tsx}'
+const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
   const isStorybook =
     process.env.STORYBOOK === 'true' ||
     process.argv.some((arg) => arg.toLowerCase().includes('storybook'))
 
   return {
+    build: {
+      // Match package.json's browserslist; these targets support native top-level await.
+      target: ['chrome111', 'edge111', 'firefox128', 'safari16.4', 'ios16.4'],
+    },
     plugins: lazyPlugins(async () => {
       const { default: react } = await import('@vitejs/plugin-react')
 
@@ -35,15 +36,34 @@ export default defineConfig(({ mode }) => {
           import('vite-plugin-inspect'),
         ])
 
+      const inspector =
+        command === 'serve' && isPreview !== true
+          ? (await import('code-inspector-plugin')).codeInspectorPlugin({
+              bundler: 'vite',
+            })
+          : undefined
+
       return [
+        i18nAnalysisPlugin({
+          adapters: [
+            { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+            {
+              module: 'i18n/lib.server.ts',
+              exportName: 'useTranslation',
+              namespaceArgument: 0,
+              implementationFunctions: ['getI18nConfig'],
+            },
+            { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+            {
+              module: 'app/route-metadata.ts',
+              exportName: 'getRouteMetadata',
+              namespaceArgument: 0,
+              selectorArgument: 1,
+            },
+          ],
+        }),
         Inspect(),
-        createCodeInspectorPlugin({
-          injectTarget: rootClientInjectTarget,
-        }),
-        createForceInspectorClientInjectionPlugin({
-          injectTarget: rootClientInjectTarget,
-          projectRoot,
-        }),
+        inspector,
         tailwindcss(),
         react(),
         vinext({ react: false }),
@@ -56,30 +76,25 @@ export default defineConfig(({ mode }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [
-        // Use the base64 build in Vite-based pipelines (vinext/vitest) to avoid wasm loader incompatibilities.
-        { find: /^loro-crdt$/, replacement: 'loro-crdt/base64' },
-      ],
+      alias: [{ find: '~@', replacement: projectRoot }],
     },
-
     // vinext related config
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
-            exclude: ['@tanstack/react-query'],
+            // Keep skipToken shared by the unbundled React Query and oRPC clients.
+            exclude: ['@tanstack/react-query', '@tanstack/query-core'],
           },
           server: {
             port: 3000,
-          },
-          ssr: {
-            // SyntaxError: Named export not found. The requested module is a CommonJS module, which may not support all module.exports as named exports
-            noExternal: ['emoji-mart'],
           },
         }
       : {}),
 
     // Vitest config
     test: {
+      // Vitest 5 stores Browser Mode failure screenshots as attachments; keep them beside the traces.
+      attachmentsDir: './.vitest-browser/attachments',
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
@@ -107,7 +122,14 @@ export default defineConfig(({ mode }) => {
             return [tailwindcss()]
           }),
           optimizeDeps: {
-            include: ['vite-plus/test/browser'],
+            include: [
+              '@base-ui/react/fieldset',
+              '@base-ui/react/number-field',
+              '@base-ui/react/slider',
+              'vite-plus/test/browser',
+              'dayjs/plugin/relativeTime',
+              'react-textarea-autosize',
+            ],
           },
           test: {
             name: 'browser',
@@ -119,7 +141,6 @@ export default defineConfig(({ mode }) => {
               provider: playwright(),
               instances: [{ browser: 'chromium' }],
               headless: true,
-              screenshotDirectory: './.vitest-browser/screenshots',
               screenshotFailures: true,
               trace: {
                 mode: 'retain-on-failure',

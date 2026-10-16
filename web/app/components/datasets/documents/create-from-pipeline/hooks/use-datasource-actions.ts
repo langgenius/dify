@@ -8,15 +8,16 @@ import type {
   CustomFile as File,
   FileIndexingEstimateResponse,
 } from '@/models/datasets'
-import type {
-  OnlineDriveFile,
-  PublishedPipelineRunPreviewResponse,
-  PublishedPipelineRunResponse,
-} from '@/models/pipeline'
+import type { OnlineDriveFile, PublishedPipelineRunResponse } from '@/models/pipeline'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useRef } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
+import {
+  isPipelineProcessingRun,
+  selectPreviewRunEstimate,
+} from '@/app/components/rag-pipeline/utils/query-select'
 import { DatasourceType } from '@/models/pipeline'
-import { useRunPublishedPipeline } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import {
   buildLocalFileDatasourceInfo,
   buildOnlineDocumentDatasourceInfo,
@@ -65,7 +66,13 @@ export const useDatasourceActions = ({
   const isPreview = useRef(false)
   const formRef = useRef<{ submit: () => void } | null>(null)
 
-  const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
+  const {
+    mutateAsync: runPublishedPipeline,
+    isIdle,
+    isPending,
+  } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.published.run.post.mutationOptions(),
+  )
 
   // Build datasource info for preview (single item)
   const buildPreviewDatasourceInfo = useCallback(() => {
@@ -162,16 +169,19 @@ export const useDatasourceActions = ({
       const datasourceInfoList = buildPreviewDatasourceInfo()
       await runPublishedPipeline(
         {
-          pipeline_id: pipelineId,
-          inputs: data,
-          start_node_id: datasource.nodeId,
-          datasource_type: datasourceType as DatasourceType,
-          datasource_info_list: datasourceInfoList,
-          is_preview: true,
+          params: { pipeline_id: pipelineId },
+          body: {
+            inputs: data,
+            start_node_id: datasource.nodeId,
+            datasource_type: datasourceType as DatasourceType,
+            datasource_info_list: datasourceInfoList,
+            is_preview: true,
+            response_mode: 'blocking',
+          },
         },
         {
           onSuccess: (res) => {
-            setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
+            if (!isPipelineProcessingRun(res)) setEstimateData(selectPreviewRunEstimate(res))
           },
         },
       )
@@ -196,17 +206,21 @@ export const useDatasourceActions = ({
       const datasourceInfoList = buildProcessDatasourceInfo()
       await runPublishedPipeline(
         {
-          pipeline_id: pipelineId,
-          inputs: data,
-          start_node_id: datasource.nodeId,
-          datasource_type: datasourceType as DatasourceType,
-          datasource_info_list: datasourceInfoList,
-          is_preview: false,
+          params: { pipeline_id: pipelineId },
+          body: {
+            inputs: data,
+            start_node_id: datasource.nodeId,
+            datasource_type: datasourceType as DatasourceType,
+            datasource_info_list: datasourceInfoList,
+            is_preview: false,
+            response_mode: 'blocking',
+          },
         },
         {
           onSuccess: (res) => {
-            setBatchId((res as PublishedPipelineRunResponse).batch || '')
-            setDocuments((res as PublishedPipelineRunResponse).documents || [])
+            if (!isPipelineProcessingRun(res)) return
+            setBatchId(res.batch)
+            setDocuments(res.documents)
             handleNextStep()
             trackEvent('dataset_document_added', {
               data_source_type: datasourceType,

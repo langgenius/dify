@@ -5,8 +5,11 @@ import { BlockEnum } from '../../types'
 import { useAvailableBlocks } from '../use-available-blocks'
 
 // Transitive imports of use-nodes-meta-data.ts — only useNodeMetaData uses these
-vi.mock('@/service/use-tools', async () =>
-  (await import('../../__tests__/service-mock-factory')).createToolServiceMock(),
+vi.mock('@tanstack/react-query', async (importOriginal) =>
+  (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
+    await importOriginal(),
+    (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
+  ),
 )
 vi.mock('@/context/i18n', () => ({ useGetLanguage: () => 'en' }))
 

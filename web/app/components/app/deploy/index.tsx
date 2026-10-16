@@ -8,16 +8,16 @@ import type { DeploymentDialogRequest } from './types'
 import type { DeploymentVersion } from './utils/version'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
-import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
+import { getEnterpriseDocUrl } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { getDocLanguage } from '@/i18n-config/language'
-import dynamic from '@/next/dynamic'
-import { AppModeEnum } from '@/types/app'
+import { getDocLanguage } from '@/i18n/language'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { EnvironmentTable } from './environment-table'
@@ -37,9 +37,9 @@ function AppDeployContent({
   appId: string
   canViewAccessPoint: boolean
 }) {
-  const { t } = useTranslation('deployments')
-  const { t: tCommon } = useTranslation('common')
-  const { t: tWorkflow } = useTranslation('workflow')
+  const { t } = useTranslation(['deployments'])
+  const { t: tCommon } = useTranslation(['common'])
+  const { t: tWorkflow } = useTranslation(['workflow', 'workflowHistory'])
   const locale = useLocale()
   const docLanguage = getDocLanguage(locale)
   const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)
@@ -97,7 +97,7 @@ function AppDeployContent({
         environmentId,
         initialVersion: toDeploymentVersion(
           version,
-          tWorkflow(($) => $['versionHistory.defaultName']),
+          tWorkflow(($) => $['versionHistory.defaultName'], { ns: 'workflowHistory' }),
         ),
         kind: 'redeploy',
       })
@@ -108,7 +108,7 @@ function AppDeployContent({
 
   return (
     <>
-      <main className="flex h-full flex-col bg-components-panel-bg">
+      <div className="flex h-full flex-col bg-components-panel-bg">
         <header className="flex shrink-0 flex-col gap-y-0.5 px-6 pt-3 pb-2">
           <div className="flex h-6 items-center">
             <h1 className="title-xl-semi-bold text-text-primary">
@@ -140,7 +140,7 @@ function AppDeployContent({
             onUndeploy={undeployWorkflow}
           />
         </div>
-      </main>
+      </div>
       {deploymentRequest && (
         <DeploymentDialog
           appId={appId}
@@ -153,14 +153,15 @@ function AppDeployContent({
 }
 
 export default function AppDeploy() {
-  const appDetail = useAppStore((state) => state.appDetail)
+  const { appId } = useParams<{ appId: string }>()
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-
-  if (!appDetail) return <Loading type="app" />
 
   const { canDeploy, canViewAccessPoint } = getAppACLCapabilities(appDetail.permission_keys, {
     currentUserId,
@@ -168,10 +169,7 @@ export default function AppDeploy() {
     workspacePermissionKeys,
   })
 
-  if (
-    (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) ||
-    !canDeploy
-  )
+  if ((appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') || !canDeploy)
     return null
 
   return (

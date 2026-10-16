@@ -13,6 +13,7 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
@@ -23,8 +24,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useCallback, useState } from 'react'
-import { Infotip } from '@/app/components/base/infotip'
+import { useCallback, useId, useState } from 'react'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -110,6 +110,7 @@ function Form<
   availableNodes,
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
+  const formId = useId()
   const [changeKey, setChangeKey] = useState('')
   const filteredProps: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'> = {
     className,
@@ -132,7 +133,7 @@ function Form<
     if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
     setChangeKey(key)
-    const shouldClearVariable: Record<string, string | undefined> = {}
+    const shouldClearVariable: FormValue = {}
     if (showOnVariableMap[key]?.length) {
       showOnVariableMap[key].forEach((clearVariable) => {
         const schema = formSchemas.find((it) => it.variable === clearVariable)
@@ -158,8 +159,17 @@ function Form<
     const infotip = formSchema.tooltip
     const infotipText = infotip?.[language] || infotip?.en_US
     const infotipContent = infotipText && (
-      <Infotip aria-label={infotipText} className="ml-1" popupClassName="w-[200px] max-w-[200px]">
-        {infotipText}
+      <Infotip>
+        <InfotipTrigger
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="ml-1"
+        />
+        <InfotipContent
+          aria-label={formSchema.label[language] || formSchema.label.en_US}
+          className="w-50"
+        >
+          {infotipText}
+        </InfotipContent>
       </Infotip>
     )
     if (override) {
@@ -187,6 +197,7 @@ function Form<
 
       const disabled =
         readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const inputId = `${formId}-${variable}`
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div
@@ -195,11 +206,18 @@ function Form<
               'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
           >
-            {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            <label htmlFor={inputId}>
+              {label[language] || label.en_US}
+              {required && (
+                <span aria-hidden className="ml-1 text-red-500">
+                  *
+                </span>
+              )}
+            </label>
             {infotipContent}
           </div>
           <Input
+            id={inputId}
             className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
             value={
               isShowDefaultValue &&
@@ -408,13 +426,13 @@ function Form<
               </FieldsetLegend>
               <div className="flex items-center gap-3">
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={true} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
+                  <FieldLabel className="flex cursor-pointer items-center gap-1.5 system-sm-regular text-text-secondary">
                     <Radio<boolean> value={false} />
                     False
                   </FieldLabel>

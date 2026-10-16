@@ -1,25 +1,14 @@
-/* oxlint-disable typescript/no-explicit-any */
-import type { Mock } from 'vite-plus/test'
+import type { ReactElement } from 'react'
 import type { AnnotationItem } from '../type'
-import type { App } from '@/types/app'
-import { toast } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { useProviderContext } from '@/context/provider-context'
-import {
-  addAnnotation,
-  delAnnotation,
-  delAnnotations,
-  editAnnotation,
-  fetchAnnotationConfig,
-  fetchAnnotationList,
-  queryAnnotationJobStatus,
-  updateAnnotationScore,
-  updateAnnotationStatus,
-} from '@/service/annotation'
-import { AppModeEnum } from '@/types/app'
+import { toast } from '@/app/notifications'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
+
+let annotationQuota = { size: 0, limit: 10 }
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
@@ -29,20 +18,41 @@ vi.mock('ahooks', () => ({
   useDebounce: (value: any) => value,
 }))
 
-vi.mock('@/service/annotation', () => ({
+const mocks = vi.hoisted(() => ({
   addAnnotation: vi.fn(),
   delAnnotation: vi.fn(),
   delAnnotations: vi.fn(),
-  fetchAnnotationConfig: vi.fn(),
   editAnnotation: vi.fn(),
+  fetchAnnotationConfig: vi.fn(),
   fetchAnnotationList: vi.fn(),
   queryAnnotationJobStatus: vi.fn(),
   updateAnnotationScore: vi.fn(),
   updateAnnotationStatus: vi.fn(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
+vi.mock('@/service/annotation', () => ({
+  updateAnnotationStatus: mocks.updateAnnotationStatus,
+}))
+
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        annotationSetting: { get: mocks.fetchAnnotationConfig },
+        annotationReply: {
+          byAction: { status: { byJobId: { get: mocks.queryAnnotationJobStatus } } },
+        },
+        annotationSettings: { byAnnotationSettingId: { post: mocks.updateAnnotationScore } },
+        annotations: {
+          get: mocks.fetchAnnotationList,
+          post: mocks.addAnnotation,
+          delete: mocks.delAnnotations,
+          byAnnotationId: { delete: mocks.delAnnotation, post: mocks.editAnnotation },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('../filter', () => ({
@@ -82,7 +92,7 @@ vi.mock('../list', () => ({
         <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>
           view
         </button>
-        <button data-testid="list-remove" onClick={() => props.onRemove(props.list[0].id)}>
+        <button data-testid="list-remove" onClick={() => props.onRemoved()}>
           remove
         </button>
         <button data-testid="list-batch-delete" onClick={() => props.onBatchDelete()}>
@@ -171,21 +181,20 @@ vi.spyOn(toast, 'info').mockImplementation((message, options) => {
   mockNotify({ type: 'info', message, ...options })
   return 'toast-info-id'
 })
-const addAnnotationMock = addAnnotation as Mock
-const delAnnotationMock = delAnnotation as Mock
-const delAnnotationsMock = delAnnotations as Mock
-const editAnnotationMock = editAnnotation as Mock
-const fetchAnnotationConfigMock = fetchAnnotationConfig as Mock
-const fetchAnnotationListMock = fetchAnnotationList as Mock
-const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
-const updateAnnotationScoreMock = updateAnnotationScore as Mock
-const updateAnnotationStatusMock = updateAnnotationStatus as Mock
-const useProviderContextMock = useProviderContext as Mock
+const addAnnotationMock = mocks.addAnnotation
+const delAnnotationMock = mocks.delAnnotation
+const delAnnotationsMock = mocks.delAnnotations
+const editAnnotationMock = mocks.editAnnotation
+const fetchAnnotationConfigMock = mocks.fetchAnnotationConfig
+const fetchAnnotationListMock = mocks.fetchAnnotationList
+const queryAnnotationJobStatusMock = mocks.queryAnnotationJobStatus
+const updateAnnotationScoreMock = mocks.updateAnnotationScore
+const updateAnnotationStatusMock = mocks.updateAnnotationStatus
 
-const appDetail = {
+const appDetail = createAppDetailFixture({
   id: 'app-id',
-  mode: AppModeEnum.CHAT,
-} as App
+  mode: 'chat' as const,
+})
 
 const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
   id: overrides.id ?? 'annotation-1',
@@ -196,6 +205,13 @@ const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationIt
 })
 
 const renderComponent = () => render(<Annotation appDetail={appDetail} />)
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { annotation_quota_limit: annotationQuota },
+  })
+}
 
 describe('Annotation', () => {
   beforeEach(() => {
@@ -215,13 +231,7 @@ describe('Annotation', () => {
     updateAnnotationStatusMock.mockResolvedValue({ job_id: 'job-1' })
     updateAnnotationScoreMock.mockResolvedValue(undefined)
     editAnnotationMock.mockResolvedValue(undefined)
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 0 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: false,
-    })
+    annotationQuota = { size: 0, limit: 10 }
   })
 
   it('should render empty element when no annotations are returned', async () => {
@@ -234,13 +244,10 @@ describe('Annotation', () => {
       'https://docs.example.com/use-dify/monitor/annotation-reply',
     )
     expect(await screen.findByTestId('empty-element')).toBeInTheDocument()
-    expect(fetchAnnotationListMock).toHaveBeenCalledWith(
-      appDetail.id,
-      expect.objectContaining({
-        page: 1,
-        keyword: '',
-      }),
-    )
+    expect(fetchAnnotationListMock).toHaveBeenCalledWith({
+      params: { app_id: appDetail.id },
+      query: expect.objectContaining({ page: 1, keyword: '' }),
+    })
   })
 
   it('should handle annotation creation and refresh list data', async () => {
@@ -254,9 +261,9 @@ describe('Annotation', () => {
     fireEvent.click(screen.getByTestId('trigger-add'))
 
     await waitFor(() => {
-      expect(addAnnotationMock).toHaveBeenCalledWith(appDetail.id, {
-        question: 'new question',
-        answer: 'new answer',
+      expect(addAnnotationMock).toHaveBeenCalledWith({
+        params: { app_id: appDetail.id },
+        body: { question: 'new question', answer: 'new answer' },
       })
       expect(mockNotify).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -266,6 +273,20 @@ describe('Annotation', () => {
       )
     })
     expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('should refetch the list after a row is removed', async () => {
+    fetchAnnotationListMock.mockResolvedValue({ data: [createAnnotation()], total: 1 })
+
+    renderComponent()
+    await screen.findByTestId('list')
+    const fetchCount = fetchAnnotationListMock.mock.calls.length
+
+    fireEvent.click(screen.getByTestId('list-remove'))
+
+    await waitFor(() => {
+      expect(fetchAnnotationListMock.mock.calls.length).toBeGreaterThan(fetchCount)
+    })
   })
 
   it('should support viewing items and running batch deletion success flow', async () => {
@@ -288,7 +309,10 @@ describe('Annotation', () => {
       await latestListProps.onBatchDelete()
     })
     await waitFor(() => {
-      expect(delAnnotationsMock).toHaveBeenCalledWith(appDetail.id, [annotation.id])
+      expect(delAnnotationsMock).toHaveBeenCalledWith({
+        params: { app_id: appDetail.id },
+        query: { annotation_id: [annotation.id] },
+      })
       expect(mockNotify).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'success',
@@ -304,7 +328,9 @@ describe('Annotation', () => {
       fireEvent.click(screen.getByTestId('view-modal-remove'))
     })
     await waitFor(() => {
-      expect(delAnnotationMock).toHaveBeenCalledWith(appDetail.id, annotation.id)
+      expect(delAnnotationMock).toHaveBeenCalledWith({
+        params: { app_id: appDetail.id, annotation_id: annotation.id },
+      })
     })
   })
 
@@ -325,7 +351,7 @@ describe('Annotation', () => {
     })
 
     await act(async () => {
-      await latestListProps.onBatchDelete()
+      await expect(latestListProps.onBatchDelete()).rejects.toThrow(error.message)
     })
 
     await waitFor(() => {
@@ -338,13 +364,7 @@ describe('Annotation', () => {
   })
 
   it('should show the annotation-full modal when enabling annotations exceeds the plan quota', async () => {
-    useProviderContextMock.mockReturnValue({
-      plan: {
-        usage: { annotatedResponse: 10 },
-        total: { annotatedResponse: 10 },
-      },
-      enableBilling: true,
-    })
+    annotationQuota = { size: 10, limit: 10 }
 
     renderComponent()
 
@@ -396,17 +416,10 @@ describe('Annotation', () => {
         }),
         0.5,
       )
-      expect(queryAnnotationJobStatusMock).toHaveBeenCalledWith(
-        appDetail.id,
-        AnnotationEnableStatus.disable,
-        'job-1',
-      )
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'common.api.actionSuccess',
-          type: 'success',
-        }),
-      )
+      expect(queryAnnotationJobStatusMock).toHaveBeenCalledWith({
+        params: { app_id: appDetail.id, action: AnnotationEnableStatus.disable, job_id: 'job-1' },
+      })
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
     })
   })
 
@@ -439,7 +452,10 @@ describe('Annotation', () => {
         },
         0.7,
       )
-      expect(updateAnnotationScoreMock).toHaveBeenCalledWith(appDetail.id, 'config-id', 0.7)
+      expect(updateAnnotationScoreMock).toHaveBeenCalledWith({
+        params: { app_id: appDetail.id, annotation_setting_id: 'config-id' },
+        body: { score_threshold: 0.7 },
+      })
       expect(mockNotify).toHaveBeenCalledWith(
         expect.objectContaining({
           message: 'common.api.actionSuccess',
@@ -461,9 +477,9 @@ describe('Annotation', () => {
     fireEvent.click(screen.getByTestId('view-modal-save'))
 
     await waitFor(() => {
-      expect(editAnnotationMock).toHaveBeenCalledWith(appDetail.id, annotation.id, {
-        question: 'Edited question',
-        answer: 'Edited answer',
+      expect(editAnnotationMock).toHaveBeenCalledWith({
+        params: { app_id: appDetail.id, annotation_id: annotation.id },
+        body: { question: 'Edited question', answer: 'Edited answer' },
       })
     })
 

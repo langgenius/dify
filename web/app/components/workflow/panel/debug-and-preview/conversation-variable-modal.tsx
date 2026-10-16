@@ -1,16 +1,18 @@
 'use client'
+
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useMount } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { capitalize } from 'es-toolkit/string'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
@@ -24,10 +26,10 @@ type Props = Readonly<{
 }>
 
 const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common', 'workflow'])
   const { formatTime } = useTimestamp()
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
-  const appID = useStore((s) => s.appId)
+  const appID = useAtomValue(editorAppIdAtom)
   const [currentVar, setCurrentVar] = React.useState<ConversationVariable>(varList[0]!)
   const [latestValueMap, setLatestValueMap] = React.useState<Record<string, string>>({})
   const [latestValueTimestampMap, setLatestValueTimestampMap] = React.useState<
@@ -101,12 +103,15 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                   )}
                   onClick={() => setCurrentVar(chatVar)}
                 >
-                  <BubbleX
-                    className={cn(
-                      'mr-1 size-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700',
-                      currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700',
-                    )}
+                  <span
                     aria-hidden="true"
+                    className={cn(
+                      'i-custom-vender-line-others-bubble-x h-4 w-4',
+                      cn(
+                        'mr-1 size-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700',
+                        currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700',
+                      ),
+                    )}
                   />
                   <div
                     title={chatVar.name}
@@ -162,14 +167,24 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
                       <div className="flex h-7 shrink-0 items-center justify-between pt-1 pr-2 pl-3">
                         <div className="system-xs-semibold text-text-secondary">JSON</div>
                         <div className="flex items-center p-1">
-                          {!isCopied ? (
-                            <Copy
-                              className="size-4 cursor-pointer text-text-tertiary"
-                              onClick={handleCopy}
+                          <IconButton
+                            aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                            aria-disabled={isCopied}
+                            size="xs"
+                            onClick={() => {
+                              if (!isCopied) handleCopy()
+                            }}
+                          >
+                            <span
+                              aria-hidden
+                              className={cn(
+                                'size-4',
+                                isCopied
+                                  ? 'i-custom-vender-line-files-copy-check'
+                                  : 'i-custom-vender-line-files-copy',
+                              )}
                             />
-                          ) : (
-                            <CopyCheck className="size-4 text-text-tertiary" />
-                          )}
+                          </IconButton>
                         </div>
                       </div>
                       <div className="grow pl-4">

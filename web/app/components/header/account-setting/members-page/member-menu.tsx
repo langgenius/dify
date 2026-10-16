@@ -3,11 +3,11 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -18,13 +18,12 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
-import { memo, useCallback, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
-import { deleteMemberOrCancelInvitation } from '@/service/common'
-import { commonQueryKeys } from '@/service/use-common'
+import { toast } from '@/app/notifications'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { createSelectedRolePlaceholder } from '../workspace-role-list-query'
 import AssignRolesModal from './assign-roles-modal'
 
 type MemberMenuProps = {
@@ -42,9 +41,8 @@ const MemberMenu = ({
   allowMultipleRoles = true,
   onTransferOwnership,
 }: MemberMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -54,18 +52,22 @@ const MemberMenu = ({
   const canRemove = !isOwner && !isCurrentUser
   const showTransferOwnership = isOwner && canTransferOwnership
 
-  const selectedRoles = member.roles || []
+  const selectedRoles = useMemo(
+    () => (member.roles ?? []).map(createSelectedRolePlaceholder),
+    [member.roles],
+  )
   const memberName = member.name || member.email
   const assignRolesLabel = allowMultipleRoles
-    ? t(($) => $['members.assignRoles'], { ns: 'common', defaultValue: 'Assign Roles' })
-    : t(($) => $['members.editRole'], { ns: 'common', defaultValue: 'Edit Role' })
+    ? t(($) => $['members.assignRoles'], { ns: 'workspaceMembers', defaultValue: 'Assign Roles' })
+    : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
-    setOpen(false)
     setAssignModalOpen(true)
   }, [])
 
-  const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
+  const { mutateAsync: updateRolesOfMember } = useMutation(
+    consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions(),
+  )
 
   const handleAssignRolesSubmit = useCallback(
     (roles: Role[]) => {
@@ -74,10 +76,7 @@ const MemberMenu = ({
         : roles.slice(0, 1).map((role) => role.id)
 
       updateRolesOfMember(
-        {
-          memberId: member.id,
-          roleIds,
-        },
+        { params: { member_id: member.id }, body: { role_ids: roleIds } },
         {
           onSuccess: () => {
             toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
@@ -89,25 +88,26 @@ const MemberMenu = ({
   )
 
   const handleOpenRemoveConfirm = useCallback(() => {
-    setOpen(false)
     setRemoveConfirmOpen(true)
   }, [])
 
   const handleRemove = useCallback(async () => {
     setRemoving(true)
     try {
-      await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
-      void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+      await consoleClient.workspaces.current.members.byMemberId.delete({
+        params: { member_id: member.id },
+      })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.members.get.key(),
+      })
       setRemoveConfirmOpen(false)
     } catch {
     } finally {
       setRemoving(false)
     }
-  }, [member.id, queryClient, t])
+  }, [member.id, queryClient])
 
   const handleTransferOwnership = useCallback(() => {
-    setOpen(false)
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
@@ -115,13 +115,13 @@ const MemberMenu = ({
 
   return (
     <div>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
               size="lg"
               aria-label={t(($) => $['members.memberActions'], {
-                ns: 'common',
+                ns: 'workspaceMembers',
                 defaultValue: 'Member actions',
               })}
               className="data-popup-open:bg-state-base-hover"
@@ -144,7 +144,7 @@ const MemberMenu = ({
               className="system-sm-medium text-text-secondary"
               onClick={handleTransferOwnership}
             >
-              {t(($) => $['members.transferOwnership'], { ns: 'common' })}
+              {t(($) => $['members.transferOwnership'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
           )}
           {(canAssignRoles || showTransferOwnership) && canRemove && <DropdownMenuSeparator />}
@@ -154,7 +154,7 @@ const MemberMenu = ({
               className="system-sm-medium"
               onClick={handleOpenRemoveConfirm}
             >
-              {t(($) => $['members.removeFromTeam'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeam'], { ns: 'workspaceMembers' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -166,20 +166,23 @@ const MemberMenu = ({
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $['members.removeFromTeamConfirmTitle'], { ns: 'common', memberName })}
+              {t(($) => $['members.removeFromTeamConfirmTitle'], {
+                ns: 'workspaceMembers',
+                memberName,
+              })}
             </AlertDialogTitle>
             <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'common' })}
+              {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'workspaceMembers' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={removing} onClick={handleRemove}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {assignModalOpen && (

@@ -1,5 +1,5 @@
 import type { NodeDefault } from '../../types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
 import {
   baseRunningData,
@@ -9,7 +9,6 @@ import {
 import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import {
-  useIsChatMode,
   useIsNodeInIteration,
   useIsNodeInLoop,
   useNodesReadOnly,
@@ -18,15 +17,8 @@ import {
   useWorkflowReadOnly,
 } from '../use-workflow'
 
-let mockAppMode = 'workflow'
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) =>
-    selector({ appDetail: { mode: mockAppMode } }),
-}))
-
 beforeEach(() => {
   vi.clearAllMocks()
-  mockAppMode = 'workflow'
 })
 
 function createNodeDefault(type: BlockEnum): NodeDefault {
@@ -44,37 +36,7 @@ function createNodeDefault(type: BlockEnum): NodeDefault {
 }
 
 // ---------------------------------------------------------------------------
-// useIsChatMode
-// ---------------------------------------------------------------------------
-
-describe('useIsChatMode', () => {
-  it('should return true when app mode is advanced-chat', () => {
-    mockAppMode = 'advanced-chat'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(true)
-  })
-
-  it('should return false when app mode is workflow', () => {
-    mockAppMode = 'workflow'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
-
-  it('should return false when app mode is chat', () => {
-    mockAppMode = 'chat'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
-
-  it('should return false when app mode is completion', () => {
-    mockAppMode = 'completion'
-    const { result } = renderHook(() => useIsChatMode())
-    expect(result.current).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// useWorkflowReadOnly
+// useIsChatflow
 // ---------------------------------------------------------------------------
 
 describe('useWorkflowReadOnly', () => {

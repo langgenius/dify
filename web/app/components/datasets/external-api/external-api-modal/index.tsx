@@ -1,28 +1,29 @@
 import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
+import type { ExternalAPIItem } from '@/models/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
 import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
 
 type AddExternalAPIModalProps = {
   data?: CreateExternalAPIReq
-  onSave: (formValue: CreateExternalAPIReq) => void
+  onSave: (api: ExternalAPIItem) => void
   onCancel: () => void
   onEdit?: (formValue: CreateExternalAPIReq) => Promise<void>
   datasetBindings?: {
@@ -74,7 +75,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   isEditMode,
   onEdit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
   const formId = useId()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -106,13 +107,9 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           ...formData,
           settings: { ...formData.settings, api_key: apiKeyToSend },
         })
-        toast.success('External API updated successfully')
       } else {
         const res = await createExternalAPI({ body: formData })
-        if (res && res.id) {
-          toast.success('External API saved successfully')
-          onSave(res)
-        }
+        if (res && res.id) onSave(res)
       }
       onCancel()
     } catch (error) {
@@ -162,7 +159,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                       render={
                         <button
                           type="button"
-                          className="flex size-3.5 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          className="flex size-3.5 items-center justify-center rounded-sm hover:bg-state-base-hover"
                         >
                           <RiInformation2Line className="size-3.5" />
                         </button>
@@ -256,14 +253,14 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                 {`${t(($) => $['editExternalAPIConfirmWarningContent.front'], { ns: 'dataset' })} ${datasetBindings?.length} ${t(($) => $['editExternalAPIConfirmWarningContent.end'], { ns: 'dataset' })}`}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleSave}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </DialogContent>

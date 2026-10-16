@@ -2,23 +2,28 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
-import { useProviderContext } from '@/context/provider-context'
-import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
+import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { annotationBatchImport } from '@/service/annotation'
+import { consoleClient, consoleQuery } from '@/service/console'
 import CSVDownloader from './csv-downloader'
 import CSVUploader from './csv-uploader'
 
-export enum ProcessStatus {
-  WAITING = 'waiting',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  ERROR = 'error',
-}
+export const ProcessStatus = {
+  WAITING: 'waiting',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  ERROR: 'error',
+} as const
+
+export type ProcessStatus = (typeof ProcessStatus)[keyof typeof ProcessStatus]
 
 export type IBatchModalProps = {
   appId: string
@@ -28,10 +33,22 @@ export type IBatchModalProps = {
 }
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
-  const { t } = useTranslation()
-  const { plan, enableBilling } = useProviderContext()
+  const { t } = useTranslation(['appAnnotation', 'common'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: annotationQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.annotation_quota_limit,
+    }),
+  )
+  const isAnnotationQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
-    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
+    deploymentEdition === 'CLOUD' &&
+    annotationQuota !== undefined &&
+    annotationQuota.limit > 0 &&
+    annotationQuota.size >= annotationQuota.limit
   const [currentCSV, setCurrentCSV] = useState<File>()
   const handleFile = (file?: File) => setCurrentCSV(file)
 
@@ -42,7 +59,9 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
   const checkProcess = async (jobID: string) => {
     try {
-      const res = await checkAnnotationBatchImportProgress({ jobID, appId })
+      const res = await consoleClient.apps.byAppId.annotations.batchImportStatus.byJobId.get({
+        params: { app_id: appId, job_id: jobID },
+      })
       setImportStatus(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
@@ -64,10 +83,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
     const formData = new FormData()
     formData.append('file', csv)
     try {
-      const res = await annotationBatchImport({
-        url: `/apps/${appId}/annotations/batch-import`,
-        body: formData,
-      })
+      const res = await annotationBatchImport(appId, formData)
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
     } catch (e: any) {
@@ -112,7 +128,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
           <Button
             variant="primary"
             onClick={handleSend}
-            disabled={isAnnotationFull || !currentCSV}
+            disabled={isAnnotationQuotaUnavailable || isAnnotationFull || !currentCSV}
             loading={
               importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING
             }

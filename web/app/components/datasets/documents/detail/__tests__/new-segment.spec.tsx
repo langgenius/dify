@@ -1,6 +1,7 @@
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { AppToastHost } from '@/app/notifications/host'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
 import NewSegmentModal from '../new-segment'
@@ -16,7 +17,7 @@ const toastErrorSpy = vi.spyOn(toast, 'error')
 const toastSuccessSpy = vi.spyOn(toast, 'success')
 
 // Mock dataset detail context
-let mockIndexingTechnique = IndexingType.QUALIFIED
+let mockIndexingTechnique: IndexingType = IndexingType.QUALIFIED
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
     selector: (state: { dataset: { indexing_technique: string } }) => unknown,
@@ -42,11 +43,14 @@ vi.mock('../completed', () => ({
 
 // Mock useAddSegment
 const mockAddSegment = vi.fn()
-vi.mock('@/service/knowledge/use-segment', () => ({
-  useAddSegment: () => ({
-    mutateAsync: mockAddSegment,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.segment.post': () => ({
+      mutateAsync: mockAddSegment,
+    }),
+  })
+})
 
 vi.mock('../completed/common/action-buttons', () => ({
   ActionButtons: ({
@@ -332,8 +336,7 @@ describe('NewSegmentModal', () => {
       await waitFor(() => {
         expect(mockAddSegment).toHaveBeenCalledWith(
           expect.objectContaining({
-            datasetId: 'test-dataset-id',
-            documentId: 'test-document-id',
+            params: { dataset_id: 'test-dataset-id', document_id: 'test-document-id' },
             body: expect.objectContaining({
               content: 'Valid content',
             }),
@@ -459,7 +462,7 @@ describe('NewSegmentModal', () => {
 
       render(
         <>
-          <ToastHost timeout={0} />
+          <AppToastHost timeout={0} />
           <NewSegmentModal
             {...defaultProps}
             docForm={ChunkingMode.text}

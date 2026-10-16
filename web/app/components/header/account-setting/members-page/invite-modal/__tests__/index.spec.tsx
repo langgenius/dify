@@ -1,44 +1,83 @@
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { vi } from 'vite-plus/test'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
-import { seedFeatures } from '@/test/console/query-data'
+import { createHttpError } from '@/service/http-error'
+import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { InviteModal } from '../index'
+
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+  })
+})
 
 const { fetchFeatures, inviteMember } = vi.hoisted(() => ({
   fetchFeatures: vi.fn(),
   inviteMember: vi.fn(),
 }))
 
-vi.mock('@/service/access-control/use-workspace-roles')
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    features: {
-      get: {
-        queryKey: () => ['features'],
-        queryOptions: () => ({ queryKey: ['features'], queryFn: fetchFeatures }),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { workspaces } = await import('@dify/contracts/api/console/workspaces/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ workspaces })
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      features: {
+        get: {
+          queryKey: () => ['features'],
+          queryOptions: () => ({ queryKey: ['features'], queryFn: fetchFeatures }),
+        },
       },
-    },
-    workspaces: {
-      current: {
-        members: {
-          inviteEmail: {
-            post: {
-              mutationOptions: () => ({ mutationFn: inviteMember }),
+      workspaces: {
+        ...actual.consoleQuery.workspaces,
+        current: {
+          ...actual.consoleQuery.workspaces.current,
+          summary: actual.consoleQuery.workspaces.current.summary,
+          permission: actual.consoleQuery.workspaces.current.permission,
+          rbac: actual.consoleQuery.workspaces.current.rbac,
+          members: {
+            get: actual.consoleQuery.workspaces.current.members.get,
+            inviteEmail: {
+              post: {
+                mutationOptions: (
+                  options: Parameters<
+                    typeof actual.consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions
+                  >[0],
+                ) => ({
+                  ...options,
+                  // Rejections pass through the console link's contract validation, as in production.
+                  mutationFn: (input: unknown) =>
+                    validate({
+                      context: {},
+                      input,
+                      path: ['workspaces', 'current', 'members', 'inviteEmail', 'post'],
+                      next: () => inviteMember(input),
+                    }),
+                }),
+              },
             },
           },
         },
       },
     },
-  },
-}))
+  }
+})
 
 describe('InviteModal', () => {
-  const onOpenChange = vi.fn()
   const onSend = vi.fn()
 
   const createQueryClient = () =>
@@ -51,7 +90,7 @@ describe('InviteModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -94,10 +133,10 @@ describe('InviteModal', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
-  const renderModal = ({
+  const renderModal = async ({
     open = true,
     isEmailSetup = true,
     queryClient = createQueryClient(),
@@ -108,20 +147,18 @@ describe('InviteModal', () => {
     queryClient?: QueryClient
     workspaceMembers?: GetFeaturesResponse['workspace_members']
   } = {}) => {
+    seedCurrentWorkspaceQuery(queryClient)
+    seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
     const features = seedFeatures(queryClient, { workspace_members: workspaceMembers })
     fetchFeatures.mockResolvedValue(features)
 
-    return render(
-      <QueryClientProvider client={queryClient}>
-        <InviteModal
-          open={open}
-          trigger={<button type="button">members.invite</button>}
-          isEmailSetup={isEmailSetup}
-          onOpenChange={onOpenChange}
-          onSend={onSend}
-        />
-      </QueryClientProvider>,
+    const result = render(
+      <QueryClientTestProvider queryClient={queryClient}>
+        <InviteModal isEmailSetup={isEmailSetup} onSend={onSend} />
+      </QueryClientTestProvider>,
     )
+    if (open) await userEvent.click(screen.getByRole('button', { name: /members\.invite$/i }))
+    return result
   }
 
   const selectAdminRole = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -135,8 +172,8 @@ describe('InviteModal', () => {
     await user.paste(value)
   }
 
-  it('renders a labeled form inside a controlled dialog', () => {
-    renderModal()
+  it('renders a labeled form inside a business dialog', async () => {
+    await renderModal()
 
     const dialog = screen.getByRole('dialog', { name: /members\.inviteTeamMember$/i })
     expect(within(dialog).getByText(/members\.inviteTeamMemberTip/i)).toBeInTheDocument()
@@ -147,7 +184,7 @@ describe('InviteModal', () => {
   })
 
   it('should place initial focus in the email composer', async () => {
-    renderModal()
+    await renderModal()
 
     await waitFor(() => {
       expect(screen.getByRole('textbox', { name: /members\.emailRecipients/i })).toHaveFocus()
@@ -156,7 +193,7 @@ describe('InviteModal', () => {
 
   it('should focus the email field first when the untouched form is submitted with Enter', async () => {
     const user = userEvent.setup()
-    renderModal()
+    await renderModal()
 
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
     await waitFor(() => expect(input).toHaveFocus())
@@ -168,14 +205,14 @@ describe('InviteModal', () => {
     expect(inviteMember).not.toHaveBeenCalled()
   })
 
-  it('does not render dialog content while controlled closed', () => {
-    renderModal({ open: false })
+  it('does not render dialog content until the invitation trigger is activated', async () => {
+    await renderModal({ open: false })
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('shows the email service warning in the form', () => {
-    renderModal({ isEmailSetup: false })
+  it('shows the email service warning in the form', async () => {
+    await renderModal({ isEmailSetup: false })
 
     expect(screen.getByText(/members\.emailNotSetup/i)).toBeInTheDocument()
   })
@@ -187,9 +224,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    const queryClient = createQueryClient()
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    renderModal({ queryClient })
+    await renderModal()
 
     await addRecipients(user, 'First@Example.com, second@example.com; first@example.com')
     await selectAdminRole(user)
@@ -204,8 +239,7 @@ describe('InviteModal', () => {
         },
       })
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['features'] })
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(onSend).toHaveBeenCalledWith([])
   })
 
@@ -216,7 +250,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     await selectAdminRole(user)
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
@@ -242,7 +276,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     await selectAdminRole(user)
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
@@ -269,7 +303,7 @@ describe('InviteModal', () => {
         resolveInvite = resolve
       }),
     )
-    renderModal()
+    await renderModal()
 
     await selectAdminRole(user)
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
@@ -298,7 +332,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     await selectAdminRole(user)
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
@@ -330,7 +364,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
     await user.type(input, 'person@example{Enter}')
@@ -342,7 +376,7 @@ describe('InviteModal', () => {
 
   it('keeps invalid recipients visible and blocks the whole submission', async () => {
     const user = userEvent.setup()
-    renderModal()
+    await renderModal()
 
     await addRecipients(user, 'valid@example.com, invalid-email')
     await selectAdminRole(user)
@@ -360,7 +394,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     await selectAdminRole(user)
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
@@ -391,7 +425,7 @@ describe('InviteModal', () => {
 
   it('shows the required error and focuses the email field after an empty submission', async () => {
     const user = userEvent.setup()
-    renderModal()
+    await renderModal()
 
     await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
@@ -408,7 +442,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
     await user.type(input, 'draft@example.com')
@@ -444,7 +478,7 @@ describe('InviteModal', () => {
         resolveInvite = resolve
       }),
     )
-    renderModal()
+    await renderModal()
 
     await addRecipients(user, 'user@example.com, another@example.com')
     await selectAdminRole(user)
@@ -462,6 +496,11 @@ describe('InviteModal', () => {
       )
     })
     expect(inviteMember).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: /operation\.close/ })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/ }))
+    expect(inviteMember).toHaveBeenCalledOnce()
 
     await act(async () => {
       resolveInvite({
@@ -472,6 +511,25 @@ describe('InviteModal', () => {
     })
   })
 
+  it('closes once the invitation succeeds without waiting for the seat refresh', async () => {
+    const user = userEvent.setup()
+    inviteMember.mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+      tenant_id: 'tenant-id',
+    })
+    await renderModal()
+    // The refresh started by a successful invitation never settles.
+    fetchFeatures.mockReturnValue(new Promise(() => {}))
+    await addRecipients(user, 'person@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/ }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(onSend).toHaveBeenCalledExactlyOnceWith([])
+    await waitFor(() => expect(fetchFeatures).toHaveBeenCalled())
+  })
+
   it('warns but lets the backend decide whether recipients consume remaining seats', async () => {
     const user = userEvent.setup()
     inviteMember.mockResolvedValue({
@@ -479,7 +537,7 @@ describe('InviteModal', () => {
       invitation_results: [],
       tenant_id: 'tenant-id',
     } satisfies MemberInviteResponse)
-    renderModal({ workspaceMembers: { enabled: true, size: 9, limit: 10 } })
+    await renderModal({ workspaceMembers: { enabled: true, size: 9, limit: 10 } })
 
     await addRecipients(user, 'one@example.com, two@example.com')
     await selectAdminRole(user)
@@ -493,7 +551,7 @@ describe('InviteModal', () => {
 
   it('counts a manually typed recipient list before it is committed', async () => {
     const user = userEvent.setup()
-    renderModal({ workspaceMembers: { enabled: true, size: 9, limit: 10 } })
+    await renderModal({ workspaceMembers: { enabled: true, size: 9, limit: 10 } })
 
     const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
     await user.type(input, 'one@example.com,two@example.com')
@@ -513,11 +571,14 @@ describe('InviteModal', () => {
     ['invalid_role', /members\.invalidRole/i, 'role', 'combobox'],
   ])('maps %s server validation to the owning field', async (code, message, fieldName, role) => {
     const user = userEvent.setup()
-    inviteMember.mockRejectedValue({
-      code: 'BAD_REQUEST',
-      data: { body: { code, message: 'Backend message' } },
-    })
-    renderModal()
+    inviteMember.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code,
+        message: 'Backend message',
+        status: 400,
+      }),
+    )
+    await renderModal()
 
     await addRecipients(user, 'user@example.com, another@example.com')
     await selectAdminRole(user)
@@ -530,16 +591,19 @@ describe('InviteModal', () => {
         name: fieldName === 'emails' ? /members\.emailRecipients/i : /members\.role/i,
       }),
     ).toHaveFocus()
-    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('keeps a role server error visible when the user only opens the selector', async () => {
     const user = userEvent.setup()
-    inviteMember.mockRejectedValue({
-      code: 'BAD_REQUEST',
-      data: { body: { code: 'invalid_role', message: 'Backend message' } },
-    })
-    renderModal()
+    inviteMember.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_role',
+        message: 'Backend message',
+        status: 400,
+      }),
+    )
+    await renderModal()
 
     await addRecipients(user, 'user@example.com')
     await selectAdminRole(user)
@@ -556,19 +620,52 @@ describe('InviteModal', () => {
     expect(screen.queryByText(/members\.invalidRole/i)).not.toBeInTheDocument()
   })
 
+  it('moves focus to the recipients when the server rejects them after the form was frozen', async () => {
+    const user = userEvent.setup()
+    let rejectInvite!: (error: unknown) => void
+    inviteMember.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectInvite = reject
+      }),
+    )
+    await renderModal()
+    await addRecipients(user, 'first@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
+    await waitFor(() => expect(input).toBeDisabled())
+
+    await act(async () =>
+      rejectInvite(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+          status: 400,
+        }),
+      ),
+    )
+
+    expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
+    expect(input).toBeEnabled()
+    await waitFor(() => expect(input).toHaveFocus())
+  })
+
   it('should clear an email server error when the user edits and successfully retries', async () => {
     const user = userEvent.setup()
     inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+          status: 400,
+        }),
+      )
       .mockResolvedValueOnce({
         result: 'success',
         invitation_results: [],
         tenant_id: 'tenant-id',
       } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     await addRecipients(user, 'first@example.com, second@example.com')
     await selectAdminRole(user)
@@ -597,16 +694,19 @@ describe('InviteModal', () => {
   it('should clear an email server error when a recipient is removed before retrying', async () => {
     const user = userEvent.setup()
     inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+          status: 400,
+        }),
+      )
       .mockResolvedValueOnce({
         result: 'success',
         invitation_results: [],
         tenant_id: 'tenant-id',
       } satisfies MemberInviteResponse)
-    renderModal()
+    await renderModal()
 
     await addRecipients(user, 'first@example.com, second@example.com')
     await selectAdminRole(user)
@@ -633,49 +733,41 @@ describe('InviteModal', () => {
     })
   })
 
-  it('keeps unknown request failures as a persistent form error', async () => {
+  it('keeps request failures visible until the user closes, then starts a fresh draft', async () => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValue(new Error('Network failed'))
-    renderModal()
+    await renderModal()
 
     await addRecipients(user, 'user@example.com, another@example.com')
     await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/members\.inviteFailed/i)
-    expect(onOpenChange).not.toHaveBeenCalled()
+    expect((await screen.findByRole('alert')).textContent).toMatch(/members\.inviteFailed/i)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /operation\.close/ }))
+    const trigger = screen.getByRole('button', { name: /members\.invite$/ })
+    await waitFor(() => expect(trigger).toHaveFocus())
+    await user.click(trigger)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('user@example.com')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /members\.emailRecipients/ })).toHaveValue('')
+    expect(screen.getByRole('combobox', { name: /members\.role/ }).textContent).toMatch(
+      /members\.selectRole/,
+    )
   })
 
-  it('routes close actions through the controlled state owner', async () => {
+  it('closes through its own close button', async () => {
     const user = userEvent.setup()
-    renderModal()
+    await renderModal()
 
     await user.click(screen.getByRole('button', { name: /operation\.close/i }))
 
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  it('resets the form after a controlled close', async () => {
+  it('resets the popup draft after closing and reopening', async () => {
     const user = userEvent.setup()
-    const queryClient = createQueryClient()
-    const features = seedFeatures(queryClient)
-    fetchFeatures.mockResolvedValue(features)
-    const ControlledInviteModal = () => {
-      const [open, setOpen] = useState(false)
-
-      return (
-        <QueryClientProvider client={queryClient}>
-          <InviteModal
-            open={open}
-            trigger={<button type="button">members.invite</button>}
-            isEmailSetup
-            onOpenChange={setOpen}
-            onSend={onSend}
-          />
-        </QueryClientProvider>
-      )
-    }
-    render(<ControlledInviteModal />)
+    await renderModal({ open: false })
 
     const trigger = screen.getByRole('button', { name: /members\.invite$/i })
     await user.click(trigger)
@@ -686,7 +778,7 @@ describe('InviteModal', () => {
 
     await user.click(trigger)
     expect(screen.queryByText('person@example.com')).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: /members\.role/i })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: /members\.role/i }).textContent).toMatch(
       /members\.selectRole/i,
     )
   })

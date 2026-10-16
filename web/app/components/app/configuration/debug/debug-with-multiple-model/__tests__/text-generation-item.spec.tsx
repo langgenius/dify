@@ -1,11 +1,15 @@
 import type { ModelAndParameter } from '../../types'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import Log from '@/app/components/base/chat/chat/log'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
+import { DebugWithMultipleModelContextProvider } from '../context-provider'
 import TextGenerationItem from '../text-generation-item'
 
 const mockUseDebugConfigurationContext = vi.fn()
-const mockUseProviderContext = vi.fn()
+const mockModelListQuery = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseTextGeneration = vi.fn()
 const mockUseEventEmitterContextContext = vi.fn()
@@ -15,6 +19,7 @@ const { mockToastError } = vi.hoisted(() => ({
 }))
 
 let capturedTextGenerationProps: {
+  onOpenLog: (item: IChatItem) => void
   content: string
   isLoading: boolean
   isResponding: boolean
@@ -30,8 +35,9 @@ vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -62,6 +68,12 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
     capturedTextGenerationProps = props
     return (
       <div data-testid="text-generation">
+        {props && (
+          <Log
+            logItem={{ id: props.messageId!, isAnswer: true, content: props.content }}
+            onOpenLog={props.onOpenLog}
+          />
+        )}
         <span data-testid="content">{props?.content}</span>
         <span data-testid="is-loading">{props?.isLoading ? 'yes' : 'no'}</span>
         <span data-testid="is-responding">{props?.isResponding ? 'yes' : 'no'}</span>
@@ -89,7 +101,6 @@ const createDefaultMocks = () => {
         prompt_template: 'Hello {{name}}',
         prompt_variables: [{ key: 'name', name: 'Name', type: 'string', is_context_var: false }],
       },
-      system_parameters: {},
     },
     appId: 'app-123',
     inputs: { name: 'World' },
@@ -105,8 +116,8 @@ const createDefaultMocks = () => {
     datasetConfigs: { retrieval_model: 'single' },
   })
 
-  mockUseProviderContext.mockReturnValue({
-    textGenerationModelList: [
+  mockModelListQuery.mockReturnValue({
+    data: [
       {
         provider: 'openai',
         models: [
@@ -167,6 +178,25 @@ describe('TextGenerationItem', () => {
     capturedTextGenerationProps = null
     eventSubscriptionCallback = null
     createDefaultMocks()
+  })
+
+  it('opens this model result through the owning debug session', async () => {
+    const user = userEvent.setup()
+    const onOpenLog = vi.fn()
+    render(
+      <DebugWithMultipleModelContextProvider
+        multipleModelConfigs={[]}
+        onMultipleModelConfigsChange={vi.fn()}
+        onDebugWithMultipleModelChange={vi.fn()}
+        onOpenLog={onOpenLog}
+      >
+        <TextGenerationItem modelAndParameter={createModelAndParameter()} />
+      </DebugWithMultipleModelContextProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.log' }))
+    expect(onOpenLog).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: 'msg-123', isAnswer: true }),
+    )
   })
 
   describe('rendering', () => {
@@ -251,7 +281,6 @@ describe('TextGenerationItem', () => {
             prompt_template: 'My Template',
             prompt_variables: [],
           },
-          system_parameters: {},
         },
         appId: 'app-123',
         inputs: {},
@@ -281,7 +310,6 @@ describe('TextGenerationItem', () => {
             prompt_template: 'Should not be used',
             prompt_variables: [],
           },
-          system_parameters: {},
         },
         appId: 'app-123',
         inputs: {},
@@ -313,7 +341,6 @@ describe('TextGenerationItem', () => {
               { key: 'query', name: 'Query', type: 'string', is_context_var: false },
             ],
           },
-          system_parameters: {},
         },
         appId: 'app-123',
         inputs: {},
@@ -341,7 +368,6 @@ describe('TextGenerationItem', () => {
         isAdvancedMode: false,
         modelConfig: {
           configs: { prompt_template: '', prompt_variables: [] },
-          system_parameters: {},
         },
         appId: 'app-123',
         inputs: {},
@@ -597,8 +623,8 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [
+      mockModelListQuery.mockReturnValue({
+        data: [
           {
             provider: 'openai',
             models: [
@@ -643,8 +669,8 @@ describe('TextGenerationItem', () => {
         messageId: null,
       })
 
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [],
+      mockModelListQuery.mockReturnValue({
+        data: [],
       })
 
       renderComponent()
@@ -672,7 +698,6 @@ describe('TextGenerationItem', () => {
         isAdvancedMode: false,
         modelConfig: {
           configs: { prompt_template: '', prompt_variables: [] },
-          system_parameters: {},
         },
         appId: 'app-123',
         inputs: {},
@@ -701,7 +726,6 @@ describe('TextGenerationItem', () => {
               { key: 'var1', name: 'Var1', type: 'string', is_context_var: false },
             ],
           },
-          system_parameters: {},
         },
         appId: 'app-123',
         inputs: {},
@@ -735,7 +759,6 @@ describe('TextGenerationItem', () => {
         isAdvancedMode: false,
         modelConfig: {
           configs: { prompt_template: '', prompt_variables: promptVariables },
-          system_parameters: {},
         },
         appId: 'app-123',
         inputs: {},

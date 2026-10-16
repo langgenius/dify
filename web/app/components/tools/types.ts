@@ -1,4 +1,6 @@
+import type { WorkflowTriggerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type {
+  ToolParameter as ContractToolParameter,
   DatasourceProviderType,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
@@ -10,18 +12,22 @@ type LocalizedText<T = string> = {
   [key: string]: T
 }
 
-export enum AuthType {
-  none = 'none',
-  apiKey = 'api_key', // backward compatibility
-  apiKeyHeader = 'api_key_header',
-  apiKeyQuery = 'api_key_query',
-}
+export const AuthType = {
+  none: 'none',
+  apiKey: 'api_key', // backward compatibility
+  apiKeyHeader: 'api_key_header',
+  apiKeyQuery: 'api_key_query',
+} as const
 
-export enum AuthHeaderPrefix {
-  basic = 'basic',
-  bearer = 'bearer',
-  custom = 'custom',
-}
+export type AuthType = (typeof AuthType)[keyof typeof AuthType]
+
+export const AuthHeaderPrefix = {
+  basic: 'basic',
+  bearer: 'bearer',
+  custom: 'custom',
+} as const
+
+export type AuthHeaderPrefix = (typeof AuthHeaderPrefix)[keyof typeof AuthHeaderPrefix]
 
 export type Credential = {
   auth_type: AuthType
@@ -105,7 +111,7 @@ export type ToolParameter = {
   llm_description: string
   required: boolean
   multiple: boolean
-  default: string
+  default?: ContractToolParameter['default']
   options?: {
     label: LocalizedText
     value: string
@@ -174,8 +180,7 @@ export type CustomCollectionBackend = {
   schema: string
   privacy_policy: string
   custom_disclaimer: string
-  tools?: ParamItem[]
-  id: string
+  tools?: CustomParamSchema[]
   labels: string[]
 }
 
@@ -187,7 +192,7 @@ type ParamItem = {
   type: string
   form: string
   required: boolean
-  default: string
+  default?: ContractToolParameter['default']
   min?: number
   max?: number
   options?: {
@@ -243,6 +248,7 @@ export type WorkflowToolProviderOutputSchema = {
 
 export type WorkflowToolProviderRequest = {
   name: string
+  label: string
   icon: Emoji
   description: string
   parameters: WorkflowToolProviderParameter[]
@@ -279,8 +285,12 @@ export type MCPServerDetail = {
   headers?: Record<string, string>
 }
 
-export enum MCPAuthMethod {
-  authentication = 'authentication',
-  headers = 'headers',
-  configurations = 'configurations',
-}
+export const MCPAuthMethod = {
+  authentication: 'authentication',
+  headers: 'headers',
+  configurations: 'configurations',
+} as const
+
+export type MCPAuthMethod = (typeof MCPAuthMethod)[keyof typeof MCPAuthMethod]
+
+export type AppTrigger = WorkflowTriggerResponse

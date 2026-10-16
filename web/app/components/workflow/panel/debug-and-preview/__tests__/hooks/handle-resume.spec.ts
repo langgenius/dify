@@ -1,6 +1,6 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
@@ -20,14 +20,14 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: any[]) => mockSubmitHumanInputForm(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -91,7 +91,9 @@ describe('useChat – handleResume', () => {
       capturedResumeOptions = options
     })
 
-    const hook = renderHook(() => useChat({}))
+    const hook = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       hook.result.current.handleSend({ query: 'test' }, {})
@@ -118,7 +120,9 @@ describe('useChat – handleResume', () => {
   }
 
   it('should call sseGet with the correct URL', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
@@ -137,7 +141,9 @@ describe('useChat – handleResume', () => {
       options.getAbortController(mockAbortCtrl)
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleResume('msg-1', 'wfr-1', {})
@@ -162,7 +168,9 @@ describe('useChat – handleResume', () => {
       sendCallbacks = callbacks
     })
 
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSend({ query: 'test' }, {})
@@ -204,7 +212,9 @@ describe('useChat – handleResume', () => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() => useChat({}))
+      const hook = renderHook(() => useChat({}), {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      })
 
       act(() => {
         hook.result.current.handleSend({ query: 'test' }, {})
@@ -381,8 +391,9 @@ describe('useChat – handleResume', () => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       act(() => {
@@ -417,10 +428,12 @@ describe('useChat – handleResume', () => {
     })
 
     it('should fetch suggested questions when enabled', async () => {
-      const mockGetSuggested = vi.fn().mockImplementation((_id: string, getAbortCtrl: any) => {
-        getAbortCtrl(new AbortController())
-        return Promise.resolve({ data: ['s1'] })
-      })
+      const mockGetSuggested = vi
+        .fn()
+        .mockImplementation((_id: string, onCancel: (cancel: () => void) => void) => {
+          onCancel(vi.fn())
+          return Promise.resolve({ data: ['s1'] })
+        })
       let sendCallbacks: any
       mockHandleRun.mockImplementation((_params: any, callbacks: any) => {
         sendCallbacks = callbacks
@@ -429,8 +442,9 @@ describe('useChat – handleResume', () => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       act(() => {
@@ -473,8 +487,9 @@ describe('useChat – handleResume', () => {
         capturedResumeOptions = options
       })
 
-      const hook = renderHook(() =>
-        useChat({ suggested_questions_after_answer: { enabled: true } }),
+      const hook = renderHook(
+        () => useChat({ suggested_questions_after_answer: { enabled: true } }),
+        { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
       )
 
       act(() => {
@@ -940,7 +955,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       },
     ]
 
-    const hook = renderHook(() => useChat({}, undefined, prevChatTree))
+    const hook = renderHook(() => useChat({}, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       hook.result.current.handleResume('bare-msg', 'wfr-bare', {})
@@ -971,7 +988,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       },
     ]
 
-    const hook = renderHook(() => useChat({}, undefined, prevChatTree))
+    const hook = renderHook(() => useChat({}, undefined, prevChatTree), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       hook.result.current.handleResume('bare-msg-nt', 'wfr-bare-nt', {})
@@ -1101,7 +1120,9 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       },
     ]
 
-    const hook = renderHook(() => useChat({}, undefined, prevChatTreeNoWP))
+    const hook = renderHook(() => useChat({}, undefined, prevChatTreeNoWP), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     let opts: any
     mockSseGet.mockImplementation((_url: any, _opts: any, options: any) => {
       opts = options

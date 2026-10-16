@@ -1,14 +1,19 @@
-import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AgentSoulDifyToolConfig,
+  AppDetailWithSite,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { OperationKey } from '@orpc/tanstack-query'
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import { consoleQuery } from '@/service/client'
-import { FlowType } from '@/types/common'
+import { consoleQuery } from '@/service/console'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
@@ -19,6 +24,15 @@ import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } fro
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: vi.fn((url: string) => {
+    if (url.endsWith('/workspaces/current/agent-providers'))
+      return Promise.resolve(Response.json([]))
+    throw new Error(`Unexpected request: ${url}`)
+  }),
+}))
 
 const toolServiceState = vi.hoisted(() => ({
   buildInTools: [] as ToolWithProvider[] | undefined,
@@ -44,13 +58,6 @@ vi.mock('reactflow', async () => {
   }
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolServiceState.buildInTools }),
-  useAllCustomTools: () => ({ data: toolServiceState.customTools }),
-  useAllMCPTools: () => ({ data: toolServiceState.mcpTools }),
-  useAllWorkflowTools: () => ({ data: toolServiceState.workflowTools }),
-}))
-
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
     data:
@@ -74,14 +81,6 @@ vi.mock('@/service/use-plugins', () => ({
 vi.mock('@/service/use-triggers', async () =>
   (await import('../../__tests__/service-mock-factory')).createTriggerServiceMock(),
 )
-
-vi.mock('@/service/use-strategy', () => ({
-  useStrategyProviders: () => ({ data: [] }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelList: () => ({ data: [] }),
-}))
 
 type CheckValidFn = (data: CommonNodeType, t: unknown, extra?: unknown) => { errorMessage: string }
 const mockNodesMap: Record<
@@ -125,14 +124,10 @@ vi.mock('../../nodes/_base/components/variable/utils', () => ({
   isSpecialVar: () => false,
 }))
 
-vi.mock('@/app/components/app/store', () => {
-  const state = { appDetail: { mode: 'workflow' } }
-  return {
-    useStore: {
-      getState: () => state,
-    },
-  }
-})
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: 'app-1' }),
+}))
 
 vi.mock('../../datasets-detail-store/store', () => ({
   useDatasetsDetailStore: () => ({}),
@@ -143,7 +138,7 @@ vi.mock('../index', () => ({
   useNodesMetaData: () => ({ nodes: [], nodesMap: mockNodesMap }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -154,12 +149,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en',
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { modelProviders: Array<{ provider: string }> }) => unknown,
-  ) => selector({ modelProviders: mockModelProviders }),
 }))
 
 // useWorkflowNodes reads from WorkflowContext (real store via renderWorkflowHook)
@@ -263,6 +252,7 @@ function buildInlineAgentGraph({
   })
   const appId = 'app-id'
   const nodeId = 'inline-agent-node'
+  queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
       input: {
@@ -324,12 +314,9 @@ function buildInlineAgentGraph({
     nodes: [startNode, agentNode],
     options: {
       queryClient,
+      resource: { kind: 'app' as const, appId, mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: appId,
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     },
   }
@@ -421,17 +408,19 @@ describe('useChecklist', () => {
     expect(warning!.errorMessages).toContain('Model not configured')
   })
 
-  it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', () => {
+  it('should validate legacy Agent nodes when their metadata is hidden by Agent v2', async () => {
     const { nodes, edges } = buildLegacyAgentGraph()
 
     const { result } = renderWorkflowHook(() => useChecklist(nodes, edges))
 
-    expect(result.current).toEqual([
-      expect.objectContaining({
-        id: 'legacy-agent',
-        errorMessages: ['workflow.nodes.agent.checkList.strategyNotSelected'],
-      }),
-    ])
+    await waitFor(() =>
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: 'legacy-agent',
+          errorMessages: ['workflow.nodes.agent.checkList.strategyNotSelected'],
+        }),
+      ]),
+    )
   })
 
   it.each([
@@ -554,14 +543,14 @@ describe('useChecklist', () => {
 
     const edges = [createEdge({ source: 'start', target: 'llm' })]
 
-    renderWorkflowHook(() =>
-      useChecklist([startNode, llmNode], edges, { flowType: FlowType.snippet }),
-    )
+    renderWorkflowHook(() => useChecklist([startNode, llmNode], edges), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     expect(checkValid).toHaveBeenCalledWith(
       expect.objectContaining({ type: BlockEnum.LLM }),
       expect.any(Function),
-      expect.objectContaining({ flowType: FlowType.snippet }),
+      expect.objectContaining({ resourceKind: 'snippet' }),
     )
   })
 
@@ -814,13 +803,7 @@ describe('useChecklistBeforePublish', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
-    let isValid: boolean | undefined
-
-    await act(async () => {
-      isValid = await result.current.handleCheckBeforePublish()
-    })
-
-    expect(isValid).toBe(false)
+    await waitFor(async () => expect(await result.current.handleCheckBeforePublish()).toBe(false))
   })
 })
 
@@ -853,5 +836,35 @@ describe('useWorkflowRunValidation', () => {
 
     expect(typeof result.current.validateBeforeRun).toBe('function')
     expect(result.current.validateBeforeRun()).toBe(true)
+  })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const reactQuery = {
+    ...actual,
+    useQuery: (options: {
+      queryKey: OperationKey<
+        'query',
+        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
+      >
+      select?: (data: AppDetailWithSite) => unknown
+    }) => {
+      if (options.queryKey[0].join('.') === 'console.apps.byAppId.get') {
+        const appDetail = createAppDetailFixture({ mode: 'workflow' as const })
+        return { data: options.select ? options.select(appDetail) : appDetail }
+      }
+      if (options.queryKey[0].includes('modelProviders') && options.queryKey[0].includes('summary'))
+        return { data: mockModelProviders }
+      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
+      return { data: [] }
+    },
+  } as typeof actual
+  return mockConsoleOperationHooks(reactQuery, {
+    'workspaces.current.tools.builtin.get': () => ({ data: toolServiceState.buildInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: toolServiceState.customTools }),
+    'workspaces.current.tools.mcp.get': () => ({ data: toolServiceState.mcpTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: toolServiceState.workflowTools }),
   })
 })

@@ -1,16 +1,19 @@
 'use client'
+
 import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectItem } from './type-select'
+import type { ConfigModalValidationError } from './utils'
 import type { InputVar, InputVarType, MoreInfo } from '@/app/components/workflow/types'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { toast } from '@/app/components/app/configuration/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum } from '@/types/app'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import {
   checkKeys,
   getNewVarInWorkflow,
@@ -50,15 +53,21 @@ const ConfigModal: FC<IConfigModalProps> = ({
   supportFile,
 }) => {
   const { modelConfig } = useContext(ConfigContext)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appDebug', 'workflow'])
   const [tempPayload, setTempPayload] = useState<InputVar>(() =>
     normalizeSelectDefaultValue(payload || (getNewVarInWorkflow('') as any)),
   )
+  const [validationError, setValidationError] = useState<ConfigModalValidationError>()
+  const queryClient = useQueryClient()
   const { type, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
-  const appDetail = useAppStore((state) => state.appDetail)
-  const isBasicApp =
-    appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
+  const { appId } = useParams<{ appId?: string }>()
+  const { data: appDetail } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
+  const isBasicApp = appDetail?.mode !== 'advanced-chat' && appDetail?.mode !== 'workflow'
   const jsonSchemaStr = useMemo(
     () => getJsonSchemaEditorValue(type, tempPayload.json_schema),
     [tempPayload.json_schema, type],
@@ -67,6 +76,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
     // To fix the first input element auto focus, then directly close modal will raise error
     if (isShow) modalRef.current?.focus()
   }, [isShow])
+  useEffect(() => {
+    if (validationError)
+      modalRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  }, [validationError])
 
   const isStringInput = isStringInputType(type)
   const checkVariableName = useCallback(
@@ -88,6 +101,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const handlePayloadChange = useCallback((key: string) => {
     return (value: any) => {
       setTempPayload((prev) => updatePayloadField(prev, key, value))
+      setValidationError((prev) => (prev?.field === key ? undefined : prev))
     }
   }, [])
 
@@ -102,7 +116,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         const v = JSON.parse(value)
         handlePayloadChange('json_schema')(JSON.stringify(v, null, 2))
       } catch {
-        return null
+        handlePayloadChange('json_schema')(value)
       }
     },
     [handlePayloadChange],
@@ -120,6 +134,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   const handleTypeChange = useCallback((item: SelectItem) => {
     setTempPayload((prev) => createPayloadForType(prev, item.value as InputVarType))
+    setValidationError(undefined)
   }, [])
 
   const handleVarKeyBlur = useCallback(
@@ -127,6 +142,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       const varName = e.target.value
       if (!checkVariableName(varName, true) || tempPayload.label) return
 
+      setValidationError((prev) => (prev?.field === 'label' ? undefined : prev))
       setTempPayload((prev) => {
         return {
           ...prev,
@@ -159,19 +175,24 @@ const ConfigModal: FC<IConfigModalProps> = ({
   )
 
   const handleConfirm = () => {
-    const { errorMessage, moreInfo, payloadToSave } = validateConfigModalPayload({
+    const fileUploadConfig = queryClient.getQueryData(consoleQuery.files.upload.get.queryKey())
+    const { errorMessage, errorField, moreInfo, payloadToSave } = validateConfigModalPayload({
       tempPayload,
       payload,
-      checkVariableName,
+      maxFileUploadLimit: Number(fileUploadConfig?.workflow_file_upload_limit) || undefined,
       t,
     })
 
-    if (errorMessage) {
+    if (errorMessage && errorField) {
+      setValidationError({ field: errorField, message: errorMessage })
       toast.error(errorMessage)
       return
     }
 
-    if (payloadToSave) onConfirm(payloadToSave, moreInfo)
+    if (payloadToSave) {
+      setValidationError(undefined)
+      onConfirm(payloadToSave, moreInfo)
+    }
   }
 
   return (
@@ -182,40 +203,60 @@ const ConfigModal: FC<IConfigModalProps> = ({
       }}
     >
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden! border-none p-0! text-left align-middle">
-        <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
-          {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
-            ns: 'appDebug',
-          })}
-        </DialogTitle>
-
-        <div
-          ref={modalRef}
-          tabIndex={-1}
-          data-testid="config-modal-scroll-area"
-          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+        <form
+          noValidate
+          className="flex min-h-0 flex-col"
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleConfirm()
+          }}
         >
-          <ConfigModalFormFields
-            checkboxDefaultSelectValue={checkboxDefaultSelectValue}
-            isStringInput={isStringInput}
-            jsonSchemaStr={jsonSchemaStr}
-            maxLength={max_length}
-            modelId={modelConfig.model_id}
-            onFilePayloadChange={(payload) => setTempPayload(payload as InputVar)}
-            onJSONSchemaChange={handleJSONSchemaChange}
-            onPayloadChange={handlePayloadChange}
-            onTypeChange={handleTypeChange}
-            onVarKeyBlur={handleVarKeyBlur}
-            onVarNameChange={handleVarNameChange}
-            options={options}
-            selectOptions={selectOptions}
-            showHiddenField={showHiddenField}
-            tempPayload={tempPayload}
-            t={t}
-          />
-        </div>
-        <div className="shrink-0 px-6 pt-2 pb-6">
-          <ModalFoot onConfirm={handleConfirm} onCancel={onClose} />
-        </div>
+          <DialogTitle className="shrink-0 px-6 pt-6 title-2xl-semi-bold text-text-primary">
+            {t(($) => $[`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`], {
+              ns: 'appDebug',
+            })}
+          </DialogTitle>
+
+          <div
+            ref={modalRef}
+            tabIndex={-1}
+            data-testid="config-modal-scroll-area"
+            className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-6 py-4 pb-8"
+          >
+            <ConfigModalFormFields
+              checkboxDefaultSelectValue={checkboxDefaultSelectValue}
+              isStringInput={isStringInput}
+              jsonSchemaStr={jsonSchemaStr}
+              maxLength={max_length}
+              modelId={modelConfig.model_id}
+              onFilePayloadChange={(nextPayload) => {
+                if (
+                  validationError &&
+                  (validationError.field === 'allowed_file_types' ||
+                    validationError.field === 'allowed_file_extensions') &&
+                  (nextPayload[validationError.field] !== tempPayload[validationError.field] ||
+                    nextPayload.allowed_file_types !== tempPayload.allowed_file_types)
+                )
+                  setValidationError(undefined)
+                setTempPayload(nextPayload as InputVar)
+              }}
+              onJSONSchemaChange={handleJSONSchemaChange}
+              onPayloadChange={handlePayloadChange}
+              onTypeChange={handleTypeChange}
+              onVarKeyBlur={handleVarKeyBlur}
+              onVarNameChange={handleVarNameChange}
+              options={options}
+              selectOptions={selectOptions}
+              showHiddenField={showHiddenField}
+              tempPayload={tempPayload}
+              validationError={validationError}
+              t={t}
+            />
+          </div>
+          <div className="shrink-0 px-6 pt-2 pb-6">
+            <ModalFoot confirmType="submit" onCancel={onClose} />
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   )

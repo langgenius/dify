@@ -14,28 +14,6 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useCopyWorkspaceRole: () => ({
-    mutateAsync: vi.fn(),
-  }),
-  useDeleteWorkspaceRole: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
-  useGetMembersOfRole: () => ({
-    data: {
-      data: [],
-      pagination: {
-        total_count: 0,
-        per_page: 1,
-        current_page: 1,
-        total_pages: 1,
-      },
-    },
-    isPending: false,
-  }),
-}))
-
 const createRole = (overrides: Partial<Role> = {}): Role => ({
   id: 'role-1',
   tenant_id: 'tenant-1',
@@ -57,6 +35,31 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.byRoleId.copy.post': () => ({
+      mutateAsync: vi.fn(),
+    }),
+    'workspaces.current.rbac.roles.byRoleId.delete': () => ({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    }),
+    'workspaces.current.rbac.roles.byRoleId.members.get': () => ({
+      data: {
+        data: [],
+        pagination: {
+          total_count: 0,
+          per_page: 1,
+          current_page: 1,
+          total_pages: 1,
+        },
+      },
+      isPending: false,
+    }),
+  })
+})
+
 describe('RoleList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -67,7 +70,7 @@ describe('RoleList', () => {
     it('shows a loading status while the first page is loading', () => {
       render(<RoleList groups={[]} isLoading />)
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(screen.queryByText(/permission\.role\.groups/)).not.toBeInTheDocument()
     })
 
@@ -124,7 +127,7 @@ describe('RoleList', () => {
       )
 
       expect(screen.getByText('Owner')).toBeInTheDocument()
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     })
   })
 

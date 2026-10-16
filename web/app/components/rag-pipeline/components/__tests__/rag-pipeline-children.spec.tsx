@@ -101,7 +101,7 @@ vi.mock('../update-dsl-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
+vi.mock('../export-confirm-modal', () => ({
   default: ({
     envList,
     onConfirm,

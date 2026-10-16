@@ -1,6 +1,6 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { ChatRequestPayloadWithUser } from '@dify/contracts/api/service/types.gen'
-import { consumeServiceApiSse, SERVICE_API_STREAM_TIMEOUT_MS } from './service-api-sse'
+import { consumeServiceApiSse, SERVICE_API_STREAM_TIMEOUT_MS } from './service-api-sse.ts'
 
 export type AgentServiceApiChatResult = {
   body: unknown

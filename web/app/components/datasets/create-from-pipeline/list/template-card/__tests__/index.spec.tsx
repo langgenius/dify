@@ -1,8 +1,15 @@
 import type { PipelineTemplate } from '@/models/pipeline'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { QueryClient } from '@tanstack/react-query'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import TemplateCard from '../index'
+
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
 
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -19,8 +26,8 @@ const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     toast: {
@@ -45,14 +52,12 @@ let _capturedOpenEditModal: (() => void) | undefined
 vi.mock('../actions', () => ({
   default: ({
     onApplyTemplate,
-    handleShowTemplateDetails,
     showMoreOperations,
     openEditModal,
     handleExportDSL,
     handleDelete,
   }: {
     onApplyTemplate: () => void
-    handleShowTemplateDetails: () => void
     showMoreOperations: boolean
     openEditModal: () => void
     handleExportDSL: () => void
@@ -66,9 +71,7 @@ vi.mock('../actions', () => ({
         <button data-testid="action-choose" onClick={onApplyTemplate}>
           operations.choose
         </button>
-        <button data-testid="action-details" onClick={handleShowTemplateDetails}>
-          operations.details
-        </button>
+        <DialogTrigger data-testid="action-details">operations.details</DialogTrigger>
         {showMoreOperations && (
           <>
             <button data-testid="action-edit" onClick={openEditModal}>
@@ -98,56 +101,44 @@ vi.mock('../edit-pipeline-info', () => ({
   ),
 }))
 
-// Mock Details component
-vi.mock('../details', () => ({
-  default: ({ onClose, onApplyTemplate }: { onClose: () => void; onApplyTemplate: () => void }) => (
-    <div data-testid="details-component">
-      <button data-testid="details-close" onClick={onClose}>
-        Close
-      </button>
-      <button data-testid="details-apply" onClick={onApplyTemplate}>
-        Apply
-      </button>
-    </div>
-  ),
+vi.mock('@/app/components/workflow/workflow-preview', () => ({
+  default: () => <div>Workflow preview</div>,
 }))
 
 const mockCreateDataset = vi.fn()
-const mockInvalidDatasetList = vi.fn()
 const mockGetPipelineTemplateInfo = vi.fn()
 const mockDeletePipeline = vi.fn()
 const mockExportPipelineDSL = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 
 // Configurable isPending for export
 let mockIsExporting = false
 
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreatePipelineDatasetFromCustomized: () => ({
-    mutateAsync: mockCreateDataset,
-  }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineTemplateById: () => ({
-    refetch: mockGetPipelineTemplateInfo,
-  }),
-  useDeleteTemplate: () => ({
-    mutateAsync: mockDeletePipeline,
-  }),
-  useExportTemplateDSL: () => ({
-    mutateAsync: mockExportPipelineDSL,
-    get isPending() {
-      return mockIsExporting
-    },
-  }),
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipeline.dataset.post': () => ({ mutateAsync: mockCreateDataset }),
+    'rag.pipeline.templates.byTemplateId.get': () => ({
+      data: {
+        name: 'Test Pipeline',
+        description: 'Test pipeline description',
+        icon_info: { icon_type: 'emoji', icon: '📊', icon_background: '#FFF4ED', icon_url: '' },
+        chunk_structure: 'text',
+        graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+      },
+      refetch: mockGetPipelineTemplateInfo,
+    }),
+    'rag.pipeline.customized.templates.byTemplateId.delete': () => ({
+      mutateAsync: mockDeletePipeline,
+    }),
+    'rag.pipeline.customized.templates.byTemplateId.post': () => ({
+      mutateAsync: mockExportPipelineDSL,
+      get isPending() {
+        return mockIsExporting
+      },
+    }),
+  })
+})
 
 // Mock plugin dependencies hook
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
@@ -186,6 +177,7 @@ describe('TemplateCard', () => {
     screen.getByRole('button', { name: 'common.operation.cancel' })
 
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     mockToastSuccess.mockReset()
     mockToastError.mockReset()
@@ -281,7 +273,7 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockInvalidDatasetList).toHaveBeenCalled()
+        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
       })
     })
 
@@ -324,7 +316,7 @@ describe('TemplateCard', () => {
       fireEvent.click(detailsButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
     })
 
@@ -334,14 +326,14 @@ describe('TemplateCard', () => {
       fireEvent.click(detailsButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
 
-      const closeButton = screen.getByTestId('details-close')
+      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
       fireEvent.click(closeButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'Test Pipeline' })).not.toBeInTheDocument()
       })
     })
 
@@ -350,13 +342,13 @@ describe('TemplateCard', () => {
       fireEvent.click(screen.getByTestId('action-details'))
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
 
       fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
-        expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog', { name: 'Test Pipeline' })).not.toBeInTheDocument()
       })
     })
 
@@ -371,10 +363,12 @@ describe('TemplateCard', () => {
       fireEvent.click(detailsButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+        expect(screen.getByRole('dialog', { name: 'Test Pipeline' })).toBeInTheDocument()
       })
 
-      const applyButton = screen.getByTestId('details-apply')
+      const applyButton = screen.getByRole('button', {
+        name: 'datasetPipeline.operations.useTemplate',
+      })
       fireEvent.click(applyButton)
 
       await waitFor(() => {
@@ -457,7 +451,10 @@ describe('TemplateCard', () => {
       fireEvent.click(exportButton)
 
       await waitFor(() => {
-        expect(mockExportPipelineDSL).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
+        expect(mockExportPipelineDSL).toHaveBeenCalledWith(
+          { params: { template_id: 'pipeline-1' } },
+          expect.any(Object),
+        )
       })
     })
 
@@ -557,7 +554,10 @@ describe('TemplateCard', () => {
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
-        expect(mockDeletePipeline).toHaveBeenCalledWith('pipeline-1', expect.any(Object))
+        expect(mockDeletePipeline).toHaveBeenCalledWith(
+          { params: { template_id: 'pipeline-1' } },
+          expect.any(Object),
+        )
       })
     })
 
@@ -578,7 +578,9 @@ describe('TemplateCard', () => {
       fireEvent.click(getDeleteConfirmButton())
 
       await waitFor(() => {
-        expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
+        expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+          queryKey: expect.arrayContaining([['console', 'rag', 'pipeline', 'templates', 'get']]),
+        })
       })
     })
 

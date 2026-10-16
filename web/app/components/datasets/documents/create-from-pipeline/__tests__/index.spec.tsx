@@ -1,12 +1,25 @@
 import { waitFor } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import CreateFromPipeline from '../index'
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.publish.get': () => ({
+      data: { graph: { nodes: [] } },
+      isFetching: false,
+    }),
+    'files.upload.get': () => ({
+      data: { file_size_limit: 15, batch_count_limit: 5 },
+    }),
+  })
+})
 
 const mockPlan = {
   usage: { vectorSpace: 50 },
   total: { vectorSpace: 100 },
-  type: 'professional',
+  type: 'professional' as 'professional' | 'sandbox',
 }
 
 const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
@@ -16,19 +29,17 @@ const render = (ui: React.ReactElement, vectorSpaceUsageUnknown = false) => {
     limit: mockPlan.total.vectorSpace,
     usage_unknown: vectorSpaceUsageUnknown,
   })
-  return renderWithConsoleQuery(ui, { queryClient })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
 }
 
 let mockDatasetPermissionKeys = ['dataset.acl.use']
 let mockAllFileLoaded = false
 const mockRouterReplace = vi.fn()
 const mockStepOneContent = vi.fn()
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: (
-    selector: (state: { plan: typeof mockPlan; enableBilling: boolean }) => unknown,
-  ) => selector({ plan: mockPlan, enableBilling: true }),
-}))
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -37,6 +48,7 @@ vi.mock('@/context/workspace-state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
@@ -47,6 +59,7 @@ vi.mock('@/context/permission-state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
@@ -57,6 +70,7 @@ vi.mock('@/features/system-features/state', async () => {
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: ['dataset.create_and_management'],
     isLoadingWorkspacePermissionKeys: false,
+    deploymentEdition: 'CLOUD',
   }))
 })
 
@@ -85,19 +99,6 @@ vi.mock('@/next/navigation', () => ({
     push: vi.fn(),
     replace: mockRouterReplace,
     back: vi.fn(),
-  }),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15, batch_count_limit: 5 },
-  }),
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  usePublishedPipelineInfo: () => ({
-    data: { graph: { nodes: [] } },
-    isFetching: false,
   }),
 }))
 

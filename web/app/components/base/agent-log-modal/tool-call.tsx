@@ -4,15 +4,21 @@ import type { ToolCall } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCheckboxCircleLine, RiErrorWarningLine } from '@remixicon/react'
 import { useState } from 'react'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useLocale } from '#i18n'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useLocale } from '@/context/i18n'
+
+const getToolIcon = (icon: ToolCall['tool_icon']) => {
+  if (typeof icon === 'string') return icon
+  if (icon?.content !== undefined && icon.background !== undefined)
+    return { content: icon.content, background: icon.background }
+  return undefined
+}
 
 type Props = Readonly<{
-  toolCall: ToolCall
+  toolCall: Partial<ToolCall> & Pick<ToolCall, 'status'>
   isLLM: boolean
   isFinal?: boolean
   tokens?: number
@@ -32,7 +38,9 @@ const ToolCallItem: FC<Props> = ({
   const locale = useLocale()
   const toolName = isLLM
     ? 'LLM'
-    : toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')]
+    : typeof toolCall.tool_label === 'string'
+      ? toolCall.tool_label
+      : toolCall.tool_label?.[locale] || toolCall.tool_label?.[locale.replaceAll('-', '_')]
 
   const getTime = (time: number) => {
     if (time < 1) return `${(time * 1000).toFixed(3)} ms`
@@ -61,16 +69,20 @@ const ToolCallItem: FC<Props> = ({
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
-          <ChevronRight
+          <span
+            aria-hidden
             className={cn(
-              'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
-              !collapseState && 'rotate-90',
+              'i-custom-vender-line-arrows-chevron-right h-3.5 w-3.5',
+              cn(
+                'mr-1 size-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                !collapseState && 'rotate-90',
+              ),
             )}
           />
           <BlockIcon
             className={cn('mr-2 shrink-0')}
             type={isLLM ? BlockEnum.LLM : BlockEnum.Tool}
-            toolIcon={toolCall.tool_icon}
+            toolIcon={getToolIcon(toolCall.tool_icon)}
           />
           <div
             className={cn('grow truncate text-[13px] leading-4 font-semibold text-text-secondary')}

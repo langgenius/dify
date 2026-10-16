@@ -12,24 +12,30 @@ import type {
 import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
+import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
+import { useGetLanguage } from '@/context/i18n'
 import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
   setProviderToolCredentialAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { consoleQuery } from '@/service/console'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useInvalidateAllBuiltInTools } from '@/service/use-tools'
-import { getIconFromMarketPlace } from '@/utils/get-icon'
 import {
+  createAgentToolProviderCatalog,
   getAgentProviderPluginId,
   getAgentProviderToolDisplayName,
+  getAgentProviderToolIcon,
   getLocalizedText,
   getProviderCredentialType,
   getProviderCredentialVariant,
@@ -68,6 +74,7 @@ const AgentToolItem = memo(
     onEditCliTool,
     onCredentialChange,
     onPluginInstalled,
+    defaultExpanded = false,
   }: {
     tool: DisplayAgentTool
     onConfigureAction: (target: ToolSettingTarget) => void
@@ -81,8 +88,9 @@ const AgentToolItem = memo(
       credentialType?: AgentProviderTool['credentialType'],
     ) => void
     onPluginInstalled: () => void
+    defaultExpanded?: boolean
   }) => {
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
     const handleRemoveProvider = useCallback(() => {
       onDeleteProviderTool(tool.id)
@@ -148,7 +156,10 @@ function useDisplayTools(
   tools: AgentTool[],
   providerById: Map<string, ToolWithProvider>,
   resolvedProviderTypes: Set<AgentProviderTool['providerType']>,
-  toolPresentation: ReturnType<typeof useAgentToolPresentation>,
+  toolPresentation: {
+    language: string
+    marketplacePluginById?: ReturnType<typeof useAgentToolPresentation>['marketplacePluginById']
+  },
 ) {
   const { language, marketplacePluginById } = toolPresentation
 
@@ -160,7 +171,7 @@ function useDisplayTools(
 
       if (!provider) {
         const providerPluginId = getAgentProviderPluginId(tool)
-        const marketplacePlugin = marketplacePluginById.get(providerPluginId)
+        const marketplacePlugin = marketplacePluginById?.get(providerPluginId)
 
         return {
           ...tool,
@@ -173,16 +184,12 @@ function useDisplayTools(
             marketplacePlugin,
             tool,
           }),
-          icon:
-            tool.icon ??
-            (marketplacePlugin && providerPluginId
-              ? getIconFromMarketPlace(providerPluginId)
-              : undefined),
+          icon: getAgentProviderToolIcon(tool),
         }
       }
 
       const providerToolByName = new Map(
-        provider.tools.map((providerTool) => [providerTool.name, providerTool]),
+        (provider.tools ?? []).map((providerTool) => [providerTool.name, providerTool]),
       )
       const providerCredentialType = getProviderCredentialType(provider)
 
@@ -190,7 +197,7 @@ function useDisplayTools(
         ...tool,
         isInstalled: true,
         displayName: getAgentProviderToolDisplayName({ language, provider, tool }),
-        icon: tool.icon ?? provider.icon,
+        icon: getAgentProviderToolIcon(tool, provider),
         iconDark: tool.iconDark ?? provider.icon_dark,
         providerType: tool.providerType,
         allowDelete: tool.allowDelete ?? provider.allow_delete,
@@ -244,7 +251,9 @@ function AddToolMenuItem({
       />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1">
-          <span className="truncate system-sm-semibold text-text-secondary">{label}</span>
+          <span className="truncate system-sm-semibold text-text-secondary" title={label}>
+            {label}
+          </span>
           {badge && (
             <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
               {badge}
@@ -272,7 +281,7 @@ function AddToolMenu({
   onAddTools: (tools: AgentProviderToolDefaultValue[]) => void
   selectedTools: ToolValue[]
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
   const { providerById } = useAgentToolProviderCatalog()
@@ -382,10 +391,10 @@ function AddToolMenu({
 }
 
 export function AgentTools() {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const readOnly = useAgentOrchestrateReadOnly()
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
-  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const { providerById, resolvedProviderTypes } = useAgentToolProviderCatalog()
   const tools = useAtomValue(agentComposerToolsAtom)
@@ -419,10 +428,12 @@ export function AgentTools() {
   )
   const handlePluginInstalled = useCallback(() => {
     void Promise.allSettled([
-      invalidateAllBuiltInTools(),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+      }),
       invalidateInstalledPluginList(PluginCategoryEnum.tool),
     ])
-  }, [invalidateAllBuiltInTools, invalidateInstalledPluginList])
+  }, [invalidateInstalledPluginList, queryClient])
   const visibleTools = useMemo(
     () => (ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')),
     [tools],
@@ -512,7 +523,7 @@ export function AgentTools() {
     'cli',
     ENABLE_AGENT_CLI_TOOLS ? openCliToolDialogFromPrompt : () => {},
   )
-  const toolsTip = t(($) => $['agentDetail.configure.tools.tip'])
+
   const toolsListId = 'agent-configure-tools-list'
   const settingTargetTool = settingTarget
     ? tools.find((tool) => tool.kind === 'provider' && tool.id === settingTarget.toolId)
@@ -529,9 +540,7 @@ export function AgentTools() {
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
         tip={<AgentConfigureTipContent type="tools" />}
-        tipAriaLabel={toolsTip}
-        rootClassName="border-b border-divider-subtle pt-4"
-        panelContentClassName="flex flex-col gap-1 pb-4"
+        panelContentClassName="flex flex-col gap-1"
         actions={
           !readOnly ? (
             <AddToolMenu
@@ -580,5 +589,81 @@ export function AgentTools() {
         />
       )}
     </>
+  )
+}
+
+export function AgentTemplateTools() {
+  const { t } = useTranslation(['agentV2'])
+  const language = useGetLanguage()
+  const labelId = useId()
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const visibleTools = ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')
+  const providerTypes = new Set(
+    visibleTools.filter((tool) => tool.kind === 'provider').map((tool) => tool.providerType),
+  )
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.builtIn) || providerTypes.has('plugin'),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.custom),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.workflow),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({
+      enabled: providerTypes.has(CollectionType.mcp),
+      select: selectToolsWithProvider,
+    }),
+  )
+  const catalog = useMemo(
+    () => createAgentToolProviderCatalog({ buildInTools, customTools, workflowTools, mcpTools }),
+    [buildInTools, customTools, workflowTools, mcpTools],
+  )
+  const displayTools = useDisplayTools(
+    visibleTools,
+    catalog.providerById,
+    catalog.resolvedProviderTypes,
+    { language },
+  )
+
+  return (
+    <ConfigureSection
+      label={t(($) => $['agentDetail.configure.tools.label'])}
+      labelId={labelId}
+      tip={<AgentConfigureTipContent type="tools" />}
+      panelContentClassName="flex flex-col gap-1"
+    >
+      {displayTools.length === 0 ? (
+        <ConfigureSectionEmpty
+          title={t(($) => $['agentDetail.configure.tools.empty.title'])}
+          description={t(($) => $['agentDetail.configure.tools.empty.description'])}
+        />
+      ) : (
+        displayTools.map((tool, index) => (
+          <AgentToolItem
+            key={tool.id}
+            tool={tool.kind === 'provider' ? { ...tool, isInstalled: undefined } : tool}
+            defaultExpanded={index === 0}
+            onConfigureAction={noop}
+            onDeleteCliTool={noop}
+            onDeleteProviderTool={noop}
+            onDeleteProviderToolAction={noop}
+            onEditCliTool={noop}
+            onCredentialChange={noop}
+            onPluginInstalled={noop}
+          />
+        ))
+      )}
+    </ConfigureSection>
   )
 }

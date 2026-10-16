@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -16,7 +15,7 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({}))
+vi.mock('@/app/notifications', () => ({}))
 
 // Mock CodeEditor to trigger onChange easily
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
@@ -281,5 +280,21 @@ describe('InputsFormContent', () => {
 
     render(<InputsFormContent />)
     expect(screen.getByDisplayValue('conv value'))!.toBeInTheDocument()
+  })
+
+  it('should render numeric zero from context as zero', () => {
+    const contextWithZero = {
+      ...mockContextValue,
+      newConversationInputs: {
+        num_var: 0,
+      },
+    }
+
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+      contextWithZero as unknown as ReturnType<typeof useEmbeddedChatbotContext>,
+    )
+
+    render(<InputsFormContent />)
+    expect(screen.getByRole('spinbutton', { name: 'Number Label' })).toHaveValue(0)
   })
 })

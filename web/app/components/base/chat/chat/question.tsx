@@ -4,13 +4,11 @@ import type { ChatItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { toast } from '@langgenius/dify-ui/toast'
-import copy from 'copy-to-clipboard'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { FileList } from '@/app/components/base/file-uploader'
-import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
@@ -33,12 +31,11 @@ const Question: FC<QuestionProps> = ({
   switchSibling,
   hideAvatar,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
 
   const { content, message_files } = item
 
   const { onRegenerate } = useChatContext()
-  const copyLabel = t(($) => $['operation.copy'], { ns: 'common' })
   const editLabel = t(($) => $['operation.edit'], { ns: 'common' })
 
   const [isEditing, setIsEditing] = useState(false)
@@ -158,15 +155,7 @@ const Question: FC<QuestionProps> = ({
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
-            <IconButton
-              aria-label={copyLabel}
-              onClick={() => {
-                copy(content)
-                toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
-              }}
-            >
-              <div className="i-ri-clipboard-line size-4" aria-hidden="true" />
-            </IconButton>
+            <CopyFeedback content={content} />
             {enableEdit && (
               <IconButton aria-label={editLabel} onClick={handleEdit}>
                 <div className="i-ri-edit-line size-4" aria-hidden="true" />
@@ -242,7 +231,10 @@ const Question: FC<QuestionProps> = ({
         <div className="size-10 shrink-0">
           {questionIcon || (
             <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
-              <User className="question-default-user-icon size-full" />
+              <span
+                aria-hidden
+                className="question-default-user-icon i-custom-public-avatar-user size-full"
+              />
             </div>
           )}
         </div>

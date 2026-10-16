@@ -1,7 +1,7 @@
 import type { Shape } from '../../store/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { FlowType } from '@/types/common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInNormal from '../header-in-normal'
@@ -70,7 +70,7 @@ vi.mock('@/hooks/use-theme', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
   useRestoreWorkflow: () => ({
     mutateAsync: mockRestoreWorkflow,
@@ -85,7 +85,7 @@ vi.mock('../../collaboration/core/collaboration-manager', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -268,12 +268,9 @@ describe('Header layout components', () => {
           isRestoring: true,
           showWorkflowVersionHistoryPanel: true,
         },
+        resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.appFlow,
-            flowId: 'flow-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
@@ -289,6 +286,8 @@ describe('Header layout components', () => {
       const deleteAllInspectVars = vi.fn()
       const currentVersion = createCurrentVersion()
       const currentUser = { id: 'user-1', name: 'Alice' }
+      const queryClient = createAccountProfileQueryClient(currentUser)
+      seedSystemFeatures(queryClient)
 
       const { store } = renderWorkflowComponent(
         <HeaderInRestoring onRestoreSettled={onRestoreSettled} />,
@@ -300,21 +299,18 @@ describe('Header layout components', () => {
             currentVersion,
             deleteAllInspectVars,
           },
+          resource: { kind: 'app' as const, appId: 'flow-1', mode: 'workflow' as const },
           hooksStoreProps: {
-            configsMap: {
-              flowType: FlowType.appFlow,
-              flowId: 'flow-1',
-              fileSettings: {},
-            },
+            fileSettings: {},
           },
-          queryClient: createAccountProfileQueryClient(currentUser),
+          queryClient,
         },
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith('/apps/flow-1/workflows/version-1/restore')
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
         expect(store.getState().showWorkflowVersionHistoryPanel).toBe(false)
         expect(store.getState().isRestoring).toBe(false)
         expect(store.getState().backupDraft).toBeUndefined()
@@ -323,7 +319,7 @@ describe('Header layout components', () => {
         expect(mockInvalidAllLastRun).toHaveBeenCalledTimes(1)
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
-          message: 'workflow.versionHistory.action.restoreSuccess',
+          message: 'workflowHistory.versionHistory.action.restoreSuccess',
         })
       })
       expect(mockEmitRestoreIntent).toHaveBeenCalledWith({
@@ -351,21 +347,16 @@ describe('Header layout components', () => {
           backupDraft: createBackupDraft(),
           currentVersion,
         },
+        resource: { kind: 'knowledge-pipeline' as const, pipelineId: 'pipeline-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.ragPipeline,
-            flowId: 'pipeline-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-          '/rag/pipelines/pipeline-1/workflows/version-1/restore',
-        )
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()
@@ -383,21 +374,16 @@ describe('Header layout components', () => {
           backupDraft: createBackupDraft(),
           currentVersion,
         },
+        resource: { kind: 'snippet' as const, snippetId: 'snippet-1' },
         hooksStoreProps: {
-          configsMap: {
-            flowType: FlowType.snippet,
-            flowId: 'snippet-1',
-            fileSettings: {},
-          },
+          fileSettings: {},
         },
       })
 
       fireEvent.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
       await waitFor(() => {
-        expect(mockRestoreWorkflow).toHaveBeenCalledWith(
-          '/snippets/snippet-1/workflows/version-1/restore',
-        )
+        expect(mockRestoreWorkflow).toHaveBeenCalledWith('version-1')
         expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalledTimes(1)
       })
       expect(mockEmitRestoreIntent).not.toHaveBeenCalled()

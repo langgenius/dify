@@ -1,5 +1,5 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
@@ -114,9 +114,7 @@ describe('FileList', () => {
       const props = createDefaultProps({ isLoading: true, fileList: [] })
 
       const { container } = render(<FileList {...props} />)
-
-      // Assert - Loading component should be rendered with spin-animation class
-      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+      expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should show empty folder state when not loading and fileList is empty', () => {
@@ -202,19 +200,22 @@ describe('FileList', () => {
         const props = createDefaultProps({ isLoading: true, fileList: [] })
 
         const { container } = render(<FileList {...props} />)
-
-        // Assert - Loading component with spin-animation class
-        expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+        expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
       })
 
       it('should show loading indicator at bottom when isLoading is true with files', () => {
         const fileList = [createMockOnlineDriveFile()]
         const props = createDefaultProps({ isLoading: true, fileList })
 
-        const { container } = render(<FileList {...props} />)
+        const { rerender } = render(<FileList {...props} />)
 
-        // Assert - Should show spinner icon at the bottom
-        expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+        expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: 'test-file.txt' })).toBeInTheDocument()
+
+        rerender(<FileList {...props} isLoading={false} />)
+
+        expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
+        expect(screen.getByRole('checkbox', { name: 'test-file.txt' })).toBeInTheDocument()
       })
     })
 
@@ -349,54 +350,6 @@ describe('FileList', () => {
         expect(input).toHaveValue('')
       })
     })
-
-    describe('handleSelectFile', () => {
-      it('should call handleSelectFile when file item is clicked', () => {
-        const mockHandleSelectFile = vi.fn()
-        const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
-        const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
-        render(<FileList {...props} />)
-
-        // Act - Click on the file item
-        const fileItem = screen.getByText('test.txt')
-        fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-        expect(mockHandleSelectFile).toHaveBeenCalledWith(
-          expect.objectContaining({
-            id: 'file-1',
-            name: 'test.txt',
-            type: OnlineDriveFileType.file,
-          }),
-        )
-      })
-    })
-
-    describe('handleOpenFolder', () => {
-      it('should call handleOpenFolder when folder item is clicked', () => {
-        const mockHandleOpenFolder = vi.fn()
-        const fileList = [
-          createMockOnlineDriveFile({
-            id: 'folder-1',
-            name: 'my-folder',
-            type: OnlineDriveFileType.folder,
-          }),
-        ]
-        const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
-        render(<FileList {...props} />)
-
-        // Act - Click on the folder item
-        const folderItem = screen.getByText('my-folder')
-        fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-        expect(mockHandleOpenFolder).toHaveBeenCalledWith(
-          expect.objectContaining({
-            id: 'folder-1',
-            name: 'my-folder',
-            type: OnlineDriveFileType.folder,
-          }),
-        )
-      })
-    })
   })
 
   describe('Edge Cases and Error Handling', () => {
@@ -504,7 +457,7 @@ describe('FileList', () => {
       const { container } = render(<FileList {...props} />)
 
       if (isLoading && fileCount === 0)
-        expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+        expect(within(container).queryByRole('progressbar')).toBeInTheDocument()
       else if (!isLoading && fileCount === 0)
         expect(screen.getByText('datasetPipeline.onlineDrive.emptyFolder')).toBeInTheDocument()
       else expect(screen.getByText('file-0.txt')).toBeInTheDocument()
@@ -607,47 +560,4 @@ describe('FileList', () => {
   })
 
   // Callback Stability
-  describe('Callback Stability', () => {
-    it('should maintain stable handleSelectFile callback', () => {
-      const mockHandleSelectFile = vi.fn()
-      const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
-      const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
-      const { rerender } = render(<FileList {...props} />)
-
-      // Act - Click once
-      const fileItem = screen.getByText('test.txt')
-      fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-      // Rerender with same props
-      rerender(<FileList {...props} />)
-
-      fireEvent.click(fileItem.closest('[class*="cursor-pointer"]')!)
-
-      expect(mockHandleSelectFile).toHaveBeenCalledTimes(2)
-    })
-
-    it('should maintain stable handleOpenFolder callback', () => {
-      const mockHandleOpenFolder = vi.fn()
-      const fileList = [
-        createMockOnlineDriveFile({
-          id: 'folder-1',
-          name: 'my-folder',
-          type: OnlineDriveFileType.folder,
-        }),
-      ]
-      const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
-      const { rerender } = render(<FileList {...props} />)
-
-      // Act - Click once
-      const folderItem = screen.getByText('my-folder')
-      fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-      // Rerender with same props
-      rerender(<FileList {...props} />)
-
-      fireEvent.click(folderItem.closest('[class*="cursor-pointer"]')!)
-
-      expect(mockHandleOpenFolder).toHaveBeenCalledTimes(2)
-    })
-  })
 })

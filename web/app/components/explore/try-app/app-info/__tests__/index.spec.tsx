@@ -1,4 +1,4 @@
-import type { TryAppInfo } from '@/service/try-app'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -10,7 +10,10 @@ vi.mock('../use-get-requirements', () => ({
   default: (...args: unknown[]) => mockUseGetRequirements(...args),
 }))
 
-const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo =>
+const createMockAppDetail = (
+  mode: string,
+  overrides: Partial<TrialAppDetailResponse> = {},
+): TrialAppDetailResponse =>
   ({
     id: 'test-app-id',
     name: 'Test App Name',
@@ -40,7 +43,7 @@ const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}):
       user_input_form: [],
     },
     ...overrides,
-  }) as unknown as TryAppInfo
+  }) as unknown as TrialAppDetailResponse
 
 describe('AppInfo', () => {
   beforeEach(() => {
@@ -67,7 +70,7 @@ describe('AppInfo', () => {
     it('renders app name with title attribute', () => {
       const appDetail = createMockAppDetail('chat', {
         name: 'Very Long App Name That Should Be Truncated',
-      } as Partial<TryAppInfo>)
+      } as Partial<TrialAppDetailResponse>)
       const mockOnCreate = vi.fn()
 
       render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
@@ -128,7 +131,7 @@ describe('AppInfo', () => {
     it('renders description when provided', () => {
       const appDetail = createMockAppDetail('chat', {
         description: 'This is a test description',
-      } as Partial<TryAppInfo>)
+      } as Partial<TrialAppDetailResponse>)
       const mockOnCreate = vi.fn()
 
       render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
@@ -139,7 +142,7 @@ describe('AppInfo', () => {
     it('does not render description when empty', () => {
       const appDetail = createMockAppDetail('chat', {
         description: '',
-      } as Partial<TryAppInfo>)
+      } as Partial<TrialAppDetailResponse>)
       const mockOnCreate = vi.fn()
 
       const { container } = render(

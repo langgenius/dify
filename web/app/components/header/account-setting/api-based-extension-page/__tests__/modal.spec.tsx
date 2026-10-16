@@ -27,7 +27,7 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     apiBasedExtension: {
       post: {
@@ -51,7 +51,7 @@ vi.mock('@tanstack/react-query', () => ({
   })),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -218,7 +218,6 @@ describe('ApiBasedExtensionModal', () => {
             api_key: '[__HIDDEN__]',
           },
         })
-        expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
         expect(mockOnSaved).toHaveBeenCalled()
       })
     })
@@ -358,7 +357,7 @@ describe('ApiBasedExtensionModal', () => {
         t: withSelectorKey((key: string) => {
           if (missingKeys.includes(key)) return ''
           return `common.${key}`
-        }, 'common') as unknown as TFunction,
+        }, 'common') as unknown as TFunction<['common']>,
       } as unknown as ReturnType<typeof reactI18next.useTranslation>)
 
       // Act

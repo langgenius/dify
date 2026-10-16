@@ -1,10 +1,8 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
-import { AppModeEnum } from '@/types/app'
 import Logs from '../index'
 
 vi.mock('@/context/i18n', () => ({
@@ -36,13 +34,31 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/service/use-log', () => ({
-  useChatConversations: (...args: unknown[]) => mockUseChatConversations(...args),
-  useCompletionConversations: (...args: unknown[]) => mockUseCompletionConversations(...args),
-  useAnnotationsCount: () => ({
-    data: { count: 0 },
-    isLoading: false,
-  }),
+vi.mock('@/service/console', () => {
+  const tagged = (operation: string) => ({
+    queryOptions: (options: Record<string, unknown>) => ({ ...options, operation }),
+  })
+  return {
+    consoleQuery: {
+      apps: {
+        byAppId: {
+          chatConversations: { get: tagged('chatConversations') },
+          completionConversations: { get: tagged('completionConversations') },
+          annotations: { count: { get: tagged('annotationsCount') } },
+        },
+      },
+    },
+  }
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: ({ operation, ...options }: { operation?: string }) => {
+    if (operation === 'chatConversations') return mockUseChatConversations(options)
+    if (operation === 'completionConversations') return mockUseCompletionConversations(options)
+    if (operation === 'annotationsCount') return { data: { count: 0 }, isLoading: false }
+    return { data: undefined }
+  },
 }))
 
 vi.mock('../cloud-sandbox-retention', async (importOriginal) => {
@@ -70,8 +86,8 @@ vi.mock('../retention-upgrade-notice', () => ({
   RetentionUpgradeNotice: () => <div>retention-upgrade-notice</div>,
 }))
 
-vi.mock('@/app/components/base/loading', () => ({
-  default: () => <div>loading-logs</div>,
+vi.mock('@/app/components/base/loading-placeholder', () => ({
+  LoadingPlaceholder: () => <div>loading-logs</div>,
 }))
 
 describe('Logs', () => {
@@ -95,7 +111,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-1',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           } as any
         }
       />,
@@ -103,7 +119,7 @@ describe('Logs', () => {
 
     expect(mockUseChatConversations).toHaveBeenCalledWith(
       expect.objectContaining({
-        appId: 'app-1',
+        input: expect.objectContaining({ params: { app_id: 'app-1' } }),
       }),
     )
     expect(screen.getByRole('heading', { name: /(?:^|\.)title(?=$|:)/ })).toBeInTheDocument()
@@ -126,7 +142,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-2',
-            mode: AppModeEnum.COMPLETION,
+            mode: 'completion' as const,
           } as any
         }
       />,
@@ -134,7 +150,7 @@ describe('Logs', () => {
 
     expect(mockUseCompletionConversations).toHaveBeenCalledWith(
       expect.objectContaining({
-        appId: 'app-2',
+        input: expect.objectContaining({ params: { app_id: 'app-2' } }),
       }),
     )
     expect(screen.getByText('empty-logs')).toBeInTheDocument()
@@ -151,7 +167,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-3',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           } as any
         }
       />,
@@ -175,7 +191,7 @@ describe('Logs', () => {
         appDetail={
           {
             id: 'app-sandbox-last-30-days',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
           } as any
         }
       />,
@@ -189,9 +205,11 @@ describe('Logs', () => {
     ).toBeInTheDocument()
     expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
-        params: expect.objectContaining({
-          start: dayjs().subtract(30, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+        input: expect.objectContaining({
+          query: expect.objectContaining({
+            start: dayjs().subtract(30, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+            end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+          }),
         }),
       }),
     )
@@ -201,7 +219,7 @@ describe('Logs', () => {
     const user = userEvent.setup()
     const appDetail = {
       id: 'app-period-transition',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
     } as any
     mockUseChatConversations.mockReturnValue({
       data: { total: 0 },
@@ -214,9 +232,11 @@ describe('Logs', () => {
     await user.click(await screen.findByText(/appLog\.filter\.period\.allTime/))
     expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
-        params: expect.not.objectContaining({
-          start: expect.anything(),
-          end: expect.anything(),
+        input: expect.objectContaining({
+          query: expect.not.objectContaining({
+            start: expect.anything(),
+            end: expect.anything(),
+          }),
         }),
       }),
     )
@@ -235,9 +255,11 @@ describe('Logs', () => {
     ).toBeInTheDocument()
     expect(mockUseChatConversations.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
-        params: expect.objectContaining({
-          start: dayjs().startOf('day').format('YYYY-MM-DD HH:mm'),
-          end: expect.any(String),
+        input: expect.objectContaining({
+          query: expect.objectContaining({
+            start: dayjs().startOf('day').format('YYYY-MM-DD HH:mm'),
+            end: expect.any(String),
+          }),
         }),
       }),
     )

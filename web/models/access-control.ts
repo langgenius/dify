@@ -1,4 +1,4 @@
-import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
+import type { AccessControlTemplateLanguage } from '@/i18n/language'
 
 export const SubjectType = {
   GROUP: 'group',
@@ -76,7 +76,7 @@ export type Role = {
   description: string
   is_builtin: boolean
   permission_keys: PermissionKey[]
-  role_tag: 'owner' | '' // Used for identifying the unique owner role, which has some special handlings
+  role_tag: 'owner' | 'admin' | '' // Identifies built-in workspace roles with special handling
 }
 
 type Pagination = {
@@ -102,29 +102,7 @@ export type RoleListResponse = {
   pagination: Pagination
 }
 
-export type CreateRoleRequest = {
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type UpdateRolesRequest = {
-  id: string
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type CopyWorkspaceRoleRequest = {
-  roleId: string
-  copy_member: boolean
-}
-
-export type WorkspaceAccessRulesRequest = {
-  language?: AccessControlTemplateLanguage
-} & PaginationParameters
-
-export type AccessPolicyResourceType = 'app' | 'dataset'
+export type AccessPolicyResourceType = 'app' | 'dataset' | 'agent'
 
 type AccessPolicyCategory = 'global_system_default' | 'global_custom'
 
@@ -142,26 +120,13 @@ export type AccessPolicy = {
   updated_at: string
 }
 
-export type CreateAccessPolicyRequest = {
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type UpdateAccessPolicyRequest = {
-  id: string
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
 type Bindings = {
   roles: Array<{
     role_id: string
     role_name: string
     binding_id: string
     is_locked: boolean
-    role_tag: 'owner' | '' // Used for identifying the unique owner role, which has some special handlings
+    role_tag: 'owner' | 'admin' | '' // Identifies built-in workspace roles with special handling
   }>
   accounts: Array<{
     account_id: string
@@ -186,30 +151,6 @@ export type GetDatasetAccessPolicyByDatasetIdResponse = {
   items: AccessPolicyWithBindings[]
 }
 
-export type GetAppAccessPoliciesResponse = {
-  items: AccessPolicyWithBindings[]
-  pagination: Pagination
-}
-
-export type GetDatasetAccessPoliciesResponse = {
-  items: AccessPolicyWithBindings[]
-  pagination: Pagination
-}
-
-export type RolesOfMemberResponse = {
-  account_id: string
-  roles: Role[]
-}
-
-export type UpdateRolesOfMemberRequest = {
-  memberId: string
-  roleIds: string[]
-}
-
-export type GetMembersOfRoleRequest = {
-  roleId: string
-} & PaginationParameters
-
 type Account = {
   account_id: string
   account_name: string
@@ -225,11 +166,6 @@ export type ResourceUserAccessSetting = {
 
 type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
-  pagination: Pagination
-}
-
-export type GetMembersOfRoleResponse = {
-  data: Account[]
   pagination: Pagination
 }
 

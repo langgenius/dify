@@ -17,7 +17,7 @@ type Props = Readonly<{
 }>
 
 const Options: FC<Props> = ({ className = '', payload, onChange }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
 
   const handleChange = useCallback(
     (key: keyof CrawlOptions) => {

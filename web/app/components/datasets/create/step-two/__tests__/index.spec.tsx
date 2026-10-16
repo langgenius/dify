@@ -1,24 +1,30 @@
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
   CrawlResultItem,
   CustomFile,
+  DataSet,
   FileIndexingEstimateResponse,
   FullDocumentDetail,
   PreProcessingRule,
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, cleanup, fireEvent, renderHook, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import {
+  renderWithConsoleQuery as render,
+  renderHookWithConsoleQuery,
+} from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { PreviewPanel } from '../components/preview-panel'
 import { StepTwoFooter } from '../components/step-two-footer'
@@ -38,7 +44,20 @@ import escape from '../hooks/escape'
 import unescape from '../hooks/unescape'
 import StepTwo from '../index'
 
-const mockDataset = {
+vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
+  return { ...actual, default: vi.fn(() => actual.MediaType.pc) }
+})
+
+const mockDataset: Pick<
+  DataSet,
+  | 'id'
+  | 'doc_form'
+  | 'data_source_type'
+  | 'embedding_model'
+  | 'embedding_model_provider'
+  | 'retrieval_model_dict'
+> = {
   id: 'test-dataset-id',
   doc_form: ChunkingMode.text,
   data_source_type: DataSourceType.FILE,
@@ -75,8 +94,9 @@ const mockDefaultEmbeddingModel = {
   model: 'text-embedding-ada-002',
 }
 // Model[] type structure for rerank model list (simplified mock)
-const mockRerankModelList: Model[] = [
+const mockRerankModelList: ProviderWithModelsResponse[] = [
   {
+    tenant_id: 'test-workspace',
     provider: 'cohere',
     icon_small: { en_US: 'cohere-icon', zh_Hans: 'cohere-icon' },
     label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
@@ -104,94 +124,12 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     defaultModel: mockRerankDefaultModel,
     currentModel: mockIsRerankDefaultModelValid,
   }),
-  useModelList: () => ({ data: mockEmbeddingModelList }),
+
   useDefaultModel: () => ({ data: mockDefaultEmbeddingModel }),
 }))
 
 const mockFetchDefaultProcessRuleMutate = vi.fn()
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useFetchDefaultProcessRule: ({
-    onSuccess,
-  }: {
-    onSuccess: (data: {
-      rules: Rules
-      limits: { indexing_max_segmentation_tokens_length: number }
-    }) => void
-  }) => ({
-    mutate: (url: string) => {
-      mockFetchDefaultProcessRuleMutate(url)
-      onSuccess({
-        rules: {
-          segmentation: { separator: '\\n', max_tokens: 500, chunk_overlap: 50 },
-          pre_processing_rules: [
-            { id: 'remove_extra_spaces', enabled: true },
-            { id: 'remove_urls_emails', enabled: false },
-          ],
-          parent_mode: 'paragraph',
-          subchunk_segmentation: { separator: '\\n', max_tokens: 256 },
-        },
-        limits: { indexing_max_segmentation_tokens_length: 4000 },
-      })
-    },
-    isPending: false,
-  }),
-  useFetchFileIndexingEstimateForFile: () => ({
-    mutate: vi.fn(),
-    data: undefined,
-    isIdle: true,
-    isPending: false,
-    reset: vi.fn(),
-  }),
-  useFetchFileIndexingEstimateForNotion: () => ({
-    mutate: vi.fn(),
-    data: undefined,
-    isIdle: true,
-    isPending: false,
-    reset: vi.fn(),
-  }),
-  useFetchFileIndexingEstimateForWeb: () => ({
-    mutate: vi.fn(),
-    data: undefined,
-    isIdle: true,
-    isPending: false,
-    reset: vi.fn(),
-  }),
-  useCreateFirstDocument: () => ({
-    mutateAsync: vi
-      .fn()
-      .mockImplementation(
-        async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
-          const data = { dataset: { id: 'new-dataset-id' } }
-          options?.onSuccess?.(data)
-          return data
-        },
-      ),
-    isPending: false,
-  }),
-  useCreateDocument: () => ({
-    mutateAsync: vi
-      .fn()
-      .mockImplementation(
-        async (params: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
-          const data = { document: { id: 'new-doc-id' } }
-          options?.onSuccess?.(data)
-          return data
-        },
-      ),
-    isPending: false,
-  }),
-  getNotionInfo: vi
-    .fn()
-    .mockReturnValue([{ workspace_id: 'ws-1', pages: [{ page_id: 'page-1' }] }]),
-  getWebsiteInfo: vi
-    .fn()
-    .mockReturnValue({ provider: 'jinaReader', job_id: 'job-123', urls: ['https://test.com'] }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => vi.fn(),
-}))
-
+const mockResetFileEstimate = vi.fn()
 // Mock amplitude tracking (external service)
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -294,9 +232,6 @@ const createMockDocumentDetail = (overrides?: Partial<FullDocumentDetail>): Full
     id: 'doc-1',
     doc_form: ChunkingMode.text,
     doc_language: 'English',
-    file: { id: 'file-1', name: 'test.pdf', extension: 'pdf' },
-    notion_page: createMockNotionPage(),
-    website_page: createMockWebsitePage(),
     dataset_process_rule: {
       mode: ProcessMode.general,
       rules: {
@@ -322,7 +257,6 @@ const createMockEstimate = (
   overrides?: Partial<FileIndexingEstimateResponse>,
 ): FileIndexingEstimateResponse => ({
   total_segments: 10,
-  total_nodes: 10,
   tokens: 5000,
   total_price: 0.01,
   currency: 'USD',
@@ -460,7 +394,7 @@ describe('useSegmentationState', () => {
   // Tests for initial state
   describe('Initial State', () => {
     it('should initialize with default values', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       expect(result.current.segmentationType).toBe(ProcessMode.general)
       expect(result.current.segmentIdentifier).toBe(DEFAULT_SEGMENT_IDENTIFIER)
@@ -471,7 +405,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should initialize with custom segmentation type', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useSegmentationState({ initialSegmentationType: ProcessMode.parentChild }),
       )
 
@@ -482,7 +416,7 @@ describe('useSegmentationState', () => {
   // Tests for state setters
   describe('State Management', () => {
     it('should update segmentation type', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentationType(ProcessMode.parentChild)
@@ -492,7 +426,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update max chunk length', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setMaxChunkLength(2048)
@@ -502,7 +436,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update overlap', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setOverlap(100)
@@ -512,8 +446,8 @@ describe('useSegmentationState', () => {
     })
 
     it('should update rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
-      const newRules: PreProcessingRule[] = [{ id: 'test', enabled: true }]
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
+      const newRules: PreProcessingRule[] = [{ id: 'remove_stopwords', enabled: true }]
 
       act(() => {
         result.current.setRules(newRules)
@@ -526,7 +460,7 @@ describe('useSegmentationState', () => {
   // Tests for setSegmentIdentifier with escape
   describe('setSegmentIdentifier', () => {
     it('should escape special characters', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('\n\n')
@@ -536,7 +470,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should use default when empty and canEmpty is false', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('')
@@ -546,7 +480,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should allow empty when canEmpty is true', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('', true)
@@ -559,46 +493,46 @@ describe('useSegmentationState', () => {
   // Tests for toggleRule
   describe('toggleRule', () => {
     it('should toggle rule enabled state', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setRules([
-          { id: 'rule1', enabled: true },
-          { id: 'rule2', enabled: false },
+          { id: 'remove_extra_spaces', enabled: true },
+          { id: 'remove_urls_emails', enabled: false },
         ])
       })
 
       act(() => {
-        result.current.toggleRule('rule1')
+        result.current.toggleRule('remove_extra_spaces')
       })
 
-      expect(result.current.rules.find((r) => r.id === 'rule1')?.enabled).toBe(false)
-      expect(result.current.rules.find((r) => r.id === 'rule2')?.enabled).toBe(false)
+      expect(result.current.rules.find((r) => r.id === 'remove_extra_spaces')?.enabled).toBe(false)
+      expect(result.current.rules.find((r) => r.id === 'remove_urls_emails')?.enabled).toBe(false)
     })
 
     it('should not affect other rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setRules([
-          { id: 'rule1', enabled: true },
-          { id: 'rule2', enabled: false },
+          { id: 'remove_extra_spaces', enabled: true },
+          { id: 'remove_urls_emails', enabled: false },
         ])
       })
 
       act(() => {
-        result.current.toggleRule('rule2')
+        result.current.toggleRule('remove_urls_emails')
       })
 
-      expect(result.current.rules.find((r) => r.id === 'rule1')?.enabled).toBe(true)
-      expect(result.current.rules.find((r) => r.id === 'rule2')?.enabled).toBe(true)
+      expect(result.current.rules.find((r) => r.id === 'remove_extra_spaces')?.enabled).toBe(true)
+      expect(result.current.rules.find((r) => r.id === 'remove_urls_emails')?.enabled).toBe(true)
     })
   })
 
   // Tests for parent-child config
   describe('Parent-Child Configuration', () => {
     it('should update parent config delimiter with truthy value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateParentConfig('delimiter', '\n\n\n')
@@ -608,7 +542,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update parent config delimiter with empty value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateParentConfig('delimiter', '')
@@ -618,7 +552,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update parent config maxLength', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateParentConfig('maxLength', 2048)
@@ -628,7 +562,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update child config delimiter with truthy value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateChildConfig('delimiter', '\n')
@@ -638,7 +572,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update child config delimiter with empty value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateChildConfig('delimiter', '')
@@ -648,7 +582,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update child config maxLength', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateChildConfig('maxLength', 256)
@@ -658,7 +592,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should set chunk for context mode', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setChunkForContext('full-doc')
@@ -671,7 +605,7 @@ describe('useSegmentationState', () => {
   // Tests for resetToDefaults
   describe('resetToDefaults', () => {
     it('should reset to default config when available', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       // Set non-default values and default config
       act(() => {
@@ -691,7 +625,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should only reset parentChildConfig when no default config', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       // Set non-default values without setting defaultConfig
       act(() => {
@@ -716,7 +650,7 @@ describe('useSegmentationState', () => {
   // Tests for applyConfigFromRules
   describe('applyConfigFromRules', () => {
     it('should apply general config from rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
       const rules = createMockRules({
         segmentation: { separator: '---', max_tokens: 512, chunk_overlap: 25 },
       })
@@ -730,7 +664,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should apply hierarchical config from rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
       const rules = createMockRules({
         parent_mode: 'paragraph',
         subchunk_segmentation: { separator: '\n', max_tokens: 256 },
@@ -745,7 +679,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should apply full hierarchical parent-child config from rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
       const rules = createMockRules({
         segmentation: { separator: '\n\n', max_tokens: 1024, chunk_overlap: 50 },
         parent_mode: 'full-doc',
@@ -770,7 +704,7 @@ describe('useSegmentationState', () => {
   // Tests for getProcessRule
   describe('getProcessRule', () => {
     it('should return general process rule', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       const processRule = result.current.getProcessRule(ChunkingMode.text)
 
@@ -779,7 +713,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should return hierarchical process rule for parent-child', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       const processRule = result.current.getProcessRule(ChunkingMode.parentChild)
 
@@ -802,7 +736,7 @@ describe('useIndexingConfig', () => {
   // Note: Hook has useEffect that syncs state, so we test the state after effects settle
   describe('Initial State', () => {
     it('should initialize with QUALIFIED when API key is set', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -813,7 +747,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should initialize with ECONOMICAL when API key is not set', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: false, hasSetIndexType: false }),
       )
 
@@ -823,7 +757,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should use initial index type when provided', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({
           isAPIKeySet: false,
           hasSetIndexType: true,
@@ -840,7 +774,7 @@ describe('useIndexingConfig', () => {
   // Tests for state setters
   describe('State Management', () => {
     it('should update index type', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -857,7 +791,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should update embedding model', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -873,7 +807,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should update retrieval config', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -901,7 +835,7 @@ describe('useIndexingConfig', () => {
   // Tests for getIndexingTechnique
   describe('getIndexingTechnique', () => {
     it('should return initial type when set', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({
           isAPIKeySet: true,
           hasSetIndexType: true,
@@ -915,7 +849,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should return current type when no initial type', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -946,7 +880,7 @@ describe('useIndexingConfig', () => {
         score_threshold: 0.8,
       }
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({
           isAPIKeySet: true,
           hasSetIndexType: false,
@@ -982,22 +916,22 @@ describe('usePreviewState', () => {
   // Tests for initial state
   describe('Initial State', () => {
     it('should initialize with first file for FILE data source', () => {
-      const { result } = renderHook(() => usePreviewState(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       expect(result.current.previewFile).toEqual(defaultOptions.files[0])
     })
 
     it('should initialize with first notion page for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.NOTION }),
       )
 
       expect(result.current.previewNotionPage).toEqual(defaultOptions.notionPages[0])
     })
 
-    it('should initialize with document detail when provided', () => {
+    it('should start without a preview file when editing an existing document', () => {
       const documentDetail = createMockDocumentDetail()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           documentDetail,
@@ -1005,21 +939,23 @@ describe('usePreviewState', () => {
         }),
       )
 
-      expect(result.current.previewFile).toEqual(documentDetail.file)
+      expect(result.current.previewFile).toBeUndefined()
     })
   })
 
   // Tests for getPreviewPickerItems
   describe('getPreviewPickerItems', () => {
     it('should return files for FILE data source', () => {
-      const { result } = renderHook(() => usePreviewState(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       const items = result.current.getPreviewPickerItems()
-      expect(items).toEqual(defaultOptions.files)
+      expect(items).toEqual(
+        defaultOptions.files.map(({ id, name, extension }) => ({ id, name, extension })),
+      )
     })
 
     it('should return mapped notion pages for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.NOTION }),
       )
 
@@ -1032,7 +968,7 @@ describe('usePreviewState', () => {
     })
 
     it('should return mapped website pages for WEB data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.WEB }),
       )
 
@@ -1045,7 +981,7 @@ describe('usePreviewState', () => {
     })
 
     it('should return empty array for unknown data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: 'unknown' as DataSourceType }),
       )
 
@@ -1057,15 +993,16 @@ describe('usePreviewState', () => {
   // Tests for getPreviewPickerValue
   describe('getPreviewPickerValue', () => {
     it('should return file value for FILE data source', () => {
-      const { result } = renderHook(() => usePreviewState(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       const value = result.current.getPreviewPickerValue()
-      expect(value).toEqual(defaultOptions.files[0])
+      const [file] = defaultOptions.files
+      expect(value).toEqual({ id: file!.id, name: file!.name, extension: file!.extension })
     })
 
     it('should return mapped notion page value for NOTION data source', () => {
       const notionPage = createMockNotionPage({ page_id: 'page-123', page_name: 'My Page' })
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1086,7 +1023,7 @@ describe('usePreviewState', () => {
         source_url: 'https://test.com',
         title: 'Test Title',
       })
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1103,7 +1040,7 @@ describe('usePreviewState', () => {
     })
 
     it('should return empty value for unknown data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: 'unknown' as DataSourceType }),
       )
 
@@ -1112,7 +1049,7 @@ describe('usePreviewState', () => {
     })
 
     it('should handle undefined notion page gracefully', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1129,7 +1066,7 @@ describe('usePreviewState', () => {
     })
 
     it('should handle undefined website page gracefully', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1150,7 +1087,9 @@ describe('usePreviewState', () => {
   describe('handlePreviewChange', () => {
     it('should update preview file for FILE data source', () => {
       const files = [createMockFile(), createMockFile({ id: 'file-2', name: 'second.pdf' })]
-      const { result } = renderHook(() => usePreviewState({ ...defaultOptions, files }))
+      const { result } = renderHookWithConsoleQuery(() =>
+        usePreviewState({ ...defaultOptions, files }),
+      )
 
       act(() => {
         result.current.handlePreviewChange({ id: 'file-2', name: 'second.pdf' })
@@ -1164,7 +1103,7 @@ describe('usePreviewState', () => {
         createMockNotionPage(),
         createMockNotionPage({ page_id: 'notion-page-2', page_name: 'Second Page' }),
       ]
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.NOTION, notionPages }),
       )
 
@@ -1180,7 +1119,7 @@ describe('usePreviewState', () => {
         createMockWebsitePage(),
         createMockWebsitePage({ source_url: 'https://example.com/page2', title: 'Second Page' }),
       ]
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.WEB, websitePages }),
       )
 
@@ -1211,7 +1150,7 @@ describe('useDocumentCreation', () => {
   // Tests for validateParams
   describe('validateParams', () => {
     it('should return false when overlap exceeds max chunk length', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1235,7 +1174,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return false when max chunk length exceeds limit', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1259,7 +1198,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return true for valid params', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1286,7 +1225,7 @@ describe('useDocumentCreation', () => {
   // Tests for buildCreationParams
   describe('buildCreationParams', () => {
     it('should build params for file upload', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const params = result.current.buildCreationParams(
         ChunkingMode.text,
@@ -1312,7 +1251,7 @@ describe('useDocumentCreation', () => {
 
     it('should build params for setting mode', () => {
       const documentDetail = createMockDocumentDetail()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           isSetting: true,
@@ -1340,7 +1279,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should build params for notion_import data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1371,7 +1310,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should build params for website_crawl data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1407,7 +1346,7 @@ describe('useDocumentCreation', () => {
   // Tests for validateParams edge cases
   describe('validateParams - additional cases', () => {
     it('should return false when embedding model is missing for QUALIFIED index type', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1431,7 +1370,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return false when rerank model is required but not selected', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       // isReRankModelSelected returns false when:
       // - indexMethod === 'high_quality' (IndexingType.QUALIFIED)
@@ -1471,7 +1410,7 @@ describe('useDocumentCreation', () => {
       const mockUpdateRetrievalMethodCache = vi.fn()
       const mockOnSave = vi.fn()
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: undefined,
@@ -1515,7 +1454,7 @@ describe('useDocumentCreation', () => {
 
     it('should call createDocumentMutation when datasetId is provided', async () => {
       const mockOnStepChange = vi.fn()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: 'existing-dataset-id',
@@ -1556,7 +1495,7 @@ describe('useDocumentCreation', () => {
     it('should call onSave when in setting mode', async () => {
       const mockOnSave = vi.fn()
       const documentDetail = createMockDocumentDetail()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: 'existing-dataset-id',
@@ -1600,14 +1539,14 @@ describe('useDocumentCreation', () => {
   // Tests for validatePreviewParams
   describe('validatePreviewParams', () => {
     it('should return true for valid max chunk length', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validatePreviewParams(1000)
       expect(isValid).toBe(true)
     })
 
     it('should return false when max chunk length exceeds maximum', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validatePreviewParams(10000)
       expect(isValid).toBe(false)
@@ -1637,7 +1576,7 @@ describe('useIndexingEstimate', () => {
   // Tests for initial state
   describe('Initial State', () => {
     it('should initialize with idle state', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useIndexingEstimate(defaultOptions))
 
       expect(result.current.isIdle).toBe(true)
       expect(result.current.isPending).toBe(false)
@@ -1648,7 +1587,7 @@ describe('useIndexingEstimate', () => {
   // Tests for fetchEstimate
   describe('fetchEstimate', () => {
     it('should call fetchEstimate for FILE data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.FILE,
@@ -1665,7 +1604,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should call fetchEstimate for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1682,7 +1621,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should call fetchEstimate for WEB data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1704,7 +1643,7 @@ describe('useIndexingEstimate', () => {
   // Tests for getCurrentMutation based on data source type
   describe('Data Source Selection', () => {
     it('should use file query for FILE data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.FILE,
@@ -1716,7 +1655,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should use notion query for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1728,7 +1667,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should use website query for WEB data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1832,6 +1771,8 @@ describe('PreviewPanel', () => {
 
   const defaultProps = {
     isMobile: false,
+    isOpen: false,
+    onClose: vi.fn(),
     dataSourceType: DataSourceType.FILE,
     currentDocForm: ChunkingMode.text,
     estimate: undefined as FileIndexingEstimateResponse | undefined,
@@ -1933,7 +1874,7 @@ describe('PreviewPanel', () => {
         />,
       )
 
-      expect(screen.getByText(/25/))!.toBeInTheDocument()
+      expect(screen.getByRole('status')).toHaveTextContent('25')
     })
 
     it('should render parent-child preview when docForm is parentChild', () => {
@@ -2068,7 +2009,7 @@ describe('Edge Cases', () => {
 
   describe('Empty/Null Values', () => {
     it('should handle empty files array in usePreviewState', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.FILE,
           files: [],
@@ -2081,7 +2022,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle empty notion pages array', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.NOTION,
           files: [],
@@ -2094,7 +2035,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle empty website pages array', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.WEB,
           files: [],
@@ -2109,7 +2050,7 @@ describe('Edge Cases', () => {
 
   describe('Boundary Conditions', () => {
     it('should handle very large chunk length', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setMaxChunkLength(999999)
@@ -2119,7 +2060,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle zero overlap', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setOverlap(0)
@@ -2129,7 +2070,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle special characters in segment identifier', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('<<>>')
@@ -2141,7 +2082,7 @@ describe('Edge Cases', () => {
 
   describe('Callback Stability', () => {
     it('should maintain stable setSegmentIdentifier reference', () => {
-      const { result, rerender } = renderHook(() => useSegmentationState())
+      const { result, rerender } = renderHookWithConsoleQuery(() => useSegmentationState())
       const initialSetter = result.current.setSegmentIdentifier
 
       rerender()
@@ -2150,7 +2091,7 @@ describe('Edge Cases', () => {
     })
 
     it('should maintain stable toggleRule reference', () => {
-      const { result, rerender } = renderHook(() => useSegmentationState())
+      const { result, rerender } = renderHookWithConsoleQuery(() => useSegmentationState())
       const initialToggle = result.current.toggleRule
 
       rerender()
@@ -2159,7 +2100,7 @@ describe('Edge Cases', () => {
     })
 
     it('should maintain stable getProcessRule reference', () => {
-      const { result, rerender } = renderHook(() => useSegmentationState())
+      const { result, rerender } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       // Update some state to trigger re-render
       act(() => {
@@ -2186,8 +2127,8 @@ describe('Integration Scenarios', () => {
     it('should build and validate params for file upload workflow', () => {
       const files = [createMockFile()]
 
-      const { result: segResult } = renderHook(() => useSegmentationState())
-      const { result: creationResult } = renderHook(() =>
+      const { result: segResult } = renderHookWithConsoleQuery(() => useSegmentationState())
+      const { result: creationResult } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           dataSourceType: DataSourceType.FILE,
           files,
@@ -2219,7 +2160,7 @@ describe('Integration Scenarios', () => {
     })
 
     it('should handle parent-child document form', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentationType(ProcessMode.parentChild)
@@ -2244,7 +2185,7 @@ describe('Integration Scenarios', () => {
         createMockFile({ id: 'file-2', name: 'second.pdf' }),
       ]
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.FILE,
           files,
@@ -2254,7 +2195,7 @@ describe('Integration Scenarios', () => {
       )
 
       // Initial state
-      expect(result.current.getPreviewPickerValue().name).toBe('first.pdf')
+      expect(result.current.getPreviewPickerValue()?.name).toBe('first.pdf')
 
       // Change preview
       act(() => {
@@ -2318,6 +2259,53 @@ describe('StepTwo Component', () => {
   }
 
   describe('Rendering', () => {
+    it('switches chunking modes as one radio group without nesting parameter controls in a radio', async () => {
+      const user = userEvent.setup()
+      render(<StepTwo {...defaultStepTwoProps} />)
+      const group = screen.getByRole('radiogroup', { name: 'datasetCreation.stepTwo.segmentation' })
+      const general = within(group).getByRole('radio', { name: 'datasetCreation.stepTwo.general' })
+      const parentChild = within(group).getByRole('radio', {
+        name: 'datasetCreation.stepTwo.parentChild',
+      })
+      expect(general).toBeChecked()
+      expect(general).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      general.focus()
+      await user.keyboard('{ArrowDown}')
+      expect(parentChild).toBeChecked()
+      expect(general).not.toBeChecked()
+      expect(parentChild).not.toContainElement(
+        screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' }),
+      )
+      await user.keyboard(' ')
+      expect(parentChild).toBeChecked()
+      await user.keyboard('{ArrowUp}')
+      expect(general).toBeChecked()
+      expect(parentChild).not.toBeChecked()
+    })
+
+    it.each(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'])(
+      'keeps General selected and its preview intact when editing the delimiter with %s',
+      async (key) => {
+        const user = userEvent.setup()
+        render(<StepTwo {...defaultStepTwoProps} />)
+        const input = screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.separator' })
+        await user.click(input)
+        await user.keyboard(key === 'ArrowLeft' ? '{Home}' : '{End}')
+        mockResetFileEstimate.mockClear()
+        await user.keyboard(`{${key}}`)
+
+        expect(screen.getByRole('radio', { name: 'datasetCreation.stepTwo.general' })).toBeChecked()
+        expect(
+          screen.getByRole('radio', { name: 'datasetCreation.stepTwo.parentChild' }),
+        ).not.toBeChecked()
+        expect(input).toBeInTheDocument()
+        expect(input).toHaveFocus()
+        expect(mockResetFileEstimate).not.toHaveBeenCalled()
+      },
+    )
+
     it('should show general chunking options when not in upload', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
       // Should render the segmentation section
@@ -2335,7 +2323,7 @@ describe('StepTwo Component', () => {
   describe('Initialization', () => {
     it('should fetch default process rule when not in setting mode', () => {
       render(<StepTwo {...defaultStepTwoProps} />)
-      expect(mockFetchDefaultProcessRuleMutate).toHaveBeenCalledWith('/datasets/process-rule')
+      expect(mockFetchDefaultProcessRuleMutate).toHaveBeenCalled()
     })
 
     it('should apply config from rules when in setting mode with document detail', () => {
@@ -2370,6 +2358,27 @@ describe('StepTwo Component', () => {
       // handleCreate validates, builds params, and calls executeCreation
       // which calls onStepChange(1) on success
       expect(onStepChange).toHaveBeenCalledWith(1)
+    })
+
+    it('opens the mobile preview on request and restores focus to its button after closing', async () => {
+      vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
+      try {
+        const user = userEvent.setup()
+        render(<StepTwo {...defaultStepTwoProps} />)
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        const trigger = screen.getByRole('button', { name: 'datasetCreation.stepTwo.previewChunk' })
+        await user.click(trigger)
+        const drawer = await screen.findByRole('dialog', {
+          name: 'datasetCreation.stepTwo.preview',
+        })
+        await user.click(within(drawer).getByRole('button', { name: 'common.operation.close' }))
+        await waitFor(() => {
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+          expect(trigger).toHaveFocus()
+        })
+      } finally {
+        vi.mocked(useBreakpoints).mockReturnValue(MediaType.pc)
+      }
     })
 
     it('should trigger updatePreview when preview button is clicked', () => {
@@ -2618,5 +2627,53 @@ describe('StepTwo Component', () => {
       // Restore
       document.body.removeAttribute('data-public-indexing-max-segmentation-tokens-length')
     })
+  })
+})
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  const createdDocuments = (data: unknown) =>
+    vi.fn(async (_input: unknown, options?: { onSuccess?: (data: unknown) => void }) => {
+      options?.onSuccess?.(data)
+      return data
+    })
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.models.modelTypes.byModelType.get': () => ({
+      data: mockEmbeddingModelList,
+    }),
+    'datasets.processRule.get': (options: { onSuccess?: (data: unknown) => void }) => ({
+      mutate: (input: unknown) => {
+        mockFetchDefaultProcessRuleMutate(input)
+        options.onSuccess?.({
+          mode: 'custom',
+          rules: {
+            segmentation: { separator: '\\n', max_tokens: 500, chunk_overlap: 50 },
+            pre_processing_rules: [
+              { id: 'remove_extra_spaces', enabled: true },
+              { id: 'remove_urls_emails', enabled: false },
+            ],
+            parent_mode: 'paragraph',
+            subchunk_segmentation: { separator: '\\n', max_tokens: 256 },
+          },
+          limits: { indexing_max_segmentation_tokens_length: 4000 },
+        })
+      },
+      isPending: false,
+    }),
+    'datasets.indexingEstimate.post': () => ({
+      mutate: vi.fn(),
+      data: undefined,
+      isIdle: true,
+      isPending: false,
+      reset: mockResetFileEstimate,
+    }),
+    'datasets.init.post': () => ({
+      mutateAsync: createdDocuments({ dataset: { id: 'new-dataset-id' } }),
+      isPending: false,
+    }),
+    'datasets.byDatasetId.documents.post': () => ({
+      mutateAsync: createdDocuments({ document: { id: 'new-doc-id' } }),
+      isPending: false,
+    }),
   })
 })

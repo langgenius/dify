@@ -15,12 +15,13 @@ import {
   agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
-import { AgentTools } from '../index'
+import { AgentTemplateTools, AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
   builtInTools: [] as ToolWithProvider[] | undefined,
@@ -45,7 +46,6 @@ const pluginInstallState = vi.hoisted(() => ({
         latest_package_identifier: string
       }
     | undefined,
-  invalidateBuiltInTools: vi.fn(),
   invalidateInstalledPluginList: vi.fn(),
 }))
 
@@ -70,7 +70,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button'
     onSuccess?: () => void
   }) => (
     <button type="button" data-unique-identifier={uniqueIdentifier} onClick={onSuccess}>
-      workflow.nodes.agent.pluginInstaller.install
+      workflowAgent.nodes.agent.pluginInstaller.install
     </button>
   ),
 }))
@@ -158,14 +158,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
   ),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
-  useAllCustomTools: () => ({ data: toolProviderState.customTools }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => pluginInstallState.invalidateBuiltInTools,
-  useInvalidToolsByType: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: toolProviderState.builtInTools }),
+    'workspaces.current.tools.api.get': () => ({ data: toolProviderState.customTools }),
+    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 const agentToolsDraft = {
   ...defaultAgentSoulConfigFormState,
@@ -452,13 +453,14 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
   })
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentTools />
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
+  return { ...view, queryClient }
 }
 
 function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
@@ -490,9 +492,11 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
 
 function renderReadonlyAgentTools({
   initialDraft = agentToolsDraft,
+  template = false,
   viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
+  template?: boolean
   viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
@@ -509,7 +513,7 @@ function renderReadonlyAgentTools({
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentOrchestrateViewingVersionContext value={viewingVersion}>
           <AgentOrchestrateReadOnlyContext value>
-            <AgentTools />
+            {template ? <AgentTemplateTools /> : <AgentTools />}
           </AgentOrchestrateReadOnlyContext>
         </AgentOrchestrateViewingVersionContext>
       </AgentComposerProvider>
@@ -529,7 +533,6 @@ describe('AgentTools', () => {
     pluginAuthState.notAllowCustomCredential = false
     pluginInstallState.manifest = undefined
     pluginInstallState.fallbackManifest = undefined
-    pluginInstallState.invalidateBuiltInTools.mockResolvedValue(undefined)
     pluginInstallState.invalidateInstalledPluginList.mockResolvedValue(undefined)
   })
 
@@ -674,6 +677,23 @@ describe('AgentTools', () => {
   })
 
   describe('Display Metadata', () => {
+    it('shows a template tool icon from its published provider reference without marketplace metadata', () => {
+      const draft = {
+        ...reflectedUninstalledPluginDraft,
+        tools: reflectedUninstalledPluginDraft.tools.map((tool) => ({
+          ...tool,
+          pluginId: undefined,
+          providerType: CollectionType.builtIn,
+        })),
+      } satisfies AgentSoulConfigFormState
+
+      renderReadonlyAgentTools({ initialDraft: draft, template: true })
+
+      expect(
+        screen.getByText('https://marketplace.example.com/langgenius/google/icon'),
+      ).toBeInTheDocument()
+    })
+
     it('should enrich reflected provider tools with provider icon and localized names', async () => {
       const user = userEvent.setup()
       toolProviderState.builtInTools = [
@@ -708,7 +728,9 @@ describe('AgentTools', () => {
         },
         latest_package_identifier: 'langgenius/google:1.0.0@checksum',
       }
-      renderAgentTools(reflectedUninstalledPluginDraft)
+      const { queryClient } = renderAgentTools(reflectedUninstalledPluginDraft)
+      const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+      queryClient.setQueryData(builtInToolsKey, [])
 
       expect(screen.getByRole('button', { name: 'Google Tools' })).toBeInTheDocument()
       expect(
@@ -721,7 +743,7 @@ describe('AgentTools', () => {
       ).not.toBeInTheDocument()
 
       const installButton = screen.getByRole('button', {
-        name: 'workflow.nodes.agent.pluginInstaller.install',
+        name: 'workflowAgent.nodes.agent.pluginInstaller.install',
       })
       expect(installButton).toHaveAttribute(
         'data-unique-identifier',
@@ -731,7 +753,7 @@ describe('AgentTools', () => {
       await user.click(installButton)
 
       await waitFor(() => {
-        expect(pluginInstallState.invalidateBuiltInTools).toHaveBeenCalledTimes(1)
+        expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
         expect(pluginInstallState.invalidateInstalledPluginList).toHaveBeenCalledTimes(1)
       })
     })
@@ -752,7 +774,7 @@ describe('AgentTools', () => {
       ).toBeInTheDocument()
       expect(
         screen.getByRole('button', {
-          name: 'workflow.nodes.agent.pluginInstaller.install',
+          name: 'workflowAgent.nodes.agent.pluginInstaller.install',
         }),
       ).toHaveAttribute('data-unique-identifier', 'langgenius/google:0.0.1@fallback')
     })

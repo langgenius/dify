@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
@@ -19,6 +19,7 @@ from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
+from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -286,16 +287,15 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     ``agent_session_scope_config_version_id`` identifies the draft or immutable
     config version whose Workspace Binding should be reused for this session.
 
-    ``prompt_file_mappings`` preserves the raw request ``files`` array for the
-    Agent backend prompt. These references are appended to the backend prompt
-    text while the stored chat message keeps the user's original query.
+    Uploaded files use the inherited ``files`` field. The Agent App runtime
+    sends supported images directly to vision models and preserves the sandbox
+    locator fallback for all other files.
     """
 
     agent_id: str
     agent_config_snapshot_id: str
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     agent_session_scope_config_version_id: str | None = None
-    prompt_file_mappings: Sequence[JsonValue] = Field(default_factory=list)
     agent_llm_gateway_enabled: bool = False
 
 
@@ -308,6 +308,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
     workflow_run_id: str | None = None
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -339,6 +342,9 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
+    workflow_execution_timing: WorkflowExecutionTiming = Field(
+        default_factory=WorkflowExecutionTiming, exclude=True, repr=False
+    )
 
     class SingleIterationRunEntity(BaseModel):
         """

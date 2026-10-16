@@ -10,6 +10,7 @@ import type {
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { InfiniteData } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
@@ -20,9 +21,8 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { AppModeEnum } from '@/types/app'
-import { consoleQuery } from '../client'
-import { useUpdateWorkflow } from '../use-workflow'
+import { consoleQuery } from '@/service/console'
+import { usePublishWorkflow, useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryKey,
@@ -30,12 +30,15 @@ import {
 } from '../workflow-queries'
 
 const mockPatch = vi.hoisted(() => vi.fn())
+const mockPost = vi.hoisted(() => vi.fn())
+const mockRequest = vi.hoisted(() => vi.fn())
 
 vi.mock('../base', () => ({
+  request: (...args: unknown[]) => mockRequest(...args),
   del: vi.fn(),
   get: vi.fn(),
   patch: (...args: unknown[]) => mockPatch(...args),
-  post: vi.fn(),
+  post: (...args: unknown[]) => mockPost(...args),
   put: vi.fn(),
 }))
 
@@ -109,6 +112,42 @@ const createEnvironmentDeployment = ({
   },
 })
 
+describe('usePublishWorkflow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns the server warning with the publish result', async () => {
+    const published = {
+      result: 'success',
+      created_at: 1_710_000_100,
+      warning: '"Answer" ← "Producer"',
+    }
+    mockPost.mockResolvedValue(published)
+    const queryClient = createQueryClient()
+    const { result } = renderHook(() => usePublishWorkflow(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    let response: unknown
+    await act(async () => {
+      response = await result.current.mutateAsync({
+        url: '/apps/app-1/workflows/publish',
+        title: 'Release 1',
+        releaseNotes: 'Notes',
+      })
+    })
+
+    expect(response).toEqual(published)
+    expect(mockPost).toHaveBeenCalledWith('/apps/app-1/workflows/publish', {
+      body: {
+        marked_name: 'Release 1',
+        marked_comment: 'Notes',
+      },
+    })
+  })
+})
+
 describe('useUpdateWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -138,7 +177,7 @@ describe('useUpdateWorkflow', () => {
     })
   })
 
-  it.each([AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT])(
+  it.each(['workflow', 'advanced-chat'] as const)(
     'should synchronize every cached app deployment reference to the updated workflow version (%s)',
     async (appMode) => {
       const queryClient = createQueryClient()
@@ -347,7 +386,7 @@ describe('useUpdateWorkflow', () => {
     await act(async () => {
       await result.current.mutateAsync({
         appId: 'app-1',
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         url: '/apps/app-1/workflows/workflow-1',
         title: 'New release',
         releaseNotes: 'New notes',
@@ -399,4 +438,42 @@ describe('useUpdateWorkflow', () => {
       queryClient.getQueryData<ListEnvironmentDeploymentsResponse>(deploymentsQuery.queryKey),
     ).toEqual({ environment_deployments: [deployment] })
   })
+})
+
+describe('useRestoreWorkflow', () => {
+  const resources = [
+    { resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' }, path: '/apps/app-1' },
+    {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      path: '/rag/pipelines/pipeline-1',
+    },
+    { resource: { kind: 'snippet', snippetId: 'snippet-1' }, path: '/snippets/snippet-1' },
+  ] satisfies { resource: EditorResource; path: string }[]
+
+  beforeEach(() => {
+    mockRequest.mockReset()
+  })
+
+  it.each(resources)(
+    'restores the selected version for $resource.kind',
+    async ({ resource, path }) => {
+      mockRequest.mockResolvedValue(
+        Response.json({ result: 'success', hash: 'restored-hash', updated_at: 1 }),
+      )
+      const { result } = renderHook(() => useRestoreWorkflow(resource), {
+        wrapper: createWrapper(createQueryClient()),
+      })
+      await act(async () => {
+        await expect(result.current.mutateAsync('version-1')).resolves.toEqual({
+          result: 'success',
+          hash: 'restored-hash',
+          updated_at: 1,
+        })
+      })
+      const [url, , options] = mockRequest.mock.calls[0]!
+      expect(new URL(url).pathname).toBe(`/console/api${path}/workflows/version-1/restore`)
+      expect(options.request.method).toBe('POST')
+      expect(options.silent).toBe(true)
+    },
+  )
 })

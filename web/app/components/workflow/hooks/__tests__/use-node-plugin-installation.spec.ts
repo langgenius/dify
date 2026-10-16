@@ -1,7 +1,11 @@
 import type { CommonNodeType } from '../../types'
-import type { CollectionProviderType } from '@/app/components/tools/types'
+import { QueryClient } from '@tanstack/react-query'
 import { act } from '@testing-library/react'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { CollectionType } from '@/app/components/tools/types'
+import { consoleQuery } from '@/service/console'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createTestQueryClient } from '@/test/query-client'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import { useNodePluginInstallation } from '../use-node-plugin-installation'
@@ -10,10 +14,8 @@ const mockBuiltInTools = vi.fn()
 const mockCustomTools = vi.fn()
 const mockWorkflowTools = vi.fn()
 const mockMcpTools = vi.fn()
-const mockInvalidToolsByType = vi.fn()
 const mockTriggerPlugins = vi.fn()
 const mockInvalidateTriggers = vi.fn()
-const mockInvalidDataSourceList = vi.fn()
 let mockWorkspacePermissionKeys = ['plugin.install']
 
 vi.mock('@/context/permission-state', async () => {
@@ -23,22 +25,23 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: (enabled: boolean) => mockBuiltInTools(enabled),
-  useAllCustomTools: (enabled: boolean) => mockCustomTools(enabled),
-  useAllWorkflowTools: (enabled: boolean) => mockWorkflowTools(enabled),
-  useAllMCPTools: (enabled: boolean) => mockMcpTools(enabled),
-  useInvalidToolsByType: (providerType?: CollectionProviderType) =>
-    mockInvalidToolsByType(providerType),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': ({ enabled }: { enabled?: boolean }) =>
+      mockBuiltInTools(enabled),
+    'workspaces.current.tools.api.get': ({ enabled }: { enabled?: boolean }) =>
+      mockCustomTools(enabled),
+    'workspaces.current.tools.workflow.get': ({ enabled }: { enabled?: boolean }) =>
+      mockWorkflowTools(enabled),
+    'workspaces.current.tools.mcp.get': ({ enabled }: { enabled?: boolean }) =>
+      mockMcpTools(enabled),
+  })
+})
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: (enabled: boolean) => mockTriggerPlugins(enabled),
   useInvalidateAllTriggerPlugins: () => mockInvalidateTriggers,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  useInvalidDataSourceList: () => mockInvalidDataSourceList,
 }))
 
 const makeToolNode = (overrides: Partial<CommonNodeType> = {}) =>
@@ -90,11 +93,11 @@ const matchedTriggerProvider = {
   plugin_id: 'trigger-plugin',
 }
 
-const matchedDataSource = {
+const matchedDataSource = createDatasourceProvider({
   provider: 'knowledge-provider',
   plugin_id: 'knowledge-plugin',
   plugin_unique_identifier: 'knowledge-plugin@1.0.0',
-}
+})
 
 describe('useNodePluginInstallation', () => {
   beforeEach(() => {
@@ -104,10 +107,8 @@ describe('useNodePluginInstallation', () => {
     mockCustomTools.mockReturnValue({ data: undefined, isLoading: false })
     mockWorkflowTools.mockReturnValue({ data: undefined, isLoading: false })
     mockMcpTools.mockReturnValue({ data: undefined, isLoading: false })
-    mockInvalidToolsByType.mockReturnValue(undefined)
     mockTriggerPlugins.mockReturnValue({ data: undefined, isLoading: false })
     mockInvalidateTriggers.mockReset()
-    mockInvalidDataSourceList.mockReset()
   })
 
   it('should return the noop installation state for non plugin-dependent nodes', () => {
@@ -130,11 +131,17 @@ describe('useNodePluginInstallation', () => {
   })
 
   it('should report loading and invalidate built-in tools while the collection is resolving', () => {
-    const invalidateTools = vi.fn()
     mockBuiltInTools.mockReturnValue({ data: undefined, isLoading: true })
-    mockInvalidToolsByType.mockReturnValue(invalidateTools)
+    const queryClient = createTestQueryClient()
+    seedAccountProfileQuery(queryClient)
+    const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+    const customToolsKey = consoleQuery.workspaces.current.tools.api.get.queryKey()
+    queryClient.setQueryData(builtInToolsKey, [])
+    queryClient.setQueryData(customToolsKey, [])
 
-    const { result } = renderWorkflowHook(() => useNodePluginInstallation(makeToolNode()))
+    const { result } = renderWorkflowHook(() => useNodePluginInstallation(makeToolNode()), {
+      queryClient,
+    })
 
     expect(mockBuiltInTools).toHaveBeenCalledWith(true)
     expect(result.current.isChecking).toBe(true)
@@ -147,7 +154,8 @@ describe('useNodePluginInstallation', () => {
       result.current.onInstallSuccess()
     })
 
-    expect(invalidateTools).toHaveBeenCalled()
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(customToolsKey)?.isInvalidated).toBe(false)
   })
 
   it.each([
@@ -249,7 +257,7 @@ describe('useNodePluginInstallation', () => {
         ),
       {
         initialStoreState: {
-          dataSourceList: [matchedDataSource] as never,
+          dataSourceList: [matchedDataSource],
         },
       },
     )
@@ -258,11 +266,18 @@ describe('useNodePluginInstallation', () => {
     expect(missingRender.result.current.isMissing).toBe(true)
     expect(missingRender.result.current.shouldDim).toBe(true)
 
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+    })
+    seedAccountProfileQuery(queryClient)
+    const catalogKey = consoleQuery.rag.pipelines.datasourcePlugins.get.queryKey()
+    queryClient.setQueryData(catalogKey, [matchedDataSource])
     const matchedRender = renderWorkflowHook(
       () => useNodePluginInstallation(makeDataSourceNode()),
       {
+        queryClient,
         initialStoreState: {
-          dataSourceList: [matchedDataSource] as never,
+          dataSourceList: [matchedDataSource],
         },
       },
     )
@@ -274,7 +289,8 @@ describe('useNodePluginInstallation', () => {
       matchedRender.result.current.onInstallSuccess()
     })
 
-    expect(mockInvalidDataSourceList).toHaveBeenCalled()
+    expect(queryClient.getQueryState(catalogKey)?.isInvalidated).toBe(true)
+    queryClient.clear()
   })
 
   it('should keep data sources in checking state before the list is loaded', () => {

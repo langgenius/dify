@@ -1,10 +1,10 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { screen } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAllWorkflowTools } from '@/service/use-tools'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
@@ -37,18 +37,22 @@ vi.mock('../../hooks/use-workflow', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllWorkflowTools: vi.fn(),
-}))
+const { mockUseAllWorkflowTools } = vi.hoisted(() => ({ mockUseAllWorkflowTools: vi.fn() }))
 
-vi.mock('../change-block-menu-trigger', () => ({
-  ChangeBlockMenuTrigger: () => <div data-testid="node-actions-change-block" />,
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
+  })
+})
+
+vi.mock('../change-block-popup', () => ({
+  ChangeBlockPopup: () => <div data-testid="node-actions-change-block" />,
 }))
 
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseAllWorkflowTools = vi.mocked(useAllWorkflowTools)
 
 const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
   ({
@@ -102,6 +106,8 @@ const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boo
 describe('NodeActionsDropdown', () => {
   const handleNodeSelect = vi.fn()
   const handleNodeDelete = vi.fn()
+  const handleNodesCopy = vi.fn()
+  const handleNodesDuplicate = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -115,9 +121,9 @@ describe('NodeActionsDropdown', () => {
     } as ReturnType<typeof useNodeMetaData>)
     mockUseNodesInteractions.mockReturnValue({
       handleNodeDelete,
-      handleNodesDuplicate: vi.fn(),
+      handleNodesDuplicate,
       handleNodeSelect,
-      handleNodesCopy: vi.fn(),
+      handleNodesCopy,
     } as unknown as ReturnType<typeof useNodesInteractions>)
     mockUseNodesReadOnly.mockReturnValue({
       nodesReadOnly: false,
@@ -141,6 +147,71 @@ describe('NodeActionsDropdown', () => {
     expect(handleNodeSelect).toHaveBeenCalledWith('node-1')
     expect(store.getState().initShowLastRunTab).toBe(true)
     expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-1', action: 'run' })
+  })
+
+  it.each([
+    { key: 'c', action: handleNodesCopy },
+    { key: 'd', action: handleNodesDuplicate },
+    { key: 'Delete', action: handleNodeDelete },
+    { key: 'Backspace', action: handleNodeDelete },
+  ])('runs $key from the focused portalled node menu', async ({ key, action }) => {
+    const user = userEvent.setup()
+    const { container } = renderComponent()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.keyboard('{ArrowDown}')
+    const focusedItem = document.activeElement
+    expect(focusedItem).toHaveAttribute('role', 'menuitem')
+    expect(container.contains(focusedItem)).toBe(false)
+
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
+
+    expect(action).toHaveBeenCalledExactlyOnceWith('node-1')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('leaves composition alone and consumes held shortcuts without repeating the action', async () => {
+    const user = userEvent.setup()
+    renderComponent()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.keyboard('{ArrowDown}')
+    const item = document.activeElement!
+    const modifier = detectPlatform() === 'mac' ? { metaKey: true } : { ctrlKey: true }
+    const composing = new KeyboardEvent('keydown', {
+      key: 'd',
+      ...modifier,
+      isComposing: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    fireEvent(item, composing)
+    expect(composing.defaultPrevented).toBe(false)
+    const repeat = new KeyboardEvent('keydown', {
+      key: 'd',
+      ...modifier,
+      repeat: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    fireEvent(item, repeat)
+    expect(repeat.defaultPrevented).toBe(true)
+    expect(handleNodesDuplicate).not.toHaveBeenCalled()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('does not run unavailable editing shortcuts from a readonly node menu', async () => {
+    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true } as ReturnType<
+      typeof useNodesReadOnly
+    >)
+    const user = userEvent.setup()
+    renderComponent()
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    await user.keyboard('{ArrowDown}')
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(`{${mod}>}cd{/${mod}}{Delete}`)
+    expect(handleNodesCopy).not.toHaveBeenCalled()
+    expect(handleNodesDuplicate).not.toHaveBeenCalled()
+    expect(handleNodeDelete).not.toHaveBeenCalled()
   })
 
   it('should hide single-run actions when nodes are readonly', async () => {

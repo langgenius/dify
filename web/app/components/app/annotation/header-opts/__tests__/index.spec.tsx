@@ -1,13 +1,13 @@
-/* oxlint-disable typescript/no-explicit-any */
+import type { Window } from 'happy-dom'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItemBasic } from '../../type'
-import type { Locale } from '@/i18n-config'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import type { Locale } from '@/i18n'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
-import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
 
 const mockJsonToCSV = vi.fn((_: unknown) => 'csv-content')
@@ -21,26 +21,33 @@ vi.mock('react-papaparse', () => ({
   jsonToCSV: (data: unknown) => mockJsonToCSV(data),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  fetchExportAnnotationList: vi.fn(),
-  clearAllAnnotations: vi.fn(),
+const { mockedFetchAnnotations } = vi.hoisted(() => ({
+  mockedFetchAnnotations: vi.fn(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: {
-      usage: { annotatedResponse: 0 },
-      total: { annotatedResponse: 10 },
-    },
-    enableBilling: false,
-  }),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: { byAppId: { annotations: { export: { get: mockedFetchAnnotations } } } },
+  },
+}))
+
+const { mockedRequest } = vi.hoisted(() => ({
+  mockedRequest:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mockedRequest,
 }))
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => LanguagesSupported[0]),
 }))
 
@@ -103,10 +110,9 @@ const mockAnnotations: AnnotationItemBasic[] = [
   },
 ]
 
-const mockedFetchAnnotations = vi.mocked(fetchExportAnnotationList)
-const mockedClearAllAnnotations = vi.mocked(clearAllAnnotations)
-
 describe('HeaderOptions', () => {
+  const originalUrl = window.location.href
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useRealTimers()
@@ -116,6 +122,8 @@ describe('HeaderOptions', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    // Earlier cases can leave the test window on a URL the console client cannot build requests from.
+    ;(window as unknown as Window).happyDOM.setURL(originalUrl)
   })
 
   it('should fetch annotations on mount and render enabled export actions when data exist', async () => {
@@ -124,7 +132,7 @@ describe('HeaderOptions', () => {
     renderComponent()
 
     await waitFor(() => {
-      expect(mockedFetchAnnotations).toHaveBeenCalledWith('test-app-id')
+      expect(mockedFetchAnnotations).toHaveBeenCalledWith({ params: { app_id: 'test-app-id' } })
     })
 
     await expandExportMenu(user)
@@ -304,7 +312,7 @@ describe('HeaderOptions', () => {
   })
 
   it('should clear all annotations when confirmation succeeds', async () => {
-    mockedClearAllAnnotations.mockResolvedValue(undefined)
+    mockedRequest.mockResolvedValue(Response.json({ result: 'success' }))
     const user = userEvent.setup()
     const onAdded = vi.fn()
     renderComponent({ onAdded })
@@ -317,14 +325,19 @@ describe('HeaderOptions', () => {
     await user.click(confirmButton)
 
     await waitFor(() => {
-      expect(mockedClearAllAnnotations).toHaveBeenCalledWith('test-app-id')
       expect(onAdded).toHaveBeenCalled()
+    })
+    const [url, , options] = mockedRequest.mock.calls[0]!
+    expect(url).toMatch(/\/apps\/test-app-id\/annotations$/)
+    expect(options.request.method).toBe('DELETE')
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
   })
 
-  it('should handle clear all failures gracefully', async () => {
+  it('should keep the clear all confirmation open when clearing fails', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
-    mockedClearAllAnnotations.mockRejectedValue(new Error('network'))
+    mockedRequest.mockRejectedValue(new Error('network'))
     const user = userEvent.setup()
     const onAdded = vi.fn()
     renderComponent({ onAdded })
@@ -336,10 +349,13 @@ describe('HeaderOptions', () => {
     await user.click(confirmButton)
 
     await waitFor(() => {
-      expect(mockedClearAllAnnotations).toHaveBeenCalled()
-      expect(onAdded).not.toHaveBeenCalled()
-      expect(consoleSpy).toHaveBeenCalled()
+      expect(mockedRequest).toHaveBeenCalled()
     })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
+    })
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(onAdded).not.toHaveBeenCalled()
 
     consoleSpy.mockRestore()
   })

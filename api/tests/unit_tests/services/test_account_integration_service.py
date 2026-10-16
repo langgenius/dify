@@ -1,21 +1,31 @@
 from __future__ import annotations
 
 from datetime import datetime
-from unittest.mock import Mock
+
+from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
+from models.account import AccountIntegrate
+from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from services.account_integration_service import AccountIntegrationService
-from services.account_ports import AccountIntegrationRepository
-from services.entities.account_entities import AccountIntegrationSnapshot
+from tests.unit_tests.model_factories import make_account
 
 
-def test_list_merges_configured_providers_with_persisted_integrations() -> None:
+def test_list_merges_configured_providers_with_persisted_integrations(
+    sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture
+) -> None:
     created_at = datetime(2026, 1, 1)
-    integrations = Mock(spec=AccountIntegrationRepository)
-    integrations.list_for_account.return_value = [
-        AccountIntegrationSnapshot(provider="github", created_at=created_at),
-        AccountIntegrationSnapshot(provider="ignored", created_at=created_at),
-    ]
+    with sqlite_session_factory.begin() as session:
+        session.add(make_account())
+        for provider in ("github", "ignored"):
+            integration = AccountIntegrate(
+                account_id="account-1", provider=provider, open_id=f"{provider}-user", encrypted_token=""
+            )
+            integration.created_at = created_at
+            session.add(integration)
+    integrations = SQLAlchemyAccountIntegrationRepository(sqlite_session_factory)
+    lookup = mocker.spy(integrations, "list_for_account")
     service = AccountIntegrationService(
         integrations=integrations,
         providers=("github", "google"),
@@ -33,4 +43,4 @@ def test_list_merges_configured_providers_with_persisted_integrations() -> None:
         ("github", created_at, True),
         ("google", None, False),
     ]
-    integrations.list_for_account.assert_called_once_with("account-1")
+    lookup.assert_called_once_with("account-1")

@@ -3,12 +3,12 @@ import type { IConfigVarProps } from '../index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { vi } from 'vite-plus/test'
 import { toast } from '@/app/components/app/configuration/toast'
 import DebugConfigurationContext from '@/context/debug-configuration'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { AppModeEnum } from '@/types/app'
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from '../index'
 
 const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
@@ -21,6 +21,11 @@ type SubscriptionEvent = {
 }
 
 let subscriptionCallback: ((event: SubscriptionEvent) => void) | null = null
+
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({}),
+}))
 
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
@@ -63,7 +68,7 @@ type DebugConfigurationState = React.ComponentProps<
 >['value']
 
 const defaultDebugConfigValue = {
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   dataSets: [],
   modelConfig: {
     model_id: 'test-model',
@@ -126,7 +131,7 @@ describe('ConfigVar', () => {
     it('should show empty state when no variables exist', () => {
       renderConfigVar({ promptVariables: [] })
 
-      expect(screen.getByText('appDebug.notSetVar'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.notSetVar:{"input":"{{input}}"}'))!.toBeInTheDocument()
     })
 
     it('should render variable items and allow reordering via sortable list', () => {
@@ -150,6 +155,29 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
+    })
+
+    it('commits variable keyboard sorting only after confirmation', async () => {
+      const user = userEvent.setup()
+      const onPromptVariablesChange = vi.fn()
+      const first = createPromptVariable({ key: 'first', name: 'First' })
+      const second = createPromptVariable({ key: 'second', name: 'Second' })
+      renderConfigVar({ promptVariables: [first, second], onPromptVariablesChange })
+      const handle = screen.getAllByRole('button', { name: /sort.handle/ })[0]!
+      handle.focus()
+      await user.keyboard('{Enter}{ArrowDown}')
+      expect(handle).toHaveFocus()
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+      await user.keyboard('{Enter}')
+      expect(onPromptVariablesChange).toHaveBeenCalledExactlyOnceWith([second, first])
+    })
+
+    it('does not expose keyboard sorting in readonly mode', () => {
+      renderConfigVar({
+        readonly: true,
+        promptVariables: [createPromptVariable(), createPromptVariable()],
+      })
+      expect(screen.queryByRole('button', { name: /sort.handle/ })).not.toBeInTheDocument()
     })
 
     it('should ignore sortable updates when the variable order is unchanged', () => {
@@ -370,7 +398,7 @@ describe('ConfigVar', () => {
           onPromptVariablesChange,
         },
         {
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
           dataSets: [{ id: 'dataset-1' } as DebugConfigurationState['dataSets'][number]],
         },
       )

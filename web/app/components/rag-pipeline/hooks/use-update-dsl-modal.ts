@@ -1,23 +1,23 @@
 import type { MouseEventHandler } from 'react'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfo = {
   importedVersion: string
   systemVersion: string
-}
-type ImportErrorResponse = {
-  message?: unknown
-  error?: unknown
 }
 type UseUpdateDSLModalParams = {
   onCancel: () => void
@@ -25,31 +25,18 @@ type UseUpdateDSLModalParams = {
 }
 const isCompletedStatus = (status: DSLImportStatus): boolean =>
   status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-
-  const trimmedValue = value.trim()
-  return trimmedValue || undefined
-}
-const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Response && !error.bodyUsed) {
-    try {
-      const errorData = (await error.clone().json()) as ImportErrorResponse
-      return getNonEmptyString(errorData.message) ?? getNonEmptyString(errorData.error)
-    } catch {}
-  }
-
-  if (error instanceof Error) return getNonEmptyString(error.message)
-
-  return undefined
-}
 export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParams) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'] as const)
   const { eventEmitter } = useEventEmitterContextContext()
+  const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
-  const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
+  const { mutateAsync: importDSL } = useMutation(
+    consoleQuery.rag.pipelines.imports.post.mutationOptions(),
+  )
+  const { mutateAsync: importDSLConfirm } = useMutation(
+    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions(),
+  )
   // File state
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
@@ -100,7 +87,10 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     [eventEmitter],
   )
   const completeImport = useCallback(
-    async (pipelineId: string | undefined, status: DSLImportStatus = DSLImportStatus.COMPLETED) => {
+    async (
+      pipelineId: string | null | undefined,
+      status: DSLImportStatus = DSLImportStatus.COMPLETED,
+    ) => {
       if (!pipelineId) {
         notifyError()
         return
@@ -136,7 +126,6 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     [],
   )
   const handleImport: MouseEventHandler = useCallback(async () => {
-    const { pipelineId } = workflowStore.getState()
     if (isCreatingRef.current) return
     isCreatingRef.current = true
     if (!currentFile) return
@@ -144,9 +133,11 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       if (!pipelineId || !fileContent) return
       setLoading(true)
       const response = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: fileContent,
-        pipeline_id: pipelineId,
+        body: {
+          mode: DSLImportMode.YAML_CONTENT,
+          yaml_content: fileContent,
+          pipeline_id: pipelineId,
+        },
       })
       const { id, status, pipeline_id, imported_dsl_version, current_dsl_version } = response
       if (isCompletedStatus(status)) await completeImport(pipeline_id, status)
@@ -154,7 +145,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         showVersionMismatch(id, imported_dsl_version, current_dsl_version)
       else notifyError(response.error)
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     }
     isCreatingRef.current = false
   }, [
@@ -169,14 +160,16 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const onUpdateDSLConfirm: MouseEventHandler = useCallback(async () => {
     if (!importId) return
     try {
-      const { status, pipeline_id, error } = await importDSLConfirm(importId)
+      const { status, pipeline_id, error } = await importDSLConfirm({
+        params: { import_id: importId },
+      })
       if (status === DSLImportStatus.COMPLETED) {
         await completeImport(pipeline_id)
         return
       }
       if (status === DSLImportStatus.FAILED) notifyError(error)
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     }
   }, [importId, importDSLConfirm, completeImport, notifyError])
   return {

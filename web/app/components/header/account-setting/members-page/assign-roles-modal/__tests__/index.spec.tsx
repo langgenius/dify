@@ -1,10 +1,18 @@
 import type { Role } from '@/models/access-control'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import AssignRolesModal from '../index'
 
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+  })
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -27,7 +35,7 @@ const roles = [
 describe('AssignRolesModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -47,7 +55,7 @@ describe('AssignRolesModal', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   describe('Role selection', () => {
@@ -62,7 +70,7 @@ describe('AssignRolesModal', () => {
       )
 
       expect(
-        screen.queryByText(/common\.members\.assignRolesModal\.selectedCount/i),
+        screen.queryByText(/workspaceMembers\.members\.assignRolesModal\.selectedCount/i),
       ).not.toBeInTheDocument()
     })
 
@@ -77,10 +85,10 @@ describe('AssignRolesModal', () => {
       )
 
       expect(
-        screen.getByText(/common\.members\.assignRolesModal\.singleDescription/i),
+        screen.getByText(/workspaceMembers\.members\.assignRolesModal\.singleDescription/i),
       ).toBeInTheDocument()
       expect(
-        screen.queryByText(/common\.members\.assignRolesModal\.description/i),
+        screen.queryByText(/workspaceMembers\.members\.assignRolesModal\.description/i),
       ).not.toBeInTheDocument()
     })
 

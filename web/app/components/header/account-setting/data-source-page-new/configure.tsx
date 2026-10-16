@@ -10,6 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddApiKeyButton, AddOAuthButton } from '@/app/components/plugins/plugin-auth'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { providerConfigToFormSchema } from './utils'
 
 type ConfigureProps = {
   item: DataSourceAuth
@@ -18,11 +20,17 @@ type ConfigureProps = {
   disabled?: boolean
 }
 const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
+  const renderI18nObject = useRenderI18nObject()
+  const providerLabel = renderI18nObject(item.label)
   const [open, setOpen] = useState(false)
-  const canApiKey = item.credential_schema?.length
-  const oAuthData = item.oauth_schema || {}
-  const canOAuth = oAuthData.client_schema?.length
+  const canApiKey = item.credential_schema.length
+  const credentialFormSchemas = useMemo(
+    () => item.credential_schema.map(providerConfigToFormSchema),
+    [item.credential_schema],
+  )
+  const oAuthData = item.oauth_schema
+  const canOAuth = oAuthData?.client_schema.length
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     return {
       buttonText: t(($) => $['auth.addOAuth'], { ns: 'plugin' }),
@@ -47,7 +55,11 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
-            <Button className="h-8" variant="secondary-accent">
+            <Button
+              aria-label={`${t(($) => $['dataSource.configure'], { ns: 'common' })} ${providerLabel}`}
+              className="h-8"
+              variant="secondary-accent"
+            >
               <span className="i-ri-add-line size-4" aria-hidden="true" />
               {t(($) => $['dataSource.configure'], { ns: 'common' })}
             </Button>
@@ -71,7 +83,7 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
             {!!canApiKey && (
               <AddApiKeyButton
                 {...apiKeyButtonProps}
-                formSchemas={item.credential_schema}
+                formSchemas={credentialFormSchemas}
                 onUpdate={handleUpdate}
                 disabled={disabled}
               />
@@ -82,17 +94,17 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
     )
   }
 
-  if (!canOAuth) return renderConfigurePopover()
+  if (!oAuthData || !canOAuth) return renderConfigurePopover()
 
   return (
     <AddOAuthButton
       {...oAuthButtonProps}
       onUpdate={handleUpdate}
       oAuthData={{
-        schema: oAuthData.client_schema || [],
+        schema: oAuthData.client_schema.map(providerConfigToFormSchema),
         is_oauth_custom_client_enabled: oAuthData.is_oauth_custom_client_enabled,
         is_system_oauth_params_exists: oAuthData.is_system_oauth_params_exists,
-        client_params: oAuthData.oauth_custom_client_params,
+        client_params: oAuthData.oauth_custom_client_params ?? undefined,
         redirect_uri: oAuthData.redirect_uri,
       }}
       disabled={disabled}

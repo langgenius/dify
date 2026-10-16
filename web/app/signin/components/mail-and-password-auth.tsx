@@ -5,17 +5,15 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { login } from '@/service/common'
-import { setWebAppAccessToken } from '@/service/webapp-auth'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { encryptPassword } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -31,7 +29,7 @@ function hasErrorCode(error: unknown, code: string) {
 }
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['login'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -52,15 +50,8 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
       }
       if (isInvite)
         loginData.invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
-      const res = await login({
-        url: '/login',
-        body: loginData,
-      })
+      const res = await consoleClient.login.post({ body: loginData })
       if (res.result === 'success') {
-        if (res?.data?.access_token) {
-          // Track login success event
-          setWebAppAccessToken(res.data.access_token)
-        }
         trackEvent('user_login_success', {
           method: 'email_password',
           is_invite: isInvite,

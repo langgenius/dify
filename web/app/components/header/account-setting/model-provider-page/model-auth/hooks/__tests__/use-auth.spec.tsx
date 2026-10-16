@@ -17,8 +17,8 @@ const mockAddModelCredential = vi.fn()
 const mockEditProviderCredential = vi.fn()
 const mockEditModelCredential = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
   return {
     ...actual,
     default: {
@@ -38,8 +38,19 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useRefreshModel: () => ({ handleRefreshModel: mockHandleRefreshModel }),
 }))
 
-vi.mock('@/service/use-models', () => ({
-  useDeleteModel: () => ({ mutateAsync: mockDeleteModelService }),
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    workspaces: {
+      current: {
+        modelProviders: { byProvider: { models: { delete: { mutationOptions: () => ({}) } } } },
+      },
+    },
+  },
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useMutation: () => ({ mutateAsync: mockDeleteModelService }),
 }))
 
 vi.mock('../use-auth-service', () => ({
@@ -204,8 +215,8 @@ describe('useAuth', () => {
     })
 
     expect(mockDeleteModelService).toHaveBeenCalledWith({
-      model: 'gpt-4',
-      model_type: ModelTypeEnum.textGeneration,
+      params: { provider: 'openai' },
+      query: { model: 'gpt-4', model_type: ModelTypeEnum.textGeneration },
     })
     expect(onRemove).toHaveBeenCalledWith('')
   })

@@ -66,18 +66,22 @@ import type {
   RenderOptions,
   RenderResult,
 } from '@testing-library/react'
+import type { EditorResource } from '../editor-resource/resource'
 import type { Shape as HooksStoreShape } from '../hooks-store/store'
 import type { Shape } from '../store/workflow'
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider } from 'reactflow'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { createQueryClientWrapper } from '@/test/console/query-client'
-import { seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
+import { seedAppDetail, seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
 import { render, renderHook } from '@/test/console/render'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { WorkflowContext } from '../context'
+import { EditorResourceScope } from '../editor-resource/provider'
 import { HooksStoreContext } from '../hooks-store/provider'
 import { createHooksStore } from '../hooks-store/store'
 import { createWorkflowStore } from '../store/workflow'
@@ -133,6 +137,7 @@ type HistoryStoreConfig = {
 }
 
 type WorkflowProviderOptions = {
+  resource?: EditorResource
   initialStoreState?: Partial<Shape>
   hooksStoreProps?: Partial<HooksStoreShape>
   historyStore?: HistoryStoreConfig
@@ -154,6 +159,7 @@ function createWorkflowWrapper(
   stores: StoreInstances,
   historyConfig?: HistoryStoreConfig,
   externalQueryClient?: QueryClient,
+  resource: EditorResource = { kind: 'app', appId: 'app-1', mode: 'workflow' },
 ) {
   if (historyConfig) {
     stores.store.temporal.getState().pause()
@@ -176,10 +182,26 @@ function createWorkflowWrapper(
   if (!externalQueryClient) seedSystemFeatures(queryClient)
   if (!externalQueryClient) seedAppDslVersion(queryClient)
   if (!externalQueryClient) seedAccountProfileQuery(queryClient)
-  const QueryClientWrapper = externalQueryClient
-    ? ({ children }: { children: React.ReactNode }) =>
-        React.createElement(QueryClientProvider, { client: queryClient }, children)
-    : createQueryClientWrapper(queryClient)
+  if (resource.kind === 'app') {
+    const input = { input: { params: { app_id: resource.appId } } }
+    for (const endpoint of [
+      consoleQuery.apps.byAppId.workflows.draft.systemVariables.get,
+      consoleQuery.apps.byAppId.workflows.draft.conversationVariables.get,
+    ]) {
+      const variableKey = endpoint.queryKey(input)
+      if (!queryClient.getQueryData(variableKey))
+        queryClient.setQueryData(variableKey, { items: [] })
+    }
+    const key = consoleQuery.apps.byAppId.get.queryKey({
+      input: { params: { app_id: resource.appId } },
+    })
+    if (!queryClient.getQueryData(key))
+      seedAppDetail(
+        queryClient,
+        createAppDetailFixture({ id: resource.appId, mode: resource.mode }),
+      )
+  }
+  const QueryClientWrapper = createQueryClientWrapper(queryClient)
 
   return ({ children }: { children: React.ReactNode }) => {
     let inner: React.ReactNode = children
@@ -191,7 +213,10 @@ function createWorkflowWrapper(
     return React.createElement(
       QueryClientWrapper,
       null,
-      React.createElement(WorkflowContext.Provider, { value: stores.store }, inner),
+      React.createElement(EditorResourceScope, {
+        resource,
+        children: React.createElement(WorkflowContext.Provider, { value: stores.store }, inner),
+      }),
     )
   }
 }
@@ -221,11 +246,12 @@ export function renderWorkflowHook<R, P = undefined>(
     hooksStoreProps,
     historyStore: historyConfig,
     queryClient,
+    resource,
     ...rest
   } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient, resource)
 
   const renderResult = renderHook(hook, { wrapper, ...rest })
   return { ...renderResult, ...stores }
@@ -256,11 +282,12 @@ export function renderWorkflowComponent(
     hooksStoreProps,
     historyStore: historyConfig,
     queryClient,
+    resource,
     ...renderOptions
   } = options ?? {}
 
   const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
-  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient)
+  const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient, resource)
 
   const renderResult = render(ui, { wrapper, ...renderOptions })
   return { ...renderResult, ...stores }
@@ -288,9 +315,11 @@ function createWorkflowFlowWrapper(
     edges = [],
     reactFlowProps,
     canvasStyle,
+    resource,
+    queryClient,
   }: WorkflowFlowOptions,
 ) {
-  const workflowWrapper = createWorkflowWrapper(stores, historyConfig)
+  const workflowWrapper = createWorkflowWrapper(stores, historyConfig, queryClient, resource)
 
   return ({ children }: { children: React.ReactNode }) =>
     React.createElement(
@@ -321,6 +350,8 @@ export function renderWorkflowFlowComponent(
     edges,
     reactFlowProps,
     canvasStyle,
+    resource,
+    queryClient,
     ...renderOptions
   } = options ?? {}
 
@@ -331,6 +362,8 @@ export function renderWorkflowFlowComponent(
     edges,
     reactFlowProps,
     canvasStyle,
+    resource,
+    queryClient,
   })
 
   const renderResult = render(ui, { wrapper, ...renderOptions })
@@ -349,6 +382,8 @@ export function renderWorkflowFlowHook<R, P = undefined>(
     edges,
     reactFlowProps,
     canvasStyle,
+    resource,
+    queryClient,
     ...rest
   } = options ?? {}
 
@@ -359,6 +394,8 @@ export function renderWorkflowFlowHook<R, P = undefined>(
     edges,
     reactFlowProps,
     canvasStyle,
+    resource,
+    queryClient,
   })
 
   const renderResult = renderHook(hook, { wrapper, ...rest })

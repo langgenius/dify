@@ -3,12 +3,12 @@ import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answe
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { getHumanInputFormDependencySelectors, isOutput } from '../utils'
 
@@ -29,7 +29,7 @@ const useSingleRunFormParams = ({
   getInputVars,
   setRunInputData,
 }: Params) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow', 'workflowHumanInput'])
   const { inputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const [showGeneratedForm, setShowGeneratedForm] = useState(false)
   const [formData, setFormData] = useState<HumanInputFormData | null>(null)
@@ -48,7 +48,7 @@ const useSingleRunFormParams = ({
   const forms = useMemo(() => {
     const forms: FormProps[] = [
       {
-        label: t(($) => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflow' })!,
+        label: t(($) => $[`${i18nPrefix}.singleRun.label`], { ns: 'workflowHumanInput' })!,
         inputs: generatedInputs,
         values: runInputData,
         onChange: setRunInputData,
@@ -68,9 +68,9 @@ const useSingleRunFormParams = ({
       .filter((arr) => arr.length > 0)
   }
 
-  const appDetail = useAppStore((s) => s.appDetail)
-  const appId = appDetail?.id
-  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
+  const resource = useAtomValue(editorResourceAtom)
+  const appId = resource.kind === 'app' ? resource.appId : undefined
+  const isWorkflowMode = resource.kind === 'app' && resource.mode === 'workflow'
   const fetchURL = useMemo(() => {
     if (!appId) return ''
     if (!isWorkflowMode) {

@@ -241,7 +241,7 @@ describe('human-input/delivery-method/method-item', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: /workflow.nodes.humanInput.deliveryMethod.notConfigured/i,
+        name: /workflowHumanInput.nodes.humanInput.deliveryMethod.notConfigured/i,
       }),
     )
     expect(screen.getByTestId('email-configure-modal'))!.toBeInTheDocument()

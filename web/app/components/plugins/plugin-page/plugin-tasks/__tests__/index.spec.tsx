@@ -33,7 +33,7 @@ const createMockPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus =
   labels: {
     en_US: 'Test Plugin',
     zh_Hans: '测试插件',
-  } as Record<string, string>,
+  },
   taskId: 'task-1',
   ...overrides,
 })
@@ -482,7 +482,7 @@ describe('PluginTaskList Component', () => {
     it('should display plugin name from labels', () => {
       const plugin = createMockPlugin({
         status: TaskStatus.running,
-        labels: { en_US: 'My Test Plugin' } as Record<string, string>,
+        labels: { en_US: 'My Test Plugin' },
       })
 
       render(<PluginTaskList {...defaultProps} runningPlugins={[plugin]} />)
@@ -505,11 +505,11 @@ describe('PluginTaskList Component', () => {
       const runningPlugins = [
         createMockPlugin({
           status: TaskStatus.running,
-          labels: { en_US: 'Plugin A' } as Record<string, string>,
+          labels: { en_US: 'Plugin A' },
         }),
         createMockPlugin({
           status: TaskStatus.running,
-          labels: { en_US: 'Plugin B' } as Record<string, string>,
+          labels: { en_US: 'Plugin B' },
         }),
       ]
 
@@ -591,7 +591,6 @@ describe('PluginTasks Component', () => {
       fireEvent.click(getTaskMenuTrigger())
 
       // The popover content should be visible (PluginTaskList)
-      // The popover content should be visible (PluginTaskList)
       expect(screen.getByTestId('plugin-task-list'))!.toBeInTheDocument()
     })
 
@@ -602,12 +601,12 @@ describe('PluginTasks Component', () => {
       render(<PluginTasks />)
 
       const taskMenuTrigger = getTaskMenuTrigger()
-      expect(taskMenuTrigger).not.toHaveAttribute('data-menu-open')
+      expect(taskMenuTrigger).not.toHaveAttribute('data-popup-open')
 
       await user.click(taskMenuTrigger)
 
       expect(taskMenuTrigger).toHaveAttribute('aria-expanded', 'true')
-      expect(taskMenuTrigger).toHaveAttribute('data-menu-open', '')
+      expect(taskMenuTrigger).toHaveAttribute('data-popup-open', '')
     })
 
     it('should keep the task menu trigger enabled when it can open', () => {
@@ -618,10 +617,10 @@ describe('PluginTasks Component', () => {
       expect(getTaskMenuTrigger()).toHaveAttribute('aria-disabled', 'false')
     })
 
-    it('should apply custom dropdown positioning props', () => {
+    it('should apply custom popover positioning props', () => {
       setupMocks([createMockPlugin({ status: TaskStatus.failed })])
 
-      render(<PluginTasks dropdownPlacement="bottom-start" dropdownAnchor={() => document.body} />)
+      render(<PluginTasks placement="bottom-start" anchor={() => document.body} />)
 
       fireEvent.click(getTaskMenuTrigger())
 
@@ -781,7 +780,7 @@ describe('PluginTasks Component', () => {
     it('should handle plugins with empty labels', () => {
       const plugin = createMockPlugin({
         status: TaskStatus.running,
-        labels: {} as Record<string, string>,
+        labels: { en_US: '' },
       })
       setupMocks([plugin])
 

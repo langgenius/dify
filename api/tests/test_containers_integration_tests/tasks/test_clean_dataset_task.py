@@ -41,6 +41,7 @@ from models.enums import (
     SegmentStatus,
 )
 from models.model import UploadFile
+from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from tasks.clean_dataset_task import clean_dataset_task
 
 
@@ -295,7 +296,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results
@@ -363,7 +364,7 @@ class TestCleanDatasetTask:
 
         # Create multiple documents
         documents = []
-        for i in range(3):
+        for _i in range(3):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
@@ -419,7 +420,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results
@@ -552,7 +553,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results - even with vector cleanup failure, documents and segments should be deleted
@@ -638,7 +639,7 @@ class TestCleanDatasetTask:
                 indexing_technique=dataset.indexing_technique,
                 index_struct=dataset.index_struct,
                 collection_binding_id=dataset.collection_binding_id,
-                doc_form=dataset.doc_form,
+                doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
             )
 
         # Verify results
@@ -692,12 +693,12 @@ class TestCleanDatasetTask:
         upload_file_ids = []
 
         # Create 50 documents with segments and upload files
-        for i in range(50):
+        for _i in range(50):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
             # Create 3 segments per document
-            for j in range(3):
+            for _j in range(3):
                 segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
                 segments.append(segment)
 
@@ -751,7 +752,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         end_time = time.time()
@@ -845,7 +846,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results
@@ -999,7 +1000,7 @@ class TestCleanDatasetTask:
             indexing_technique=dataset.indexing_technique,
             index_struct=dataset.index_struct,
             collection_binding_id=dataset.collection_binding_id,
-            doc_form=dataset.doc_form,
+            doc_form=get_dataset_doc_form(dataset, session=db_session_with_containers),
         )
 
         # Verify results

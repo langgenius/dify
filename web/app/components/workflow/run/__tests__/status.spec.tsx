@@ -1,11 +1,12 @@
-import type { WorkflowPausedDetailsResponse } from '@/models/log'
+import type { WorkflowPauseDetailsResponse } from '@dify/contracts/api/console/workflow/types.gen'
+import { skipToken } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { cloneElement, isValidElement } from 'react'
 import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
 import Status from '../status'
 
 const mockDocLink = createDocLinkMock()
-const mockUseWorkflowPausedDetails = vi.fn()
+const mockUseQuery = vi.fn()
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
@@ -57,14 +58,28 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
-vi.mock('@/service/use-log', () => ({
-  useWorkflowPausedDetails: (params: { workflowRunId: string; enabled?: boolean }) =>
-    mockUseWorkflowPausedDetails(params),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (options: unknown) => mockUseQuery(options),
+}))
+
+vi.mock('@/service/console', () => ({
+  consoleQuery: {
+    workflow: {
+      byWorkflowRunId: {
+        pauseDetails: {
+          get: {
+            queryOptions: (options: unknown) => options,
+          },
+        },
+      },
+    },
+  },
 }))
 
 const createPausedDetails = (
-  overrides: Partial<WorkflowPausedDetailsResponse> = {},
-): WorkflowPausedDetailsResponse => ({
+  overrides: Partial<WorkflowPauseDetailsResponse> = {},
+): WorkflowPauseDetailsResponse => ({
   paused_at: '2026-03-18T00:00:00Z',
   paused_nodes: [],
   ...overrides,
@@ -73,30 +88,33 @@ const createPausedDetails = (
 describe('Status', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseWorkflowPausedDetails.mockReturnValue({ data: undefined })
+    mockUseQuery.mockReturnValue({ data: undefined })
+  })
+
+  it('renders the scheduled status before execution', () => {
+    render(<Status status="scheduled" />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.scheduled')
   })
 
   it('renders the running status and loading placeholders', () => {
     render(<Status status="running" workflowRunId="run-1" />)
 
-    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.running')).toBeInTheDocument()
     expect(document.querySelectorAll('.bg-text-quaternary')).toHaveLength(2)
-    expect(mockUseWorkflowPausedDetails).toHaveBeenCalledWith({
-      workflowRunId: 'run-1',
-      enabled: false,
-    })
+    expect(mockUseQuery).toHaveBeenCalledWith({ input: skipToken })
   })
 
   it('renders the listening label when the run is waiting for input', () => {
     render(<Status status="running" isListening workflowRunId="run-2" />)
 
-    expect(screen.getByText('Listening')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.listening')).toBeInTheDocument()
   })
 
   it('renders succeeded metadata values', () => {
     render(<Status status="succeeded" time={1.234} tokens={8} />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('SUCCESS')
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.succeeded')
     expect(screen.getByText('1.234s')).toBeInTheDocument()
     expect(screen.getByText('8 Tokens')).toBeInTheDocument()
   })
@@ -104,7 +122,7 @@ describe('Status', () => {
   it('renders stopped fallbacks when time and tokens are missing', () => {
     render(<Status status="stopped" />)
 
-    expect(screen.getByText('STOP')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.stopped')).toBeInTheDocument()
     expect(screen.getByText('-')).toBeInTheDocument()
     expect(screen.getByText('0 Tokens')).toBeInTheDocument()
   })
@@ -112,7 +130,7 @@ describe('Status', () => {
   it('renders failed details and the partial-success exception tip', () => {
     render(<Status status="failed" error="Something broke" exceptionCounts={2} />)
 
-    expect(screen.getByText('FAIL')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.failed')).toBeInTheDocument()
     expect(screen.getByText('Something broke')).toBeInTheDocument()
     expect(
       screen.getAllByText(
@@ -126,7 +144,7 @@ describe('Status', () => {
   it('renders the partial-succeeded warning summary', () => {
     render(<Status status="partial-succeeded" exceptionCounts={3} />)
 
-    expect(screen.getByText('PARTIAL SUCCESS')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.partial-succeeded')).toBeInTheDocument()
     expect(
       screen.getAllByText(
         (_, element) =>
@@ -153,7 +171,7 @@ describe('Status', () => {
 
     const learnMoreLink = screen.getByRole('link', { name: 'workflow.common.learnMore' })
 
-    expect(screen.getByText('EXCEPTION')).toBeInTheDocument()
+    expect(screen.getByText('workflow.tracing.status.exception')).toBeInTheDocument()
     expect(learnMoreLink).toHaveAttribute('href', resolveDocLink('/use-dify/debug/error-type'))
     expect(mockDocLink).toHaveBeenCalledWith('/use-dify/debug/error-type')
   })
@@ -161,17 +179,16 @@ describe('Status', () => {
   it('renders paused placeholders when pause details have not loaded yet', () => {
     render(<Status status="paused" workflowRunId="run-3" />)
 
-    expect(screen.getByText('PENDING')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.log.reason')).toBeInTheDocument()
+    expect(screen.getByText('appLog.status.paused')).toBeInTheDocument()
+    expect(screen.getByText('workflowHumanInput.nodes.humanInput.log.reason')).toBeInTheDocument()
     expect(document.querySelectorAll('.bg-text-quaternary')).toHaveLength(3)
-    expect(mockUseWorkflowPausedDetails).toHaveBeenCalledWith({
-      workflowRunId: 'run-3',
-      enabled: true,
+    expect(mockUseQuery).toHaveBeenCalledWith({
+      input: { params: { workflow_run_id: 'run-3' } },
     })
   })
 
   it('renders paused human-input reasons and backstage URLs', () => {
-    mockUseWorkflowPausedDetails.mockReturnValue({
+    mockUseQuery.mockReturnValue({
       data: createPausedDetails({
         paused_nodes: [
           {
@@ -198,8 +215,12 @@ describe('Status', () => {
 
     render(<Status status="paused" workflowRunId="run-4" />)
 
-    expect(screen.getByText('workflow.nodes.humanInput.log.reasonContent')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.humanInput.log.backstageInputURL')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.log.reasonContent'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.log.backstageInputURL'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'https://example.com/a' })).toHaveAttribute(
       'href',
       'https://example.com/a',

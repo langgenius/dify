@@ -1,10 +1,14 @@
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import Conversion from '../conversion'
 
 const mockConvert = vi.fn()
-const mockInvalidDatasetDetail = vi.fn()
+const datasetDetailKey = consoleQuery.datasets.byDatasetId.get.queryKey({
+  input: { params: { dataset_id: 'ds-123' } },
+})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -28,20 +32,15 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector(mockDatasetDetailState),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useConvertDatasetToPipeline: () => ({
-    mutateAsync: mockConvert,
-    isPending: false,
-  }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  datasetDetailQueryKeyPrefix: ['dataset-detail'],
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidDatasetDetail,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.transform.datasets.byDatasetId.post': () => ({
+      mutateAsync: mockConvert,
+      isPending: false,
+    }),
+  })
+})
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -56,7 +55,7 @@ const { mockToast } = vi.hoisted(() => {
   return { mockToast }
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: mockToast,
 }))
 
@@ -75,6 +74,7 @@ vi.mock('@/context/permission-state', async () => {
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     mockDatasetDetailState = {
       dataset: {
         permission_keys: ['dataset.acl.edit'],
@@ -161,7 +161,7 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockConvert).toHaveBeenCalledWith(
-      'ds-123',
+      { params: { dataset_id: 'ds-123' } },
       expect.objectContaining({
         onSuccess: expect.any(Function),
         onError: expect.any(Function),
@@ -182,7 +182,9 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     expect(mockToast.success).toHaveBeenCalledWith('datasetPipeline.conversion.successMessage')
-    expect(mockInvalidDatasetDetail).toHaveBeenCalled()
+    expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: datasetDetailKey,
+    })
   })
 
   it('should handle failed conversion', async () => {

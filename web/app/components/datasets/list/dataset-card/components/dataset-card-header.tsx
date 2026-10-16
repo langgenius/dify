@@ -4,8 +4,9 @@ import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { toChunkingMode } from '@/app/components/datasets/dataset-fields'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
+import { DOC_FORM_ICON_CLASS_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 
 const EXTERNAL_PROVIDER = 'external'
 const docModeInfoClassName =
@@ -13,6 +14,7 @@ const docModeInfoClassName =
 
 type DatasetCardHeaderProps = {
   dataset: DataSet
+  nameId?: string
 }
 
 // DocModeInfo component - placed before usage
@@ -23,7 +25,7 @@ type DocModeInfoProps = {
 }
 
 const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocModeInfoProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const isPipeline = dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline'
 
@@ -40,12 +42,11 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
 
   const indexingText = dataset.indexing_technique
     ? formatIndexingTechniqueAndMethod(
-        dataset.indexing_technique as 'economy' | 'high_quality',
-        dataset.retrieval_model_dict?.search_method as Parameters<
-          typeof formatIndexingTechniqueAndMethod
-        >[1],
+        dataset.indexing_technique,
+        dataset.retrieval_model_dict.search_method,
       )
     : ''
+  const chunkingMode = toChunkingMode(dataset.doc_form)
 
   return (
     <div className={docModeInfoClassName}>
@@ -54,12 +55,12 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
           {t(($) => $['cornerLabel.pipeline'], { ns: 'dataset' })}
         </span>
       )}
-      {isShowDocModeInfo && !!dataset.doc_form && (
+      {isShowDocModeInfo && !!chunkingMode && (
         <span
           className="max-w-full min-w-0 truncate"
-          title={t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
+          title={t(($) => $[`chunkingMode.${DOC_FORM_TEXT[chunkingMode]}`], { ns: 'dataset' })}
         >
-          {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`], { ns: 'dataset' })}
+          {t(($) => $[`chunkingMode.${DOC_FORM_TEXT[chunkingMode]}`], { ns: 'dataset' })}
         </span>
       )}
       {isShowDocModeInfo && dataset.indexing_technique && indexingText && (
@@ -80,7 +81,7 @@ const DocModeInfo = ({ dataset, isExternalProvider, isShowDocModeInfo }: DocMode
 }
 
 // Main DatasetCardHeader component
-const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
+const DatasetCardHeader = ({ dataset, nameId }: DatasetCardHeaderProps) => {
   const isExternalProvider = dataset.provider === EXTERNAL_PROVIDER
 
   const isShowChunkingModeIcon =
@@ -92,10 +93,9 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
     (dataset.runtime_mode !== 'rag_pipeline' || dataset.is_published),
   )
 
-  const chunkingModeIcon = dataset.doc_form
-    ? DOC_FORM_ICON_WITH_BG[dataset.doc_form]
-    : React.Fragment
-  const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
+  const chunkingMode = toChunkingMode(dataset.doc_form)
+  const chunkingModeIcon = chunkingMode ? DOC_FORM_ICON_CLASS_WITH_BG[chunkingMode] : React.Fragment
+  const iconClassName = isExternalProvider ? DOC_FORM_ICON_CLASS_WITH_BG.external : chunkingModeIcon
 
   const iconInfo = useMemo(
     () =>
@@ -111,26 +111,24 @@ const DatasetCardHeader = ({ dataset }: DatasetCardHeaderProps) => {
   return (
     <div
       className={cn(
-        'flex items-center gap-x-3 px-4 pt-4 pb-2',
+        'flex items-center gap-x-3 pt-4 pr-14 pb-2 pl-4',
         !dataset.embedding_available && 'opacity-30',
       )}
     >
       <div className="relative shrink-0">
-        <AppIcon
-          size="large"
-          iconType={iconInfo.icon_type}
-          icon={iconInfo.icon}
-          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-        />
+        <AppIcon size="large" icon={iconInfo} />
         {(isShowChunkingModeIcon || isExternalProvider) && (
           <div className="absolute -right-1 -bottom-1 z-5">
-            <Icon className="size-4" />
+            <span aria-hidden className={cn(iconClassName, 'size-4')} />
           </div>
         )}
       </div>
       <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
-        <div className="truncate system-md-semibold text-text-secondary" title={dataset.name}>
+        <div
+          id={nameId}
+          className="truncate system-md-semibold text-text-secondary"
+          title={dataset.name}
+        >
           {dataset.name}
         </div>
         <DocModeInfo

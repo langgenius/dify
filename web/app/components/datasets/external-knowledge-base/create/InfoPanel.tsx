@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
 const InfoPanel = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const docLink = useDocLink()
 
   return (

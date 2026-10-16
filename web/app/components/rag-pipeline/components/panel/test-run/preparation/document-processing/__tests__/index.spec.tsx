@@ -1,15 +1,13 @@
 import type { ZodSchema } from 'zod'
+import type { useInputVariables } from '../hooks'
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import type {
-  PipelineProcessingParamsResponse,
-  RAGPipelineVariable,
-  RAGPipelineVariables,
-} from '@/models/pipeline'
+import type { RAGPipelineVariable, RAGPipelineVariables } from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { expectLoadingButton } from '@/test/button'
@@ -35,15 +33,20 @@ vi.mock('@/app/components/workflow/store', () => ({
   },
 }))
 
-let mockParamsConfig: PipelineProcessingParamsResponse | undefined
+type ProcessingParams = ReturnType<typeof useInputVariables>['paramsConfig']
+
+let mockParamsConfig: ProcessingParams | undefined
 let mockIsFetchingParams = false
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelineProcessingParams: () => ({
-    data: mockParamsConfig,
-    isFetching: mockIsFetchingParams,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': () => ({
+      data: mockParamsConfig,
+      isFetching: mockIsFetchingParams,
+    }),
+  })
+})
 
 const mockUseInitialData = vi.fn()
 const mockUseConfigurations = vi.fn()
@@ -61,7 +64,7 @@ vi.mock('@/app/components/base/form/form-scenarios/base/utils', () => ({
 
 const mockToastNotify = vi.fn()
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => mockToastNotify({ type: 'error', message }),
   },
@@ -167,7 +170,7 @@ const createMockSchema = (): ZodSchema =>
 
 const setupMocks = (options?: {
   pipelineId?: string | null
-  paramsConfig?: PipelineProcessingParamsResponse
+  paramsConfig?: ProcessingParams
   isFetchingParams?: boolean
   initialData?: Record<string, unknown>
   configurations?: BaseConfiguration[]
@@ -193,7 +196,9 @@ const createQueryClient = () =>
 
 const renderWithQueryClient = (component: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>)
+  return render(<QueryClientProvider client={queryClient}>{component}</QueryClientProvider>, {
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+  })
 }
 
 describe('DocumentProcessing', () => {
@@ -475,7 +480,9 @@ describe('Actions', () => {
     it('should render back button', () => {
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getByText('datasetPipeline.operations.backToDataSource')).toBeInTheDocument()
     })
@@ -483,7 +490,9 @@ describe('Actions', () => {
     it('should render process button', () => {
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getByText('datasetPipeline.operations.process')).toBeInTheDocument()
     })
@@ -493,7 +502,9 @@ describe('Actions', () => {
     it('should disable process button when runDisabled is true', () => {
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} runDisabled={true} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} runDisabled={true} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).toBeDisabled()
@@ -502,7 +513,9 @@ describe('Actions', () => {
     it('should disable process button when isSubmitting is true', () => {
       const mockFormParams = createMockFormParams({ isSubmitting: true })
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expectLoadingButton(processButton)
@@ -511,7 +524,9 @@ describe('Actions', () => {
     it('should disable process button when canSubmit is false', () => {
       const mockFormParams = createMockFormParams({ canSubmit: false })
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).toBeDisabled()
@@ -523,7 +538,9 @@ describe('Actions', () => {
       }
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expectLoadingButton(processButton)
@@ -535,7 +552,9 @@ describe('Actions', () => {
       }
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} runDisabled={false} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} runDisabled={false} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).not.toBeDisabled()
@@ -547,7 +566,9 @@ describe('Actions', () => {
       const mockOnBack = vi.fn()
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} onBack={mockOnBack} />)
+      render(<Actions formParams={mockFormParams} onBack={mockOnBack} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       fireEvent.click(screen.getByText('datasetPipeline.operations.backToDataSource'))
 
@@ -558,7 +579,9 @@ describe('Actions', () => {
       const mockSubmit = vi.fn()
       const mockFormParams = createMockFormParams({ handleSubmit: mockSubmit })
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       fireEvent.click(screen.getByText('datasetPipeline.operations.process'))
 
@@ -570,7 +593,9 @@ describe('Actions', () => {
     it('should handle undefined runDisabled prop', () => {
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).not.toBeDisabled()
@@ -580,7 +605,9 @@ describe('Actions', () => {
       mockWorkflowRunningData = undefined
       const mockFormParams = createMockFormParams()
 
-      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />)
+      render(<Actions formParams={mockFormParams} onBack={vi.fn()} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       const processButton = screen.getByText('datasetPipeline.operations.process').closest('button')
       expect(processButton).not.toBeDisabled()
@@ -604,7 +631,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(container.querySelector('form')).toBeInTheDocument()
     })
@@ -622,7 +651,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      render(<Options {...props} />)
+      render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getByTestId('field-name')).toBeInTheDocument()
       expect(screen.getByTestId('field-email')).toBeInTheDocument()
@@ -637,7 +668,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      render(<Options {...props} />)
+      render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getByTestId('custom-action')).toBeInTheDocument()
     })
@@ -654,7 +687,9 @@ describe('Options', () => {
         onSubmit: mockOnSubmit,
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true })
       const preventDefaultSpy = vi.spyOn(submitEvent, 'preventDefault')
@@ -674,7 +709,9 @@ describe('Options', () => {
         onSubmit: mockOnSubmit,
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true })
       const stopPropagationSpy = vi.spyOn(submitEvent, 'stopPropagation')
@@ -694,7 +731,9 @@ describe('Options', () => {
         onSubmit: mockOnSubmit,
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       fireEvent.submit(form)
 
@@ -719,7 +758,9 @@ describe('Options', () => {
         onSubmit: mockOnSubmit,
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       fireEvent.submit(form)
 
@@ -743,7 +784,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       fireEvent.submit(form)
 
@@ -770,7 +813,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       fireEvent.submit(form)
 
@@ -801,7 +846,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       fireEvent.submit(form)
 
@@ -829,7 +876,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
       const form = container.querySelector('form')!
       fireEvent.submit(form)
 
@@ -855,7 +904,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      render(<Options {...props} />)
+      render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getByTestId('field-first')).toBeInTheDocument()
       expect(screen.getByTestId('field-second')).toBeInTheDocument()
@@ -883,7 +934,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      render(<Options {...props} />)
+      render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getByTestId('field-label-test')).toHaveTextContent('Test Label')
       expect(screen.getByTestId('field-type-test')).toHaveTextContent(BaseFieldType.textInput)
@@ -901,7 +954,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      const { container } = render(<Options {...props} />)
+      const { container } = render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(container.querySelector('form')).toBeInTheDocument()
     })
@@ -915,7 +970,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      render(<Options {...props} />)
+      render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.queryByTestId(/^field-/)).not.toBeInTheDocument()
     })
@@ -942,7 +999,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      render(<Options {...props} />)
+      render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getByTestId('field-text')).toBeInTheDocument()
       expect(screen.getByTestId('field-paragraph')).toBeInTheDocument()
@@ -963,7 +1022,9 @@ describe('Options', () => {
         onSubmit: vi.fn(),
       }
 
-      render(<Options {...props} />)
+      render(<Options {...props} />, {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+      })
 
       expect(screen.getAllByTestId(/^field-field_/)).toHaveLength(20)
     })

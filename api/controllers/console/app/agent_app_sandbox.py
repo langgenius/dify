@@ -7,7 +7,7 @@ Execution locators and proxies list/read/download to the agent backend's
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, NoReturn
 from uuid import UUID
 
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError
@@ -15,6 +15,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from clients.agent_backend.errors import backend_error_detail, backend_reported_failure
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -22,27 +23,30 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError
-from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model
-from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
-    account_initialization_required,
-    model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user,
+from controllers.console.app.error import (
+    AgentBackendUnreachableError,
+    AgentSandboxBindingNotFoundHTTPError,
+    AgentSandboxDownloadUnavailableHTTPError,
+    AgentSandboxUnavailableHTTPError,
+    AppNotFoundError,
 )
-from extensions.ext_database import db
+from controllers.console.flask_admission import console_account_admission
+from controllers.console.wraps import RBACPermission, validate_request
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
-from libs.login import login_required
-from models import Account
-from models.model import App, AppMode
-from services.agent_app_sandbox_service import (
-    AgentAppSandboxService,
-    AgentSandboxInspectorError,
-    WorkflowAgentSandboxService,
+from libs.exception import RelayedHTTPError
+from libs.external_api import error_responses
+from libs.helper import dump_response
+from machinery.context import RequestContext
+from services.agent.errors import AgentNotFoundError
+from services.app.agent_app_contracts import (
+    AgentAppNotFoundError,
+    AgentSandboxBindingNotFoundError,
+    AgentSandboxCaller,
+    AgentSandboxDownloadUnavailableError,
+    AgentSandboxUnavailableError,
+    WorkflowSandboxAppNotFoundError,
+    WorkflowSandboxCaller,
 )
 
 _BINDING_PATH_DESCRIPTION = (
@@ -133,148 +137,129 @@ register_response_schema_models(
 )
 
 
-def _handle(exc: Exception) -> tuple[dict[str, object], int]:
-    if isinstance(exc, AgentSandboxInspectorError):
-        return {"code": exc.code, "message": exc.message}, exc.status_code
+def _handle(exc: Exception) -> NoReturn:
+    if isinstance(exc, AgentAppNotFoundError):
+        raise AgentNotFoundError from exc
+    if isinstance(exc, WorkflowSandboxAppNotFoundError):
+        raise AppNotFoundError from exc
+    if isinstance(exc, AgentSandboxBindingNotFoundError):
+        raise AgentSandboxBindingNotFoundHTTPError(str(exc)) from exc
+    if isinstance(exc, AgentSandboxUnavailableError):
+        raise AgentSandboxUnavailableHTTPError(str(exc)) from exc
+    if isinstance(exc, AgentSandboxDownloadUnavailableError):
+        raise AgentSandboxDownloadUnavailableHTTPError(str(exc)) from exc
     if isinstance(exc, DifyAgentHTTPError) and backend_reported_failure(exc):
         code, message = backend_error_detail(exc)
-        return {"code": code, "message": message}, exc.status_code
+        raise RelayedHTTPError(status=exc.status_code, error_code=code, message=message) from exc
     if isinstance(exc, DifyAgentClientError):
-        return {"code": "agent_backend_unreachable", "message": str(exc)}, 502
+        raise AgentBackendUnreachableError(str(exc)) from exc
     raise exc
 
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox")
 class AgentAppSandboxInfoResource(Resource):
+    @error_responses(AgentNotFoundError, AgentSandboxBindingNotFoundHTTPError)
     @console_ns.doc("get_agent_app_sandbox_info")
     @console_ns.doc(description="Get basic information for an Agent App conversation sandbox")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxInfoQuery)})
     @console_ns.response(200, "Sandbox information returned", console_ns.models[SandboxInfoResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
-    @with_current_tenant_id
-    @with_current_user
-    def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
-        service = AgentAppSandboxService()
-        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()),))
+    def get(self, context: RequestContext, agent_id: UUID):
         query = query_params_from_request(AgentSandboxInfoQuery)
         try:
-            result = service.get_info(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                agent_id=str(agent_id),
-                caller_type=query.caller_type,
-                caller_id=query.caller_id,
-                account_id=current_user.id,
+            result = application_services().agent_apps.sandbox.get_info(
+                context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id)
             )
         except Exception as exc:
-            return _handle(exc)
-        return result.model_dump()
+            _handle(exc)
+        return dump_response(SandboxInfoResponse, result)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files")
 class AgentAppSandboxListResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        RelayedHTTPError,
+    )
     @console_ns.doc("list_agent_app_sandbox_files")
     @console_ns.doc(description="List a directory in an Agent App conversation sandbox")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxListQuery)})
     @console_ns.response(200, "Listing returned", console_ns.models[SandboxListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
-    @with_current_tenant_id
-    @with_current_user
-    def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
-        service = AgentAppSandboxService()
-        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()),))
+    def get(self, context: RequestContext, agent_id: UUID):
         query = query_params_from_request(AgentSandboxListQuery)
         try:
-            result = service.list_files(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                agent_id=str(agent_id),
-                caller_type=query.caller_type,
-                caller_id=query.caller_id,
-                account_id=current_user.id,
-                path=query.path,
+            result = application_services().agent_apps.sandbox.list_files(
+                context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            return _handle(exc)
-        return result.model_dump()
+            _handle(exc)
+        return dump_response(SandboxListResponse, result)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files/read")
 class AgentAppSandboxReadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        RelayedHTTPError,
+    )
     @console_ns.doc("read_agent_app_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in an Agent App conversation sandbox")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxFileQuery)})
     @console_ns.response(200, "Preview returned", console_ns.models[SandboxReadResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
-    @with_current_tenant_id
-    @with_current_user
-    def get(self, current_user: Account, tenant_id: str, agent_id: UUID):
-        service = AgentAppSandboxService()
-        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()),))
+    def get(self, context: RequestContext, agent_id: UUID):
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
-            result = service.read_file(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                agent_id=str(agent_id),
-                caller_type=query.caller_type,
-                caller_id=query.caller_id,
-                account_id=current_user.id,
-                path=query.path,
+            result = application_services().agent_apps.sandbox.read_file(
+                context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            return _handle(exc)
-        return result.model_dump()
+            _handle(exc)
+        return dump_response(SandboxReadResponse, result)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files/download")
 class AgentAppSandboxDownloadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        RelayedHTTPError,
+    )
     @console_ns.doc("download_agent_app_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one Agent App Binding file and return its download URL")
     @console_ns.expect(console_ns.models[AgentSandboxDownloadPayload.__name__])
     @console_ns.response(200, "Download URL returned", console_ns.models[SandboxDownloadResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @agent_manage_required_for_agent_app(scene=RBACPermission.APP_VIEW_LAYOUT)
-    @with_current_tenant_id
-    @with_current_user
-    @model_validate(AgentSandboxDownloadPayload)
-    def post(
-        self,
-        req_data: AgentSandboxDownloadPayload,
-        current_user: Account,
-        tenant_id: str,
-        agent_id: UUID,
-    ):
-        service = AgentAppSandboxService()
-        app_id = service.resolve_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()),))
+    def post(self, context: RequestContext, agent_id: UUID):
+        query = validate_request(AgentSandboxDownloadPayload)
         try:
-            result = service.download_file(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                agent_id=str(agent_id),
-                caller_type=req_data.caller_type,
-                caller_id=req_data.caller_id,
-                account_id=current_user.id,
-                path=req_data.path,
+            result = application_services().agent_apps.sandbox.download_file(
+                context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            return _handle(exc)
-        return result.model_dump()
+            _handle(exc)
+        return dump_response(SandboxDownloadResponse, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files")
 class WorkflowAgentSandboxListResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+        RelayedHTTPError,
+    )
     @console_ns.doc("list_workflow_agent_sandbox_files")
     @console_ns.doc(description="List a directory in a workflow Agent node sandbox")
     @console_ns.doc(
@@ -286,33 +271,31 @@ class WorkflowAgentSandboxListResource(Resource):
         }
     )
     @console_ns.response(200, "Listing returned", console_ns.models[SandboxListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),))
+    def get(self, context: RequestContext, app_id: UUID, workflow_run_id: UUID, node_id: str):
         query = query_params_from_request(WorkflowAgentSandboxListQuery)
         try:
-            result = WorkflowAgentSandboxService().list_files(
-                tenant_id=tenant_id,
-                app_id=app_model.id,
-                workflow_run_id=str(workflow_run_id),
-                node_id=node_id,
-                node_execution_id=query.node_execution_id,
-                path=query.path,
-                session=db.session(),
+            result = application_services().agent_apps.sandbox.list_files(
+                context,
+                WorkflowSandboxCaller(str(app_id), str(workflow_run_id), node_id, query.node_execution_id),
+                query.path,
             )
         except Exception as exc:
-            return _handle(exc)
-        return result.model_dump()
+            _handle(exc)
+        return dump_response(SandboxListResponse, result)
 
 
 @console_ns.route(
     "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files/read"
 )
 class WorkflowAgentSandboxReadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+        RelayedHTTPError,
+    )
     @console_ns.doc("read_workflow_agent_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in a workflow Agent node sandbox")
     @console_ns.doc(
@@ -324,67 +307,45 @@ class WorkflowAgentSandboxReadResource(Resource):
         }
     )
     @console_ns.response(200, "Preview returned", console_ns.models[SandboxReadResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App, workflow_run_id: UUID, node_id: str):
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),))
+    def get(self, context: RequestContext, app_id: UUID, workflow_run_id: UUID, node_id: str):
         query = query_params_from_request(WorkflowAgentSandboxFileQuery)
         try:
-            result = WorkflowAgentSandboxService().read_file(
-                tenant_id=tenant_id,
-                app_id=app_model.id,
-                workflow_run_id=str(workflow_run_id),
-                node_id=node_id,
-                node_execution_id=query.node_execution_id,
-                path=query.path,
-                session=db.session(),
+            result = application_services().agent_apps.sandbox.read_file(
+                context,
+                WorkflowSandboxCaller(str(app_id), str(workflow_run_id), node_id, query.node_execution_id),
+                query.path,
             )
         except Exception as exc:
-            return _handle(exc)
-        return result.model_dump()
+            _handle(exc)
+        return dump_response(SandboxReadResponse, result)
 
 
 @console_ns.route(
     "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files/download"
 )
 class WorkflowAgentSandboxDownloadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+        RelayedHTTPError,
+    )
     @console_ns.doc("download_workflow_agent_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one workflow Agent Binding file and return its download URL")
     @console_ns.expect(console_ns.models[WorkflowAgentSandboxDownloadPayload.__name__])
     @console_ns.response(200, "Download URL returned", console_ns.models[SandboxDownloadResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    @with_current_user
-    @with_current_tenant_id
-    @model_validate(WorkflowAgentSandboxDownloadPayload)
-    def post(
-        self,
-        req_data: WorkflowAgentSandboxDownloadPayload,
-        tenant_id: str,
-        current_user: Account,
-        app_id: UUID,
-        workflow_run_id: UUID,
-        node_id: str,
-    ):
-        service = WorkflowAgentSandboxService()
-        resolved_app_id = service.resolve_app_id(tenant_id=tenant_id, app_id=str(app_id))
-        if resolved_app_id is None:
-            raise AppNotFoundError()
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),))
+    def post(self, context: RequestContext, app_id: UUID, workflow_run_id: UUID, node_id: str):
+        query = validate_request(WorkflowAgentSandboxDownloadPayload)
         try:
-            result = service.download_file(
-                tenant_id=tenant_id,
-                app_id=resolved_app_id,
-                workflow_run_id=str(workflow_run_id),
-                node_id=node_id,
-                node_execution_id=req_data.node_execution_id,
-                account_id=current_user.id,
-                path=req_data.path,
+            result = application_services().agent_apps.sandbox.download_file(
+                context,
+                WorkflowSandboxCaller(str(app_id), str(workflow_run_id), node_id, query.node_execution_id),
+                query.path,
             )
         except Exception as exc:
-            return _handle(exc)
-        return result.model_dump()
+            _handle(exc)
+        return dump_response(SandboxDownloadResponse, result)

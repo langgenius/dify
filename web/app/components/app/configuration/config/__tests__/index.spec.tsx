@@ -1,10 +1,10 @@
-/* oxlint-disable typescript/no-explicit-any */
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import * as useContextSelector from 'use-context-selector'
-import { AgentStrategy, AppModeEnum, ModelModeType } from '@/types/app'
+import { AgentStrategy, ModelModeType } from '@/types/app'
 import Config from '../index'
 
 vi.mock('use-context-selector', async (importOriginal) => {
@@ -65,7 +65,7 @@ vi.mock('../../config-prompt/conversation-history/history-panel', () => ({
 }))
 
 type MockContext = {
-  mode: AppModeEnum
+  mode: AppMode
   isAdvancedMode: boolean
   modelModeType: ModelModeType
   isAgent: boolean
@@ -108,13 +108,6 @@ const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig =>
   sensitive_word_avoidance: null,
   annotation_reply: null,
   external_data_tools: null,
-  system_parameters: {
-    audio_file_size_limit: 1,
-    file_size_limit: 1,
-    image_file_size_limit: 1,
-    video_file_size_limit: 1,
-    workflow_file_upload_limit: 1,
-  },
   dataSets: [],
   agentConfig: {
     enabled: false,
@@ -126,7 +119,7 @@ const createModelConfig = (overrides: Partial<ModelConfig> = {}): ModelConfig =>
 })
 
 const createContextValue = (overrides: Partial<MockContext> = {}): MockContext => ({
-  mode: AppModeEnum.CHAT,
+  mode: 'chat' as const,
   isAdvancedMode: false,
   modelModeType: ModelModeType.chat,
   isAgent: false,
@@ -181,11 +174,11 @@ describe('Config - Rendering', () => {
     expect(screen.getByTestId('agent-tools')).toBeInTheDocument()
   })
 
-  it('should display HistoryPanel only when advanced chat completion values apply', () => {
+  it('should display HistoryPanel for a chat app using an advanced completion prompt', () => {
     const showHistoryModal = vi.fn()
     renderConfig({
       isAdvancedMode: true,
-      mode: AppModeEnum.ADVANCED_CHAT,
+      mode: 'chat' as const,
       modelModeType: ModelModeType.completion,
       hasSetBlockStatus: {
         context: false,

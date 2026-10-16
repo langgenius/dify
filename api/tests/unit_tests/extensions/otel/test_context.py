@@ -33,7 +33,7 @@ def test_propagate_context_detaches_context_after_exception() -> None:
     finally:
         otel_context.detach(token)
 
-    def invoke_and_read_context() -> str | None:
+    def invoke_and_read_context() -> object:
         with pytest.raises(RuntimeError, match="retrieval failed"):
             wrapped()
         return otel_context.get_value(context_key)

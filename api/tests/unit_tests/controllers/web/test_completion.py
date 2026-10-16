@@ -23,24 +23,12 @@ from controllers.web.error import (
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from models.enums import EndUserType
-from models.model import App, AppMode, EndUser, IconType
+from models.model import App, AppMode, EndUser
+from tests.unit_tests.model_factories import make_app, make_end_user
 
 
 def _app(mode: AppMode) -> App:
-    return App(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Web App",
-        description="",
-        mode=mode,
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-        enable_site=True,
-        enable_api=False,
-        max_active_requests=0,
-    )
+    return make_app(name="Web App", mode=mode, enable_api=False, max_active_requests=0)
 
 
 def _completion_app() -> App:
@@ -52,14 +40,7 @@ def _chat_app() -> App:
 
 
 def _end_user() -> EndUser:
-    return EndUser(
-        id="eu-1",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        type=EndUserType.BROWSER,
-        name="Web User",
-        session_id="session-1",
-    )
+    return make_end_user(end_user_id="eu-1", app_id="app-1", name="Web User")
 
 
 # ---------------------------------------------------------------------------

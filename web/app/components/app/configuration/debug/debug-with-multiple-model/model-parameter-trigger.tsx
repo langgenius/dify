@@ -17,7 +17,7 @@ import ModelName from '@/app/components/header/account-setting/model-provider-pa
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { useCredentialPanelState } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { useDebugWithMultipleModelContext } from './context'
 
 type ModelParameterTriggerProps = {
@@ -31,7 +31,7 @@ const DebugModelParameterTrigger: FC<DebugModelParameterTriggerProps> = ({
   className,
   ...triggerProps
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['modelProvider'])
   const { currentProvider, currentModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: modelAndParameter.provider,
     model: modelAndParameter.model,
@@ -58,7 +58,7 @@ const DebugModelParameterTrigger: FC<DebugModelParameterTriggerProps> = ({
   const isActive = status === 'active'
   const statusTooltipLabel =
     !isEmpty && !isActive && statusLabelKey
-      ? t(($) => $[statusTooltipKey || statusLabelKey], { ns: 'common' })
+      ? t(($) => $[statusTooltipKey || statusLabelKey], { ns: 'modelProvider' })
       : undefined
 
   return (
@@ -100,7 +100,7 @@ const DebugModelParameterTrigger: FC<DebugModelParameterTriggerProps> = ({
             )}
             {isEmpty && (
               <span className="mr-0.5 truncate text-[13px] font-medium text-text-accent">
-                {t(($) => $['modelProvider.selectModel'], { ns: 'common' })}
+                {t(($) => $['modelProvider.selectModel'], { ns: 'modelProvider' })}
               </span>
             )}
             <span

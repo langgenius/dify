@@ -1,10 +1,18 @@
 import type { Role } from '@/models/access-control'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import WorkspaceRoleCheckboxList from '../workspace-role-checkbox-list'
 
-vi.mock('@/service/access-control/use-workspace-roles')
+const { mockWorkspaceRoleListHook } = vi.hoisted(() => ({
+  mockWorkspaceRoleListHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => mockWorkspaceRoleListHook(),
+  })
+})
 
 const createRole = (overrides: Partial<Role>): Role => ({
   id: 'role-1',
@@ -27,7 +35,7 @@ const mockRoles = [
 describe('WorkspaceRoleCheckboxList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -47,7 +55,7 @@ describe('WorkspaceRoleCheckboxList', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
   })
 
   it('should render checkboxes when multiple roles are allowed', () => {
@@ -156,7 +164,7 @@ describe('WorkspaceRoleCheckboxList', () => {
   })
 
   it('should show legacy role descriptions when only one role is allowed', () => {
-    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+    vi.mocked(mockWorkspaceRoleListHook).mockReturnValue({
       data: {
         pages: [
           {
@@ -181,7 +189,7 @@ describe('WorkspaceRoleCheckboxList', () => {
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
-    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
+    })
 
     render(
       <WorkspaceRoleCheckboxList
@@ -192,10 +200,10 @@ describe('WorkspaceRoleCheckboxList', () => {
       />,
     )
 
-    expect(screen.getByText('common.members.adminTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.editorTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.normalTip')).toBeInTheDocument()
-    expect(screen.getByText('common.members.datasetOperatorTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.adminTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.editorTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.normalTip')).toBeInTheDocument()
+    expect(screen.getByText('workspaceMembers.members.datasetOperatorTip')).toBeInTheDocument()
     expect(screen.queryByText('permission.role.noDescription')).not.toBeInTheDocument()
   })
 })

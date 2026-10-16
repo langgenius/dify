@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useLocale } from '@/context/i18n'
+import { useLocale } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { sendResetPasswordCode } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import ResetPasswordPage from '../page'
 
 const mockPush = vi.fn()
@@ -13,7 +13,8 @@ vi.mock('@/app/components/signin/storage', () => ({
   useSetCountdownLeftTime: () => mockSetCountdownLeftTime,
 }))
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(),
 }))
 
@@ -26,8 +27,13 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('@/service/common', () => ({
-  sendResetPasswordCode: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    forgotPassword: {
+      post: vi.fn(),
+    },
+  },
 }))
 
 describe('ResetPasswordPage', () => {
@@ -40,7 +46,10 @@ describe('ResetPasswordPage', () => {
     vi.mocked(useSearchParams).mockReturnValue(
       new URLSearchParams() as unknown as ReturnType<typeof useSearchParams>,
     )
-    vi.mocked(sendResetPasswordCode).mockResolvedValue({ result: 'success', data: 'reset-token' })
+    vi.mocked(consoleClient.forgotPassword.post).mockResolvedValue({
+      result: 'success',
+      data: 'reset-token',
+    })
   })
 
   it('labels the email field and submits it with Enter', async () => {
@@ -53,7 +62,9 @@ describe('ResetPasswordPage', () => {
     await user.type(emailInput, 'user@example.com{Enter}')
 
     await waitFor(() => {
-      expect(sendResetPasswordCode).toHaveBeenCalledWith('user@example.com', 'en-US')
+      expect(consoleClient.forgotPassword.post).toHaveBeenCalledWith({
+        body: { email: 'user@example.com', language: 'en-US' },
+      })
     })
     expect(mockPush).toHaveBeenCalledWith(
       '/reset-password/check-code?token=reset-token&email=user%2540example.com',
@@ -72,7 +83,7 @@ describe('ResetPasswordPage', () => {
     expect(emailInput).toHaveAttribute('aria-invalid', 'true')
     expect(emailInput).toHaveAccessibleDescription('login.error.emailInValid')
     expect(emailInput).toHaveFocus()
-    expect(sendResetPasswordCode).not.toHaveBeenCalled()
+    expect(consoleClient.forgotPassword.post).not.toHaveBeenCalled()
 
     await user.clear(emailInput)
     await user.click(screen.getByRole('button', { name: 'login.sendVerificationCode' }))
@@ -83,6 +94,6 @@ describe('ResetPasswordPage', () => {
     expect(emailInput).toHaveAttribute('aria-invalid', 'true')
     expect(emailInput).toHaveAccessibleDescription('login.error.emailEmpty')
     expect(emailInput).toHaveFocus()
-    expect(sendResetPasswordCode).not.toHaveBeenCalled()
+    expect(consoleClient.forgotPassword.post).not.toHaveBeenCalled()
   })
 })

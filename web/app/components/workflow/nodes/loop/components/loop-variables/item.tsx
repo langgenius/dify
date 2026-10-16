@@ -4,11 +4,11 @@ import type {
 } from '@/app/components/workflow/nodes/loop/types'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ValueType, VarType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import FormItem from './form-item'
 import InputModeSelect from './input-mode-selec'
@@ -18,8 +18,8 @@ type ItemProps = {
   item: LoopVariable
 } & LoopVariablesComponentShape
 const Item = ({ nodeId, item, handleRemoveLoopVariable, handleUpdateLoopVariable }: ItemProps) => {
-  const { t } = useTranslation()
-  const variableNameLabel = t(($) => $['nodes.loop.variableName'], { ns: 'workflow' })
+  const { t } = useTranslation(['appDebug', 'common', 'workflow', 'workflowLogic'])
+  const variableNameLabel = t(($) => $['nodes.loop.variableName'], { ns: 'workflowLogic' })
 
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)

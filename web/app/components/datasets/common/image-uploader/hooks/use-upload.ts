@@ -1,17 +1,18 @@
 import type { FileEntity, FileUploadConfig } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { useFileUploadConfig } from '@/service/use-common'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { ACCEPT_TYPES } from '../constants'
 import { useFileStore } from '../store'
 import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
 
 export const useUpload = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset', 'datasetHitTesting'])
   const fileStore = useFileStore()
 
   const [dragging, setDragging] = useState(false)
@@ -19,7 +20,7 @@ export const useUpload = () => {
   const dragRef = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
 
   const fileUploadConfig: FileUploadConfig = useMemo(() => {
     return getFileUploadConfig(fileUploadConfigResponse)

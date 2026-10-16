@@ -9,15 +9,14 @@ from services.feature_service import FeatureService
 
 
 @pytest.mark.parametrize(
-    ("deployment_edition", "tenant_id", "billing_feature_enabled", "plan", "expected"),
+    ("deployment_edition", "tenant_id", "plan", "expected"),
     [
-        (DeploymentEdition.COMMUNITY, "tenant-1", True, CloudPlan.PROFESSIONAL, 15),
-        (DeploymentEdition.ENTERPRISE, "tenant-1", True, CloudPlan.PROFESSIONAL, 15),
-        (DeploymentEdition.CLOUD, None, True, CloudPlan.PROFESSIONAL, 15),
-        (DeploymentEdition.CLOUD, "tenant-1", False, CloudPlan.PROFESSIONAL, 15),
-        (DeploymentEdition.CLOUD, "tenant-1", True, CloudPlan.SANDBOX, 15),
-        (DeploymentEdition.CLOUD, "tenant-1", True, CloudPlan.PROFESSIONAL, 50),
-        (DeploymentEdition.CLOUD, "tenant-1", True, CloudPlan.TEAM, 50),
+        (DeploymentEdition.COMMUNITY, "tenant-1", CloudPlan.PROFESSIONAL, 15),
+        (DeploymentEdition.ENTERPRISE, "tenant-1", CloudPlan.PROFESSIONAL, 15),
+        (DeploymentEdition.CLOUD, None, CloudPlan.PROFESSIONAL, 15),
+        (DeploymentEdition.CLOUD, "tenant-1", CloudPlan.SANDBOX, 15),
+        (DeploymentEdition.CLOUD, "tenant-1", CloudPlan.PROFESSIONAL, 50),
+        (DeploymentEdition.CLOUD, "tenant-1", CloudPlan.TEAM, 50),
     ],
 )
 def test_get_knowledge_file_size_limit(
@@ -25,7 +24,6 @@ def test_get_knowledge_file_size_limit(
     config_overrides: Callable[..., None],
     deployment_edition: DeploymentEdition,
     tenant_id: str | None,
-    billing_feature_enabled: bool,
     plan: CloudPlan,
     expected: int,
 ) -> None:
@@ -36,7 +34,6 @@ def test_get_knowledge_file_size_limit(
     )
     get_info = Mock(
         return_value={
-            "enabled": billing_feature_enabled,
             "subscription": {"plan": plan},
         }
     )
@@ -62,7 +59,6 @@ def test_paid_knowledge_file_size_limit_never_reduces_default(
         feature_service_module.BillingService,
         "get_info",
         lambda *_args, **_kwargs: {
-            "enabled": True,
             "subscription": {"plan": CloudPlan.PROFESSIONAL},
         },
     )

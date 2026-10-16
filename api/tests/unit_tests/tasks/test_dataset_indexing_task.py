@@ -8,18 +8,19 @@ ORM rows so each phase observes only committed database state.
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.orm import Session
 
-from core.indexing_runner import DocumentIsPausedError
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from enums import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -27,7 +28,48 @@ from tasks.document_indexing_task import (
     normal_document_indexing_task,
     priority_document_indexing_task,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tasks.recover_document_indexing_task import recover_document_indexing_task
+from tests.unit_tests.config_override import apply_config_overrides, config_overrides_context
+
+
+@pytest.mark.parametrize(
+    ("status", "entry"),
+    [
+        ("waiting", "run"),
+        ("parsing", "run"),
+        ("cleaning", "run"),
+        ("splitting", "run_in_splitting_status"),
+        ("indexing", "run_in_indexing_status"),
+        ("completed", None),
+    ],
+)
+def test_recovery_dispatches_detached_owner_reference(
+    sqlite_session, tenant_id, dataset_id, document_ids, status, entry
+):
+    _persist_indexing_rows(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids[:1])
+    row = sqlite_session.get(Document, document_ids[0])
+    row.indexing_status = status
+    sqlite_session.commit()
+    with patch("tasks.recover_document_indexing_task.build_document_indexing_service") as factory:
+        recover_document_indexing_task.run(dataset_id, document_ids[0])
+    service = factory.return_value
+    if entry is None:
+        assert service.mock_calls == []
+    else:
+        method = {
+            "run": service.run,
+            "run_in_splitting_status": service.run_in_splitting_status,
+            "run_in_indexing_status": service.run_in_indexing_status,
+        }[entry]
+        method.assert_called_once()
+        (argument,) = method.call_args.args
+        ref = argument[0] if entry == "run" else argument
+        assert isinstance(ref, DocumentRef)
+        assert (ref.dataset.tenant_id, ref.dataset.dataset_id, ref.document_id) == (
+            tenant_id,
+            dataset_id,
+            document_ids[0],
+        )
 
 
 @pytest.fixture
@@ -61,20 +103,19 @@ def mock_redis() -> MagicMock:
 def indexing_runner(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     runner = MagicMock()
     runner_class = MagicMock(return_value=runner)
-    monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", runner_class)
+    monkeypatch.setattr("tasks.document_indexing_task.build_document_indexing_service", runner_class)
     runner._constructor_mock = runner_class
     return runner
 
 
 def _features(
     *,
-    billing_enabled: bool = False,
     plan: CloudPlan = CloudPlan.PROFESSIONAL,
     vector_limit: int = 1000,
     vector_size: int = 0,
 ) -> SimpleNamespace:
     return SimpleNamespace(
-        billing=SimpleNamespace(enabled=billing_enabled, subscription=SimpleNamespace(plan=plan)),
+        billing=SimpleNamespace(subscription=SimpleNamespace(plan=plan)),
         vector_space=SimpleNamespace(limit=vector_limit, size=vector_size),
     )
 
@@ -137,6 +178,7 @@ def _persisted_documents(session: Session, document_ids: list[str]) -> list[Docu
 
 
 class TestTaskEnqueuing:
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     def test_self_hosted_dispatches_directly_to_priority_task(
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
@@ -144,7 +186,6 @@ class TestTaskEnqueuing:
             patch.object(DocumentIndexingTaskProxy, "features") as features,
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
-            features.billing.enabled = False
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         task.delay.assert_called_once_with(
@@ -153,6 +194,7 @@ class TestTaskEnqueuing:
             document_ids=document_ids,
         )
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @pytest.mark.parametrize(
         ("plan", "task_attribute"),
         [
@@ -173,13 +215,13 @@ class TestTaskEnqueuing:
             patch.object(DocumentIndexingTaskProxy, "features") as features,
             patch.object(DocumentIndexingTaskProxy, task_attribute, Mock()) as task,
         ):
-            features.billing.enabled = True
             features.billing.subscription.plan = plan
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.setex.assert_called()
         task.delay.assert_called_once()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_running_tenant_task_queues_followup_work(
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
@@ -188,7 +230,6 @@ class TestTaskEnqueuing:
             patch.object(DocumentIndexingTaskProxy, "features") as features,
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
-            features.billing.enabled = True
             features.billing.subscription.plan = CloudPlan.PROFESSIONAL
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
@@ -214,19 +255,22 @@ class TestDocumentIndexing:
         )
         _patch_features(monkeypatch, _features())
 
-        def assert_committed_parsing(documents: list[Document], session: Session) -> None:
-            assert all(document.indexing_status == IndexingStatus.PARSING for document in documents)
-            assert all(document.processing_started_at is not None for document in documents)
-            assert all(session.get(Document, document.id) is document for document in documents)
+        def assert_committed_parsing(refs: list[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as observer:
+                documents = [observer.get(Document, ref.document_id) for ref in refs]
+                assert all(document.indexing_status == IndexingStatus.PARSING for document in documents)
+                assert all(document.processing_started_at is not None for document in documents)
 
         indexing_runner.run.side_effect = assert_committed_parsing
         document_indexing_task.run(dataset_id, document_ids)
 
         persisted = _persisted_documents(sqlite_session, document_ids)
         assert [document.indexing_status for document in persisted] == [IndexingStatus.PARSING] * 3
-        indexing_runner._constructor_mock.assert_called_once_with(enforce_vector_space_admission=True)
+        indexing_runner._constructor_mock.assert_called_once_with(
+            session_factory=ANY, enforce_vector_space_admission=True
+        )
         indexing_runner.run.assert_called_once()
-        assert isinstance(indexing_runner.run.call_args.args[1], Session)
+        assert len(indexing_runner.run.call_args.args) == 1
 
     def test_only_existing_documents_are_processed(
         self,
@@ -249,7 +293,7 @@ class TestDocumentIndexing:
         _document_indexing(dataset_id, document_ids)
 
         processed = indexing_runner.run.call_args.args[0]
-        assert {document.id for document in processed} == set(existing_ids)
+        assert {ref.document_id for ref in processed} == set(existing_ids)
         assert sqlite_session.get(Document, document_ids[1]) is None
 
     def test_empty_batch_still_reaches_runner(
@@ -271,26 +315,27 @@ class TestDocumentIndexing:
         _document_indexing(dataset_id, [])
 
         assert indexing_runner.run.call_args.args[0] == []
-        assert isinstance(indexing_runner.run.call_args.args[1], Session)
+        assert len(indexing_runner.run.call_args.args) == 1
 
     def test_missing_dataset_returns_before_feature_lookup(
         self, dataset_id: str, document_ids: list[str], monkeypatch: pytest.MonkeyPatch
     ) -> None:
         get_features = _patch_features(monkeypatch, _features())
         runner_class = MagicMock()
-        monkeypatch.setattr("tasks.document_indexing_task.IndexingRunner", runner_class)
+        monkeypatch.setattr("tasks.document_indexing_task.build_document_indexing_service", runner_class)
 
         _document_indexing(dataset_id, document_ids)
 
         get_features.assert_not_called()
         runner_class.assert_not_called()
 
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @pytest.mark.parametrize(
         ("features", "batch_limit", "message"),
         [
-            (_features(billing_enabled=True), 1, "batch upload limit"),
-            (_features(billing_enabled=True, plan=CloudPlan.SANDBOX), 100, "does not support batch upload"),
-            (_features(billing_enabled=True, vector_limit=100, vector_size=100), 100, "over the limit"),
+            (_features(), 1, "batch upload limit"),
+            (_features(plan=CloudPlan.SANDBOX), 100, "does not support batch upload"),
+            (_features(vector_limit=100, vector_size=100), 100, "over the limit"),
         ],
     )
     def test_validation_failure_marks_every_scoped_document_error(
@@ -387,10 +432,12 @@ class TestSummaryDispatch:
         )
         _patch_features(monkeypatch, _features())
 
-        def finish_documents(documents: list[Document], _session: Session) -> None:
-            documents[0].indexing_status = IndexingStatus.COMPLETED
-            documents[1].indexing_status = IndexingStatus.COMPLETED
-            documents[2].indexing_status = IndexingStatus.INDEXING
+        def finish_documents(refs: list[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                for ref, status in zip(
+                    refs, [IndexingStatus.COMPLETED, IndexingStatus.COMPLETED, IndexingStatus.INDEXING], strict=True
+                ):
+                    writer.get(Document, ref.document_id).indexing_status = status
 
         indexing_runner.run.side_effect = finish_documents
         summary_delay = MagicMock()
@@ -418,9 +465,12 @@ class TestSummaryDispatch:
             need_summary=[True],
         )
         _patch_features(monkeypatch, _features())
-        indexing_runner.run.side_effect = lambda documents, _session: setattr(
-            documents[0], "indexing_status", IndexingStatus.COMPLETED
-        )
+
+        def complete_documents(refs: list[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
+
+        indexing_runner.run.side_effect = complete_documents
         summary_delay = MagicMock(side_effect=RuntimeError("queue unavailable"))
         monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
 
@@ -449,9 +499,12 @@ class TestSummaryDispatch:
             need_summary=[True],
         )
         _patch_features(monkeypatch, _features())
-        indexing_runner.run.side_effect = lambda documents, _session: setattr(
-            documents[0], "indexing_status", IndexingStatus.COMPLETED
-        )
+
+        def complete_documents(refs: list[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                writer.get(Document, refs[0].document_id).indexing_status = IndexingStatus.COMPLETED
+
+        indexing_runner.run.side_effect = complete_documents
         summary_delay = MagicMock()
         monkeypatch.setattr("tasks.document_indexing_task.generate_summary_index_task.delay", summary_delay)
 
@@ -478,10 +531,11 @@ class TestSummaryDispatch:
         )
         _patch_features(monkeypatch, _features())
 
-        def remove_dataset(_documents: list[Document], session: Session) -> None:
-            dataset = session.get(Dataset, dataset_id)
-            assert dataset is not None
-            session.delete(dataset)
+        def remove_dataset(_refs: list[DocumentRef]) -> None:
+            with Session(sqlite_session.get_bind()) as writer, writer.begin():
+                dataset = writer.get(Dataset, dataset_id)
+                assert dataset is not None
+                writer.delete(dataset)
 
         indexing_runner.run.side_effect = remove_dataset
         summary_delay = MagicMock()

@@ -1,20 +1,21 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
 import type { AgentChatRuntimeEmptyStateProps } from '../chat-runtime'
+import type { ChatProps } from '@/app/components/base/chat/chat'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createRef, useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
@@ -38,7 +39,7 @@ const mockConsoleState = vi.hoisted(() => ({
   deploymentEdition: 'COMMUNITY' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: vi.fn(),
   },
@@ -51,7 +52,7 @@ vi.mock('@/features/system-features/state', async () => {
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/next/dynamic', async () => {
+vi.mock('next/dynamic', async () => {
   const { useState } = await import('react')
 
   return {
@@ -62,7 +63,7 @@ vi.mock('@/next/dynamic', async () => {
         onStopResponding: () => void
         sendButtonLabel?: string
         sendButtonLoading?: boolean
-        showPromptLog?: boolean
+        onOpenLog?: ChatProps['onOpenLog']
         footerNotice?: string
         chatNode?: ReactNode
         chatList?: Array<{
@@ -89,7 +90,7 @@ vi.mock('@/next/dynamic', async () => {
             data-send-button-label={props.sendButtonLabel ?? ''}
             data-send-button-loading={String(!!props.sendButtonLoading)}
             data-answer-action-position={props.answerActionPosition ?? 'auto'}
-            data-show-prompt-log={String(!!props.showPromptLog)}
+            data-can-open-log={String(!!props.onOpenLog)}
             data-footer-notice={props.footerNotice ?? ''}
             data-no-chat-input={String(!!props.noChatInput)}
             data-show-regenerate={String(!!props.showRegenerate)}
@@ -226,7 +227,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/client', async () => {
+vi.mock('@/service/console', async () => {
   const { skipToken } = await import('@tanstack/react-query')
   const getChatMessagesQueryKey = (input: unknown) => ['agent-chat-conversation-messages', input]
 
@@ -1320,7 +1321,7 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: 'chat' })).toBeInTheDocument())
 
     expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
-      'data-show-prompt-log',
+      'data-can-open-log',
       'false',
     )
   })

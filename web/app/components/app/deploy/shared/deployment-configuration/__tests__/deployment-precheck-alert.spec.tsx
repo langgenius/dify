@@ -12,7 +12,7 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock({
     'deployments.studio.precheck.description': 'It contains node types that are not yet supported:',
     'deployments.studio.precheck.from': 'From',
-    'deployments.studio.precheck.nodeCount_other': '{{count}} nodes',
+    'deployments.studio.precheck.nodeCount': '{{count}} nodes',
     'deployments.studio.precheck.supportMessage':
       'Support for these node types is coming in a future release.',
     'deployments.studio.precheck.title': "This version can't be deployed to this environment",

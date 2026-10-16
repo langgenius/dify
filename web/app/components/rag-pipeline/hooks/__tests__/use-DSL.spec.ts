@@ -1,5 +1,9 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useDSLByCanEdit } from '../use-DSL'
 
 const toastMocks = vi.hoisted(() => ({
@@ -9,7 +13,7 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) =>
       toastMocks.call({ type: 'success', message, ...options }),
@@ -44,8 +48,17 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 const mockExportPipelineConfig = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  useExportPipelineDSL: () => ({ mutateAsync: mockExportPipelineConfig }),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    rag: {
+      pipelines: {
+        byPipelineId: {
+          exports: { get: (...args: unknown[]) => mockExportPipelineConfig(...args) },
+        },
+      },
+    },
+  },
 }))
 
 const mockFetchWorkflowDraft = vi.fn()
@@ -60,6 +73,10 @@ vi.mock('@/utils/download', () => ({
 vi.mock('@/app/components/workflow/constants', () => ({
   DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
 }))
+
+let queryClient: QueryClient
+const wrapper = ({ children }: { children: ReactNode }) =>
+  createElement(QueryClientProvider, { client: queryClient }, children)
 
 describe('useDSLByCanEdit', () => {
   let mockLink: {
@@ -76,6 +93,7 @@ describe('useDSLByCanEdit', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
 
     mockLink = {
       href: '',
@@ -119,21 +137,42 @@ describe('useDSLByCanEdit', () => {
     vi.clearAllMocks()
   })
 
-  describe('handleExportDSL', () => {
-    it('should return early when pipelineId is not set', async () => {
-      mockGetState.mockReturnValue({ pipelineId: null, knowledgeName: 'test' })
-
-      const { result } = renderHook(() => useDSLByCanEdit(true))
-
-      await act(async () => {
-        await result.current.handleExportDSL()
-      })
-
-      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+  it('does not export a stale draft after synchronization reports a failure', async () => {
+    mockDoSyncWorkflowDraft.mockImplementation(async (_options, callback) => {
+      callback.onError()
+      return null
     })
+    const { result } = renderHook(() => useDSLByCanEdit(true), {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      wrapper,
+    })
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+    })
+    expect(mockExportPipelineConfig).not.toHaveBeenCalled()
+    expect(mockDownloadBlob).not.toHaveBeenCalled()
+    expect(toastMocks.call).toHaveBeenCalledTimes(1)
+    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
+  })
 
+  it('allows export when draft synchronization is skipped for read-only access', async () => {
+    mockDoSyncWorkflowDraft.mockResolvedValue(null)
+    const { result } = renderHook(() => useDSLByCanEdit(false), {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      wrapper,
+    })
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(true)
+    })
+    expect(mockDownloadBlob).toHaveBeenCalledTimes(1)
+  })
+
+  describe('handleExportDSL', () => {
     it('should create and download file', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
         await result.current.handleExportDSL()
@@ -143,7 +182,10 @@ describe('useDSLByCanEdit', () => {
     })
 
     it('should set correct download filename', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
         await result.current.handleExportDSL()
@@ -157,7 +199,10 @@ describe('useDSLByCanEdit', () => {
     })
 
     it('should pass blob data to downloadBlob', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
         await result.current.handleExportDSL()
@@ -173,10 +218,13 @@ describe('useDSLByCanEdit', () => {
     it('should handle export error', async () => {
       mockExportPipelineConfig.mockRejectedValue(new Error('Export failed'))
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
-        await result.current.handleExportDSL()
+        expect(await result.current.handleExportDSL()).toBe(false)
       })
 
       await waitFor(() => {
@@ -188,38 +236,32 @@ describe('useDSLByCanEdit', () => {
     })
 
     it('should pass include parameter', async () => {
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
         await result.current.handleExportDSL(true)
       })
 
       await waitFor(() => {
-        expect(mockExportPipelineConfig).toHaveBeenCalledWith({
-          pipelineId: 'test-pipeline-id',
-          include: true,
-        })
+        expect(mockExportPipelineConfig).toHaveBeenCalledWith(
+          { params: { pipeline_id: 'test-pipeline-id' }, query: { include_secret: 'true' } },
+          { context: { silent: true } },
+        )
       })
     })
   })
 
   describe('exportCheck', () => {
-    it('should return early when pipelineId is not set', async () => {
-      mockGetState.mockReturnValue({ pipelineId: null })
-
-      const { result } = renderHook(() => useDSLByCanEdit(true))
-
-      await act(async () => {
-        await result.current.exportCheck()
-      })
-
-      expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
-    })
-
     it('should call handleExportDSL directly when no secret variables', async () => {
       mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: [] })
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
         await result.current.exportCheck()
@@ -237,7 +279,10 @@ describe('useDSLByCanEdit', () => {
       const secretVars = [{ value_type: 'secret', name: 'API_KEY' }]
       mockFetchWorkflowDraft.mockResolvedValue({ environment_variables: secretVars })
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
         await result.current.exportCheck()
@@ -256,7 +301,10 @@ describe('useDSLByCanEdit', () => {
     it('should handle export check error', async () => {
       mockFetchWorkflowDraft.mockRejectedValue(new Error('Fetch failed'))
 
-      const { result } = renderHook(() => useDSLByCanEdit(true))
+      const { result } = renderHook(() => useDSLByCanEdit(true), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        wrapper,
+      })
 
       await act(async () => {
         await result.current.exportCheck()

@@ -1,10 +1,10 @@
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +27,7 @@ function DSLConfirmModal({
   confirmDisabled = false,
   confirmLoading = false,
 }: DSLConfirmModalProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app'])
 
   return (
     <AlertDialog
@@ -58,7 +58,7 @@ function DSLConfirmModal({
             </div>
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton variant="secondary" disabled={confirmLoading}>
             {t(($) => $['newApp.Cancel'], { ns: 'app' })}
           </AlertDialogCancelButton>
@@ -69,7 +69,7 @@ function DSLConfirmModal({
           >
             {t(($) => $['newApp.Confirm'], { ns: 'app' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

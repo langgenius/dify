@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models.agent import (
     AgentConfigVersionKind,
@@ -49,6 +49,7 @@ def _workspace(
     app_id: str = "app-1",
     owner_type: AgentWorkspaceOwnerType = AgentWorkspaceOwnerType.CONVERSATION,
     owner_id: str = "conversation-1",
+    owner_scope_key: str = "root",
     status: AgentWorkingResourceStatus = AgentWorkingResourceStatus.ACTIVE,
     updated_at: datetime | None = None,
     backend_workspace_ref: str = "workspace-ref",
@@ -59,7 +60,7 @@ def _workspace(
         app_id=app_id,
         owner_type=owner_type,
         owner_id=owner_id,
-        owner_scope_key="root",
+        owner_scope_key=owner_scope_key,
         backend_workspace_ref=backend_workspace_ref,
         status=status,
         active_guard=1 if status is AgentWorkingResourceStatus.ACTIVE else None,
@@ -315,18 +316,75 @@ def test_retire_workspace_retires_all_active_bindings(sqlite_session: Session) -
     workspace = _workspace()
     bindings = [_binding(), _binding(binding_id="binding-2", agent_id="agent-2")]
     sqlite_session.add_all([workspace, *bindings])
-    sqlite_session.flush()
+    sqlite_session.commit()
 
     retired_id = AgentWorkspaceService.retire_workspace(
         session=sqlite_session,
         tenant_id="tenant-1",
         workspace_id=workspace.id,
     )
+    sqlite_session.flush()
 
     assert retired_id == workspace.id
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
     assert all(binding.status is AgentWorkingResourceStatus.RETIRED for binding in bindings)
     assert all(binding.retired_at == workspace.retired_at for binding in bindings)
+
+
+def test_resolve_active_binding_for_scope_returns_matching_participant(sqlite_session: Session) -> None:
+    workspace = _workspace(owner_scope_key="node-1:workflow-binding-1")
+    binding = _binding(binding_id="binding-chatflow", workspace_id=workspace.id)
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+
+    resolved = AgentWorkspaceService.resolve_active_binding_for_scope(
+        session=sqlite_session,
+        scope=WorkspaceOwnerScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+            owner_id="conversation-1",
+            owner_scope_key="node-1:workflow-binding-1",
+        ),
+        agent_id="agent-1",
+    )
+
+    assert resolved is not None
+    assert resolved.id == binding.id
+
+
+def test_retire_all_for_conversation_retires_only_matching_conversation_workspaces(
+    sqlite_session: Session,
+) -> None:
+    matching = _workspace(
+        workspace_id="workspace-chatflow",
+        owner_scope_key="node-1:workflow-binding-1",
+    )
+    other_conversation = _workspace(
+        workspace_id="workspace-other-conversation",
+        owner_id="conversation-2",
+        owner_scope_key="node-2:workflow-binding-2",
+    )
+    workflow_run = _workspace(
+        workspace_id="workspace-workflow-run",
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id="run-1",
+        owner_scope_key="node-1:workflow-binding-1",
+    )
+    sqlite_session.add_all([matching, other_conversation, workflow_run])
+    sqlite_session.commit()
+
+    retired_ids = AgentWorkspaceService.retire_all_for_conversation(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        conversation_id="conversation-1",
+    )
+
+    assert retired_ids == [matching.id]
+    assert matching.status is AgentWorkingResourceStatus.RETIRED
+    assert other_conversation.status is AgentWorkingResourceStatus.ACTIVE
+    assert workflow_run.status is AgentWorkingResourceStatus.ACTIVE
 
 
 def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_session: Session) -> None:
@@ -365,16 +423,15 @@ def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_s
 
 
 def test_collect_binding_without_retired_workspace_destroys_binding_only(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     binding = _binding(status=AgentWorkingResourceStatus.RETIRED)
     workspace = _workspace()
     sqlite_session.add_all([workspace, binding])
     sqlite_session.commit()
     client = MagicMock()
-    monkeypatch.setattr(
-        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
-    )
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
 
     AgentWorkspaceService.collect_retired_binding(tenant_id="tenant-1", binding_id=binding.id)
@@ -383,12 +440,14 @@ def test_collect_binding_without_retired_workspace_destroys_binding_only(
     assert request.binding_ref == binding.backend_binding_ref
     assert request.destroy_workspace is False
     assert request.workspace_ref is None
-    assert sqlite_session.get(AgentWorkspaceBinding, binding.id) is None
-    assert sqlite_session.get(AgentWorkspace, workspace.id) is not None
+    with sqlite_session_factory() as observer:
+        assert observer.get(AgentWorkspaceBinding, binding.id) is None
+        assert observer.get(AgentWorkspace, workspace.id) is not None
 
 
 def test_collect_workspace_destroys_workspace_then_remaining_bindings(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
     workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
     anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
@@ -578,3 +637,67 @@ def test_workspace_collection_final_delete_failure_propagates(
 
     assert exc_info.value is error
     client.destroy_execution_binding_sync.assert_called_once()
+
+
+def test_binding_creation_ignores_unavailable_metering_configuration(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
+    client = _backend_client()
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+    binding = AgentWorkspaceService.create_binding(
+        session=sqlite_session,
+        scope=_scope(),
+        agent_id="agent-1",
+        base_home_snapshot_id=None,
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+    )
+    sqlite_session.commit()
+    assert binding.backend_binding_ref == "binding-ref"
+    client.create_execution_binding_sync.assert_called_once()
+
+
+def test_binding_lookups_ignore_bad_metering_configuration_and_remain_tenant_scoped(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    apply_config_overrides(
+        monkeypatch,
+        AGENT_SANDBOX_METERING_ENABLED=True,
+        AGENT_SANDBOX_METERING_PROJECT_ID="",
+        AGENT_SANDBOX_METERING_START_AT="invalid",
+    )
+    workspace, binding = _workspace(), _binding()
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+    assert (
+        AgentWorkspaceService.get_active_binding(
+            session=sqlite_session,
+            tenant_id=binding.tenant_id,
+            binding_id=binding.id,
+            expected_owner_scope=_scope(),
+        )
+        is binding
+    )
+    assert (
+        AgentWorkspaceService.resolve_active_binding_for_scope(
+            session=sqlite_session,
+            scope=_scope(),
+            agent_id=binding.agent_id,
+        )
+        is binding
+    )
+    assert (
+        AgentWorkspaceService.get_active_binding(
+            session=sqlite_session,
+            tenant_id="another-tenant",
+            binding_id=binding.id,
+            expected_owner_scope=_scope(),
+        )
+        is None
+    )

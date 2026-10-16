@@ -1,8 +1,14 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { VersionHistory } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
-import { FlowType } from '@/types/common'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import {
+  createConsoleQueryClient,
+  createConsoleQueryWrapper,
+  seedFeatures,
+  seedSystemFeatures,
+} from '@/test/console/query-data'
+import { renderWorkflowComponent as renderWorkflow } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInRestoring from '../header-in-restoring'
 
@@ -12,14 +18,7 @@ const mockResetWorkflowVersionHistory = vi.fn()
 const mockHandleLoadBackupDraft = vi.fn()
 const mockHandleRefreshWorkflowDraft = vi.fn()
 let mockPlanType: CloudPlan = 'professional'
-let mockEnableBilling = true
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: { type: mockPlanType },
-    enableBilling: mockEnableBilling,
-  }),
-}))
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
@@ -40,7 +39,7 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
   useRestoreWorkflow: () => ({
     mutateAsync: mockRestoreWorkflow,
@@ -89,20 +88,7 @@ describe('HeaderInRestoring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPlanType = 'professional'
-    mockEnableBilling = true
-  })
-
-  it('should disable restore when the flow id is not ready yet', () => {
-    renderWorkflowComponent(<HeaderInRestoring />, {
-      initialStoreState: {
-        currentVersion: createVersion(),
-      },
-      hooksStoreProps: {
-        configsMap: undefined,
-      },
-    })
-
-    expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeDisabled()
+    deploymentEdition = 'CLOUD'
   })
 
   it('should enable restore when version and flow id are both ready', () => {
@@ -110,13 +96,7 @@ describe('HeaderInRestoring', () => {
       initialStoreState: {
         currentVersion: createVersion(),
       },
-      hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: undefined as never,
-          fileSettings: {} as never,
-        },
-      },
+      hooksStoreProps: {},
     })
 
     expect(screen.getByRole('button', { name: 'workflow.common.restore' })).toBeEnabled()
@@ -129,12 +109,9 @@ describe('HeaderInRestoring', () => {
           version: WorkflowVersion.Draft,
         }),
       },
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -147,12 +124,9 @@ describe('HeaderInRestoring', () => {
       initialStoreState: {
         currentVersion: createVersion(),
       },
+      resource: { kind: 'app' as const, appId: 'app-1', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
+        fileSettings: {} as never,
       },
     })
 
@@ -163,3 +137,14 @@ describe('HeaderInRestoring', () => {
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 })
+
+function renderWorkflowComponent(
+  ui: Parameters<typeof renderWorkflow>[0],
+  options: Parameters<typeof renderWorkflow>[1] = {},
+) {
+  const queryClient = createConsoleQueryClient()
+  createConsoleQueryWrapper({ queryClient })
+  seedSystemFeatures(queryClient, { deployment_edition: deploymentEdition })
+  seedFeatures(queryClient, { billing: { subscription: { plan: mockPlanType } } })
+  return renderWorkflow(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, { ...options, queryClient })
+}

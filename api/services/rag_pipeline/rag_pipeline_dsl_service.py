@@ -13,7 +13,7 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -42,6 +42,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
@@ -68,6 +69,8 @@ class RagPipelineImportInfo(BaseModel):
     imported_dsl_version: str = ""
     error: str = ""
     dataset_id: str | None = None
+    # Internal creation outcome for post-commit authorization; never part of the DSL response.
+    dataset_created: bool = Field(default=False, exclude=True)
 
 
 class RagPipelinePendingData(PendingImportOwner):
@@ -217,12 +220,15 @@ class RagPipelineDslService:
                         status=ImportStatus.FAILED,
                         error="Pipeline not found",
                     )
-                dataset = pipeline.retrieve_dataset(session=self._session)
+                dataset = get_pipeline_dataset(pipeline, session=self._session)
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
+                tenant_id = account.current_tenant_id
+                if tenant_id is None:
+                    raise ValueError("Current tenant is not set")
                 pending_data = RagPipelinePendingData(
-                    tenant_id=account.current_tenant_id,
+                    tenant_id=tenant_id,
                     account_id=account.id,
                     import_mode=import_mode,
                     yaml_content=content,
@@ -271,6 +277,7 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
                 if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
@@ -281,6 +288,7 @@ class RagPipelineDslService:
                     ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     if not dataset:
+                        dataset_created = True
                         datasets = self._session.scalars(
                             select(Dataset).where(Dataset.tenant_id == account.current_tenant_id)
                         ).all()
@@ -346,6 +354,7 @@ class RagPipelineDslService:
                 status=status,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 imported_dsl_version=imported_version,
             )
 
@@ -411,7 +420,7 @@ class RagPipelineDslService:
                 data=data,
                 account=account,
             )
-            dataset = pipeline.retrieve_dataset(session=self._session)
+            dataset = get_pipeline_dataset(pipeline, session=self._session)
 
             # create dataset
             name = pipeline.name
@@ -424,10 +433,12 @@ class RagPipelineDslService:
             graph = workflow.get("graph", {})
             nodes = graph.get("nodes", [])
             dataset_id = None
+            dataset_created = False
             for node in nodes:
                 if node.get("data", {}).get("type") == KNOWLEDGE_INDEX_NODE_TYPE:
                     knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
                     if not dataset:
+                        dataset_created = True
                         dataset = Dataset(
                             tenant_id=account.current_tenant_id,
                             name=name,
@@ -496,6 +507,7 @@ class RagPipelineDslService:
                 status=ImportStatus.COMPLETED,
                 pipeline_id=pipeline.id,
                 dataset_id=dataset_id,
+                dataset_created=dataset_created,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
             )
@@ -559,6 +571,11 @@ class RagPipelineDslService:
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
 
         graph = workflow_data.get("graph", {})
+        if not isinstance(graph, dict):
+            raise ValueError("Workflow graph must be a mapping")
+        # The source canvas position should not determine the imported pipeline's initial view.
+        graph = graph.copy()
+        graph.pop("viewport", None)
         for node in graph.get("nodes", []):
             if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node["data"].get("dataset_ids", [])
@@ -648,7 +665,7 @@ class RagPipelineDslService:
         :param include_secret: Whether include secret variable
         :return:
         """
-        dataset = pipeline.retrieve_dataset(session=self._session)
+        dataset = get_pipeline_dataset(pipeline, session=self._session)
         if not dataset:
             raise ValueError("Missing dataset for rag pipeline")
         icon_info = dataset.icon_info
@@ -764,12 +781,16 @@ class RagPipelineDslService:
         dependencies = []
         for node in graph.get("nodes", []):
             try:
-                typ = node.get("data", {}).get("type")
+                node_data = node.get("data", {})
+                typ = node_data.get("type")
+                if typ != BuiltinNodeTypes.DATASOURCE:
+                    dependencies.extend(DependenciesAnalysisService.extract_external_node_dependencies(node_data))
                 match typ:
                     case BuiltinNodeTypes.TOOL:
                         tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
-                            DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
+                            node_data.get("plugin_id")
+                            or DependenciesAnalysisService.analyze_tool_provider_reference(tool_entity.provider_id),
                         )
                     case BuiltinNodeTypes.DATASOURCE:
                         datasource_entity = DatasourceNodeData.model_validate(node["data"])

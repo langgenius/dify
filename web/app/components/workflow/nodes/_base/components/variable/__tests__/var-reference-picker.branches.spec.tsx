@@ -8,8 +8,8 @@ import {
   resetFixtureCounters,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '../../../../tool/types'
 import VarReferencePicker from '../var-reference-picker'
 
 const { mockFetchDynamicOptions } = vi.hoisted(() => ({
@@ -27,7 +27,7 @@ vi.mock('../../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getTreeLeafNodes: () => [],
       getNodeById: () => undefined,
@@ -293,4 +293,11 @@ describe('VarReferencePicker branches', () => {
     expect(screen.getByText('API_KEY')).toBeInTheDocument()
     expect(screen.queryByTestId('var-reference-picker-error-icon')).not.toBeInTheDocument()
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => false) }
 })

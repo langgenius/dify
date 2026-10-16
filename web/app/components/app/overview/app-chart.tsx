@@ -1,17 +1,19 @@
-/* oxlint-disable react/only-export-components */
 'use client'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
 import type { SelectorParam } from 'i18next'
-import type { FC } from 'react'
+import type { ReactNode } from 'react'
 import type { ChartRow } from './app-chart-utils'
-import { useQuery } from '@tanstack/react-query'
-import ReactECharts from 'echarts-for-react'
+import { Button } from '@langgenius/dify-ui/button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useQueries } from '@tanstack/react-query'
+import ReactECharts from 'echarts-for-react/esm/core'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
-import Loading from '@/app/components/base/loading'
-import { consoleQuery } from '@/service/client'
+import { echarts } from '@/app/components/base/line-chart/echarts'
+import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { consoleQuery } from '@/service/console'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
@@ -41,7 +43,8 @@ export type PeriodParamsWithTimeRange = {
   query?: TimeRange
 }
 
-type IBizChartProps = {
+type AppChartsProps = {
+  appMode: AppDetailWithSite['mode']
   period: PeriodParams
   id: string
 }
@@ -57,6 +60,50 @@ type IChartProps = {
   chartData: { data: ChartRow[] }
 }
 
+function ChartFrame({
+  title,
+  explanation,
+  className,
+  busy,
+  children,
+}: {
+  title: string
+  explanation: string
+  className?: string
+  busy?: boolean
+  children: ReactNode
+}) {
+  const titleId = React.useId()
+  return (
+    <section
+      aria-labelledby={titleId}
+      aria-busy={busy || undefined}
+      className={`flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-120 ${className ?? ''}`}
+    >
+      <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
+        <div className="flex min-w-0 items-center">
+          <div
+            id={titleId}
+            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
+            title={title}
+          >
+            {title}
+          </div>
+          {explanation && (
+            <Infotip>
+              <InfotipTrigger aria-labelledby={titleId} className="ml-1" />
+              <InfotipContent aria-labelledby={titleId} className="w-60">
+                {explanation}
+              </InfotipContent>
+            </Infotip>
+          )}
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
+
 const ECHARTS_RENDER_OPTIONS = { renderer: 'svg' as const }
 
 const Chart: React.FC<IChartProps> = ({
@@ -69,7 +116,7 @@ const Chart: React.FC<IChartProps> = ({
   yMax,
   className,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appOverview'])
   const statistics = chartData.data
   const yField = getChartValueField(statistics, valueKey)
   const options = buildChartOptions({
@@ -91,24 +138,7 @@ const Chart: React.FC<IChartProps> = ({
   const isZeroSummary = !hasNonZeroChartData(statistics, yField)
 
   return (
-    <div
-      className={`flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-120 ${className ?? ''}`}
-    >
-      <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
-        <div className="flex min-w-0 items-center">
-          <div
-            className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary"
-            title={title}
-          >
-            {title}
-          </div>
-          {explanation && (
-            <Infotip aria-label={explanation} className="ml-1" popupClassName="w-[240px]">
-              {explanation}
-            </Infotip>
-          )}
-        </div>
-      </div>
+    <ChartFrame title={title} explanation={explanation} className={className}>
       <div className="flex h-8 shrink-0 items-baseline gap-1 px-6 py-1">
         <div
           className={`shrink-0 title-3xl-semi-bold ${isZeroSummary ? 'text-text-quaternary' : 'text-text-primary'}`}
@@ -126,12 +156,13 @@ const Chart: React.FC<IChartProps> = ({
       </div>
       <div className="h-60 shrink-0 px-6 pb-4">
         <ReactECharts
+          echarts={echarts}
           option={options}
           opts={ECHARTS_RENDER_OPTIONS}
           style={{ height: '100%', width: '100%' }}
         />
       </div>
-    </div>
+    </ChartFrame>
   )
 }
 
@@ -184,65 +215,99 @@ type BizChartConfig<TData extends ChartResponse> = {
   className?: string
 }
 
-const createBizChartComponent = <TData extends ChartResponse>({
-  chartType,
-  titleKey,
-  explanationKey,
-  queryOptions,
-  valueKey,
-  emptyValueKey,
-  yMaxWhenEmpty,
-  isAvg,
-  unitKey,
-  className,
-}: BizChartConfig<TData>): FC<IBizChartProps> => {
-  const BizChart: FC<IBizChartProps> = ({ id, period }) => {
-    const { t } = useTranslation()
-    const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
+function ChartCard({
+  response,
+  pending,
+  failed,
+  retry,
+  period,
+  config: {
+    chartType,
+    titleKey,
+    explanationKey,
+    valueKey,
+    emptyValueKey,
+    yMaxWhenEmpty,
+    isAvg,
+    unitKey,
+    className,
+  },
+}: {
+  config: BizChartConfig<ChartResponse>
+  response: ChartResponse | undefined
+  pending: boolean
+  failed: boolean
+  retry: () => void
+  period: PeriodParams
+}) {
+  const { t } = useTranslation(['appOverview', 'common'])
+  const fallbackKey = emptyValueKey ?? valueKey
+  const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
+  const explanationSelector: SelectorParam<'appOverview'> =
+    CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
+  const unitSelector: SelectorParam<'appOverview'> | undefined = unitKey
+    ? CHART_TRANSLATION_SELECTOR_MAP[unitKey]
+    : undefined
+  const title = t(titleSelector, { ns: 'appOverview', defaultValue: titleKey })
+  const explanation = t(explanationSelector, { ns: 'appOverview', defaultValue: explanationKey })
 
-    if (isLoading || !response) return <Loading />
-
-    const noDataFlag = !response.data || response.data.length === 0
-    const fallbackKey = emptyValueKey ?? valueKey
-    const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
-    const explanationSelector: SelectorParam<'appOverview'> =
-      CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
-    const unitSelector: SelectorParam<'appOverview'> | undefined = unitKey
-      ? CHART_TRANSLATION_SELECTOR_MAP[unitKey]
-      : undefined
-    const fallbackData = {
-      data: getDefaultChartData({
-        ...(period.query ?? defaultPeriod),
-        ...(fallbackKey ? { key: fallbackKey } : {}),
-      }),
-    }
-
+  if (pending || !response) {
     return (
-      <Chart
-        basicInfo={{
-          title: t(titleSelector, { ns: 'appOverview', defaultValue: titleKey }),
-          explanation: t(explanationSelector, { ns: 'appOverview', defaultValue: explanationKey }),
-          timePeriod: period.name,
-        }}
-        chartData={noDataFlag ? fallbackData : response}
-        chartType={chartType}
-        valueKey={valueKey}
-        isAvg={isAvg}
-        unit={
-          unitKey && unitSelector
-            ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey })
-            : undefined
-        }
-        className={className}
-        {...(noDataFlag && { yMax: yMaxWhenEmpty })}
-      />
+      <ChartFrame title={title} explanation={explanation} className={className} busy={pending}>
+        {!pending && failed ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6">
+            <p role="alert" className="system-sm-regular text-text-tertiary">
+              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+            </p>
+            <Button variant="secondary" onClick={retry}>
+              {t(($) => $['errorBoundary.tryAgain'], { ns: 'common' })}
+            </Button>
+          </div>
+        ) : (
+          <div
+            role="status"
+            aria-label={t(($) => $.loading, { ns: 'common' })}
+            className="flex flex-1 flex-col gap-4 px-6 pt-1 pb-4"
+          >
+            <SkeletonRectangle className="h-6 w-16" />
+            <SkeletonRectangle className="w-full flex-1" />
+          </div>
+        )}
+      </ChartFrame>
     )
   }
 
-  return BizChart
+  const noDataFlag = !response.data || response.data.length === 0
+  const fallbackData = {
+    data: getDefaultChartData({
+      ...(period.query ?? defaultPeriod),
+      ...(fallbackKey ? { key: fallbackKey } : {}),
+    }),
+  }
+
+  return (
+    <Chart
+      basicInfo={{
+        title,
+        explanation,
+        timePeriod: period.name,
+      }}
+      chartData={noDataFlag ? fallbackData : response}
+      chartType={chartType}
+      valueKey={valueKey}
+      isAvg={isAvg}
+      unit={
+        unitKey && unitSelector
+          ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey })
+          : undefined
+      }
+      className={className}
+      {...(noDataFlag && { yMax: yMaxWhenEmpty })}
+    />
+  )
 }
 
-export const MessagesChart = createBizChartComponent({
+const MessagesChart: BizChartConfig<ChartResponse> = {
   chartType: 'messages',
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
@@ -253,9 +318,9 @@ export const MessagesChart = createBizChartComponent({
   valueKey: 'message_count',
   emptyValueKey: 'message_count',
   yMaxWhenEmpty: 500,
-})
+}
 
-export const ConversationsChart = createBizChartComponent({
+const ConversationsChart: BizChartConfig<ChartResponse> = {
   chartType: 'conversations',
   titleKey: 'analysis.totalConversations.title',
   explanationKey: 'analysis.totalConversations.explanation',
@@ -266,9 +331,9 @@ export const ConversationsChart = createBizChartComponent({
   valueKey: 'conversation_count',
   emptyValueKey: 'conversation_count',
   yMaxWhenEmpty: 500,
-})
+}
 
-export const EndUsersChart = createBizChartComponent({
+const EndUsersChart: BizChartConfig<ChartResponse> = {
   chartType: 'endUsers',
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
@@ -279,9 +344,9 @@ export const EndUsersChart = createBizChartComponent({
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
-})
+}
 
-export const AvgSessionInteractions = createBizChartComponent({
+const AvgSessionInteractions: BizChartConfig<ChartResponse> = {
   chartType: 'conversations',
   titleKey: 'analysis.avgSessionInteractions.title',
   explanationKey: 'analysis.avgSessionInteractions.explanation',
@@ -293,9 +358,9 @@ export const AvgSessionInteractions = createBizChartComponent({
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,
   isAvg: true,
-})
+}
 
-export const AvgResponseTime = createBizChartComponent({
+const AvgResponseTime: BizChartConfig<ChartResponse> = {
   chartType: 'conversations',
   titleKey: 'analysis.avgResponseTime.title',
   explanationKey: 'analysis.avgResponseTime.explanation',
@@ -308,9 +373,9 @@ export const AvgResponseTime = createBizChartComponent({
   yMaxWhenEmpty: 500,
   isAvg: true,
   unitKey: 'analysis.ms',
-})
+}
 
-export const TokenPerSecond = createBizChartComponent({
+const TokenPerSecond: BizChartConfig<ChartResponse> = {
   chartType: 'conversations',
   titleKey: 'analysis.tps.title',
   explanationKey: 'analysis.tps.explanation',
@@ -324,9 +389,9 @@ export const TokenPerSecond = createBizChartComponent({
   isAvg: true,
   unitKey: 'analysis.tokenPS',
   className: 'min-w-0',
-})
+}
 
-export const UserSatisfactionRate = createBizChartComponent({
+const UserSatisfactionRate: BizChartConfig<ChartResponse> = {
   chartType: 'endUsers',
   titleKey: 'analysis.userSatisfactionRate.title',
   explanationKey: 'analysis.userSatisfactionRate.explanation',
@@ -339,9 +404,9 @@ export const UserSatisfactionRate = createBizChartComponent({
   yMaxWhenEmpty: 1000,
   isAvg: true,
   className: 'h-full',
-})
+}
 
-export const CostChart = createBizChartComponent({
+const CostChart: BizChartConfig<ChartResponse> = {
   chartType: 'costs',
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
@@ -352,9 +417,9 @@ export const CostChart = createBizChartComponent({
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
-})
+}
 
-export const WorkflowMessagesChart = createBizChartComponent({
+const WorkflowMessagesChart: BizChartConfig<ChartResponse> = {
   chartType: 'conversations',
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
@@ -365,9 +430,9 @@ export const WorkflowMessagesChart = createBizChartComponent({
   valueKey: 'runs',
   emptyValueKey: 'runs',
   yMaxWhenEmpty: 500,
-})
+}
 
-export const WorkflowDailyTerminalsChart = createBizChartComponent({
+const WorkflowDailyTerminalsChart: BizChartConfig<ChartResponse> = {
   chartType: 'endUsers',
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
@@ -378,9 +443,9 @@ export const WorkflowDailyTerminalsChart = createBizChartComponent({
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
-})
+}
 
-export const WorkflowCostChart = createBizChartComponent({
+const WorkflowCostChart: BizChartConfig<ChartResponse> = {
   chartType: 'workflowCosts',
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
@@ -391,9 +456,9 @@ export const WorkflowCostChart = createBizChartComponent({
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
-})
+}
 
-export const AvgUserInteractions = createBizChartComponent({
+const AvgUserInteractions: BizChartConfig<ChartResponse> = {
   chartType: 'conversations',
   titleKey: 'analysis.avgUserInteractions.title',
   explanationKey: 'analysis.avgUserInteractions.explanation',
@@ -405,5 +470,67 @@ export const AvgUserInteractions = createBizChartComponent({
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,
   isAvg: true,
-})
+}
+const workflowCharts = [
+  WorkflowMessagesChart,
+  WorkflowDailyTerminalsChart,
+  WorkflowCostChart,
+  AvgUserInteractions,
+]
+const completionCharts = [
+  ConversationsChart,
+  EndUsersChart,
+  AvgResponseTime,
+  TokenPerSecond,
+  UserSatisfactionRate,
+  CostChart,
+]
+const chatCharts = [
+  ConversationsChart,
+  EndUsersChart,
+  AvgSessionInteractions,
+  TokenPerSecond,
+  UserSatisfactionRate,
+  CostChart,
+  MessagesChart,
+]
+
+export function AppCharts({ id, period, appMode }: AppChartsProps) {
+  const configs =
+    appMode === 'workflow'
+      ? workflowCharts
+      : appMode === 'completion'
+        ? completionCharts
+        : chatCharts
+  const queries = useQueries({
+    queries: configs.map((config) => config.queryOptions(id, period.query)),
+  })
+  const pending = queries.some((query) => query.isPending)
+  const retryFailedQueries = () => {
+    queries
+      .filter((query) => query.isError && !query.data)
+      .forEach((query) => {
+        void query.refetch()
+      })
+  }
+  return (
+    <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2" aria-busy={pending || undefined}>
+      {configs.map((config, index) => {
+        const query = queries[index]!
+        return (
+          <ChartCard
+            key={config.titleKey}
+            config={config}
+            response={query.data}
+            pending={pending}
+            failed={query.isError}
+            retry={retryFailedQueries}
+            period={period}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 export default Chart

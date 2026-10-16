@@ -56,7 +56,7 @@ describe('createReactI18nextMock', () => {
     it('should preserve flat dotted keys selected with bracket notation', () => {
       // Arrange
       const { useTranslation } = createReactI18nextMock()
-      const { t } = useTranslation('app')
+      const { t } = useTranslation(['app'])
 
       // Act
       const result = t(($) => $['accessControlDialog.title'])
@@ -68,7 +68,7 @@ describe('createReactI18nextMock', () => {
     it('should preserve nested keys selected with property access', () => {
       // Arrange
       const { useTranslation } = createReactI18nextMock()
-      const { t } = useTranslation('common')
+      const { t } = useTranslation(['common'])
 
       // Act
       const result = t(($) => $['operation.close'])

@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -6,12 +5,10 @@ import * as React from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import SettingBuiltInTool from '../setting-built-in-tool'
 
-const fetchModelToolList = vi.fn()
 const fetchBuiltInToolList = vi.fn()
 const fetchCustomToolList = vi.fn()
 const fetchWorkflowToolList = vi.fn()
 vi.mock('@/service/tools', () => ({
-  fetchModelToolList: (collectionName: string) => fetchModelToolList(collectionName),
   fetchBuiltInToolList: (collectionName: string) => fetchBuiltInToolList(collectionName),
   fetchCustomToolList: (collectionName: string) => fetchCustomToolList(collectionName),
   fetchWorkflowToolList: (appId: string) => fetchWorkflowToolList(appId),
@@ -134,7 +131,6 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuil
     <SettingBuiltInTool
       collection={baseCollection as any}
       toolName="search"
-      isModel
       setting={{ settingParam: 'value' }}
       onHide={onHide}
       onSave={onSave}
@@ -158,7 +154,7 @@ describe('SettingBuiltInTool', () => {
   })
 
   it('should fetch tool list when collection has no tools', async () => {
-    fetchModelToolList.mockResolvedValueOnce([createTool()])
+    fetchBuiltInToolList.mockResolvedValueOnce([createTool()])
     renderComponent({
       collection: {
         ...baseCollection,
@@ -167,22 +163,31 @@ describe('SettingBuiltInTool', () => {
     })
 
     await waitFor(() => {
-      expect(fetchModelToolList).toHaveBeenCalledTimes(1)
-      expect(fetchModelToolList).toHaveBeenCalledWith('vendor/provider-1')
+      expect(fetchBuiltInToolList).toHaveBeenCalledTimes(1)
+      expect(fetchBuiltInToolList).toHaveBeenCalledWith('vendor/provider-1')
     })
     expect(await screen.findByText('Search Tool')).toBeInTheDocument()
   })
 
-  it('should switch between info and setting tabs', async () => {
+  it('preserves the settings draft when switching named tab panels', async () => {
+    const user = userEvent.setup()
     renderComponent()
     await waitFor(() => {
       expect(screen.getByTestId('mock-form')).toBeInTheDocument()
     })
 
-    await userEvent.click(screen.getByText('tools.setBuiltInTools.parameters'))
-    expect(screen.getByText('Info Param')).toBeInTheDocument()
-    await userEvent.click(screen.getByText('tools.setBuiltInTools.setting'))
-    expect(screen.getByTestId('mock-form')).toBeInTheDocument()
+    nextFormValue = { settingParam: 'unsaved draft' }
+    await user.click(screen.getByRole('button', { name: 'update-form' }))
+    await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.parameters' }))
+    expect(
+      screen.getByRole('tabpanel', { name: 'tools.setBuiltInTools.parameters' }),
+    ).toHaveTextContent('Info Param')
+    expect(screen.queryByTestId('mock-form')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.setting' }))
+    expect(
+      screen.getByRole('tabpanel', { name: 'tools.setBuiltInTools.setting' }),
+    ).toHaveTextContent('unsaved draft')
+    expect(screen.getByRole('dialog', { name: 'Search Tool' })).toBeInTheDocument()
   })
 
   it('should keep the setting tab hidden when readonly by default', async () => {
@@ -190,6 +195,8 @@ describe('SettingBuiltInTool', () => {
 
     expect(await screen.findByText('Info Param')).toBeInTheDocument()
     expect(screen.queryByText('tools.setBuiltInTools.setting')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument()
   })
 
   it('should expose readonly setting details when explicitly enabled', async () => {
@@ -277,7 +284,6 @@ describe('SettingBuiltInTool', () => {
         id: 'workflow-1',
       } as any,
       isBuiltIn: false,
-      isModel: false,
     })
 
     await waitFor(() => {

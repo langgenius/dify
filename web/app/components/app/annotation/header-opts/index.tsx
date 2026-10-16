@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { AnnotationItemBasic } from '../type'
+import type { AnnotationItem, AnnotationItemBasic } from '../type'
+import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -11,17 +12,18 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
-import { useLocale } from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
-import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
-import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-modal'
+import { ClearAllAnnotationsConfirmContent } from '../clear-all-annotations-confirm-modal'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
@@ -34,28 +36,27 @@ type Props = Readonly<{
 }>
 
 type OperationsMenuProps = {
-  list: AnnotationItemBasic[]
-  onClose: () => void
+  list: AnnotationItem[]
   onBulkImport: () => void
   onClearAll: () => void
   onExportJsonl: () => void
 }
 
-const buildAnnotationJsonlRecords = (list: AnnotationItemBasic[]) =>
-  list.map((item: AnnotationItemBasic) => {
-    return `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question)}}, {"role": "assistant", "content": ${JSON.stringify(item.answer)}}]}`
+const buildAnnotationJsonlRecords = (list: AnnotationItem[]) =>
+  list.map((item) => {
+    return `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question ?? '')}}, {"role": "assistant", "content": ${JSON.stringify(item.answer ?? '')}}]}`
   })
 
-const downloadAnnotationJsonl = (list: AnnotationItemBasic[], locale: string) => {
+const downloadAnnotationJsonl = (list: AnnotationItem[], locale: string) => {
   const content = buildAnnotationJsonlRecords(list).join('\n')
   const file = new Blob([content], { type: 'application/jsonl' })
   downloadBlob({ data: file, fileName: `annotations-${locale}.jsonl` })
 }
 
-const downloadAnnotationCsv = (list: AnnotationItemBasic[], locale: string) => {
+const downloadAnnotationCsv = (list: AnnotationItem[], locale: string) => {
   const content = jsonToCSV([
     locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-    ...list.map((item) => [item.question, item.answer]),
+    ...list.map((item) => [item.question ?? '', item.answer ?? '']),
   ])
   const file = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' })
   downloadBlob({ data: file, fileName: `annotations-${locale}.csv` })
@@ -63,12 +64,11 @@ const downloadAnnotationCsv = (list: AnnotationItemBasic[], locale: string) => {
 
 const OperationsMenu: FC<OperationsMenuProps> = ({
   list,
-  onClose,
   onBulkImport,
   onClearAll,
   onExportJsonl,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation'])
   const locale = useLocale()
   const annotationUnavailable = list.length === 0
 
@@ -77,7 +77,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
       <DropdownMenuItem
         className="gap-2"
         onClick={() => {
-          onClose()
           onBulkImport()
         }}
       >
@@ -99,7 +98,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           <DropdownMenuItem
             disabled={annotationUnavailable}
             onClick={() => {
-              onClose()
               downloadAnnotationCsv(list, locale)
             }}
           >
@@ -108,7 +106,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           <DropdownMenuItem
             disabled={annotationUnavailable}
             onClick={() => {
-              onClose()
               onExportJsonl()
             }}
           >
@@ -120,7 +117,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
         variant="destructive"
         className="gap-2"
         onClick={() => {
-          onClose()
           onClearAll()
         }}
       >
@@ -132,13 +128,15 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
 }
 
 const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
-  const [list, setList] = useState<AnnotationItemBasic[]>([])
+  const [list, setList] = useState<AnnotationItem[]>([])
 
   const fetchList = React.useCallback(async () => {
-    const { data }: any = await fetchExportAnnotationList(appId)
-    setList(data as AnnotationItemBasic[])
+    const { data } = await consoleClient.apps.byAppId.annotations.export.get({
+      params: { app_id: appId },
+    })
+    setList(data)
   }, [appId])
 
   useEffect(() => {
@@ -150,7 +148,14 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
+  const clearAllMutation = useMutation(
+    consoleQuery.apps.byAppId.annotations.delete.mutationOptions({
+      onSuccess: () => {
+        onAdded()
+        setShowClearConfirm(false)
+      },
+    }),
+  )
   const handleShowBulkImportModal = React.useCallback(() => {
     setShowBulkImportModal(true)
   }, [])
@@ -160,17 +165,6 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   const handleExportJsonl = React.useCallback(() => {
     downloadAnnotationJsonl(list, locale)
   }, [list, locale])
-  const handleConfirmed = async () => {
-    try {
-      await clearAllAnnotations(appId)
-      onAdded()
-    } catch (e) {
-      console.error(`failed to clear all annotations, ${e}`)
-    } finally {
-      setShowClearConfirm(false)
-    }
-  }
-
   const [showAddModal, setShowAddModal] = React.useState(false)
 
   return (
@@ -179,11 +173,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         <span aria-hidden className="i-ri-add-line size-4" />
         <div>{t(($) => $['table.header.addAnnotation'], { ns: 'appAnnotation' })}</div>
       </Button>
-      <DropdownMenu
-        modal={false}
-        open={isOperationsMenuOpen}
-        onOpenChange={setIsOperationsMenuOpen}
-      >
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}
           className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
@@ -193,7 +183,6 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-38.75">
           <OperationsMenu
             list={list}
-            onClose={() => setIsOperationsMenuOpen(false)}
             onBulkImport={handleShowBulkImportModal}
             onClearAll={handleClearAll}
             onExportJsonl={handleExportJsonl}
@@ -216,13 +205,21 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
           onAdded={onAdded}
         />
       )}
-      {showClearConfirm && (
-        <ClearAllAnnotationsConfirmModal
-          isShow={showClearConfirm}
-          onHide={() => setShowClearConfirm(false)}
-          onConfirm={handleConfirmed}
+      <AlertDialog
+        open={showClearConfirm}
+        onOpenChange={(open, details) => {
+          if (!open && clearAllMutation.isPending) {
+            details.cancel()
+            return
+          }
+          setShowClearConfirm(open)
+        }}
+      >
+        <ClearAllAnnotationsConfirmContent
+          isPending={clearAllMutation.isPending}
+          onConfirm={() => clearAllMutation.mutate({ params: { app_id: appId } })}
         />
-      )}
+      </AlertDialog>
     </div>
   )
 }

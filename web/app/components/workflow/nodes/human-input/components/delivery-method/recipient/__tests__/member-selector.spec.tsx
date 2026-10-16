@@ -40,9 +40,9 @@ const members: Member[] = [
     status: 'active',
     role: 'normal',
     roles: [],
-    created_at: '2026-01-01T00:00:00Z',
-    last_active_at: '2026-01-02T00:00:00Z',
-    last_login_at: '2026-01-03T00:00:00Z',
+    created_at: 1767225600,
+    last_active_at: 1767312000,
+    last_login_at: 1767398400,
   },
 ]
 
@@ -64,7 +64,7 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
     )
 
     const trigger = screen.getByRole('button', {
-      name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
+      name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
     })
 
     expect(screen.queryByTestId('member-list')).not.toBeInTheDocument()
@@ -100,7 +100,7 @@ describe('human-input/delivery-method/recipient/member-selector', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: 'workflow.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
+        name: 'workflowHumanInput.nodes.humanInput.deliveryMethod.emailConfigure.memberSelector.trigger',
       }),
     )
     await user.type(screen.getByRole('textbox', { name: 'member search' }), 'member one')

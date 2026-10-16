@@ -245,7 +245,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(generator, "_prepare_user_inputs", lambda **kwargs: kwargs["user_inputs"])
 
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -254,7 +254,7 @@ class TestAdvancedChatAppGeneratorInternals:
                 )
             },
         )
-        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.TraceQueueManager", DummyTraceQueueManager)
+        monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.TraceQueueManager", dummy_trace_queue_manager)
 
         def _fake_generate(**kwargs):
             captured.update(kwargs)
@@ -711,7 +711,7 @@ class TestAdvancedChatAppGeneratorInternals:
         generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -763,7 +763,7 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.commit()
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -814,7 +814,7 @@ class TestAdvancedChatAppGeneratorInternals:
         generator._get_message = MagicMock(return_value=_make_message(message_id="msg", conversation_id="conv"))
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -893,7 +893,7 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.commit()
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -935,7 +935,7 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.commit()
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         def _make_runner(error: Exception):
@@ -1149,7 +1149,7 @@ class TestAdvancedChatAppGeneratorInternals:
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.AdvancedChatAppRunner", _Runner)
 
         @contextmanager
-        def _fake_context(*args, **kwargs):
+        def _fake_context[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.preserve_flask_contexts", _fake_context)
@@ -1197,7 +1197,7 @@ class TestAdvancedChatAppGeneratorInternals:
             "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -1208,7 +1208,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
@@ -1272,7 +1272,7 @@ class TestAdvancedChatAppGeneratorInternals:
             "core.app.apps.advanced_chat.app_generator.FileUploadConfigManager.convert",
             lambda features_dict, is_vision=False: None,
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -1283,7 +1283,7 @@ class TestAdvancedChatAppGeneratorInternals:
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.DifyCoreRepositoryFactory.create_workflow_execution_repository",
@@ -1356,7 +1356,7 @@ class TestAdvancedChatAppGeneratorResume:
             trace_manager=None,
             workflow_run_id="run-id",
         )
-        DummyTraceQueueManager = type(
+        dummy_trace_queue_manager = type(
             "_DummyTraceQueueManager",
             (TraceQueueManager,),
             {
@@ -1367,7 +1367,7 @@ class TestAdvancedChatAppGeneratorResume:
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.TraceQueueManager",
-            DummyTraceQueueManager,
+            dummy_trace_queue_manager,
         )
         captured_entity: AdvancedChatAppGenerateEntity | None = None
 
@@ -1394,7 +1394,7 @@ class TestAdvancedChatAppGeneratorResume:
         assert result.ok is True
         assert captured_entity is not None
         trace_manager = captured_entity.trace_manager
-        assert isinstance(trace_manager, DummyTraceQueueManager)
+        assert isinstance(trace_manager, dummy_trace_queue_manager)
         assert trace_manager.app_id == "app-id"
         assert trace_manager.user_id == "session-id"
 

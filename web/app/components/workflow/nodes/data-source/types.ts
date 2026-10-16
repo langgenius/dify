@@ -1,15 +1,13 @@
 import type { DatasourceProviderType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { ResourceVarInputs } from '../_base/types'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
-import type { FlowType } from '@/types/common'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
 
-export enum DataSourceClassification {
-  localFile = 'local_file',
-}
-
-export type ToolVarInputs = ResourceVarInputs
+export const DataSourceClassification = {
+  localFile: 'local_file',
+} as const
 
 export type DataSourceNodeType = CommonNodeType & {
   fileExtensions?: string[]
@@ -18,15 +16,14 @@ export type DataSourceNodeType = CommonNodeType & {
   provider_name: string
   datasource_name: string
   datasource_label: string
-  datasource_parameters: ToolVarInputs
+  datasource_parameters: ResourceVarInputs
   datasource_configurations: Record<string, any>
   plugin_unique_identifier?: string
 }
 
 export type CustomRunFormProps = {
   nodeId: string
-  flowId: string
-  flowType: FlowType
+  resource: EditorResource
   payload: CommonNodeType
   setRunResult: Dispatch<SetStateAction<NodeRunResult | null>>
   setIsRunAfterSingleRun: Dispatch<SetStateAction<boolean>>

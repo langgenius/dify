@@ -20,35 +20,13 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/app/components/base/app-icon-picker', () => ({
-  __esModule: true,
-  default: ({
-    initialEmoji,
-    onSelect,
-    open,
-  }: {
-    initialEmoji?: { icon: string; background: string }
-    onSelect: (payload: { type: 'emoji'; icon: string; background: string }) => void
-    open: boolean
-  }) =>
-    open ? (
-      <div>
-        <span>{`${initialEmoji?.icon}:${initialEmoji?.background}`}</span>
-        <button
-          type="button"
-          onClick={() => onSelect({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
-        >
-          Select brain icon
-        </button>
-      </div>
-    ) : null,
-}))
+vi.mock('@/app/components/base/icon-picker', () => import('@/test/icon-picker-mock'))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
@@ -69,6 +47,7 @@ const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial 
   icon_url: null,
   mode: 'agent',
   name: 'Research Agent',
+  permission_keys: [],
   role: 'Research Assistant',
   ...overrides,
 })
@@ -91,12 +70,12 @@ describe('EditAgentDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.clear(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     )
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
       ' Market Agent ',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -127,12 +106,12 @@ describe('EditAgentDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.clear(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
     )
     await user.type(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
       ' Market Analyst ',
     )
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -163,9 +142,9 @@ describe('EditAgentDialog', () => {
     const user = userEvent.setup()
     const { onOpenChange } = renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     const roleInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.roleLabel/,
+      name: /agentRoster\.roster\.createForm\.roleLabel/,
     })
     await user.clear(roleInput)
     await user.type(roleInput, 'Market Analyst')
@@ -182,10 +161,10 @@ describe('EditAgentDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.createForm.changeIcon',
+        name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
     await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
@@ -219,7 +198,7 @@ describe('EditAgentDialog', () => {
     const agent = createAgent()
     const { rerender } = render(<EditAgentDialog agent={agent} open onOpenChange={onOpenChange} />)
 
-    let dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    let dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     expect(within(dialog).getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
 
     rerender(
@@ -230,14 +209,14 @@ describe('EditAgentDialog', () => {
       />,
     )
 
-    dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     expect(within(dialog).getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
     expect(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     ).toHaveValue('Research Agent')
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.createForm.changeIcon',
+        name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
     expect(screen.getByText('🧸:#F5F3FF')).toBeInTheDocument()
@@ -250,10 +229,10 @@ describe('EditAgentDialog', () => {
       <EditAgentDialog agent={createAgent()} open onOpenChange={onOpenChange} />,
     )
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.createForm.changeIcon',
+        name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
     await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
@@ -268,7 +247,7 @@ describe('EditAgentDialog', () => {
 
     expect(screen.getByText('🧠:#E0F2FE')).toBeInTheDocument()
     expect(
-      within(screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })).getByRole(
+      within(screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })).getByRole(
         'button',
         { name: 'common.operation.save' },
       ),
@@ -281,10 +260,10 @@ describe('EditAgentDialog', () => {
     const agent = createAgent()
     const { rerender } = render(<EditAgentDialog agent={agent} open onOpenChange={onOpenChange} />)
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'agentV2.roster.createForm.changeIcon',
+        name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
     await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
@@ -302,11 +281,11 @@ describe('EditAgentDialog', () => {
       />,
     )
     const reopenedDialog = screen.getByRole('dialog', {
-      name: 'agentV2.roster.editDialog.title',
+      name: 'agentRoster.roster.editDialog.title',
     })
     await user.click(
       within(reopenedDialog).getByRole('button', {
-        name: 'agentV2.roster.createForm.changeIcon',
+        name: 'agentRoster.roster.createForm.changeIcon',
       }),
     )
 
@@ -335,9 +314,9 @@ describe('EditAgentDialog', () => {
       />,
     )
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: 'agentV2.roster.createForm.nameLabel',
+      name: 'agentRoster.roster.createForm.nameLabel',
     })
     expect(nameInput).toHaveValue('Second Agent')
     expect(within(dialog).getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
@@ -370,9 +349,9 @@ describe('EditAgentDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.clear(
-      within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }),
+      within(dialog).getByRole('textbox', { name: 'agentRoster.roster.createForm.nameLabel' }),
     )
 
     const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
@@ -380,7 +359,7 @@ describe('EditAgentDialog', () => {
     await user.click(saveButton)
 
     expect(
-      await within(dialog).findByText('agentV2.roster.createForm.nameRequired'),
+      await within(dialog).findByText('agentRoster.roster.createForm.nameRequired'),
     ).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
@@ -389,16 +368,16 @@ describe('EditAgentDialog', () => {
   it('marks role and description as optional', () => {
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
 
     expect(
       within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
+        name: /agentRoster\.roster\.createForm\.roleLabel.*common\.label\.optional/,
       }),
     ).not.toBeRequired()
     expect(
       within(dialog).getByRole('textbox', {
-        name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
+        name: /agentRoster\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
       }),
     ).not.toBeRequired()
   })
@@ -407,9 +386,9 @@ describe('EditAgentDialog', () => {
     const user = userEvent.setup()
     renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     await user.clear(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }),
+      within(dialog).getByRole('textbox', { name: /agentRoster\.roster\.createForm\.roleLabel/ }),
     )
 
     const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
@@ -440,7 +419,7 @@ describe('EditAgentDialog', () => {
     const user = userEvent.setup()
     const { onOpenChange } = renderDialog()
 
-    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
     const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
     await user.click(backdrop)
 

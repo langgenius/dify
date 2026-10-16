@@ -2,21 +2,19 @@ import type { Datasource } from '@/app/components/rag-pipeline/components/panel/
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DatasourceType } from '@/models/pipeline'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOneContent from '../step-one-content'
 
-const render = (ui: React.ReactElement) =>
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
+const renderWithoutPricing = (ui: React.ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 // Mock context providers and hooks (底层依赖)
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: vi.fn(() => ({
-    setShowPricingModal: vi.fn(),
-  })),
-}))
-
 // Mock billing components that have complex provider dependencies
 vi.mock('@/app/components/billing/vector-space-full', () => ({
   default: () => <div data-testid="vector-space-full">Vector Space Full</div>,
@@ -155,8 +153,12 @@ vi.mock('../../data-source/online-drive', () => ({
 }))
 
 // Mock locale context
-vi.mock('@/context/i18n', () => ({
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
+}))
+
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
 
@@ -168,6 +170,7 @@ vi.mock('@/hooks/use-theme', () => ({
 // Mock upload service
 vi.mock('@/service/base', () => ({
   upload: vi.fn().mockResolvedValue({ id: 'uploaded-file-id' }),
+  request: vi.fn(async () => Response.json([createDatasourceProvider()])),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -177,47 +180,10 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 // Mock pipeline service hooks
-vi.mock('@/service/use-pipeline', () => ({
-  useNotionWorkspaces: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-  })),
-  useNotionPages: vi.fn(() => ({
-    data: { pages: [] },
-    isLoading: false,
-  })),
-  useDataSourceList: vi.fn(() => ({
-    data: [
-      {
-        type: 'local_file',
-        declaration: {
-          identity: {
-            name: 'Local File',
-            icon: '/icons/local-file.svg',
-          },
-        },
-      },
-    ],
-    isSuccess: true,
-    isLoading: false,
-  })),
-  useCrawlResult: vi.fn(() => ({
-    data: { data: [] },
-    isLoading: false,
-  })),
-  useSupportedOauth: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-  })),
-  useOnlineDriveCredentialList: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-  })),
-  useOnlineDriveFileList: vi.fn(() => ({
-    data: { data: [] },
-    isLoading: false,
-  })),
-}))
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('StepOneContent', () => {
   const mockDatasource: Datasource = {
@@ -254,6 +220,7 @@ describe('StepOneContent', () => {
     datasourceType: DatasourceType.localFile,
     pipelineNodes: mockPipelineNodes,
     supportBatchUpload: true,
+    showBatchUploadUpgrade: false,
     isShowVectorSpaceFull: false,
     isShowVectorSpaceUnavailable: false,
     isRetryingVectorSpace: false,
@@ -346,7 +313,20 @@ describe('StepOneContent', () => {
   })
 
   describe('Conditional Rendering - UpgradeCard', () => {
-    it('should render UpgradeCard immediately when batch upload is not supported', () => {
+    it('should render UpgradeCard for a Sandbox local file source', () => {
+      render(
+        <StepOneContent
+          {...defaultProps}
+          supportBatchUpload={false}
+          showBatchUploadUpgrade
+          datasourceType={DatasourceType.localFile}
+        />,
+      )
+      // UpgradeCard contains an upgrade button
+      expect(screen.getByTestId('upgrade-btn')).toBeInTheDocument()
+    })
+
+    it('does not infer an upgrade requirement from unavailable batch upload', () => {
       render(
         <StepOneContent
           {...defaultProps}
@@ -354,8 +334,7 @@ describe('StepOneContent', () => {
           datasourceType={DatasourceType.localFile}
         />,
       )
-      // UpgradeCard contains an upgrade button
-      expect(screen.getByTestId('upgrade-btn')).toBeInTheDocument()
+      expect(screen.queryByTestId('upgrade-btn')).not.toBeInTheDocument()
     })
 
     it('should not render UpgradeCard when batch upload is supported', () => {

@@ -1,27 +1,30 @@
 import type { PropsWithChildren } from 'react'
 import type { FileEntity } from '../../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 import { FileContextProvider } from '../../store'
 import { useUpload } from '../use-upload'
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': vi.fn(() => ({
+      data: {
+        image_file_batch_limit: 10,
+        single_chunk_attachment_limit: 20,
+        attachment_image_file_size_limit: 15,
+      },
+    })),
+  })
+})
 
 const { mockToastError } = vi.hoisted(() => ({
   mockToastError: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
-    data: {
-      image_file_batch_limit: 10,
-      single_chunk_attachment_limit: 20,
-      attachment_image_file_size_limit: 15,
-    },
-  })),
-}))
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },

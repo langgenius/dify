@@ -31,10 +31,13 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetDetail: () => ({ data: mockDataset, refetch: vi.fn() }),
-  useDatasetRelatedApps: () => ({ data: mockRelatedApps }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.get': () => ({ data: mockDataset, refetch: vi.fn() }),
+    'datasets.byDatasetId.relatedApps.get': () => ({ data: mockRelatedApps }),
+  })
+})
 
 vi.mock('../dataset-info', () => ({
   default: () => <div>dataset info</div>,
@@ -113,17 +116,16 @@ describe('DatasetDetailSection', () => {
 
     render(<DatasetDetailSection expand />)
 
-    expect(screen.getByRole('link', { name: 'common.settings.resourceAccess' })).toHaveAttribute(
-      'href',
-      '/datasets/dataset-1/access-config',
-    )
+    expect(
+      screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }),
+    ).toHaveAttribute('href', '/datasets/dataset-1/access-config')
   })
 
   it('should hide resource access navigation when dataset access config permission is missing', () => {
     render(<DatasetDetailSection expand />)
 
     expect(
-      screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+      screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
     ).not.toBeInTheDocument()
   })
 
@@ -136,7 +138,7 @@ describe('DatasetDetailSection', () => {
     render(<DatasetDetailSection expand />)
 
     expect(
-      screen.queryByRole('link', { name: 'common.settings.resourceAccess' }),
+      screen.queryByRole('link', { name: 'navigation.settings.resourceAccess' }),
     ).not.toBeInTheDocument()
   })
 

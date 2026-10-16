@@ -1,11 +1,12 @@
-/* oxlint-disable typescript/no-explicit-any */
 'use client'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Collection } from '@/app/components/tools/types'
 import type { ModelConfig } from '@/models/debug'
-import type { TryAppInfo } from '@/service/try-app'
 import type { PromptVariable } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { clone } from 'es-toolkit/object'
 import * as React from 'react'
@@ -13,10 +14,11 @@ import { useMemo, useState } from 'react'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import { FeaturesProvider } from '@/app/components/base/features'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolCollections } from '@/app/components/tools/utils/query-select'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import {
   ANNOTATION_DEFAULT,
@@ -27,16 +29,18 @@ import {
 import ConfigContext from '@/context/debug-configuration'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
-import { useAllToolProviders } from '@/service/use-tools'
-import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
+import { consoleQuery } from '@/service/console'
+import { useGetTryAppDataSets } from '@/service/use-try-app'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { basePath } from '@/utils/var'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
 
 type Props = {
   readonly appId: string
+  readonly appDetail: TrialAppDetailResponse
 }
 
 type AgentToolItem = Extract<ModelConfig['agentConfig']['tools'][number], { tool_name: string }>
@@ -293,14 +297,14 @@ const normalizeExternalDataToolFormItem = (item: Record<string, unknown>) => {
 
 const normalizeAgentTool = (
   tool: Record<string, unknown>,
-  deletedTools: TryAppInfo['deleted_tools'] | undefined,
-  collectionList: ReturnType<typeof useAllToolProviders>['data'] | undefined,
+  deletedTools: TrialAppDetailResponse['deleted_tools'] | undefined,
+  collectionList: Collection[] | undefined,
 ): AgentToolItem => {
   const providerId = getString(tool.provider_id)
   const providerName = getString(tool.provider_name)
   const providerType = normalizeCollectionType(tool.provider_type)
   const toolName = getString(tool.tool_name)
-  const toolInCollectionList = collectionList?.find((c) => providerId === c.id)
+  const toolInCollectionList = collectionList?.find((c) => matchesProviderReference(c, providerId))
 
   return {
     ...tool,
@@ -325,13 +329,16 @@ const normalizeAgentTool = (
   } as AgentToolItem
 }
 
-const BasicAppPreview: FC<Props> = ({ appId }) => {
+const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { data: appDetail, isLoading: isLoadingAppDetail } = useGetTryAppInfo(appId)
-  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } =
-    useAllToolProviders()
+  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useQuery(
+    consoleQuery.workspaces.current.toolProviders.get.queryOptions({
+      input: { query: {} },
+      select: selectToolCollections,
+    }),
+  )
   const collectionList = collectionListFromServer?.map((item) => {
     return {
       ...item,
@@ -342,8 +349,7 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
     }
   })
   const datasetIds = (() => {
-    if (isLoadingAppDetail) return []
-    const modelConfig = appDetail?.model_config
+    const modelConfig = appDetail.model_config
     if (!modelConfig) return []
 
     const agentDatasetTools = getAgentTools(modelConfig.agent_mode).filter(isEnabledDatasetTool)
@@ -360,9 +366,9 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
     datasetIds,
   )
   const dataSets = dataSetData?.data || []
-  const isLoading = isLoadingAppDetail || isLoadingDatasets || isLoadingToolProviders
+  const isLoading = isLoadingDatasets || isLoadingToolProviders
 
-  const modelConfig: ModelConfig = ((modelConfig?: TryAppInfo['model_config']) => {
+  const modelConfig: ModelConfig = ((modelConfig?: TrialAppDetailResponse['model_config']) => {
     if (isLoading || !modelConfig?.model) return defaultModelConfig
 
     const model = modelConfig.model
@@ -524,14 +530,13 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loading type="area" />
+        <LoadingPlaceholder />
       </div>
     )
   }
   const value = {
     readonly: true,
     appId,
-    isAPIKeySet: true,
     isTrailFinished: false,
     mode,
     modelModeType: '',
@@ -619,7 +624,7 @@ const BasicAppPreview: FC<Props> = ({ appId }) => {
               >
                 <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
-                    isAPIKeySet
+                    isPreview
                     onSetting={noop}
                     inputs={inputs}
                     modelParameterParams={{

@@ -5,10 +5,15 @@ import type {
   ProcessRule,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { renderHook } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
+
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
 
 // Hoisted mocks
 const mocks = vi.hoisted(() => ({
@@ -19,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   invalidDatasetList: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: mocks.toastNotify },
   toast: {
     success: (message: string) => mocks.toastNotify({ type: 'success', message }),
@@ -37,16 +42,16 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
   isReRankModelSelected: mocks.isReRankModelSelected,
 }))
 
-vi.mock('@/service/knowledge/use-create-dataset', () => ({
-  useCreateFirstDocument: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
-  useCreateDocument: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
-  getNotionInfo: vi.fn(() => []),
-  getWebsiteInfo: vi.fn(() => ({})),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mocks.invalidDatasetList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.init.post': () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
+    'datasets.byDatasetId.documents.post': () => ({
+      mutateAsync: mocks.mutateAsync,
+      isPending: false,
+    }),
+  })
+})
 
 const { useDocumentCreation } = await import('../use-document-creation')
 const { IndexingType } = await import('../use-indexing-config')
@@ -85,19 +90,19 @@ describe('useDocumentCreation', () => {
 
   describe('validateParams', () => {
     it('should return true for valid params', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       expect(result.current.validateParams(defaultValidationParams)).toBe(true)
     })
 
     it('should return false when overlap > maxChunkLength', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       const invalid = { ...defaultValidationParams, overlap: 2000, maxChunkLength: 1000 }
       expect(result.current.validateParams(invalid)).toBe(false)
       expect(mocks.toastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should return false when maxChunkLength > limitMaxChunkLength', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       const invalid = {
         ...defaultValidationParams,
         maxChunkLength: 5000,
@@ -107,7 +112,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return false when qualified but no embedding model', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       const invalid = {
         ...defaultValidationParams,
         indexType: IndexingType.QUALIFIED,
@@ -118,13 +123,13 @@ describe('useDocumentCreation', () => {
 
     it('should return false when rerank model not selected', () => {
       mocks.isReRankModelSelected.mockReturnValue(false)
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       expect(result.current.validateParams(defaultValidationParams)).toBe(false)
     })
 
     it('should skip embedding/rerank checks when isSetting is true', () => {
       mocks.isReRankModelSelected.mockReturnValue(false)
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({ ...defaultOptions, isSetting: true }),
       )
       const params = {
@@ -137,7 +142,7 @@ describe('useDocumentCreation', () => {
 
   describe('buildCreationParams', () => {
     it('should build params for FILE data source', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       const processRule = { mode: 'custom', rules: {} } as unknown as ProcessRule
       const retrievalConfig = defaultValidationParams.retrievalConfig
       const embeddingModel = { provider: 'openai', model: 'text-embedding-3-small' }
@@ -160,7 +165,7 @@ describe('useDocumentCreation', () => {
 
     it('should build params for isSetting mode', () => {
       const detail = { id: 'doc-1' } as FullDocumentDetail
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({ ...defaultOptions, isSetting: true, documentDetail: detail }),
       )
       const params = result.current.buildCreationParams(
@@ -179,12 +184,12 @@ describe('useDocumentCreation', () => {
 
   describe('validatePreviewParams', () => {
     it('should return true when maxChunkLength is within limit', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       expect(result.current.validatePreviewParams(1024)).toBe(true)
     })
 
     it('should return false when maxChunkLength exceeds limit', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       expect(result.current.validatePreviewParams(999999)).toBe(false)
       expect(mocks.toastNotify).toHaveBeenCalled()
     })
@@ -193,7 +198,7 @@ describe('useDocumentCreation', () => {
   describe('executeCreation', () => {
     it('should not create document when existing dataset cannot add documents', async () => {
       const onStepChange = vi.fn()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: 'dataset-1',
@@ -209,13 +214,13 @@ describe('useDocumentCreation', () => {
       )
 
       expect(mocks.mutateAsync).not.toHaveBeenCalled()
-      expect(mocks.invalidDatasetList).not.toHaveBeenCalled()
+      expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: datasetListKey })
       expect(onStepChange).not.toHaveBeenCalled()
     })
 
     it('should allow setting saves even when document creation permission is false', async () => {
       const onSave = vi.fn()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: 'dataset-1',
@@ -238,7 +243,7 @@ describe('useDocumentCreation', () => {
 
   describe('isCreating', () => {
     it('should reflect mutation pending state', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
       expect(result.current.isCreating).toBe(false)
     })
   })

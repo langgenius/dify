@@ -1,4 +1,4 @@
-import type { TryAppInfo } from '@/service/try-app'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import TryApp from '../index'
@@ -12,15 +12,15 @@ vi.mock('../text-generation', () => ({
   ),
 }))
 
-const createApp = (mode: string): TryAppInfo =>
+const createApp = (mode: string): TrialAppDetailResponse =>
   ({
     id: 'app-id',
     mode,
     site: { title: 'Try App' },
-  }) as TryAppInfo
+  }) as TrialAppDetailResponse
 
 describe('TryApp', () => {
-  it.each(['chat', 'advanced-chat', 'agent-chat'])(
+  it.each(['chat', 'advanced-chat', 'agent-chat'] as const)(
     'uses the chat experience for %s apps',
     (mode) => {
       render(<TryApp appId="app-id" appDetail={createApp(mode)} />)
@@ -32,7 +32,7 @@ describe('TryApp', () => {
   it.each([
     ['completion', 'Completion preview'],
     ['workflow', 'Workflow preview'],
-  ])('uses the text generation experience for %s apps', (mode, name) => {
+  ] as const)('uses the text generation experience for %s apps', (mode, name) => {
     render(<TryApp appId="app-id" appDetail={createApp(mode)} />)
 
     expect(screen.getByRole('region', { name })).toBeInTheDocument()

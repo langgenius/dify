@@ -366,7 +366,7 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
         patch.object(
             service._skill_normalizer,
             "normalize",
-            return_value=(skill_ref, object()),
+            return_value=skill_ref,
         ),
     ):
         manifest = service.push(

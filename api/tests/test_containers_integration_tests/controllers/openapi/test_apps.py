@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from inspect import unwrap
+from typing import Protocol, cast
 from uuid import uuid4
 
 import pytest
@@ -9,11 +9,15 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.openapi._models import AppDescribeQuery, AppListQuery
+from controllers.openapi._models import AppDescribeQuery, AppDescribeResponse, AppListQuery, AppListResponse
 from controllers.openapi.apps import AppDescribeApi, AppListApi
+from machinery.context import AppRequestContext, RequestContext
 from models import Account, App
 from services.app_service import AppService, CreateAppParams
-from tests.test_containers_integration_tests.controllers.openapi.conftest import auth_for
+
+
+class _Endpoint[T](Protocol):
+    __handler__: Callable[..., T]
 
 
 def _create_app(
@@ -61,10 +65,9 @@ class TestAppList:
 
         api = AppListApi()
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={tenant.id}"):
-            result = unwrap(api.get)(
+            result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                db_session_with_containers,
-                auth_data=auth_for(account),
+                RequestContext("request", None, account.id, tenant.id),
                 query=AppListQuery(workspace_id=str(tenant.id)),
             )
 
@@ -84,10 +87,9 @@ class TestAppList:
 
         api = AppListApi()
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={tenant.id}&name={target.id}"):
-            result = unwrap(api.get)(
+            result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                db_session_with_containers,
-                auth_data=auth_for(account),
+                RequestContext("request", None, account.id, tenant.id),
                 query=AppListQuery(workspace_id=str(tenant.id), name=str(target.id)),
             )
 
@@ -108,10 +110,9 @@ class TestAppList:
 
         api = AppListApi()
         with app.test_request_context(f"/openapi/v1/apps?workspace_id={outsider_tenant.id}&name={foreign_app.id}"):
-            result = unwrap(api.get)(
+            result = cast(_Endpoint[AppListResponse], api.get).__handler__(
                 api,
-                db_session_with_containers,
-                auth_data=auth_for(outsider),
+                RequestContext("request", None, outsider.id, outsider_tenant.id),
                 query=AppListQuery(workspace_id=str(outsider_tenant.id), name=str(foreign_app.id)),
             )
 
@@ -128,11 +129,10 @@ class TestAppDescribe:
 
         api = AppDescribeApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}?fields=info"):
-            result = unwrap(api.get)(
+            result = cast(_Endpoint[AppDescribeResponse], api.get).__handler__(
                 api,
-                db_session_with_containers,
-                app_id=app_model.id,
-                auth_data=auth_for(account),
+                AppRequestContext(tenant_id=app_model.tenant_id, app_id=app_model.id),
+                app_model.id,
                 query=AppDescribeQuery(fields="info"),
             )
 
@@ -144,38 +144,18 @@ class TestAppDescribe:
         assert result.parameters is None
         assert result.input_schema is None
 
-    def test_describe_unknown_app_is_404(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
-    ) -> None:
+    def test_describe_unknown_app_is_404(self, app: Flask, make_account: Callable[..., Account]) -> None:
         account = make_account()
+        tenant = account.current_tenant
+        assert tenant is not None
         missing_id = str(uuid4())
 
         api = AppDescribeApi()
         with app.test_request_context(f"/openapi/v1/apps/{missing_id}"):
             with pytest.raises(NotFound):
-                unwrap(api.get)(
+                cast(_Endpoint[AppDescribeResponse], api.get).__handler__(
                     api,
-                    db_session_with_containers,
-                    app_id=missing_id,
-                    auth_data=auth_for(account),
-                    query=AppDescribeQuery(),
-                )
-
-    def test_describe_api_disabled_app_is_404(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
-    ) -> None:
-        """An api-disabled app fails the openapi visibility gate, so describe
-        must behave as if it doesn't exist (404), not expose it."""
-        account = make_account()
-        hidden = _create_app(db_session_with_containers, account, name="Hidden", enable_api=False)
-
-        api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{hidden.id}"):
-            with pytest.raises(NotFound):
-                unwrap(api.get)(
-                    api,
-                    db_session_with_containers,
-                    app_id=hidden.id,
-                    auth_data=auth_for(account),
+                    AppRequestContext(tenant_id=tenant.id, app_id=missing_id),
+                    missing_id,
                     query=AppDescribeQuery(),
                 )

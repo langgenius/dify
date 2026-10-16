@@ -1,8 +1,8 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
@@ -11,7 +11,7 @@ type AudioPlayerProps = Readonly<{
   srcs?: string[] // Support multiple sources
 }>
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
