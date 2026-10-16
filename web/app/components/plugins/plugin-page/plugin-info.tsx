@@ -31,7 +31,7 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-120">
+      <DialogContent className="w-120">
         <DialogHeader>
           <DialogTitle>{t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}</DialogTitle>
           <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />

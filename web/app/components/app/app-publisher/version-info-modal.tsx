@@ -81,7 +81,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-120">
+      <DialogContent className="w-120">
         <DialogHeader>
           <DialogTitle className="first-letter:capitalize">
             {versionInfo?.marked_name

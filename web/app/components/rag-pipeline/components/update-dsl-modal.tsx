@@ -45,7 +45,7 @@ const UpdateDSLModal = ({ onCancel, onBackup, onImport }: UpdateDSLModalProps) =
           if (!open) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120">
+        <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $['common.importDSL'], { ns: 'workflow' })}</DialogTitle>
             <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />

@@ -51,7 +51,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-150">
+      <DialogContent className="w-150">
         <DialogHeader>
           <DialogTitle>
             {expired

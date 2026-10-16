@@ -32,7 +32,7 @@ const EditModal: FC<Props> = ({ isShow, saveLoading, data, onClose, onSave }) =>
         if (!open) onClose()
       }}
     >
-      <DialogContent className="w-full max-w-120">
+      <DialogContent className="w-120">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $['feature.conversationHistory.editModal.title'], { ns: 'appDebug' })}

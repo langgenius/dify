@@ -348,7 +348,7 @@ function VersionRow({
         </div>
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="w-full max-w-120">
+        <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{versionInfoLabel}</DialogTitle>
             <DialogDescription className="sr-only">

@@ -74,7 +74,7 @@ const InstallBundle: FC<Props> = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('w-full max-w-120', modalClassName, 'max-h-[calc(100dvh-48px)] min-w-140')}
+        className={cn('w-120', modalClassName, 'max-h-[calc(100dvh-48px)] min-w-140')}
       >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>

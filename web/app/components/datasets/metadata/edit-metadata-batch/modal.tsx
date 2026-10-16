@@ -141,7 +141,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-160">
+      <DialogContent className="w-160">
         <DialogHeader>
           <DialogTitle>{t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}</DialogTitle>
           <div className="system-xs-medium text-text-accent">

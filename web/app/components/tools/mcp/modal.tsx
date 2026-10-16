@@ -379,7 +379,7 @@ const MCPModal: FC<DuplicateAppModalProps> = ({ data, show, onConfirm, onHide })
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-130">
+      <DialogContent className="w-130">
         <MCPModalContent key={formKey} data={data} onConfirm={onConfirm} onHide={onHide} />
       </DialogContent>
     </Dialog>

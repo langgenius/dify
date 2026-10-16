@@ -70,7 +70,7 @@ const AssignRolesModalBody = ({
         onSelectedRolesChange={setSelected}
       />
 
-      <DialogFooter className="border-t border-divider-subtle">
+      <DialogFooter>
         {allowMultipleRoles && (
           <div className="me-auto system-xs-regular text-text-tertiary">
             {t(($) => $['members.assignRolesModal.selectedCount'], {

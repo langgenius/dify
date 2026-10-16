@@ -237,7 +237,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-120">
+        <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.importDialogTitle, { ns: 'snippet' })}</DialogTitle>
             <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />

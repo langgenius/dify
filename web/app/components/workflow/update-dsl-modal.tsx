@@ -201,7 +201,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           if (!open && !isImporting) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120">
+        <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
             <DialogCloseButton
@@ -272,7 +272,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           if (!open && !isImporting) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120">
+        <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}</DialogTitle>
           </DialogHeader>

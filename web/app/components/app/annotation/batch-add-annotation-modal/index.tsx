@@ -113,7 +113,7 @@ const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) 
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-full max-w-130">
+      <DialogContent className="w-130">
         <DialogHeader>
           <DialogTitle>{t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}</DialogTitle>
           <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />

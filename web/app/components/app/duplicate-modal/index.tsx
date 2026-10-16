@@ -112,7 +112,7 @@ const DuplicateAppModal = ({
           if (!open) onHide()
         }}
       >
-        <DialogContent className="w-full max-w-120">
+        <DialogContent className="w-120">
           <DialogHeader>
             <DialogTitle>{t(($) => $.duplicateTitle, { ns: 'app' })}</DialogTitle>
             <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />

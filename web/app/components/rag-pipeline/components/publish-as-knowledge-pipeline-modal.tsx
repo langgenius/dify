@@ -74,7 +74,7 @@ const PublishAsKnowledgePipelineModal = ({
         if (!open) onCancel()
       }}
     >
-      <DialogContent className="w-full max-w-120">
+      <DialogContent className="w-120">
         <form
           onSubmit={(event) => {
             event.preventDefault()
