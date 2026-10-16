@@ -93,6 +93,7 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             raise AppTracingConfigProcessingError from error
 
         self._verify_config(decrypted_config, tracing_provider)
+        # Re-resolve after destination changes; never retain a previous project's link.
         project_url = self._get_project_url(decrypted_config, tracing_provider)
         if project_url:
             encrypted_config["project_url"] = project_url
