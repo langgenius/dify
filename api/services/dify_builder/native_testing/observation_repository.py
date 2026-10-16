@@ -250,6 +250,7 @@ class NativeRepositoryObservation:
         if execution.workflow_execution_id != context.native_run_id or execution.workflow_id != context.workflow_id:
             self.guard.fail()
         self._node_identity(execution)
+        metadata = {} if execution.metadata is None else execution.metadata
         return WorkflowNodeExecution(
             id=execution.id,
             node_execution_id=execution.node_execution_id,
@@ -268,7 +269,7 @@ class NativeRepositoryObservation:
             elapsed_time=execution.elapsed_time,
             metadata={
                 WorkflowNodeExecutionMetadataKey(key): value
-                for key, value in self.guard._policy._metadata(execution.metadata).items()
+                for key, value in self.guard._policy._metadata(metadata).items()
             },
             created_at=execution.created_at,
             finished_at=execution.finished_at,

@@ -919,3 +919,33 @@ def test_native_history_refuses_unmarked_empty_run_outputs(case):
 
     assert c.guard.failed
     assert not c.nodes._node_execution_cache
+
+
+@pytest.mark.parametrize("metadata", [None, {}])
+def test_native_node_absent_metadata_roundtrips_without_mutating_domain(case, metadata):
+    c = case
+    bind(c)
+    execution = node(c, metadata=metadata)
+
+    c.nodes.save(execution)
+
+    saved = c.sql.rows[WorkflowNodeExecutionModel, "row"]
+    restored = c.nodes._to_domain_model(saved)
+    assert restored.metadata == {}
+    assert execution.metadata == metadata
+    assert not c.guard.failed
+
+
+@pytest.mark.parametrize("metadata", [[], False, ""])
+def test_native_node_non_none_malformed_metadata_refuses_before_write(case, metadata):
+    c = case
+    bind(c)
+    execution = node(c)
+    execution.metadata = metadata
+
+    with pytest.raises(NativeObservationError):
+        c.nodes.save(execution)
+
+    assert c.guard.failed
+    assert c.sql.commits == 0
+    assert c.nodes._node_execution_cache == {}
