@@ -30,6 +30,7 @@ class WorkspaceSnapshot:
     custom_config: WorkspaceCustomConfig = field(default_factory=WorkspaceCustomConfig)
     has_privileged_member: bool = False
     current: bool = False
+    max_active_requests: int = 0
 
 
 @dataclass(frozen=True, slots=True)

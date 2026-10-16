@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.app_generate_service as generation_module
 from core.app.apps import message_based_app_generator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator
+from core.app.features.rate_limiting.rate_limit import RateLimit, RateLimitGenerator, RateLimitLeaseGenerator
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
@@ -536,7 +536,8 @@ def test_runtime_keeps_shared_completion_and_legacy_agent_dispatch(
     monkeypatch.setattr(generation_module.CompletionAppGenerator, "generate", generate)
     monkeypatch.setattr(generation_module.AgentChatAppGenerator, "generate", generate)
     monkeypatch.setattr(RateLimit, "__init__", lambda _self, _app_id, _limit: None)
-    monkeypatch.setattr(RateLimit, "enter", lambda _self, request_id: request_id)
+    monkeypatch.setattr(RateLimit, "enter", lambda _self, request_id=None: request_id or "request-id")
+    monkeypatch.setattr(RateLimit, "exit", lambda _self, _request_id: None)
 
     result = harness.runtime.generate(app_id=harness.app_id, account_id=harness.account_id, args=_ARGS, streaming=True)
 
@@ -665,7 +666,7 @@ def test_visible_conversation_uses_shared_chat_dispatch_after_preflight_session_
 
     expected_generator = "ChatAppGenerator" if mode == AppMode.CHAT else "AgentChatAppGenerator"
     assert calls == [expected_generator]
-    assert isinstance(result, RateLimitGenerator)
+    assert isinstance(result, RateLimitLeaseGenerator)
     assert harness.committed_sessions == [harness.closed_sessions[1]]
     assert [json.loads(chunk.removeprefix("data: ")) for chunk in result] == [
         {"event": "message", "answer": mode.value}
@@ -777,7 +778,7 @@ def test_workflow_dispatch_starts_task_after_subscription_with_runtime_session_c
 
     result = _generate_workflow(harness, sqlite_session_factory, args)
 
-    assert isinstance(result, RateLimitGenerator)
+    assert isinstance(result, RateLimitLeaseGenerator)
     assert len(harness.closed_sessions) == 2
     assert harness.committed_sessions == [harness.closed_sessions[1]]
     assert submitted == []
