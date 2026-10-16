@@ -105,13 +105,11 @@ describe('use-knowledge-metadata-config', () => {
         id: 'meta-1',
         name: 'topic',
         type: MetadataFilteringVariableType.string,
-        value: 'topic',
       })
       result.current.handleAddCondition({
         id: 'meta-2',
         name: 'score',
         type: MetadataFilteringVariableType.number,
-        value: '10',
       })
     })
 

@@ -305,7 +305,7 @@
   },
   "web/app/components/app/configuration/dataset-config/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 36
+      "count": 32
     }
   },
   "web/app/components/app/configuration/dataset-config/context-var/var-picker.tsx": {
@@ -331,7 +331,7 @@
   },
   "web/app/components/app/configuration/dataset-config/select-dataset/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
@@ -3961,11 +3961,6 @@
       "count": 1
     }
   },
-  "web/models/datasets.ts": {
-    "typescript/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/models/debug.ts": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -4064,11 +4059,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/service/knowledge/use-dataset.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 8
     }
   },
   "web/service/log.ts": {

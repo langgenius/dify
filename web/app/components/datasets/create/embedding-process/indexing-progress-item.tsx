@@ -119,7 +119,7 @@ const IndexingProgressItem: FC<IndexingProgressItemProps> = ({
           <PriorityLabel className="ml-0" />
         </div>
         {isEmbedding && <div className="shrink-0 text-xs text-text-secondary">{`${percent}%`}</div>}
-        <StatusIcon status={detail.indexing_status} error={detail.error} />
+        <StatusIcon status={detail.indexing_status} error={detail.error ?? undefined} />
       </div>
     </div>
   )

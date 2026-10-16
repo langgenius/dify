@@ -295,7 +295,7 @@ export const zRagPipelineImportResponse = z.object({
 export const zDatasetDocMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.string(),
+  type: z.enum(['number', 'string', 'time']),
 })
 
 /**
@@ -326,6 +326,11 @@ export const zDatasetIconInfoResponse = z.object({
   icon_type: z.string().nullish(),
   icon_url: z.string().nullish(),
 })
+
+/**
+ * IndexTechniqueType
+ */
+export const zIndexTechniqueType = z.enum(['economy', 'high_quality'])
 
 /**
  * DatasetSummaryIndexSettingResponse
@@ -654,6 +659,16 @@ export const zDatasetRerankingModelResponse = z.object({
 })
 
 /**
+ * RetrievalMethod
+ */
+export const zRetrievalMethod = z.enum([
+  'full_text_search',
+  'hybrid_search',
+  'keyword_search',
+  'semantic_search',
+])
+
+/**
  * PluginDependencyType
  */
 export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
@@ -810,7 +825,7 @@ export const zDatasetRetrievalModelResponse = z.object({
   reranking_model: zDatasetRerankingModelResponse.optional(),
   score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean(),
-  search_method: z.string(),
+  search_method: zRetrievalMethod,
   top_k: z.int(),
   weights: zDatasetWeightedScoreResponse.nullish(),
 })
@@ -825,7 +840,16 @@ export const zDatasetDetailResponse = z.object({
   chunk_structure: z.string().nullable(),
   created_at: z.int(),
   created_by: z.string(),
-  data_source_type: z.string().nullable(),
+  data_source_type: z
+    .enum([
+      'local_file',
+      'notion_import',
+      'online_document',
+      'online_drive',
+      'upload_file',
+      'website_crawl',
+    ])
+    .nullable(),
   description: z.string().nullable(),
   doc_form: z.string().nullable(),
   doc_metadata: z.array(zDatasetDocMetadataResponse),
@@ -838,17 +862,18 @@ export const zDatasetDetailResponse = z.object({
   external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
   icon_info: zDatasetIconInfoResponse.optional(),
   id: z.string(),
-  indexing_technique: z.string().nullable(),
+  indexing_technique: zIndexTechniqueType.nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
+  keyword_number: z.int().nullish(),
   maintainer: z.string().nullish(),
   name: z.string(),
-  permission: z.string(),
+  permission: z.enum(['all_team_members', 'only_me', 'partial_members']),
   permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
   provider: z.string(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
+  runtime_mode: z.enum(['general', 'rag_pipeline']).nullable(),
   summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
   tags: z.array(zDatasetTagResponse),
   total_available_documents: z.int(),

@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -30,8 +30,6 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
-import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -79,8 +77,17 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     datasetACLCapabilities.canAccessConfig ||
     datasetACLCapabilities.canDelete
 
-  const invalidDatasetList = useInvalidDatasetList()
-  const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
+  const invalidDatasetDetail = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+        input: { params: { dataset_id: dataset.id } },
+      }),
+    })
+  }, [queryClient, dataset.id])
 
   const refreshDataset = useCallback(() => {
     invalidDatasetList()

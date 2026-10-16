@@ -14,7 +14,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { useProcessRule } from '@/service/knowledge/use-dataset'
 import IndexingProgressItem from './indexing-progress-item'
 import RuleDetail from './rule-detail'
 import UpgradeBanner from './upgrade-banner'
@@ -113,7 +112,12 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
 
   // Get process rule for the first document
   const firstDocumentId = documents[0]?.id
-  const { data: ruleDetail } = useProcessRule(firstDocumentId)
+  const { data: ruleDetail } = useQuery(
+    consoleQuery.datasets.processRule.get.queryOptions({
+      input: { query: { document_id: firstDocumentId } },
+      enabled: !!firstDocumentId,
+    }),
+  )
 
   // Document lookup utilities - memoized for performance
   const documentLookup = useMemo(() => createDocumentLookup(documents), [documents])

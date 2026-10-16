@@ -8,6 +8,12 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import {
+  toChunkingMode,
+  toCreationDataSourceType,
+  toRetrievalConfig,
+  toSummaryIndexSetting,
+} from '@/app/components/datasets/dataset-fields'
 import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -76,13 +82,13 @@ const StepTwo: FC<StepTwoProps> = ({
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage
     ? inCreatePageDataSourceType
-    : (currentDataset?.data_source_type ?? inCreatePageDataSourceType)
+    : (toCreationDataSourceType(currentDataset?.data_source_type) ?? inCreatePageDataSourceType)
   const hasSetIndexType = !!propsIndexingType
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
 
   // Document form state
   const [docForm, setDocForm] = useState<ChunkingMode>(
-    datasetId && documentDetail ? (documentDetail.doc_form as ChunkingMode) : ChunkingMode.text,
+    (datasetId && toChunkingMode(documentDetail?.doc_form)) || ChunkingMode.text,
   )
   const [docLanguage, setDocLanguage] = useState<string>(() =>
     datasetId && documentDetail?.doc_language
@@ -92,23 +98,30 @@ const StepTwo: FC<StepTwoProps> = ({
         : 'Chinese Simplified',
   )
   const [isQAConfirmDialogOpen, setIsQAConfirmDialogOpen] = useState(false)
-  const currentDocForm = currentDataset?.doc_form || docForm
+  const datasetChunkingMode = toChunkingMode(currentDataset?.doc_form)
+  const currentDocForm = datasetChunkingMode || docForm
 
   // Custom hooks
   const segmentation = useSegmentationState({
     initialSegmentationType:
-      currentDataset?.doc_form === ChunkingMode.parentChild
+      datasetChunkingMode === ChunkingMode.parentChild
         ? ProcessMode.parentChild
         : ProcessMode.general,
-    initialSummaryIndexSetting: currentDataset?.summary_index_setting,
+    initialSummaryIndexSetting:
+      currentDataset?.summary_index_setting &&
+      toSummaryIndexSetting(currentDataset.summary_index_setting),
   })
   const showSummaryIndexSetting = !currentDataset
   const indexing = useIndexingConfig({
     initialIndexType: propsIndexingType,
     initialEmbeddingModel: currentDataset?.embedding_model
-      ? { provider: currentDataset.embedding_model_provider, model: currentDataset.embedding_model }
+      ? {
+          provider: currentDataset.embedding_model_provider ?? '',
+          model: currentDataset.embedding_model,
+        }
       : undefined,
-    initialRetrievalConfig: currentDataset?.retrieval_model_dict,
+    initialRetrievalConfig:
+      currentDataset && toRetrievalConfig(currentDataset.retrieval_model_dict),
     isAPIKeySet,
     hasSetIndexType,
   })
@@ -160,11 +173,14 @@ const StepTwo: FC<StepTwoProps> = ({
   // Fetch default process rule
   const fetchDefaultProcessRuleMutation = useFetchDefaultProcessRule({
     onSuccess(data) {
-      segmentation.setSegmentIdentifier(data.rules.segmentation.separator)
-      segmentation.setMaxChunkLength(data.rules.segmentation.max_tokens)
-      segmentation.setOverlap(data.rules.segmentation.chunk_overlap!)
-      segmentation.setRules(data.rules.pre_processing_rules)
-      segmentation.setDefaultConfig(data.rules)
+      const defaultRules = data.rules ? toSegmentationRules(data.rules) : undefined
+      if (defaultRules) {
+        segmentation.setSegmentIdentifier(defaultRules.segmentation.separator)
+        segmentation.setMaxChunkLength(defaultRules.segmentation.max_tokens)
+        segmentation.setOverlap(defaultRules.segmentation.chunk_overlap!)
+        segmentation.setRules(defaultRules.pre_processing_rules)
+        segmentation.setDefaultConfig(defaultRules)
+      }
       segmentation.setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
   })
@@ -270,11 +286,11 @@ const StepTwo: FC<StepTwoProps> = ({
 
   // Show options conditions
   const showGeneralOption =
-    (isInUpload && generalChunkingModes.includes(currentDataset!.doc_form)) ||
+    (isInUpload && !!datasetChunkingMode && generalChunkingModes.includes(datasetChunkingMode)) ||
     isUploadInEmptyDataset ||
     isInInit
   const showParentChildOption =
-    (isInUpload && currentDataset!.doc_form === ChunkingMode.parentChild) ||
+    (isInUpload && datasetChunkingMode === ChunkingMode.parentChild) ||
     isUploadInEmptyDataset ||
     isInInit
 

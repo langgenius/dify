@@ -9,6 +9,9 @@ from fields.base import ResponseModel
 from fields.dataset_fields import MetadataValueType
 from libs.helper import to_timestamp
 
+# Mirrors models.enums.IndexingStatus; response schemas do not import models.
+IndexingStatus = Literal["waiting", "parsing", "cleaning", "splitting", "indexing", "paused", "completed", "error"]
+
 
 def normalize_enum(value: Any) -> Any:
     if isinstance(value, str) or value is None:
@@ -120,7 +123,7 @@ class DocumentListResponse(ResponseModel):
 
 class DocumentStatusResponse(ResponseModel):
     id: str
-    indexing_status: str
+    indexing_status: IndexingStatus
     processing_started_at: int | None
     parsing_completed_at: int | None
     cleaning_completed_at: int | None
@@ -128,7 +131,7 @@ class DocumentStatusResponse(ResponseModel):
     completed_at: int | None
     paused_at: int | None
     error: str | None
-    error_code: str | None = None
+    error_code: Literal["vector_space_estimate_exceeded"] | None = None
     estimated_vector_space_mb: int | None = None
     vector_space_limit_mb: int | None = None
     stopped_at: int | None

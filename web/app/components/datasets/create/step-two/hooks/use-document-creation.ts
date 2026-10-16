@@ -13,6 +13,7 @@ import type {
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -20,13 +21,13 @@ import { isReRankModelSelected } from '@/app/components/datasets/common/check-re
 import { toast } from '@/app/notifications'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import {
   getNotionInfo,
   getWebsiteInfo,
   useCreateDocument,
   useCreateFirstDocument,
 } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { IndexingType } from './use-indexing-config'
 import { MAXIMUM_CHUNK_TOKEN_LENGTH } from './use-segmentation-state'
 
@@ -85,7 +86,10 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
   } = options
   const createFirstDocumentMutation = useCreateFirstDocument()
   const createDocumentMutation = useCreateDocument(datasetId!)
-  const invalidDatasetList = useInvalidDatasetList()
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
   // Validate creation params
   const validateParams = useCallback(

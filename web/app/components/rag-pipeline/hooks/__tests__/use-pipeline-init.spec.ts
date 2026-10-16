@@ -64,7 +64,7 @@ describe('usePipelineInit', () => {
           dataset: {
             pipeline_id: 'test-pipeline-id',
             name: 'Test Knowledge',
-            icon_info: { icon: 'test-icon' },
+            icon_info: { icon: 'test-icon', icon_type: 'emoji' },
           },
         }
         return selector(state)
@@ -106,7 +106,12 @@ describe('usePipelineInit', () => {
 
       expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
         knowledgeName: 'Test Knowledge',
-        knowledgeIcon: { icon: 'test-icon' },
+        knowledgeIcon: {
+          icon: 'test-icon',
+          icon_type: 'emoji',
+          icon_background: undefined,
+          icon_url: undefined,
+        },
       })
     })
   })

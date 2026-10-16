@@ -1,19 +1,23 @@
 import { RiAddCircleLine } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 const CreateCard = () => {
   const { t } = useTranslation(['datasetPipeline'])
   const { push } = useRouter()
 
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
-  const invalidDatasetList = useInvalidDatasetList()
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
 
   const handleCreate = useCallback(async () => {
     await createEmptyDataset(undefined, {

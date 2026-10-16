@@ -243,14 +243,14 @@ describe('DatasetCard Integration', () => {
       it('should apply opacity-30 when embedding_available is false', () => {
         const dataset = createMockDataset({ embedding_available: false })
         render(<Description dataset={dataset} />)
-        const descDiv = screen.getByTitle(dataset.description)
+        const descDiv = screen.getByTitle(dataset.description ?? '')
         expect(descDiv).toHaveClass('opacity-30')
       })
 
       it('should not apply opacity-30 when embedding_available is true', () => {
         const dataset = createMockDataset({ embedding_available: true })
         render(<Description dataset={dataset} />)
-        const descDiv = screen.getByTitle(dataset.description)
+        const descDiv = screen.getByTitle(dataset.description ?? '')
         expect(descDiv).not.toHaveClass('opacity-30')
       })
     })
@@ -388,9 +388,7 @@ describe('DatasetCard Component', () => {
     const dataset = createMockDataset({
       name: 'Preview Only Dataset',
       permission_keys: [DatasetACLPermission.Preview],
-      tags: [
-        { id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: '' },
-      ],
+      tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const }],
     })
     render(<DatasetCard dataset={dataset} />)
 

@@ -53,20 +53,23 @@ vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => (
   ),
 }))
 
-// Mock useIndexingStatusBatch hook
+// Mock the batch indexing status request
 let mockFetchIndexingStatus: Mock
 let mockIndexingStatusData: IndexingStatusResponse[] = []
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useIndexingStatusBatch: () => ({
-    mutateAsync: mockFetchIndexingStatus,
-  }),
-  useProcessRule: () => ({
-    data: {
-      mode: 'custom',
-      rules: { parent_mode: 'paragraph' },
-    },
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.batch.byBatch.indexingStatus.get': () => ({
+      mutateAsync: (...args: unknown[]) => mockFetchIndexingStatus(...args),
+    }),
+    'datasets.processRule.get': () => ({
+      data: {
+        mode: 'custom',
+        rules: { parent_mode: 'paragraph' },
+      },
+    }),
+  })
+})
 
 // Mock useDatasetApiAccessUrl hook
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -846,23 +849,10 @@ describe('EmbeddingProcess', () => {
 
   describe('Edge Cases', () => {
     // Tests for boundary conditions
-    it('should throw error when documents array is empty', () => {
-      // The component accesses documents[0].id for useProcessRule (line 81-82),
-      // which throws TypeError when documents array is empty.
-      // This test documents this known limitation.
+    it('should render without documents', () => {
       const props = createDefaultProps({ documents: [] })
 
-      // Suppress console errors for expected error
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(Function.prototype as () => void)
-
-      // Act & Assert - explicitly assert the error behavior
-      expect(() => {
-        render(<EmbeddingProcess {...props} />)
-      }).toThrow(TypeError)
-
-      consoleError.mockRestore()
+      expect(() => render(<EmbeddingProcess {...props} />)).not.toThrow()
     })
 
     it('should handle empty indexing status response', async () => {

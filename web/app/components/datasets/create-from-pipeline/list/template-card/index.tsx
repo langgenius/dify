@@ -20,7 +20,6 @@ import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
@@ -49,7 +48,9 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   )
   const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const invalidDatasetList = useInvalidDatasetList()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
 
   const handleUseTemplate = useCallback(async () => {
     const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()

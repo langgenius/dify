@@ -42,7 +42,6 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { usePublishWorkflow } from '@/service/use-workflow'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { RAG_PIPELINE_PUBLISH_HOTKEY } from '../hotkeys'
@@ -108,7 +107,9 @@ export function Popup({
   const hideConfirm = onHideConfirm ?? hideLocalConfirm
   const [publishing, { setFalse: hidePublishing, setTrue: showPublishing }] = useBoolean(false)
   const queryClient = useQueryClient()
-  const invalidDatasetList = useInvalidDatasetList()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
   const handleHideConfirm = useCallback(() => {
     hideConfirm()
     onRequestClose?.()

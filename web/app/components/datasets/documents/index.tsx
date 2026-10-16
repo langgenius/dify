@@ -5,6 +5,7 @@ import { keepPreviousData, useQuery, useQueryClient, useSuspenseQuery } from '@t
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toCreationDataSourceType } from '@/app/components/datasets/dataset-fields'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -195,7 +196,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     <div className="flex h-full flex-col">
       <DocumentsHeader
         datasetId={datasetId}
-        dataSourceType={dataset?.data_source_type}
+        dataSourceType={toCreationDataSourceType(dataset?.data_source_type)}
         embeddingAvailable={embeddingAvailable}
         canManageMetadata={datasetACLCapabilities.canEdit}
         canAddDocument={datasetACLCapabilities.canUse}

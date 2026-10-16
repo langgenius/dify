@@ -10,7 +10,7 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import { isNotFoundError } from '@/service/http-error'
+import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
@@ -917,7 +917,20 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       datasets: {
+        // Process rules are read once to describe a running import.
+        processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          get: {
+            queryOptions: {
+              // A missing or inaccessible dataset sends the detail page back to the list.
+              retry: (failureCount, error) => {
+                const status = getHttpErrorStatus(error)
+                if (status === 403 || status === 404) return false
+
+                return failureCount < 3
+              },
+            },
+          },
           documents: {
             byDocumentId: {
               pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },

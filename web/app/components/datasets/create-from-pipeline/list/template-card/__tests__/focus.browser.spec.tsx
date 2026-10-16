@@ -25,7 +25,6 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 vi.mock('@/service/knowledge/use-create-dataset', () => ({
   useCreatePipelineDatasetFromCustomized: () => ({ mutateAsync: vi.fn() }),
 }))
-vi.mock('@/service/knowledge/use-dataset', () => ({ useInvalidDatasetList: () => vi.fn() }))
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {

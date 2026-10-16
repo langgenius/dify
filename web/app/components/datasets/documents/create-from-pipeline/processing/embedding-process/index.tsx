@@ -15,7 +15,7 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -30,7 +30,6 @@ import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 import RuleDetail from './rule-detail'
 
 const isNotionPageIcon = (value: unknown): value is DataSourceNotionPage['page_icon'] =>
@@ -63,25 +62,30 @@ const EmbeddingProcess = ({
     [],
   )
   const [shouldPoll, setShouldPoll] = useState(true)
-  const { mutateAsync: fetchIndexingStatus } = useIndexingStatusBatch({ datasetId, batchId })
+  const { mutateAsync: fetchIndexingStatus } = useMutation(
+    consoleQuery.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mutationOptions(),
+  )
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>
 
     const fetchData = async () => {
-      await fetchIndexingStatus(undefined, {
-        onSuccess: (res) => {
-          const indexingStatusDetailList = res.data
-          setIndexingStatusDetail(indexingStatusDetailList)
-          const isCompleted = indexingStatusDetailList.every((indexingStatusDetail) =>
-            ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status),
-          )
-          if (isCompleted) setShouldPoll(false)
+      await fetchIndexingStatus(
+        { params: { dataset_id: datasetId, batch: batchId } },
+        {
+          onSuccess: (res) => {
+            const indexingStatusDetailList = res.data
+            setIndexingStatusDetail(indexingStatusDetailList)
+            const isCompleted = indexingStatusDetailList.every((indexingStatusDetail) =>
+              ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status),
+            )
+            if (isCompleted) setShouldPoll(false)
+          },
+          onSettled: () => {
+            if (shouldPoll) timeoutId = setTimeout(fetchData, 2500)
+          },
         },
-        onSettled: () => {
-          if (shouldPoll) timeoutId = setTimeout(fetchData, 2500)
-        },
-      })
+      )
     }
 
     fetchData()
@@ -93,7 +97,12 @@ const EmbeddingProcess = ({
 
   // get rule
   const firstDocument = documents[0]
-  const { data: ruleDetail } = useProcessRule(firstDocument!.id)
+  const { data: ruleDetail } = useQuery(
+    consoleQuery.datasets.processRule.get.queryOptions({
+      input: { query: { document_id: firstDocument?.id } },
+      enabled: !!firstDocument,
+    }),
+  )
 
   const queryClient = useQueryClient()
   const invalidDocumentList = () =>
@@ -243,7 +252,7 @@ const EmbeddingProcess = ({
                   <Popover>
                     <PopoverTrigger
                       openOnHover
-                      aria-label={indexingStatusDetail.error}
+                      aria-label={indexingStatusDetail.error ?? undefined}
                       className="inline-flex border-0 bg-transparent p-0"
                     >
                       <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />

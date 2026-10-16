@@ -1,5 +1,5 @@
 import type { KnowledgeRetrievalNodeType } from '../types'
-import type { DataSet, MetadataInDoc } from '@/models/datasets'
+import type { DataSet, DataSetListResponse, MetadataInDoc } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useState } from 'react'
@@ -14,6 +14,7 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
 import {
@@ -67,6 +68,8 @@ vi.mock('@/service/datasets', () => ({
   fetchDatasets: vi.fn(),
 }))
 
+type DatasetListItem = DataSetListResponse['data'][number]
+
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseIsChatMode = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.mocked(useWorkflow)
@@ -79,10 +82,10 @@ const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
 const mockUseDatasetsDetailStore = vi.mocked(useDatasetsDetailStore)
 const mockFetchDatasets = vi.mocked(fetchDatasets)
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (overrides: Partial<DatasetListItem> = {}): DatasetListItem => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -99,24 +102,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -150,7 +141,6 @@ const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc =
   id: 'meta-1',
   name: 'topic',
   type: MetadataFilteringVariableType.string,
-  value: 'topic',
   ...overrides,
 })
 

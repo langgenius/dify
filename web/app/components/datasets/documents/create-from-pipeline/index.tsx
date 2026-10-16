@@ -49,7 +49,7 @@ const CreateFormPipeline = () => {
     }),
   )
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
-  const pipelineId = dataset?.pipeline_id
+  const pipelineId = dataset?.pipeline_id ?? undefined
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,

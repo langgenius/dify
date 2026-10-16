@@ -351,7 +351,7 @@ export type RetrievalConfig = {
   }
   top_k: number
   score_threshold_enabled: boolean
-  score_threshold: number
+  score_threshold?: number
   reranking_mode?: RerankingModeEnum
   weights?: {
     weight_type: WeightedScoreEnum

@@ -192,7 +192,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               <StepTwo
                 isAPIKeySet={!!embeddingsDefaultModel}
                 onSetting={() => setSettingsDestination('provider')}
-                indexingType={datasetDetail?.indexing_technique}
+                indexingType={datasetDetail?.indexing_technique ?? undefined}
                 datasetId={datasetId}
                 dataSourceType={dataSourceType}
                 files={fileList.map((file) => file.file)}

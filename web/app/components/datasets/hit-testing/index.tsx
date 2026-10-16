@@ -22,7 +22,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -31,13 +31,13 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toRetrievalConfig } from '@/app/components/datasets/dataset-fields'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { consoleClient } from '@/service/console'
-import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
@@ -82,10 +82,12 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     data: recordsRes,
     refetch: recordsRefetch,
     isLoading: isRecordsLoading,
-  } = useDatasetTestingRecords(
-    datasetId,
-    { limit, page: currPage + 1 },
-    { enabled: canRunRetrievalRecall },
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.queries.get.queryOptions({
+      input: { params: { dataset_id: datasetId }, query: { limit, page: currPage + 1 } },
+      enabled: !!datasetId && canRunRetrievalRecall,
+      placeholderData: keepPreviousData,
+    }),
   )
 
   const total = recordsRes?.total || 0
@@ -93,8 +95,8 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const isExternal = currentDataset?.provider === 'external'
 
-  const [retrievalConfig, setRetrievalConfig] = useState(
-    currentDataset?.retrieval_model_dict as RetrievalConfig,
+  const [retrievalConfig, setRetrievalConfig] = useState<RetrievalConfig | undefined>(
+    () => currentDataset && toRetrievalConfig(currentDataset.retrieval_model_dict),
   )
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [
@@ -204,23 +206,25 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
             {t(($) => $.desc, { ns: 'datasetHitTesting' })}
           </p>
         </div>
-        <QueryInput
-          key={queryInputKey}
-          setHitResult={setHitResult}
-          setExternalHitResult={setExternalHitResult}
-          onSubmit={showRightPanel}
-          onUpdateList={recordsRefetch}
-          loading={isRetrievalLoading}
-          queries={queries}
-          setQueries={setQueries}
-          isExternal={isExternal}
-          onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
-          retrievalConfig={retrievalConfig}
-          isEconomy={currentDataset?.indexing_technique === 'economy'}
-          hitTestingMutation={hitTestingMutation}
-          externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
-          canRunRetrievalRecall={canRunRetrievalRecall}
-        />
+        {retrievalConfig && (
+          <QueryInput
+            key={queryInputKey}
+            setHitResult={setHitResult}
+            setExternalHitResult={setExternalHitResult}
+            onSubmit={showRightPanel}
+            onUpdateList={recordsRefetch}
+            loading={isRetrievalLoading}
+            queries={queries}
+            setQueries={setQueries}
+            isExternal={isExternal}
+            onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
+            retrievalConfig={retrievalConfig}
+            isEconomy={currentDataset?.indexing_technique === 'economy'}
+            hitTestingMutation={hitTestingMutation}
+            externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
+            canRunRetrievalRecall={canRunRetrievalRecall}
+          />
+        )}
         <h2 className="mt-6 mb-3 text-base font-semibold text-text-primary">
           {t(($) => $.records, { ns: 'datasetHitTesting' })}
         </h2>
@@ -292,16 +296,18 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           <DrawerViewport>
             <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-160 data-[swipe-direction=right]:rounded-xl">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                <ModifyRetrievalModal
-                  indexMethod={currentDataset?.indexing_technique || ''}
-                  value={retrievalConfig}
-                  isShow={isShowModifyRetrievalModal}
-                  onHide={() => setIsShowModifyRetrievalModal(false)}
-                  onSave={(value) => {
-                    setRetrievalConfig(value)
-                    setIsShowModifyRetrievalModal(false)
-                  }}
-                />
+                {retrievalConfig && (
+                  <ModifyRetrievalModal
+                    indexMethod={currentDataset?.indexing_technique || ''}
+                    value={retrievalConfig}
+                    isShow={isShowModifyRetrievalModal}
+                    onHide={() => setIsShowModifyRetrievalModal(false)}
+                    onSave={(value) => {
+                      setRetrievalConfig(value)
+                      setIsShowModifyRetrievalModal(false)
+                    }}
+                  />
+                )}
               </DrawerContent>
             </DrawerPopup>
           </DrawerViewport>

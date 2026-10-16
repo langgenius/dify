@@ -13,6 +13,7 @@ import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetUpdateForm from '../index'
 
@@ -293,9 +294,9 @@ vi.mock('../top-bar', () => ({
 }))
 
 const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-123',
   name: 'Test Dataset',
-  indexing_status: 'completed',
   icon_info: { icon: '', icon_background: '', icon_type: 'emoji' as const },
   description: 'Test description',
   permission: DatasetPermission.onlyMe,
@@ -307,23 +308,12 @@ const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 0,
-  total_document_count: 0,
   word_count: 0,
   provider: 'openai',
   embedding_model: 'text-embedding-ada-002',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_mode: undefined,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    weights: undefined,
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_mode: undefined,

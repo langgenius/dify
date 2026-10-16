@@ -354,7 +354,7 @@ export type ChildChunkResponse = {
   id: string
   position: number
   segment_id: string
-  type: SegmentType
+  type: 'automatic' | 'customized'
   updated_at: number
   word_count: number
 }
@@ -593,7 +593,14 @@ export type DatasetDetailResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -606,16 +613,16 @@ export type DatasetDetailResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
   maintainer?: string | null
   name: string
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -632,7 +639,14 @@ export type DatasetDetailWithPartialMembersResponse = {
   chunk_structure: string | null
   created_at: number
   created_by: string
-  data_source_type: string | null
+  data_source_type:
+    | 'local_file'
+    | 'notion_import'
+    | 'online_document'
+    | 'online_drive'
+    | 'upload_file'
+    | 'website_crawl'
+    | null
   description: string | null
   doc_form: string | null
   doc_metadata: Array<DatasetDocMetadataResponse>
@@ -645,17 +659,17 @@ export type DatasetDetailWithPartialMembersResponse = {
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
-  indexing_technique: string | null
+  indexing_technique: IndexTechniqueType | null
   is_multimodal: boolean
   is_published: boolean
   maintainer?: string | null
   name: string
   partial_member_list?: Array<string> | null
-  permission: string
+  permission: 'all_team_members' | 'only_me' | 'partial_members'
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
+  runtime_mode: 'general' | 'rag_pipeline' | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
   tags: Array<DatasetTagResponse>
   total_available_documents: number
@@ -668,7 +682,7 @@ export type DatasetDetailWithPartialMembersResponse = {
 export type DatasetDocMetadataResponse = {
   id: string
   name: string
-  type: string
+  type: 'number' | 'string' | 'time'
 }
 
 export type DatasetExternalKnowledgeInfoResponse = {
@@ -758,7 +772,7 @@ export type DatasetRetrievalModelResponse = {
   reranking_model?: DatasetRerankingModelResponse
   score_threshold?: number | null
   score_threshold_enabled: boolean
-  search_method: string
+  search_method: RetrievalMethod
   top_k: number
   weights?: DatasetWeightedScoreResponse | null
 }
@@ -983,10 +997,18 @@ export type DocumentStatusResponse = {
   completed_at: number | null
   completed_segments?: number | null
   error: string | null
-  error_code?: string | null
+  error_code?: 'vector_space_estimate_exceeded' | null
   estimated_vector_space_mb?: number | null
   id: string
-  indexing_status: string
+  indexing_status:
+    | 'cleaning'
+    | 'completed'
+    | 'error'
+    | 'indexing'
+    | 'parsing'
+    | 'paused'
+    | 'splitting'
+    | 'waiting'
   parsing_completed_at: number | null
   paused_at: number | null
   processing_started_at: number | null
@@ -1327,6 +1349,8 @@ export type IndexInfoResponse = {
   server_version: string
   welcome: string
 }
+
+export type IndexTechniqueType = 'economy' | 'high_quality'
 
 export type InvalidActionError = ErrorResponse & {
   code: 'invalid_action'
@@ -2120,7 +2144,7 @@ export type SegmentResponse = {
   keywords: Array<string> | null
   position: number
   sign_content: string
-  status: SegmentStatus
+  status: 'completed' | 'error' | 'indexing' | 'paused' | 're_segment' | 'waiting'
   stopped_at: number | null
   summary: string | null
   tokens: number
@@ -2128,10 +2152,6 @@ export type SegmentResponse = {
   updated_by: string | null
   word_count: number
 }
-
-export type SegmentStatus = 'completed' | 'error' | 'indexing' | 'paused' | 're_segment' | 'waiting'
-
-export type SegmentType = 'automatic' | 'customized'
 
 export type SegmentUpdateArgs = {
   answer?: string | null

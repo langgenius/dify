@@ -36,9 +36,12 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useProcessRule: () => ({ data: undefined }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.processRule.get': () => ({ data: undefined }),
+  })
+})
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.example.com/docs',

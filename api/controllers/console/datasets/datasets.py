@@ -29,6 +29,7 @@ from controllers.console.wraps import (
 )
 from core.entities.knowledge_entities import IndexingEstimate
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.query_type import QueryType
 from extensions.ext_application_services import application_services
 from fields.api_key_fields import ApiKeyItem, ApiKeyList, build_masked_api_key_list
 from fields.base import ResponseModel
@@ -36,11 +37,14 @@ from fields.dataset_fields import (
     DatasetDetailResponse,
     NotionEstimateWorkspacePayload,
 )
+from fields.document_fields import DocumentStatusListResponse
 from libs.external_api import error_responses
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
+from models.enums import CreatorUserRole, DatasetQuerySource
 from models.enums import PermissionEnum as DatasetPermissionEnum
+from models.model import AppMode, IconType
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
@@ -247,7 +251,7 @@ class DatasetQueryFileInfoResponse(ResponseModel):
 
 
 class DatasetQueryContentResponse(ResponseModel):
-    content_type: str
+    content_type: QueryType
     content: str
     file_info: DatasetQueryFileInfoResponse | None = None
 
@@ -255,9 +259,9 @@ class DatasetQueryContentResponse(ResponseModel):
 class DatasetQueryDetailResponse(ResponseModel):
     id: str
     queries: list[DatasetQueryContentResponse]
-    source: str
+    source: DatasetQuerySource
     source_app_id: str | None
-    created_by_role: str
+    created_by_role: CreatorUserRole
     created_by: str
     created_at: int
 
@@ -279,8 +283,8 @@ class RelatedAppResponse(ResponseModel):
     id: str
     name: str
     description: str
-    mode: str = Field(validation_alias="mode_compatible_with_agent")
-    icon_type: str | None
+    mode: AppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: IconType | None
     icon: str | None
     icon_background: str | None
     icon_url: str | None = None
@@ -294,39 +298,6 @@ class RelatedAppResponse(ResponseModel):
 class RelatedAppListResponse(ResponseModel):
     data: list[RelatedAppResponse]
     total: int
-
-
-class DocumentStatusResponse(ResponseModel):
-    id: str
-    indexing_status: str
-    processing_started_at: int | None
-    parsing_completed_at: int | None
-    cleaning_completed_at: int | None
-    splitting_completed_at: int | None
-    completed_at: int | None
-    paused_at: int | None
-    error: str | None
-    stopped_at: int | None
-    completed_segments: int | None = None
-    total_segments: int | None = None
-
-    @field_validator(
-        "processing_started_at",
-        "parsing_completed_at",
-        "cleaning_completed_at",
-        "splitting_completed_at",
-        "completed_at",
-        "paused_at",
-        "stopped_at",
-        mode="before",
-    )
-    @classmethod
-    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return to_timestamp(value)
-
-
-class DocumentStatusListResponse(ResponseModel):
-    data: list[DocumentStatusResponse]
 
 
 class ErrorDocsResponse(DocumentStatusListResponse):

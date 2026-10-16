@@ -17,6 +17,7 @@ import {
 } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
@@ -84,9 +85,9 @@ const createDataset = (
 ): DataSet => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Test Dataset',
-    indexing_status: 'completed',
     icon_info: {
       icon: 'icon',
       icon_type: 'emoji',
@@ -102,7 +103,6 @@ const createDataset = (
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'internal',
@@ -134,10 +134,6 @@ const createDataset = (
     retrieval_model_dict: {
       ...retrievalConfig,
       ...overrides.retrieval_model_dict,
-    },
-    retrieval_model: {
-      ...retrievalConfig,
-      ...overrides.retrieval_model,
     },
   }
 }

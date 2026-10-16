@@ -8,7 +8,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -19,14 +19,12 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { datasetDetailQueryKeyPrefix } from '@/service/knowledge/use-dataset'
-import { useInvalid } from '@/service/use-base'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
 const Conversion = () => {
   const { t } = useTranslation(['common', 'datasetPipeline'])
-  const { datasetId } = useParams()
+  const { datasetId } = useParams<{ datasetId: string }>()
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -37,7 +35,14 @@ const Conversion = () => {
   const { mutateAsync: convert, isPending } = useMutation(
     consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions(),
   )
-  const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, datasetId])
+  const queryClient = useQueryClient()
+  const invalidDatasetDetail = React.useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+        input: { params: { dataset_id: datasetId } },
+      }),
+    })
+  }, [queryClient, datasetId])
   const datasetACLCapabilities = React.useMemo(
     () =>
       getDatasetACLCapabilities(dataset?.permission_keys, {
@@ -52,7 +57,7 @@ const Conversion = () => {
     if (!canConvertDataset || !datasetId) return
 
     convert(
-      { params: { dataset_id: datasetId as string } },
+      { params: { dataset_id: datasetId } },
       {
         onSuccess: (res) => {
           if (res.status === 'success') {

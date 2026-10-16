@@ -67,7 +67,10 @@ export const useEmbeddingStatus = ({
   const isCompleted = status === 'completed'
   const isPaused = status === 'paused'
   const isError = status === 'error'
-  const percent = calculatePercent(query.data?.completed_segments, query.data?.total_segments)
+  const percent = calculatePercent(
+    query.data?.completed_segments ?? undefined,
+    query.data?.total_segments ?? undefined,
+  )
 
   // Handle completion callback
   useEffect(() => {

@@ -1,9 +1,13 @@
 import type { DataSet } from '@/models/datasets'
+import { QueryClient } from '@tanstack/react-query'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { isEqual } from 'es-toolkit/compat'
 import * as React from 'react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
@@ -12,8 +16,8 @@ import Dropdown from '../dropdown'
 let mockDataset: DataSet
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-const mockInvalidDatasetDetail = vi.fn()
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
@@ -33,9 +37,9 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   })
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -52,24 +56,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -120,15 +112,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
-
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidDatasetDetail,
-}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
@@ -366,7 +349,11 @@ describe('Dropdown', () => {
       await waitFor(() => {
         expect(mockDeleteDataset).toHaveBeenCalledWith('dataset-1')
       })
-      expect(mockInvalidDatasetList).toHaveBeenCalledTimes(1)
+      expect(
+        invalidateQueries.mock.calls.filter(([filters]) =>
+          isEqual(filters, { queryKey: datasetListKey }),
+        ),
+      ).toHaveLength(1)
       expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
 

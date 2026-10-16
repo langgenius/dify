@@ -15,15 +15,7 @@ import type {
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import {
-  act,
-  cleanup,
-  fireEvent,
-  renderHook,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
@@ -33,7 +25,10 @@ import {
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import {
+  renderWithConsoleQuery as render,
+  renderHookWithConsoleQuery,
+} from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { PreviewPanel } from '../components/preview-panel'
 import { StepTwoFooter } from '../components/step-two-footer'
@@ -216,10 +211,6 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
   getWebsiteInfo: vi
     .fn()
     .mockReturnValue({ provider: 'jinaReader', job_id: 'job-123', urls: ['https://test.com'] }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => vi.fn(),
 }))
 
 // Mock amplitude tracking (external service)
@@ -487,7 +478,7 @@ describe('useSegmentationState', () => {
   // Tests for initial state
   describe('Initial State', () => {
     it('should initialize with default values', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       expect(result.current.segmentationType).toBe(ProcessMode.general)
       expect(result.current.segmentIdentifier).toBe(DEFAULT_SEGMENT_IDENTIFIER)
@@ -498,7 +489,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should initialize with custom segmentation type', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useSegmentationState({ initialSegmentationType: ProcessMode.parentChild }),
       )
 
@@ -509,7 +500,7 @@ describe('useSegmentationState', () => {
   // Tests for state setters
   describe('State Management', () => {
     it('should update segmentation type', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentationType(ProcessMode.parentChild)
@@ -519,7 +510,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update max chunk length', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setMaxChunkLength(2048)
@@ -529,7 +520,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update overlap', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setOverlap(100)
@@ -539,7 +530,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
       const newRules: PreProcessingRule[] = [{ id: 'remove_stopwords', enabled: true }]
 
       act(() => {
@@ -553,7 +544,7 @@ describe('useSegmentationState', () => {
   // Tests for setSegmentIdentifier with escape
   describe('setSegmentIdentifier', () => {
     it('should escape special characters', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('\n\n')
@@ -563,7 +554,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should use default when empty and canEmpty is false', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('')
@@ -573,7 +564,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should allow empty when canEmpty is true', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('', true)
@@ -586,7 +577,7 @@ describe('useSegmentationState', () => {
   // Tests for toggleRule
   describe('toggleRule', () => {
     it('should toggle rule enabled state', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setRules([
@@ -604,7 +595,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should not affect other rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setRules([
@@ -625,7 +616,7 @@ describe('useSegmentationState', () => {
   // Tests for parent-child config
   describe('Parent-Child Configuration', () => {
     it('should update parent config delimiter with truthy value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateParentConfig('delimiter', '\n\n\n')
@@ -635,7 +626,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update parent config delimiter with empty value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateParentConfig('delimiter', '')
@@ -645,7 +636,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update parent config maxLength', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateParentConfig('maxLength', 2048)
@@ -655,7 +646,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update child config delimiter with truthy value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateChildConfig('delimiter', '\n')
@@ -665,7 +656,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update child config delimiter with empty value', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateChildConfig('delimiter', '')
@@ -675,7 +666,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should update child config maxLength', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.updateChildConfig('maxLength', 256)
@@ -685,7 +676,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should set chunk for context mode', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setChunkForContext('full-doc')
@@ -698,7 +689,7 @@ describe('useSegmentationState', () => {
   // Tests for resetToDefaults
   describe('resetToDefaults', () => {
     it('should reset to default config when available', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       // Set non-default values and default config
       act(() => {
@@ -718,7 +709,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should only reset parentChildConfig when no default config', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       // Set non-default values without setting defaultConfig
       act(() => {
@@ -743,7 +734,7 @@ describe('useSegmentationState', () => {
   // Tests for applyConfigFromRules
   describe('applyConfigFromRules', () => {
     it('should apply general config from rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
       const rules = createMockRules({
         segmentation: { separator: '---', max_tokens: 512, chunk_overlap: 25 },
       })
@@ -757,7 +748,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should apply hierarchical config from rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
       const rules = createMockRules({
         parent_mode: 'paragraph',
         subchunk_segmentation: { separator: '\n', max_tokens: 256 },
@@ -772,7 +763,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should apply full hierarchical parent-child config from rules', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
       const rules = createMockRules({
         segmentation: { separator: '\n\n', max_tokens: 1024, chunk_overlap: 50 },
         parent_mode: 'full-doc',
@@ -797,7 +788,7 @@ describe('useSegmentationState', () => {
   // Tests for getProcessRule
   describe('getProcessRule', () => {
     it('should return general process rule', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       const processRule = result.current.getProcessRule(ChunkingMode.text)
 
@@ -806,7 +797,7 @@ describe('useSegmentationState', () => {
     })
 
     it('should return hierarchical process rule for parent-child', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       const processRule = result.current.getProcessRule(ChunkingMode.parentChild)
 
@@ -829,7 +820,7 @@ describe('useIndexingConfig', () => {
   // Note: Hook has useEffect that syncs state, so we test the state after effects settle
   describe('Initial State', () => {
     it('should initialize with QUALIFIED when API key is set', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -840,7 +831,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should initialize with ECONOMICAL when API key is not set', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: false, hasSetIndexType: false }),
       )
 
@@ -850,7 +841,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should use initial index type when provided', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({
           isAPIKeySet: false,
           hasSetIndexType: true,
@@ -867,7 +858,7 @@ describe('useIndexingConfig', () => {
   // Tests for state setters
   describe('State Management', () => {
     it('should update index type', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -884,7 +875,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should update embedding model', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -900,7 +891,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should update retrieval config', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -928,7 +919,7 @@ describe('useIndexingConfig', () => {
   // Tests for getIndexingTechnique
   describe('getIndexingTechnique', () => {
     it('should return initial type when set', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({
           isAPIKeySet: true,
           hasSetIndexType: true,
@@ -942,7 +933,7 @@ describe('useIndexingConfig', () => {
     })
 
     it('should return current type when no initial type', async () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({ isAPIKeySet: true, hasSetIndexType: false }),
       )
 
@@ -973,7 +964,7 @@ describe('useIndexingConfig', () => {
         score_threshold: 0.8,
       }
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingConfig({
           isAPIKeySet: true,
           hasSetIndexType: false,
@@ -1009,13 +1000,13 @@ describe('usePreviewState', () => {
   // Tests for initial state
   describe('Initial State', () => {
     it('should initialize with first file for FILE data source', () => {
-      const { result } = renderHook(() => usePreviewState(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       expect(result.current.previewFile).toEqual(defaultOptions.files[0])
     })
 
     it('should initialize with first notion page for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.NOTION }),
       )
 
@@ -1024,7 +1015,7 @@ describe('usePreviewState', () => {
 
     it('should start without a preview file when editing an existing document', () => {
       const documentDetail = createMockDocumentDetail()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           documentDetail,
@@ -1039,14 +1030,14 @@ describe('usePreviewState', () => {
   // Tests for getPreviewPickerItems
   describe('getPreviewPickerItems', () => {
     it('should return files for FILE data source', () => {
-      const { result } = renderHook(() => usePreviewState(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       const items = result.current.getPreviewPickerItems()
       expect(items).toEqual(defaultOptions.files)
     })
 
     it('should return mapped notion pages for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.NOTION }),
       )
 
@@ -1059,7 +1050,7 @@ describe('usePreviewState', () => {
     })
 
     it('should return mapped website pages for WEB data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.WEB }),
       )
 
@@ -1072,7 +1063,7 @@ describe('usePreviewState', () => {
     })
 
     it('should return empty array for unknown data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: 'unknown' as DataSourceType }),
       )
 
@@ -1084,7 +1075,7 @@ describe('usePreviewState', () => {
   // Tests for getPreviewPickerValue
   describe('getPreviewPickerValue', () => {
     it('should return file value for FILE data source', () => {
-      const { result } = renderHook(() => usePreviewState(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => usePreviewState(defaultOptions))
 
       const value = result.current.getPreviewPickerValue()
       expect(value).toEqual(defaultOptions.files[0])
@@ -1092,7 +1083,7 @@ describe('usePreviewState', () => {
 
     it('should return mapped notion page value for NOTION data source', () => {
       const notionPage = createMockNotionPage({ page_id: 'page-123', page_name: 'My Page' })
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1113,7 +1104,7 @@ describe('usePreviewState', () => {
         source_url: 'https://test.com',
         title: 'Test Title',
       })
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1130,7 +1121,7 @@ describe('usePreviewState', () => {
     })
 
     it('should return empty value for unknown data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: 'unknown' as DataSourceType }),
       )
 
@@ -1139,7 +1130,7 @@ describe('usePreviewState', () => {
     })
 
     it('should handle undefined notion page gracefully', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1156,7 +1147,7 @@ describe('usePreviewState', () => {
     })
 
     it('should handle undefined website page gracefully', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1177,7 +1168,9 @@ describe('usePreviewState', () => {
   describe('handlePreviewChange', () => {
     it('should update preview file for FILE data source', () => {
       const files = [createMockFile(), createMockFile({ id: 'file-2', name: 'second.pdf' })]
-      const { result } = renderHook(() => usePreviewState({ ...defaultOptions, files }))
+      const { result } = renderHookWithConsoleQuery(() =>
+        usePreviewState({ ...defaultOptions, files }),
+      )
 
       act(() => {
         result.current.handlePreviewChange({ id: 'file-2', name: 'second.pdf' })
@@ -1191,7 +1184,7 @@ describe('usePreviewState', () => {
         createMockNotionPage(),
         createMockNotionPage({ page_id: 'notion-page-2', page_name: 'Second Page' }),
       ]
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.NOTION, notionPages }),
       )
 
@@ -1207,7 +1200,7 @@ describe('usePreviewState', () => {
         createMockWebsitePage(),
         createMockWebsitePage({ source_url: 'https://example.com/page2', title: 'Second Page' }),
       ]
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({ ...defaultOptions, dataSourceType: DataSourceType.WEB, websitePages }),
       )
 
@@ -1238,7 +1231,7 @@ describe('useDocumentCreation', () => {
   // Tests for validateParams
   describe('validateParams', () => {
     it('should return false when overlap exceeds max chunk length', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1262,7 +1255,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return false when max chunk length exceeds limit', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1286,7 +1279,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return true for valid params', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1313,7 +1306,7 @@ describe('useDocumentCreation', () => {
   // Tests for buildCreationParams
   describe('buildCreationParams', () => {
     it('should build params for file upload', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const params = result.current.buildCreationParams(
         ChunkingMode.text,
@@ -1339,7 +1332,7 @@ describe('useDocumentCreation', () => {
 
     it('should build params for setting mode', () => {
       const documentDetail = createMockDocumentDetail()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           isSetting: true,
@@ -1367,7 +1360,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should build params for notion_import data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1398,7 +1391,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should build params for website_crawl data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1434,7 +1427,7 @@ describe('useDocumentCreation', () => {
   // Tests for validateParams edge cases
   describe('validateParams - additional cases', () => {
     it('should return false when embedding model is missing for QUALIFIED index type', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validateParams({
         segmentationType: 'general',
@@ -1458,7 +1451,7 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return false when rerank model is required but not selected', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       // isReRankModelSelected returns false when:
       // - indexMethod === 'high_quality' (IndexingType.QUALIFIED)
@@ -1498,7 +1491,7 @@ describe('useDocumentCreation', () => {
       const mockUpdateRetrievalMethodCache = vi.fn()
       const mockOnSave = vi.fn()
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: undefined,
@@ -1542,7 +1535,7 @@ describe('useDocumentCreation', () => {
 
     it('should call createDocumentMutation when datasetId is provided', async () => {
       const mockOnStepChange = vi.fn()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: 'existing-dataset-id',
@@ -1583,7 +1576,7 @@ describe('useDocumentCreation', () => {
     it('should call onSave when in setting mode', async () => {
       const mockOnSave = vi.fn()
       const documentDetail = createMockDocumentDetail()
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           ...defaultOptions,
           datasetId: 'existing-dataset-id',
@@ -1627,14 +1620,14 @@ describe('useDocumentCreation', () => {
   // Tests for validatePreviewParams
   describe('validatePreviewParams', () => {
     it('should return true for valid max chunk length', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validatePreviewParams(1000)
       expect(isValid).toBe(true)
     })
 
     it('should return false when max chunk length exceeds maximum', () => {
-      const { result } = renderHook(() => useDocumentCreation(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
 
       const isValid = result.current.validatePreviewParams(10000)
       expect(isValid).toBe(false)
@@ -1664,7 +1657,7 @@ describe('useIndexingEstimate', () => {
   // Tests for initial state
   describe('Initial State', () => {
     it('should initialize with idle state', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
+      const { result } = renderHookWithConsoleQuery(() => useIndexingEstimate(defaultOptions))
 
       expect(result.current.isIdle).toBe(true)
       expect(result.current.isPending).toBe(false)
@@ -1675,7 +1668,7 @@ describe('useIndexingEstimate', () => {
   // Tests for fetchEstimate
   describe('fetchEstimate', () => {
     it('should call fetchEstimate for FILE data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.FILE,
@@ -1692,7 +1685,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should call fetchEstimate for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1709,7 +1702,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should call fetchEstimate for WEB data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -1731,7 +1724,7 @@ describe('useIndexingEstimate', () => {
   // Tests for getCurrentMutation based on data source type
   describe('Data Source Selection', () => {
     it('should use file query for FILE data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.FILE,
@@ -1743,7 +1736,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should use notion query for NOTION data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.NOTION,
@@ -1755,7 +1748,7 @@ describe('useIndexingEstimate', () => {
     })
 
     it('should use website query for WEB data source', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         useIndexingEstimate({
           ...defaultOptions,
           dataSourceType: DataSourceType.WEB,
@@ -2097,7 +2090,7 @@ describe('Edge Cases', () => {
 
   describe('Empty/Null Values', () => {
     it('should handle empty files array in usePreviewState', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.FILE,
           files: [],
@@ -2110,7 +2103,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle empty notion pages array', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.NOTION,
           files: [],
@@ -2123,7 +2116,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle empty website pages array', () => {
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.WEB,
           files: [],
@@ -2138,7 +2131,7 @@ describe('Edge Cases', () => {
 
   describe('Boundary Conditions', () => {
     it('should handle very large chunk length', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setMaxChunkLength(999999)
@@ -2148,7 +2141,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle zero overlap', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setOverlap(0)
@@ -2158,7 +2151,7 @@ describe('Edge Cases', () => {
     })
 
     it('should handle special characters in segment identifier', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentIdentifier('<<>>')
@@ -2170,7 +2163,7 @@ describe('Edge Cases', () => {
 
   describe('Callback Stability', () => {
     it('should maintain stable setSegmentIdentifier reference', () => {
-      const { result, rerender } = renderHook(() => useSegmentationState())
+      const { result, rerender } = renderHookWithConsoleQuery(() => useSegmentationState())
       const initialSetter = result.current.setSegmentIdentifier
 
       rerender()
@@ -2179,7 +2172,7 @@ describe('Edge Cases', () => {
     })
 
     it('should maintain stable toggleRule reference', () => {
-      const { result, rerender } = renderHook(() => useSegmentationState())
+      const { result, rerender } = renderHookWithConsoleQuery(() => useSegmentationState())
       const initialToggle = result.current.toggleRule
 
       rerender()
@@ -2188,7 +2181,7 @@ describe('Edge Cases', () => {
     })
 
     it('should maintain stable getProcessRule reference', () => {
-      const { result, rerender } = renderHook(() => useSegmentationState())
+      const { result, rerender } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       // Update some state to trigger re-render
       act(() => {
@@ -2215,8 +2208,8 @@ describe('Integration Scenarios', () => {
     it('should build and validate params for file upload workflow', () => {
       const files = [createMockFile()]
 
-      const { result: segResult } = renderHook(() => useSegmentationState())
-      const { result: creationResult } = renderHook(() =>
+      const { result: segResult } = renderHookWithConsoleQuery(() => useSegmentationState())
+      const { result: creationResult } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({
           dataSourceType: DataSourceType.FILE,
           files,
@@ -2248,7 +2241,7 @@ describe('Integration Scenarios', () => {
     })
 
     it('should handle parent-child document form', () => {
-      const { result } = renderHook(() => useSegmentationState())
+      const { result } = renderHookWithConsoleQuery(() => useSegmentationState())
 
       act(() => {
         result.current.setSegmentationType(ProcessMode.parentChild)
@@ -2273,7 +2266,7 @@ describe('Integration Scenarios', () => {
         createMockFile({ id: 'file-2', name: 'second.pdf' }),
       ]
 
-      const { result } = renderHook(() =>
+      const { result } = renderHookWithConsoleQuery(() =>
         usePreviewState({
           dataSourceType: DataSourceType.FILE,
           files,

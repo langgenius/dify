@@ -1,9 +1,18 @@
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   ChildChunkListResponse,
   ChildChunkResponse,
   ConsoleSegmentListResponse,
   DocumentDetailResponse as ContractDocumentDetailResponse,
+  ErrorDocsResponse as ContractErrorDocsResponse,
+  ProcessRuleResponse as ContractProcessRuleResponse,
+  RelatedAppResponse as ContractRelatedAppResponse,
+  DatasetDetailWithPartialMembersResponse,
+  DatasetDocMetadataResponse,
+  DatasetListResponse,
+  DatasetQueryContentResponse,
+  DatasetQueryDetailResponse,
+  DocumentStatusListResponse,
+  DocumentStatusResponse,
   DocumentWithSegmentsListResponse,
   DocumentWithSegmentsResponse,
   ExternalHitTestingRecordResponse,
@@ -13,13 +22,13 @@ import type {
   HitTestingRecord as HitTestingRecordResponse,
   NotionInfo as NotionInfoPayload,
   PreProcessingRule as PreProcessingRulePayload,
+  RelatedAppListResponse,
   SegmentResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { DatasourceType } from './pipeline'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { AppIconType, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { PermissionLevel } from './permission'
@@ -46,12 +55,7 @@ export const ChunkingMode = {
 
 export type ChunkingMode = (typeof ChunkingMode)[keyof typeof ChunkingMode]
 
-export type MetadataInDoc = {
-  value: string
-  id: string
-  type: MetadataFilteringVariableType
-  name: string
-}
+export type MetadataInDoc = DatasetDocMetadataResponse
 
 export type IconInfo = {
   icon: string
@@ -67,57 +71,7 @@ export type SummaryIndexSetting = {
   summary_prompt?: string
 }
 
-export type DataSet = {
-  id: string
-  name: string
-  indexing_status: DocumentIndexingStatus
-  icon_info: IconInfo
-  description: string
-  permission: DatasetPermission
-  data_source_type: DataSourceType
-  indexing_technique: IndexingType
-  author_name?: string
-  created_by: string
-  maintainer?: string
-  updated_by: string
-  updated_at: number
-  app_count: number
-  doc_form: ChunkingMode
-  document_count: number
-  total_document_count: number
-  total_available_documents?: number
-  word_count: number
-  provider: string
-  embedding_model: string
-  embedding_model_provider: string
-  embedding_available: boolean
-  retrieval_model_dict: RetrievalConfig
-  retrieval_model: RetrievalConfig
-  tags: Tag[]
-  partial_member_list?: string[]
-  external_knowledge_info: {
-    external_knowledge_id: string
-    external_knowledge_api_id: string
-    external_knowledge_api_name: string
-    external_knowledge_api_endpoint: string
-  }
-  external_retrieval_model: {
-    top_k: number
-    score_threshold: number
-    score_threshold_enabled: boolean
-  }
-  built_in_field_enabled: boolean
-  doc_metadata?: MetadataInDoc[]
-  keyword_number?: number
-  pipeline_id?: string
-  is_published?: boolean // Indicates if the pipeline is published
-  runtime_mode: 'rag_pipeline' | 'general'
-  enable_api: boolean // Indicates if the service API is enabled
-  is_multimodal: boolean // Indicates if the dataset supports multimodal
-  summary_index_setting?: SummaryIndexSetting
-  /** ACL permission keys */
-  permission_keys?: string[]
-}
+export type DataSet = DatasetDetailWithPartialMembersResponse
 
 export type ExternalAPIItem = {
   id: string
@@ -217,21 +171,7 @@ export type FetchDatasetsParams = {
   }
 }
 
-export type DatasetListRequest = {
-  initialPage: number
-  tag_ids?: string[]
-  limit: number
-  include_all?: boolean
-  keyword?: string
-}
-
-export type DataSetListResponse = {
-  data: DataSet[]
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
+export type DataSetListResponse = DatasetListResponse
 
 export type QA = {
   question: string
@@ -251,26 +191,8 @@ export type FileIndexingEstimateResponse = {
   total_nodes: number
 } & IndexingEstimateResponse
 
-export type IndexingStatusResponse = {
-  id: string
-  indexing_status: DocumentIndexingStatus
-  processing_started_at: number
-  parsing_completed_at: number
-  cleaning_completed_at: number
-  splitting_completed_at: number
-  completed_at: any
-  paused_at: any
-  error: any
-  error_code?: 'vector_space_estimate_exceeded' | null
-  estimated_vector_space_mb?: number | null
-  vector_space_limit_mb?: number | null
-  stopped_at: any
-  completed_segments: number
-  total_segments: number
-}
-export type IndexingStatusBatchResponse = {
-  data: IndexingStatusResponse[]
-}
+export type IndexingStatusResponse = DocumentStatusResponse
+export type IndexingStatusBatchResponse = DocumentStatusListResponse
 
 export const ProcessMode = {
   general: 'custom',
@@ -281,22 +203,13 @@ export type ProcessMode = (typeof ProcessMode)[keyof typeof ProcessMode]
 
 export type ParentMode = 'full-doc' | 'paragraph'
 
-export type ProcessRuleResponse = {
-  mode: ProcessMode
-  rules: Rules
-  limits: Limits
-  summary_index_setting?: SummaryIndexSetting
-}
+export type ProcessRuleResponse = ContractProcessRuleResponse
 
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
   parent_mode?: ParentMode
   subchunk_segmentation?: Segmentation
-}
-
-type Limits = {
-  indexing_max_segmentation_tokens_length: number
 }
 
 export type PreProcessingRule = PreProcessingRulePayload
@@ -496,44 +409,13 @@ export type SegmentDetailModel = SegmentResponse
 
 export type SegmentsResponse = ConsoleSegmentListResponse
 
-export type Query = {
-  content: string
-  content_type: 'text_query' | 'image_query'
-  file_info: Attachment | null
-}
+export type Query = DatasetQueryContentResponse
 
-export type HitTestingRecord = {
-  id: string
-  source: 'app' | 'hit_testing' | 'plugin'
-  source_app_id: string
-  created_by_role: 'account' | 'end_user'
-  created_by: string
-  created_at: number
-  queries: Query[]
-}
+export type HitTestingRecord = DatasetQueryDetailResponse
 
-export type HitTestingRecordsResponse = {
-  data: HitTestingRecord[]
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
+export type RelatedApp = ContractRelatedAppResponse
 
-export type RelatedApp = {
-  id: string
-  name: string
-  mode: AppMode
-  icon_type: AppIconType | null
-  icon: string
-  icon_background: string
-  icon_url: string
-}
-
-export type RelatedAppResponse = {
-  data: Array<RelatedApp>
-  total: number
-}
+export type RelatedAppResponse = RelatedAppListResponse
 
 export type SegmentUpdater = {
   content: string
@@ -544,10 +426,7 @@ export type SegmentUpdater = {
   attachment_ids?: string[]
 }
 
-export type ErrorDocsResponse = {
-  data: IndexingStatusResponse[]
-  total: number
-}
+export type ErrorDocsResponse = ContractErrorDocsResponse
 
 export type SelectedDatasetsMode = {
   allHighQuality: boolean
@@ -622,11 +501,6 @@ export const DOC_FORM_TEXT: Record<ChunkingMode, ChunkingModeText> = {
   [ChunkingMode.qa]: 'qa',
   [ChunkingMode.parentChild]: 'parentChild',
   // [ChunkingMode.graph]: 'graph', // todo: Graph RAG
-}
-
-export type IndexingStatusBatchRequest = {
-  datasetId: string
-  batchId: string
 }
 
 export type HitTestingRequest = {

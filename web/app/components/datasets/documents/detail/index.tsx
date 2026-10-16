@@ -383,7 +383,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               {embedding ? (
                 <Embedding
                   detailUpdate={detailMutate}
-                  indexingType={dataset?.indexing_technique}
+                  indexingType={dataset?.indexing_technique ?? undefined}
                   retrievalMethod={dataset?.retrieval_model_dict?.search_method}
                 />
               ) : (

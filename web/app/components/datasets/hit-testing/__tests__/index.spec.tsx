@@ -147,19 +147,7 @@ const mockRecordsRefetch = vi.fn()
 const mockHitTestingMutateAsync = vi.fn()
 const mockExternalHitTestingMutateAsync = vi.fn()
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetTestingRecords: vi.fn(() => ({
-    data: {
-      data: [],
-      total: 0,
-      page: 1,
-      limit: 10,
-      has_more: false,
-    },
-    refetch: mockRecordsRefetch,
-    isLoading: false,
-  })),
-}))
+const { mockRecordsQuery } = vi.hoisted(() => ({ mockRecordsQuery: vi.fn() }))
 
 // The page owns one mutation per retrieval kind, told apart by mutation key.
 const { mockHitTestingState, mockExternalHitTestingState } = vi.hoisted(() => ({
@@ -385,13 +373,11 @@ describe('HitTestingPage', () => {
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
     }
-
-    const { useDatasetTestingRecords } = await import('@/service/knowledge/use-dataset')
-    vi.mocked(useDatasetTestingRecords).mockReturnValue({
+    mockRecordsQuery.mockReturnValue({
       data: { data: [], total: 0, page: 1, limit: 10, has_more: false },
       refetch: mockRecordsRefetch,
       isLoading: false,
-    } as unknown as ReturnType<typeof useDatasetTestingRecords>)
+    })
     vi.mocked(mockHitTestingState).mockReturnValue({
       mutateAsync: mockHitTestingMutateAsync,
       isLoading: false,
@@ -408,26 +394,25 @@ describe('HitTestingPage', () => {
   })
 
   it('disables record loading and query input without retrieval recall permission', async () => {
-    const { useDatasetTestingRecords } = await import('@/service/knowledge/use-dataset')
     mockDataset.permission_keys = []
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(vi.mocked(useDatasetTestingRecords)).toHaveBeenCalledWith(
-      'dataset-1',
-      { limit: 10, page: 1 },
-      { enabled: false },
+    expect(mockRecordsQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { params: { dataset_id: 'dataset-1' }, query: { limit: 10, page: 1 } },
+        enabled: false,
+      }),
     )
   })
 
   it('shows the records loading state', async () => {
-    const { useDatasetTestingRecords } = await import('@/service/knowledge/use-dataset')
-    vi.mocked(useDatasetTestingRecords).mockReturnValue({
+    mockRecordsQuery.mockReturnValue({
       data: undefined,
       refetch: mockRecordsRefetch,
       isLoading: true,
-    } as unknown as ReturnType<typeof useDatasetTestingRecords>)
+    })
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
 
@@ -554,8 +539,7 @@ describe('HitTestingPage', () => {
 
   it('loads a history record into the query input when selected', async () => {
     const user = userEvent.setup()
-    const { useDatasetTestingRecords } = await import('@/service/knowledge/use-dataset')
-    vi.mocked(useDatasetTestingRecords).mockReturnValue({
+    mockRecordsQuery.mockReturnValue({
       data: {
         data: [
           createMockRecord({
@@ -571,7 +555,7 @@ describe('HitTestingPage', () => {
       },
       refetch: mockRecordsRefetch,
       isLoading: false,
-    } as unknown as ReturnType<typeof useDatasetTestingRecords>)
+    })
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByText('Record query text'))
@@ -581,8 +565,7 @@ describe('HitTestingPage', () => {
 
   it('requests the next records page through pagination', async () => {
     const user = userEvent.setup()
-    const { useDatasetTestingRecords } = await import('@/service/knowledge/use-dataset')
-    vi.mocked(useDatasetTestingRecords).mockReturnValue({
+    mockRecordsQuery.mockReturnValue({
       data: {
         data: Array.from({ length: 10 }, (_, index) => createMockRecord({ id: `record-${index}` })),
         total: 25,
@@ -592,15 +575,16 @@ describe('HitTestingPage', () => {
       },
       refetch: mockRecordsRefetch,
       isLoading: false,
-    } as unknown as ReturnType<typeof useDatasetTestingRecords>)
+    })
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByRole('button', { name: /pagination.next/ }))
 
-    expect(vi.mocked(useDatasetTestingRecords)).toHaveBeenLastCalledWith(
-      'dataset-1',
-      { limit: 10, page: 2 },
-      { enabled: true },
+    expect(mockRecordsQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        input: { params: { dataset_id: 'dataset-1' }, query: { limit: 10, page: 2 } },
+        enabled: true,
+      }),
     )
   })
 
@@ -710,9 +694,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         'query',
         { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
       >
-    }) =>
-      options.queryKey[0].includes('modelTypes')
-        ? { data: [], isPending: false }
-        : actual.useQuery(options),
+    }) => {
+      if (options.queryKey[0].includes('modelTypes')) return { data: [], isPending: false }
+      if (options.queryKey[0].includes('queries')) return mockRecordsQuery(options)
+      return actual.useQuery(options)
+    },
   }
 })

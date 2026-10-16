@@ -5,10 +5,14 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderEditor as renderWithoutPricing } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import Publisher from '../index'
 import { Popup } from '../popup'
+
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
@@ -142,11 +146,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 const mockPublishWorkflow = vi.fn()
 const mockPublishAsCustomizedPipeline = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
@@ -624,7 +623,7 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(mockMutateDatasetRes).toHaveBeenCalled()
           expectInvalidated('rag', 'pipelines', 'byPipelineId', 'workflows', 'publish', 'get')
-          expect(mockInvalidDatasetList).toHaveBeenCalled()
+          expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
         })
       })
 

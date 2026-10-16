@@ -20,6 +20,7 @@ import { updateDatasetSetting } from '@/service/datasets'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
@@ -138,9 +139,9 @@ const createDataset = (
 ): DataSet => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Test Dataset',
-    indexing_status: 'completed',
     icon_info: {
       icon: 'icon',
       icon_type: 'emoji',
@@ -156,7 +157,6 @@ const createDataset = (
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'internal',
@@ -189,10 +189,6 @@ const createDataset = (
     retrieval_model_dict: {
       ...retrievalConfig,
       ...overrides.retrieval_model_dict,
-    },
-    retrieval_model: {
-      ...retrievalConfig,
-      ...overrides.retrieval_model,
     },
   }
 }
@@ -473,7 +469,6 @@ describe('SettingsModal', () => {
         },
       })
       const dataset = createDataset({
-        retrieval_model: rerankRetrieval,
         retrieval_model_dict: rerankRetrieval,
       })
 
@@ -525,7 +520,6 @@ describe('SettingsModal', () => {
         },
       })
       const dataset = createDataset({
-        retrieval_model: hybridRetrieval,
         retrieval_model_dict: hybridRetrieval,
       })
 
@@ -571,7 +565,6 @@ describe('SettingsModal', () => {
         },
       } as Partial<RetrievalConfig>)
       const dataset = createDataset({
-        retrieval_model: hybridRetrieval,
         retrieval_model_dict: hybridRetrieval,
       })
 

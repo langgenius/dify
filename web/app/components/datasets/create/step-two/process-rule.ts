@@ -1,4 +1,7 @@
-import type { DocumentProcessRulesResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type {
+  DocumentProcessRulesResponse,
+  Rule,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { PreProcessingRule, Rules } from '@/models/datasets'
 import { ProcessMode } from '@/models/datasets'
 
@@ -14,9 +17,9 @@ const isPreProcessingRule = (rule: { id: string; enabled: boolean }): rule is Pr
 export const isProcessMode = (mode: string): mode is ProcessMode =>
   Object.values<string>(ProcessMode).includes(mode)
 
-const toSegmentation = (
-  segmentation: NonNullable<DocumentProcessRulesResponse['segmentation']>,
-) => ({
+type StoredRules = DocumentProcessRulesResponse | Rule
+
+const toSegmentation = (segmentation: NonNullable<StoredRules['segmentation']>) => ({
   // The backend defaults an unspecified separator to a newline and overlap to zero.
   separator: segmentation.separator ?? '\n',
   max_tokens: segmentation.max_tokens,
@@ -27,7 +30,7 @@ const toSegmentation = (
  * Segmentation settings from a stored process rule. Automatic-mode rules store no segmentation,
  * so there is nothing to restore for them.
  */
-export const toSegmentationRules = (rules: DocumentProcessRulesResponse): Rules | undefined => {
+export const toSegmentationRules = (rules: StoredRules): Rules | undefined => {
   if (!rules.segmentation) return undefined
   return {
     pre_processing_rules: (rules.pre_processing_rules ?? []).filter(isPreProcessingRule),

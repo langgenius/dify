@@ -4,8 +4,12 @@ import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import TemplateCard from '../index'
+
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
 
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -102,7 +106,6 @@ vi.mock('@/app/components/workflow/workflow-preview', () => ({
 }))
 
 const mockCreateDataset = vi.fn()
-const mockInvalidDatasetList = vi.fn()
 const mockGetPipelineTemplateInfo = vi.fn()
 const mockDeletePipeline = vi.fn()
 const mockExportPipelineDSL = vi.fn()
@@ -115,10 +118,6 @@ vi.mock('@/service/knowledge/use-create-dataset', () => ({
   useCreatePipelineDatasetFromCustomized: () => ({
     mutateAsync: mockCreateDataset,
   }),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -279,7 +278,7 @@ describe('TemplateCard', () => {
       fireEvent.click(chooseButton)
 
       await waitFor(() => {
-        expect(mockInvalidDatasetList).toHaveBeenCalled()
+        expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
       })
     })
 
