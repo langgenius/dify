@@ -36,12 +36,12 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_native_c
     migrated_continuation_tables as migrated_continuation_tables,  # noqa: PLC0414 - shared pytest fixture
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
-    ledger_case as ledger_case,  # noqa: PLC0414 - shared pytest fixture
-)
-from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
     migrated_native_tables as migrated_native_tables,  # noqa: PLC0414 - shared pytest fixture
 )
 from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import no_live as no_live  # noqa: PLC0414 - shared pytest fixture
+from tests.test_containers_integration_tests.core.workflow.test_builder_native_effect_ledger import (
+    raw_ledger_case,
+)
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as base_native_owner,  # noqa: F401 - shared pytest fixture
 )
@@ -82,14 +82,15 @@ def native_owner(base_native_owner):  # noqa: F811 - pytest fixture injection
 
 
 @pytest.fixture
-def workspace_case(ledger_case, native_owner, monkeypatch):
+def workspace_case(native_owner, no_live, monkeypatch):
     from dify_agent.protocol.execution_binding import CreateExecutionBindingResponse
 
     from extensions.ext_database import db
     from libs.key_providers import generate_key_pair
     from models.account import Tenant
 
-    c = ledger_case
+    # This specialized fixture owns its key and custom C03 context initialization.
+    c = raw_ledger_case(native_owner, no_live)
     _, _, app, workflow, _, _ = native_owner
     assert app.id
     assert workflow.id

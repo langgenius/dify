@@ -431,14 +431,24 @@ def test_actual_child_permission_revocation_blocks_root_public_receipt(console_c
 def test_generation_changes_after_protected_read_cannot_write_grant(pending_console, monkeypatch):
     from sqlalchemy import func
 
-    from models.dify_builder_native_tests import NativeEffectGrant, NativeTestScope
+    from models.dify_builder import DifyBuilderExecutionRequest
+    from models.dify_builder_native_tests import NativeEffectGrant, NativeInvocationState
 
     c = pending_console
     original = c.api.authorization.decide
 
     def changed_generation(**kwargs):
+        ref = kwargs["pending_guard"].resolved.ref
         with c.factory.begin() as session:
-            session.get(NativeTestScope, c.ref.request_id).generation += 1
+            state = session.scalar(
+                select(NativeInvocationState).where(
+                    NativeInvocationState.tenant_id == c.ledger.actor.tenant_id,
+                    NativeInvocationState.request_id == ref.request_id,
+                    NativeInvocationState.invocation_id == ref.invocation_id,
+                )
+            )
+            assert state is not None
+            state.generation += 1
         return original(**kwargs)
 
     monkeypatch.setattr(c.api.authorization, "decide", changed_generation)
@@ -452,6 +462,8 @@ def test_generation_changes_after_protected_read_cannot_write_grant(pending_cons
             )
             == 0
         )
+        assert session.get(DifyBuilderExecutionRequest, c.ref.request_id).observations == []
+    assert c.ledger.dispatched_attempt_count() == 0
 
 
 def test_auth_start_persists_compiled_context_and_replays_without_second_admission(console_case, monkeypatch):
@@ -866,8 +878,14 @@ def test_concurrent_decisions_return_canonical_saved_receipt(console_case, secon
     from tests.test_containers_integration_tests.core.workflow.test_builder_native_continuation import _child_case
 
     c = console_case
+    _, approval_child = _child_case(c)
     _, sibling = _child_case(c)
-    effect, item = _prepare_approval(c, c.ref, c.ledger.intent)
+    # A waiting root fences every descendant. Independent children preserve the
+    # running controlling root while the second snapshot gains a sibling wait.
+    effect = c.ledger.intent.model_copy(
+        update={"key": c.ledger.intent.key.model_copy(update={"invocation_id": approval_child.invocation_id})}
+    )
+    effect, item = _prepare_approval(c, approval_child, effect)
     with c.factory() as session:
         session_id = session.get(DifyBuilderExecutionRequest, c.ref.request_id).session_id
     ctx = multiprocessing.get_context("spawn")
