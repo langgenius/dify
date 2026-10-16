@@ -5,7 +5,10 @@ import type { TracingResource } from './resource'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
+import { selectAgentTracingEnabled } from './capabilities'
 import { ProviderCapabilities } from './provider-capabilities'
 import { tracingProviders } from './providers'
 import { usesAgentTracePipeline } from './resource'
@@ -39,6 +42,9 @@ export function ProviderPanel({
   onChoose,
 }: ProviderPanelProps) {
   const { t } = useTranslation(['app', 'common'])
+  const { data: agentTracingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectAgentTracingEnabled }),
+  )
   const iconClassName = tracingProviders[type].panelIcon
   const hasConfigured = !!config
 
@@ -105,7 +111,7 @@ export function ProviderPanel({
       <div className="mt-2 system-xs-regular text-text-tertiary">
         {t(($) => $[`${I18N_PREFIX}.${type}.description`], { ns: 'app' })}
       </div>
-      {isChosen && usesAgentTracePipeline(resource) && (
+      {isChosen && usesAgentTracePipeline(resource) && agentTracingEnabled && (
         // Sits above the card-wide selection button, like the card actions.
         <div className="relative">
           <ProviderCapabilities resource={resource} provider={type} />

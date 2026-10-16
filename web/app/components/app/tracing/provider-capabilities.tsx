@@ -64,8 +64,6 @@ export function ProviderCapabilities({
   }
 
   const support = capabilities.data
-  // Provider support describes Agent tracing, which this deployment does not run.
-  if (!support.api_collection_enabled) return null
   const unsupportedCount = capabilityKeys.filter((key) => !support[key]).length
 
   return (
