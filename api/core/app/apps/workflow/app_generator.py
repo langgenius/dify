@@ -1067,7 +1067,25 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
         except BaseException:
             exit_kind = "failed"
-            raise
+            if native_host is None:
+                raise
+            # Scope entry itself can fail before the inner publisher exists.
+            # A failed guard must not project another payload. Close the listener
+            # segment only; physical cleanup remains owned by the host/reader.
+            from core.app.apps.execution_coordinator import AppExecutionState
+
+            native_host.mark_unknown()
+            try:
+                from libs.sensitive_http_telemetry import sensitive_http_telemetry
+                from services.dify_builder.native_testing.context_runtime import NATIVE_LOG_EMITTERS
+
+                # Scope entry/exit already restored the worker ContextVars.
+                # Listener cache cleanup can log swallowed Redis failures, so
+                # protect it independently of the now-failed observation guard.
+                with sensitive_http_telemetry(additional_emitters=NATIVE_LOG_EMITTERS):
+                    queue_manager.stop_listen(execution_state=AppExecutionState.TERMINAL)
+            except BaseException:
+                raise NativeObservationError() from None
         finally:
             if native_host is not None:
                 native_host.worker_finished(worker=threading.current_thread(), exit_kind=exit_kind)

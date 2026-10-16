@@ -367,14 +367,18 @@ def test_admitted_native_gateway_retains_rate_release_until_host_cleanup(owned, 
 
 @pytest.mark.parametrize("refusal", ["reload", "inputs"])
 def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setup(owned, monkeypatch, refusal):
+    _worker_refusal_case(owned, monkeypatch, refusal=refusal, redis_failure=False)
+
+
+def _worker_refusal_case(owned, monkeypatch, *, refusal, redis_failure):
     import contextvars
-    from contextlib import nullcontext
 
     from core.app.apps import base_app_queue_manager
     from core.app.apps.execution_coordinator import AppExecutionState
     from core.app.apps.workflow import app_generator
     from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
     from core.app.entities.queue_entities import QueueErrorEvent
+    from flask import Flask
     from models.account import Account
 
     factory, actor, app, workflow, _, _ = owned
@@ -392,6 +396,18 @@ def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setu
         }
     )
     host, bridge, state, prepare = native_host_fixture(context)
+    from types import SimpleNamespace
+
+    from tests.unit_tests.services.dify_builder.native_testing.test_native_observation_wiring import (
+        bind_component_observation,
+        protect_logs,
+    )
+
+    # Structural component guard only: this fixture supplies no persisted
+    # HTTP profile, SQL claim, transport or production qualification proof.
+    guard = bind_component_observation(SimpleNamespace(host=host), monkeypatch)
+    output = protect_logs(monkeypatch)
+    state.load_context.reset_mock()
     generator = app_generator.WorkflowAppGenerator()
     launch = Mock()
     monkeypatch.setattr(generator, "_generate", launch)
@@ -412,16 +428,24 @@ def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setu
         native_host=host,
     )
     entity = launch.call_args.kwargs["application_generate_entity"]
-    assert state.load_context.call_count == 2
+    assert state.load_context.call_count >= 2
     assert prepare.call_count == 1
     if refusal == "reload":
+        # Revoke before actual worker scope entry, including its current-owner read.
         state.load_context.side_effect = RuntimeError("private revoked credential")
         reason = "native_context_unavailable"
     else:
         prepare.side_effect = NativeContextUnavailable("native_input_adapter_unavailable")
         reason = "native_input_adapter_unavailable"
-    monkeypatch.setattr(base_app_queue_manager, "redis_client", Mock())
-    queue = WorkflowAppQueueManager(entity.task_id, actor.account_id, entity.invoke_from, "workflow")
+    redis_port = Mock()
+    if redis_failure:
+        from redis.exceptions import RedisError
+
+        redis_port.delete.side_effect = RedisError("private-redis-delete-canary")
+    monkeypatch.setattr(base_app_queue_manager, "redis_client", redis_port)
+    queue = WorkflowAppQueueManager(
+        entity.task_id, actor.account_id, entity.invoke_from, "workflow", native_observation=guard
+    )
     from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
     from core.repositories.sqlalchemy_workflow_node_execution_repository import (
         SQLAlchemyWorkflowNodeExecutionRepository,
@@ -441,27 +465,36 @@ def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setu
         node_repository=node_repo,
     )
     monkeypatch.setattr(queue, "_is_stopped", lambda: False)
-    monkeypatch.setattr(app_generator, "preserve_flask_contexts", lambda *_args, **_kwargs: nullcontext())
     eager = Mock(side_effect=AssertionError("ordinary SQL/setup"))
     runner = Mock(side_effect=AssertionError("ordinary runner"))
     monkeypatch.setattr(app_generator.session_factory, "create_session", eager)
     monkeypatch.setattr(app_generator, "WorkflowAppRunner", runner)
     from threading import Thread
 
-    worker = Thread(
-        target=generator._generate_worker,
-        kwargs={
-            "flask_app": Mock(),
-            "application_generate_entity": entity,
-            "queue_manager": queue,
-            "context": contextvars.copy_context(),
-            "variable_loader": Mock(),
-            "workflow_execution_repository": workflow_repo,
-            "workflow_node_execution_repository": node_repo,
-            "native_runtime": bridge,
-            "native_host": host,
-        },
-    )
+    worker_arguments = {
+        "flask_app": Flask(__name__),
+        "application_generate_entity": entity,
+        "queue_manager": queue,
+        "context": contextvars.copy_context(),
+        "variable_loader": Mock(),
+        "workflow_execution_repository": workflow_repo,
+        "workflow_node_execution_repository": node_repo,
+        "native_runtime": bridge,
+        "native_host": host,
+    }
+    restored_context = []
+
+    def run_worker():
+        import logging
+
+        from libs.sensitive_http_telemetry import _sensitive_http
+        from services.dify_builder.native_testing.context_runtime import current_native_observation
+
+        generator._generate_worker(**worker_arguments)
+        restored_context.append((_sensitive_http.get(), current_native_observation()))
+        logging.getLogger("core.app.apps.base_app_queue_manager").warning("ordinary-after-native-worker")
+
+    worker = Thread(target=run_worker)
     # This direct worker refusal uses the actual host's bound generation and
     # owned Thread start/finally; fixture SQL/Redis ports remain unqualified.
     host.start_worker(worker=worker)
@@ -469,12 +502,33 @@ def test_in_process_worker_refusal_terminates_native_queue_without_ordinary_setu
     assert not worker.is_alive()
     assert queue.execution_state is AppExecutionState.TERMINAL
     messages = list(queue.listen())
-    assert len(messages) == 1
-    assert isinstance(messages[0].event, QueueErrorEvent)
-    assert isinstance(messages[0].event.error, NativeContextUnavailable)
-    assert str(messages[0].event.error) == reason
+    if refusal == "reload":
+        # A failed guard cannot safely project a new queue payload. Listener
+        # termination and unknown ownership do not acknowledge physical cleanup.
+        assert messages == []
+        assert host.lifetime.unknown
+        with pytest.raises(ValueError):
+            host.lifetime.consume_cleanup(
+                ref=context.ref, generation=context.generation, dispatch_id=host.lifetime.dispatch_id
+            )
+    else:
+        assert len(messages) == 1
+        assert isinstance(messages[0].event, QueueErrorEvent)
+        assert isinstance(messages[0].event.error, str)
+        assert str(messages[0].event.error) == guard.error(NativeContextUnavailable(reason))
+        assert "private revoked credential" not in str(messages[0].event.error)
+    assert restored_context == [(False, None)]
+    assert "ordinary-after-native-worker" in output.getvalue()
+    assert "private revoked credential" not in output.getvalue()
+    assert "private-redis-delete-canary" not in output.getvalue()
+    assert entity.task_id not in output.getvalue()
+    assert "Failed to clear task belong cache" not in output.getvalue()
     eager.assert_not_called()
     runner.assert_not_called()
+
+
+def test_early_worker_revocation_redis_cleanup_cannot_log_private_payload(owned, monkeypatch):
+    _worker_refusal_case(owned, monkeypatch, refusal="reload", redis_failure=True)
 
 
 @pytest.mark.parametrize("invalid_host", [None, object()])
