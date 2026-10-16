@@ -4,11 +4,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
-import { useStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
@@ -26,7 +27,7 @@ const Publisher = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const canPipelineRelease = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
   const docLink = useDocLink()
-  const pipelineId = useStore((s) => s.pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
   const { mutateAsync: publishAsCustomizedPipeline } = usePublishAsCustomizedPipeline()
   const invalidCustomizedTemplateList = useInvalidCustomizedTemplateList()
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =

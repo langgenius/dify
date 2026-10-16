@@ -1,5 +1,5 @@
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useChat } from '../../hooks'
 
 const mockHandleRun = vi.fn()
@@ -19,7 +19,7 @@ vi.mock('@/service/base', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useInvalidAllLastRun: () => mockInvalidAllLastRun,
+  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -78,18 +78,24 @@ describe('workflow debug useChat – opening statement stability', () => {
   })
 
   it('should return empty chatList when config has no opening_statement', () => {
-    const { result } = renderHook(() => useChat({}))
+    const { result } = renderHook(() => useChat({}), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     expect(result.current.chatList).toEqual([])
   })
 
   it('should return empty chatList when opening_statement is an empty string', () => {
-    const { result } = renderHook(() => useChat({ opening_statement: '' }))
+    const { result } = renderHook(() => useChat({ opening_statement: '' }), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     expect(result.current.chatList).toEqual([])
   })
 
   it('should use stable id "opening-statement" instead of Date.now()', () => {
     const config = { opening_statement: 'Welcome!' }
-    const { result } = renderHook(() => useChat(config))
+    const { result } = renderHook(() => useChat(config), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     expect(result.current.chatList[0]!.id).toBe('opening-statement')
   })
 
@@ -101,6 +107,7 @@ describe('workflow debug useChat – opening statement stability', () => {
     const formSettings = { inputs: { name: 'Alice' }, inputsForm: [] }
 
     const { result, rerender } = renderHook(({ fs }) => useChat(config, fs), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       initialProps: { fs: formSettings },
     })
 
@@ -120,6 +127,7 @@ describe('workflow debug useChat – opening statement stability', () => {
     }
 
     const { result, rerender } = renderHook(({ fs }) => useChat(config, fs), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
     })
 
@@ -150,7 +158,10 @@ describe('workflow debug useChat – opening statement stability', () => {
 
     const { result, rerender } = renderHook(
       ({ cfg }) => useChat(cfg, undefined, prevChatTree as ChatItemInTree[]),
-      { initialProps: { cfg: config } },
+      {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        initialProps: { cfg: config },
+      },
     )
 
     const openerBefore = result.current.chatList[0]
@@ -167,14 +178,18 @@ describe('workflow debug useChat – opening statement stability', () => {
       opening_statement: 'Welcome!',
       suggested_questions: ['How are you?', 'What can you do?'],
     }
-    const { result } = renderHook(() => useChat(config))
+    const { result } = renderHook(() => useChat(config), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const opener = result.current.chatList[0]
     expect(opener!.suggestedQuestions).toEqual(['How are you?', 'What can you do?'])
   })
 
   it('should not include suggestedQuestions when config has none', () => {
     const config = { opening_statement: 'Welcome!' }
-    const { result } = renderHook(() => useChat(config))
+    const { result } = renderHook(() => useChat(config), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const opener = result.current.chatList[0]
     expect(opener!.suggestedQuestions).toBeUndefined()
   })

@@ -5,7 +5,6 @@ import type { Shape } from '../store/workflow'
 import { act, screen } from '@testing-library/react'
 import * as React from 'react'
 import { useNodes } from 'reactflow'
-import { FlowType } from '@/types/common'
 import { useHooksStore } from '../hooks-store/store'
 import { useStore, useWorkflowStore } from '../store/workflow'
 import { createNode } from './fixtures'
@@ -43,8 +42,12 @@ function StoreWriter() {
 }
 
 function HooksStoreReader() {
-  const flowId = useHooksStore((s) => s.configsMap?.flowId ?? 'none')
-  return React.createElement('div', { 'data-testid': 'hooks-reader' }, flowId)
+  const fileSettings = useHooksStore((s) => s.fileSettings)
+  return React.createElement(
+    'div',
+    { 'data-testid': 'hooks-reader' },
+    fileSettings ? 'configured' : 'none',
+  )
 }
 
 function NodeRenderer(props: { id: string; data: { title: string }; selected?: boolean }) {
@@ -104,11 +107,12 @@ describe('renderWorkflowComponent', () => {
 
   it('should provide HooksStoreContext when hooksStoreProps given', () => {
     renderWorkflowComponent(React.createElement(HooksStoreReader), {
+      resource: { kind: 'app' as const, appId: 'test-123', mode: 'workflow' as const },
       hooksStoreProps: {
-        configsMap: { flowId: 'test-123', flowType: FlowType.appFlow, fileSettings: {} },
+        fileSettings: {},
       },
     })
-    expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('test-123')
+    expect(screen.getByTestId('hooks-reader'))!.toHaveTextContent('configured')
   })
 
   it('should provide HooksStoreContext with default store', () => {

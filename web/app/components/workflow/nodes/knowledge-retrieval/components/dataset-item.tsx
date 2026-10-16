@@ -87,13 +87,7 @@ const DatasetItem: FC<Props> = ({
       }`}
     >
       <div className="flex w-0 grow items-center space-x-1.5">
-        <AppIcon
-          size="tiny"
-          iconType={iconInfo.icon_type}
-          icon={iconInfo.icon}
-          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
-          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
-        />
+        <AppIcon size="tiny" icon={iconInfo} />
         <div className="w-0 grow truncate system-sm-medium text-text-secondary">{payload.name}</div>
       </div>
       {!readonly && (

@@ -1,17 +1,19 @@
 import type { CommonNodeType, Node, OnSelectBlock } from '@/app/components/workflow/types'
 import { PopoverClose, PopoverPopup, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { intersection } from 'es-toolkit/array'
+import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BlockSelectorContent } from '@/app/components/workflow/block-selector'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import {
+  editorResourceKindAtom,
+  isChatflowAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
-import { FlowType } from '@/types/common'
 import { useAvailableBlocks } from '../hooks/use-available-blocks'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
-import { useIsChatMode } from '../hooks/use-workflow'
 
 type ChangeBlockPopupProps = {
   nodeId: string
@@ -35,15 +37,15 @@ export function ChangeBlockPopup({
     nodeCatalogType,
     nodeData.isInIteration || nodeData.isInLoop,
   )
-  const isChatMode = useIsChatMode()
-  const flowType = useHooksStore((s) => s.configsMap?.flowType)
+  const isChatflow = useAtomValue(isChatflowAtom)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const nodes = useNodes()
   const hasStartNode = useMemo(() => {
     return nodes.some((n) => (n.data as CommonNodeType | undefined)?.type === BlockEnum.Start)
   }, [nodes])
   const showStartTab =
-    flowType !== FlowType.ragPipeline &&
-    (!isChatMode || nodeData.type === BlockEnum.Start || !hasStartNode)
+    resourceKind !== 'knowledge-pipeline' &&
+    (!isChatflow || nodeData.type === BlockEnum.Start || !hasStartNode)
   const ignoreNodeIds = useMemo(() => {
     if (isTriggerNode(nodeData.type as BlockEnum) || nodeData.type === BlockEnum.Start)
       return [nodeId]

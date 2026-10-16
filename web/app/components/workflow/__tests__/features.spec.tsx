@@ -35,7 +35,7 @@ vi.mock('../hooks/use-workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
   return {
     ...actual,
-    useIsChatMode: () => mockIsChatMode,
+
     useNodesReadOnly: () => ({
       nodesReadOnly: mockNodesReadOnly,
     }),
@@ -229,4 +229,11 @@ describe('Features', () => {
       })
     })
   })
+})
+
+vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
+  const { atom } = await import('jotai')
+  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

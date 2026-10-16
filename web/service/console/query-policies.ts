@@ -433,6 +433,67 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
         byAppId: {
+          trace: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.trace.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+          },
+          traceConfig: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                      input: {
+                        params: variables.params,
+                        query: { tracing_provider: variables.body.tracing_provider },
+                      },
+                    }),
+                  })
+                },
+              },
+            },
+            patch: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                      input: {
+                        params: variables.params,
+                        query: { tracing_provider: variables.body.tracing_provider },
+                      },
+                    }),
+                  })
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.traceConfig.get.queryKey({
+                      input: {
+                        params: variables.params,
+                        query: { tracing_provider: variables.query.tracing_provider },
+                      },
+                    }),
+                  })
+                },
+              },
+            },
+          },
           // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
           apiEnable: {
             post: {

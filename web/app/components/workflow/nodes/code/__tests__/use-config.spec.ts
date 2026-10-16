@@ -1,6 +1,7 @@
 import type { CodeNodeType, OutputVar } from '../types'
 import type { Var, Variable } from '@/app/components/workflow/types'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -162,7 +163,9 @@ describe('code/use-config', () => {
       outputs: {},
     })
 
-    const { result } = renderHook(() => useConfig('code-node', currentInputs))
+    const { result } = renderHook(() => useConfig('code-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     await waitFor(() => {
       expect(mockSetInputs).toHaveBeenCalledWith(
@@ -185,61 +188,67 @@ describe('code/use-config', () => {
     expect(result.current.filterVar({ type: VarType.secret } as Var)).toBe(true)
   })
 
-  it('fetches app and pipeline defaults, switches language, and updates code and output vars together', async () => {
-    workflowStoreState.appId = 'app-1'
-    workflowStoreState.pipelineId = 'pipeline-1'
+  it.each(['app', 'knowledge-pipeline'] as const)(
+    'loads %s defaults and updates code with its variables',
+    async (kind) => {
+      workflowStoreState.appId = 'app-1'
+      workflowStoreState.pipelineId = 'pipeline-1'
 
-    const { result } = renderHook(() => useConfig('code-node', currentInputs))
+      const { result } = renderHook(() => useConfig('code-node', currentInputs), {
+        resource:
+          kind === 'app'
+            ? { kind, appId: 'app-1', mode: 'workflow' }
+            : { kind, pipelineId: 'pipeline-1' },
+      })
 
-    await waitFor(() => {
-      expect(mockFetchNodeDefault).toHaveBeenCalledWith('app-1', BlockEnum.Code, {
-        code_language: CodeLanguage.javascript,
+      const fetchDefaults = kind === 'app' ? mockFetchNodeDefault : mockFetchPipelineNodeDefault
+      const otherFetch = kind === 'app' ? mockFetchPipelineNodeDefault : mockFetchNodeDefault
+      const resourceId = kind === 'app' ? 'app-1' : 'pipeline-1'
+      await waitFor(() => {
+        expect(fetchDefaults).toHaveBeenCalledWith(resourceId, BlockEnum.Code, {
+          code_language: CodeLanguage.javascript,
+        })
+        expect(fetchDefaults).toHaveBeenCalledWith(resourceId, BlockEnum.Code, {
+          code_language: CodeLanguage.python3,
+        })
       })
-      expect(mockFetchNodeDefault).toHaveBeenCalledWith('app-1', BlockEnum.Code, {
-        code_language: CodeLanguage.python3,
-      })
-      expect(mockFetchPipelineNodeDefault).toHaveBeenCalledWith('pipeline-1', BlockEnum.Code, {
-        code_language: CodeLanguage.javascript,
-      })
-      expect(mockFetchPipelineNodeDefault).toHaveBeenCalledWith('pipeline-1', BlockEnum.Code, {
-        code_language: CodeLanguage.python3,
-      })
-    })
+      expect(otherFetch).not.toHaveBeenCalled()
 
-    mockSetInputs.mockClear()
+      mockSetInputs.mockClear()
 
-    act(() => {
-      result.current.handleCodeLanguageChange(CodeLanguage.python3)
-      result.current.handleCodeChange('function main({ bar }) { return { result: bar } }')
-      result.current.handleCodeAndVarsChange(
-        'function main({ amount }) { return { total: amount } }',
-        [createVariable('amount', VarType.number)],
-        createOutputs('total', VarType.number),
+      act(() => {
+        result.current.handleCodeLanguageChange(CodeLanguage.python3)
+        result.current.handleCodeChange('function main({ bar }) { return { result: bar } }')
+        result.current.handleCodeAndVarsChange(
+          'function main({ amount }) { return { total: amount } }',
+          [createVariable('amount', VarType.number)],
+          createOutputs('total', VarType.number),
+        )
+      })
+
+      expect(mockSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code_language: CodeLanguage.python3,
+          code: pythonConfig.code,
+          variables: pythonConfig.variables,
+          outputs: pythonConfig.outputs,
+        }),
       )
-    })
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code_language: CodeLanguage.python3,
-        code: pythonConfig.code,
-        variables: pythonConfig.variables,
-        outputs: pythonConfig.outputs,
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code: 'function main({ bar }) { return { result: bar } }',
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code: 'function main({ amount }) { return { total: amount } }',
-        variables: [expect.objectContaining({ variable: 'amount' })],
-        outputs: createOutputs('total', VarType.number),
-      }),
-    )
-    expect(result.current.outputKeyOrders).toEqual(['total'])
-  })
+      expect(mockSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'function main({ bar }) { return { result: bar } }',
+        }),
+      )
+      expect(mockSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'function main({ amount }) { return { total: amount } }',
+          variables: [expect.objectContaining({ variable: 'amount' })],
+          outputs: createOutputs('total', VarType.number),
+        }),
+      )
+      expect(result.current.outputKeyOrders).toEqual(['total'])
+    },
+  )
 
   it('syncs javascript and python function signatures and keeps json code unchanged', () => {
     currentInputs = createData({
@@ -248,7 +257,9 @@ describe('code/use-config', () => {
       variables: [createVariable('foo'), createVariable('bar')],
     })
 
-    const { result, rerender } = renderHook(() => useConfig('code-node', currentInputs))
+    const { result, rerender } = renderHook(() => useConfig('code-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     act(() => {
       result.current.handleSyncFunctionSignature()
@@ -320,7 +331,9 @@ describe('code/use-config', () => {
     workflowStoreState.appId = undefined
     workflowStoreState.pipelineId = undefined
 
-    const { result } = renderHook(() => useConfig('code-node', currentInputs))
+    const { result } = renderHook(() => useConfig('code-node', currentInputs), {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
 
     await waitFor(() => {
       expect(result.current.outputKeyOrders).toEqual(['summary', 'count'])

@@ -3,6 +3,7 @@ import type {
   DeletedTool,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigurationPublishConfig } from './types'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Collection } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
 import type { AnnotationReplyConfig, DatasetConfigs, ModelConfig } from '@/models/debug'
@@ -12,7 +13,7 @@ import {
 } from '@dify/contracts/api/console/apps/zod.gen'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING } from '@/config'
 import { PromptMode } from '@/models/debug'
-import { AgentStrategy, AppModeEnum } from '@/types/app'
+import { AgentStrategy } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { matchesProviderReference } from '@/utils/provider-reference'
@@ -50,7 +51,7 @@ function buildPublishedModelConfig({
   backendModelConfig: AppModelConfigResponse
   collectionList: Collection[]
   deletedTools?: DeletedTool[]
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   nextDataSets: DataSet[]
 }): ModelConfig {
   const model = backendModelConfig.model
@@ -107,7 +108,7 @@ function buildPublishedModelConfig({
     external_data_tools: externalDataTools,
     dataSets: nextDataSets,
     agentConfig:
-      mode === AppModeEnum.AGENT_CHAT
+      mode === 'agent-chat'
         ? {
             ...backendModelConfig.agent_mode,
             enabled: true,
@@ -170,7 +171,7 @@ export function buildPublishedConfig({
   collectionList: Collection[]
   datasetConfigs: DatasetConfigs
   deletedTools?: DeletedTool[]
-  mode: AppModeEnum
+  mode: ConfigurationAppMode
   nextDataSets: DataSet[]
 }): ConfigurationPublishConfig {
   const modelConfig = buildPublishedModelConfig({

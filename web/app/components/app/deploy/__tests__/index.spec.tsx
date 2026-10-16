@@ -27,7 +27,12 @@ import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
 } from '@/service/workflow-queries'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedAppDetail,
+} from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import AppDeploy from '..'
 import { EnvironmentTable } from '../environment-table'
@@ -684,6 +689,8 @@ const mockBuiltInEnvironment = vi.hoisted(() => {
   }
 })
 
+let appPermissionKeys: string[] = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
+
 function render(
   ui: ReactElement,
   {
@@ -733,6 +740,14 @@ function render(
     ],
   })
   seedWorkflowDeploymentConfigurationQueries(queryClient)
+  seedAppDetail(
+    queryClient,
+    createAppDetailFixture({
+      ...mockBuiltInEnvironment.appDetail,
+      mode: 'workflow',
+      permission_keys: appPermissionKeys,
+    }),
+  )
 
   return renderWithConsoleQuery(ui, { queryClient })
 }
@@ -752,8 +767,6 @@ function environmentTableProps(
   }
 }
 
-let appPermissionKeys: string[] = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
-let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
@@ -828,17 +841,9 @@ vi.mock('@/service/use-tools', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    const appDetail = appDetailAvailable
-      ? {
-          ...mockBuiltInEnvironment.appDetail,
-          permission_keys: appPermissionKeys,
-        }
-      : undefined
-
-    return selector({ appDetail })
-  },
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useParams: () => ({ appId: APP_ID }),
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -865,7 +870,6 @@ describe('AppDeploy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appPermissionKeys = [AppACLPermission.AccessPointView, AppACLPermission.Deploy]
-    appDetailAvailable = true
     mockBuiltInEnvironment.appDetail.enable_api = false
     mockBuiltInEnvironment.appDetail.enable_site = true
     mockBuiltInEnvironment.mcpServerDetail.status = 'active'
@@ -1125,17 +1129,6 @@ describe('AppDeploy', () => {
       screen.getByRole('region', { name: 'deployments.studio.builtInTitle' }),
     )
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by --')).toBeInTheDocument()
-  })
-
-  it('shows loading while the app detail is unavailable', () => {
-    appDetailAvailable = false
-
-    render(<AppDeploy />)
-
-    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', { name: 'common.appMenus.deploy' }),
-    ).not.toBeInTheDocument()
   })
 
   it('does not render deployment controls without app deploy ACL permission', () => {

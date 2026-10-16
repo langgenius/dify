@@ -92,8 +92,11 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
       iconContent = (
         <AppIcon
           className={cn('size-3.5 size-full object-cover', notSuccess && 'opacity-50')}
-          icon={icon?.content}
-          background={icon?.background}
+          icon={{
+            icon_type: 'emoji',
+            icon: icon?.content,
+            icon_background: icon?.background,
+          }}
         />
       )
     }

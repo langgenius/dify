@@ -75,10 +75,7 @@ def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[
     """
     normalized_parameters = dict(completion_params)
     stop_value = normalized_parameters.pop("stop", [])
-    if isinstance(stop_value, list) and all(isinstance(item, str) for item in stop_value):
-        stop = stop_value
-    else:
-        stop = []
+    stop = stop_value if isinstance(stop_value, list) and all(isinstance(item, str) for item in stop_value) else []
 
     for token_limit_key in ("max_tokens", "max_output_tokens"):
         token_limit = normalized_parameters.get(token_limit_key)
@@ -276,10 +273,7 @@ class LLMGenerator:
                 answer = query
             else:
                 output = result_dict.get("Your Output")
-                if isinstance(output, str) and output.strip():
-                    answer = output.strip()
-                else:
-                    answer = query
+                answer = output.strip() if isinstance(output, str) and output.strip() else query
 
         name = answer.strip()
 

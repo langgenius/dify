@@ -1,7 +1,7 @@
 import type { WebhookTriggerNodeType } from '../types'
+import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
 import { useConfig } from '../use-config'
 
@@ -43,13 +43,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   ...createNodeCrudModuleMock<WebhookTriggerNodeType>(mockSetInputs),
 }))
 
-const routeParams = vi.hoisted(() => ({ appId: 'app-1' as string | undefined }))
 const mockRequest = vi.hoisted(() => vi.fn())
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useParams: () => routeParams,
-}))
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
@@ -77,7 +71,6 @@ const createPayload = (
 describe('useConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    routeParams.appId = 'app-1'
     mockRequest.mockReset()
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
     mockIsVarUsedInNodes.mockReturnValue(false)
@@ -240,11 +233,15 @@ describe('useConfig', () => {
     expect(mockRequest).toHaveBeenCalledTimes(2)
   })
 
-  it('should expose readonly state and skip url generation without app id', async () => {
+  it('should expose readonly state and skip url generation in a snippet', async () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
-    routeParams.appId = undefined
 
-    const { result } = renderHookWithConsoleQuery(() => useConfig('webhook-node', createPayload()))
+    const { result } = renderHookWithConsoleQuery(
+      () => useConfig('webhook-node', createPayload()),
+      {
+        resource: { kind: 'snippet', snippetId: 'snippet-1' },
+      },
+    )
 
     expect(result.current.readOnly).toBe(true)
 

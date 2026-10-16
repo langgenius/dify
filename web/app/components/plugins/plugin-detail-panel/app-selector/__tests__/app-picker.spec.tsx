@@ -2,7 +2,6 @@ import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { AppModeEnum } from '@/types/app'
 import { AppPicker } from '../app-picker'
 
 vi.mock('@/app/components/base/app-icon', () => ({
@@ -12,7 +11,7 @@ vi.mock('@/app/components/base/app-icon', () => ({
 const app = {
   id: 'app-1',
   name: 'Workflow App',
-  mode: AppModeEnum.WORKFLOW,
+  mode: 'workflow' as const,
   icon_type: 'emoji',
   icon: 'W',
   icon_background: '#FFFFFF',

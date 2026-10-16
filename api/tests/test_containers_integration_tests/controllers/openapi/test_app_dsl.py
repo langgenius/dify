@@ -12,7 +12,7 @@ from faker import Faker
 from flask import Flask
 from sqlalchemy.orm import Session
 
-from controllers.common.errors import NotFoundError
+from controllers.openapi._errors import DraftNotFound
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
 from controllers.openapi.app_dsl import (
     AppDslCheckDependenciesApi,
@@ -242,7 +242,7 @@ class TestDslExport:
         self, app: Flask, db_session_with_containers: Session
     ) -> None:
         """A workflow app with no draft workflow can't be exported → the service
-        raises WorkflowNotFoundError, which the controller maps to 404."""
+        raises WorkflowNotFoundError, which the controller maps to 404 draft_not_found."""
         app_model = App(
             id=str(uuid4()),
             tenant_id=str(uuid4()),
@@ -257,7 +257,7 @@ class TestDslExport:
         api = AppDslExportApi()
         with (
             app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"),
-            pytest.raises(NotFoundError, match="Missing draft workflow configuration") as exc_info,
+            pytest.raises(DraftNotFound) as exc_info,
         ):
             cast(_Endpoint[tuple[AppDslExportResponse, int]], api.get).__handler__(
                 api,

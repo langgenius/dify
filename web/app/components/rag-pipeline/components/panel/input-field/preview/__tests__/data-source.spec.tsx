@@ -1,5 +1,6 @@
 import type { Datasource } from '../../../test-run/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import DataSource from '../data-source'
 
 const { mockOnSelect, mockUseDraftPipelinePreProcessingParams } = vi.hoisted(() => ({
@@ -48,7 +49,9 @@ describe('DataSource preview', () => {
   })
 
   it('should render the datasource selection step and forward selected values', () => {
-    render(<DataSource onSelect={mockOnSelect} dataSourceNodeId="node-1" />)
+    render(<DataSource onSelect={mockOnSelect} dataSourceNodeId="node-1" />, {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    })
 
     fireEvent.click(screen.getByText('select datasource'))
 

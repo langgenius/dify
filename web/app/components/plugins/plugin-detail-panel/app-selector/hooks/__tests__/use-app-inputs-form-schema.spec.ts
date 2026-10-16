@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { AppModeEnum, Resolution } from '@/types/app'
+import { Resolution } from '@/types/app'
 import { useAppInputsFormSchema } from '../use-app-inputs-form-schema'
 
 let mockAppDetailData: Record<string, unknown> | null = null
@@ -54,7 +54,7 @@ describe('useAppInputsFormSchema', () => {
   it('should build basic app schemas and append image upload support', () => {
     mockAppDetailData = {
       id: 'app-1',
-      mode: AppModeEnum.COMPLETION,
+      mode: 'completion' as const,
       model_config: {
         user_input_form: [
           {
@@ -84,7 +84,7 @@ describe('useAppInputsFormSchema', () => {
       useAppInputsFormSchema({
         appDetail: {
           id: 'app-1',
-          mode: AppModeEnum.COMPLETION,
+          mode: 'completion' as const,
         } as never,
       }),
     )
@@ -108,7 +108,7 @@ describe('useAppInputsFormSchema', () => {
   it('should build workflow schemas from start node variables', () => {
     mockAppDetailData = {
       id: 'app-2',
-      mode: AppModeEnum.WORKFLOW,
+      mode: 'workflow' as const,
     }
     mockAppWorkflowData = {
       graph: {
@@ -134,7 +134,7 @@ describe('useAppInputsFormSchema', () => {
       useAppInputsFormSchema({
         appDetail: {
           id: 'app-2',
-          mode: AppModeEnum.WORKFLOW,
+          mode: 'workflow' as const,
         } as never,
       }),
     )
@@ -153,7 +153,7 @@ describe('useAppInputsFormSchema', () => {
       useAppInputsFormSchema({
         appDetail: {
           id: 'missing-app',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
         } as never,
       }),
     )
@@ -166,7 +166,7 @@ describe('useAppInputsFormSchema', () => {
     mockFileUploadConfigIsFetching = true
     mockAppDetailData = {
       id: 'app-1',
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: {
         user_input_form: [
           {
@@ -183,7 +183,7 @@ describe('useAppInputsFormSchema', () => {
       useAppInputsFormSchema({
         appDetail: {
           id: 'app-1',
-          mode: AppModeEnum.CHAT,
+          mode: 'chat' as const,
         } as never,
       }),
     )
@@ -203,7 +203,7 @@ describe('useAppInputsFormSchema', () => {
       useAppInputsFormSchema({
         appDetail: {
           id: 'app-2',
-          mode: AppModeEnum.WORKFLOW,
+          mode: 'workflow' as const,
         } as never,
       }),
     )
