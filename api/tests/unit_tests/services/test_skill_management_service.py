@@ -184,21 +184,29 @@ def _skill_md(name: str = "finance-sop", description: str = "Finance SOP", body:
 def test_validate_skill_name_rejects_underscores_and_double_hyphens() -> None:
     assert validate_skill_name("finance-sop") == "finance-sop"
     for bad in ["finance_sop", "finance--sop", "-finance", "finance-", "Finance", "x" * 65]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="config skill name .* must match|skill name must",
+        ):
             validate_skill_name(bad)
 
 
 def test_validate_skill_description_rejects_blank_and_long_values() -> None:
     assert validate_skill_description(" Finance SOP ") == "Finance SOP"
     for bad in ["", "   ", "x" * 1025]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=("(?:skill description must be at most 1024 characters|skill description must not be blank)"),
+        ):
             validate_skill_description(bad)
 
 
 def test_normalize_skill_file_path_rejects_escape_paths() -> None:
     assert normalize_skill_file_path("references//guide.md") == "references/guide.md"
     for bad in ["", "../x", "/etc/passwd", "a/\x00b"]:
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="(?:skill file path contains control characters|skill file path is invalid)"
+        ):
             normalize_skill_file_path(bad)
 
 

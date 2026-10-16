@@ -224,7 +224,7 @@ class TestAnnotationReplyActionStatusApi:
         api = AnnotationReplyActionStatusApi()
         handler = unwrap(api.get)
         app_model = _app()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The job does not exist\\."):
             handler(api, app_model=app_model, job_id="j1", action="enable")
 
     def test_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
