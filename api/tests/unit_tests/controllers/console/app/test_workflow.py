@@ -23,6 +23,7 @@ from graphon.variables.variables import RAGPipelineVariable
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
+from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.controllers.error_body import raised_error
@@ -168,10 +169,12 @@ def test_publish_workflow_returns_success(
         graph={"clean": "{}", "empty": None, "non-object": "[]", "invalid-json": "{"}.get(advisory, json.dumps(graph)),
     )
     if advisory == "checker-error":
-        monkeypatch.setattr(workflow_module, "validate_variable_references", Mock(side_effect=RuntimeError("checker")))
+        monkeypatch.setattr(
+            variable_reference_validator, "validate_variable_references", Mock(side_effect=RuntimeError("checker"))
+        )
     elif advisory == "formatter-error":
         monkeypatch.setattr(
-            workflow_module, "format_variable_reference_errors", Mock(side_effect=RuntimeError("format"))
+            variable_reference_validator, "format_variable_reference_errors", Mock(side_effect=RuntimeError("format"))
         )
     session = Mock()
     session.get.return_value = app_model
