@@ -5,9 +5,11 @@ receipt. Trusted composition must bind its instance-owned context and sink.
 """
 
 from collections.abc import Generator
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cache
+from sys import exc_info
 from typing import Any, Literal, Protocol, cast
 from uuid import uuid4
 
@@ -112,6 +114,16 @@ class NativeControlSink(Protocol):
 BoundaryStatus = Literal["OPEN", "CONTROL_PENDING", "WAIT_RECORDED", "STOP_RECORDED", "UNKNOWN_NONRESUMABLE"]
 
 
+class NativeNodeOwnership(Protocol):
+    """Observe actual bound node work, including synchronous control callbacks.
+
+    Composition retains the supplied node/runtime and current thread through
+    scope exit. This port grants no dispatch, checkpoint or wait authority.
+    """
+
+    def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> AbstractContextManager[None]: ...
+
+
 class BoundaryOwnerState:
     """Instance-owned in-memory facts, shared by all child frames of this owner.
 
@@ -120,13 +132,17 @@ class BoundaryOwnerState:
     consult dispatch_admissible before every new dispatch and retain/project
     UNKNOWN or STOP independently of native pause/success events. Never reopen
     this object on resume; separately admitted composition supplies a new owner.
+
+    Omitting ownership preserves isolated-component compatibility only. Future
+    host qualification requires its explicit observer and separate settlement.
     """
 
-    def __init__(self, *, ref: NativeTestContextRef) -> None:
+    def __init__(self, *, ref: NativeTestContextRef, ownership: NativeNodeOwnership | None = None) -> None:
         if type(ref) is not NativeTestContextRef:
             raise ValueError("native_control_invalid_ref")
         NativeTestContextRef.model_validate(ref.model_dump(warnings=False), strict=True)
         self.ref = ref
+        self._ownership = ownership
         self._records: list[NativeControlRecord] = []
         self._accepted: set[str] = set()
         self._reason_code: str | None = None
@@ -249,23 +265,61 @@ class _NativeControlBoundary:
             reason=SchedulingPause(message=record.carrier_ref),
         )
 
+    @contextmanager
+    def _observe_node(self, phase: Literal["run", "resume_container"]) -> Generator[bool]:
+        """Contain observer failures only, ignoring any exception suppression.
+
+        Entry is lazy and follows execution binding validation. The scope stays
+        active across yielded events and typed control/sink conversion. Exit is
+        finally-safe; an exit failure makes any earlier pause nonresumable while
+        a native exception (including GeneratorExit) keeps its exact identity.
+        """
+        ownership = self._native_control_owner._ownership
+        if ownership is None:
+            yield True
+            return
+        try:
+            scope = ownership.node_scope(node=cast(Node, self), phase=phase)
+            scope.__enter__()
+        except BaseException:
+            self._native_control_owner._unknown("native_control_observation_failed")
+            self._abort_control("native_control_observation_failed")
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            try:
+                # Explicit calls keep observer suppression/replacement from
+                # changing native control or foreign exception semantics.
+                scope.__exit__(*exc_info())
+            except BaseException:
+                self._native_control_owner._unknown("native_control_observation_failed")
+                self._abort_control("native_control_observation_failed")
+
     def run(self) -> NativeEventStream:
         execution_id = self._control_execution_id()
         if execution_id is None:
             return
-        try:
-            yield from cast(_NativeNodeDelegate, super()).run()
-        except (NativeApprovalWait, NativePolicyStop) as control:
-            yield from self._record_control(control, execution_id)
+        with self._observe_node("run") as entered:
+            if not entered:
+                return
+            try:
+                yield from cast(_NativeNodeDelegate, super()).run()
+            except (NativeApprovalWait, NativePolicyStop) as control:
+                yield from self._record_control(control, execution_id)
 
     def resume_container(self, *, result: ContainerRunResult, started_at: datetime) -> NativeEventStream:
         execution_id = self._control_execution_id()
         if execution_id is None:
             return
-        try:
-            yield from cast(_NativeNodeDelegate, super()).resume_container(result=result, started_at=started_at)
-        except (NativeApprovalWait, NativePolicyStop) as control:
-            yield from self._record_control(control, execution_id)
+        with self._observe_node("resume_container") as entered:
+            if not entered:
+                return
+            try:
+                yield from cast(_NativeNodeDelegate, super()).resume_container(result=result, started_at=started_at)
+            except (NativeApprovalWait, NativePolicyStop) as control:
+                yield from self._record_control(control, execution_id)
 
 
 @cache

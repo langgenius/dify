@@ -5,9 +5,11 @@ from __future__ import annotations
 import warnings
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
-from threading import Event
-from typing import TypedDict, cast, override
+from threading import Event, Thread, current_thread
+from types import TracebackType
+from typing import Literal, TypedDict, cast, override
 
 import pytest
 from pydantic import ValidationError
@@ -27,6 +29,7 @@ from graphon.graph_events.node import NodeRunPauseRequestedEvent, NodeRunStarted
 from graphon.nodes.base.node import Node
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.limits import CodeNodeLimits
+from graphon.nodes.container_effects import IterationFrameRequest
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.iteration.iteration_node import IterationNode
 from graphon.nodes.iteration.iteration_start_node import IterationStartNode
@@ -313,9 +316,14 @@ def make_native(
     ref: NativeTestContextRef = REF,
     config: RawGraphConfig | None = None,
     runtime: GraphRuntimeState | None = None,
+    ownership: Observations | None = None,
 ) -> tuple[GraphEngine, Factory]:
     module = native_control
-    owner = module.BoundaryOwnerState(ref=ref)
+    owner = (
+        module.BoundaryOwnerState(ref=ref)
+        if ownership is None
+        else module.BoundaryOwnerState(ref=ref, ownership=ownership)
+    )
     sink = Sink(owner=owner, mode=mode)
     effects = Effects(
         owner=owner, decision=decision or ApprovalWait(pending_operation_id="private-pending"), decision_ref=ref
@@ -638,3 +646,399 @@ def test_actual_parallel_stop_or_unknown_has_priority_after_native_pause_is_obse
     assert aggregate.aborted
     assert aggregate.error is not None
     assert isinstance(events[-1], GraphRunPausedEvent)
+
+
+@dataclass(eq=False)
+class ObservedNode(AbstractContextManager[None]):
+    """Witness exact native instance and callback lifetime, never host completion."""
+
+    observations: Observations
+    node: Node
+    phase: Literal["run", "resume_container"]
+    thread: Thread = field(default_factory=current_thread)
+    execution_id: str = field(init=False)
+    runtime: GraphRuntimeState = field(init=False)
+    exception: BaseException | None = None
+
+    def __enter__(self) -> None:
+        self.execution_id = self.node.execution_id
+        self.runtime = self.node.graph_runtime_state
+        if self.observations.enter_error is not None:
+            raise self.observations.enter_error
+        self.observations.active.append(self)
+        self.observations.entered.append(self)
+
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
+    ) -> bool:
+        self.exception = exc_value
+        try:
+            if self.observations.before_exit is not None:
+                self.observations.before_exit(self)
+            if self.observations.exit_error is not None:
+                raise self.observations.exit_error
+        finally:
+            self.observations.active.remove(self)
+            self.observations.exited.append(self)
+        return self.observations.suppress
+
+
+@dataclass
+class Observations:
+    active: list[ObservedNode] = field(default_factory=list)
+    entered: list[ObservedNode] = field(default_factory=list)
+    exited: list[ObservedNode] = field(default_factory=list)
+    enter_error: BaseException | None = None
+    exit_error: BaseException | None = None
+    factory_error: BaseException | None = None
+    suppress: bool = False
+    before_exit: Callable[[ObservedNode], None] | None = None
+
+    def node_scope(self, *, node: Node, phase: Literal["run", "resume_container"]) -> AbstractContextManager[None]:
+        if self.factory_error is not None:
+            raise self.factory_error
+        return ObservedNode(self, node, phase)
+
+
+def bound_guard(factory: Factory) -> Node[BaseNodeData]:
+    direct = factory.create_node(NodeConfigDictAdapter.validate_python(factory.config["nodes"][1]))
+    direct.bind_execution_id("native-observed-execution")
+    return direct
+
+
+def test_node_observation_is_lazy_bound_and_finally_safe_on_close() -> None:
+    observations = Observations()
+    _, factory = make_native(decision=permit(), ownership=observations)
+    direct = bound_guard(factory)
+    stream = direct.run()
+    assert observations.entered == []
+    assert isinstance(next(stream), NodeRunStartedEvent)
+    (observed,) = observations.active
+    assert observed.node is direct
+    assert observed.runtime is factory.runtime
+    assert observed.thread is current_thread()
+    assert observed.execution_id == "native-observed-execution"
+    assert observed.phase == "run"
+    assert factory.effects.dispatches == 0
+    stream.close()
+    assert observations.active == []
+    assert observations.exited == [observed]
+    assert isinstance(observed.exception, GeneratorExit)
+    assert factory.owner.status == "OPEN"
+
+
+def test_unbound_node_never_enters_observation() -> None:
+    observations = Observations()
+    _, factory = make_native(ownership=observations)
+    unbound = factory.create_node(NodeConfigDictAdapter.validate_python(basic()["nodes"][1]))
+    assert list(unbound.run()) == []
+    assert observations.entered == []
+    assert factory.owner.status == "UNKNOWN_NONRESUMABLE"
+
+
+@pytest.mark.parametrize(
+    "decision", [permit(), ApprovalWait(pending_operation_id="pending"), PolicyStop(reason_code="stop")]
+)
+def test_actual_native_worker_observation_covers_sink_and_finishes(decision: EffectDecision) -> None:
+    observations = Observations()
+    native, factory = make_native(decision=decision, ownership=observations)
+    callbacks: list[ObservedNode] = []
+
+    def inspect_sink(record: NativeControlRecord) -> None:
+        observed = next(item for item in observations.active if item.node.id == record.node_id)
+        assert observed.thread is current_thread()
+        assert observed.execution_id == record.native_execution_id
+        assert observed.node is native.graph.nodes[record.node_id]
+        callbacks.append(observed)
+
+    factory.sink.before_accept = inspect_sink
+    events = list(native.run())
+    assert observations.active == []
+    assert sorted(map(id, observations.entered)) == sorted(map(id, observations.exited))
+    guard = next(item for item in observations.entered if item.node.id == "guard")
+    assert guard.node is native.graph.nodes["guard"]
+    assert guard.runtime is factory.runtime
+    assert guard.thread is not current_thread()
+    assert guard.phase == "run"
+    if isinstance(decision, DispatchPermit):
+        assert isinstance(events[-1], GraphRunSucceededEvent)
+        assert factory.effects.dispatches == 1
+        assert callbacks == []
+    else:
+        assert callbacks == [guard]
+        assert factory.effects.dispatches == 0
+        assert isinstance(
+            events[-1], GraphRunPausedEvent if isinstance(decision, ApprovalWait) else GraphRunAbortedEvent
+        )
+
+
+def test_blocked_sink_callback_remains_owned_until_actual_release() -> None:
+    observations = Observations()
+    native, factory = make_native(ownership=observations)
+    entered, release = Event(), Event()
+    seen: list[ObservedNode] = []
+
+    def block_sink(record: NativeControlRecord) -> None:
+        observed = next(item for item in observations.active if item.node.id == record.node_id)
+        assert observed.thread is current_thread()
+        seen.append(observed)
+        entered.set()
+        assert release.wait(5)
+        assert observed in observations.active
+
+    factory.sink.before_accept = block_sink
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(lambda: list(native.run()))
+        try:
+            assert entered.wait(3)
+            assert seen[0] in observations.active
+            assert seen[0] not in observations.exited
+            assert not future.done()
+            assert factory.owner.status == "CONTROL_PENDING"
+        finally:
+            release.set()
+        assert isinstance(future.result(timeout=5)[-1], GraphRunPausedEvent)
+    assert observations.active == []
+    assert seen[0] in observations.exited
+
+
+@pytest.mark.parametrize(
+    "foreign", [SystemExit("delegate-canary"), KeyboardInterrupt("delegate-canary"), BaseException("delegate-canary")]
+)
+@pytest.mark.parametrize("exit_fails", [False, True])
+def test_observer_cannot_suppress_or_replace_foreign_delegate_exception(
+    foreign: BaseException, exit_fails: bool
+) -> None:
+    observations = Observations(suppress=True, exit_error=SystemExit("observer-canary") if exit_fails else None)
+    _, factory = make_native(ownership=observations)
+    factory.effects.foreign = foreign
+    with pytest.raises(type(foreign)) as caught:
+        list(bound_guard(factory).run())
+    assert caught.value is foreign
+    assert observations.active == []
+    assert observations.exited[0].exception is foreign
+    assert factory.sink.records == []
+    assert factory.owner.status == ("UNKNOWN_NONRESUMABLE" if exit_fails else "OPEN")
+    if exit_fails:
+        assert "canary" not in str(factory.runtime.graph_execution.error)
+
+
+@pytest.mark.parametrize("stage", ["factory", "enter", "exit"])
+@pytest.mark.parametrize("error", [RuntimeError("observer-canary"), SystemExit("observer-canary")])
+def test_observer_failure_is_private_sticky_unknown_and_aborts(stage: str, error: BaseException) -> None:
+    observations = Observations()
+    setattr(observations, f"{stage}_error", error)
+    _, factory = make_native(decision=permit(), ownership=observations)
+    events = list(bound_guard(factory).run())
+    assert factory.owner.status == "UNKNOWN_NONRESUMABLE"
+    assert not factory.owner.dispatch_admissible
+    assert factory.runtime.graph_execution.aborted
+    assert "canary" not in str(factory.runtime.graph_execution.error)
+    assert factory.owner.reason_code == "native_control_observation_failed"
+    assert factory.sink.records == []
+    if stage != "exit":
+        assert events == []
+        assert factory.effects.dispatches == 0
+    else:
+        assert factory.effects.dispatches == 1
+    assert observations.active == []
+    # A later fixed diagnostic must never reopen or overwrite the first failure.
+    unbound = factory.create_node(NodeConfigDictAdapter.validate_python(basic()["nodes"][1]))
+    assert list(unbound.run()) == []
+    assert factory.owner.reason_code == "native_control_observation_failed"
+
+
+def test_observer_exit_failure_after_emitted_pause_never_leaves_resumable_owner() -> None:
+    observations = Observations(exit_error=RuntimeError("observer-canary"))
+    _, factory = make_native(ownership=observations)
+    stream = bound_guard(factory).run()
+    assert isinstance(next(stream), NodeRunStartedEvent)
+    assert isinstance(next(stream), NodeRunPauseRequestedEvent)
+    assert factory.owner.status == "WAIT_RECORDED"
+    assert len(observations.active) == 1
+    stream.close()
+    assert observations.active == []
+    assert factory.owner.status == "UNKNOWN_NONRESUMABLE"
+    assert factory.runtime.graph_execution.aborted
+    assert "canary" not in str(factory.runtime.graph_execution.error)
+
+
+@pytest.mark.parametrize("exit_fails", [False, True])
+def test_observed_ordinary_native_failure_remains_failed_and_never_waits(exit_fails: bool) -> None:
+    observations = Observations(exit_error=RuntimeError("observer-canary") if exit_fails else None)
+    _, factory = make_native(decision=permit(), config=basic(template="business-failure"), ownership=observations)
+    events = list(bound_guard(factory).run())
+    assert type(events[-1]).__name__ == "NodeRunFailedEvent"
+    assert factory.owner.status == ("UNKNOWN_NONRESUMABLE" if exit_fails else "OPEN")
+    assert factory.sink.records == []
+    assert observations.active == []
+    assert observations.exited[0].exception is None
+    if exit_fails:
+        assert factory.runtime.graph_execution.aborted
+        assert "canary" not in str(factory.runtime.graph_execution.error)
+
+
+def observed_iteration_config() -> RawGraphConfig:
+    return {
+        "nodes": [
+            node("start", "start", variables=[]),
+            node(
+                "container",
+                "iteration",
+                iterator_selector=["start", "items"],
+                output_selector=["guard", "output"],
+                start_node_id="body-start",
+                is_parallel=True,
+                parallel_nums=2,
+                error_handle_mode="terminated",
+                flatten_output=True,
+            ),
+            node("body-start", "iteration-start", iteration_id="container"),
+            node(
+                "guard",
+                "template-transform",
+                iteration_id="container",
+                template="ok",
+                variables=[{"variable": "item", "value_selector": ["container", "item"]}],
+            ),
+            node("end", "end", outputs=[{"variable": "items", "value_selector": ["container", "output"]}]),
+        ],
+        "edges": [
+            {"source": "start", "target": "container"},
+            {"source": "body-start", "target": "guard"},
+            {"source": "container", "target": "end"},
+        ],
+    }
+
+
+def test_actual_restored_iteration_observes_resume_and_child_runtime_instances() -> None:
+    config = observed_iteration_config()
+    first_observations = Observations()
+    native, first = make_native(config=config, ownership=first_observations)
+    assert isinstance(list(native.run())[-1], GraphRunPausedEvent)
+    assert first_observations.active == []
+    restored = GraphRuntimeState.from_snapshot(native.graph_runtime_state.dumps())
+    observations = Observations()
+    resumed, second = make_native(config=config, runtime=restored, decision=permit(), ownership=observations)
+    assert isinstance(list(resumed.run())[-1], GraphRunSucceededEvent)
+    assert resumed.graph_runtime_state.outputs == {"items": ["a!", "b!"]}
+    resumes = [item for item in observations.entered if item.phase == "resume_container"]
+    assert resumes
+    assert all(item.node is resumed.graph.nodes["container"] for item in resumes)
+    assert all(item.runtime is restored for item in resumes)
+    assert all(item.thread is not current_thread() for item in resumes)
+    children = [item for item in observations.entered if item.node.id == "guard"]
+    assert len(children) == 2
+    assert all(any(item.runtime is runtime for runtime in second.children) for item in children)
+    assert len({item.execution_id for item in children}) == 2
+    assert second.owner.ref is first.owner.ref
+    assert observations.active == []
+    assert sorted(map(id, observations.entered)) == sorted(map(id, observations.exited))
+
+
+def test_resume_container_is_lazy_and_owned_through_blocked_exit_callback() -> None:
+    observations = Observations()
+    _, factory = make_native(config=observed_iteration_config(), ownership=observations)
+    container = bound_guard(factory)
+    events = list(container.run())
+    frame = next(event for event in events if isinstance(event, IterationFrameRequest))
+    started_at = next(event.start_at for event in events if isinstance(event, NodeRunStartedEvent))
+    entered, release = Event(), Event()
+    blocked: list[ObservedNode] = []
+
+    def block_exit(observed: ObservedNode) -> None:
+        if observed.phase == "resume_container":
+            assert observed.thread is current_thread()
+            blocked.append(observed)
+            entered.set()
+            assert release.wait(5)
+            assert observed in observations.active
+
+    observations.before_exit = block_exit
+    stream = container.resume_container(result=frame, started_at=started_at)
+    assert len(observations.entered) == 1
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(lambda: list(stream))
+        try:
+            assert entered.wait(3)
+            assert blocked[0].node is container
+            assert blocked[0].runtime is factory.runtime
+            assert blocked[0].execution_id == "native-observed-execution"
+            assert blocked[0] in observations.active
+            assert blocked[0] not in observations.exited
+            assert not future.done()
+        finally:
+            release.set()
+        assert any(event is frame for event in future.result(timeout=5))
+    assert observations.active == []
+    assert blocked[0] in observations.exited
+
+
+@pytest.mark.parametrize("stage", ["enter", "exit"])
+def test_resume_container_observer_failure_aborts_without_resumable_acceptance(stage: str) -> None:
+    observations = Observations()
+    _, factory = make_native(config=observed_iteration_config(), ownership=observations)
+    container = bound_guard(factory)
+    initial = list(container.run())
+    frame = next(event for event in initial if isinstance(event, IterationFrameRequest))
+    started_at = next(event.start_at for event in initial if isinstance(event, NodeRunStartedEvent))
+    setattr(observations, f"{stage}_error", KeyboardInterrupt("observer-resume-canary"))
+    events = list(container.resume_container(result=frame, started_at=started_at))
+    if stage == "enter":
+        assert events == []
+    else:
+        assert any(event is frame for event in events)
+    assert factory.owner.status == "UNKNOWN_NONRESUMABLE"
+    assert factory.runtime.graph_execution.aborted
+    assert factory.sink.records == []
+    assert "canary" not in str(factory.runtime.graph_execution.error)
+    assert observations.active == []
+
+
+def test_unmarked_native_node_keeps_ordinary_behavior_without_observation() -> None:
+    observations = Observations()
+    _, original = make_native(decision=permit(), ownership=observations)
+    factory = Factory(original.config, original.runtime, original.owner, original.sink, original.effects, marked=False)
+    direct = bound_guard(factory)
+    assert type(direct) is TemplateTransformNode
+    assert type(list(direct.run())[-1]).__name__ == "NodeRunSucceededEvent"
+    assert original.effects.dispatches == 1
+    assert original.owner.status == "OPEN"
+    assert observations.entered == []
+
+
+def test_blocked_native_renderer_callback_remains_owned_until_actual_release(monkeypatch: pytest.MonkeyPatch) -> None:
+    observations = Observations()
+    native, factory = make_native(decision=permit(), ownership=observations)
+    original_render = factory.effects.render
+    entered, release = Event(), Event()
+    seen: list[ObservedNode] = []
+
+    def block_render(template: str, variables: Mapping[str, object], node_id: str) -> str:
+        observed = next(item for item in observations.active if item.node.id == node_id)
+        assert observed.thread is current_thread()
+        assert observed.node is native.graph.nodes[node_id]
+        assert observed.runtime is factory.runtime
+        seen.append(observed)
+        entered.set()
+        assert release.wait(5)
+        assert observed in observations.active
+        return original_render(template, variables, node_id)
+
+    # Only the existing synthetic I/O collaborator is instrumented. The actual
+    # Graphon node, run delegate and worker scheduling remain unchanged.
+    monkeypatch.setattr(factory.effects, "render", block_render)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(lambda: list(native.run()))
+        try:
+            assert entered.wait(3)
+            assert seen[0] in observations.active
+            assert seen[0] not in observations.exited
+            assert not future.done()
+            assert factory.effects.dispatches == 0
+        finally:
+            release.set()
+        assert isinstance(future.result(timeout=5)[-1], GraphRunSucceededEvent)
+    assert factory.effects.dispatches == 1
+    assert observations.active == []
+    assert seen[0] in observations.exited
