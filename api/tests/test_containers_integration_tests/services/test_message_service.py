@@ -207,7 +207,7 @@ class TestMessageService:
         # Create a conversation and multiple messages
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
         messages = []
-        for i in range(5):
+        for _i in range(5):
             message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
             messages.append(message)
 
@@ -314,7 +314,7 @@ class TestMessageService:
         # Create a conversation and multiple messages
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
         messages = []
-        for i in range(5):
+        for _i in range(5):
             message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
             messages.append(message)
 
@@ -348,7 +348,7 @@ class TestMessageService:
         # Create a conversation and multiple messages
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
         messages = []
-        for i in range(5):
+        for _i in range(5):
             message = self._create_test_message(db_session_with_containers, app, conversation, account, fake)
             messages.append(message)
 

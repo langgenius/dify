@@ -492,7 +492,7 @@ class TestBatchCleanDocumentTask:
         upload_files = []
 
         # Create 3 documents with segments and files
-        for i in range(3):
+        for _i in range(3):
             document = self._create_test_document(db_session_with_containers, dataset, account)
             segment = self._create_test_document_segment(db_session_with_containers, document, account)
             upload_file = self._create_test_upload_file(db_session_with_containers, account)
@@ -629,7 +629,7 @@ class TestBatchCleanDocumentTask:
 
         # Create 10 documents with segments and files (larger batch)
         batch_size = 10
-        for i in range(batch_size):
+        for _i in range(batch_size):
             document = self._create_test_document(db_session_with_containers, dataset, account)
             segment = self._create_test_document_segment(db_session_with_containers, document, account)
             upload_file = self._create_test_upload_file(db_session_with_containers, account)

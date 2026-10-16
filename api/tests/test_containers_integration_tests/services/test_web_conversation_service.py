@@ -168,7 +168,7 @@ class TestWebConversationService:
 
         # Create multiple conversations
         conversations = []
-        for i in range(5):
+        for _i in range(5):
             conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
             conversations.append(conversation)
 
@@ -204,7 +204,7 @@ class TestWebConversationService:
 
         # Create conversations
         conversations = []
-        for i in range(5):
+        for _i in range(5):
             conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
             conversations.append(conversation)
 
@@ -259,7 +259,7 @@ class TestWebConversationService:
 
         # Create conversations
         conversations = []
-        for i in range(5):
+        for _i in range(5):
             conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
             conversations.append(conversation)
 

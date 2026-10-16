@@ -59,9 +59,6 @@ select = [
 
 ignore = [
     "E402",    # module-import-not-at-top-of-file
-    "F821",    # undefined-name
-    "UP007",   # non-pep604-annotation
-    "B007",    # unused-loop-control-variable
     "B901",    # allow return in yield
     "B903",    # class-as-data-structure
     "B904",    # raise-without-from-inside-except

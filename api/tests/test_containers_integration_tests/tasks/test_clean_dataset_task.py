@@ -364,7 +364,7 @@ class TestCleanDatasetTask:
 
         # Create multiple documents
         documents = []
-        for i in range(3):
+        for _i in range(3):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
@@ -693,12 +693,12 @@ class TestCleanDatasetTask:
         upload_file_ids = []
 
         # Create 50 documents with segments and upload files
-        for i in range(50):
+        for _i in range(50):
             document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
             documents.append(document)
 
             # Create 3 segments per document
-            for j in range(3):
+            for _j in range(3):
                 segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
                 segments.append(segment)
 
