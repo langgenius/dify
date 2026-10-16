@@ -192,3 +192,31 @@ describe.skipIf(process.platform === 'win32')('install-r2.sh install_binary', ()
     expect(r.stdout.split('\n')).toEqual(['-rwxr-xr-x', 'new', 'difyctl'])
   })
 })
+
+// A v2 binary answers `install skills --help`; a v1 one exits 1 with "unknown command".
+describe.skipIf(process.platform === 'win32')('install-r2.sh print_skill_hint', () => {
+  const fakeBins = [
+    'd="$(mktemp -d)"',
+    'printf \'#!/bin/sh\\n[ "$*" = "install skills --help" ]\\n\' > "$d/v2"',
+    'printf \'#!/bin/sh\\necho "unknown command: $*" >&2\\nexit 1\\n\' > "$d/v1"',
+    'chmod 0755 "$d/v2" "$d/v1"',
+  ]
+
+  it('prints the hint for a binary that has install skills', () => {
+    const r = lib([...fakeBins, 'print_skill_hint "$d/v2"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toMatch(/difyctl install skills <skills root>/)
+  })
+
+  it('prints nothing for a binary without install skills', () => {
+    const r = lib([...fakeBins, 'print_skill_hint "$d/v1"', 'rm -rf "$d"'].join('\n'))
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
+  })
+
+  it('prints nothing when the binary cannot run', () => {
+    const r = lib('print_skill_hint /nonexistent/difyctl')
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('')
+  })
+})

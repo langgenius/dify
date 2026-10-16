@@ -28,7 +28,9 @@ err() { printf '%s\n' "install-cli: $*" >&2; }
 die() { err "$*"; rm -f "$FETCH_ERR_FILE"; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required"; }
 re_escape() { printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|/]/\\&/g'; }
+# print_skill_hint BIN: the hint names a v2 command, so a binary without it (any v1 build) gets none.
 print_skill_hint() {
+  "$1" install skills --help >/dev/null 2>&1 || return 0
   printf '%s\n' 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
 
@@ -248,7 +250,7 @@ main() {
     case ":${PATH}:" in
         *":${bin_dir}:"*)
             printf 'verify: run "difyctl version"\n'
-            print_skill_hint
+            print_skill_hint "$target_bin"
             ;;
         *)
             printf '\n%s is not on your PATH. Add this to your shell profile:\n' "$bin_dir"
