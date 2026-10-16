@@ -19,9 +19,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useIsMutating, useQuery } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/console'
-import { traceCapabilitiesQueryOptions } from './capabilities'
+import { selectAgentTracingEnabled } from './capabilities'
 import { ProviderConfigModal } from './provider-config-modal'
 import { ProviderPanel } from './provider-panel'
 import { configurableProviders, hasProviderForm } from './providers'
@@ -72,15 +71,16 @@ export function ConfigPopup({
           ? consoleQuery.agent.byAgentId.traceConfig.key({ type: 'mutation' })
           : consoleQuery.apps.byAppId.traceConfig.key({ type: 'mutation' }),
     }) > 0
-  // Shares the query the selected provider card shows; it also says whether this deployment runs Agent tracing.
-  const capabilities = useQuery(
-    traceCapabilitiesQueryOptions(
-      resource,
-      usesAgentTracePipeline(resource) ? (chosenProvider ?? null) : null,
-    ),
+  const { data: agentTracingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectAgentTracingEnabled }),
   )
-  const agentTracingUnavailable =
-    usesAgentTracePipeline(resource) && capabilities.data?.api_collection_enabled === false
+  // Agent tracing settings only matter once traces have a destination.
+  const agentTracingSection =
+    usesAgentTracePipeline(resource) && chosenProvider && agentTracingEnabled !== undefined
+      ? agentTracingEnabled
+        ? 'settings'
+        : 'unavailable'
+      : null
   const groups = [
     configurableProviders.filter((provider) => !!configs[provider]),
     configurableProviders.filter((provider) => !configs[provider]),
@@ -153,7 +153,7 @@ export function ConfigPopup({
                 {policyError}
               </p>
             )}
-            {agentTracingUnavailable ? (
+            {agentTracingSection === 'unavailable' ? (
               // Capture settings and provider support have no effect without Agent tracing.
               <p
                 role="note"
@@ -164,16 +164,10 @@ export function ConfigPopup({
               </p>
             ) : (
               <>
-                {usesAgentTracePipeline(resource) && (
+                {agentTracingSection === 'settings' && (
                   <>
                     <Separator className="my-3 bg-divider-subtle" />
-                    {chosenProvider && capabilities.isPending ? (
-                      <div aria-hidden className="flex h-5 items-center">
-                        <SkeletonRectangle className="my-0 h-2.5 w-24" />
-                      </div>
-                    ) : (
-                      <TracePolicy policy={policy} readOnly={readOnly} onChange={onPolicyChange} />
-                    )}
+                    <TracePolicy policy={policy} readOnly={readOnly} onChange={onPolicyChange} />
                   </>
                 )}
                 <Separator className="my-3 bg-divider-subtle" />

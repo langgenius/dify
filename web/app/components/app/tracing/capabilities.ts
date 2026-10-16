@@ -1,3 +1,4 @@
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
 import type { TracingResource } from './resource'
 import { skipToken } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
@@ -16,3 +17,8 @@ export function traceCapabilitiesQueryOptions(resource: TracingResource, provide
       : skipToken,
   })
 }
+
+/** Deployment-wide gate for Agent tracing, known before any provider is configured. */
+export const selectAgentTracingEnabled = ({
+  agent_tracing_api_collection_enabled,
+}: GetFeaturesResponse) => agent_tracing_api_collection_enabled

@@ -2,6 +2,7 @@ import type {
   AppMode,
   TraceProviderCapabilitiesResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
@@ -36,12 +37,18 @@ const capabilities: TraceProviderCapabilitiesResponse = {
   export_ack: 'accepted',
 }
 
+let agentTracingEnabled = true
+
 function mockServer(configured = true) {
   let status = { enabled: configured, tracing_provider: configured ? 'langfuse' : null }
   let config: Record<string, unknown> | null = configured ? langfuseConfig : null
   const writes: Array<{ method: string; body: unknown }> = []
   request.mockImplementation(async (_url, _init, { request: sent }) => {
     const url = new URL(sent.url)
+    if (url.pathname.endsWith('/features'))
+      return Response.json(
+        zGetFeaturesResponse.parse({ agent_tracing_api_collection_enabled: agentTracingEnabled }),
+      )
     if (url.pathname.endsWith('/trace-capabilities')) return Response.json(capabilities)
     if (url.pathname.endsWith('/trace')) {
       if (sent.method === 'POST') {
@@ -105,6 +112,7 @@ async function openConfiguredPanel() {
 describe('Tracing overview panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    agentTracingEnabled = true
   })
 
   it.each(['workflow', 'advanced-chat'] as const)(
@@ -154,9 +162,10 @@ describe('Tracing overview panel', () => {
         ),
       ).toMatchObject({ capture_content: true, capture_agent: false })
       expect(
-        request.mock.calls.every(([, , { request: sent }]) =>
-          new URL(sent.url).pathname.includes('/apps/app-1/'),
-        ),
+        request.mock.calls
+          .map(([, , { request: sent }]) => new URL(sent.url).pathname)
+          .filter((path) => path.includes('/trace'))
+          .every((path) => path.includes('/apps/app-1/')),
       ).toBe(true)
     },
   )
@@ -362,13 +371,8 @@ describe('Tracing overview panel', () => {
   })
 
   it('replaces Agent capture settings and provider support with one note when Agent tracing is unavailable', async () => {
+    agentTracingEnabled = false
     mockServer()
-    const server = request.getMockImplementation()!
-    request.mockImplementation(async (...args) => {
-      if (new URL(args[2].request.url).pathname.endsWith('/trace-capabilities'))
-        return Response.json({ ...capabilities, api_collection_enabled: false })
-      return server(...args)
-    })
     renderPanel(false, '', 'workflow')
     await openConfiguredPanel()
 
@@ -379,16 +383,35 @@ describe('Tracing overview panel', () => {
     expect(
       screen.queryByRole('button', { name: /app\.tracing\.capabilities/ }),
     ).not.toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'app.tracing.tracing' })).toBeChecked()
+    expect(
+      request.mock.calls.some(([, , { request: sent }]) =>
+        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
+      ),
+    ).toBe(false)
   })
+
+  it.each([true, false])(
+    'shows no Agent tracing section before a provider is selected (Agent tracing enabled: %s)',
+    async (enabled) => {
+      agentTracingEnabled = enabled
+      mockServer(false)
+      renderPanel(false, 'tracing=configure', 'workflow')
+      expect(
+        await screen.findByRole('group', { name: 'app.tracing.langfuse.title' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('note')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
+      ).not.toBeInTheDocument()
+    },
+  )
 
   it('does not query capabilities before a Workflow provider is selected', async () => {
     mockServer(false)
     renderPanel(false, 'tracing=configure', 'workflow')
-    await expandCapture(userEvent.setup())
     expect(
-      await screen.findByRole('switch', { name: 'app.tracing.captureContent' }),
-    ).not.toBeChecked()
+      await screen.findByRole('group', { name: 'app.tracing.langfuse.title' }),
+    ).toBeInTheDocument()
     expect(
       request.mock.calls.some(([, , { request: sent }]) =>
         new URL(sent.url).pathname.endsWith('/trace-capabilities'),
