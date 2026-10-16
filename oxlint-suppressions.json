@@ -42,11 +42,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/provider-config-modal.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
   "web/app/(commonLayout)/plugins/page.tsx": {
     "no-restricted-globals": {
       "count": 1
