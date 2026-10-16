@@ -8,7 +8,7 @@ Qualified native adapters must supply actual execution/termination evidence.
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal, Protocol, Self
+from typing import TYPE_CHECKING, Literal, Protocol, Self
 
 from pydantic import StrictBool, model_validator
 from sqlalchemy import select
@@ -24,6 +24,7 @@ from models.dify_builder_native_tests import (
     NativeInvocationState,
     NativePendingAction,
     NativeTestInvocation,
+    NativeTestScope,
 )
 from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, canonical_digest
 from services.dify_builder.native_testing.contracts import (
@@ -59,6 +60,9 @@ from services.dify_builder.native_testing.transitions import (
     validate_pending_fence,
     validate_pending_history,
 )
+
+if TYPE_CHECKING:
+    from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
 
 
 class NativePendingResolution(FrozenDTO):
@@ -126,6 +130,25 @@ class _ResumeCheckpoint:
     observed_generation: int
 
 
+@dataclass(frozen=True)
+class NativeDispatchRef:
+    ref: NativeTestContextRef
+    generation: int
+    dispatch_id: str
+
+
+@dataclass(frozen=True)
+class PreparedNativeDispatchClaim:
+    ref: NativeTestContextRef
+    generation: int
+    dispatch_id: str
+    context: ResolvedNativeTestContext
+    context_object_id: str | None
+    checkpoint: CheckpointRef | None
+    payload: NativeCheckpointPayload | None
+    selected: dict[str, _ResumeCheckpoint]
+
+
 class NativeTestLifecycleService:
     def __init__(
         self,
@@ -143,6 +166,7 @@ class NativeTestLifecycleService:
             runtime,
             clock,
         )
+        self._capacity: NativeHostCapacity | None = None
 
     def _root_ref(self, actor: Actor, request_id: str) -> NativeTestContextRef:
         if actor != self.loader.actor:
@@ -648,7 +672,132 @@ class NativeTestLifecycleService:
             published += 1
         return published
 
+    def _validate_initial(self, session, owned, scope, context, state, *, states):
+        from models.dify_builder import DifyBuilderTestInput
+        from models.dify_builder_native_tests import (
+            NativeEffectAttempt,
+            NativeEffectDispatchClaim,
+            NativeEffectOutcome,
+            NativePayloadObject,
+        )
+
+        if (
+            type(state.generation) is not int
+            or state.generation != 0
+            or scope.generation != 0
+            or context.generation != 0
+            or context.ref != owned.ref
+            or context.parent_invocation_id is not None
+            or state.parent_invocation_id is not None
+            or context.execution_mode != "native"
+            or not context.native_run_id
+            or context.native_run_id != context.root_native_run_id
+            or state.state not in states
+            or state.checkpoint_id is not None
+            or state.pending_ids != []
+            or state.wait_reason is not None
+            or state.resolution != []
+            or state.outcome is not None
+            or state.cancellation_key is not None
+            or state.cleanup_complete is not False
+            or scope.cancelled
+            or owned.expires_at <= self.clock()
+            or (state.app_id, state.workflow_id) != (context.app_id, context.workflow_id)
+            or (context.tenant_id, context.actor_id, context.app_id, context.workflow_id)
+            != (owned.tenant_id, owned.actor_id, owned.app_id, owned.workflow_id)
+            or any(getattr(scope, name) != 0 for name in ("spent_calls", "spent_dispatches", "spent_cost_units"))
+            or scope.budget_spent != {}
+        ):
+            raise BuilderExecutionPolicyError("native_initial_conflict")
+        row = session.scalar(
+            owner_query(NativePayloadObject, owned.ref, owned.tenant_id).where(
+                NativePayloadObject.id == state.context_object_id,
+                NativePayloadObject.kind == "context",
+                NativePayloadObject.value_digest == canonical_digest(context.model_dump(mode="json")),
+            )
+        )
+        if row is None:
+            raise BuilderExecutionPolicyError("native_state_unavailable")
+        workflow = validate_invocation_workflow(
+            session, tenant_id=owned.tenant_id, app_id=context.app_id, workflow_id=context.workflow_id
+        )
+        inputs = session.get(DifyBuilderTestInput, owned.test_input_id)
+        if (
+            native_workflow_revision(workflow) != context.graph_revision
+            or inputs is None
+            or canonical_digest(inputs.inputs) != context.input_revision
+            or canonical_digest(context.inputs) != context.input_revision
+        ):
+            raise BuilderExecutionPolicyError("native_revision_drift")
+        for model in (
+            NativeContinuation,
+            NativePendingAction,
+            NativeEffectOperation,
+            NativeEffectAttempt,
+            NativeEffectDispatchClaim,
+            NativeEffectOutcome,
+        ):
+            if (
+                session.scalar(
+                    select(model.id).where(model.request_id == owned.ref.request_id, model.tenant_id == owned.tenant_id)
+                )
+                is not None
+            ):
+                raise BuilderExecutionPolicyError("native_initial_conflict")
+        lineage = session.scalars(
+            select(NativeInvocationState).where(
+                NativeInvocationState.request_id == owned.ref.request_id,
+                NativeInvocationState.tenant_id == owned.tenant_id,
+            )
+        ).all()
+        if len(lineage) != 1 or lineage[0].invocation_id != owned.ref.invocation_id:
+            raise BuilderExecutionPolicyError("native_initial_conflict")
+
+    def enqueue_initial_dispatch(self, *, ref: NativeTestContextRef) -> NativeDispatchRef:
+        context = self.store.load_context(ref=ref)
+        digest = canonical_digest({"initial": ref.model_dump(mode="json")})
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            state = invocation_state(session, ref, owned.tenant_id)
+            existing = session.scalars(owner_query(NativeDispatch, ref, owned.tenant_id)).all()
+            if existing:
+                if (
+                    len(existing) != 1
+                    or existing[0].generation != 0
+                    or existing[0].checkpoint_id is not None
+                    or existing[0].idempotency_digest != digest
+                ):
+                    raise BuilderExecutionPolicyError("native_initial_conflict")
+                return NativeDispatchRef(ref, 0, existing[0].id)
+            self._validate_initial(session, owned, scope, context, state, states={"running"})
+            dispatch_readiness(session, ref=ref, tenant_id=owned.tenant_id, now=self.clock())
+            dispatch = NativeDispatch(
+                tenant_id=owned.tenant_id,
+                request_id=ref.request_id,
+                invocation_id=ref.invocation_id,
+                generation=0,
+                idempotency_digest=digest,
+                state="queued",
+                checkpoint_id=None,
+                claim_expires_at=None,
+            )
+            session.add(dispatch)
+            state.state = "queued"
+            session.flush()
+            result = NativeDispatchRef(ref, 0, dispatch.id)
+        return result
+
     def claim_dispatch(self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str) -> bool:
+        if self._capacity is not None:
+            return self._capacity.claim_dispatch(ref=ref, generation=generation, dispatch_id=dispatch_id)
+        prepared = self.prepare_dispatch_claim(ref=ref, generation=generation, dispatch_id=dispatch_id)
+        if prepared is None:
+            return False
+        with self.loader.locked(ref=ref) as (session, owned, scope):
+            return self.consume_dispatch_claim(session=session, owned=owned, scope=scope, prepared=prepared)
+
+    def prepare_dispatch_claim(
+        self, *, ref: NativeTestContextRef, generation: int, dispatch_id: str
+    ) -> PreparedNativeDispatchClaim | None:
         # Already-claimed/unknown deliveries can be rejected even after the
         # invocation has been quarantined. They acquire no execution authority.
         with self.loader.session_factory() as session:
@@ -661,7 +810,7 @@ class NativeTestLifecycleService:
                 and prior.generation == generation
                 and prior.state in {"claimed", "completed", "unknown"}
             ):
-                return False
+                return None
             require_ancestor_authority(session, ref, owned.tenant_id)
         self.loader.load(ref=ref)
         context = self.store.load_context(ref=ref)
@@ -673,6 +822,20 @@ class NativeTestLifecycleService:
             )
             if dispatch is None or observed.checkpoint_id != dispatch.checkpoint_id:
                 raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+            if generation == 0 and dispatch.generation == 0 and dispatch.checkpoint_id is None:
+                if dispatch.idempotency_digest != canonical_digest({"initial": ref.model_dump(mode="json")}):
+                    raise BuilderExecutionPolicyError("native_initial_conflict")
+                self._validate_initial(
+                    session,
+                    owned,
+                    self.loader._load(session, ref=ref, lock=False)[1],
+                    context,
+                    observed,
+                    states={"queued"},
+                )
+                return PreparedNativeDispatchClaim(
+                    ref, generation, dispatch_id, context, observed.context_object_id, None, None, {}
+                )
             saved = session.scalar(
                 owner_query(NativeContinuation, ref, owned.tenant_id).where(
                     NativeContinuation.checkpoint_id == dispatch.checkpoint_id
@@ -685,51 +848,90 @@ class NativeTestLifecycleService:
         if payload.native_run_id != context.native_run_id:
             raise BuilderExecutionPolicyError("native_run_mismatch")
         selected = self._checkpoint_tree(ref, checkpoint, payload)
-        with self.loader.locked(ref=ref) as (session, owned, _):
-            require_ancestor_authority(session, ref, owned.tenant_id)
-            state = invocation_state(session, ref, owned.tenant_id)
-            dispatch = session.scalar(
-                owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
-            )
-            if dispatch is None or type(generation) is not int or generation != dispatch.generation:
+        return PreparedNativeDispatchClaim(ref, generation, dispatch_id, context, None, checkpoint, payload, selected)
+
+    def consume_dispatch_claim(
+        self, *, session: Session, owned: OwnedNativeTest, scope: NativeTestScope, prepared: PreparedNativeDispatchClaim
+    ) -> bool:
+        """SQL only; caller holds the request lock, and App first for physical admission."""
+        ref, generation, dispatch_id = prepared.ref, prepared.generation, prepared.dispatch_id
+        if owned.ref != ref:
+            raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+        dispatch = session.scalar(
+            owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
+        )
+        if dispatch is None or type(generation) is not int or generation != dispatch.generation:
+            raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+        if dispatch.state not in {"queued", "published"}:
+            return False
+        # Recheck the full local chain in this transaction, without RPC or a new session.
+        owned, scope = self.loader._load(session, ref=ref, lock=False)
+        state = invocation_state(session, ref, owned.tenant_id)
+        if generation == 0 and dispatch.checkpoint_id is None:
+            if dispatch.idempotency_digest != canonical_digest({"initial": ref.model_dump(mode="json")}):
+                raise BuilderExecutionPolicyError("native_initial_conflict")
+            if state.context_object_id != prepared.context_object_id:
                 raise BuilderExecutionPolicyError("native_dispatch_mismatch")
-            if dispatch.state not in {"queued", "published"}:
-                return False
-            if state.generation != generation or state.state != "queued" or owned.expires_at <= self.clock():
-                raise BuilderExecutionPolicyError("native_generation_conflict")
-            if has_unknown_descendant(session, ref, owned.tenant_id):
-                raise BuilderExecutionPolicyError("native_subtree_unknown")
-            if dispatch.checkpoint_id != checkpoint.checkpoint_id or payload.generation >= generation:
+            if prepared.checkpoint is not None or prepared.payload is not None or prepared.selected:
                 raise BuilderExecutionPolicyError("native_dispatch_mismatch")
-            represented = self._validate_checkpoints(session, owned, selected)
-            generations = {identity: proof.payload.generation for identity, proof in selected.items()}
-            resolutions = self._resolve_pending(session, owned, state, generations=generations)
-            if [resolution.model_dump(mode="json") for resolution in resolutions] != state.resolution:
-                raise BuilderExecutionPolicyError("native_pending_unresolved")
-            self._validate_resolution_results(session, owned, resolutions)
-            resolved_ids = set(state.pending_ids)
-            reopened = [state]
-            for child in self._subtree(session, ref, owned.tenant_id):
-                if (
-                    child.invocation_id != ref.invocation_id
-                    and child.invocation_id in represented
-                    and child.generation == generation
-                    and child.state == "queued"
-                    and child.pending_ids
-                    and set(child.pending_ids) <= resolved_ids
-                ):
-                    reopened.append(child)
+            self._validate_initial(session, owned, scope, prepared.context, state, states={"queued"})
+            state.state = "running"
+            dispatch_readiness(session, ref=ref, tenant_id=owned.tenant_id, now=self.clock())
             dispatch.state, dispatch.claim_expires_at = "claimed", self.clock() + timedelta(minutes=10)
-            for current in reopened:
-                current.state, current.wait_reason = "running", None
-            for current in reopened:
-                dispatch_readiness(
-                    session,
-                    ref=ref.model_copy(update={"invocation_id": current.invocation_id}),
-                    tenant_id=owned.tenant_id,
-                    now=self.clock(),
-                )
-            session.get(DifyBuilderExecutionRequest, ref.request_id).state = "running"
+            state.cleanup_complete = False
+            request = session.get(DifyBuilderExecutionRequest, ref.request_id)
+            if request is None:
+                raise BuilderExecutionPolicyError("native_owner_mismatch")
+            request.state = "running"
+            return True
+        checkpoint, payload, selected = prepared.checkpoint, prepared.payload, prepared.selected
+        if checkpoint is None or payload is None:
+            raise BuilderExecutionPolicyError("checkpoint_unavailable")
+        require_ancestor_authority(session, ref, owned.tenant_id)
+        state = invocation_state(session, ref, owned.tenant_id)
+        dispatch = session.scalar(
+            owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
+        )
+        if dispatch is None or type(generation) is not int or generation != dispatch.generation:
+            raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+        if dispatch.state not in {"queued", "published"}:
+            return False
+        if state.generation != generation or state.state != "queued" or owned.expires_at <= self.clock():
+            raise BuilderExecutionPolicyError("native_generation_conflict")
+        if has_unknown_descendant(session, ref, owned.tenant_id):
+            raise BuilderExecutionPolicyError("native_subtree_unknown")
+        if dispatch.checkpoint_id != checkpoint.checkpoint_id or payload.generation >= generation:
+            raise BuilderExecutionPolicyError("native_dispatch_mismatch")
+        represented = self._validate_checkpoints(session, owned, selected)
+        generations = {identity: proof.payload.generation for identity, proof in selected.items()}
+        resolutions = self._resolve_pending(session, owned, state, generations=generations)
+        if [resolution.model_dump(mode="json") for resolution in resolutions] != state.resolution:
+            raise BuilderExecutionPolicyError("native_pending_unresolved")
+        self._validate_resolution_results(session, owned, resolutions)
+        resolved_ids = set(state.pending_ids)
+        reopened = [state]
+        for child in self._subtree(session, ref, owned.tenant_id):
+            if (
+                child.invocation_id != ref.invocation_id
+                and child.invocation_id in represented
+                and child.generation == generation
+                and child.state == "queued"
+                and child.pending_ids
+                and set(child.pending_ids) <= resolved_ids
+            ):
+                reopened.append(child)
+        dispatch.state, dispatch.claim_expires_at = "claimed", self.clock() + timedelta(minutes=10)
+        for current in reopened:
+            current.state, current.wait_reason = "running", None
+        for current in reopened:
+            dispatch_readiness(
+                session,
+                ref=ref.model_copy(update={"invocation_id": current.invocation_id}),
+                tenant_id=owned.tenant_id,
+                now=self.clock(),
+            )
+        state.cleanup_complete = False
+        session.get(DifyBuilderExecutionRequest, ref.request_id).state = "running"
         return True
 
     def execute_dispatch(
@@ -769,38 +971,100 @@ class NativeTestLifecycleService:
             elif outcome.output_result_ref is not None:
                 self.store.load_result(ref=ref, result_ref=outcome.output_result_ref)
             with self.loader.locked(ref=ref, settlement=True) as (session, owned, scope):
-                state = invocation_state(session, ref, owned.tenant_id)
-                dispatch = session.get(NativeDispatch, dispatch_id)
-                if dispatch.state != "claimed" or state.generation != generation or scope.cancelled:
-                    raise BuilderExecutionPolicyError("native_dispatch_conflict")
-                if outcome.status == "completed" and has_unknown_descendant(session, ref, owned.tenant_id):
-                    raise BuilderExecutionPolicyError("native_subtree_unknown")
-                if outcome.status == "unknown":
-                    quarantine_unknown(
-                        session, ref=ref, tenant_id=owned.tenant_id, outcome=outcome.model_dump(mode="json")
-                    )
-                else:
-                    dispatch.state = "completed"
-                if outcome.status not in {"waiting", "unknown"}:
-                    state.state, state.outcome = outcome.status, outcome.model_dump(mode="json")
-                    invocation = session.scalar(owner_query(NativeTestInvocation, ref, owned.tenant_id))
-                    invocation.active = False
-                    if state.parent_invocation_id is None and outcome.status != "unknown":
-                        remaining = session.scalar(
-                            select(NativeTestInvocation.id).where(
-                                NativeTestInvocation.request_id == ref.request_id,
-                                NativeTestInvocation.tenant_id == owned.tenant_id,
-                                NativeTestInvocation.invocation_id != ref.invocation_id,
-                                NativeTestInvocation.active.is_(True),
-                            )
-                        )
-                        if remaining is not None:
-                            raise BuilderExecutionPolicyError("native_children_running")
-                        session.get(DifyBuilderExecutionRequest, ref.request_id).state = "sealed"
+                self.finalize_dispatch_locked(
+                    session=session,
+                    owned=owned,
+                    scope=scope,
+                    dispatch_id=dispatch_id,
+                    generation=generation,
+                    outcome=outcome,
+                )
             return outcome
         except Exception:
             self._mark_unknown(ref=ref, dispatch_id=dispatch_id)
             raise
+
+    def finalize_dispatch_locked(
+        self,
+        *,
+        session: Session,
+        owned: OwnedNativeTest,
+        scope: NativeTestScope,
+        dispatch_id: str,
+        generation: int,
+        outcome: NativeWorkflowOutcome,
+    ) -> None:
+        """SQL projection only, after caller's real outcome/checkpoint/result preparation."""
+        ref = owned.ref
+        if outcome.ref != ref:
+            raise BuilderExecutionPolicyError("native_outcome_mismatch")
+        state = invocation_state(session, ref, owned.tenant_id)
+        dispatch = session.scalar(
+            owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
+        )
+        if (
+            dispatch is None
+            or type(generation) is not int
+            or dispatch.generation != generation
+            or dispatch.state != "claimed"
+            or state.generation != generation
+            or scope.cancelled
+        ):
+            raise BuilderExecutionPolicyError("native_dispatch_conflict")
+        if outcome.status == "waiting":
+            checkpoint = outcome.checkpoint_ref
+            if (
+                checkpoint is None
+                or state.state != "waiting"
+                or state.checkpoint_id != checkpoint.checkpoint_id
+                or tuple(state.pending_ids) != outcome.pending_operation_ids
+                or state.wait_reason != outcome.wait_reason
+                or session.scalar(
+                    owner_query(NativeContinuation, ref, owned.tenant_id).where(
+                        NativeContinuation.checkpoint_id == checkpoint.checkpoint_id,
+                        NativeContinuation.payload_digest == checkpoint.payload_digest,
+                        NativeContinuation.generation == generation,
+                    )
+                )
+                is None
+            ):
+                raise BuilderExecutionPolicyError("checkpoint_unavailable")
+            self._pending_rows(session, owned, state)
+        if outcome.output_result_ref is not None:
+            from models.dify_builder_native_tests import NativePayloadObject
+
+            if (
+                session.scalar(
+                    owner_query(NativePayloadObject, ref, owned.tenant_id).where(
+                        NativePayloadObject.id == outcome.output_result_ref,
+                        NativePayloadObject.kind == "result",
+                    )
+                )
+                is None
+            ):
+                raise BuilderExecutionPolicyError("native_result_owner_mismatch")
+        if outcome.status == "completed" and has_unknown_descendant(session, ref, owned.tenant_id):
+            raise BuilderExecutionPolicyError("native_subtree_unknown")
+        if outcome.status == "unknown":
+            quarantine_unknown(session, ref=ref, tenant_id=owned.tenant_id, outcome=outcome.model_dump(mode="json"))
+        else:
+            dispatch.state = "completed"
+        if outcome.status not in {"waiting", "unknown"}:
+            state.state, state.outcome = outcome.status, outcome.model_dump(mode="json")
+            invocation = session.scalar(owner_query(NativeTestInvocation, ref, owned.tenant_id))
+            invocation.active = False
+            if state.parent_invocation_id is None and outcome.status != "unknown":
+                remaining = session.scalar(
+                    select(NativeTestInvocation.id).where(
+                        NativeTestInvocation.request_id == ref.request_id,
+                        NativeTestInvocation.tenant_id == owned.tenant_id,
+                        NativeTestInvocation.invocation_id != ref.invocation_id,
+                        NativeTestInvocation.active.is_(True),
+                    )
+                )
+                if remaining is not None:
+                    raise BuilderExecutionPolicyError("native_children_running")
+                session.get(DifyBuilderExecutionRequest, ref.request_id).state = "sealed"
 
     def _mark_unknown(self, *, ref: NativeTestContextRef, dispatch_id: str) -> None:
         with self.loader.locked(ref=ref, settlement=True) as (session, owned, _):
@@ -872,7 +1136,8 @@ class NativeTestLifecycleService:
         proof = self.runtime.recovery_evidence(context=context, dispatch_id=dispatch_id)
         if proof not in {"not_started", "stopped"}:
             raise BuilderExecutionPolicyError("native_recovery_unproven")
-        with self.loader.locked(ref=ref, settlement=True) as (session, owned, scope):
+        recovery_lock = self._capacity.locked if self._capacity is not None else self.loader.locked
+        with recovery_lock(ref=ref, settlement=True) as (session, owned, scope):
             row = session.scalar(
                 owner_query(NativeDispatch, ref, owned.tenant_id).where(NativeDispatch.id == dispatch_id)
             )
@@ -911,6 +1176,8 @@ class NativeTestLifecycleService:
     def _check_recovery_authority(self, session, ref, owned, scope):
         if scope.cancelled or owned.expires_at <= self.clock() or owned.state not in {"running", "waiting"}:
             raise BuilderExecutionPolicyError("native_recovery_unavailable")
+        if self._capacity is not None and not invocation_state(session, ref, owned.tenant_id).cleanup_complete:
+            raise BuilderExecutionPolicyError("native_cleanup_unproven")
         require_ancestor_authority(session, ref, owned.tenant_id)
         state = invocation_state(session, ref, owned.tenant_id)
         if state.state in {"completed", "stopped", "cancelled"}:
@@ -963,14 +1230,20 @@ class NativeTestLifecycleService:
                 stopped = set(self.runtime.cancel(refs=refs))
             except Exception:
                 stopped = set()  # cancellation remains durable; cleanup can be retried
-        with self.loader.locked(ref=ref, settlement=True) as (session, owned, _):
+        if self._capacity is not None:
+            try:
+                self._capacity.record_cancelled_cleanup(ref=ref)
+            except Exception:
+                stopped = set()  # No verified cleanup acknowledgement; keep its slot quarantined.
+        cleanup_lock = self._capacity.locked if self._capacity is not None else self.loader.locked
+        with cleanup_lock(ref=ref, settlement=True) as (session, owned, _):
             states = session.scalars(
                 select(NativeInvocationState).where(
                     NativeInvocationState.request_id == request_id, NativeInvocationState.tenant_id == owned.tenant_id
                 )
             ).all()
             for state in states:
-                if state.invocation_id in stopped:
+                if self._capacity is None and state.invocation_id in stopped:
                     state.cleanup_complete = True
             cleaned = all(state.cleanup_complete for state in states)
             if cleaned and "unknown" not in operation_states.values():
