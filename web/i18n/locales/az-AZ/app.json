@@ -278,6 +278,7 @@
   "tracing.configProvider.username": "İstifadəçi adı",
   "tracing.configProvider.viewDocsLink": "{{key}} sənədlərinə bax",
   "tracing.configProviderTitle.configured": "Konfiqurasiya edilib",
+  "tracing.configProviderTitle.moreProviders": "Digər təminatçılar",
   "tracing.configProviderTitle.notConfigured": "İzləməni aktivləşdirmək üçün provayderi konfiqurasiya et",
   "tracing.databricks.description": "Databricks izləmə məlumatlarının saxlanması üçün güclü idarəetmə və təhlükəsizlik imkanları olan, tam idarə olunan MLflow təqdim edir.",
   "tracing.databricks.title": "Databricks",

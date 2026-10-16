@@ -278,6 +278,7 @@
   "tracing.configProvider.username": "Uporabniško ime",
   "tracing.configProvider.viewDocsLink": "Ogled dokumentov {{key}}",
   "tracing.configProviderTitle.configured": "Konfigurirano",
+  "tracing.configProviderTitle.moreProviders": "Drugi ponudniki",
   "tracing.configProviderTitle.notConfigured": "Konfigurirajte ponudnika za omogočanje sledenja",
   "tracing.databricks.description": "Databricks ponuja popolnoma upravljan MLflow z močnim upravljanjem in varnostjo za shranjevanje podatkov sledenja.",
   "tracing.databricks.title": "Databricks",

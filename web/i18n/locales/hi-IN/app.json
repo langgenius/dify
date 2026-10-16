@@ -278,6 +278,7 @@
   "tracing.configProvider.username": "उपयोगकर्ता नाम",
   "tracing.configProvider.viewDocsLink": "{{key}} दस्तावेज़ देखें",
   "tracing.configProviderTitle.configured": "कॉन्फ़िगर किया गया",
+  "tracing.configProviderTitle.moreProviders": "अन्य प्रदाता",
   "tracing.configProviderTitle.notConfigured": "ट्रेसिंग सक्षम करने के लिए प्रदाता कॉन्फ़िगर करें",
   "tracing.databricks.description": "Databricks मजबूत शासन और सुरक्षा के साथ पूरी तरह से प्रबंधित MLflow प्रदान करता है, ट्रेस डेटा संग्रहीत करने के लिए।",
   "tracing.databricks.title": "Databricks",

@@ -278,6 +278,7 @@
   "tracing.configProvider.username": "Nazwa użytkownika",
   "tracing.configProvider.viewDocsLink": "Zobacz dokumentację {{key}}",
   "tracing.configProviderTitle.configured": "Skonfigurowano",
+  "tracing.configProviderTitle.moreProviders": "Więcej dostawców",
   "tracing.configProviderTitle.notConfigured": "Skonfiguruj dostawcę, aby włączyć śledzenie",
   "tracing.databricks.description": "Databricks oferuje w pełni zarządzany MLflow z silną kontrolą i bezpieczeństwem do przechowywania danych śledzenia.",
   "tracing.databricks.title": "Databricks",

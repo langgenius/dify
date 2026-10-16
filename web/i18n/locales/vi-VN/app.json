@@ -278,6 +278,7 @@
   "tracing.configProvider.username": "Tên người dùng",
   "tracing.configProvider.viewDocsLink": "Xem tài liệu {{key}}",
   "tracing.configProviderTitle.configured": "Đã cấu hình",
+  "tracing.configProviderTitle.moreProviders": "Nhà cung cấp khác",
   "tracing.configProviderTitle.notConfigured": "Cấu hình nhà cung cấp để bật theo dõi",
   "tracing.databricks.description": "Databricks cung cấp MLflow được quản lý hoàn toàn với quản trị mạnh mẽ và bảo mật để lưu trữ dữ liệu theo dõi.",
   "tracing.databricks.title": "Databricks",
