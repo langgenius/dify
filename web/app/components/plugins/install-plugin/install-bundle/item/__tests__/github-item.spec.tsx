@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import GithubItem from '../github-item'
 
 const mockUseUploadGitHub = vi.fn()
-const mockPluginManifestToCardPluginProps = vi.fn()
+const mockPluginDeclarationToCardPluginProps = vi.fn()
 const mockLoadedItem = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
@@ -14,8 +14,8 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('../../../utils', () => ({
-  pluginManifestToCardPluginProps: (manifest: unknown) =>
-    mockPluginManifestToCardPluginProps(manifest),
+  pluginDeclarationToCardPluginProps: (manifest: unknown, uniqueIdentifier: string) =>
+    mockPluginDeclarationToCardPluginProps(manifest, uniqueIdentifier),
 }))
 
 vi.mock('../../../base/loading', () => ({
@@ -88,7 +88,7 @@ describe('GithubItem', () => {
       },
       error: null,
     })
-    mockPluginManifestToCardPluginProps.mockReturnValue(payload)
+    mockPluginDeclarationToCardPluginProps.mockReturnValue(payload)
 
     render(
       <GithubItem
@@ -102,6 +102,10 @@ describe('GithubItem', () => {
     )
 
     await waitFor(() => {
+      expect(mockPluginDeclarationToCardPluginProps).toHaveBeenCalledWith(
+        { name: 'manifest' },
+        'plugin-1',
+      )
       expect(onFetchedPayload).toHaveBeenCalledWith(payload)
       expect(screen.getByTestId('loaded-item')).toBeInTheDocument()
     })

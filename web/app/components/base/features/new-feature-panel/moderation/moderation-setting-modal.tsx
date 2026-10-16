@@ -6,20 +6,22 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { modelProviderDetailsQueryOptions } from '@/app/components/header/account-setting/model-provider-page/utils'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 import { LanguagesSupported } from '@/i18n/language'
-import { useCodeBasedExtensions, useModelProviderDetails } from '@/service/use-common'
 import FormGeneration from './form-generation'
 import ModerationContent from './moderation-content'
 
@@ -60,7 +62,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const { t } = useTranslation(['appDebug', 'common', 'navigation'])
   const docLink = useDocLink()
   const locale = useLocale()
-  const { data: modelProviders, isPending: isLoading } = useModelProviderDetails()
+  const { data: modelProviders, isPending: isLoading } = useQuery(
+    modelProviderDetailsQueryOptions(),
+  )
   const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
@@ -80,7 +84,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCance
   const handleOpenSettingsModal = () => {
     setSettingsDestination('provider')
   }
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
+  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
   const openaiProvider = modelProviders?.data.find(
     (item) => item.provider === 'langgenius/openai/openai',
   )

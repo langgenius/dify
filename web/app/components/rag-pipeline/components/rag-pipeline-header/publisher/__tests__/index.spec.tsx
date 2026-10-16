@@ -4,11 +4,15 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditor as renderWithoutPricing } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
-import { render as renderWithoutPricing } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
+
+const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
+const datasetListKey = consoleQuery.datasets.get.key()
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
@@ -142,25 +146,20 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 const mockPublishWorkflow = vi.fn()
 const mockPublishAsCustomizedPipeline = vi.fn()
-const mockInvalidPublishedPipelineInfo = vi.fn()
-const mockInvalidDatasetList = vi.fn()
-const mockInvalidCustomizedTemplateList = vi.fn()
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: () => mockInvalidDatasetList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.customized.publish.post': () => ({
+      mutateAsync: mockPublishAsCustomizedPipeline,
+    }),
+  })
+})
 
-vi.mock('@/service/use-base', () => ({
-  useInvalid: () => mockInvalidPublishedPipelineInfo,
-}))
-
-vi.mock('@/service/use-pipeline', () => ({
-  publishedPipelineInfoQueryKeyPrefix: ['pipeline', 'published'],
-  useInvalidCustomizedTemplateList: () => mockInvalidCustomizedTemplateList,
-  usePublishAsCustomizedPipeline: () => ({
-    mutateAsync: mockPublishAsCustomizedPipeline,
-  }),
-}))
+const expectInvalidated = (...path: string[]) =>
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: expect.arrayContaining([['console', ...path]]),
+  })
 
 vi.mock('@/service/use-workflow', () => ({
   usePublishWorkflow: () => ({
@@ -219,7 +218,10 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 
 function render(...args: Parameters<typeof renderWithoutPricing>) {
   args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
-  return renderWithoutPricing(...args)
+  return renderWithoutPricing(args[0], {
+    ...args[1],
+    resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+  })
 }
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ datasetId: 'test-dataset-id' }) }))
@@ -232,6 +234,7 @@ function publishWithKeyboard() {
 
 describe('publisher', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockPublishedAt.mockReturnValue(null)
@@ -549,39 +552,12 @@ describe('publisher', () => {
 
         await waitFor(() => {
           expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-            pipelineId: 'test-pipeline-id',
-            name: 'Test Pipeline',
-            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
-            description: 'Test description',
-          })
-        })
-      })
-
-      it('should publish as template with empty pipeline id fallback', async () => {
-        mockPublishedAt.mockReturnValue(1700000000)
-        mockPipelineId.mockReturnValue(undefined as unknown as string)
-        mockPublishAsCustomizedPipeline.mockResolvedValue({})
-        renderWithQueryClient(<Publisher />)
-
-        fireEvent.click(screen.getByText('workflow.common.publish'))
-
-        const publishAsButton = screen
-          .getAllByRole('button')
-          .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
-        fireEvent.click(publishAsButton!)
-
-        await waitFor(() => {
-          expect(screen.getByTestId('publish-as-knowledge-pipeline-modal')).toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByTestId('modal-confirm'))
-
-        await waitFor(() => {
-          expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-            pipelineId: '',
-            name: 'Test Pipeline',
-            icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
-            description: 'Test description',
+            params: { pipeline_id: 'test-pipeline-id' },
+            body: {
+              name: 'Test Pipeline',
+              icon_info: { type: 'emoji', emoji: '📚', background: '#fff' },
+              description: 'Test description',
+            },
           })
         })
       })
@@ -646,8 +622,8 @@ describe('publisher', () => {
 
         await waitFor(() => {
           expect(mockMutateDatasetRes).toHaveBeenCalled()
-          expect(mockInvalidPublishedPipelineInfo).toHaveBeenCalled()
-          expect(mockInvalidDatasetList).toHaveBeenCalled()
+          expectInvalidated('rag', 'pipelines', 'byPipelineId', 'workflows', 'publish', 'get')
+          expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: datasetListKey })
         })
       })
 
@@ -698,7 +674,7 @@ describe('publisher', () => {
         fireEvent.click(screen.getByTestId('modal-confirm'))
 
         await waitFor(() => {
-          expect(mockInvalidCustomizedTemplateList).toHaveBeenCalled()
+          expectInvalidated('rag', 'pipeline', 'templates', 'get')
         })
       })
     })

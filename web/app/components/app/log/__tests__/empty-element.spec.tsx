@@ -1,8 +1,7 @@
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppDetailWithSite, AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import EmptyElement from '../empty-element'
 
 vi.mock('react-i18next', async () => {
@@ -39,7 +38,7 @@ vi.mock('@/utils/var', () => ({
 }))
 
 describe('EmptyElement', () => {
-  const createMockAppDetail = (mode: AppModeEnum) =>
+  const createMockAppDetail = (mode: AppMode) =>
     createAppDetailFixture({
       id: 'test-app-id',
       name: 'Test App',
@@ -59,14 +58,14 @@ describe('EmptyElement', () => {
 
   describe('Rendering', () => {
     it('should render empty element with title', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
+      const appDetail = createMockAppDetail('chat')
       render(<EmptyElement appDetail={appDetail} />)
 
       expect(screen.getByText('table.empty.element.title')).toBeInTheDocument()
     })
 
     it('should render Trans component with i18n key', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
+      const appDetail = createMockAppDetail('chat')
       render(<EmptyElement appDetail={appDetail} />)
 
       expect(screen.getByText('table.empty.element.content', { exact: false })).toBeInTheDocument()
@@ -75,7 +74,7 @@ describe('EmptyElement', () => {
 
   describe('App Mode Handling', () => {
     it('should use CHAT mode for chat apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
+      const appDetail = createMockAppDetail('chat')
       render(<EmptyElement appDetail={appDetail} />)
 
       const link = screen.getAllByRole('link')[0]
@@ -83,7 +82,7 @@ describe('EmptyElement', () => {
     })
 
     it('should use COMPLETION mode for completion apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.COMPLETION)
+      const appDetail = createMockAppDetail('completion')
       render(<EmptyElement appDetail={appDetail} />)
 
       const link = screen.getAllByRole('link')[0]
@@ -91,7 +90,7 @@ describe('EmptyElement', () => {
     })
 
     it('should use WORKFLOW mode for workflow apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.WORKFLOW)
+      const appDetail = createMockAppDetail('workflow')
       render(<EmptyElement appDetail={appDetail} />)
 
       const link = screen.getAllByRole('link')[0]
@@ -99,7 +98,7 @@ describe('EmptyElement', () => {
     })
 
     it('should use CHAT mode for advanced-chat apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.ADVANCED_CHAT)
+      const appDetail = createMockAppDetail('advanced-chat')
       render(<EmptyElement appDetail={appDetail} />)
 
       const link = screen.getAllByRole('link')[0]
@@ -107,7 +106,7 @@ describe('EmptyElement', () => {
     })
 
     it('should use CHAT mode for agent-chat apps', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.AGENT_CHAT)
+      const appDetail = createMockAppDetail('agent-chat')
       render(<EmptyElement appDetail={appDetail} />)
 
       const link = screen.getAllByRole('link')[0]
@@ -128,7 +127,7 @@ describe('EmptyElement', () => {
 
   describe('Links', () => {
     it('should render share link with correct attributes', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
+      const appDetail = createMockAppDetail('chat')
       render(<EmptyElement appDetail={appDetail} />)
 
       const links = screen.getAllByRole('link')
@@ -139,7 +138,7 @@ describe('EmptyElement', () => {
     })
 
     it('should render test link with redirection path', () => {
-      const appDetail = createMockAppDetail(AppModeEnum.CHAT)
+      const appDetail = createMockAppDetail('chat')
       render(<EmptyElement appDetail={appDetail} />)
 
       const links = screen.getAllByRole('link')

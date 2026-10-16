@@ -180,33 +180,6 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 // Mock pipeline service hooks
-vi.mock('@/service/use-pipeline', () => ({
-  useNotionWorkspaces: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-  })),
-  useNotionPages: vi.fn(() => ({
-    data: { pages: [] },
-    isLoading: false,
-  })),
-  useCrawlResult: vi.fn(() => ({
-    data: { data: [] },
-    isLoading: false,
-  })),
-  useSupportedOauth: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-  })),
-  useOnlineDriveCredentialList: vi.fn(() => ({
-    data: [],
-    isLoading: false,
-  })),
-  useOnlineDriveFileList: vi.fn(() => ({
-    data: { data: [] },
-    isLoading: false,
-  })),
-}))
-
 function render(...args: Parameters<typeof renderWithoutPricing>) {
   args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
   return renderWithoutPricing(...args)

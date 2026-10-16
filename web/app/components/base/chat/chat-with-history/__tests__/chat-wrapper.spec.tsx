@@ -931,7 +931,7 @@ describe('ChatWrapper', () => {
 
   it('should handle human input form submission for installed app', async () => {
     const { submitHumanInputForm: submitWorkflowForm } = await import('@/service/workflow')
-    vi.mocked(submitWorkflowForm).mockResolvedValue({} as unknown as void)
+    vi.mocked(submitWorkflowForm).mockResolvedValue({})
     let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
     const prepareHumanInputSubmission = vi.fn(
       () =>

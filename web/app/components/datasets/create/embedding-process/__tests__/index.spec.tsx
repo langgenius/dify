@@ -1,11 +1,12 @@
 import type { ReactElement } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
+import { QueryClient } from '@tanstack/react-query'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EmbeddingProcess from '../index'
 
-const mockInvalidDocumentList = vi.fn()
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
 let mockPlanType: 'sandbox' | 'professional' | 'team' = 'sandbox'
 let mockPollingState: {
@@ -35,13 +36,12 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useProcessRule: () => ({ data: undefined }),
-}))
-
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.processRule.get': () => ({ data: undefined }),
+  })
+})
 
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://api.example.com/docs',
@@ -88,6 +88,7 @@ function render(ui: ReactElement) {
 
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
     vi.clearAllMocks()
     deploymentEdition = 'COMMUNITY'
     mockPlanType = 'sandbox'
@@ -189,7 +190,9 @@ describe('EmbeddingProcess', () => {
     expect(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
     await user.click(link)
 
-    expect(mockInvalidDocumentList).toHaveBeenCalledOnce()
+    expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.datasets.byDatasetId.documents.get.key(),
+    })
   })
 
   it('links to the dataset API reference', () => {

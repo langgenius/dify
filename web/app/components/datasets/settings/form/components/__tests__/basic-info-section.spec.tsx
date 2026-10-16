@@ -8,6 +8,7 @@ import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datase
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { mockEmojiData } from '@/test/emoji-picker'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
@@ -61,6 +62,7 @@ vi.mock('@/app/components/base/image-uploader/hooks', () => ({
 
 describe('BasicInfoSection', () => {
   const mockDataset: DataSet = {
+    ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
@@ -72,7 +74,6 @@ describe('BasicInfoSection', () => {
       icon_url: '',
     },
     indexing_technique: IndexingType.QUALIFIED,
-    indexing_status: 'completed',
     data_source_type: DataSourceType.FILE,
     doc_form: ChunkingMode.text,
     embedding_model: 'text-embedding-ada-002',
@@ -80,7 +81,6 @@ describe('BasicInfoSection', () => {
     embedding_available: true,
     app_count: 0,
     document_count: 5,
-    total_document_count: 5,
     word_count: 1000,
     provider: 'vendor',
     tags: [],
@@ -97,17 +97,6 @@ describe('BasicInfoSection', () => {
       score_threshold_enabled: true,
     },
     retrieval_model_dict: {
-      search_method: RETRIEVE_METHOD.semantic,
-      reranking_enable: false,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-      top_k: 3,
-      score_threshold_enabled: false,
-      score_threshold: 0.5,
-    } as RetrievalConfig,
-    retrieval_model: {
       search_method: RETRIEVE_METHOD.semantic,
       reranking_enable: false,
       reranking_model: {
@@ -137,8 +126,8 @@ describe('BasicInfoSection', () => {
       roles: [],
       avatar: '',
       avatar_url: '',
-      last_login_at: '',
-      created_at: '',
+      last_login_at: null,
+      created_at: null,
       status: 'active',
     },
     {
@@ -149,8 +138,8 @@ describe('BasicInfoSection', () => {
       roles: [],
       avatar: '',
       avatar_url: '',
-      last_login_at: '',
-      created_at: '',
+      last_login_at: null,
+      created_at: null,
       status: 'active',
     },
   ]

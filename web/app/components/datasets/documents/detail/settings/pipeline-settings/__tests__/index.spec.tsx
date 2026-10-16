@@ -2,6 +2,7 @@ import type { PipelineExecutionLogResponse } from '@/models/pipeline'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DatasourceType } from '@/models/pipeline'
+import { consoleQuery } from '@/service/console'
 import PipelineSettings from '../index'
 
 // Mock Next.js router
@@ -26,24 +27,31 @@ vi.mock('@/context/dataset-detail', () => ({
 const mockUsePipelineExecutionLog = vi.fn()
 const mockMutateAsync = vi.fn()
 const mockUseRunPublishedPipeline = vi.fn()
-vi.mock('@/service/use-pipeline', () => ({
-  usePipelineExecutionLog: (params: { dataset_id: string; document_id: string }) =>
-    mockUsePipelineExecutionLog(params),
-  useRunPublishedPipeline: () => mockUseRunPublishedPipeline(),
-  // For ProcessDocuments component
-  usePublishedPipelineProcessingParams: () => ({
-    data: { variables: [] },
-    isFetching: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.documents.byDocumentId.pipelineExecutionLog.get': (o: {
+      input: { params: { dataset_id: string; document_id: string } }
+    }) => mockUsePipelineExecutionLog(o.input.params),
+    'rag.pipelines.byPipelineId.workflows.published.run.post': () => mockUseRunPublishedPipeline(),
+    // For ProcessDocuments component
+    'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': () => ({
+      data: { variables: [] },
+      isFetching: false,
+    }),
+  })
+})
 
-// Mock document invalidation hooks
-const mockInvalidDocumentList = vi.fn()
-const mockInvalidDocumentDetail = vi.fn()
-vi.mock('@/service/knowledge/use-document', () => ({
-  useInvalidDocumentList: () => mockInvalidDocumentList,
-  useInvalidDocumentDetail: () => mockInvalidDocumentDetail,
-}))
+const expectDocumentsInvalidated = (datasetId: string) => {
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
+      input: { params: { dataset_id: datasetId } },
+    }),
+  })
+  expect(QueryClient.prototype.invalidateQueries).toHaveBeenCalledWith({
+    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key(),
+  })
+}
 
 // Mock Form component in ProcessDocuments - internal dependencies are too complex
 vi.mock('../../../../create-from-pipeline/process-documents/form', () => ({
@@ -164,8 +172,7 @@ describe('PipelineSettings', () => {
     mockPush.mockClear()
     mockBack.mockClear()
     mockMutateAsync.mockClear()
-    mockInvalidDocumentList.mockClear()
-    mockInvalidDocumentDetail.mockClear()
+    vi.spyOn(QueryClient.prototype, 'invalidateQueries')
 
     // Default: successful data fetch
     mockUsePipelineExecutionLog.mockReturnValue({
@@ -377,9 +384,11 @@ describe('PipelineSettings', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({
-            is_preview: false,
-            pipeline_id: mockPipelineId,
-            original_document_id: 'document-456',
+            params: { pipeline_id: mockPipelineId },
+            body: expect.objectContaining({
+              is_preview: false,
+              original_document_id: 'document-456',
+            }),
           }),
           expect.any(Object),
         )
@@ -416,8 +425,7 @@ describe('PipelineSettings', () => {
       )
 
       await waitFor(() => {
-        expect(mockInvalidDocumentList).toHaveBeenCalled()
-        expect(mockInvalidDocumentDetail).toHaveBeenCalled()
+        expectDocumentsInvalidated('dataset-123')
       })
     })
   })
@@ -446,8 +454,8 @@ describe('PipelineSettings', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           expect.objectContaining({
-            is_preview: true,
-            pipeline_id: mockPipelineId,
+            params: { pipeline_id: mockPipelineId },
+            body: expect.objectContaining({ is_preview: true }),
           }),
           expect.any(Object),
         )
@@ -455,7 +463,7 @@ describe('PipelineSettings', () => {
     })
 
     it('should update estimateData on successful preview', async () => {
-      const mockOutputs = { chunks: [], total_tokens: 50 }
+      const mockOutputs = { total_nodes: 1, total_segments: 0, preview: [], qa_preview: [] }
       mockMutateAsync.mockImplementation((_req, opts) => {
         opts?.onSuccess?.({ data: { outputs: mockOutputs } })
         return Promise.resolve({ data: { outputs: mockOutputs } })
@@ -496,12 +504,15 @@ describe('PipelineSettings', () => {
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
           {
-            pipeline_id: mockPipelineId,
-            inputs: {},
-            start_node_id: 'node-xyz',
-            datasource_type: DatasourceType.localFile,
-            datasource_info_list: [{ related_id: 'file-1', name: 'test.pdf', extension: 'pdf' }],
-            is_preview: true,
+            params: { pipeline_id: mockPipelineId },
+            body: {
+              inputs: {},
+              start_node_id: 'node-xyz',
+              datasource_type: DatasourceType.localFile,
+              datasource_info_list: [{ related_id: 'file-1', name: 'test.pdf', extension: 'pdf' }],
+              is_preview: true,
+              response_mode: 'blocking',
+            },
           },
           expect.any(Object),
         )
@@ -583,7 +594,7 @@ describe('PipelineSettings', () => {
     })
 
     it('should update estimateData after successful preview', async () => {
-      const mockEstimateData = { chunks: [], total_tokens: 50 }
+      const mockEstimateData = { total_nodes: 1, total_segments: 0, preview: [], qa_preview: [] }
       mockMutateAsync.mockImplementation((_req, opts) => {
         opts?.onSuccess?.({ data: { outputs: mockEstimateData } })
         return Promise.resolve({ data: { outputs: mockEstimateData } })
@@ -609,7 +620,7 @@ describe('PipelineSettings', () => {
 
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
-          expect.objectContaining({ is_preview: false }),
+          expect.objectContaining({ body: expect.objectContaining({ is_preview: false }) }),
           expect.any(Object),
         )
       })
@@ -624,7 +635,7 @@ describe('PipelineSettings', () => {
 
       await waitFor(() => {
         expect(mockMutateAsync).toHaveBeenCalledWith(
-          expect.objectContaining({ is_preview: true }),
+          expect.objectContaining({ body: expect.objectContaining({ is_preview: true }) }),
           expect.any(Object),
         )
       })

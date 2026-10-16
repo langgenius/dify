@@ -64,8 +64,8 @@ class TestOnlineDocumentDatasourcePlugin:
         response_stream = (message for message in messages)
 
         # Patch PluginDatasourceManager to isolate plugin behavior from external dependencies
-        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
+        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
             mock_manager_instance.get_online_document_pages.return_value = response_stream
 
             # Act
@@ -115,8 +115,8 @@ class TestOnlineDocumentDatasourcePlugin:
         messages = [DatasourceMessage(type="text", message=DatasourceMessage.TextMessage(text="document content"))]
         response_stream = (message for message in messages)
 
-        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as MockManager:
-            mock_manager_instance = MockManager.return_value
+        with patch("core.datasource.online_document.online_document_plugin.PluginDatasourceManager") as mock_manager:
+            mock_manager_instance = mock_manager.return_value
             mock_manager_instance.get_online_document_page_content.return_value = response_stream
 
             # Act

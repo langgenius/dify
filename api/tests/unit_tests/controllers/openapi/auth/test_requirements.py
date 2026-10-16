@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from controllers.openapi._contract import op_of
+from controllers.openapi._errors import OpenApiErrorCode, OpenApiErrorFormatter, ServiceApiDisabled
+from controllers.openapi._models import ServiceApiPatch
+from controllers.openapi.app_info import AgentServiceApiApi, ServiceApiApi
 from controllers.openapi.auth.context import RouteContractError
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -20,6 +24,7 @@ from controllers.openapi.auth.requirements import (
 )
 from controllers.openapi.auth.subjects import AccountSubject
 from enums import DeploymentEdition
+from models import AppMode
 from models.account import AccountStatus, TenantAccountRole
 from services.enterprise.enterprise_service import WebAppAccessMode, WebAppSettings
 from services.entities.feature_entities import (
@@ -96,6 +101,38 @@ def test_an_app_requirement_off_an_app_route_is_a_wiring_bug(
 
     with pytest.raises(RouteContractError, match="app_id is not a path parameter"):
         CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject), sqlite_session)
+
+
+@pytest.mark.parametrize(
+    ("mode", "view"),
+    [
+        (AppMode.CHAT, ServiceApiApi.patch),
+        (AppMode.WORKFLOW, ServiceApiApi.patch),
+        (AppMode.AGENT, AgentServiceApiApi.patch),
+    ],
+)
+def test_a_disabled_service_api_hints_the_op_that_turns_it_on(
+    sqlite_session: Session, mode: AppMode, view: Callable[..., object]
+) -> None:
+    persist(sqlite_session, make_app(enable_api=False, mode=mode))
+    subject = account_subject()
+
+    with pytest.raises(ServiceApiDisabled) as raised:
+        CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session)
+
+    body = OpenApiErrorFormatter().finalize(raised.value, {}, raised.value.code or 0)
+    assert (body["status"], body["code"]) == (403, OpenApiErrorCode.SERVICE_API_DISABLED)
+    [hint] = body["hints"]
+    assert hint["op"] == op_of(view)
+    assert hint["input"] == {"app_id": APP_ID, "enabled": True}
+    ServiceApiPatch.model_validate({k: v for k, v in hint["input"].items() if k != "app_id"})
+
+
+def test_an_enabled_service_api_passes(sqlite_session: Session) -> None:
+    persist(sqlite_session, make_app(enable_api=True))
+    subject = account_subject()
+
+    CheckAppApiEnabled().run(subject, make_ctx(sqlite_session, subject=subject, app_id=APP_ID), sqlite_session)
 
 
 class TestCheckRBACPermission:

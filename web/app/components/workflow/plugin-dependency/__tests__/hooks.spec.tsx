@@ -11,8 +11,21 @@ const mocks = vi.hoisted(() => ({
   pipeline: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
+vi.mock('@/service/console', async () => ({
   consoleQuery: {
+    rag: {
+      pipelines: {
+        imports: {
+          byPipelineId: {
+            checkDependencies: {
+              get: (await import('@/test/console/operation-hooks')).consoleOperationStub(
+                'rag.pipelines.imports.byPipelineId.checkDependencies.get',
+              ),
+            },
+          },
+        },
+      },
+    },
     apps: {
       imports: {
         byAppId: {
@@ -28,9 +41,14 @@ vi.mock('@/service/console', () => ({
     },
   },
 }))
-vi.mock('@/service/use-pipeline', () => ({
-  useCheckPipelineDependencies: () => ({ mutateAsync: mocks.pipeline }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.imports.byPipelineId.checkDependencies.get': () => ({
+      mutateAsync: mocks.pipeline,
+    }),
+  })
+})
 vi.mock('@/app/notifications', () => ({ toast: { error: mocks.error } }))
 
 function renderDependencies() {

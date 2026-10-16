@@ -11,6 +11,7 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddApiKeyButton, AddOAuthButton } from '@/app/components/plugins/plugin-auth'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { providerConfigToFormSchema } from './utils'
 
 type ConfigureProps = {
   item: DataSourceAuth
@@ -23,9 +24,13 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
   const renderI18nObject = useRenderI18nObject()
   const providerLabel = renderI18nObject(item.label)
   const [open, setOpen] = useState(false)
-  const canApiKey = item.credential_schema?.length
-  const oAuthData = item.oauth_schema || {}
-  const canOAuth = oAuthData.client_schema?.length
+  const canApiKey = item.credential_schema.length
+  const credentialFormSchemas = useMemo(
+    () => item.credential_schema.map(providerConfigToFormSchema),
+    [item.credential_schema],
+  )
+  const oAuthData = item.oauth_schema
+  const canOAuth = oAuthData?.client_schema.length
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     return {
       buttonText: t(($) => $['auth.addOAuth'], { ns: 'plugin' }),
@@ -78,7 +83,7 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
             {!!canApiKey && (
               <AddApiKeyButton
                 {...apiKeyButtonProps}
-                formSchemas={item.credential_schema}
+                formSchemas={credentialFormSchemas}
                 onUpdate={handleUpdate}
                 disabled={disabled}
               />
@@ -89,17 +94,17 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
     )
   }
 
-  if (!canOAuth) return renderConfigurePopover()
+  if (!oAuthData || !canOAuth) return renderConfigurePopover()
 
   return (
     <AddOAuthButton
       {...oAuthButtonProps}
       onUpdate={handleUpdate}
       oAuthData={{
-        schema: oAuthData.client_schema || [],
+        schema: oAuthData.client_schema.map(providerConfigToFormSchema),
         is_oauth_custom_client_enabled: oAuthData.is_oauth_custom_client_enabled,
         is_system_oauth_params_exists: oAuthData.is_system_oauth_params_exists,
-        client_params: oAuthData.oauth_custom_client_params,
+        client_params: oAuthData.oauth_custom_client_params ?? undefined,
         redirect_uri: oAuthData.redirect_uri,
       }}
       disabled={disabled}

@@ -1,9 +1,11 @@
 'use client'
+
 import type {
   AgentComposerAgentResponse,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { Ref } from 'react'
+import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   AgentFormValues,
   AgentIconSelection,
@@ -24,11 +26,9 @@ import { useTranslation } from 'react-i18next'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
 import { consoleQuery } from '@/service/console'
-import { FlowType } from '@/types/common'
 
 type SaveInlineAgentToRosterDialogProps = {
-  flowId: string
-  flowType: typeof FlowType.appFlow | typeof FlowType.snippet
+  resource: Extract<EditorResource, { kind: 'app' | 'snippet' }>
   initialAgent: AgentComposerAgentResponse
   nodeId: string
   open: boolean
@@ -98,8 +98,7 @@ function SaveInlineAgentToRosterFormSession({
 }
 
 export function SaveInlineAgentToRosterDialog({
-  flowId,
-  flowType,
+  resource,
   initialAgent,
   nodeId,
   open,
@@ -144,11 +143,11 @@ export function SaveInlineAgentToRosterDialog({
       },
     }
 
-    if (flowType === FlowType.snippet) {
+    if (resource.kind === 'snippet') {
       snippetSaveToRosterMutation.mutate(
         {
           params: {
-            snippet_id: flowId,
+            snippet_id: resource.snippetId,
             node_id: nodeId,
           },
           body,
@@ -158,11 +157,11 @@ export function SaveInlineAgentToRosterDialog({
       return
     }
 
-    if (flowType === FlowType.appFlow) {
+    if (resource.kind === 'app') {
       appSaveToRosterMutation.mutate(
         {
           params: {
-            app_id: flowId,
+            app_id: resource.appId,
             node_id: nodeId,
           },
           body,

@@ -2,6 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetCardHeader from '../dataset-card-header'
 
@@ -23,10 +24,10 @@ vi.mock('react-i18next', async () => {
 })
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
-  indexing_status: 'completed',
   provider: 'vendor',
   permission: DatasetPermission.allTeamMembers,
   data_source_type: DataSourceType.FILE,
@@ -34,7 +35,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   embedding_available: true,
   app_count: 5,
   document_count: 10,
-  total_document_count: 10,
   word_count: 1000,
   updated_at: 1609545600,
   updated_by: 'user-1',
@@ -57,9 +57,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   retrieval_model_dict: {
     search_method: RETRIEVE_METHOD.semantic,
   } as DataSet['retrieval_model_dict'],
-  retrieval_model: {
-    search_method: RETRIEVE_METHOD.semantic,
-  } as DataSet['retrieval_model'],
   external_knowledge_info: {
     external_knowledge_id: '',
     external_knowledge_api_id: '',

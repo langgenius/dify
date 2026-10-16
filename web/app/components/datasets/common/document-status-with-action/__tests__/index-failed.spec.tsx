@@ -1,21 +1,24 @@
-import type { ErrorDocsResponse } from '@/models/datasets'
+import type { ErrorDocsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { retryErrorDocs } from '@/service/datasets'
-import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 import RetryButton from '../index-failed'
 
 const mockRefetch = vi.fn()
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetErrorDocs: vi.fn(),
-}))
+const { mockErrorDocsQuery } = vi.hoisted(() => ({ mockErrorDocsQuery: vi.fn() }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'datasets.byDatasetId.errorDocs.get': mockErrorDocsQuery,
+  })
+})
 
 vi.mock('@/service/datasets', () => ({
   retryErrorDocs: vi.fn(),
 }))
 
-const mockUseDatasetErrorDocs = vi.mocked(useDatasetErrorDocs)
 const mockRetryErrorDocs = vi.mocked(retryErrorDocs)
 
 afterEach(() => {
@@ -24,35 +27,34 @@ afterEach(() => {
 })
 
 // Helper to create mock query result
-const createMockQueryResult = (data: ErrorDocsResponse | undefined, isLoading: boolean) =>
-  ({
-    data,
-    isLoading,
-    refetch: mockRefetch,
-    // Required query result properties
-    error: null,
-    isError: false,
-    isFetched: true,
-    isFetching: false,
-    isSuccess: !isLoading && !!data,
-    status: isLoading ? 'pending' : 'success',
-    dataUpdatedAt: Date.now(),
-    errorUpdatedAt: 0,
-    failureCount: 0,
-    failureReason: null,
-    errorUpdateCount: 0,
-    isLoadingError: false,
-    isPaused: false,
-    isPlaceholderData: false,
-    isPending: isLoading,
-    isRefetchError: false,
-    isRefetching: false,
-    isStale: false,
-    fetchStatus: 'idle',
-    promise: Promise.resolve(data as ErrorDocsResponse),
-    isFetchedAfterMount: true,
-    isInitialLoading: false,
-  }) as unknown as ReturnType<typeof useDatasetErrorDocs>
+const createMockQueryResult = (data: ErrorDocsResponse | undefined, isLoading: boolean) => ({
+  data,
+  isLoading,
+  refetch: mockRefetch,
+  // Required query result properties
+  error: null,
+  isError: false,
+  isFetched: true,
+  isFetching: false,
+  isSuccess: !isLoading && !!data,
+  status: isLoading ? 'pending' : 'success',
+  dataUpdatedAt: Date.now(),
+  errorUpdatedAt: 0,
+  failureCount: 0,
+  failureReason: null,
+  errorUpdateCount: 0,
+  isLoadingError: false,
+  isPaused: false,
+  isPlaceholderData: false,
+  isPending: isLoading,
+  isRefetchError: false,
+  isRefetching: false,
+  isStale: false,
+  fetchStatus: 'idle',
+  promise: Promise.resolve(data as ErrorDocsResponse),
+  isFetchedAfterMount: true,
+  isInitialLoading: false,
+})
 
 describe('RetryButton (IndexFailed)', () => {
   beforeEach(() => {
@@ -62,21 +64,21 @@ describe('RetryButton (IndexFailed)', () => {
 
   describe('Rendering', () => {
     it('should render nothing when loading', () => {
-      mockUseDatasetErrorDocs.mockReturnValue(createMockQueryResult(undefined, true))
+      mockErrorDocsQuery.mockReturnValue(createMockQueryResult(undefined, true))
 
       const { container } = render(<RetryButton datasetId="test-dataset" />)
       expect(container.firstChild).toBeNull()
     })
 
     it('should render nothing when no error documents', () => {
-      mockUseDatasetErrorDocs.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
+      mockErrorDocsQuery.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
 
       const { container } = render(<RetryButton datasetId="test-dataset" />)
       expect(container.firstChild).toBeNull()
     })
 
     it('should render StatusWithAction when error documents exist', () => {
-      mockUseDatasetErrorDocs.mockReturnValue(
+      mockErrorDocsQuery.mockReturnValue(
         createMockQueryResult(
           {
             total: 3,
@@ -91,7 +93,7 @@ describe('RetryButton (IndexFailed)', () => {
     })
 
     it('should display error count in description', () => {
-      mockUseDatasetErrorDocs.mockReturnValue(
+      mockErrorDocsQuery.mockReturnValue(
         createMockQueryResult(
           {
             total: 5,
@@ -107,17 +109,22 @@ describe('RetryButton (IndexFailed)', () => {
   })
 
   describe('Props', () => {
-    it('should pass datasetId to useDatasetErrorDocs', () => {
-      mockUseDatasetErrorDocs.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
+    it('should load the error documents of the given dataset', () => {
+      mockErrorDocsQuery.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
 
       render(<RetryButton datasetId="my-dataset-id" />)
-      expect(mockUseDatasetErrorDocs).toHaveBeenCalledWith('my-dataset-id')
+      expect(mockErrorDocsQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: { params: { dataset_id: 'my-dataset-id' } },
+          enabled: true,
+        }),
+      )
     })
   })
 
   describe('User Interactions', () => {
     it('should call retryErrorDocs when retry button is clicked', async () => {
-      mockUseDatasetErrorDocs.mockReturnValue(
+      mockErrorDocsQuery.mockReturnValue(
         createMockQueryResult(
           {
             total: 2,
@@ -148,7 +155,7 @@ describe('RetryButton (IndexFailed)', () => {
     })
 
     it('should refetch error docs after successful retry', async () => {
-      mockUseDatasetErrorDocs.mockReturnValue(
+      mockErrorDocsQuery.mockReturnValue(
         createMockQueryResult(
           {
             total: 1,
@@ -171,7 +178,7 @@ describe('RetryButton (IndexFailed)', () => {
     })
 
     it('should disable button while retrying', async () => {
-      mockUseDatasetErrorDocs.mockReturnValue(
+      mockErrorDocsQuery.mockReturnValue(
         createMockQueryResult(
           {
             total: 1,
@@ -210,7 +217,7 @@ describe('RetryButton (IndexFailed)', () => {
 
   describe('State Management', () => {
     it('should transition to error state when retry fails', async () => {
-      mockUseDatasetErrorDocs.mockReturnValue(
+      mockErrorDocsQuery.mockReturnValue(
         createMockQueryResult(
           {
             total: 1,
@@ -220,7 +227,7 @@ describe('RetryButton (IndexFailed)', () => {
         ),
       )
 
-      mockRetryErrorDocs.mockResolvedValue({ result: 'fail' })
+      mockRetryErrorDocs.mockRejectedValue(new Error('retry failed'))
 
       render(<RetryButton datasetId="test-dataset" />)
 
@@ -242,7 +249,7 @@ describe('RetryButton (IndexFailed)', () => {
       const { rerender } = render(<RetryButton datasetId="test-dataset" />)
 
       // Initially has errors
-      mockUseDatasetErrorDocs.mockReturnValue(
+      mockErrorDocsQuery.mockReturnValue(
         createMockQueryResult(
           {
             total: 1,
@@ -256,7 +263,7 @@ describe('RetryButton (IndexFailed)', () => {
       expect(screen.getByText(/retry/i)).toBeInTheDocument()
 
       // Now no errors
-      mockUseDatasetErrorDocs.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
+      mockErrorDocsQuery.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
 
       rerender(<RetryButton datasetId="test-dataset" />)
 
@@ -268,7 +275,7 @@ describe('RetryButton (IndexFailed)', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty data array', () => {
-      mockUseDatasetErrorDocs.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
+      mockErrorDocsQuery.mockReturnValue(createMockQueryResult({ total: 0, data: [] }, false))
 
       const { container } = render(<RetryButton datasetId="test-dataset" />)
       expect(container.firstChild).toBeNull()
@@ -277,7 +284,7 @@ describe('RetryButton (IndexFailed)', () => {
     it('should handle undefined data by showing error state', () => {
       // When data is undefined but not loading, the component shows error state
       // because errorDocs?.total is not strictly equal to 0
-      mockUseDatasetErrorDocs.mockReturnValue(createMockQueryResult(undefined, false))
+      mockErrorDocsQuery.mockReturnValue(createMockQueryResult(undefined, false))
 
       render(<RetryButton datasetId="test-dataset" />)
       // Component renders with undefined count
@@ -285,7 +292,7 @@ describe('RetryButton (IndexFailed)', () => {
     })
 
     it('should handle retry with empty document list', async () => {
-      mockUseDatasetErrorDocs.mockReturnValue(createMockQueryResult({ total: 1, data: [] }, false))
+      mockErrorDocsQuery.mockReturnValue(createMockQueryResult({ total: 1, data: [] }, false))
 
       mockRetryErrorDocs.mockResolvedValue({ result: 'success' })
 

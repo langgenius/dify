@@ -5,6 +5,13 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'codeBasedExtension.get': () => ({ data: undefined }),
+  })
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/app/test-app-id/configuration',
@@ -60,10 +67,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/declaration
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useCodeBasedExtensions: () => ({ data: undefined }),
 }))
 
 const defaultFeatures: Features = {

@@ -27,8 +27,8 @@ const memberList: Member[] = [
     avatar_url: '',
     role: 'owner',
     roles: [],
-    last_login_at: '',
-    created_at: '',
+    last_login_at: null,
+    created_at: null,
     status: 'active',
   },
   {
@@ -39,8 +39,8 @@ const memberList: Member[] = [
     avatar_url: '',
     role: 'admin',
     roles: [],
-    last_login_at: '',
-    created_at: '',
+    last_login_at: null,
+    created_at: null,
     status: 'active',
   },
   {
@@ -51,8 +51,8 @@ const memberList: Member[] = [
     avatar_url: '',
     role: 'normal',
     roles: [],
-    last_login_at: '',
-    created_at: '',
+    last_login_at: null,
+    created_at: null,
     status: 'active',
   },
 ]

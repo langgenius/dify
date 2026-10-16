@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
@@ -170,10 +171,8 @@ class WorkflowTool(Tool):
 
         usage_metadata: dict[str, Any] = {}
         if total_tokens is not None:
-            try:
+            with contextlib.suppress(TypeError, ValueError):
                 usage_metadata["total_tokens"] = int(str(total_tokens))
-            except (TypeError, ValueError):
-                pass
         if total_price is not None:
             usage_metadata["total_price"] = str(total_price)
         currency = data.get("currency")

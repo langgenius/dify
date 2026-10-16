@@ -1,6 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -15,7 +16,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
+import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import PageSelector from './page-selector'
@@ -49,10 +50,11 @@ const OnlineDocuments = ({
       })),
     )
 
-  const { data: dataSourceAuth } = useGetDataSourceAuth({
-    pluginId: nodeData.plugin_id,
-    provider: nodeData.provider_name,
-  })
+  const { data: dataSourceAuth } = useQuery(
+    consoleQuery.auth.plugin.datasource.byProviderId.get.queryOptions({
+      input: { params: { provider_id: `${nodeData.plugin_id}/${nodeData.provider_name}` } },
+    }),
+  )
 
   const dataSourceStore = useDataSourceStore()
 

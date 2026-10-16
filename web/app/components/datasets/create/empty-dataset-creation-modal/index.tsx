@@ -5,14 +5,15 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
+import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { toast } from '@/app/notifications'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { createEmptyDataset } from '@/service/datasets'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import s from './index.module.css'
 
 type IProps = {
@@ -24,7 +25,10 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { t } = useTranslation(['common', 'datasetCreation'])
   const router = useRouter()
-  const invalidDatasetList = useInvalidDatasetList()
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
   const submit = async () => {
     if (isSubmitting) return
 

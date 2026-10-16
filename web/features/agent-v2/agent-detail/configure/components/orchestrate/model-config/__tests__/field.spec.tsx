@@ -5,6 +5,16 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentModelField } from '../field'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.modelProviders.byProvider.models.parameterRules.get': () => ({
+      data: { data: [] },
+      isLoading: false,
+    }),
+  })
+})
+
 const providerSummary = vi.hoisted(() => vi.fn())
 
 const modelList = vi.hoisted(() => vi.fn<() => Promise<{ data: ProviderWithModelsResponse[] }>>())
@@ -14,10 +24,6 @@ vi.mock('nuqs', async (importOriginal) => ({
   useQueryState: () => [null, vi.fn()],
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useModelParameterRules: () => ({ data: { data: [] }, isLoading: false }),
-}))
-
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
   () => ({
@@ -25,38 +31,51 @@ vi.mock(
   }),
 )
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workspaces: {
-      current: {
-        models: {
-          modelTypes: {
-            byModelType: {
+vi.mock('@/service/console', async () => {
+  const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  return {
+    consoleQuery: {
+      files: { upload: { get: consoleOperationStub('files.upload.get') } },
+      workspaces: {
+        current: {
+          models: {
+            modelTypes: {
+              byModelType: {
+                get: {
+                  queryOptions: (options: object) => ({
+                    queryKey: ['model-list'],
+                    queryFn: modelList,
+                    ...options,
+                  }),
+                },
+              },
+            },
+          },
+          modelProviders: {
+            byProvider: {
+              models: {
+                parameterRules: {
+                  get: consoleOperationStub(
+                    'workspaces.current.modelProviders.byProvider.models.parameterRules.get',
+                  ),
+                },
+              },
+            },
+            summary: {
               get: {
                 queryOptions: (options: object) => ({
-                  queryKey: ['model-list'],
-                  queryFn: modelList,
+                  queryKey: ['providers'],
+                  queryFn: providerSummary,
                   ...options,
                 }),
               },
             },
           },
         },
-        modelProviders: {
-          summary: {
-            get: {
-              queryOptions: (options: object) => ({
-                queryKey: ['providers'],
-                queryFn: providerSummary,
-                ...options,
-              }),
-            },
-          },
-        },
       },
     },
-  },
-}))
+  }
+})
 
 function renderField(currentModel?: AgentComposerModel) {
   const queryClient = new QueryClient({

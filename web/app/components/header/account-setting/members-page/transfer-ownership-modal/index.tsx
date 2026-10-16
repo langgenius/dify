@@ -9,7 +9,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import MemberSelector from './member-selector'
 
@@ -62,15 +62,16 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     )
   }
   const sendEmail = async () => {
-    const res = await sendOwnerEmail({})
+    const res = await consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post({
+      body: {},
+    })
     startCount()
     if (res.data) setStepToken(res.data)
   }
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
-      const res = await verifyOwnerEmail({
-        code,
-        token,
+      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post({
+        body: { code, token },
       })
       if (res.is_valid) {
         setStepToken(res.token)
@@ -97,8 +98,9 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const handleTransfer = async () => {
     setIsTransfer(true)
     try {
-      await ownershipTransfer(newOwner, {
-        token: stepToken,
+      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post({
+        params: { member_id: newOwner },
+        body: { token: stepToken },
       })
       globalThis.location.reload()
     } catch (error) {

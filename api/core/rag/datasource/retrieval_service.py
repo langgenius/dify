@@ -671,10 +671,7 @@ class RetrievalService:
                             child_chunk_details: list[ChildChunkDetail] = []
                             for child_chunk in child_chunks:
                                 child_document: Document | None = doc_to_document_map.get(child_chunk.index_node_id)
-                                if child_document:
-                                    child_score = child_document.metadata.get("score", 0.0)
-                                else:
-                                    child_score = 0.0
+                                child_score = child_document.metadata.get("score", 0.0) if child_document else 0.0
                                 child_chunk_detail: ChildChunkDetail = {
                                     "id": child_chunk.id,
                                     "content": child_chunk.content,

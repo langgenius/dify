@@ -32,13 +32,15 @@ const mockToolCollections = vi.hoisted(() => ({
   workflow: [] as ToolWithProvider[],
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockToolCollections.builtIn }),
-  useAllCustomTools: () => ({ data: mockToolCollections.custom }),
-  useAllWorkflowTools: () => ({ data: mockToolCollections.workflow }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.tools.builtin.get': () => ({ data: mockToolCollections.builtIn }),
+    'workspaces.current.tools.api.get': () => ({ data: mockToolCollections.custom }),
+    'workspaces.current.tools.workflow.get': () => ({ data: mockToolCollections.workflow }),
+    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
+  })
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
@@ -70,10 +72,11 @@ const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParame
 })
 
 const renderImportFromTool = (ui: React.ReactElement) => {
-  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+  const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: false },
   })
-  return renderWorkflowComponent(<ConsoleQueryWrapper>{ui}</ConsoleQueryWrapper>, {
+  return renderWorkflowComponent(ui, {
+    queryClient,
     hooksStoreProps: {
       availableNodesMetaData: { nodes: [] },
     },

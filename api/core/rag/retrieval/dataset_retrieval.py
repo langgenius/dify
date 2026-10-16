@@ -6,7 +6,7 @@ import threading
 import time
 from collections import Counter, defaultdict
 from collections.abc import Generator, Mapping
-from typing import Any, Union, cast
+from typing import Any, cast
 
 from flask import Flask, current_app
 from opentelemetry.trace import get_current_span
@@ -470,10 +470,7 @@ class DatasetRetrieval:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = self._get_available_datasets(tenant_id, dataset_ids)
 
-        if inputs:
-            inputs = {key: str(value) for key, value in inputs.items()}
-        else:
-            inputs = {}
+        inputs = {key: str(value) for key, value in inputs.items()} if inputs else {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
         metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
             session,
@@ -566,10 +563,7 @@ class DatasetRetrieval:
                         segment_content = sign_segment_content(segment, session=session)
 
                     # If summary exists, prepend it to the content
-                    if record.summary:
-                        final_content = f"{record.summary}\n{segment_content}"
-                    else:
-                        final_content = segment_content
+                    final_content = f"{record.summary}\n{segment_content}" if record.summary else segment_content
 
                     document_context_list.append(
                         DocumentContext(
@@ -1828,7 +1822,7 @@ class DatasetRetrieval:
         model_mode = ModelMode(mode)
         input_text = query
 
-        prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
+        prompt_template: CompletionModelPromptTemplate | list[ChatModelMessage]
         if model_mode == ModelMode.CHAT:
             prompt_template = []
             system_prompt_messages = ChatModelMessage(role=PromptMessageRole.SYSTEM, text=METADATA_FILTER_SYSTEM_PROMPT)

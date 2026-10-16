@@ -4,16 +4,22 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { useOneMoreStep } from '@/service/use-common'
 import OneMoreStep from '../one-more-step'
+
+const { mockOneMoreStepHook } = vi.hoisted(() => ({
+  mockOneMoreStepHook: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'account.init.post': (options: unknown) => mockOneMoreStepHook(options),
+  })
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useOneMoreStep: vi.fn(),
 }))
 
 const mockReplace = vi.fn()
@@ -21,7 +27,7 @@ const mockSubmitOneMoreStep = vi.fn()
 
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseOneMoreStep = useOneMoreStep as unknown as MockedFunction<typeof useOneMoreStep>
+const mockUseOneMoreStep = mockOneMoreStepHook
 
 describe('OneMoreStep', () => {
   beforeEach(() => {
@@ -37,7 +43,7 @@ describe('OneMoreStep', () => {
     mockUseOneMoreStep.mockReturnValue({
       mutateAsync: mockSubmitOneMoreStep,
       isPending: false,
-    } as unknown as ReturnType<typeof useOneMoreStep>)
+    })
     mockSubmitOneMoreStep.mockResolvedValue({ result: 'success' })
   })
 

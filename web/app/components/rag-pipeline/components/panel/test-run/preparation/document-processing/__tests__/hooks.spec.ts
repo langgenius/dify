@@ -1,8 +1,8 @@
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { useInputVariables } from '../hooks'
 
 const mockUseDraftPipelineProcessingParams = vi.hoisted(() =>
-  vi.fn(() => ({
+  vi.fn((_params?: unknown, _enabled?: boolean) => ({
     data: { variables: [{ variable: 'chunkSize' }] },
     isFetching: true,
   })),
@@ -13,9 +13,19 @@ vi.mock('@/app/components/workflow/store', () => ({
     selector({ pipelineId: 'pipeline-1' }),
 }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelineProcessingParams: mockUseDraftPipelineProcessingParams,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.processing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUseDraftPipelineProcessingParams({
+        pipeline_id: o.input.params.pipeline_id,
+        node_id: o.input.query.node_id,
+      }),
+  })
+})
 
 describe('useInputVariables', () => {
   beforeEach(() => {
@@ -23,7 +33,9 @@ describe('useInputVariables', () => {
   })
 
   it('should query processing params with the current pipeline id and datasource node id', () => {
-    const { result } = renderHook(() => useInputVariables('datasource-node'))
+    const { result } = renderHook(() => useInputVariables('datasource-node'), {
+      resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
+    })
 
     expect(mockUseDraftPipelineProcessingParams).toHaveBeenCalledWith({
       pipeline_id: 'pipeline-1',

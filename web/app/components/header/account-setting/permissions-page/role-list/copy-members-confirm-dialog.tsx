@@ -9,8 +9,9 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useGetMembersOfRole } from '@/service/access-control/use-workspace-roles'
+import { consoleQuery } from '@/service/console'
 
 type CopyMembersConfirmDialogProps = {
   role: Role
@@ -26,12 +27,12 @@ export function CopyMembersConfirmDialog({
   onDuplicate,
 }: CopyMembersConfirmDialogProps) {
   const { t } = useTranslation(['common', 'permission'])
-  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useGetMembersOfRole({
-    roleId: role.id,
-    page: 1,
-    limit: 9999,
-  })
-  const memberCount = membersOfRole?.pagination.total_count ?? 0
+  const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useQuery(
+    consoleQuery.workspaces.current.rbac.roles.byRoleId.members.get.queryOptions({
+      input: { params: { role_id: role.id }, query: { page: 1, limit: 9999 } },
+    }),
+  )
+  const memberCount = membersOfRole?.pagination?.total_count ?? 0
   const isLoadingMemberCount = isLoadingMembersOfRole && !membersOfRole
   const isActionDisabled = isCopyingRole || isLoadingMemberCount
 

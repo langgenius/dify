@@ -9,7 +9,10 @@ export type RuleStructuredOutputPayload = {
   model_config: ModelConfig
 }
 
-export type GeneratorResponse = unknown
+export type StructuredOutputGenerateResponse = {
+  error: string
+  output: string
+}
 
 export type CompletionRequestError = ErrorResponse & {
   code: 'completion_request_error'
@@ -73,7 +76,7 @@ export type PostRuleStructuredOutputGenerateError =
   PostRuleStructuredOutputGenerateErrors[keyof PostRuleStructuredOutputGenerateErrors]
 
 export type PostRuleStructuredOutputGenerateResponses = {
-  200: GeneratorResponse
+  200: StructuredOutputGenerateResponse
 }
 
 export type PostRuleStructuredOutputGenerateResponse =

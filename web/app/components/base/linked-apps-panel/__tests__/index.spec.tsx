@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { vi } from 'vite-plus/test'
-import { AppModeEnum } from '@/types/app'
 import LinkedAppsPanel from '../index'
 
 vi.mock('@/next/link', () => ({
@@ -25,7 +24,8 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-1',
       name: 'Chatbot App',
-      mode: AppModeEnum.CHAT,
+      description: '',
+      mode: 'chat' as const,
       icon_type: 'emoji' as const,
       icon: '🤖',
       icon_background: '#FFEAD5',
@@ -34,7 +34,8 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-2',
       name: 'Workflow App',
-      mode: AppModeEnum.WORKFLOW,
+      description: '',
+      mode: 'workflow' as const,
       icon_type: 'image' as const,
       icon: 'file-id',
       icon_background: '#E4FBCC',
@@ -43,7 +44,8 @@ describe('LinkedAppsPanel Component', () => {
     {
       id: 'app-3',
       name: '',
-      mode: AppModeEnum.AGENT_CHAT,
+      description: '',
+      mode: 'agent-chat' as const,
       icon_type: 'emoji' as const,
       icon: '🕵️',
       icon_background: '#D3F8DF',

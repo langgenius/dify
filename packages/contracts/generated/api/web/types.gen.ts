@@ -39,8 +39,10 @@ export type AgentThought = {
   thought?: string | null
   tool?: string | null
   tool_input?: string | null
-  tool_labels: JsonValue
+  tool_labels: AnyJsonValue
 }
+
+export type AnyJsonValue = unknown
 
 export type AppAccessModeQuery = {
   appCode?: string | null
@@ -306,7 +308,7 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
-export type GeneratedAppResponse = JsonValue
+export type GeneratedAppResponse = ShallowJsonValue
 
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
@@ -358,14 +360,14 @@ export type HumanInputFormSubmissionData = {
   node_title: string
   rendered_content: string
   submitted_data?: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   } | null
 }
 
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
-    [key: string]: JsonValue2
+    [key: string]: JsonValue
   }
 }
 
@@ -408,20 +410,9 @@ export type InvalidUploadTokenError = ErrorResponse & {
   status: 403
 }
 
-export type JsonValue =
-  | string
-  | number
-  | number
-  | boolean
-  | {
-      [key: string]: unknown
-    }
-  | Array<unknown>
-  | null
-
 export type JsonValueType = unknown
 
-export type JsonValue2 = unknown
+export type JsonValue = unknown
 
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
 
@@ -992,11 +983,22 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
+export type ShallowJsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
+      [key: string]: unknown
+    }
+  | Array<unknown>
+  | null
+
 export type SimpleConversation = {
   created_at?: number | null
   id: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: AnyJsonValue
   }
   introduction?: string | null
   name: string
@@ -1054,7 +1056,6 @@ export type SystemFeatureModel = {
   enable_step_by_step_tour: boolean
   is_allow_register: boolean
   is_email_setup: boolean
-  knowledge_fs_enabled: boolean
   license: LicenseStatusModel
   plugin_installation_permission: PluginInstallationPermissionModel
   rbac_enabled: boolean
@@ -1249,7 +1250,7 @@ export type WorkflowRunPayload = {
   }
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type GeneratedAppResponseWritable = ShallowJsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: unknown

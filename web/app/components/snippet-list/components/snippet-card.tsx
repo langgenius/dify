@@ -1,5 +1,4 @@
 'use client'
-
 import type { SnippetListItem } from '@/types/snippet'
 import {
   AlertDialog,
@@ -17,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +29,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import Link from '@/next/link'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import {
   useDeleteSnippetMutation,
   useExportSnippetMutation,
@@ -54,7 +54,9 @@ const SnippetCard = ({
   const { t } = useTranslation(['snippet', 'datasetDocuments'])
   const { t: tCommon } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { data: membersData } = useMembers()
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const updateSnippetMutation = useUpdateSnippetMutation()

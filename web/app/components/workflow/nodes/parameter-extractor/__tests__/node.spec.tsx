@@ -2,7 +2,6 @@ import type { ParameterExtractorNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import Node from '../node'
 import { ReasoningModeType } from '../types'
 
@@ -27,7 +26,7 @@ const createData = (
   model: {
     provider: 'openai',
     name: 'gpt-4o',
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     completion_params: {},
   } as ParameterExtractorNodeType['model'],
   query: ['node-1', 'query'],
@@ -62,7 +61,7 @@ describe('parameter-extractor/node', () => {
           model: {
             provider: '',
             name: '',
-            mode: AppModeEnum.CHAT,
+            mode: 'chat' as const,
             completion_params: {},
           } as ParameterExtractorNodeType['model'],
         })}

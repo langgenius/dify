@@ -6,6 +6,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import datasetSettings from '@/i18n/locales/en-US/dataset-settings.json'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import ExternalKnowledgeSection from '../external-knowledge-section'
@@ -55,6 +56,7 @@ const mockRetrievalConfig: RetrievalConfig = {
 }
 
 const mockDataset: DataSet = {
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
@@ -66,7 +68,6 @@ const mockDataset: DataSet = {
     icon_url: '',
   },
   indexing_technique: IndexingType.ECONOMICAL,
-  indexing_status: 'completed',
   data_source_type: DataSourceType.FILE,
   doc_form: ChunkingMode.text,
   embedding_model: 'text-embedding-ada-002',
@@ -74,7 +75,6 @@ const mockDataset: DataSet = {
   embedding_available: true,
   app_count: 0,
   document_count: 5,
-  total_document_count: 5,
   word_count: 1000,
   provider: 'vendor',
   tags: [],
@@ -91,7 +91,6 @@ const mockDataset: DataSet = {
     score_threshold_enabled: true,
   },
   retrieval_model_dict: mockRetrievalConfig,
-  retrieval_model: mockRetrievalConfig,
   built_in_field_enabled: false,
   keyword_number: 10,
   created_by: 'user-1',
