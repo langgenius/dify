@@ -9,6 +9,7 @@ import { consoleQuery } from '@/service/console'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createAgentFixture } from '@/test/fixtures/agent'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentTracingConfiguration } from '../tracing-configuration'
 
 const request = vi.hoisted(() =>
@@ -40,7 +41,7 @@ function setup({
   permissions = [AgentPermission.Monitor, AgentPermission.Edit] as string[],
   configured = true,
 } = {}) {
-  const { wrapper, queryClient } = createConsoleQueryWrapper({
+  const { wrapper: QueryWrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: true },
   })
   const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
@@ -122,7 +123,14 @@ function setup({
     }
     throw new Error(`Unexpected request ${req.method} ${url.pathname}`)
   })
-  const view = render(<AgentTracingConfiguration agentId="agent-1" />, { wrapper })
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ hasMemory: true })
+  const view = render(<AgentTracingConfiguration agentId="agent-1" />, {
+    wrapper: ({ children }) => (
+      <QueryWrapper>
+        <NuqsWrapper>{children}</NuqsWrapper>
+      </QueryWrapper>
+    ),
+  })
   return { ...view, state, sent, queryClient, detailKey }
 }
 
