@@ -1,5 +1,6 @@
 """Application tracing orchestration; secrets and vendor I/O stay in the API worker."""
 
+import json
 import logging
 import threading
 from collections.abc import Generator
@@ -28,6 +29,17 @@ from services.tracing.provider_dispatch import TraceExportUncertainError, export
 from services.tracing.runtime_bridge import workflow_has_agent_v2
 
 logger = logging.getLogger(__name__)
+
+
+def _message_inputs_are_empty(inputs: object) -> bool:
+    if isinstance(inputs, str):
+        if not inputs.strip():
+            return True
+        try:
+            inputs = json.loads(inputs)
+        except ValueError:
+            return False
+    return inputs is None or isinstance(inputs, (str, dict, list)) and not inputs
 
 
 class ApplicationTracingService:
@@ -139,6 +151,14 @@ class ApplicationTracingService:
             raise TraceCollectionError("tracing_terminal_not_supported")
         if isinstance(info.message_data, dict):
             info.message_data = Message.from_dict(cast(MessageDict, info.message_data))
+        if (
+            isinstance(info.message_data, Message)
+            and _message_inputs_are_empty(info.inputs)
+            and info.message_data.query
+        ):
+            # Early errors may precede formatted-message persistence. Preserve only
+            # the known user query on the root; this is not an inferred LLM prompt.
+            info.inputs = {"query": info.message_data.query}
         if output is not None and isinstance(info.message_data, Message):
             # This is a detached trace snapshot, not a write to the business row.
             info.message_data.answer = output
