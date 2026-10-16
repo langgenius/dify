@@ -9,7 +9,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { isNotFoundError } from '@/service/http-error'
 import { useLastRun } from '@/service/use-workflow'
 import NoData from './no-data'
@@ -73,6 +73,12 @@ const LastRun: FC<Props> = ({
 
   const noLastRun = isNotFoundError(error)
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
+  const lastRunNode = runResult as Partial<NodeTracing>
+  // Only a single-step run owns a node trace; executions inside a workflow run resolve to not collected.
+  const externalTrace =
+    resource.kind === 'app' && lastRunNode.node_type === BlockEnum.AgentV2 && lastRunNode.id
+      ? { appId: resource.appId, kind: 'node' as const, nodeExecutionId: lastRunNode.id }
+      : undefined
 
   let resolvedStatus = (runResult as any).status || otherResultPanelProps.status
   if (isPaused || oneStepRunRunningStatus === NodeRunningStatus.Stopped)
@@ -156,6 +162,7 @@ const LastRun: FC<Props> = ({
         }
         nodeInfo={runResult as NodeTracing}
         showSteps={false}
+        externalTrace={externalTrace}
       />
     </div>
   )
