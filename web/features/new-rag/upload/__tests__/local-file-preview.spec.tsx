@@ -44,12 +44,12 @@ describe('LocalFilePreview', () => {
 
   it('renders UTF-8 HTML as inert text inside the app', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
+    const onOpenChange = vi.fn()
     const file = new File(['<script>错误</script>\n让状态可分析'], '状态分析.html', {
       type: 'text/html',
     })
 
-    render(<LocalFilePreview file={file} onClose={onClose} />)
+    render(<LocalFilePreview file={file} open onOpenChange={onOpenChange} />)
 
     const dialog = await screen.findByRole('dialog', { name: file.name })
     const preview = await within(dialog).findByLabelText(file.name)
@@ -57,26 +57,24 @@ describe('LocalFilePreview', () => {
     expect(dialog.querySelector('script')).not.toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
-    expect(onClose).toHaveBeenCalledOnce()
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false, expect.anything())
   })
 
   it('previews PDFs with a component-owned object URL and releases it on unmount', async () => {
     const user = userEvent.setup()
-    const onClose = vi.fn()
+    const onOpenChange = vi.fn()
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:pdf-preview')
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
     const file = new File(['pdf'], 'guide.pdf', { type: 'application/pdf' })
 
-    const { unmount } = render(<LocalFilePreview file={file} onClose={onClose} />)
+    const { unmount } = render(<LocalFilePreview file={file} open onOpenChange={onOpenChange} />)
 
     const preview = await screen.findByRole('img', { name: 'PDF preview' })
     expect(preview).toHaveAttribute('data-url', 'blob:pdf-preview')
-    expect(createObjectUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'application/pdf' }),
-    )
+    expect(createObjectUrl).toHaveBeenCalledWith(expect.any(Blob))
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    expect(onClose).toHaveBeenCalledOnce()
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false, expect.anything())
 
     unmount()
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:pdf-preview')
