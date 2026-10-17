@@ -1,7 +1,10 @@
 import type { StreamdownProps } from 'streamdown'
 import type { SimplePluginInfo } from '../streamdown-wrapper'
 import { render, screen } from '@testing-library/react'
+import { useLocale } from '#i18n'
 import { Markdown } from '../index'
+
+vi.mock('#i18n', () => ({ useLocale: vi.fn(() => 'en-US') }))
 
 const { mockReactMarkdownWrapper } = vi.hoisted(() => ({
   mockReactMarkdownWrapper: vi.fn(),
@@ -38,7 +41,21 @@ const getLastWrapperProps = (): CapturedProps => {
 describe('Markdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useLocale).mockReturnValue('en-US')
   })
+
+  it.each(['fa-IR', 'ar-TN'] as const)(
+    'updates the reading direction when %s changes to English',
+    (locale) => {
+      vi.mocked(useLocale).mockReturnValue(locale)
+      const { rerender } = render(<Markdown content="سلام" />)
+      expect(screen.getByTestId('markdown-body')).toHaveAttribute('dir', 'rtl')
+
+      vi.mocked(useLocale).mockReturnValue('en-US')
+      rerender(<Markdown content="Hello" />)
+      expect(screen.getByTestId('markdown-body')).not.toHaveAttribute('dir')
+    },
+  )
 
   it('should render wrapper content', () => {
     render(<Markdown content="Hello World" />)

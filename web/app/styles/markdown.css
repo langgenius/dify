@@ -296,7 +296,8 @@
 .markdown-body blockquote {
   margin: 0;
   padding: 0 12px;
-  border-left: 3px solid var(--color-text-accent-secondary);
+  border-inline-start: 3px solid var(--color-text-accent-secondary);
+  border-inline-end: 0;
 }
 
 .markdown-body ol {
@@ -404,11 +405,17 @@
 
 .markdown-body ul,
 .markdown-body ol {
-  padding-left: 2em;
+  padding-inline-start: 2em;
 }
 .markdown-body ul[role='listbox'] {
   list-style: none !important;
-  padding-left: 0 !important;
+  padding-inline-start: 0 !important;
+}
+
+.markdown-body pre,
+.markdown-body code {
+  direction: ltr;
+  text-align: left;
 }
 .markdown-body blockquote > :first-child {
   margin-top: 0;

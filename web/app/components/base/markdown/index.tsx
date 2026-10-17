@@ -3,6 +3,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
+import { useLocale } from '#i18n'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 
 const StreamdownWrapper = dynamic(() => import('./streamdown-wrapper'), { ssr: false })
@@ -35,6 +36,7 @@ export type MarkdownProps = {
 >
 
 export const Markdown = memo((props: MarkdownProps) => {
+  const locale = useLocale()
   const {
     content,
     customComponents = EMPTY_COMPONENTS,
@@ -51,6 +53,7 @@ export const Markdown = memo((props: MarkdownProps) => {
 
   return (
     <div
+      dir={locale === 'fa-IR' || locale === 'ar-TN' ? 'rtl' : undefined}
       className={cn('markdown-body', 'text-text-primary!', className)}
       data-testid="markdown-body"
     >
