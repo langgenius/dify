@@ -24,7 +24,7 @@ type AppExportConfirmModalProps = {
   onClose: () => void
 }
 
-export const AppExportConfirmContent = ({
+const AppExportConfirmContent = ({
   envList,
   onConfirm,
   onClose,
