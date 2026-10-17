@@ -17,6 +17,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -665,16 +666,12 @@ export const Workflow: FC<WorkflowProps> = memo(
           }}
         >
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {showConfirm?.title}
-              </AlertDialogTitle>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{showConfirm?.title}</AlertDialogTitle>
               {showConfirm?.desc && (
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {showConfirm.desc}
-                </AlertDialogDescription>
+                <AlertDialogDescription>{showConfirm.desc}</AlertDialogDescription>
               )}
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

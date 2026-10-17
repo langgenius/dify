@@ -1,5 +1,5 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createElement } from 'react'
@@ -29,7 +29,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 const dataset = {
   id: 'dataset-1',
   name: 'Test Dataset',
-} as DataSet
+} as DatasetDetailWithPartialMembersResponse
 
 function renderDatasetCardState() {
   const onSuccess = vi.fn()

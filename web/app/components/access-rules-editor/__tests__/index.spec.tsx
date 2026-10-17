@@ -1,11 +1,11 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessPolicyWithBindings, ResourceUserAccessSetting } from '@/models/access-control'
-import type { Member } from '@/models/common'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AccessRulesEditor from '../index'
 
 const mockMembers = vi.hoisted(() => ({
-  accounts: [] as Member[] | null,
+  accounts: [] as AccountWithRoleResponse[] | null,
   isLoading: false,
 }))
 const mockMembersQuery = vi.hoisted(() => vi.fn())
@@ -72,7 +72,7 @@ const createDefaultUserAccessSetting = (): ResourceUserAccessSetting => ({
   access_policies: [],
 })
 
-const createMember = (overrides: Partial<Member> = {}): Member =>
+const createMember = (overrides: Partial<AccountWithRoleResponse> = {}): AccountWithRoleResponse =>
   ({
     id: 'account-2',
     name: 'Mia',
@@ -83,7 +83,7 @@ const createMember = (overrides: Partial<Member> = {}): Member =>
     role: 'normal',
     roles: [],
     ...overrides,
-  }) as Member
+  }) as AccountWithRoleResponse
 
 describe('AccessRulesEditor', () => {
   beforeEach(() => {

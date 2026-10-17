@@ -1,6 +1,6 @@
 'use client'
 
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
@@ -55,7 +55,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
     WorkflowVersionFilterOptions.all,
   )
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
-  const [operatedItem, setOperatedItem] = useState<VersionHistory>()
+  const [operatedItem, setOperatedItem] = useState<FetchWorkflowDraftResponse>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -101,7 +101,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   })
 
   const handleVersionClick = useCallback(
-    (item: VersionHistory) => {
+    (item: FetchWorkflowDraftResponse) => {
       if (item.id !== currentVersion?.id) {
         setCurrentVersion(item)
         if (item.version === WorkflowVersion.Draft) handleLoadBackupDraft()
@@ -140,7 +140,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   }, [])
 
   const handleClickActionMenuItem = useCallback(
-    (item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+    (item: FetchWorkflowDraftResponse, operation: VersionHistoryContextMenuOptions) => {
       if (operation === VersionHistoryContextMenuOptions.delete && item.environments?.length) {
         toast.error(
           t(($) => $['versionHistory.action.deleteDeployedVersionError'], {
@@ -201,7 +201,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   }, [])
 
   const emitRestoreIntent = useCallback(
-    async (item: VersionHistory) => {
+    async (item: FetchWorkflowDraftResponse) => {
       try {
         const { collaborationManager } =
           await import('../../collaboration/core/collaboration-manager')
@@ -222,7 +222,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   )
 
   const emitRestoreComplete = useCallback(
-    async (item: VersionHistory, success: boolean, errorMessage?: string) => {
+    async (item: FetchWorkflowDraftResponse, success: boolean, errorMessage?: string) => {
       try {
         const { collaborationManager } =
           await import('../../collaboration/core/collaboration-manager')
@@ -255,7 +255,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow(resource)
 
   const handleRestore = useCallback(
-    async (item: VersionHistory) => {
+    async (item: FetchWorkflowDraftResponse) => {
       setShowWorkflowVersionHistoryPanel(false)
       await emitRestoreIntent(item)
 

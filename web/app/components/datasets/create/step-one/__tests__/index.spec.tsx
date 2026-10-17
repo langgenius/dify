@@ -1,7 +1,8 @@
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
-import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -63,10 +64,12 @@ vi.mock('@/config', async (importOriginal) => ({
 }))
 
 // Mock dataset detail context
-let mockDatasetDetail: DataSet | undefined
+let mockDatasetDetail: DatasetDetailWithPartialMembersResponse | undefined
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | undefined }) => DataSet | undefined,
+    selector: (state: {
+      dataset: DatasetDetailWithPartialMembersResponse | undefined
+    }) => DatasetDetailWithPartialMembersResponse | undefined,
   ) => {
     return selector({ dataset: mockDatasetDetail })
   },
@@ -198,14 +201,16 @@ const createMockCrawlResult = (overrides: Partial<CrawlResultItem> = {}): CrawlR
   ...overrides,
 })
 
-const createMockDataSourceAuth = (overrides: Partial<DataSourceAuth> = {}): DataSourceAuth =>
+const createMockDataSourceAuth = (
+  overrides: Partial<DatasourceProviderAuthResponse> = {},
+): DatasourceProviderAuthResponse =>
   ({
     credential_id: 'cred-1',
     provider: 'notion_datasource',
     plugin_id: 'plugin-1',
     credentials_list: [{ id: 'cred-1', name: 'Workspace 1' }],
     ...overrides,
-  }) as DataSourceAuth
+  }) as DatasourceProviderAuthResponse
 
 const defaultProps = {
   dataSourceType: DataSourceType.FILE,
@@ -234,7 +239,7 @@ const defaultProps = {
     use_sitemap: true,
   } as CrawlOptions,
   onCrawlOptionsChange: vi.fn(),
-  authedDataSourceList: [] as DataSourceAuth[],
+  authedDataSourceList: [] as DatasourceProviderAuthResponse[],
 }
 
 // NOTE: Child component unit tests (usePreviewState, DataSourceTypeSelector,

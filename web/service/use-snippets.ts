@@ -1,8 +1,8 @@
+import type { InputVar as SnippetInputFieldUIModel } from '@/models/pipeline'
 import type {
   SnippetCanvasData,
   SnippetDetailPayload,
   SnippetDetail as SnippetDetailUIModel,
-  SnippetInputField as SnippetInputFieldUIModel,
   SnippetListItem as SnippetListItemUIModel,
 } from '@/models/snippet'
 import type {

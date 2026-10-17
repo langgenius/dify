@@ -39,7 +39,7 @@ type MockChatInputAreaProps = {
   showFileUpload?: boolean
   featureBarReadonly?: boolean
   disabled?: boolean
-  inputs?: Record<string, any>
+  inputs?: Record<string, string | number | boolean>
   inputsForm?: InputForm[]
   speechToTextConfig?: unknown
   visionConfig?: unknown

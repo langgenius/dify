@@ -1,8 +1,8 @@
-import type { GenerateWorkflowResponse } from '../types'
+import type { WorkflowGenerateResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import { act, renderHook } from '@testing-library/react'
 import useGenGraph from '../use-gen-graph'
 
-const makeVersion = (marker: string): GenerateWorkflowResponse => ({
+const makeVersion = (marker: string): WorkflowGenerateResponse => ({
   graph: {
     nodes: [{ id: marker } as never],
     edges: [],

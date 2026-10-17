@@ -1,4 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import {
+  createHumanInputFormFixture,
+  createWorkflowProcessFixture,
+} from '@/test/fixtures/workflow-process'
 import WorkflowBody from '../workflow-body'
 
 const mockSubmit = vi.fn()
@@ -42,15 +46,21 @@ describe('WorkflowBody', () => {
         onSubmitHumanInputForm={mockSubmit}
         onSwitchTab={mockSwitchTab}
         showResultTabs
-        siteInfo={{ show_workflow_steps: true } as any}
+        siteInfo={{ title: 'Test app', show_workflow_steps: true }}
         taskId="task-1"
-        workflowProcessData={
-          {
-            resultText: 'done',
-            humanInputFormDataList: [{ formToken: 'token-1' }],
-            humanInputFilledFormDataList: [{ id: 'filled-1' }],
-          } as any
-        }
+        workflowProcessData={createWorkflowProcessFixture({
+          resultText: 'done',
+          humanInputFormDataList: [createHumanInputFormFixture()],
+          humanInputFilledFormDataList: [
+            {
+              node_id: 'filled-1',
+              node_title: 'Human Input',
+              rendered_content: '',
+              action_id: 'submit',
+              action_text: 'Submit',
+            },
+          ],
+        })}
       />,
     )
 
@@ -74,12 +84,10 @@ describe('WorkflowBody', () => {
         onSwitchTab={mockSwitchTab}
         showResultTabs
         siteInfo={null}
-        workflowProcessData={
-          {
-            resultText: 'done',
-            humanInputFormDataList: [{ formToken: 'token-1' }],
-          } as any
-        }
+        workflowProcessData={createWorkflowProcessFixture({
+          resultText: 'done',
+          humanInputFormDataList: [createHumanInputFormFixture()],
+        })}
       />,
     )
 

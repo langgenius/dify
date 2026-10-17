@@ -45,7 +45,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
         }
       }
 
-      const newInputs = produce(inputs, (draft: any) => {
+      const newInputs = produce(inputs, (draft) => {
         draft.variables = newList
       })
       setInputs(newInputs)

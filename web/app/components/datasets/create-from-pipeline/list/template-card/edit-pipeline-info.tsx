@@ -1,9 +1,14 @@
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
-import { DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  DialogBody,
+  DialogCloseButton,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -89,28 +94,16 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
 
   return (
     <form
-      className="relative flex flex-col"
       onSubmit={(event) => {
         event.preventDefault()
         void handleSave()
       }}
     >
-      {/* Header */}
-      <div className="pt-6 pr-14 pb-3 pl-6">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $.editPipelineInfo, { ns: 'datasetPipeline' })}
-        </DialogTitle>
-      </div>
-      <IconButton
-        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        size="lg"
-        className="absolute top-5 right-5"
-        onClick={onClose}
-      >
-        <span aria-hidden="true" className="i-ri-close-line size-5" />
-      </IconButton>
-      {/* Form */}
-      <div className="flex flex-col gap-y-5 px-6 py-3">
+      <DialogHeader>
+        <DialogTitle>{t(($) => $.editPipelineInfo, { ns: 'datasetPipeline' })}</DialogTitle>
+        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody className="flex flex-col gap-y-5">
         <div className="flex items-end gap-x-3 self-stretch">
           <Field className="grow pb-1" name="name">
             <FieldLabel>{t(($) => $.pipelineNameAndIcon, { ns: 'datasetPipeline' })}</FieldLabel>
@@ -146,16 +139,15 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
             placeholder={t(($) => $.knowledgeDescriptionPlaceholder, { ns: 'datasetPipeline' })}
           />
         </Field>
-      </div>
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
+      </DialogBody>
+      <DialogFooter>
         <Button type="button" variant="secondary" onClick={onClose}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </Button>
         <Button type="submit" variant="primary">
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }

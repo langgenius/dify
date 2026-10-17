@@ -1,9 +1,4 @@
-import type {
-  AgentIterationLogResponse,
-  AgentLogResponse,
-  AgentToolCallResponse,
-  WorkflowRunDetailResponse as WorkflowRunDetailContract,
-} from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowRunDetailResponse as WorkflowRunDetailContract } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowCanvasGraph } from '@/types/workflow'
 
 export type LogAnnotation = {
@@ -59,7 +54,3 @@ export type WorkflowLogDetails = {
 export type WorkflowRunDetailResponse = Omit<WorkflowRunDetailContract, 'graph'> & {
   graph: WorkflowCanvasGraph
 }
-
-export type AgentLogDetailResponse = AgentLogResponse
-export type AgentIteration = AgentIterationLogResponse
-export type ToolCall = AgentToolCallResponse

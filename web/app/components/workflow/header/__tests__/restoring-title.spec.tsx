@@ -1,4 +1,4 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
@@ -19,7 +19,7 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory =>
+const createVersion = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'version-1',
     graph: {

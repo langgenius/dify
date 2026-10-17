@@ -3,12 +3,13 @@ import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import WorkspaceRoleCheckboxList from '../../workspace-role-checkbox-list'
@@ -20,14 +21,12 @@ type AssignRolesModalProps = {
   onSubmit: (roles: Role[]) => void
 }
 
-type AssignRolesModalBodyProps = AssignRolesModalProps
-
 const AssignRolesModalBody = ({
   selectedRoles,
   allowMultipleRoles = true,
   onClose,
   onSubmit,
-}: AssignRolesModalBodyProps) => {
+}: AssignRolesModalProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const [selected, setSelected] = useState(selectedRoles)
   const selectedRoleIds = selected.map((role) => role.id)
@@ -57,29 +56,12 @@ const AssignRolesModalBody = ({
   }
 
   return (
-    <DialogContent
-      className="flex h-121 w-120 flex-col overflow-hidden p-0"
-      backdropProps={{ forceRender: true }}
-    >
-      <div className="relative shrink-0 px-6 pt-6 pb-4">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-        <div className="pr-8">
-          <DialogTitle className="system-xl-semibold text-text-primary">{title}</DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {description}
-          </DialogDescription>
-        </div>
-      </div>
+    <DialogContent className="flex h-121 flex-col" backdropProps={{ forceRender: true }}>
+      <DialogHeader>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
+        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
 
       <WorkspaceRoleCheckboxList
         selectedRoleIds={selectedRoleIds}
@@ -88,24 +70,22 @@ const AssignRolesModalBody = ({
         onSelectedRolesChange={setSelected}
       />
 
-      <div className="flex shrink-0 items-center gap-3 border-t border-divider-subtle px-6 py-4">
+      <DialogFooter>
         {allowMultipleRoles && (
-          <div className="system-xs-regular text-text-tertiary">
+          <div className="me-auto system-xs-regular text-text-tertiary">
             {t(($) => $['members.assignRolesModal.selectedCount'], {
               ns: 'workspaceMembers',
               count: selected.length,
             })}
           </div>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button variant="primary" disabled={isConfirmDisabled} onClick={handleConfirm}>
-            {t(($) => $['operation.confirm'], { ns: 'common' })}
-          </Button>
-        </div>
-      </div>
+        <Button variant="secondary" onClick={onClose}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </Button>
+        <Button variant="primary" disabled={isConfirmDisabled} onClick={handleConfirm}>
+          {t(($) => $['operation.confirm'], { ns: 'common' })}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   )
 }

@@ -9,12 +9,21 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
@@ -124,38 +133,32 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
 
   return (
     <>
-      <Dialog open={show}>
-        <DialogContent
-          className={cn(
-            'w-full overflow-hidden! border-none text-left align-middle',
-            cn('w-150 max-w-150 p-8'),
-          )}
-        >
-          <button
-            type="button"
-            className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            onClick={onClose}
-          >
-            <span aria-hidden className="i-ri-close-line size-4 text-text-tertiary" />
-          </button>
-          <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
-            <span
-              aria-hidden
-              className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-6 text-[rgb(247,144,9)]"
-            />
-          </div>
-          <div className="relative mt-3 text-xl leading-7.5 font-semibold text-text-primary">
-            {t(($) => $.switch, { ns: 'app' })}
-          </div>
-          <div className="my-1 text-sm/5 text-text-tertiary">
-            <span>{t(($) => $.switchTipStart, { ns: 'app' })}</span>
-            <span className="font-medium text-text-secondary">
-              {t(($) => $.switchTip, { ns: 'app' })}
-            </span>
-            <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
-          </div>
-          <div className="pb-4">
+      <Dialog
+        open={show}
+        disablePointerDismissal
+        onOpenChange={(open) => {
+          if (!open && !showConfirmDelete) onClose()
+        }}
+      >
+        <DialogContent className="w-150 max-w-150">
+          <DialogHeader>
+            <div className="mb-2 h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
+              <span
+                aria-hidden
+                className="i-custom-vender-solid-alertsAndFeedback-alert-triangle size-6 text-[rgb(247,144,9)]"
+              />
+            </div>
+            <DialogTitle>{t(($) => $.switch, { ns: 'app' })}</DialogTitle>
+            <DialogDescription>
+              <span>{t(($) => $.switchTipStart, { ns: 'app' })}</span>
+              <span className="font-medium text-text-secondary">
+                {t(($) => $.switchTip, { ns: 'app' })}
+              </span>
+              <span>{t(($) => $.switchTipEnd, { ns: 'app' })}</span>
+            </DialogDescription>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
+          <DialogBody>
             <label
               htmlFor={nameInputId}
               className="block py-2 text-sm leading-5 font-medium text-text-primary"
@@ -180,10 +183,10 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
                 className="h-10 grow"
               />
             </div>
-          </div>
-          {isAppsFull && <AppsFull loc="app-switch" />}
-          <div className="flex items-center justify-between pt-6">
-            <div className="flex items-center">
+            {isAppsFull && <AppsFull className="mt-4" loc="app-switch" />}
+          </DialogBody>
+          <DialogFooter>
+            <div className="me-auto flex items-center">
               <label className="flex cursor-pointer items-center">
                 <Checkbox
                   className="shrink-0"
@@ -198,33 +201,27 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
                 </span>
               </label>
             </div>
-            <div className="flex items-center">
-              <Button className="mr-2" onClick={onClose}>
-                {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-              </Button>
-              <Button
-                className="inset-ring-red-700"
-                disabled={isAppQuotaUnavailable || isAppsFull || !name}
-                variant="primary"
-                tone="destructive"
-                onClick={goStart}
-              >
-                {t(($) => $.switchStart, { ns: 'app' })}
-              </Button>
-            </div>
-          </div>
+            <Button onClick={onClose}>{t(($) => $['newApp.Cancel'], { ns: 'app' })}</Button>
+            <Button
+              className="inset-ring-red-700"
+              disabled={isAppQuotaUnavailable || isAppsFull || !name}
+              variant="primary"
+              tone="destructive"
+              onClick={goStart}
+            >
+              {t(($) => $.switchStart, { ns: 'app' })}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <AlertDialog open={showConfirmDelete} onOpenChange={handleConfirmDeleteOpenChange}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-              {t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

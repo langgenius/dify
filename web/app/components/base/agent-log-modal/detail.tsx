@@ -1,7 +1,7 @@
 'use client'
+import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentLogDetailResponse } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { uniq } from 'es-toolkit/array'
 import * as React from 'react'
@@ -79,7 +79,7 @@ function AgentLogContent({
   currentTab,
 }: AgentLogContentProps) {
   const [loading, setLoading] = useState(true)
-  const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
+  const [runDetail, setRunDetail] = useState<AgentLogResponse>()
   const tools = useMemo(
     () =>
       uniq(

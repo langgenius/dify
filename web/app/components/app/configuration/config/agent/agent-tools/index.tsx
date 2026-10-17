@@ -90,7 +90,7 @@ const AgentTools: FC = () => {
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       const tool = draft.agentConfig.tools.find(
-        (item: any) =>
+        (item) =>
           item.provider_id === currentTool?.provider_id &&
           item.tool_name === currentTool?.tool_name,
       )
@@ -149,7 +149,7 @@ const AgentTools: FC = () => {
     (credentialId: string) => {
       const newModelConfig = produce(modelConfig, (draft) => {
         const tool = draft.agentConfig.tools.find(
-          (item: any) =>
+          (item) =>
             item.provider_id === currentTool?.provider_id &&
             item.tool_name === currentTool?.tool_name,
         )

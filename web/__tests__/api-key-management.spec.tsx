@@ -222,7 +222,7 @@ describe('API key management', () => {
       await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
     ).toHaveValue('new-app-token-123')
     expect(
-      screen.getByRole('alertdialog', { name: 'appApi.apiKeyModal.createdTitle' }),
+      screen.getByRole('dialog', { name: 'appApi.apiKeyModal.createdTitle' }),
     ).toHaveAccessibleDescription('appApi.apiKeyModal.generateTips')
   })
 
@@ -232,7 +232,7 @@ describe('API key management', () => {
     const create = screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' })
     await user.click(create)
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
-    const result = await screen.findByRole('alertdialog', {
+    const result = await screen.findByRole('dialog', {
       name: 'appApi.apiKeyModal.createdTitle',
     })
     expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })

@@ -1,7 +1,7 @@
 'use client'
 
 import type { PanelProps } from '@/app/components/workflow/panel'
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import Panel from '@/app/components/workflow/panel'
@@ -15,7 +15,7 @@ const SnippetRunPanel = dynamic(() => import('./snippet-run-panel'), {
 })
 
 type SnippetWorkflowPanelProps = {
-  fields: SnippetInputField[]
+  fields: InputVar[]
 }
 
 const SnippetPanelOnRight = ({ fields }: Pick<SnippetWorkflowPanelProps, 'fields'>) => {

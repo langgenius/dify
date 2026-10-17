@@ -1,5 +1,5 @@
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { ReactNode } from 'react'
-import type { DataSourceAuth } from './types'
 import type {
   AddApiKeyButtonProps,
   AddOAuthButtonProps,
@@ -14,7 +14,7 @@ import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { providerConfigToFormSchema } from './utils'
 
 type ConfigureProps = {
-  item: DataSourceAuth
+  item: DatasourceProviderAuthResponse
   pluginPayload: PluginPayload
   onUpdate?: () => void
   disabled?: boolean

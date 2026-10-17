@@ -87,7 +87,7 @@ describe('image-uploader utils', () => {
 
       expect(upload).toHaveBeenCalledTimes(1)
 
-      const [options, isPublic, url] = (vi.mocked(upload).mock.calls[0] ?? []) as [any, any, any]
+      const [options, isPublic, url] = vi.mocked(upload).mock.calls[0]!
       expect(isPublic).toBe(true)
       expect(url).toBe('/files/upload')
       expect(options.xhr).toBeInstanceOf(XMLHttpRequest)

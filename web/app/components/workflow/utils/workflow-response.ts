@@ -12,6 +12,7 @@ import type {
   WorkflowRunDetailResponse as WorkflowRunDetailContract,
   WorkflowRunNodeExecutionResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { Viewport } from 'reactflow'
 import type {
   ConversationVariable,
@@ -22,7 +23,6 @@ import type {
   NodeDataType,
 } from '../types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type {
@@ -279,7 +279,7 @@ const toToggle = (toggle: { enabled?: boolean | null } | null | undefined) => ({
 /** Map stored workflow features to the feature panel state, filling in the panel defaults. */
 export const toFeaturesData = (
   features: WorkflowFeaturesResponse,
-  fileUploadConfig?: FileUploadConfigResponse,
+  fileUploadConfig?: UploadConfig,
 ): FeaturesData => {
   const fileUpload = features.file_upload
   const imageUpload = fileUpload?.image

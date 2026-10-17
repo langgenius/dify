@@ -159,7 +159,7 @@ const Flowchart = (props: FlowchartProps) => {
   /**
    * Handle rendering errors
    */
-  const handleRenderError = (error: any) => {
+  const handleRenderError = (error: unknown) => {
     console.error('Mermaid rendering error:', error)
 
     // On any render error, assume the mermaid state is corrupted and force a re-initialization.

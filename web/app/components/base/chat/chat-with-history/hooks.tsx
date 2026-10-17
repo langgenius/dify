@@ -472,7 +472,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [inputsForms, t, allInputsHidden],
   )
   const handleStartChat = useCallback(
-    (callback: any) => {
+    (callback?: () => void) => {
       if (checkInputsRequired()) {
         setShowNewConversationItemInList(true)
         callback?.()

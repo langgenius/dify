@@ -1,4 +1,4 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
@@ -319,7 +319,7 @@ describe('usePipelineRunByCanEdit', () => {
 
       act(() => {
         result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
+          publishedWorkflow as unknown as FetchWorkflowDraftResponse,
         )
       })
 
@@ -347,7 +347,7 @@ describe('usePipelineRunByCanEdit', () => {
 
       act(() => {
         result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
+          publishedWorkflow as unknown as FetchWorkflowDraftResponse,
         )
       })
 
@@ -371,7 +371,7 @@ describe('usePipelineRunByCanEdit', () => {
 
       act(() => {
         result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
+          publishedWorkflow as unknown as FetchWorkflowDraftResponse,
         )
       })
 
@@ -397,7 +397,7 @@ describe('usePipelineRunByCanEdit', () => {
 
       act(() => {
         result.current.handleRestoreFromPublishedWorkflow(
-          publishedWorkflow as unknown as VersionHistory,
+          publishedWorkflow as unknown as FetchWorkflowDraftResponse,
         )
       })
 

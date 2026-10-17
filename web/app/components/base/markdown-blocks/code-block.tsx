@@ -1,3 +1,6 @@
+import type { EChartsOption, EChartsType } from 'echarts'
+import type EChartsReact from 'echarts-for-react'
+import type { EChartsReactProps } from 'echarts-for-react'
 import type { JSX } from 'react'
 import type { CodeTheme } from './shiki-highlight'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -144,21 +147,21 @@ type EChartsEventParams = {
   seriesIndex?: number
   dataIndex?: number
   name?: string
-  value?: any
+  value?: unknown
   currentIndex?: number // Added for timeline events
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
-  const [finalChartOption, setFinalChartOption] = useState<any>(null)
-  const echartsRef = useRef<any>(null)
+  const [finalChartOption, setFinalChartOption] = useState<EChartsOption | null>(null)
+  const echartsRef = useRef<EChartsReact | null>(null)
   const contentRef = useRef<string>('')
   const processedRef = useRef<boolean>(false) // Track if content was successfully processed
   const isInitialRenderRef = useRef<boolean>(true) // Track if this is initial render
-  const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
+  const chartInstanceRef = useRef<EChartsType | null>(null) // Direct reference to ECharts instance
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null) // For debounce handling
   const chartReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const finishedEventCountRef = useRef<number>(0) // Track finished event trigger count
@@ -189,12 +192,11 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
     [],
   )
 
-  const echartsOpts = useMemo(
-    () =>
-      ({
-        renderer: 'canvas',
-        width: 'auto',
-      }) as any,
+  const echartsOpts = useMemo<EChartsReactProps['opts']>(
+    () => ({
+      renderer: 'canvas',
+      width: 'auto',
+    }),
     [],
   )
 
@@ -210,7 +212,7 @@ export const CodeBlock: any = memo(({ inline, className, children = '', ...props
 
   // Handle ECharts instance initialization
   const handleChartReady = useCallback(
-    (instance: any) => {
+    (instance: EChartsType) => {
       chartInstanceRef.current = instance
 
       // Force resize to ensure timeline displays correctly

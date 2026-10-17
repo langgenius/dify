@@ -8,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -256,16 +257,14 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
         }}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['action.delete'], { ns: 'plugin' })}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(($) => $['action.delete'], { ns: 'plugin' })}</AlertDialogTitle>
+            <AlertDialogDescription>
               {t(($) => $['action.deleteContentLeft'], { ns: 'plugin' })}
               <span className="system-md-semibold text-text-secondary">{providerLabel}</span>
               {t(($) => $['action.deleteContentRight'], { ns: 'plugin' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

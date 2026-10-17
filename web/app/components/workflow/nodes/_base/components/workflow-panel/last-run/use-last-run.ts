@@ -69,7 +69,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerPlugin]: undefined,
 }
 
-const useSingleRunFormParamsHooks = (nodeType: NodeDataType) => {
+const createSingleRunFormParamsHook = (nodeType: NodeDataType) => {
   return (params: any) => {
     return (isBlockType(nodeType) && singleRunFormParamsHooks[nodeType]?.(params)) || {}
   }
@@ -110,7 +110,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerPlugin]: useTriggerPluginGetDataForCheckMore,
 }
 
-const useGetDataForCheckMoreHooks = <T>(nodeType: NodeDataType) => {
+const createGetDataForCheckMoreHook = <T>(nodeType: NodeDataType) => {
   return (id: string, payload: CommonNodeType<T>) => {
     return (
       (isBlockType(nodeType) && getDataForCheckMoreHooks[nodeType]?.({ id, payload })) || {
@@ -133,7 +133,8 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const isCustomRunNode = isSupportCustomRunForm(blockType)
   const isHumanInputNode = blockType === BlockEnum.HumanInput
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { getData: getDataForCheckMore } = useGetDataForCheckMoreHooks<T>(blockType)(
+  const useGetDataForCheckMore = createGetDataForCheckMoreHook<T>(blockType)
+  const { getData: getDataForCheckMore } = useGetDataForCheckMore(
     oneStepRunParams.id,
     oneStepRunParams.data,
   )
@@ -177,7 +178,8 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   } = oneStepRunRes
 
   const nodeInfo = runResult
-  const { ...singleRunParams } = useSingleRunFormParamsHooks(blockType)({
+  const useSingleRunFormParams = createSingleRunFormParamsHook(blockType)
+  const { ...singleRunParams } = useSingleRunFormParams({
     id,
     payload: data,
     runInputData,

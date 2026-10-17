@@ -1,7 +1,7 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
@@ -10,9 +10,8 @@ import { toast } from '@/app/notifications'
 import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 
-type HandleRunMode = TriggerType
 export type HandleRunOptions = {
-  mode?: HandleRunMode
+  mode?: TriggerType
   scheduleNodeId?: string
   webhookNodeId?: string
   pluginNodeId?: string
@@ -115,7 +114,7 @@ export const createFailedWorkflowState = (error: string) => {
 
 export const resolveWorkflowRunUrl = (
   appDetail: AppDetailLike | undefined,
-  runMode: HandleRunMode,
+  runMode: TriggerType,
   isInWorkflowDebug: boolean,
 ) => {
   if (
@@ -149,7 +148,7 @@ export const resolveWorkflowRunUrl = (
 }
 
 export const buildWorkflowRunRequestBody = (
-  runMode: HandleRunMode,
+  runMode: TriggerType,
   resolvedParams: Record<string, unknown>,
   options?: HandleRunOptions,
 ) => {
@@ -164,7 +163,7 @@ export const buildWorkflowRunRequestBody = (
   return resolvedParams
 }
 
-export const validateWorkflowRunRequest = (runMode: HandleRunMode, options?: HandleRunOptions) => {
+export const validateWorkflowRunRequest = (runMode: TriggerType, options?: HandleRunOptions) => {
   if (runMode === TriggerType.Schedule && !options?.scheduleNodeId)
     return 'handleRun: schedule trigger run requires node id'
 
@@ -180,9 +179,7 @@ export const validateWorkflowRunRequest = (runMode: HandleRunMode, options?: Han
   return ''
 }
 
-export const isDebuggableTriggerType = (
-  runMode: HandleRunMode,
-): runMode is DebuggableTriggerType => {
+export const isDebuggableTriggerType = (runMode: TriggerType): runMode is DebuggableTriggerType => {
   return (
     runMode === TriggerType.Schedule ||
     runMode === TriggerType.Webhook ||
@@ -208,7 +205,7 @@ export const buildListeningTriggerNodeIds = (
 
 export const applyRunningStateForMode = (
   actions: ListeningStateActions,
-  runMode: HandleRunMode,
+  runMode: TriggerType,
   options?: HandleRunOptions,
 ) => {
   if (isDebuggableTriggerType(runMode)) {
@@ -288,7 +285,7 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
   }
 }
 
-export const normalizePublishedWorkflowNodes = (publishedWorkflow: VersionHistory) => {
+export const normalizePublishedWorkflowNodes = (publishedWorkflow: FetchWorkflowDraftResponse) => {
   return publishedWorkflow.graph.nodes.map((node) => ({
     ...node,
     selected: false,

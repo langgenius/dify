@@ -1,8 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { createEvent, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import OperationsDropdown from '../operations-dropdown'
@@ -33,13 +34,15 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 describe('OperationsDropdown', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+  const createMockDataset = (
+    overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+  ): DatasetDetailWithPartialMembersResponse =>
     ({
       id: 'dataset-1',
       name: 'Test Dataset',
       description: 'Test description',
       provider: 'vendor',
-      permission: DatasetPermission.allTeamMembers,
+      permission: PermissionLevel.allTeamMembers,
       data_source_type: DataSourceType.FILE,
       indexing_technique: IndexingType.QUALIFIED,
       embedding_available: true,
@@ -60,7 +63,7 @@ describe('OperationsDropdown', () => {
         DatasetACLPermission.AccessConfig,
       ],
       ...overrides,
-    }) as DataSet
+    }) as DatasetDetailWithPartialMembersResponse
 
   const defaultProps = {
     dataset: createMockDataset(),

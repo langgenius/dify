@@ -5,7 +5,7 @@ import { withForm } from '../..'
 import { BaseFieldType } from './types'
 
 type BaseFieldProps = {
-  initialData?: Record<string, any>
+  initialData?: Record<string, unknown>
   config: BaseConfiguration
 }
 

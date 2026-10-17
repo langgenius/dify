@@ -17,8 +17,8 @@ describe('TypeSelector', () => {
         value="text-input"
         onSelect={onSelect}
         items={[
-          { value: 'text-input' as any, name: 'Text' },
-          { value: 'number' as any, name: 'Number' },
+          { value: 'text-input', name: 'Text' },
+          { value: 'number', name: 'Number' },
         ]}
       />,
     )

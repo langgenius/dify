@@ -1,3 +1,4 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { FileUpload } from '../../base/features/types'
 import type {
   BlockEnum,
@@ -7,7 +8,6 @@ import type {
   WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
@@ -78,7 +78,7 @@ type CommonHooksFnMap = {
     passInVars?: boolean
     vars?: VarInInspect[]
     passedInAllPluginInfoList?: WorkflowPluginCatalogs
-    passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+    passedInSchemaTypeDefinitions?: SchemaDefinitionItemResponse[]
   }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (
@@ -89,7 +89,7 @@ type CommonHooksFnMap = {
   ) => boolean
   fetchInspectVarValue: (
     selector: ValueSelector,
-    schemaTypeDefinitions: SchemaTypeDefinition[],
+    schemaTypeDefinitions: SchemaDefinitionItemResponse[],
   ) => Promise<void>
   editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
   renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>

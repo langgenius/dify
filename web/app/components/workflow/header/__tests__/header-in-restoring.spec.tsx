@@ -1,5 +1,5 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { fireEvent, screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import {
@@ -59,7 +59,7 @@ vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   }),
 }))
 
-const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory =>
+const createVersion = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'version-1',
     graph: {

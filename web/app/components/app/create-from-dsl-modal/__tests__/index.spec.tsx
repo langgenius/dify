@@ -27,7 +27,7 @@ let appLimit = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
 vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: any[]) => any) => ({
+  useDebounceFn: (fn: (...args: unknown[]) => unknown) => ({
     run: fn,
   }),
 }))

@@ -1,5 +1,5 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -129,7 +129,7 @@ export const JsonEditorSection = ({
 type FileEditorSectionProps = {
   currentVar: VarInInspect
   fileValue: FileEntity[]
-  fileUploadConfig?: FileUploadConfigResponse
+  fileUploadConfig?: UploadConfig
   textEditorDisabled: boolean
   onChange: (files: FileEntity[]) => void
 }

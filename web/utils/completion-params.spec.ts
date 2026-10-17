@@ -327,7 +327,7 @@ describe('completion-params', () => {
           type: 'unknown_type',
           label: { en_US: 'Custom', zh_Hans: '自定义' },
           required: false,
-        } as any,
+        },
       ]
       const oldParams: FormValue = { custom: 'value' }
       const result = mergeValidCompletionParams(oldParams, rules)

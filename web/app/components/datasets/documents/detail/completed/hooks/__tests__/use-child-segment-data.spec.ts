@@ -1,11 +1,10 @@
-import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type {
-  ChildChunkDetail,
-  ChildSegmentsResponse,
-  ChunkingMode,
-  ParentMode,
-  SegmentDetailModel,
-} from '@/models/datasets'
+  ChildChunkListResponse,
+  ChildChunkResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
@@ -13,7 +12,7 @@ import { consoleQuery } from '@/service/console'
 import { useChildSegmentData } from '../use-child-segment-data'
 
 // Type for mutation callbacks
-type MutationResponse = { data: ChildChunkDetail }
+type MutationResponse = { data: ChildChunkResponse }
 type MutationCallbacks = {
   onSuccess: (res: MutationResponse) => void
   onSettled: () => void
@@ -40,8 +39,8 @@ const {
   mockEventEmitter: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
   mockQueryClient: { setQueryData: vi.fn(), invalidateQueries: vi.fn() },
   mockChildSegmentListData: {
-    current: { data: [] as ChildChunkDetail[], total: 0, total_pages: 0 } as
-      | ChildSegmentsResponse
+    current: { data: [] as ChildChunkResponse[], total: 0, total_pages: 0 } as
+      | ChildChunkListResponse
       | undefined,
   },
   mockDeleteChildSegment: vi.fn(),
@@ -113,7 +112,7 @@ const createWrapper = () => {
     React.createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildChunkDetail => ({
+const createMockChildChunk = (overrides: Partial<ChildChunkResponse> = {}): ChildChunkResponse => ({
   id: `child-${Math.random().toString(36).substr(2, 9)}`,
   position: 1,
   segment_id: 'segment-1',
@@ -125,7 +124,7 @@ const createMockChildChunk = (overrides: Partial<ChildChunkDetail> = {}): ChildC
   ...overrides,
 })
 
-const createMockSegment = (overrides: Partial<SegmentDetailModel> = {}): SegmentDetailModel => ({
+const createMockSegment = (overrides: Partial<SegmentResponse> = {}): SegmentResponse => ({
   id: 'segment-1',
   position: 1,
   document_id: 'doc-1',
@@ -160,7 +159,7 @@ const defaultOptions = {
   searchValue: '',
   currentPage: 1,
   limit: 10,
-  segments: [createMockSegment()] as SegmentDetailModel[],
+  segments: [createMockSegment()] as SegmentResponse[],
   currChunkId: 'segment-1',
   isFullDocMode: true,
   onCloseChildSegmentDetail: vi.fn(),
@@ -665,7 +664,7 @@ describe('useChildSegmentData', () => {
               ],
               total: 2,
               total_pages: 1,
-            }) as ChildSegmentsResponse
+            }) as ChildChunkListResponse
             expect(resultWithData.data[0]!.content).toBe('new content')
             expect(resultWithData.data[1]!.content).toBe('other')
           }

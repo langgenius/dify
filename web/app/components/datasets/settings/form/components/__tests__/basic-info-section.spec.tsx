@@ -1,10 +1,12 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { Member } from '@/models/common'
-import type { DataSet, IconInfo } from '@/models/datasets'
+import type { IconInfo } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { mockEmojiData } from '@/test/emoji-picker'
@@ -61,12 +63,12 @@ vi.mock('@/app/components/base/image-uploader/hooks', () => ({
 }))
 
 describe('BasicInfoSection', () => {
-  const mockDataset: DataSet = {
+  const mockDataset: DatasetDetailWithPartialMembersResponse = {
     ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     icon_info: {
       icon_type: 'emoji',
       icon: '📚',
@@ -117,7 +119,7 @@ describe('BasicInfoSection', () => {
     is_multimodal: false,
   }
 
-  const mockMemberList: Member[] = [
+  const mockMemberList: AccountWithRoleResponse[] = [
     {
       id: 'user-1',
       name: 'User 1',
@@ -159,7 +161,7 @@ describe('BasicInfoSection', () => {
     setDescription: vi.fn(),
     iconInfo: mockIconInfo,
     handleSelectAppIcon: vi.fn(),
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     setPermission: vi.fn(),
     selectedMemberIDs: ['user-1'],
     setSelectedMemberIDs: vi.fn(),
@@ -327,13 +329,13 @@ describe('BasicInfoSection', () => {
 
   describe('Permission Selector', () => {
     it('should render with correct permission value', () => {
-      render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
+      render(<BasicInfoSection {...defaultProps} permission={PermissionLevel.onlyMe} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })
 
     it('should render all team members permission', () => {
-      render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
+      render(<BasicInfoSection {...defaultProps} permission={PermissionLevel.allTeamMembers} />)
 
       expect(screen.getByText(/form\.permissionsAllMember/i))!.toBeInTheDocument()
     })
@@ -368,7 +370,7 @@ describe('BasicInfoSection', () => {
         fireEvent.click(allMemberOptions[0]!)
       })
 
-      expect(setPermission).toHaveBeenCalledWith(DatasetPermission.allTeamMembers)
+      expect(setPermission).toHaveBeenCalledWith(PermissionLevel.allTeamMembers)
     })
   })
 
@@ -407,12 +409,12 @@ describe('BasicInfoSection', () => {
 
     it('should update when permission prop changes', () => {
       const { rerender } = render(
-        <BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />,
+        <BasicInfoSection {...defaultProps} permission={PermissionLevel.onlyMe} />,
       )
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
 
-      rerender(<BasicInfoSection {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
+      rerender(<BasicInfoSection {...defaultProps} permission={PermissionLevel.allTeamMembers} />)
 
       expect(screen.getByText(/form\.permissionsAllMember/i))!.toBeInTheDocument()
     })

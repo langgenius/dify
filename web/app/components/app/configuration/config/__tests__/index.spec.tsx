@@ -1,4 +1,5 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { ComponentProps } from 'react'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { ToolItem } from '@/types/app'
 import { render, screen } from '@testing-library/react'
@@ -20,17 +21,27 @@ vi.mock('../../debug/hooks', () => ({
   useFormattingChangedDispatcher: () => mockFormattingDispatcher,
 }))
 
-let latestConfigPromptProps: any
+let latestConfigPromptProps:
+  | ComponentProps<typeof import('@/app/components/app/configuration/config-prompt').default>
+  | undefined
 vi.mock('@/app/components/app/configuration/config-prompt', () => ({
-  default: (props: any) => {
+  default: (
+    props: ComponentProps<
+      typeof import('@/app/components/app/configuration/config-prompt').default
+    >,
+  ) => {
     latestConfigPromptProps = props
     return <div data-testid="config-prompt" />
   },
 }))
 
-let latestConfigVarProps: any
+let latestConfigVarProps:
+  | ComponentProps<typeof import('@/app/components/app/configuration/config-var').default>
+  | undefined
 vi.mock('@/app/components/app/configuration/config-var', () => ({
-  default: (props: any) => {
+  default: (
+    props: ComponentProps<typeof import('@/app/components/app/configuration/config-var').default>,
+  ) => {
     latestConfigVarProps = props
     return <div data-testid="config-var" />
   },
@@ -56,9 +67,15 @@ vi.mock('../config-audio', () => ({
   default: () => <div data-testid="config-audio" />,
 }))
 
-let latestHistoryPanelProps: any
+let latestHistoryPanelProps:
+  | ComponentProps<typeof import('../../config-prompt/conversation-history/history-panel').default>
+  | undefined
 vi.mock('../../config-prompt/conversation-history/history-panel', () => ({
-  default: (props: any) => {
+  default: (
+    props: ComponentProps<
+      typeof import('../../config-prompt/conversation-history/history-panel').default
+    >,
+  ) => {
     latestHistoryPanelProps = props
     return <div data-testid="history-panel" />
   },
@@ -189,8 +206,8 @@ describe('Config - Rendering', () => {
     })
 
     expect(screen.getByTestId('history-panel')).toBeInTheDocument()
-    expect(latestHistoryPanelProps.showWarning).toBe(true)
-    expect(latestHistoryPanelProps.onShowEditModal).toBe(showHistoryModal)
+    expect(latestHistoryPanelProps!.showWarning).toBe(true)
+    expect(latestHistoryPanelProps!.onShowEditModal).toBe(showHistoryModal)
   })
 })
 
@@ -201,7 +218,7 @@ describe('Config - Prompt Handling', () => {
     const previousVariables = contextValue.modelConfig.configs.prompt_variables
     const additions = [createPromptVariable({ key: 'new', name: 'New' })]
 
-    latestConfigPromptProps.onChange('Updated template', additions)
+    latestConfigPromptProps!.onChange!('Updated template', additions)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(contextValue.setModelConfig).toHaveBeenCalledWith(
@@ -219,7 +236,7 @@ describe('Config - Prompt Handling', () => {
     const { contextValue } = renderConfig()
     const unchangedTemplate = contextValue.modelConfig.configs.prompt_template
 
-    latestConfigPromptProps.onChange(unchangedTemplate, [createPromptVariable({ key: 'added' })])
+    latestConfigPromptProps!.onChange!(unchangedTemplate, [createPromptVariable({ key: 'added' })])
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(mockFormattingDispatcher).not.toHaveBeenCalled()
@@ -229,7 +246,7 @@ describe('Config - Prompt Handling', () => {
     const { contextValue } = renderConfig()
     const replacementVariables = [createPromptVariable({ key: 'replacement' })]
 
-    latestConfigVarProps.onPromptVariablesChange(replacementVariables)
+    latestConfigVarProps!.onPromptVariablesChange!(replacementVariables)
 
     expect(contextValue.setPrevPromptConfig).toHaveBeenCalledWith(contextValue.modelConfig.configs)
     expect(contextValue.setModelConfig).toHaveBeenCalledWith(

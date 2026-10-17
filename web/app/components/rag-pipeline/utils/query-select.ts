@@ -1,4 +1,7 @@
-import type { DocumentPipelineExecutionLogResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type {
+  DocumentPipelineExecutionLogResponse,
+  IndexingEstimateResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type {
   PipelineGenerateResponse,
   PipelineTemplateDetailResponse,
@@ -14,14 +17,14 @@ import type {
 import type { Viewport } from 'reactflow'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import type { FileIndexingEstimateResponse, IconInfo } from '@/models/datasets'
+import type { IconInfo } from '@/models/datasets'
 import type {
   PipelineExecutionLogResponse,
   PipelineTemplate,
   PipelineTemplateByIdResponse,
 } from '@/models/pipeline'
 import type { AppIconType } from '@/types/app'
-import type { NodeRunResult } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toPipelineVariables } from '@/app/components/workflow/utils/workflow-response'
 import { ChunkingMode } from '@/models/datasets'
@@ -148,7 +151,7 @@ export const isPipelineProcessingRun = (
 ): response is PipelineGenerateResponse => 'batch' in response
 
 // Preview runs return the indexing estimate as the workflow outputs.
-const isFileIndexingEstimate = (value: unknown): value is FileIndexingEstimateResponse =>
+const isFileIndexingEstimate = (value: unknown): value is IndexingEstimateResponse =>
   isRecord(value) && typeof value.total_segments === 'number' && Array.isArray(value.preview)
 
 export const selectPreviewRunEstimate = (response: WorkflowAppBlockingResponse) =>
@@ -162,7 +165,7 @@ const BLOCKS: Record<string, BlockEnum> = BlockEnum
 
 export const selectDatasourceSingleRun = (
   execution: WorkflowRunNodeExecutionResponse,
-): NodeRunResult => {
+): NodeTracing => {
   const metadata = isRecord(execution.execution_metadata) ? execution.execution_metadata : undefined
   return {
     id: execution.id,

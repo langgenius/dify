@@ -1,9 +1,9 @@
 'use client'
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
-import type { FileIndexingEstimateResponse } from '@/models/datasets'
-import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
@@ -67,11 +67,9 @@ const CreateFormPipeline = () => {
 
   // Core state
   const [datasource, setDatasource] = useState<Datasource>()
-  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(
-    undefined,
-  )
+  const [estimateData, setEstimateData] = useState<IndexingEstimateResponse | undefined>(undefined)
   const [batchId, setBatchId] = useState('')
-  const [documents, setDocuments] = useState<InitialDocumentDetail[]>([])
+  const [documents, setDocuments] = useState<PipelineDocument[]>([])
 
   // Data fetching
   const { data: pipelineNodes, isFetching: isFetchingPipelineInfo } = useQuery(

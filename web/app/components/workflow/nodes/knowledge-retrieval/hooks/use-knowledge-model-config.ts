@@ -1,7 +1,7 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { MutableRefObject } from 'react'
 import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from '../types'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import type { DataSet } from '@/models/datasets'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback, useEffect } from 'react'
@@ -29,7 +29,7 @@ type Params = {
   inputs: KnowledgeRetrievalNodeType
   inputRef: MutableRefObject<KnowledgeRetrievalNodeType>
   setInputs: (inputs: KnowledgeRetrievalNodeType) => void
-  selectedDatasets: DataSet[]
+  selectedDatasets: DatasetDetailWithPartialMembersResponse[]
   currentProvider?: TextProvider
   currentModel?: TextModel
   fallbackRerankModel: ModelIdentity

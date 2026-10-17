@@ -1,4 +1,4 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
@@ -11,7 +11,7 @@ vi.mock('@/app/components/workflow/store', () => ({
     selector({ pipelineId: undefined }),
 }))
 
-const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory =>
+const createVersionHistory = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'version-1',
     graph: {

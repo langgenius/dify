@@ -1,5 +1,5 @@
+import type { DatasetQueryContentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
-import type { Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -86,7 +86,7 @@ describe('QueryInput', () => {
     loading: false,
     queries: [
       { content: 'test query', content_type: 'text_query', file_info: null },
-    ] satisfies Query[],
+    ] satisfies DatasetQueryContentResponse[],
     setQueries: vi.fn(),
     isExternal: false,
     onClickRetrievalMethod: vi.fn(),
@@ -158,7 +158,9 @@ describe('QueryInput', () => {
   it('should disable submit button when text is empty', () => {
     const props = {
       ...defaultProps,
-      queries: [{ content: '', content_type: 'text_query', file_info: null }] satisfies Query[],
+      queries: [
+        { content: '', content_type: 'text_query', file_info: null },
+      ] satisfies DatasetQueryContentResponse[],
     }
     render(<QueryInput {...props} />)
     expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
@@ -185,7 +187,7 @@ describe('QueryInput', () => {
       ...defaultProps,
       queries: [
         { content: 'a'.repeat(201), content_type: 'text_query', file_info: null },
-      ] satisfies Query[],
+      ] satisfies DatasetQueryContentResponse[],
     }
     render(<QueryInput {...props} />)
     expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
@@ -201,7 +203,7 @@ describe('QueryInput', () => {
   // Cover line 83: images useMemo with image_query data
   describe('Image Queries', () => {
     it('should parse image_query entries from queries', () => {
-      const queries: Query[] = [
+      const queries: DatasetQueryContentResponse[] = [
         { content: 'test', content_type: 'text_query', file_info: null },
         {
           content: 'https://img.example.com/1.png',
@@ -417,7 +419,7 @@ describe('QueryInput', () => {
     })
 
     it('should replace all existing image queries with new ones', () => {
-      const queries: Query[] = [
+      const queries: DatasetQueryContentResponse[] = [
         { content: 'text', content_type: 'text_query', file_info: null },
         {
           content: 'old-img',
@@ -441,7 +443,7 @@ describe('QueryInput', () => {
         expect.arrayContaining([expect.objectContaining({ content_type: 'text_query' })]),
       )
       // Should not contain image_query
-      const calledWith = defaultProps.setQueries.mock.calls[0]![0] as Query[]
+      const calledWith = defaultProps.setQueries.mock.calls[0]![0] as DatasetQueryContentResponse[]
       expect(calledWith.filter((q) => q.content_type === 'image_query')).toHaveLength(0)
     })
   })
@@ -548,7 +550,7 @@ describe('QueryInput', () => {
     })
 
     it('should include image attachment_ids in submit request', async () => {
-      const queries: Query[] = [
+      const queries: DatasetQueryContentResponse[] = [
         { content: 'test', content_type: 'text_query', file_info: null },
         {
           content: 'img-url',

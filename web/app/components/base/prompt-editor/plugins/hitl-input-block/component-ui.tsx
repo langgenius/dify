@@ -189,7 +189,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
             if (!open) hideEditModal()
           }}
         >
-          <DialogContent className="w-full max-w-93 overflow-hidden! border-none p-0! text-left align-middle">
+          <DialogContent className="w-full max-w-93 overflow-hidden">
             <InputField
               nodeId={nodeId}
               isEdit
