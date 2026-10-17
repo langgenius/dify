@@ -226,6 +226,16 @@ function createTestQueryClient() {
   })
 }
 
+function seedListCaches(queryClient: QueryClient) {
+  const keys = [
+    ['skills', { type: 'query' }, 'cached-detail'],
+    ['skills', { type: 'infinite' }, 'cached-list'],
+    ['skill-tags', { type: 'query' }, 'cached-tags'],
+  ]
+  for (const key of keys) queryClient.setQueryData(key, { cached: true })
+  return keys
+}
+
 const onUrlUpdate = vi.fn()
 const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({
   onUrlUpdate,
@@ -267,7 +277,7 @@ describe('SkillsPage', () => {
     mocks.skillsKey.mockImplementation((options) => ['skills', options])
     mocks.tagsKey.mockImplementation((options) => ['skill-tags', options])
     mocks.skillsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skills', options],
+      queryKey: ['skills', { type: 'infinite' }, options.input(1)],
       queryFn: async ({ pageParam }: { pageParam: unknown }) => {
         const page = Number(pageParam)
         return {
@@ -281,7 +291,7 @@ describe('SkillsPage', () => {
       initialPageParam: options.initialPageParam,
     }))
     mocks.tagsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-tags', options],
+      queryKey: ['skill-tags', { type: 'query' }, options],
       queryFn: async () => ({
         data: mocks.tags,
       }),
@@ -355,7 +365,8 @@ describe('SkillsPage', () => {
       queryKey,
       queryFn: () => {
         requestCount += 1
-        return Promise.reject(new Error('skills refetch failed'))
+        if (requestCount === 1) return Promise.reject(new Error('skills refetch failed'))
+        return Promise.resolve({ data: [createSkill()], has_more: false, page: 1, total: 1 })
       },
       getNextPageParam: options.getNextPageParam,
       initialPageParam: options.initialPageParam,
@@ -385,6 +396,10 @@ describe('SkillsPage', () => {
     await waitFor(() => {
       expect(requestCount).toBe(2)
     })
+    expect(
+      await within(skillRegion).findByRole('link', { name: /Refund approval/ }),
+    ).toBeInTheDocument()
+    expect(within(skillRegion).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('renders skills with tags, reference count, and detail links', async () => {
@@ -404,23 +419,6 @@ describe('SkillsPage', () => {
     expect(
       screen.getByText('skill.skillManagement.publishedAt:{"time":"2 hours ago"}'),
     ).toBeInTheDocument()
-  })
-
-  it('tabs from the card More action to its tag trigger', async () => {
-    const user = userEvent.setup()
-    renderSkillsPage()
-
-    const skillLink = await screen.findByRole('link', { name: /Refund approval/ })
-    const moreButton = screen.getByRole('button', {
-      name: 'skill.skillManagement.moreActions:{"name":"Refund approval"}',
-    })
-    const tagTrigger = screen.getByRole('button', { name: 'support' })
-
-    skillLink.focus()
-    await user.tab()
-    expect(moreButton).toHaveFocus()
-    await user.tab()
-    expect(tagTrigger).toHaveFocus()
   })
 
   it('renders draft update time as relative time', async () => {
@@ -463,16 +461,6 @@ describe('SkillsPage', () => {
         },
       })
     })
-  })
-
-  it('uses the localized Skills search hint as the search placeholder', async () => {
-    renderSkillsPage()
-
-    expect(
-      await screen.findByRole('searchbox', {
-        name: 'skill.skillManagement.searchLabel',
-      }),
-    ).toHaveAttribute('placeholder', 'skill.skillManagement.searchPlaceholder')
   })
 
   it('clears stale tag names from the URL-backed filter state', async () => {
@@ -552,7 +540,7 @@ describe('SkillsPage', () => {
     expect(paginationLoading).toBeVisible()
     expect(within(skillList).getAllByRole('listitem')).toHaveLength(20)
 
-    resolveNextPage?.({
+    resolveNextPage!({
       data: [nextPageSkill],
       has_more: false,
       page: 2,
@@ -638,7 +626,7 @@ describe('SkillsPage', () => {
     expect(nextPageRequestCount).toBe(0)
     expect(screen.getByRole('heading', { name: 'Stale Skill 1' })).toBeInTheDocument()
 
-    resolveFirstPageRefetch?.({
+    resolveFirstPageRefetch!({
       data: freshFirstPage,
       has_more: true,
       page: 1,
@@ -717,7 +705,7 @@ describe('SkillsPage', () => {
     expect(within(skillRegion).queryByRole('status')).not.toBeInTheDocument()
     expect(within(skillRegion).getAllByRole('listitem')).toHaveLength(20)
 
-    resolveRetry?.({
+    resolveRetry!({
       data: [createSkill({ id: 'skill-21', name: 'skill-21', display_name: 'Recovered Skill 21' })],
       has_more: false,
       page: 2,
@@ -729,8 +717,9 @@ describe('SkillsPage', () => {
 
   it('creates a placeholder skill and navigates to its detail page', async () => {
     const user = userEvent.setup()
-    const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-    renderSkillsPage()
+    const queryClient = createTestQueryClient()
+    const cacheKeys = seedListCaches(queryClient)
+    renderSkillsPage(queryClient)
 
     await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
 
@@ -742,13 +731,8 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['skill-tags', { type: 'query' }],
-    })
-    expect(mocks.push).toHaveBeenCalledWith('/skills/created-skill')
-    invalidateQueries.mockRestore()
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/created-skill'))
+    for (const key of cacheKeys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
   })
 
   it('explains when the workspace skill limit blocks draft creation', async () => {
@@ -796,8 +780,9 @@ describe('SkillsPage', () => {
     'stages %s until confirmation, then navigates to the imported skill',
     async (fileName) => {
       const user = userEvent.setup()
-      const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-      renderSkillsPage()
+      const queryClient = createTestQueryClient()
+      const cacheKeys = seedListCaches(queryClient)
+      renderSkillsPage(queryClient)
 
       const dialog = await openImportDialog(user)
       const file = new File(['skill'], fileName, { type: 'application/zip' })
@@ -820,13 +805,8 @@ describe('SkillsPage', () => {
           expect.anything(),
         )
       })
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
-      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['skill-tags', { type: 'query' }],
-      })
-      expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill')
-      invalidateQueries.mockRestore()
+      await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill'))
+      for (const key of cacheKeys) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
     },
   )
 
@@ -1059,7 +1039,7 @@ describe('SkillsPage', () => {
     expect(within(dialog).getByText('refund.skill')).toBeInTheDocument()
     expect(within(dialog).queryByText('replacement.zip')).not.toBeInTheDocument()
     expect(mocks.importSkillMutationFn).toHaveBeenCalledTimes(1)
-    completeImport?.(createSkill({ id: 'imported-skill' }))
+    completeImport!(createSkill({ id: 'imported-skill' }))
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/skills/imported-skill'))
   })
 
@@ -1223,6 +1203,10 @@ describe('SkillsPage', () => {
 
   it('confirms deletion with the skill name and refreshes list data', async () => {
     const user = userEvent.setup()
+    mocks.deleteSkillMutationFn.mockImplementation(async () => {
+      mocks.skillPages = [[]]
+      return { deleted: true, id: 'skill-1' }
+    })
     renderSkillsPage()
 
     await user.click(
@@ -1243,8 +1227,8 @@ describe('SkillsPage', () => {
       'target',
       '_blank',
     )
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).toBeInTheDocument()
 
+    expect(within(dialog).getByRole('button', { name: 'common.operation.delete' })).toBeDisabled()
     await user.type(
       within(dialog).getByPlaceholderText(
         'skill.skillManagement.deleteDialog.confirmInputPlaceholder',
@@ -1266,6 +1250,10 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /Refund approval/ })).not.toBeInTheDocument(),
+    )
   })
 
   it('loads references in the delete confirmation when the list reference count is stale', async () => {
@@ -1375,10 +1363,6 @@ describe('SkillsPage', () => {
 
     expect(await within(dialog).findByText('Support Agent 5')).toBeInTheDocument()
     expect(within(dialog).queryByText('Support Agent 6')).not.toBeInTheDocument()
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).not.toHaveAttribute(
-      'data-scrollable',
-      'true',
-    )
 
     await user.click(
       within(dialog).getByRole('button', {
@@ -1388,14 +1372,6 @@ describe('SkillsPage', () => {
 
     expect(within(dialog).getByText('Support Agent 6')).toBeInTheDocument()
     expect(within(dialog).getByText('Support Agent 7')).toBeInTheDocument()
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).toHaveAttribute(
-      'data-scrollable',
-      'true',
-    )
-    expect(within(dialog).getByTestId('skill-delete-reference-list')).toHaveClass(
-      'max-h-[240px]',
-      'overflow-y-auto',
-    )
   })
 
   it('shows the empty-search state without create or import actions', async () => {

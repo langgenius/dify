@@ -133,6 +133,7 @@ class MockAudioWorkletNode {
 }
 
 describe('startVoiceRecorder', () => {
+  const originalMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices')
   beforeEach(() => {
     vi.clearAllMocks()
     mediaMocks.target = undefined
@@ -159,10 +160,17 @@ describe('startVoiceRecorder', () => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    if (originalMediaDevices) Object.defineProperty(navigator, 'mediaDevices', originalMediaDevices)
+    else Reflect.deleteProperty(navigator, 'mediaDevices')
+  })
+
   // Recording setup uses one browser-native PCM path and one MP3 encoder configuration.
   describe('Setup', () => {
     it('should initialize mono microphone capture and the MP3 encoder', async () => {
-      await startVoiceRecorder()
+      const recorder = await startVoiceRecorder()
 
       expect(getUserMedia).toHaveBeenCalledWith({
         audio: {
@@ -182,14 +190,16 @@ describe('startVoiceRecorder', () => {
       })
       expect(addModule).toHaveBeenCalledWith('blob:voice-worklet')
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:voice-worklet')
+      await recorder.cancel()
     })
 
     it('should resume a suspended audio context before recording', async () => {
       audioContextState = 'suspended'
 
-      await startVoiceRecorder()
+      const recorder = await startVoiceRecorder()
 
       expect(audioContextResume).toHaveBeenCalledTimes(1)
+      await recorder.cancel()
     })
 
     it('should release a microphone stream that resolves after setup is cancelled', async () => {
@@ -262,7 +272,7 @@ describe('startVoiceRecorder', () => {
 
       const result = await recorder.stop()
 
-      expect(copyToChannel).toHaveBeenCalledTimes(1)
+      expect(copyToChannel).toHaveBeenCalledExactlyOnceWith(new Float32Array([0.25, -0.25]), 0)
       expect(mediaMocks.audioSourceAdd).toHaveBeenCalledTimes(1)
       expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1)
       expect(result.type).toBe('audio/mp3')

@@ -13,10 +13,11 @@ describe('EmptyElement', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('does not offer file upload for synchronized documents', () => {
-    render(<EmptyElement canAdd onClick={vi.fn()} type="sync" />)
-
-    expect(screen.getByText(/list\.empty\.sync\.tip/i)).toBeInTheDocument()
+  it.each([
+    { type: 'sync' as const, canAdd: true },
+    { type: 'upload' as const, canAdd: false },
+  ])('does not offer upload for $type documents with canAdd=$canAdd', ({ type, canAdd }) => {
+    render(<EmptyElement canAdd={canAdd} onClick={vi.fn()} type={type} />)
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })

@@ -19,9 +19,15 @@ vi.mock('@/app/notifications', () => ({
 const { toast } = await import('@/app/notifications')
 
 describe('base', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
     vi.clearAllMocks()
     window.history.replaceState({}, '', '/')
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    window.history.replaceState({}, '', originalUrl)
+    markAppDeletionFailed('deleted-app')
   })
 
   describe('Public API routing', () => {
@@ -108,7 +114,7 @@ describe('base', () => {
   })
 
   describe('Error responses', () => {
-    it('should keep the response body readable when a 401 response is rejected', async () => {
+    it('should preserve structured error details when a 401 response is rejected', async () => {
       // Arrange
       const unauthorizedResponse = new Response(
         JSON.stringify({

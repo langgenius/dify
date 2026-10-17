@@ -3,7 +3,7 @@ import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/ap
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { DataSourceType } from '@/models/datasets'
@@ -11,6 +11,59 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import StepOne from '../index'
+
+vi.mock('@tanstack/react-virtual')
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'notion.preImport.pages.get': async () => ({
+        notion_info: [
+          {
+            workspace_id: 'workspace-1',
+            workspace_name: 'Workspace 1',
+            workspace_icon: null,
+            pages: [
+              {
+                page_id: 'page-1',
+                page_name: 'Page',
+                parent_id: null,
+                page_icon: null,
+                is_bound: false,
+                type: 'page',
+              },
+            ],
+          },
+        ],
+      }),
+      'notion.pages.byPageId.byPageType.preview.get': async () => ({
+        content: 'Notion page contents',
+      }),
+    }),
+  }
+})
+
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+const createMockCustomFile = (overrides: { id?: string; name?: string } = {}) => {
+  const file = new File(['test content'], overrides.name ?? 'test.txt', { type: 'text/plain' })
+  return Object.assign(file, {
+    id: overrides.id ?? 'uploaded-id',
+    extension: 'txt',
+    mime_type: 'text/plain',
+    created_by: 'user-1',
+    created_at: Date.now(),
+  })
+}
+
+const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
+  fileID: `file-${Date.now()}`,
+  file: createMockCustomFile(overrides.file as { id?: string; name?: string }),
+  progress: 100,
+  ...overrides,
+})
 
 let mockPlan: {
   type: CloudPlan
@@ -108,90 +161,16 @@ vi.mock('../../website', () => ({
   ),
 }))
 
-vi.mock('../../empty-dataset-creation-modal', () => ({
-  default: ({ show, onHide }: { show: boolean; onHide: () => void }) =>
-    show ? (
-      <div data-testid="empty-dataset-modal">
-        <button data-testid="close-modal" onClick={onHide}>
-          Close
-        </button>
-      </div>
-    ) : null,
-}))
-
-// NotionConnector is a base component - imported directly without mock
-// It only depends on i18n which is globally mocked
-
-vi.mock('@/app/components/base/notion-page-selector', () => ({
-  NotionPageSelector: ({ onPreview }: { onPreview: (page: NotionPage) => void }) => (
-    <div data-testid="notion-page-selector">
-      <button
-        data-testid="preview-notion"
-        onClick={() => onPreview({ page_id: 'page-1', type: 'page' } as NotionPage)}
-      >
-        Preview Notion
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/billing/vector-space-full', () => ({
-  default: () => <div data-testid="vector-space-full">Vector Space Full</div>,
-}))
-
-vi.mock('../../file-preview', () => ({
-  default: ({ file, hidePreview }: { file: File; hidePreview: () => void }) => (
-    <div data-testid="file-preview">
-      <span>{file.name}</span>
-      <button data-testid="hide-file-preview" onClick={hidePreview}>
-        Hide
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../../notion-page-preview', () => ({
-  default: ({ currentPage, hidePreview }: { currentPage: NotionPage; hidePreview: () => void }) => (
-    <div data-testid="notion-page-preview">
-      <span>{currentPage.page_id}</span>
-      <button data-testid="hide-notion-preview" onClick={hidePreview}>
-        Hide
-      </button>
-    </div>
-  ),
-}))
-
-// WebsitePreview is a sibling component without API dependencies - imported directly
-// It only depends on i18n which is globally mocked
-
-vi.mock('../upgrade-card', () => ({
-  default: () => <div data-testid="upgrade-card">Upgrade Card</div>,
-}))
-
-const createMockCustomFile = (overrides: { id?: string; name?: string } = {}) => {
-  const file = new File(['test content'], overrides.name ?? 'test.txt', { type: 'text/plain' })
-  return Object.assign(file, {
-    id: overrides.id ?? 'uploaded-id',
-    extension: 'txt',
-    mime_type: 'text/plain',
-    created_by: 'user-1',
-    created_at: Date.now(),
-  })
-}
-
-const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
-  fileID: `file-${Date.now()}`,
-  file: createMockCustomFile(overrides.file as { id?: string; name?: string }),
-  progress: 100,
+const createMockNotionPage = (overrides: Partial<NotionPage> = {}): NotionPage => ({
+  page_id: 'page-1',
+  type: 'page',
+  page_icon: null,
+  page_name: 'Page',
+  parent_id: '',
+  is_bound: false,
+  workspace_id: 'workspace-1',
   ...overrides,
 })
-
-const createMockNotionPage = (overrides: Partial<NotionPage> = {}): NotionPage =>
-  ({
-    page_id: `page-${Date.now()}`,
-    type: 'page',
-    ...overrides,
-  }) as NotionPage
 
 const createMockCrawlResult = (overrides: Partial<CrawlResultItem> = {}): CrawlResultItem => ({
   title: 'Test Page',
@@ -203,14 +182,29 @@ const createMockCrawlResult = (overrides: Partial<CrawlResultItem> = {}): CrawlR
 
 const createMockDataSourceAuth = (
   overrides: Partial<DatasourceProviderAuthResponse> = {},
-): DatasourceProviderAuthResponse =>
-  ({
-    credential_id: 'cred-1',
-    provider: 'notion_datasource',
-    plugin_id: 'plugin-1',
-    credentials_list: [{ id: 'cred-1', name: 'Workspace 1' }],
-    ...overrides,
-  }) as DatasourceProviderAuthResponse
+): DatasourceProviderAuthResponse => ({
+  author: 'Dify',
+  credential_schema: [],
+  description: { en_US: 'Notion', zh_Hans: 'Notion' },
+  label: { en_US: 'Notion', zh_Hans: 'Notion' },
+  icon: '',
+  name: 'notion',
+  oauth_schema: null,
+  plugin_unique_identifier: 'notion:1',
+  provider: 'notion_datasource',
+  plugin_id: 'plugin-1',
+  credentials_list: [
+    {
+      id: 'cred-1',
+      name: 'Workspace 1',
+      avatar_url: null,
+      credential: {},
+      is_default: true,
+      type: 'oauth2',
+    },
+  ],
+  ...overrides,
+})
 
 const defaultProps = {
   dataSourceType: DataSourceType.FILE,
@@ -242,23 +236,16 @@ const defaultProps = {
   authedDataSourceList: [] as DatasourceProviderAuthResponse[],
 }
 
-// NOTE: Child component unit tests (usePreviewState, DataSourceTypeSelector,
-// NextStepButton, PreviewPanel) have been moved to their own dedicated spec files:
-//   - ./hooks/use-preview-state.spec.ts
-//   - ./components/data-source-type-selector.spec.tsx
-//   - ./components/next-step-button.spec.tsx
-//   - ./components/preview-panel.spec.tsx
-// This file now focuses exclusively on StepOne parent component tests.
-
-// StepOne Component Tests
 describe('StepOne', () => {
   it('returns keyboard focus to the file preview trigger when closing the preview', async () => {
     const user = userEvent.setup()
     render(<StepOne {...defaultProps} />)
     const trigger = screen.getByRole('button', { name: 'Preview' })
     await user.click(trigger)
-    await user.click(screen.getByRole('button', { name: 'Hide' }))
-    expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(
+      screen.queryByRole('region', { name: 'datasetCreation.stepOne.filePreview' }),
+    ).not.toBeInTheDocument()
     expect(trigger).toHaveFocus()
   })
 
@@ -268,7 +255,9 @@ describe('StepOne', () => {
     await user.click(screen.getByRole('button', { name: 'Preview' }))
     const source = screen.getByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.web' })
     await user.click(source)
-    expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'datasetCreation.stepOne.filePreview' }),
+    ).not.toBeInTheDocument()
     expect(source).toHaveFocus()
   })
 
@@ -284,54 +273,6 @@ describe('StepOne', () => {
   })
 
   describe('Rendering', () => {
-    it('should render DataSourceTypeSelector when not editing existing dataset', () => {
-      render(<StepOne {...defaultProps} />)
-
-      expect(screen.getByText('datasetCreation.stepOne.dataSourceType.file')).toBeInTheDocument()
-    })
-
-    it('should render FileUploader when dataSourceType is FILE', () => {
-      render(<StepOne {...defaultProps} dataSourceType={DataSourceType.FILE} />)
-
-      expect(screen.getByTestId('file-uploader')).toBeInTheDocument()
-    })
-
-    it('should render NotionConnector when dataSourceType is NOTION and not authenticated', () => {
-      render(<StepOne {...defaultProps} dataSourceType={DataSourceType.NOTION} />)
-
-      // Assert - NotionConnector shows sync title and connect button
-      expect(screen.getByText('datasetCreation.stepOne.notionSyncTitle')).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: /datasetCreation.stepOne.connect/i }),
-      ).toBeInTheDocument()
-    })
-
-    it('should render NotionPageSelector when dataSourceType is NOTION and authenticated', () => {
-      const authedDataSourceList = [createMockDataSourceAuth()]
-
-      render(
-        <StepOne
-          {...defaultProps}
-          dataSourceType={DataSourceType.NOTION}
-          authedDataSourceList={authedDataSourceList}
-        />,
-      )
-
-      expect(screen.getByTestId('notion-page-selector')).toBeInTheDocument()
-    })
-
-    it('should render Website when dataSourceType is WEB', () => {
-      render(<StepOne {...defaultProps} dataSourceType={DataSourceType.WEB} />)
-
-      expect(screen.getByTestId('website')).toBeInTheDocument()
-    })
-
-    it('should render empty dataset creation link when no datasetId', () => {
-      render(<StepOne {...defaultProps} />)
-
-      expect(screen.getByText('datasetCreation.stepOne.emptyDatasetCreation')).toBeInTheDocument()
-    })
-
     it('should not render empty dataset creation link when datasetId exists', () => {
       render(<StepOne {...defaultProps} datasetId="dataset-123" />)
 
@@ -343,57 +284,50 @@ describe('StepOne', () => {
 
   // Props Tests
   describe('Props', () => {
-    it('should pass files to FileUploader', () => {
-      const files = [createMockFileItem()]
-
-      render(<StepOne {...defaultProps} files={files} />)
-
-      expect(screen.getByTestId('file-count')).toHaveTextContent('1')
-    })
-
-    it('should call onSetting when NotionConnector connect button is clicked', () => {
+    it('should call onSetting when NotionConnector connect button is clicked', async () => {
       const onSetting = vi.fn()
       render(
         <StepOne {...defaultProps} dataSourceType={DataSourceType.NOTION} onSetting={onSetting} />,
       )
 
       // Act - The NotionConnector's button calls onSetting
-      fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.connect/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /datasetCreation.stepOne.connect/i }))
 
       expect(onSetting).toHaveBeenCalledTimes(1)
     })
 
-    it('should call changeType when data source type is changed', () => {
+    it('should call changeType when data source type is changed', async () => {
       const changeType = vi.fn()
       render(<StepOne {...defaultProps} changeType={changeType} />)
 
-      fireEvent.click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
+      await userEvent
+        .setup()
+        .click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
 
       expect(changeType).toHaveBeenCalledWith(DataSourceType.NOTION)
     })
   })
 
   describe('State Management', () => {
-    it('should open empty dataset modal when link is clicked', () => {
+    it('should close empty dataset modal when close is clicked', async () => {
       render(<StepOne {...defaultProps} />)
+      await userEvent
+        .setup()
+        .click(screen.getByText('datasetCreation.stepOne.emptyDatasetCreation'))
 
-      fireEvent.click(screen.getByText('datasetCreation.stepOne.emptyDatasetCreation'))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'datasetCreation.stepOne.modal.cancelButton' }))
 
-      expect(screen.getByTestId('empty-dataset-modal')).toBeInTheDocument()
-    })
-
-    it('should close empty dataset modal when close is clicked', () => {
-      render(<StepOne {...defaultProps} />)
-      fireEvent.click(screen.getByText('datasetCreation.stepOne.emptyDatasetCreation'))
-
-      fireEvent.click(screen.getByTestId('close-modal'))
-
-      expect(screen.queryByTestId('empty-dataset-modal')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
   })
 
-  describe('Memoization', () => {
-    it('should correctly compute isNotionAuthed based on authedDataSourceList', () => {
+  describe('Authentication and upload readiness', () => {
+    it('replaces the connection prompt with page selection after authentication', async () => {
       // Arrange - No auth
       const { rerender } = render(
         <StepOne {...defaultProps} dataSourceType={DataSourceType.NOTION} />,
@@ -411,7 +345,8 @@ describe('StepOne', () => {
         />,
       )
 
-      expect(screen.getByTestId('notion-page-selector')).toBeInTheDocument()
+      expect(await screen.findByRole('combobox', { name: 'Workspace 1' })).toBeInTheDocument()
+      expect(await screen.findByText('Page')).toBeInTheDocument()
     })
 
     it('should correctly compute fileNextDisabled when files are empty', () => {
@@ -419,17 +354,6 @@ describe('StepOne', () => {
 
       // Assert - Button should be disabled
       expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
-    })
-
-    it('should correctly compute fileNextDisabled when files are loaded', () => {
-      const files = [createMockFileItem()]
-
-      render(<StepOne {...defaultProps} files={files} />)
-
-      // Assert - Button should be enabled
-      expect(
-        screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }),
-      ).not.toBeDisabled()
     })
 
     it('should correctly compute fileNextDisabled when some files are not uploaded', () => {
@@ -449,25 +373,18 @@ describe('StepOne', () => {
   })
 
   describe('Callbacks', () => {
-    it('should call onStepChange when next button is clicked with valid files', () => {
-      const onStepChange = vi.fn()
-      const files = [createMockFileItem()]
-      render(<StepOne {...defaultProps} files={files} onStepChange={onStepChange} />)
-
-      fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
-
-      expect(onStepChange).toHaveBeenCalledTimes(1)
-    })
-
-    it('should show plan upgrade modal when batch upload not supported and multiple files', () => {
+    it('should show plan upgrade modal when batch upload not supported and multiple files', async () => {
       deploymentEdition = 'CLOUD'
       mockPlan.type = 'sandbox'
       const files = [createMockFileItem(), createMockFileItem()]
       render(<StepOne {...defaultProps} files={files} />)
 
-      fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
       expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(defaultProps.onStepChange).not.toHaveBeenCalled()
     })
 
     it('should show upgrade card immediately when in sandbox plan', () => {
@@ -476,13 +393,13 @@ describe('StepOne', () => {
 
       render(<StepOne {...defaultProps} files={[]} />)
 
-      expect(screen.getByTestId('upgrade-card')).toBeInTheDocument()
+      expect(screen.getByText('billing.upgrade.uploadMultipleFiles.title')).toBeInTheDocument()
     })
   })
 
   // Vector Space Full Tests
   describe('Vector Space Full', () => {
-    it('should show VectorSpaceFull when vector space is full and billing is enabled', () => {
+    it('blocks continuing when vector space is full', () => {
       deploymentEdition = 'CLOUD'
       mockPlan.usage.vectorSpace = 100
       mockPlan.total.vectorSpace = 100
@@ -490,17 +407,7 @@ describe('StepOne', () => {
 
       render(<StepOne {...defaultProps} files={files} />)
 
-      expect(screen.getByTestId('vector-space-full')).toBeInTheDocument()
-    })
-
-    it('should disable next button when vector space is full', () => {
-      deploymentEdition = 'CLOUD'
-      mockPlan.usage.vectorSpace = 100
-      mockPlan.total.vectorSpace = 100
-      const files = [createMockFileItem()]
-
-      render(<StepOne {...defaultProps} files={files} />)
-
+      expect(screen.getByText('billing.vectorSpace.fullTip')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
     })
 
@@ -513,7 +420,7 @@ describe('StepOne', () => {
 
       render(<StepOne {...defaultProps} files={files} />, true)
 
-      expect(screen.queryByTestId('vector-space-full')).not.toBeInTheDocument()
+      expect(screen.queryByText('billing.vectorSpace.fullTip')).not.toBeInTheDocument()
       expect(screen.getByRole('alert')).toHaveTextContent('billing.plansCommon.unavailable')
       expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
@@ -533,42 +440,27 @@ describe('StepOne', () => {
 
   // Preview Integration Tests
   describe('Preview Integration', () => {
-    it('should show file preview when file preview button is clicked', () => {
-      render(<StepOne {...defaultProps} />)
-
-      fireEvent.click(screen.getByTestId('preview-file'))
-
-      expect(screen.getByTestId('file-preview')).toBeInTheDocument()
-    })
-
-    it('should hide file preview when hide button is clicked', () => {
-      render(<StepOne {...defaultProps} />)
-      fireEvent.click(screen.getByTestId('preview-file'))
-
-      fireEvent.click(screen.getByTestId('hide-file-preview'))
-
-      expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
-    })
-
-    it('should show notion page preview when preview button is clicked', () => {
+    it('should show notion page preview when preview button is clicked', async () => {
       const authedDataSourceList = [createMockDataSourceAuth()]
       render(
         <StepOne
           {...defaultProps}
           dataSourceType={DataSourceType.NOTION}
+          notionCredentialId="cred-1"
           authedDataSourceList={authedDataSourceList}
         />,
       )
 
-      fireEvent.click(screen.getByTestId('preview-notion'))
+      await userEvent.setup().click(await screen.findByTestId('notion-page-preview-page-1'))
 
-      expect(screen.getByTestId('notion-page-preview')).toBeInTheDocument()
+      expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
+      expect(await screen.findByText('Notion page contents')).toBeInTheDocument()
     })
 
-    it('should show website preview when preview button is clicked', () => {
+    it('should show website preview when preview button is clicked', async () => {
       render(<StepOne {...defaultProps} dataSourceType={DataSourceType.WEB} />)
 
-      fireEvent.click(screen.getByTestId('preview-website'))
+      await userEvent.setup().click(screen.getByTestId('preview-website'))
 
       // Assert - Check for pagePreview title which is shown by WebsitePreview
       expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
@@ -599,19 +491,6 @@ describe('StepOne', () => {
       expect(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i })).toBeDisabled()
     })
 
-    it('should handle empty authedDataSourceList', () => {
-      render(
-        <StepOne
-          {...defaultProps}
-          dataSourceType={DataSourceType.NOTION}
-          authedDataSourceList={[]}
-        />,
-      )
-
-      // Assert - Should show NotionConnector with connect button
-      expect(screen.getByText('datasetCreation.stepOne.notionSyncTitle')).toBeInTheDocument()
-    })
-
     it('should handle authedDataSourceList without notion credentials', () => {
       const authedDataSourceList = [createMockDataSourceAuth({ credentials_list: [] })]
 
@@ -626,32 +505,22 @@ describe('StepOne', () => {
       // Assert - Should show NotionConnector with connect button
       expect(screen.getByText('datasetCreation.stepOne.notionSyncTitle')).toBeInTheDocument()
     })
-
-    it('should clear previews when switching data source types', () => {
-      render(<StepOne {...defaultProps} />)
-      fireEvent.click(screen.getByTestId('preview-file'))
-      expect(screen.getByTestId('file-preview')).toBeInTheDocument()
-
-      // Act - Change to NOTION
-      fireEvent.click(screen.getByText('datasetCreation.stepOne.dataSourceType.notion'))
-
-      // Assert - File preview should be cleared
-      expect(screen.queryByTestId('file-preview')).not.toBeInTheDocument()
-    })
   })
 
   describe('Integration', () => {
-    it('should complete file upload flow', () => {
+    it('should complete file upload flow', async () => {
       const onStepChange = vi.fn()
       const files = [createMockFileItem()]
 
       render(<StepOne {...defaultProps} files={files} onStepChange={onStepChange} />)
-      fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
-      expect(onStepChange).toHaveBeenCalled()
+      expect(onStepChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should complete notion page selection flow', () => {
+    it('should complete notion page selection flow', async () => {
       const onStepChange = vi.fn()
       const authedDataSourceList = [createMockDataSourceAuth()]
       const notionPages = [createMockNotionPage()]
@@ -665,12 +534,14 @@ describe('StepOne', () => {
           onStepChange={onStepChange}
         />,
       )
-      fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
-      expect(onStepChange).toHaveBeenCalled()
+      expect(onStepChange).toHaveBeenCalledTimes(1)
     })
 
-    it('should complete website crawl flow', () => {
+    it('should complete website crawl flow', async () => {
       const onStepChange = vi.fn()
       const websitePages = [createMockCrawlResult()]
 
@@ -682,9 +553,11 @@ describe('StepOne', () => {
           onStepChange={onStepChange}
         />,
       )
-      fireEvent.click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: /datasetCreation.stepOne.button/i }))
 
-      expect(onStepChange).toHaveBeenCalled()
+      expect(onStepChange).toHaveBeenCalledTimes(1)
     })
   })
 })

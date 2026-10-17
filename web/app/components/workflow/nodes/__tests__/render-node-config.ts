@@ -1,3 +1,4 @@
+import type { ComponentType, ReactNode } from 'react'
 import type { ReactFlowInstance } from 'reactflow'
 import type { CommonNodeType } from '../../types'
 import { createElement, useLayoutEffect } from 'react'
@@ -10,8 +11,8 @@ import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 
 type Options = Pick<
   NonNullable<Parameters<typeof renderWorkflowFlowComponent>[1]>,
-  'resource' | 'nodes' | 'edges' | 'initialStoreState' | 'queryClient'
-> & { nodeId?: string }
+  'resource' | 'nodes' | 'edges' | 'initialStoreState' | 'queryClient' | 'hooksStoreProps'
+> & { nodeId?: string; wrapper?: ComponentType<{ children: ReactNode }> }
 
 // Subscribe to the real graph so every edit is fed back into the next configuration render.
 export const renderNodeConfig = <T extends CommonNodeType, R>(
@@ -21,6 +22,7 @@ export const renderNodeConfig = <T extends CommonNodeType, R>(
     nodeId = 'node',
     queryClient = createConsoleQueryWrapper().queryClient,
     nodes,
+    wrapper: ExtraWrapper,
     ...options
   }: Options = {},
 ) => {
@@ -45,11 +47,16 @@ export const renderNodeConfig = <T extends CommonNodeType, R>(
     // Production opens configuration only after its graph node exists.
     return node ? createElement(Probe, { data: node.data }) : null
   }
-  const rendered = renderWorkflowFlowComponent(createElement(GraphReady), {
-    ...options,
-    queryClient,
-    nodes: nodes ?? [createNode({ id: nodeId, data: payload })],
-  })
+  const rendered = renderWorkflowFlowComponent(
+    ExtraWrapper
+      ? createElement(ExtraWrapper, null, createElement(GraphReady))
+      : createElement(GraphReady),
+    {
+      ...options,
+      queryClient,
+      nodes: nodes ?? [createNode({ id: nodeId, data: payload })],
+    },
+  )
   return {
     ...rendered,
     result: {

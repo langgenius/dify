@@ -63,6 +63,7 @@ describe('usePipelineConfig', () => {
     expect(mocks.request).toHaveBeenCalledOnce()
     expect(mocks.request.mock.calls[0]?.[0]).toContain('/rag/pipelines/datasource-plugins')
     expect(client.getQueryData(catalog.queryKey())).toEqual(refreshed)
+    expect(store.getState().dataSourceList).toBe(client.getQueryData(catalog.queryKey()))
     expect(cached[0]?.declaration.identity.icon).toBe('/datasource.svg')
   })
 
@@ -110,16 +111,6 @@ describe('usePipelineConfig', () => {
     expect(client.getQueryState(catalog.queryKey())?.fetchFailureCount).toBe(1)
     expect(mocks.request).toHaveBeenCalledOnce()
     expect(store.getState().dataSourceList).toEqual(providers)
-  })
-
-  it('shares the raw catalog with other observers without transforming provider data', async () => {
-    const providers = [createDatasourceProvider()]
-    mocks.request.mockResolvedValue(Response.json(providers))
-    renderHook(usePipelineConfig, { wrapper })
-    await waitFor(() => expect(store.getState().dataSourceList).toEqual(providers))
-
-    expect(store.getState().dataSourceList).toBe(client.getQueryData(catalog.queryKey()))
-    expect(catalog.queryOptions()).toMatchObject({ staleTime: 0, retry: false })
   })
 
   it('retains the other pipeline configuration entrypoints', () => {

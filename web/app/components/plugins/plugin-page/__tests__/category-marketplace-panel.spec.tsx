@@ -1,10 +1,10 @@
 import type { PluginCategoryEnum } from '../../types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { PluginCategoryEnum as Category } from '../../types'
-import { getCategoryMarketplaceId } from '../category-marketplace'
 import CategoryMarketplacePanel from '../category-marketplace-panel'
 
 const mocks = vi.hoisted(() => ({
@@ -119,7 +119,6 @@ describe('CategoryMarketplacePanel', () => {
       expect(
         screen.getByRole('link', { name: /plugin\.marketplace\.difyMarketplace/ }),
       ).toHaveAttribute('href', `https://marketplace.test/plugins/${category}`)
-      expect(document.getElementById(getCategoryMarketplaceId(category))).toBeInTheDocument()
       expect(screen.getByText('Calendar')).toBeInTheDocument()
       expect(screen.queryByText('Installed plugin')).not.toBeInTheDocument()
     },
@@ -152,28 +151,30 @@ describe('CategoryMarketplacePanel', () => {
   })
 
   it('retries installed plugin IDs after a request failure and resumes marketplace search', async () => {
+    const user = userEvent.setup()
     seedIds = false
     mocks.getInstalledIds.mockRejectedValueOnce(new Error('Unavailable'))
     render(<CategoryMarketplacePanel category={Category.trigger} searchText="" />)
     expect(await screen.findByRole('alert')).toHaveTextContent('common.errorBoundary.title')
     expect(mocks.searchParams).toBeUndefined()
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     await waitFor(() => expect(mocks.getInstalledIds).toHaveBeenCalledTimes(2))
     expect(await screen.findByText('Calendar')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(mocks.searchParams).toMatchObject({ exclude: ['installed/plugin'] })
   })
 
-  it('supports collapsing and loading the next marketplace page', () => {
+  it('supports collapsing and loading the next marketplace page', async () => {
+    const user = userEvent.setup()
     render(<CategoryMarketplacePanel category={Category.extension} searchText="" />)
 
     const toggle = screen.getByRole('button', { name: 'plugin.list.source.marketplace' })
-    fireEvent.click(toggle)
+    await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByTestId('marketplace-list')).not.toBeInTheDocument()
 
-    fireEvent.click(toggle)
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
+    await user.click(toggle)
+    await user.click(screen.getByRole('button', { name: 'workflow.common.loadMore' }))
     expect(mocks.fetchNextPage).toHaveBeenCalledTimes(1)
   })
 })

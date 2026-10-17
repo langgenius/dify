@@ -4,8 +4,8 @@ import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { CommentIcon } from './comment-icon'
 
 type Position = { x: number; y: number }
@@ -22,15 +22,15 @@ const mockConsoleState = vi.hoisted(() => ({
 const mockFlowToScreenPosition = vi.fn((position: Position) => position)
 const mockScreenToFlowPosition = vi.fn((position: Position) => position)
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper({
-      ...mockConsoleState.userProfile,
-      id: mockUserId,
-    }),
+const render = (ui: ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { ...mockConsoleState.userProfile, id: mockUserId },
   })
+  return renderWorkflowComponent(ui, { queryClient })
+}
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useReactFlow: () => ({
     flowToScreenPosition: mockFlowToScreenPosition,
     screenToFlowPosition: mockScreenToFlowPosition,
@@ -40,20 +40,6 @@ vi.mock('reactflow', () => ({
     y: 0,
     zoom: 1,
   }),
-}))
-
-vi.mock('@/app/components/base/user-avatar-list', () => ({
-  UserAvatarList: ({ users }: { users: Array<{ id: string }> }) => (
-    <div data-testid="avatar-list">{users.map((user) => user.id).join(',')}</div>
-  ),
-}))
-
-vi.mock('./comment-preview', () => ({
-  default: ({ onClick }: { onClick?: () => void }) => (
-    <button type="button" data-testid="comment-preview" onClick={onClick}>
-      Preview
-    </button>
-  ),
 }))
 
 const createComment = (overrides: Partial<WorkflowCommentBasic> = {}): WorkflowCommentBasic => ({
@@ -147,10 +133,10 @@ describe('CommentIcon', () => {
     const hoverTarget = marker.firstElementChild as HTMLElement
 
     fireEvent.mouseEnter(hoverTarget)
-    expect(screen.getByTestId('comment-preview')).toBeInTheDocument()
+    expect(screen.getByText('Hello')).toBeInTheDocument()
 
     fireEvent.mouseLeave(hoverTarget)
-    expect(screen.queryByTestId('comment-preview')).not.toBeInTheDocument()
+    expect(screen.queryByText('Hello')).not.toBeInTheDocument()
   })
 
   it('calls onPositionUpdate after dragging by author', () => {

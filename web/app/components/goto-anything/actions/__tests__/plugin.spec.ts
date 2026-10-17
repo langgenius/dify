@@ -1,4 +1,4 @@
-import { pluginAction, pluginSearchQueryOptions } from '../plugin'
+import { pluginSearchQueryOptions } from '../plugin'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
@@ -6,15 +6,7 @@ vi.mock('@/service/marketplace', () => ({
   marketplaceQuery: { searchAdvanced: { queryOptions: serviceMocks.queryOptions } },
 }))
 
-vi.mock('../../../plugins/card/base/card-icon', () => ({ default: () => null }))
-
 describe('plugin search query', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('exposes remote action metadata', () => {
-    expect(pluginAction).toMatchObject({ key: '@plugin', shortcut: '@plugin', source: 'remote' })
-  })
-
   it('builds generated marketplace query options', () => {
     pluginSearchQueryOptions('agent', 'en_US')
 
@@ -47,7 +39,12 @@ describe('plugin search query', () => {
       },
     } as never)
 
-    expect(results[0]).toMatchObject({ id: 'plugin-1', title: 'My Plugin', type: 'plugin' })
+    expect(results[0]).toMatchObject({
+      id: 'plugin-1',
+      title: 'My Plugin',
+      type: 'plugin',
+      description: 'A plugin',
+    })
   })
 
   it('selects an empty list when marketplace returns no plugins', () => {

@@ -22,6 +22,7 @@ const createNode = (id: string, title: string, type: BlockEnum = BlockEnum.Tool)
       type: id === 'tool-a' ? BlockEnum.LLM : type,
       prompt_template: { role: 'user', text: '{{#sys.files#}}' },
       context: { variable_selector: ['sys', 'files'] },
+      tool_configurations: {},
       tool_parameters:
         id === 'tool-b'
           ? {

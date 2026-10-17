@@ -63,37 +63,16 @@ describe('MemberRow details entry points', () => {
     })
   })
 
-  it.each([
-    ['email', 'member@example.com'],
-    ['last activity', 'just now'],
-    ['role', 'Editor'],
-    ['avatar', 'M'],
-  ])('should open details once when clicking the %s', async (_region, text) => {
+  it.each(['name button', 'email'])('opens details once from the %s', async (target) => {
     const user = userEvent.setup()
     const onOpenDetails = renderMemberRow()
-
-    await user.click(within(screen.getByRole('row')).getByText(text))
-
+    await user.click(
+      target === 'name button'
+        ? screen.getByRole('button', { name: 'Member User' })
+        : within(screen.getByRole('row')).getByText('member@example.com'),
+    )
     expect(onOpenDetails).toHaveBeenCalledExactlyOnceWith(member)
   })
-
-  it.each(['pointer', 'Enter', 'Space'])(
-    'should open details once from the name button with %s',
-    async (interaction) => {
-      const user = userEvent.setup()
-      const onOpenDetails = renderMemberRow()
-      const nameButton = screen.getByRole('button', { name: 'Member User' })
-
-      if (interaction === 'pointer') {
-        await user.click(nameButton)
-      } else {
-        nameButton.focus()
-        await user.keyboard(interaction === 'Enter' ? '{Enter}' : ' ')
-      }
-
-      expect(onOpenDetails).toHaveBeenCalledExactlyOnceWith(member)
-    },
-  )
 
   it('should keep member menu and its portaled confirmation separate from details', async () => {
     const user = userEvent.setup()

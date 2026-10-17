@@ -1,43 +1,24 @@
-import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { withSelectorKey } from '@/test/i18n-mock'
+import type { ComponentProps, ReactNode } from 'react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { createDefaultParagraphFormInput } from '../../types'
 import FormContent from '../form-content'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseWorkflowVariableType = vi.hoisted(() => vi.fn())
 const mockPromptEditor = vi.hoisted(() => vi.fn())
-const mockAddInputField = vi.hoisted(() => vi.fn())
 const mockOnInsert = vi.hoisted(() => vi.fn())
 
-vi.mock('react-i18next', async () => {
-  const { withSelectorKeyProps } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => mockUseTranslation(),
-    Trans: withSelectorKeyProps(
-      ({ i18nKey, components }: { i18nKey: string; components?: Record<string, ReactNode> }) => (
-        <div>
-          <div>{i18nKey}</div>
-          {components?.CtrlKey}
-          {components?.Key}
-        </div>
-      ),
-    ),
-  }
-})
+vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()),
+  useWorkflowVariableType: () => () => VarType.string,
+}))
 
-vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()
-
-  return {
-    ...actual,
-    useWorkflowVariableType: () => mockUseWorkflowVariableType(),
-  }
-})
-
+// Lexical owns rendering inserted blocks. Exercise the real add-input form at its popup boundary.
 vi.mock('@/app/components/base/prompt-editor', () => ({
-  __esModule: true,
   default: (props: {
+    value: string
     onChange: (value: string) => void
     onFocus: () => void
     onBlur: () => void
@@ -45,312 +26,119 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
       Popup: (props: { onClose: () => void; onInsert: typeof mockOnInsert }) => ReactNode
     }>
     editable?: boolean
-    hitlInputBlock: {
-      workflowNodesMap: Record<string, unknown>
-    }
   }) => {
     mockPromptEditor(props)
-    const popup = props.shortcutPopups?.[0]
-    const Popup = popup?.Popup
+    const Popup = props.shortcutPopups?.[0]?.Popup
     return (
-      <div>
-        <button type="button" onClick={props.onFocus}>
-          focus-editor
-        </button>
-        <button type="button" onClick={props.onBlur}>
-          blur-editor
-        </button>
-        <button type="button" onClick={() => props.onChange('updated value')}>
-          change-editor
-        </button>
-        {Popup && <Popup onClose={vi.fn()} onInsert={mockOnInsert} />}
-      </div>
-    )
-  },
-}))
-
-vi.mock('../add-input-field', () => ({
-  __esModule: true,
-  default: function MockAddInputField(props: {
-    unavailableVariableNames?: string[]
-    onSave: (payload: {
-      type: string
-      output_variable_name: string
-      default: {
-        type: string
-        selector: string[]
-        value: string
-      }
-    }) => void
-    onCancel: () => void
-  }) {
-    const [draftName, setDraftName] = React.useState('')
-
-    mockAddInputField(props)
-    return (
-      <div>
-        <input
-          aria-label="field-name"
-          value={draftName}
-          onChange={(event) => setDraftName(event.target.value)}
+      <>
+        <textarea
+          aria-label="Form content"
+          value={props.value}
+          readOnly={!props.editable}
+          onFocus={props.onFocus}
+          onBlur={props.onBlur}
+          onChange={(event) => props.onChange(event.target.value)}
         />
-        <button
-          type="button"
-          onClick={() =>
-            props.onSave({
-              type: 'text-input',
-              output_variable_name: 'approval',
-              default: {
-                type: 'variable',
-                selector: ['node-1', 'answer'],
-                value: '',
-              },
-            })
-          }
-        >
-          save-input
-        </button>
-        <button type="button" onClick={props.onCancel}>
-          cancel-input
-        </button>
-      </div>
+        {Popup && <Popup onClose={vi.fn()} onInsert={mockOnInsert} />}
+      </>
     )
   },
 }))
-
-vi.mock('@/app/components/base/prompt-editor/plugins/hitl-input-block', () => ({
-  INSERT_HITL_INPUT_BLOCK_COMMAND: 'INSERT_HITL_INPUT_BLOCK_COMMAND',
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+  default: () => null,
 }))
+
+const createProps = (
+  overrides: Partial<ComponentProps<typeof FormContent>> = {},
+): ComponentProps<typeof FormContent> => ({
+  nodeId: 'node-2',
+  value: 'Initial content',
+  onChange: vi.fn(),
+  formInputs: [],
+  onFormInputsChange: vi.fn(),
+  onFormInputItemRename: vi.fn(),
+  onFormInputItemRemove: vi.fn(),
+  editorKey: 1,
+  isExpand: false,
+  availableVars: [],
+  availableNodes: [
+    createNode({ id: 'node-1', data: { title: 'Start', type: BlockEnum.Start, desc: '' } }),
+    createNode({ id: 'node-2', data: { title: 'Code', type: BlockEnum.Code, desc: '' } }),
+  ],
+  ...overrides,
+})
+const getNameInput = () => screen.getByRole('textbox', { name: /insertInputField.saveResponseAs/ })
+const getInsertButton = () => screen.getByRole('button', { name: /insertInputField.insert/ })
+
+beforeEach(() => vi.clearAllMocks())
 
 describe('FormContent', () => {
-  const onChange = vi.fn()
-  const onFormInputsChange = vi.fn()
-  const onFormInputItemRename = vi.fn()
-  const onFormInputItemRemove = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-    mockUseWorkflowVariableType.mockReturnValue(() => 'string')
-  })
-
-  afterEach(() => vi.restoreAllMocks())
-
-  it('should build workflow node maps, show the hotkey tip on focus, and defer form-input sync until value changes', async () => {
-    const { rerender } = render(
-      <FormContent
-        nodeId="node-2"
-        value="Initial content"
-        onChange={onChange}
-        formInputs={[]}
-        onFormInputsChange={onFormInputsChange}
-        onFormInputItemRename={onFormInputItemRename}
-        onFormInputItemRemove={onFormInputItemRemove}
-        editorKey={1}
-        isExpand={false}
-        availableVars={[]}
-        availableNodes={[
-          {
-            id: 'node-1',
-            data: { title: 'Start', type: 'start' },
-            position: { x: 0, y: 0 },
-            width: 100,
-            height: 40,
-          } as never,
-          {
-            id: 'node-2',
-            data: { title: 'Classifier', type: 'code' },
-            position: { x: 120, y: 0 },
-            width: 100,
-            height: 40,
-          } as never,
-        ]}
-      />,
+  it('inserts the configured input and synchronizes inputs only after the editor value changes', async () => {
+    const user = userEvent.setup()
+    const props = createProps()
+    const { rerender } = render(<FormContent {...props} />)
+    await user.click(screen.getByRole('textbox', { name: 'Form content' }))
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.formContent.hotkeyTip'),
+    ).toBeInTheDocument()
+    await user.type(getNameInput(), 'approval')
+    await user.click(getInsertButton())
+    expect(mockOnInsert).toHaveBeenCalledWith(
+      INSERT_HITL_INPUT_BLOCK_COMMAND,
+      expect.objectContaining({
+        variableName: 'approval',
+        nodeId: 'node-2',
+        formInputs: [createDefaultParagraphFormInput('approval')],
+        onFormInputsChange: props.onFormInputsChange,
+        onFormInputItemRename: props.onFormInputItemRename,
+        onFormInputItemRemove: props.onFormInputItemRemove,
+      }),
     )
-
+    expect(props.onFormInputsChange).not.toHaveBeenCalled()
+    rerender(<FormContent {...props} value="Initial content {{approval}}" />)
+    await waitFor(() =>
+      expect(props.onFormInputsChange).toHaveBeenCalledExactlyOnceWith([
+        createDefaultParagraphFormInput('approval'),
+      ]),
+    )
     expect(mockPromptEditor).toHaveBeenCalledWith(
       expect.objectContaining({
-        editable: true,
-        shortcutPopups: [
-          expect.objectContaining({
-            hotkey: 'Mod+/',
-            displayMode: 'workflow-panel-adjacent-center',
-          }),
-        ],
         hitlInputBlock: expect.objectContaining({
           workflowNodesMap: expect.objectContaining({
             'node-1': expect.objectContaining({ title: 'Start' }),
-            'node-2': expect.objectContaining({ title: 'Classifier' }),
-            sys: expect.objectContaining({ title: 'blocks.start' }),
+            'node-2': expect.objectContaining({ title: 'Code' }),
+            sys: expect.objectContaining({ title: 'workflow.blocks.start' }),
           }),
         }),
       }),
     )
-
-    fireEvent.click(screen.getByText('focus-editor'))
-    expect(screen.getByText('nodes.humanInput.formContent.hotkeyTip')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('save-input'))
-    expect(mockOnInsert).toHaveBeenCalledWith(
-      'INSERT_HITL_INPUT_BLOCK_COMMAND',
-      expect.objectContaining({
-        variableName: 'approval',
-        nodeId: 'node-2',
-        formInputs: [expect.objectContaining({ output_variable_name: 'approval' })],
-        onFormInputsChange,
-        onFormInputItemRename,
-        onFormInputItemRemove,
-      }),
-    )
-    expect(onFormInputsChange).not.toHaveBeenCalled()
-
-    rerender(
-      <FormContent
-        nodeId="node-2"
-        value="Initial content {{approval}}"
-        onChange={onChange}
-        formInputs={[]}
-        onFormInputsChange={onFormInputsChange}
-        onFormInputItemRename={onFormInputItemRename}
-        onFormInputItemRemove={onFormInputItemRemove}
-        editorKey={1}
-        isExpand={false}
-        availableVars={[]}
-        availableNodes={[
-          {
-            id: 'node-1',
-            data: { title: 'Start', type: 'start' },
-            position: { x: 0, y: 0 },
-            width: 100,
-            height: 40,
-          } as never,
-        ]}
-      />,
-    )
-
-    await waitFor(() => {
-      expect(onFormInputsChange).toHaveBeenCalledWith([
-        expect.objectContaining({ output_variable_name: 'approval' }),
-      ])
-    })
   })
 
-  it('should disable editing helpers in readonly mode', () => {
-    const { container } = render(
-      <FormContent
-        nodeId="node-2"
-        value="Initial content"
-        onChange={onChange}
-        formInputs={[]}
-        onFormInputsChange={onFormInputsChange}
-        onFormInputItemRename={onFormInputItemRename}
-        onFormInputItemRemove={onFormInputItemRemove}
-        editorKey={1}
-        isExpand={false}
-        availableVars={[]}
-        availableNodes={[]}
-        readonly
-      />,
-    )
-
-    expect(mockPromptEditor).toHaveBeenCalledWith(
-      expect.objectContaining({
-        editable: false,
-        shortcutPopups: [],
-      }),
-    )
-    expect(screen.queryByText('save-input')).not.toBeInTheDocument()
-    expect(container.firstChild).toHaveClass('pointer-events-none')
-  })
-
-  it('should not insert a new input when the variable name already exists', () => {
-    render(
-      <FormContent
-        nodeId="node-2"
-        value="Initial content"
-        onChange={onChange}
-        formInputs={[
-          {
-            type: 'paragraph',
-            output_variable_name: 'approval',
-            default: {
-              type: 'constant',
-              selector: [],
-              value: '',
-            },
-          } as never,
-        ]}
-        onFormInputsChange={onFormInputsChange}
-        onFormInputItemRename={onFormInputItemRename}
-        onFormInputItemRemove={onFormInputItemRemove}
-        editorKey={1}
-        isExpand={false}
-        availableVars={[]}
-        availableNodes={[]}
-      />,
-    )
-
-    expect(mockAddInputField).toHaveBeenCalledWith(
-      expect.objectContaining({
-        unavailableVariableNames: ['approval'],
-      }),
-    )
-
-    fireEvent.click(screen.getByText('save-input'))
-
+  it('disables duplicate input names before insertion', async () => {
+    const user = userEvent.setup()
+    const props = createProps({ formInputs: [createDefaultParagraphFormInput('approval')] })
+    render(<FormContent {...props} />)
+    await user.type(getNameInput(), 'approval')
+    expect(getInsertButton()).toBeDisabled()
+    expect(screen.getByText(/insertInputField.variableNameDuplicated/)).toBeInTheDocument()
+    await user.click(getInsertButton())
     expect(mockOnInsert).not.toHaveBeenCalled()
-    expect(onFormInputsChange).not.toHaveBeenCalled()
+    expect(props.onFormInputsChange).not.toHaveBeenCalled()
   })
 
-  it('should render the mac hotkey hint when focused on macOS', () => {
-    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel')
-
-    render(
-      <FormContent
-        nodeId="node-2"
-        value="Initial content"
-        onChange={onChange}
-        formInputs={[]}
-        onFormInputsChange={onFormInputsChange}
-        onFormInputItemRename={onFormInputItemRename}
-        onFormInputItemRemove={onFormInputItemRemove}
-        editorKey={1}
-        isExpand={false}
-        availableVars={[]}
-        availableNodes={[]}
-      />,
-    )
-
-    fireEvent.click(screen.getByText('focus-editor'))
-
-    expect(screen.getByText('⌘')).toBeInTheDocument()
-    expect(screen.getByText('/')).toBeInTheDocument()
-  })
-
-  it('should preserve add-input draft state across parent rerenders', () => {
-    const props = {
-      nodeId: 'node-2',
-      value: 'Initial content',
-      onChange,
-      formInputs: [],
-      onFormInputsChange,
-      onFormInputItemRename,
-      onFormInputItemRemove,
-      editorKey: 1,
-      isExpand: false,
-      availableVars: [],
-      availableNodes: [],
-    }
+  it('keeps the add-input draft across parent rerenders', async () => {
+    const props = createProps()
     const { rerender } = render(<FormContent {...props} />)
-
-    fireEvent.change(screen.getByRole('textbox', { name: 'field-name' }), {
-      target: { value: 'approval_name' },
-    })
-
+    await userEvent.setup().type(getNameInput(), 'approval_name')
     rerender(<FormContent {...props} />)
+    expect(getNameInput()).toHaveValue('approval_name')
+  })
 
-    expect(screen.getByRole('textbox', { name: 'field-name' })).toHaveValue('approval_name')
+  it('makes the editor readonly and removes input creation', () => {
+    render(<FormContent {...createProps()} readonly />)
+    expect(screen.getByRole('textbox', { name: 'Form content' })).toHaveAttribute('readonly')
+    expect(
+      screen.queryByRole('button', { name: /insertInputField.insert/ }),
+    ).not.toBeInTheDocument()
   })
 })

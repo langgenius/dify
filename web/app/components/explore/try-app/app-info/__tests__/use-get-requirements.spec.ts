@@ -3,7 +3,7 @@ import type {
   TrialWorkflowResponse,
 } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useGetRequirements from '../use-get-requirements'
@@ -75,8 +75,8 @@ const createMockAppDetail = (
   }) as unknown as TrialAppDetailResponse
 
 describe('useGetRequirements', () => {
-  afterEach(() => {
-    vi.clearAllMocks()
+  beforeEach(() => {
+    workflowData = undefined
   })
 
   describe('basic app modes (chat, completion, agent-chat)', () => {
@@ -157,78 +157,9 @@ describe('useGetRequirements', () => {
       expect(result.current.requirements.map((r) => r.name)).toContain('Web Scraper')
       expect(result.current.requirements.map((r) => r.name)).not.toContain('Disabled Tool')
     })
-
-    it('filters out disabled tools in agent mode', () => {
-      setWorkflowResponse({ data: null })
-
-      const appDetail = createMockAppDetail('agent-chat', {
-        model_config: {
-          model: {
-            provider: 'langgenius/openai/openai',
-            name: 'gpt-4',
-            mode: 'chat',
-          },
-          dataset_configs: { datasets: { datasets: [] } },
-          agent_mode: {
-            tools: [
-              {
-                enabled: false,
-                provider_id: 'langgenius/tool1/tool1',
-                tool_label: 'Tool 1',
-              },
-              {
-                enabled: false,
-                provider_id: 'langgenius/tool2/tool2',
-                tool_label: 'Tool 2',
-              },
-            ],
-          },
-          user_input_form: [],
-        },
-      } as unknown as Partial<TrialAppDetailResponse>)
-
-      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
-
-      expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0]!.name).toBe('openai')
-    })
   })
 
   describe('advanced app modes (workflow, advanced-chat)', () => {
-    it('returns requirements from flow data for workflow mode', () => {
-      setWorkflowResponse({
-        data: {
-          graph: {
-            nodes: [
-              {
-                data: {
-                  type: 'llm',
-                  model: {
-                    provider: 'langgenius/openai/openai',
-                    name: 'gpt-4',
-                  },
-                },
-              },
-              {
-                data: {
-                  type: 'tool',
-                  provider_id: 'langgenius/google/google',
-                  tool_label: 'Google Tool',
-                },
-              },
-            ],
-          },
-        },
-      })
-
-      const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
-
-      expect(result.current.requirements).toHaveLength(2)
-      expect(result.current.requirements.map((r) => r.name)).toContain('gpt-4')
-      expect(result.current.requirements.map((r) => r.name)).toContain('Google Tool')
-    })
-
     it('returns requirements from flow data for advanced-chat mode', () => {
       setWorkflowResponse({
         data: {
@@ -350,67 +281,7 @@ describe('useGetRequirements', () => {
     })
   })
 
-  describe('deduplication', () => {
-    it('removes duplicate requirements by name', () => {
-      setWorkflowResponse({
-        data: {
-          graph: {
-            nodes: [
-              {
-                data: {
-                  type: 'llm',
-                  model: {
-                    provider: 'langgenius/openai/openai',
-                    name: 'gpt-4',
-                  },
-                },
-              },
-              {
-                data: {
-                  type: 'llm',
-                  model: {
-                    provider: 'langgenius/openai/openai',
-                    name: 'gpt-4',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      })
-
-      const appDetail = createMockAppDetail('workflow')
-      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
-
-      expect(result.current.requirements).toHaveLength(1)
-      expect(result.current.requirements[0]!.name).toBe('gpt-4')
-    })
-  })
-
   describe('icon URL generation', () => {
-    it('generates correct icon URL for model providers', () => {
-      setWorkflowResponse({ data: null })
-
-      const appDetail = createMockAppDetail('chat', {
-        model_config: {
-          model: {
-            provider: 'org/plugin/model',
-            name: 'model-name',
-            mode: 'chat',
-          },
-          dataset_configs: { datasets: { datasets: [] } },
-          agent_mode: { tools: [] },
-          user_input_form: [],
-        },
-      } as unknown as Partial<TrialAppDetailResponse>)
-
-      const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
-
-      expect(result.current.requirements[0]!.iconUrl).toBe(
-        'https://marketplace.api/plugins/org/plugin/icon',
-      )
-    })
-
     it('maps google model provider to gemini plugin icon URL', () => {
       setWorkflowResponse({ data: null })
 

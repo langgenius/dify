@@ -7,11 +7,17 @@ import {
   findWorkflowNodes,
   registerWorkflowNodeSearch,
 } from '@/app/components/workflow/goto-anything-search'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 describe('workflow node search registry', () => {
   it('registers, searches, and unregisters workflow nodes', () => {
     const results: SearchResult[] = [
-      { id: 'workflow-node-1', title: 'LLM', type: 'workflow-node', data: {} as never },
+      {
+        id: 'workflow-node-1',
+        title: 'LLM',
+        type: 'workflow-node',
+        data: { type: BlockEnum.LLM, title: 'Search result', desc: '' },
+      },
     ]
     const search = vi.fn().mockReturnValue(results)
     const unregister = registerWorkflowNodeSearch(search)
@@ -28,7 +34,12 @@ describe('workflow node search registry', () => {
 describe('RAG pipeline node search registry', () => {
   it('registers, searches, and unregisters RAG pipeline nodes', () => {
     const results: SearchResult[] = [
-      { id: 'rag-node-1', title: 'Retriever', type: 'workflow-node', data: {} as never },
+      {
+        id: 'rag-node-1',
+        title: 'Retriever',
+        type: 'workflow-node',
+        data: { type: BlockEnum.LLM, title: 'Search result', desc: '' },
+      },
     ]
     const search = vi.fn().mockReturnValue(results)
     const unregister = registerRagPipelineNodeSearch(search)

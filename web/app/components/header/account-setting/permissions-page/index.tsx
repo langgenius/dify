@@ -67,34 +67,20 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const closeModal = useCallback(() => setModalState(null), [])
 
   const handleSubmit = useCallback(
-    (data: submitRoleData) => {
+    async (data: submitRoleData) => {
       const { name, description, permissionKeys } = data
       const mode = modalState?.mode ?? ''
       const roleId = modalState?.role?.id ?? ''
       if (mode === 'create') {
-        createWorkspaceRole(
-          { body: { name, description, permission_keys: permissionKeys } },
-          {
-            onSuccess: () => {
-              closeModal()
-            },
-          },
-        )
+        await createWorkspaceRole({ body: { name, description, permission_keys: permissionKeys } })
       } else if (mode === 'edit') {
-        updateWorkspaceRole(
-          {
-            params: { role_id: roleId },
-            body: { name, description, permission_keys: permissionKeys },
-          },
-          {
-            onSuccess: () => {
-              closeModal()
-            },
-          },
-        )
+        await updateWorkspaceRole({
+          params: { role_id: roleId },
+          body: { name, description, permission_keys: permissionKeys },
+        })
       }
     },
-    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState],
+    [createWorkspaceRole, updateWorkspaceRole, modalState],
   )
 
   useEffect(() => {

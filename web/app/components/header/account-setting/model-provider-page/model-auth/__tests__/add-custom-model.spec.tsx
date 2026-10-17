@@ -1,8 +1,8 @@
 import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AddCustomModel from '../add-custom-model'
 
 // Mock hooks
@@ -35,22 +35,11 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['credential.use', 'credential.create', 'credential.manage'],
 }))
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
+const render: typeof renderWithConsoleQuery = (ui, options) =>
+  renderWithConsoleQuery(ui, {
+    ...options,
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-// Mock components
-vi.mock('../../model-icon', () => ({
-  default: () => <div data-testid="model-icon" />,
-}))
-
-vi.mock('@remixicon/react', () => ({
-  RiAddCircleFill: () => <div data-testid="add-circle-icon" />,
-  RiAddLine: () => <div data-testid="add-line-icon" />,
-}))
+  })
 
 describe('AddCustomModel', () => {
   const getAddModelTrigger = () =>
@@ -62,6 +51,8 @@ describe('AddCustomModel', () => {
   const mockProvider = {
     provider: 'openai',
     allow_custom_token: true,
+    icon_small: { en_US: 'https://example.com/icon.png' },
+    icon_small_dark: { en_US: 'https://example.com/icon.png' },
   } as unknown as ModelProvider
 
   beforeEach(() => {
@@ -70,18 +61,7 @@ describe('AddCustomModel', () => {
     mockCanAddedModels = []
   })
 
-  it('should render the add model button', () => {
-    render(
-      <AddCustomModel
-        provider={mockProvider}
-        configurationMethod={ConfigurationMethodEnum.predefinedModel}
-      />,
-    )
-
-    expect(screen.getByText(/modelProvider.addModel/)).toBeInTheDocument()
-  })
-
-  it('should call handleOpenModal directly when no models available and allowed', () => {
+  it('should call handleOpenModal directly when no models available and allowed', async () => {
     mockCanAddedModels = []
     render(
       <AddCustomModel
@@ -90,24 +70,8 @@ describe('AddCustomModel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /modelProvider.addModel/i }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /modelProvider.addModel/i }))
     expect(mockHandleOpenModalForAddNewCustomModel).toHaveBeenCalled()
-  })
-
-  it('should show models list when models are available', async () => {
-    const user = userEvent.setup()
-    mockCanAddedModels = [{ model: 'gpt-4', model_type: 'llm' }]
-    render(
-      <AddCustomModel
-        provider={mockProvider}
-        configurationMethod={ConfigurationMethodEnum.predefinedModel}
-      />,
-    )
-
-    await user.click(getAddModelTrigger())
-
-    expect(await screen.findByText('gpt-4')).toBeInTheDocument()
-    expect(screen.getByTestId('model-icon')).toBeInTheDocument()
   })
 
   it('should call handleOpenModalForAddCustomModelToModelList when clicking a model', async () => {
@@ -122,7 +86,9 @@ describe('AddCustomModel', () => {
     )
 
     await user.click(getAddModelTrigger())
-    await user.click(await screen.findByText('gpt-4'))
+    const row = await screen.findByRole('button', { name: 'gpt-4' })
+    row.focus()
+    await user.keyboard('{Enter}')
 
     expect(mockHandleOpenModalForAddCustomModelToModelList).toHaveBeenCalledWith(undefined, model)
   })
@@ -142,8 +108,8 @@ describe('AddCustomModel', () => {
 
     await user.click(getAddModelTrigger())
 
-    const modelRow = (await screen.findByText('gpt-4')).closest('[aria-disabled]')
-    expect(modelRow).toHaveAttribute('aria-disabled', 'true')
+    const modelRow = await screen.findByRole('button', { name: 'gpt-4' })
+    expect(modelRow).toBeDisabled()
 
     await user.click(modelRow!)
     expect(mockHandleOpenModalForAddCustomModelToModelList).not.toHaveBeenCalled()

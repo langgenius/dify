@@ -20,18 +20,6 @@ vi.mock('../components/snippet-main', () => ({
   ),
 }))
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    replace: vi.fn(),
-    push: vi.fn(),
-  }),
-}))
-
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'desktop',
-  MediaType: { mobile: 'mobile', desktop: 'desktop' },
-}))
-
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
@@ -57,33 +45,6 @@ vi.mock('@/app/components/workflow', () => ({
 
 vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => children,
-}))
-
-vi.mock('@/app/components/app-sidebar', () => ({
-  default: ({
-    renderHeader,
-    renderNavigation,
-  }: {
-    renderHeader?: (modeState: string) => React.ReactNode
-    renderNavigation?: (modeState: string) => React.ReactNode
-  }) => (
-    <div data-testid="app-sidebar">
-      <div data-testid="app-sidebar-header">{renderHeader?.('expand')}</div>
-      <div data-testid="app-sidebar-navigation">{renderNavigation?.('expand')}</div>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app-sidebar/nav-link', () => ({
-  default: ({ name, onClick }: { name: string; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {name}
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/app-sidebar/snippet-info', () => ({
-  default: () => <div data-testid="snippet-info" />,
 }))
 
 const createSnippetDetailPayload = (nodeId: string, edgeId: string): SnippetDetailPayload => ({
@@ -145,15 +106,6 @@ describe('SnippetPage', () => {
     })
   })
 
-  it('should render the orchestrate route shell without owning the main landmark', () => {
-    render(<SnippetPage snippetId="snippet-1" />)
-
-    expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
-    expect(mockUseSnippetInit).toHaveBeenCalledWith('snippet-1')
-    expect(screen.getByTestId('snippet-main')).toHaveTextContent('true')
-    expect(screen.queryByRole('main')).not.toBeInTheDocument()
-  })
-
   it('should initialize workflow context with published graph data when the published workflow exists', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
@@ -201,6 +153,7 @@ describe('SnippetPage', () => {
     render(<SnippetPage snippetId="missing-snippet" />)
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.queryByTestId('snippet-main')).not.toBeInTheDocument()
   })
 
   it('should keep the detail route shell while orchestrate data is loading', () => {
@@ -212,6 +165,6 @@ describe('SnippetPage', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
-    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('snippet-main')).not.toBeInTheDocument()
   })
 })

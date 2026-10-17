@@ -1,31 +1,52 @@
 import type { DatasourceProviderEntity } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginDeclaration, PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import PluginDetailPanel from '../index'
+import { usePluginStore } from '../store'
 
-const mockSetDetail = vi.fn()
-
-vi.mock('../store', () => ({
-  usePluginStore: () => ({ setDetail: mockSetDetail }),
+const { uninstall, upgrade } = vi.hoisted(() => ({ uninstall: vi.fn(), upgrade: vi.fn() }))
+vi.mock('@/service/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/plugins')>()),
+  uninstallPlugin: uninstall,
+  updateFromMarketPlace: upgrade,
 }))
-
-vi.mock('../detail-header', () => ({
-  default: ({
-    onUpdate,
-    onHide,
-  }: {
-    onUpdate: (isDelete?: boolean) => void
-    onHide: () => void
-  }) => (
-    <header>
-      <button onClick={() => onUpdate()}>Update</button>
-      <button onClick={() => onUpdate(true)}>Delete</button>
-      <button onClick={onHide}>Close</button>
-    </header>
+vi.mock('../../plugin-page/use-reference-setting', () => ({
+  default: () => ({ referenceSetting: undefined }),
+}))
+vi.mock('../../install-plugin/hooks/use-refresh-plugin-list', () => ({
+  default: () => ({ refreshPluginList: vi.fn() }),
+}))
+vi.mock('../../plugin-auth', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../plugin-auth')>()),
+  PluginAuth: ({ pluginPayload }: { pluginPayload: { provider: string } }) => (
+    <output data-testid="auth-provider">{pluginPayload.provider}</output>
   ),
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createToolProviderFixture } = await import('@/test/console/tool-provider-fixture')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProviders.get': async () => [
+        createToolProviderFixture({
+          name: 'test-plugin-id/provider-a',
+          type: 'builtin',
+          allow_delete: true,
+        }),
+      ],
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+    }),
+  }
+})
 
 vi.mock('../action-list', () => ({ default: () => <div>Actions</div> }))
 vi.mock('../agent-strategy-list', () => ({ default: () => <div>Agent strategies</div> }))
@@ -38,10 +59,6 @@ vi.mock('../subscription-list', () => ({
 vi.mock('../trigger/event-list', () => ({
   TriggerEventsList: () => <div>Trigger events</div>,
 }))
-vi.mock('../../readme-panel/entrance', () => ({
-  ReadmeEntrance: () => <div>Readme</div>,
-}))
-
 const createPluginDetail = (
   declarationOverrides: Partial<PluginDeclaration> = {},
 ): PluginDetail => {
@@ -100,30 +117,35 @@ describe('PluginDetailPanel', () => {
     vi.clearAllMocks()
   })
 
-  it('renders nothing and clears the store when detail is absent', async () => {
-    const { container } = render(
-      <PluginDetailPanel detail={undefined} onUpdate={onUpdate} onHide={onHide} />,
-    )
-
-    expect(container).toBeEmptyDOMElement()
-    await waitFor(() => expect(mockSetDetail).toHaveBeenCalledWith(undefined))
-  })
-
-  it('publishes the detail fields consumed by descendants', async () => {
+  it('publishes the selected plugin to descendants and clears it when the panel is removed', async () => {
+    const ContextConsumer = () => {
+      const detail = usePluginStore((state) => state.detail)
+      return (
+        <output data-testid="plugin-context">
+          {detail ? `${detail.provider}:${detail.plugin_unique_identifier}` : 'empty'}
+        </output>
+      )
+    }
     const detail = createPluginDetail()
-
-    render(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />)
-
-    await waitFor(() => {
-      expect(mockSetDetail).toHaveBeenCalledWith({
-        plugin_id: 'test-plugin-id',
-        provider: 'test-plugin-id/test-plugin',
-        plugin_unique_identifier: 'test-plugin-uid',
-        declaration: detail.declaration,
-        name: 'Test Plugin',
-        id: 'test-plugin-id',
-      })
-    })
+    const { rerender } = render(
+      <>
+        <ContextConsumer />
+        <PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />
+      </>,
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('plugin-context')).toHaveTextContent(
+        'test-plugin-id/test-plugin:test-plugin-uid',
+      ),
+    )
+    rerender(
+      <>
+        <ContextConsumer />
+        <PluginDetailPanel onUpdate={onUpdate} onHide={onHide} />
+      </>,
+    )
+    await waitFor(() => expect(screen.getByTestId('plugin-context')).toHaveTextContent('empty'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it.each([
@@ -141,7 +163,9 @@ describe('PluginDetailPanel', () => {
     )
 
     expect(screen.getByText(section)).toBeInTheDocument()
-    expect(screen.getByText('Readme')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'plugin.readmeInfo.needHelpCheckReadme' }),
+    ).toBeInTheDocument()
   })
 
   it('renders the datasource section only for a present generated declaration', () => {
@@ -189,22 +213,71 @@ describe('PluginDetailPanel', () => {
     expect(screen.getByText('Trigger events')).toBeInTheDocument()
   })
 
-  it('updates without closing the panel', () => {
-    render(<PluginDetailPanel detail={createPluginDetail()} onUpdate={onUpdate} onHide={onHide} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Update' }))
-
-    expect(onUpdate).toHaveBeenCalledOnce()
+  it('updates through the real confirmation dialog without closing the detail panel', async () => {
+    const user = userEvent.setup()
+    upgrade.mockResolvedValueOnce({ all_installed: true, task_id: '' })
+    const detail = {
+      ...createPluginDetail(),
+      latest_version: '2.0.0',
+      latest_unique_identifier: 'new-plugin-uid',
+    }
+    render(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />)
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.upgrade.title' })
+    await user.click(within(dialog).getByRole('button', { name: 'plugin.upgrade.upgrade' }))
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+    expect(upgrade).toHaveBeenCalledWith({
+      original_plugin_unique_identifier: 'test-plugin-uid',
+      new_plugin_unique_identifier: 'new-plugin-uid',
+    })
     expect(onHide).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'plugin.upgrade.title' }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
-  it('closes before notifying consumers when the plugin is deleted', () => {
+  it('closes before notifying consumers after confirmed plugin deletion', async () => {
+    const user = userEvent.setup()
+    uninstall.mockResolvedValueOnce({ success: true })
     render(<PluginDetailPanel detail={createPluginDetail()} onUpdate={onUpdate} onHide={onHide} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
-
+    await user.click(
+      screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+    )
+    const confirm = await screen.findByRole('alertdialog')
+    expect(uninstall).not.toHaveBeenCalled()
+    await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+    expect(uninstall).toHaveBeenCalledExactlyOnceWith('test-plugin-id')
     expect(onHide).toHaveBeenCalledOnce()
-    expect(onUpdate).toHaveBeenCalledOnce()
     expect(onHide.mock.invocationCallOrder[0]!).toBeLessThan(onUpdate.mock.invocationCallOrder[0]!)
+  })
+  it('connects tool authorization to its provider and links to the matching marketplace entry', async () => {
+    const user = userEvent.setup()
+    const detail = createPluginDetail({
+      tool: { identity: { name: 'provider-a' } } as PluginDeclaration['tool'],
+    })
+    render(<PluginDetailPanel detail={detail} onUpdate={onUpdate} onHide={onHide} />, {
+      systemFeatures: { enable_marketplace: true },
+    })
+    await waitFor(() =>
+      expect(screen.getByTestId('auth-provider')).toHaveTextContent('test-plugin-id/provider-a'),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }),
+    )
+    const link = await screen.findByRole('menuitem', {
+      name: 'plugin.detailPanel.operation.viewDetail',
+    })
+    expect(new URL(link.getAttribute('href')!, 'https://marketplace.example.test').pathname).toBe(
+      '/plugins/test-author/test-plugin',
+    )
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(onHide).toHaveBeenCalledOnce()
   })
 })

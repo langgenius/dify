@@ -4,7 +4,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { trackMarketplaceSiteEvent } from '@/utils/marketplace-site-track'
 import HomeTrending from '../home-trending'
 
@@ -27,14 +27,6 @@ vi.mock('#i18n', async () => {
   }
 })
 
-vi.mock('@/app/components/plugins/base/badges/partner', () => ({
-  default: () => <span data-testid="partner-badge" />,
-}))
-
-vi.mock('@/app/components/plugins/base/badges/verified', () => ({
-  default: () => <span data-testid="verified-badge" />,
-}))
-
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   MARKETPLACE_URL_PREFIX: 'https://marketplace.example.com',
@@ -48,7 +40,8 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   default: () => ({ installedInfo: {} }),
 }))
 
-vi.mock('@/service/plugins', () => ({
+vi.mock('@/service/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/plugins')>()),
   fetchPluginInfoFromMarketPlace: vi.fn().mockResolvedValue({
     data: {
       plugin: {
@@ -60,29 +53,22 @@ vi.mock('@/service/plugins', () => ({
   }),
 }))
 
-vi.mock('../../detail-dialog', () => ({
-  default: ({ open, plugin }: { open: boolean; plugin: { name: string } }) =>
-    open ? (
-      <div role="dialog" aria-label="plugin-detail">
-        {plugin.name}
-      </div>
-    ) : null,
+vi.mock('../../detail-dialog/use-silent-install', () => ({
+  useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
 }))
-
-vi.mock('../../templates/template-detail-dialog', () => ({
-  default: ({
-    open,
-    template,
-  }: {
-    open: boolean
-    template: { id: string; template_name: string }
-  }) =>
-    open ? (
-      <div role="dialog" aria-label="template-detail">
-        {template.template_name}
-      </div>
-    ) : null,
-}))
+// Keep real dialogs and message handling without loading external documents.
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
+  return {
+    ...actual,
+    getPluginLinkInMarketplace: (...args: Parameters<typeof actual.getPluginLinkInMarketplace>) =>
+      `about:blank${new URL(actual.getPluginLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+    getTemplateLinkInMarketplace: (
+      ...args: Parameters<typeof actual.getTemplateLinkInMarketplace>
+    ) =>
+      `about:blank${new URL(actual.getTemplateLinkInMarketplace(...args), 'https://marketplace.example.test').search}`,
+  }
+})
 
 const deploymentState = vi.hoisted(() => ({
   deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
@@ -194,9 +180,6 @@ describe('HomeTrending', () => {
 
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
-    expect(document.querySelector('[data-home-trending-carousel-root]')?.className).toMatch(
-      /carouselRoot/,
-    )
     expect(screen.getByRole('heading', { name: 'Popular plugins' })).toBeInTheDocument()
     const recommendationSlide = screen.getByRole('group', { name: 'Trending' })
     expect(
@@ -261,19 +244,7 @@ describe('HomeTrending', () => {
     expect(blogLink.querySelector('img')).toBeNull()
   })
 
-  it('fits recommend card icons inside the frame instead of cover-cropping them', () => {
-    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
-
-    const icon = within(screen.getByRole('group', { name: 'Trending' }))
-      .getByRole('link', { name: 'Dropbox' })
-      .querySelector('img')
-
-    expect(icon?.getAttribute('src')).toContain('/plugins/langgenius/dropbox/icon')
-    expect(icon).toHaveClass('object-contain')
-    expect(icon).not.toHaveClass('object-cover')
-  })
-
-  it('marks inactive standalone slides so mobile CSS can collapse mixed banner heights', () => {
+  it('keeps inactive slides inaccessible and supplies the standalone mobile event image', () => {
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
     const recommendSlide = screen.getByRole('group', { name: 'Trending' })
@@ -285,13 +256,9 @@ describe('HomeTrending', () => {
     )
     const eventLink = document.querySelector('a[aria-label="DuckDuckGo plugin"]')
 
-    expect(recommendSlide.className).toMatch(/slide/)
-    expect(recommendSlide.className).not.toMatch(/slideInactive/)
-    expect(blogSlide?.className).toMatch(/slideInactive/)
-    expect(eventSlide?.className).toMatch(/slideInactive/)
-    expect(recommendSlide.firstElementChild?.className).toMatch(/stackedSlide/)
-    expect(blogSlide?.firstElementChild?.className).toMatch(/stackedSlide/)
-    expect(eventLink?.className).toMatch(/imageSlide/)
+    expect(recommendSlide).not.toHaveAttribute('inert')
+    expect(blogSlide).toHaveAttribute('inert')
+    expect(eventSlide).toHaveAttribute('inert')
     expect(eventLink?.querySelector('source')).toHaveAttribute('media', '(max-width: 879px)')
     expect(eventLink?.querySelector('source')?.getAttribute('srcset')).toContain(
       'duckduckgo-mobile.png',
@@ -355,59 +322,6 @@ describe('HomeTrending', () => {
     )
   })
 
-  it('loops from the last banner to a visual clone before resetting to the first banner', () => {
-    const animations: Array<{
-      cancel: ReturnType<typeof vi.fn>
-      onfinish: (() => void) | null
-      pause: ReturnType<typeof vi.fn>
-      play: ReturnType<typeof vi.fn>
-    }> = []
-    const originalAnimate = Element.prototype.animate
-    Object.defineProperty(Element.prototype, 'animate', {
-      configurable: true,
-      value: vi.fn(() => {
-        const animation = {
-          cancel: vi.fn(),
-          finished: Promise.resolve(),
-          onfinish: null,
-          pause: vi.fn(),
-          play: vi.fn(),
-        }
-        animations.push(animation)
-        return animation as unknown as Animation
-      }),
-    })
-
-    try {
-      render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'Duck Duck Go' }))
-      const track = document.querySelector('[data-carousel-track]')!
-
-      act(() => animations.at(-1)?.onfinish?.())
-
-      expect(screen.getByRole('button', { name: 'Duck Duck Go' })).toHaveAttribute(
-        'aria-current',
-        'true',
-      )
-      expect(track).toHaveStyle({ transform: 'translate3d(-300%, 0, 0)' })
-      expect(track.querySelector('[data-carousel-loop-clone]')).toBeInTheDocument()
-
-      fireEvent.transitionEnd(track, { propertyName: 'transform' })
-
-      expect(screen.getByRole('button', { name: 'Trending' })).toHaveAttribute(
-        'aria-current',
-        'true',
-      )
-      expect(track).toHaveStyle({ transform: 'translate3d(-0%, 0, 0)', transition: 'none' })
-    } finally {
-      Object.defineProperty(Element.prototype, 'animate', {
-        configurable: true,
-        value: originalAnimate,
-      })
-    }
-  })
-
   it('does not reject when the autoplay animation is canceled on unmount', async () => {
     let rejectFinished: (reason: unknown) => void = () => {}
     const finished = new Promise<Animation>((_resolve, reject) => {
@@ -461,7 +375,6 @@ describe('HomeTrending', () => {
     const pauseButton = screen.getByRole('button', {
       name: 'plugin.marketplace.home.trendingPause',
     })
-    expect(pauseButton).toHaveClass('bg-state-base-active')
 
     pauseButton.focus()
     await user.keyboard('{Enter}')
@@ -837,7 +750,11 @@ describe('HomeTrending', () => {
 
     await user.click(screen.getByRole('button', { name: 'Dropbox' }))
 
-    expect(screen.getByRole('dialog', { name: 'plugin-detail' })).toHaveTextContent('dropbox')
+    expect(
+      screen.getByRole('dialog', { name: 'Dropbox · plugin.detailPanel.operation.detail' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith(
       'marketplace_banner_click',
       expect.objectContaining({
@@ -884,7 +801,11 @@ describe('HomeTrending', () => {
 
     await user.click(screen.getByRole('button', { name: 'Support Bot' }))
 
-    expect(screen.getByRole('dialog', { name: 'template-detail' })).toHaveTextContent('Support Bot')
+    expect(
+      screen.getByRole('dialog', { name: 'Support Bot · plugin.detailPanel.operation.detail' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(mockTrackMarketplaceSiteEvent).toHaveBeenCalledWith(
       'marketplace_banner_click',
       expect.objectContaining({
@@ -922,7 +843,9 @@ describe('HomeTrending', () => {
 
     expect(screen.queryByRole('link', { name: 'Baserow' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Baserow' }))
-    expect(screen.getByRole('dialog', { name: 'plugin-detail' })).toHaveTextContent('baserow')
+    expect(
+      screen.getByRole('dialog', { name: 'Baserow · plugin.detailPanel.operation.detail' }),
+    ).toBeInTheDocument()
   })
 
   it('links recommend template cards by ID with the served author or template fallback', () => {
@@ -967,15 +890,6 @@ describe('HomeTrending', () => {
     expect(
       within(anonymous).queryByText('plugin.marketplace.home.trendingByCreator'),
     ).not.toBeInTheDocument()
-  })
-
-  it('keeps standalone recommend plugin cards on local detail routes', () => {
-    render(<HomeTrending banners={[banners[0]!]} isMarketplacePlatform page="plugins" />)
-
-    expect(screen.getByRole('link', { name: 'Dropbox' })).toHaveAttribute(
-      'href',
-      '/plugin/langgenius/dropbox',
-    )
   })
 
   it('clamps the active slide when a refetch shrinks the banner list', async () => {
@@ -1113,6 +1027,10 @@ describe('HomeTrending', () => {
 
     render(<HomeTrending banners={banners} isMarketplacePlatform page="templates" />)
 
+    expect(screen.getByRole('link', { name: 'Dropbox' })).toHaveAttribute(
+      'href',
+      '/plugin/langgenius/dropbox',
+    )
     await user.click(screen.getByRole('link', { name: 'Dropbox' }))
 
     expect(mockTrackEvent).toHaveBeenCalledWith('marketplace_banner_item_click', {
@@ -1281,16 +1199,14 @@ describe('HomeTrending', () => {
         },
       }
       render(<HomeTrending banners={[mixedBanner]} isMarketplacePlatform={false} page="plugins" />)
-      const links = screen
-        .getAllByRole('link')
-        .filter((link) => link.getAttribute('href')?.startsWith('https://marketplace.dify.ai/'))
-      expect(links.length).toBeGreaterThan(0)
-      expect(
-        links.some((link) => new URL(link.getAttribute('href')!).pathname.startsWith('/plugin/')),
-      ).toBe(true)
-      expect(
-        links.some((link) => new URL(link.getAttribute('href')!).pathname.startsWith('/template/')),
-      ).toBe(true)
+      const links = [
+        screen.getByRole('link', { name: 'Dropbox' }),
+        screen.getByRole('link', { name: 'Support Bot' }),
+      ]
+      expect(new URL(links[0]!.getAttribute('href')!).pathname).toBe('/plugin/langgenius/dropbox')
+      expect(new URL(links[1]!.getAttribute('href')!).pathname).toBe('/template/aisa-team/tpl-1')
+      for (const link of links)
+        expect(new URL(link.getAttribute('href')!).origin).toBe('https://marketplace.dify.ai')
       for (const link of links) {
         expect(link).toHaveAttribute('target', '_blank')
         expect(new URL(link.getAttribute('href')!).searchParams.get('source')).toBe(

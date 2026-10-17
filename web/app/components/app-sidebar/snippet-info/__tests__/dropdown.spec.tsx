@@ -1,7 +1,7 @@
 import type { SnippetDetail } from '@/models/snippet'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SnippetInfoDropdown from '../dropdown'
 
 const mockReplace = vi.fn()
@@ -12,18 +12,8 @@ const mockUpdateMutate = vi.fn()
 const mockExportMutateAsync = vi.fn()
 const mockDeleteMutate = vi.fn()
 let mockWorkspacePermissionKeys: string[] = ['snippets.create_and_modify', 'snippets.management']
-const mockConsoleState = vi.hoisted(() => ({
-  current: {
-    get workspacePermissionKeys() {
-      return mockWorkspacePermissionKeys
-    },
-  },
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState.current)
-})
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { workspacePermissionKeys: mockWorkspacePermissionKeys })
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -76,12 +66,6 @@ describe('SnippetInfoDropdown', () => {
 
   // Rendering coverage for the menu trigger itself.
   describe('Rendering', () => {
-    it('should render the dropdown trigger button', () => {
-      render(<SnippetInfoDropdown snippet={mockSnippet} />)
-
-      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
-    })
-
     it('should render nothing without snippet create or management permission', () => {
       mockWorkspacePermissionKeys = []
 
@@ -164,6 +148,8 @@ describe('SnippetInfoDropdown', () => {
         data: expect.any(Blob),
         fileName: `${mockSnippet.name}.yml`,
       })
+      const blob = mockDownloadBlob.mock.calls[0]![0].data as Blob
+      expect(await blob.text()).toBe('yaml: content')
     })
 
     it('should show an error toast when export fails', async () => {
@@ -203,7 +189,6 @@ describe('SnippetInfoDropdown', () => {
       )
       await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/snippets'))
       expect(mockToastSuccess).toHaveBeenCalledWith('snippet.deleted')
-      expect(mockReplace).toHaveBeenCalledWith('/snippets')
     })
   })
 })

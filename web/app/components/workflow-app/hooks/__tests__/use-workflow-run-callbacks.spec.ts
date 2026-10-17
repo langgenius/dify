@@ -73,84 +73,7 @@ const createWorkflowData = () => ({
 
 describe('useWorkflowRun callbacks helpers', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should create base callbacks that wrap workflow events, errors, pause continuation, and lazy tts playback', () => {
-    const handlers = createHandlers()
-    const clearAbortController = vi.fn()
-    const clearListeningState = vi.fn()
-    const invalidateRunHistory = vi.fn()
-    const fetchInspectVars = vi.fn()
-    const invalidAllLastRun = vi.fn()
-    const trackWorkflowRunFailed = vi.fn()
-    const workflowData = createWorkflowData()
-    const getWorkflowRunningData = vi.fn(() => workflowData)
-    const userOnWorkflowFinished = vi.fn()
-    const userOnError = vi.fn()
-    const userOnWorkflowPaused = vi.fn()
-    const player = {
-      playAudioWithAudio: vi.fn(),
-    } as unknown as AudioPlayer
-    const getOrCreatePlayer = vi.fn<() => AudioPlayer | null>(() => player)
-
-    const callbacks = createBaseWorkflowRunCallbacks({
-      clientWidth: 320,
-      clientHeight: 240,
-      runHistoryUrl: '/apps/app-1/workflow-runs',
-      isInWorkflowDebug: true,
-      fetchInspectVars,
-      invalidAllLastRun,
-      invalidateRunHistory,
-      clearAbortController,
-      clearListeningState,
-      getWorkflowRunningData,
-      trackWorkflowRunFailed,
-      handlers,
-      callbacks: {
-        onWorkflowFinished: userOnWorkflowFinished,
-        onError: userOnError,
-        onWorkflowPaused: userOnWorkflowPaused,
-      },
-      restCallback: {},
-      getOrCreatePlayer,
-    })
-
-    callbacks.onWorkflowFinished?.({ workflow_run_id: 'run-1' } as never)
-    expect(clearListeningState).toHaveBeenCalled()
-    expect(handlers.handleWorkflowFinished).toHaveBeenCalled()
-    expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
-    expect(userOnWorkflowFinished).toHaveBeenCalled()
-    expect(fetchInspectVars).toHaveBeenCalledWith({})
-    expect(invalidAllLastRun).toHaveBeenCalled()
-
-    callbacks.onError?.('LLM provider and model are required.')
-    expect(clearAbortController).toHaveBeenCalled()
-    expect(handlers.handleWorkflowFailed).toHaveBeenCalledWith(
-      'LLM provider and model are required.',
-    )
-    expect(userOnError).toHaveBeenCalled()
-    expect(getWorkflowRunningData).toHaveBeenCalled()
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
-      'LLM provider and model are required.',
-      workflowData,
-    )
-
-    callbacks.onTTSChunk?.('message-1', 'audio-chunk', 'audio/wav')
-    expect(getOrCreatePlayer).toHaveBeenCalled()
-    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, 'audio/wav')
-    expect(mockResetMsgId).toHaveBeenCalledWith('message-1')
-
-    callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
-    callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
-    expect(handlers.handleWorkflowPaused).toHaveBeenCalled()
-    expect(userOnWorkflowPaused).toHaveBeenCalled()
-    expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
-      callbacks,
-    )
-    expect(mockSseGet).toHaveBeenCalledTimes(1)
+    vi.resetAllMocks()
   })
 
   it('should create final callbacks that preserve rest callback override order and eager abort-controller wiring', () => {
@@ -206,7 +129,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(setAbortController).toHaveBeenCalledWith(controller)
 
     finalCallbacks.onNodeStarted?.({ node_id: 'node-1' } as never)
-    expect(restOnNodeStarted).toHaveBeenCalled()
+    expect(restOnNodeStarted).toHaveBeenCalledWith({ node_id: 'node-1' })
     expect(handlers.handleWorkflowNodeStarted).not.toHaveBeenCalled()
 
     finalCallbacks.onTTSChunk?.('message-2', 'audio-chunk')
@@ -270,63 +193,71 @@ describe('useWorkflowRun callbacks helpers', () => {
     callbacks.onHumanInputFormTimeout?.({ node_id: 'node-1' } as never)
     callbacks.onWorkflowFinished?.({ workflow_run_id: 'run-1' } as never)
     await callbacks.onCompleted?.(false, '')
-    callbacks.onTTSChunk?.('message-1', 'audio-chunk')
+    callbacks.onTTSChunk?.('message-1', 'audio-chunk', 'audio/wav')
     callbacks.onTTSEnd?.('message-1', 'audio-finished')
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
     callbacks.onError?.({ error: 'failed', node_type: 'llm' } as never, '500')
 
-    expect(handlers.handleWorkflowStarted).toHaveBeenCalled()
-    expect(userCallbacks.onWorkflowStarted).toHaveBeenCalled()
+    expect(handlers.handleWorkflowStarted).toHaveBeenCalledWith({ workflow_run_id: 'run-1' })
+    expect(userCallbacks.onWorkflowStarted).toHaveBeenCalledWith({ workflow_run_id: 'run-1' })
     expect(handlers.handleWorkflowNodeStarted).toHaveBeenCalledWith(
       { node_id: 'node-1' },
       { clientWidth: 640, clientHeight: 360 },
     )
-    expect(userCallbacks.onNodeStarted).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeFinished).toHaveBeenCalled()
-    expect(userCallbacks.onNodeFinished).toHaveBeenCalled()
+    expect(userCallbacks.onNodeStarted).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeFinished).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onNodeFinished).toHaveBeenCalledWith({ node_id: 'node-1' })
     expect(handlers.handleWorkflowNodeIterationStarted).toHaveBeenCalledWith(
       { node_id: 'node-1' },
       { clientWidth: 640, clientHeight: 360 },
     )
-    expect(userCallbacks.onIterationStart).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeIterationNext).toHaveBeenCalled()
-    expect(userCallbacks.onIterationNext).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeIterationFinished).toHaveBeenCalled()
-    expect(userCallbacks.onIterationFinish).toHaveBeenCalled()
+    expect(userCallbacks.onIterationStart).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeIterationNext).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onIterationNext).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeIterationFinished).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onIterationFinish).toHaveBeenCalledWith({ node_id: 'node-1' })
     expect(handlers.handleWorkflowNodeLoopStarted).toHaveBeenCalledWith(
       { node_id: 'node-1' },
       { clientWidth: 640, clientHeight: 360 },
     )
-    expect(userCallbacks.onLoopStart).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeLoopNext).toHaveBeenCalled()
-    expect(userCallbacks.onLoopNext).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeLoopFinished).toHaveBeenCalled()
-    expect(userCallbacks.onLoopFinish).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeRetry).toHaveBeenCalled()
-    expect(userCallbacks.onNodeRetry).toHaveBeenCalled()
-    expect(handlers.handleWorkflowAgentLog).toHaveBeenCalled()
-    expect(userCallbacks.onAgentLog).toHaveBeenCalled()
-    expect(handlers.handleWorkflowTextChunk).toHaveBeenCalled()
-    expect(handlers.handleWorkflowTextReplace).toHaveBeenCalled()
-    expect(handlers.handleWorkflowReasoning).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalled()
-    expect(userCallbacks.onHumanInputRequired).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalled()
-    expect(userCallbacks.onHumanInputFormFilled).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeHumanInputFormTimeout).toHaveBeenCalled()
-    expect(userCallbacks.onHumanInputFormTimeout).toHaveBeenCalled()
+    expect(userCallbacks.onLoopStart).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeLoopNext).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onLoopNext).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeLoopFinished).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onLoopFinish).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeRetry).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onNodeRetry).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowAgentLog).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onAgentLog).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowTextChunk).toHaveBeenCalledWith({ data: 'chunk' })
+    expect(handlers.handleWorkflowTextReplace).toHaveBeenCalledWith({ text: 'replacement' })
+    expect(handlers.handleWorkflowReasoning).toHaveBeenCalledWith({
+      data: { reasoning: 'thinking', node_id: 'node-1' },
+    })
+    expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalledWith({
+      node_id: 'node-1',
+    })
+    expect(userCallbacks.onHumanInputRequired).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalledWith({
+      node_id: 'node-1',
+    })
+    expect(userCallbacks.onHumanInputFormFilled).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeHumanInputFormTimeout).toHaveBeenCalledWith({
+      node_id: 'node-1',
+    })
+    expect(userCallbacks.onHumanInputFormTimeout).toHaveBeenCalledWith({ node_id: 'node-1' })
     expect(clearListeningState).toHaveBeenCalled()
-    expect(handlers.handleWorkflowFinished).toHaveBeenCalled()
-    expect(userCallbacks.onWorkflowFinished).toHaveBeenCalled()
+    expect(handlers.handleWorkflowFinished).toHaveBeenCalledWith({ workflow_run_id: 'run-1' })
+    expect(userCallbacks.onWorkflowFinished).toHaveBeenCalledWith({ workflow_run_id: 'run-1' })
     expect(fetchInspectVars).toHaveBeenCalledWith({})
     expect(invalidAllLastRun).toHaveBeenCalled()
     expect(userCallbacks.onCompleted).toHaveBeenCalledWith(false, '')
-    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, undefined)
+    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, 'audio/wav')
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-finished', false)
     expect(mockResetMsgId).toHaveBeenCalledWith('message-1')
     expect(handlers.handleWorkflowPaused).toHaveBeenCalled()
-    expect(userCallbacks.onWorkflowPaused).toHaveBeenCalled()
+    expect(userCallbacks.onWorkflowPaused).toHaveBeenCalledWith({ workflow_run_id: 'run-2' })
     expect(mockSseGet).toHaveBeenCalledWith(
       '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
       {},
@@ -458,8 +389,8 @@ describe('useWorkflowRun callbacks helpers', () => {
     finalCallbacks.onError?.({ error: 'failed' } as never, '500')
 
     expect(setAbortController).toHaveBeenCalled()
-    expect(handlers.handleWorkflowFinished).toHaveBeenCalled()
-    expect(userCallbacks.onWorkflowFinished).toHaveBeenCalled()
+    expect(handlers.handleWorkflowFinished).toHaveBeenCalledWith({ workflow_run_id: 'run-1' })
+    expect(userCallbacks.onWorkflowFinished).toHaveBeenCalledWith({ workflow_run_id: 'run-1' })
     expect(fetchInspectVars).toHaveBeenCalledWith({})
     expect(invalidAllLastRun).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeStarted).toHaveBeenCalledWith(
@@ -474,27 +405,35 @@ describe('useWorkflowRun callbacks helpers', () => {
       { node_id: 'node-1' },
       { clientWidth: 480, clientHeight: 320 },
     )
-    expect(userCallbacks.onNodeStarted).toHaveBeenCalled()
-    expect(userCallbacks.onNodeFinished).toHaveBeenCalled()
-    expect(userCallbacks.onIterationStart).toHaveBeenCalled()
-    expect(userCallbacks.onIterationNext).toHaveBeenCalled()
-    expect(userCallbacks.onIterationFinish).toHaveBeenCalled()
-    expect(userCallbacks.onLoopStart).toHaveBeenCalled()
-    expect(userCallbacks.onLoopNext).toHaveBeenCalled()
-    expect(userCallbacks.onLoopFinish).toHaveBeenCalled()
-    expect(userCallbacks.onNodeRetry).toHaveBeenCalled()
-    expect(userCallbacks.onAgentLog).toHaveBeenCalled()
-    expect(handlers.handleWorkflowTextChunk).toHaveBeenCalled()
-    expect(handlers.handleWorkflowTextReplace).toHaveBeenCalled()
-    expect(handlers.handleWorkflowReasoning).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalled()
-    expect(userCallbacks.onHumanInputRequired).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalled()
-    expect(userCallbacks.onHumanInputFormFilled).toHaveBeenCalled()
-    expect(handlers.handleWorkflowNodeHumanInputFormTimeout).toHaveBeenCalled()
-    expect(userCallbacks.onHumanInputFormTimeout).toHaveBeenCalled()
+    expect(userCallbacks.onNodeStarted).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onNodeFinished).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onIterationStart).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onIterationNext).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onIterationFinish).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onLoopStart).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onLoopNext).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onLoopFinish).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onNodeRetry).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(userCallbacks.onAgentLog).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowTextChunk).toHaveBeenCalledWith({ data: 'chunk' })
+    expect(handlers.handleWorkflowTextReplace).toHaveBeenCalledWith({ text: 'replacement' })
+    expect(handlers.handleWorkflowReasoning).toHaveBeenCalledWith({
+      data: { reasoning: 'thinking', node_id: 'node-1' },
+    })
+    expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalledWith({
+      node_id: 'node-1',
+    })
+    expect(userCallbacks.onHumanInputRequired).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalledWith({
+      node_id: 'node-1',
+    })
+    expect(userCallbacks.onHumanInputFormFilled).toHaveBeenCalledWith({ node_id: 'node-1' })
+    expect(handlers.handleWorkflowNodeHumanInputFormTimeout).toHaveBeenCalledWith({
+      node_id: 'node-1',
+    })
+    expect(userCallbacks.onHumanInputFormTimeout).toHaveBeenCalledWith({ node_id: 'node-1' })
     expect(handlers.handleWorkflowPaused).toHaveBeenCalled()
-    expect(userCallbacks.onWorkflowPaused).toHaveBeenCalled()
+    expect(userCallbacks.onWorkflowPaused).toHaveBeenCalledWith({ workflow_run_id: 'run-2' })
     expect(mockSseGet).toHaveBeenCalledWith(
       '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
       {},

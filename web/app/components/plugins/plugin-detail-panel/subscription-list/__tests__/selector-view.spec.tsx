@@ -1,5 +1,6 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
@@ -63,19 +64,14 @@ beforeEach(() => {
 })
 
 describe('SubscriptionSelectorView', () => {
-  it('should render subscription list when data exists', () => {
-    render(<SubscriptionSelectorView />)
-
-    expect(screen.getByText(/pluginTrigger\.subscription\.listNum/)).toBeInTheDocument()
-    expect(screen.getByText('Subscription One')).toBeInTheDocument()
-  })
-
-  it('should call onSelect when a subscription is clicked', () => {
+  it('should call onSelect when a subscription is clicked', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
 
     render(<SubscriptionSelectorView onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
+    expect(screen.getByText(/pluginTrigger\.subscription\.listNum/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Subscription One' }))
 
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }),
@@ -90,26 +86,16 @@ describe('SubscriptionSelectorView', () => {
     expect(screen.queryByText(/pluginTrigger\.subscription\.listNum/)).not.toBeInTheDocument()
   })
 
-  it('should show delete confirm when delete action is clicked', () => {
-    const { container } = render(<SubscriptionSelectorView />)
-
-    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
-    expect(deleteButton).toBeTruthy()
-    fireEvent.click(deleteButton)
-
-    expect(
-      screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
-    ).toBeInTheDocument()
-  })
-
   it('should request selection reset after confirming delete', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
-    const { container } = render(<SubscriptionSelectorView onSelect={onSelect} />)
+    render(<SubscriptionSelectorView onSelect={onSelect} />)
 
-    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
-    fireEvent.click(deleteButton)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(onSelect).not.toHaveBeenCalled()
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: /pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.confirm/,
       }),
@@ -119,14 +105,16 @@ describe('SubscriptionSelectorView', () => {
     expect(mockDelete).toHaveBeenCalledWith({ params: { subscription_id: 'sub-1' } })
   })
 
-  it('should close delete confirm without selection reset on cancel', () => {
+  it('should close delete confirm without selection reset on cancel', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
-    const { container } = render(<SubscriptionSelectorView onSelect={onSelect} />)
+    render(<SubscriptionSelectorView onSelect={onSelect} />)
 
-    const deleteButton = container.querySelector('.subscription-delete-btn') as HTMLElement
-    fireEvent.click(deleteButton)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(onSelect).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.operation\.cancel/ }))
+    await user.click(screen.getByRole('button', { name: /common\.operation\.cancel/ }))
 
     expect(onSelect).not.toHaveBeenCalled()
     expect(

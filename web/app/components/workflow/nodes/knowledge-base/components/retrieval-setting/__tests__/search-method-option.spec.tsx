@@ -3,6 +3,7 @@ import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { HybridSearchModeEnum, RetrievalSearchMethodEnum, WeightedScoreEnum } from '../../../types'
 import { SearchMethodOption } from '../search-method-option'
 
@@ -101,18 +102,7 @@ function renderSearchMethodOption(
 }
 
 describe('SearchMethodOption', () => {
-  it('should render semantic search controls', () => {
-    const props = createProps()
-
-    renderSearchMethodOption(props)
-
-    expect(screen.getByText('Semantic title'))!.toBeInTheDocument()
-    expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
-    expect(screen.getByText('plugin.detailPanel.configureModel'))!.toBeInTheDocument()
-    expect(screen.getAllByRole('switch')).toHaveLength(2)
-  })
-
-  it('should notify retrieval changes when an inactive option is selected', () => {
+  it('should notify retrieval changes when an inactive option is selected', async () => {
     const props = createProps()
     const fullTextProps = {
       ...props,
@@ -127,14 +117,14 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Full-text title'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Full-text title'))
+    await userEvent.setup().click(screen.getByText('Full-text title'))
 
     expect(props.onRetrievalSearchMethodChange).toHaveBeenCalledWith(
       RetrievalSearchMethodEnum.fullText,
     )
   })
 
-  it('should render hybrid weighted-score controls without reranking model selector', () => {
+  it('should render hybrid weighted-score controls without reranking model selector', async () => {
     const props = createProps()
     const hybridProps = {
       ...props,
@@ -167,7 +157,7 @@ describe('SearchMethodOption', () => {
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Rerank mode'))
+    await userEvent.setup().click(screen.getByText('Rerank mode'))
 
     expect(props.hybridSearch.onModeChange).toHaveBeenCalledWith(
       HybridSearchModeEnum.RerankingModel,

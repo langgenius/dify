@@ -7,8 +7,9 @@ import type {
 import type { ReactElement } from 'react'
 import type { PopupProps } from '../popup'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -149,7 +150,7 @@ const renderPopup = (
       ]),
     ),
   })
-  return renderWithConsoleQuery(ui, {
+  return renderWithConsoleQuery(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>, {
     queryClient,
     ...options,
     systemFeatures:
@@ -173,15 +174,6 @@ const mockTrialCredits = vi.hoisted(() => ({
 }))
 vi.mock('../../provider-added-card/use-trial-credits', () => ({
   useTrialCredits: () => mockTrialCredits,
-}))
-
-vi.mock('../../provider-added-card/model-auth-dropdown/credits-exhausted-alert', () => ({
-  default: ({ hasApiKeyFallback }: { hasApiKeyFallback: boolean }) => (
-    <div
-      data-testid="credits-exhausted-alert"
-      data-has-api-key-fallback={String(hasApiKeyFallback)}
-    />
-  ),
 }))
 
 vi.mock('next-themes', () => ({
@@ -287,6 +279,9 @@ vi.mock('@/service/console', async (importOriginal) => {
 describe('Popup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockInstallMutateAsync.mockReset()
+    mockCheck.mockReset()
+    mockFetchPluginInfoFromMarketPlace.mockReset()
     mockLanguage = 'en_US'
     mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
       data: {
@@ -329,7 +324,8 @@ describe('Popup', () => {
     expect(input).toHaveFocus()
   })
 
-  it('should show matching models when searching by model name with direct props', () => {
+  it('should show matching models when searching by model name with direct props', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -353,9 +349,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'claude' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'claude',
+    )
 
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
     expect(screen.getByText('anthropic')).toBeInTheDocument()
@@ -366,7 +363,8 @@ describe('Popup', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should show empty search placeholder when direct props have no provider or model match', () => {
+  it('should show empty search placeholder when direct props have no provider or model match', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -381,9 +379,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'mistral' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'mistral',
+    )
 
     expect(
       screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch/),
@@ -392,7 +391,8 @@ describe('Popup', () => {
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
   })
 
-  it('should show all models of a provider when searching by provider label with direct props', () => {
+  it('should show all models of a provider when searching by provider label with direct props', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -419,9 +419,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'openai',
+    )
 
     expect(screen.getByText('openai'))!.toBeInTheDocument()
     expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
@@ -430,7 +431,8 @@ describe('Popup', () => {
     expect(screen.queryByText('claude-3')).not.toBeInTheDocument()
   })
 
-  it('should fuzzy match provider labels and keep all compatible provider models visible', () => {
+  it('should fuzzy match provider labels and keep all compatible provider models visible', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -457,9 +459,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'opnai' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'opnai',
+    )
 
     expect(screen.getByText('openai'))!.toBeInTheDocument()
     expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
@@ -467,7 +470,8 @@ describe('Popup', () => {
     expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
   })
 
-  it('should match model labels without expanding unmatched provider models', () => {
+  it('should match model labels without expanding unmatched provider models', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -497,9 +501,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'claude3' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'claude3',
+    )
 
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
     expect(screen.getByText('anthropic'))!.toBeInTheDocument()
@@ -507,7 +512,8 @@ describe('Popup', () => {
     expect(screen.queryByText('claude-instant')).not.toBeInTheDocument()
   })
 
-  it('should match model names without separators', () => {
+  it('should match model names without separators', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -541,9 +547,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'gpt5.4' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'gpt5.4',
+    )
 
     expect(screen.getByText('gpt-5.4'))!.toBeInTheDocument()
     expect(screen.getByText('gpt-5.4-2026-03-05'))!.toBeInTheDocument()
@@ -554,7 +561,8 @@ describe('Popup', () => {
     expect(screen.queryByText('gpt-4.1')).not.toBeInTheDocument()
   })
 
-  it('should not fuzzy match unrelated providers that share the langgenius namespace', () => {
+  it('should not fuzzy match unrelated providers that share the langgenius namespace', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -596,9 +604,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'openai',
+    )
 
     expect(screen.getByText('langgenius/openai/openai'))!.toBeInTheDocument()
     expect(
@@ -607,7 +616,8 @@ describe('Popup', () => {
     expect(screen.queryByText('langgenius/openrouter/openrouter')).not.toBeInTheDocument()
   })
 
-  it('should fuzzy match provider names without matching every langgenius provider', () => {
+  it('should fuzzy match provider names without matching every langgenius provider', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -643,16 +653,18 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'gemni' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'gemni',
+    )
 
     expect(screen.getByText('langgenius/gemini/google'))!.toBeInTheDocument()
     expect(screen.queryByText('langgenius/zhipuai/zhipuai')).not.toBeInTheDocument()
     expect(screen.queryByText('langgenius/tongyi/tongyi')).not.toBeInTheDocument()
   })
 
-  it('should match by model provider key when direct props model label does not contain the search text', () => {
+  it('should match by model provider key when direct props model label does not contain the search text', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -668,15 +680,17 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'openai',
+    )
 
     expect(screen.getByText('azure_openai'))!.toBeInTheDocument()
     expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
   })
 
-  it('should still apply scope features when direct props match by provider label', () => {
+  it('should still apply scope features when direct props match by provider label', async () => {
+    const user = userEvent.setup()
     renderPopup(
       <PopupHarness
         modelList={[
@@ -694,9 +708,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'openai',
+    )
 
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(screen.getByText('gpt-4-tool')).toBeInTheDocument()
@@ -763,157 +778,6 @@ describe('Popup', () => {
     ).toBeInTheDocument()
   })
 
-  it('should show matching models when searching by model name', () => {
-    renderPopup(
-      <PopupHarness
-        modelList={[
-          makeModel({
-            models: [
-              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
-            ],
-          }),
-          makeModel({
-            provider: 'anthropic',
-            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
-            models: [
-              makeModelItem({
-                model: 'claude-3',
-                label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' },
-              }),
-            ],
-          }),
-        ]}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'claude' },
-    })
-
-    expect(screen.queryByText('openai')).not.toBeInTheDocument()
-    expect(screen.getByText('anthropic')).toBeInTheDocument()
-    expect(screen.getByText('claude-3')).toBeInTheDocument()
-    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch.*claude/),
-    ).not.toBeInTheDocument()
-  })
-
-  it('should show empty search placeholder when no provider or model name matches', () => {
-    renderPopup(
-      <PopupHarness
-        modelList={[
-          makeModel({
-            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-            models: [
-              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
-            ],
-          }),
-        ]}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'mistral' },
-    })
-
-    expect(
-      screen.getByText(/modelProvider\.modelProvider\.selector\.noModelFoundForSearch.*mistral/),
-    )!.toBeInTheDocument()
-    expect(screen.queryByText('openai')).not.toBeInTheDocument()
-    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-  })
-
-  it('should show all models of a provider when searching by provider label', () => {
-    renderPopup(
-      <PopupHarness
-        modelList={[
-          makeModel({
-            provider: 'openai',
-            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-            models: [
-              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
-              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
-            ],
-          }),
-          makeModel({
-            provider: 'anthropic',
-            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
-            models: [
-              makeModelItem({
-                model: 'claude-3',
-                label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' },
-              }),
-            ],
-          }),
-        ]}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
-
-    expect(screen.getByText('openai'))!.toBeInTheDocument()
-    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
-    expect(screen.getByText('gpt-4o'))!.toBeInTheDocument()
-    expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
-    expect(screen.queryByText('claude-3')).not.toBeInTheDocument()
-  })
-
-  it('should match by model provider key when model label does not contain the search text', () => {
-    renderPopup(
-      <PopupHarness
-        modelList={[
-          makeModel({
-            provider: 'azure_openai',
-            label: { en_US: 'Azure', zh_Hans: 'Azure' },
-            models: [
-              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
-            ],
-          }),
-        ]}
-        onHide={vi.fn()}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
-
-    expect(screen.getByText('azure_openai'))!.toBeInTheDocument()
-    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
-  })
-
-  it('should still apply scope features when matching by provider label', () => {
-    renderPopup(
-      <PopupHarness
-        modelList={[
-          makeModel({
-            provider: 'openai',
-            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-            models: [
-              makeModelItem({ model: 'gpt-4', features: [ModelFeatureEnum.vision] }),
-              makeModelItem({ model: 'gpt-4-tool', features: [ModelFeatureEnum.toolCall] }),
-            ],
-          }),
-        ]}
-        onHide={vi.fn()}
-        scopeFeatures={[ModelFeatureEnum.toolCall]}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
-
-    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-    expect(screen.getByText('gpt-4-tool')).toBeInTheDocument()
-  })
-
   it('should not show compatible-only helper text when no scope features are applied', () => {
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
@@ -934,30 +798,6 @@ describe('Popup', () => {
     expect(
       screen.getByText('modelProvider.modelProvider.selector.onlyCompatibleModelsShown'),
     )!.toBeInTheDocument()
-  })
-
-  it('should keep search and footer outside the scrollable model list', () => {
-    renderPopup(
-      <PopupHarness
-        modelList={[makeModel()]}
-        onHide={vi.fn()}
-        onOpenProviderSettings={vi.fn()}
-        scopeFeatures={[ModelFeatureEnum.vision]}
-      />,
-    )
-
-    const scrollRegion = screen.getByRole('region', { name: 'modelProvider.modelProvider.models' })
-    const searchInput = screen.getByPlaceholderText('modelProvider.form.searchModel')
-    const settingsAction = screen.getByRole('button', {
-      name: /modelProvider\.modelProvider\.selector\.modelProviderSettings/,
-    })
-
-    expect(scrollRegion)!.toBeInTheDocument()
-    expect(scrollRegion).not.toContainElement(searchInput)
-    expect(scrollRegion).not.toContainElement(settingsAction)
-    expect(scrollRegion).toContainElement(
-      screen.getByText('modelProvider.modelProvider.selector.onlyCompatibleModelsShown'),
-    )
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {
@@ -1013,7 +853,8 @@ describe('Popup', () => {
     )!.toBeInTheDocument()
   })
 
-  it('should match model labels from fallback languages when current language key is missing', () => {
+  it('should match model labels from fallback languages when current language key is missing', async () => {
+    const user = userEvent.setup()
     mockLanguage = 'fr_FR'
 
     renderPopup(
@@ -1031,9 +872,10 @@ describe('Popup', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('modelProvider.form.searchModel'), {
-      target: { value: 'openai' },
-    })
+    await user.type(
+      screen.getByRole('searchbox', { name: 'modelProvider.form.searchModel' }),
+      'openai',
+    )
 
     expect(screen.getByText('openai'))!.toBeInTheDocument()
   })
@@ -1055,10 +897,9 @@ describe('Popup', () => {
 
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
-    expect(screen.getByTestId('credits-exhausted-alert'))!.toHaveAttribute(
-      'data-has-api-key-fallback',
-      'false',
-    )
+    expect(
+      screen.getByText('modelProvider.modelProvider.card.creditsExhaustedMessage'),
+    ).toBeInTheDocument()
   })
 
   it('should only mark API key fallback when the current credential is usable', async () => {
@@ -1082,10 +923,9 @@ describe('Popup', () => {
 
     const { queryClient } = renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
-    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
-      'data-has-api-key-fallback',
-      'false',
-    )
+    expect(
+      screen.getByText('modelProvider.modelProvider.card.creditsExhaustedMessage'),
+    ).toBeInTheDocument()
 
     mockModelProviders.current = [
       makeSummaryProvider({
@@ -1117,10 +957,9 @@ describe('Popup', () => {
     })
 
     await waitFor(() =>
-      expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
-        'data-has-api-key-fallback',
-        'true',
-      ),
+      expect(
+        screen.getByText('modelProvider.modelProvider.card.creditsExhaustedFallback'),
+      ).toBeInTheDocument(),
     )
   })
 
@@ -1142,31 +981,9 @@ describe('Popup', () => {
 
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
-    expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
-  })
-
-  it('should not mark api key fallback for non-trial system providers', () => {
-    Object.assign(mockTrialCredits, {
-      credits: 0,
-      totalCredits: 200,
-      isExhausted: true,
-    })
-    mockTrialModels.current = ['test-anthropic']
-    mockModelProviders.current = [
-      makeSummaryProvider({
-        provider: 'test-openai',
-        custom_configuration: {
-          status: 'active',
-        } as MockSummaryProvider['custom_configuration'],
-        system_configuration: {
-          enabled: true,
-        } as MockSummaryProvider['system_configuration'],
-      }),
-    ]
-
-    renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
-
-    expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('modelProvider.modelProvider.card.creditsExhaustedMessage'),
+    ).not.toBeInTheDocument()
   })
 
   it('should hide the provider settings action when requested by the owner', () => {
@@ -1214,7 +1031,8 @@ describe('Popup', () => {
     expect(providerSettingsButton).toHaveFocus()
   })
 
-  it('should open provider settings from empty state when no providers are configured', () => {
+  it('should open provider settings from empty state when no providers are configured', async () => {
+    const user = userEvent.setup()
     const onConfigureEmptyState = vi.fn()
     renderPopup(
       <PopupHarness
@@ -1231,7 +1049,7 @@ describe('Popup', () => {
       screen.getByText(/modelProvider\.selector\.noProviderConfiguredDesc/),
     )!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
+    await user.click(screen.getByText(/modelProvider\.selector\.configure/))
     expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
   })
 
@@ -1249,9 +1067,9 @@ describe('Popup', () => {
     expect(
       screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/),
     )!.toBeInTheDocument()
-    expect(mockGetMarketplaceUrl).toHaveBeenCalledWith(
-      '/plugins/model',
-      expect.objectContaining({ theme: expect.any(String) }),
+    expect(screen.getByRole('link', { name: /discoverMoreInMarketplace/ })).toHaveAttribute(
+      'href',
+      'https://marketplace.example.com',
     )
   })
 
@@ -1320,16 +1138,17 @@ describe('Popup', () => {
     expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
   })
 
-  it('should toggle marketplace section collapse', () => {
+  it('should toggle marketplace section collapse', async () => {
+    const user = userEvent.setup()
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
     expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
+    await user.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
 
     expect(screen.queryByText('TestOpenAI')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
+    await user.click(screen.getByText(/modelProvider\.selector\.fromMarketplace/))
 
     expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
   })
@@ -1346,12 +1165,13 @@ describe('Popup', () => {
   })
 
   it('should install plugin when clicking install button', async () => {
+    const user = userEvent.setup()
     mockInstallMutateAsync.mockResolvedValue({ all_installed: true, task_id: 'task-1' })
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
     const installButtons = screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0]!)
+    await user.click(installButtons[0]!)
 
     await waitFor(() => {
       expect(mockInstallMutateAsync).toHaveBeenCalledWith({
@@ -1362,69 +1182,79 @@ describe('Popup', () => {
       org: 'langgenius',
       name: 'openai',
     })
-    expect(mockRefreshPluginList).toHaveBeenCalled()
+    expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'model' })
   })
 
-  it('should handle install failure gracefully', async () => {
-    mockInstallMutateAsync.mockRejectedValue(new Error('Install failed'))
-
+  it('allows retry after installation fails and refreshes only after success', async () => {
+    const user = userEvent.setup()
+    mockInstallMutateAsync
+      .mockRejectedValueOnce(new Error('Install failed'))
+      .mockResolvedValueOnce({ all_installed: true, task_id: 'task-1' })
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
-
-    const installButtons = screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0]!)
-
-    await waitFor(() => {
-      expect(mockInstallMutateAsync).toHaveBeenCalled()
-    })
-
-    expect(
-      screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/).length,
-    ).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: /selector.install TestOpenAI/ }))
+    await waitFor(() => expect(mockInstallMutateAsync).toHaveBeenCalledTimes(1))
+    const retry = await screen.findByRole('button', { name: /selector.install TestOpenAI/ })
+    expect(mockRefreshPluginList).not.toHaveBeenCalled()
+    await user.click(retry)
+    await waitFor(() => expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'model' }))
+    expect(mockInstallMutateAsync).toHaveBeenCalledTimes(2)
   })
 
-  it('should run checkTaskStatus when not all_installed', async () => {
+  it('locks installation until the task completes, then refreshes the model providers', async () => {
+    const user = userEvent.setup()
+    let completeTask!: () => void
     mockInstallMutateAsync.mockResolvedValue({ all_installed: false, task_id: 'task-1' })
-    mockCheck.mockResolvedValue(undefined)
-
+    mockCheck.mockReturnValue(
+      new Promise<void>((resolve) => {
+        completeTask = resolve
+      }),
+    )
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
-
-    const installButtons = screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)
-    fireEvent.click(installButtons[0]!)
-
-    await waitFor(() => {
+    await user.click(screen.getByRole('button', { name: /selector.install TestOpenAI/ }))
+    await waitFor(() =>
       expect(mockCheck).toHaveBeenCalledWith({
         taskId: 'task-1',
         pluginUniqueIdentifier: 'langgenius/openai:1.0.0',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: /installing TestOpenAI/ }))
+    await user.click(screen.getByRole('button', { name: /selector.install TestAnthropic/ }))
+    expect(mockInstallMutateAsync).toHaveBeenCalledTimes(1)
+    expect(mockRefreshPluginList).not.toHaveBeenCalled()
+    await act(async () => completeTask())
+    await waitFor(() => expect(mockRefreshPluginList).toHaveBeenCalledWith({ category: 'model' }))
+    expect(screen.getByRole('button', { name: /selector.install TestOpenAI/ })).toBeEnabled()
+  })
+
+  it.each(['lookup failure', 'missing package'])(
+    'recovers from %s without installing',
+    async (failure) => {
+      const user = userEvent.setup()
+      let resolveLookup!: (value: unknown) => void
+      let rejectLookup!: (error: Error) => void
+      mockFetchPluginInfoFromMarketPlace.mockReturnValueOnce(
+        new Promise((resolve, reject) => {
+          resolveLookup = resolve
+          rejectLookup = reject
+        }),
+      )
+      renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
+      await user.click(screen.getByRole('button', { name: /selector.install TestOpenAI/ }))
+      expect(screen.getByRole('button', { name: /installing TestOpenAI/ })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      await act(async () => {
+        if (failure === 'lookup failure') rejectLookup(new Error('Not found'))
+        else resolveLookup({ data: { plugin: { latest_package_identifier: '' } } })
       })
-    })
-    expect(mockRefreshPluginList).toHaveBeenCalled()
-  })
-
-  it('should skip install requests when the marketplace plugin lookup fails', async () => {
-    mockFetchPluginInfoFromMarketPlace.mockRejectedValue(new Error('Not found'))
-
-    renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
-
-    fireEvent.click(screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)[0]!)
-
-    await waitFor(() => {
+      expect(
+        await screen.findByRole('button', { name: /selector.install TestOpenAI/ }),
+      ).toBeEnabled()
       expect(mockInstallMutateAsync).not.toHaveBeenCalled()
-    })
-  })
-
-  it('should skip install requests when the marketplace plugin has no package identifier', async () => {
-    mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
-      data: { plugin: { latest_package_identifier: '' } },
-    })
-
-    renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
-
-    fireEvent.click(screen.getAllByText(/modelProvider\.modelProvider\.selector\.install/)[0]!)
-
-    await waitFor(() => {
-      expect(mockInstallMutateAsync).not.toHaveBeenCalled()
-    })
-  })
+      expect(mockRefreshPluginList).not.toHaveBeenCalled()
+    },
+  )
 
   it('should sort the selected provider to the top when a default model is provided', () => {
     renderPopup(

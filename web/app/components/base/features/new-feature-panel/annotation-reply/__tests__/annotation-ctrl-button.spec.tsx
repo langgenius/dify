@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
 
@@ -46,24 +47,7 @@ describe('AnnotationCtrlButton', () => {
     mockAnnotatedResponseUsage = 5
   })
 
-  it('should render edit button when cached', () => {
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        cached={true}
-        query="test query"
-        answer="test answer"
-        onAdded={vi.fn()}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(
-      screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }),
-    ).toBeInTheDocument()
-  })
-
-  it('should call onEdit when edit button is clicked', () => {
+  it('should call onEdit when edit button is clicked', async () => {
     const onEdit = vi.fn()
     render(
       <AnnotationCtrlButton
@@ -76,26 +60,11 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'appDebug.feature.annotation.edit' }))
 
     expect(onEdit).toHaveBeenCalled()
-  })
-
-  it('should render add button when not cached and has answer', () => {
-    render(
-      <AnnotationCtrlButton
-        appId="test-app"
-        cached={false}
-        query="test query"
-        answer="test answer"
-        onAdded={vi.fn()}
-        onEdit={vi.fn()}
-      />,
-    )
-
-    expect(
-      screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }),
-    ).toBeInTheDocument()
   })
 
   it('should not render any button when not cached and no answer', () => {
@@ -127,7 +96,9 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     await waitFor(() => {
       expect(mockAddAnnotation).toHaveBeenCalledWith({
@@ -138,7 +109,7 @@ describe('AnnotationCtrlButton', () => {
     })
   })
 
-  it('should show annotation full modal when annotation limit is reached', () => {
+  it('should show annotation full modal when annotation limit is reached', async () => {
     mockAnnotatedResponseUsage = 100
 
     render(
@@ -152,7 +123,9 @@ describe('AnnotationCtrlButton', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'appDebug.feature.annotation.add' }))
 
     expect(mockSetShowAnnotationFullModal).toHaveBeenCalled()
     expect(mockAddAnnotation).not.toHaveBeenCalled()

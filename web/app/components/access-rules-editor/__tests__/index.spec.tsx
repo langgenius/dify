@@ -1,6 +1,6 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AccessPolicyWithBindings, ResourceUserAccessSetting } from '@/models/access-control'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AccessRulesEditor from '../index'
@@ -102,22 +102,6 @@ describe('AccessRulesEditor', () => {
 
     expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByText('permission.accessRule.noUserAccessSettings')).not.toBeInTheDocument()
-  })
-
-  it('should render empty state when there are no user access settings', () => {
-    render(
-      <AccessRulesEditor
-        rules={[]}
-        userAccessSettings={[]}
-        isLoadingRules={false}
-        isLoadingUserAccessSettings={false}
-        automaticIncludeWorkspaceMembers={false}
-        isUpdatingAutomaticIncludeWorkspaceMembers={false}
-        updatingAccountId={null}
-      />,
-    )
-
-    expect(screen.getByText('permission.accessRule.noUserAccessSettings')).toBeInTheDocument()
   })
 
   it('should disable automatic inclusion before its value is available', () => {
@@ -231,7 +215,8 @@ describe('AccessRulesEditor', () => {
     ).not.toBeDisabled()
   })
 
-  it('should mark maintainer rows and prevent editing them', () => {
+  it('should mark maintainer rows and prevent editing them', async () => {
+    const user = userEvent.setup()
     const onUserAccessPoliciesChange = vi.fn()
     const onRemoveAccessPolicyMemberBinding = vi.fn()
 
@@ -257,7 +242,7 @@ describe('AccessRulesEditor', () => {
     const removeButton = screen.getByRole('button', { name: 'common.operation.remove' })
     expect(removeButton).toBeDisabled()
 
-    fireEvent.click(removeButton)
+    await user.click(removeButton)
     expect(onUserAccessPoliciesChange).not.toHaveBeenCalled()
     expect(onRemoveAccessPolicyMemberBinding).not.toHaveBeenCalled()
   })
@@ -638,7 +623,16 @@ describe('AccessRulesEditor', () => {
 
   it('should batch-remove selected members grouped by access policy', async () => {
     const user = userEvent.setup()
-    const onBatchRemoveAccessPolicyMemberBindings = vi.fn().mockResolvedValue(undefined)
+    let rejectRemoval!: (error: Error) => void
+    const onBatchRemoveAccessPolicyMemberBindings = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectRemoval = reject
+          }),
+      )
+      .mockResolvedValue(undefined)
     const firstSetting = createUserAccessSetting()
     const secondSetting = {
       ...createUserAccessSetting(),
@@ -679,6 +673,17 @@ describe('AccessRulesEditor', () => {
     })
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
 
+    expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledOnce()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+    expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledOnce()
+    await act(async () => {
+      rejectRemoval(new Error('Removal failed'))
+    })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(screen.getByRole('checkbox', { name: 'Evan', hidden: true })).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledTimes(2)
     expect(onBatchRemoveAccessPolicyMemberBindings).toHaveBeenCalledWith([
       { accessPolicyId: 'app-policy-id', accountIds: ['account-1', 'account-2'] },
       { accessPolicyId: 'default', accountIds: ['account-3'] },

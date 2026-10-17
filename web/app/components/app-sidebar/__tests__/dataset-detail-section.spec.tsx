@@ -27,6 +27,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
+  useSelectedLayoutSegment: () => null,
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -44,14 +45,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('../dataset-info', () => ({
   default: () => <div>dataset info</div>,
-}))
-
-vi.mock('../nav-link', () => ({
-  default: ({ name, href, disabled }: { name: string; href: string; disabled?: boolean }) => {
-    if (disabled) return <button disabled>{name}</button>
-
-    return <a href={href}>{name}</a>
-  },
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
@@ -104,7 +97,7 @@ describe('DatasetDetailSection', () => {
     }
   })
 
-  it('should hide dataset stats and API access when dataset edit permission is missing', () => {
+  it('hides dataset statistics without edit permission', () => {
     mockDataset = createDataset({
       permission_keys: [DatasetACLPermission.Readonly],
     })

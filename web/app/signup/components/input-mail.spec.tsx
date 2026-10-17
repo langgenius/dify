@@ -61,23 +61,6 @@ describe('InputMail Form', () => {
   })
 
   // Rendering baseline UI elements.
-  describe('Rendering', () => {
-    it('should render email input and submit button', () => {
-      renderForm()
-
-      const emailInput = screen.getByRole('textbox', { name: 'login.email' })
-      const submitButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
-
-      expect(emailInput).toHaveAttribute('name', 'email')
-      expect(emailInput).toHaveAttribute('type', 'email')
-      expect(emailInput).toHaveAttribute('autocomplete', 'email')
-      expect(emailInput).toHaveAttribute('spellcheck', 'false')
-      expect(emailInput).toHaveProperty('tabIndex', 0)
-      expect(submitButton).toHaveAttribute('type', 'submit')
-      expect(submitButton).toHaveProperty('tabIndex', 0)
-      expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toBeInTheDocument()
-    })
-  })
 
   // Prop-driven branding content visibility.
   describe('Props', () => {

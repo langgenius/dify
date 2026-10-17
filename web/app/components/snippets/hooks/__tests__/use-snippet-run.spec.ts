@@ -1,40 +1,13 @@
 import { act } from '@testing-library/react'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import {
+  baseRunningData,
+  renderWorkflowHook as renderHook,
+} from '@/app/components/workflow/__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useSnippetRun } from '../use-snippet-run'
 
-type WorkflowStoreState = {
-  workflowRunningData?: {
-    task_id?: string
-    result: {
-      status: string
-      inputs_truncated: boolean
-      process_data_truncated: boolean
-      outputs_truncated: boolean
-    }
-    tracing: unknown[]
-    resultText: string
-  }
-  setWorkflowRunningData: (data: WorkflowStoreState['workflowRunningData']) => void
-  backupDraft?: unknown
-  setBackupDraft: (data: unknown) => void
-  setEnvironmentVariables: (data: unknown[]) => void
-}
-
 const mocks = vi.hoisted(() => {
-  const workflowStoreState: WorkflowStoreState = {
-    setWorkflowRunningData: vi.fn((data) => {
-      workflowStoreState.workflowRunningData = data
-    }),
-    setBackupDraft: vi.fn(),
-    setEnvironmentVariables: vi.fn(),
-  }
-
   return {
-    workflowStoreState,
-    workflowStoreSetState: vi.fn((partial: Record<string, unknown>) => {
-      Object.assign(workflowStoreState, partial)
-    }),
     reactFlowStoreState: {
       getNodes: vi.fn(() => []),
       setNodes: vi.fn(),
@@ -68,7 +41,8 @@ const mocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('reactflow', () => ({
+vi.mock('reactflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('reactflow')>()),
   useStoreApi: () => ({
     getState: () => mocks.reactFlowStoreState,
   }),
@@ -93,13 +67,6 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run
   useWorkflowRunEvent: () => mocks.runEventHandlers,
 }))
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useWorkflowStore: () => ({
-    getState: () => mocks.workflowStoreState,
-    setState: mocks.workflowStoreSetState,
-  }),
-}))
-
 vi.mock('@/service/base', () => ({
   ssePost: mocks.mockSsePost,
 }))
@@ -119,29 +86,15 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-const createRunningData = (taskId?: string): WorkflowStoreState['workflowRunningData'] => ({
-  task_id: taskId,
-  result: {
-    status: WorkflowRunningStatus.Running,
-    inputs_truncated: false,
-    process_data_truncated: false,
-    outputs_truncated: false,
-  },
-  tracing: [],
-  resultText: '',
-})
-
 describe('useSnippetRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.workflowStoreState.workflowRunningData = undefined
-    mocks.workflowStoreState.backupDraft = undefined
   })
 
   it('stops a snippet workflow with the provided task id', () => {
-    mocks.workflowStoreState.workflowRunningData = createRunningData()
-    const { result } = renderHook(() => useSnippetRun(), {
+    const { result, store } = renderHook(() => useSnippetRun(), {
       resource: { kind: 'snippet', snippetId: 'snippet-1' },
+      initialStoreState: { workflowRunningData: baseRunningData({ task_id: 'task-from-store' }) },
     })
 
     act(() => {
@@ -151,15 +104,13 @@ describe('useSnippetRun', () => {
     expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
       '/snippets/snippet-1/workflow-runs/tasks/task-1/stop',
     )
-    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
-      WorkflowRunningStatus.Stopped,
-    )
+    expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped)
   })
 
   it('does not fall back to the workflow running task id when stop is called without one', () => {
-    mocks.workflowStoreState.workflowRunningData = createRunningData('task-from-store')
-    const { result } = renderHook(() => useSnippetRun(), {
+    const { result, store } = renderHook(() => useSnippetRun(), {
       resource: { kind: 'snippet', snippetId: 'snippet-1' },
+      initialStoreState: { workflowRunningData: baseRunningData({ task_id: 'task-from-store' }) },
     })
 
     act(() => {
@@ -167,24 +118,6 @@ describe('useSnippetRun', () => {
     })
 
     expect(mocks.mockStopWorkflowRun).not.toHaveBeenCalled()
-    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
-      WorkflowRunningStatus.Stopped,
-    )
-  })
-
-  it('does not call the stop endpoint when task id is unavailable', () => {
-    mocks.workflowStoreState.workflowRunningData = createRunningData()
-    const { result } = renderHook(() => useSnippetRun(), {
-      resource: { kind: 'snippet', snippetId: 'snippet-1' },
-    })
-
-    act(() => {
-      result.current.handleStopRun('')
-    })
-
-    expect(mocks.mockStopWorkflowRun).not.toHaveBeenCalled()
-    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
-      WorkflowRunningStatus.Stopped,
-    )
+    expect(store.getState().workflowRunningData?.result.status).toBe(WorkflowRunningStatus.Stopped)
   })
 })

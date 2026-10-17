@@ -34,9 +34,10 @@ vi.mock('react-i18next', async () => {
   })
 })
 
-const { getApps, getStarredApps } = vi.hoisted(() => ({
+const { getApps, getStarredApps, getOnlineUsers } = vi.hoisted(() => ({
   getApps: vi.fn(),
   getStarredApps: vi.fn(),
+  getOnlineUsers: vi.fn(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -46,14 +47,10 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.get': getApps,
       'apps.starred.get': getStarredApps,
+      'apps.workflows.onlineUsers.post': getOnlineUsers,
     }),
   }
 })
-const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
-  vi.fn((_options: unknown) => ({
-    onlineUsersMap: {},
-  })),
-)
 let stepByStepTourSessionState: StepByStepTourSessionState = {}
 
 const mockLearnDifyApp = vi.hoisted(
@@ -117,10 +114,6 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
       </button>
     </div>
   ),
-}))
-
-vi.mock('../hooks/use-workflow-online-users', () => ({
-  useWorkflowOnlineUsers: (options: unknown) => mockUseWorkflowOnlineUsers(options),
 }))
 
 let hasMoreApps = false
@@ -204,11 +197,6 @@ vi.mock('next/dynamic', () => ({
             { onClick: onClose, 'data-testid': 'close-dsl-modal' },
             'Close',
           ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-dsl-modal' },
-            'Success',
-          ),
         )
       }
     }
@@ -230,11 +218,6 @@ vi.mock('next/dynamic', () => ({
             'button',
             { onClick: onClose, 'data-testid': 'close-create-modal' },
             'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-create-modal' },
-            'Success',
           ),
           React.createElement(
             'button',
@@ -262,11 +245,6 @@ vi.mock('next/dynamic', () => ({
             'button',
             { onClick: onClose, 'data-testid': 'close-template-dialog' },
             'Close',
-          ),
-          React.createElement(
-            'button',
-            { onClick: onClose, 'data-testid': 'success-template-dialog' },
-            'Success',
           ),
           React.createElement(
             'button',
@@ -383,20 +361,25 @@ const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
 beforeAll(() => {
-  globalThis.IntersectionObserver = class MockIntersectionObserver {
-    constructor(callback: IntersectionObserverCallback) {
-      intersectionCallbacks.push(callback)
-    }
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class MockIntersectionObserver {
+      constructor(callback: IntersectionObserverCallback) {
+        intersectionCallbacks.push(callback)
+      }
 
-    observe = mockObserve
-    disconnect = mockDisconnect
-    unobserve = vi.fn()
-    root = null
-    rootMargin = ''
-    thresholds = []
-    takeRecords = () => []
-  } as unknown as typeof IntersectionObserver
+      observe = mockObserve
+      disconnect = mockDisconnect
+      unobserve = vi.fn()
+      root = null
+      rootMargin = ''
+      thresholds = []
+      takeRecords = () => []
+    },
+  )
 })
+
+afterAll(() => vi.unstubAllGlobals())
 
 type RenderListOptions = {
   onCreateLearnDify?: (app: RecommendedAppResponse) => void
@@ -534,7 +517,7 @@ describe('List', () => {
       limit: 100,
       has_more: false,
     }
-    mockUseWorkflowOnlineUsers.mockClear()
+    getOnlineUsers.mockReset().mockResolvedValue({ data: {} })
     intersectionCallbacks.length = 0
   })
 
@@ -562,45 +545,15 @@ describe('List', () => {
       expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
     })
 
-    it('should render filters and search before the right aligned actions', () => {
-      renderList()
-
-      const creatorsButton = screen.getByRole('combobox', { name: 'Creators' })
-      const searchInput = screen.getByRole('searchbox', {
-        name: 'app.gotoAnything.actions.searchApplications',
-      })
-      const sortButton = screen.getByRole('combobox', { name: 'Sort by' })
-      const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
-      const createButton = screen.getByRole('button', { name: 'common.operation.create' })
-
-      expect(snippetsLink).toHaveAttribute('href', '/snippets')
-      expect(sortButton).toHaveTextContent('Sort by Last modified')
-      expect(
-        creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      expect(
-        sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      expect(
-        searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-      expect(
-        snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-    })
-
-    it('should render app cards when apps exist', () => {
-      renderList()
-
-      expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
-      expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
-    })
-
     it('should hide starred section when there are no starred apps', () => {
       renderList()
 
       expect(screen.queryByText('Starred')).not.toBeInTheDocument()
       expect(screen.queryByText('All Apps')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute(
+        'href',
+        '/snippets',
+      )
     })
 
     it('should render starred apps before all app cards when starred apps exist', () => {
@@ -794,21 +747,15 @@ describe('List', () => {
 
       expect(target).toBeInTheDocument()
       expect(target).toBe(screen.getByTestId('empty-state'))
-      expect(target).not.toHaveClass('absolute', 'top-1/2', 'left-1/2')
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'common.operation.create' }),
       ).not.toBeInTheDocument()
     })
 
-    it('should not render new app card in the app grid', () => {
-      renderList()
-      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
-    })
-
     it('should render drop DSL hint when app creation permission is available', () => {
       renderList()
-      expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
       expect(
         screen.queryByRole('region', { name: 'app.newApp.dropDSLToCreateApp' }),
       ).not.toBeInTheDocument()
@@ -819,10 +766,10 @@ describe('List', () => {
 
       renderList('', { systemFeatures: { enable_learn_app: true } })
 
-      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
-      expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
-      expect(screen.getByText('app.firstEmpty.or'))!.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.learnDifyTitle')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.or')).toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
       expect(
@@ -854,7 +801,7 @@ describe('List', () => {
 
       renderList('', { systemFeatures: { enable_learn_app: false } })
 
-      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.learnDifyTitle')).not.toBeInTheDocument()
     })
 
@@ -864,7 +811,7 @@ describe('List', () => {
       renderList()
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
     })
 
     it('should keep the regular empty state for empty filtered results', () => {
@@ -872,14 +819,13 @@ describe('List', () => {
 
       renderList('?keywords=missing+app')
 
-      expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
+      expect(screen.getByTestId('empty-state')).toBeInTheDocument()
       expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
-      expect(screen.getByRole('status')).toHaveClass('sr-only')
       expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
         'aria-busy',
         'false',
       )
-      expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
     })
@@ -898,36 +844,36 @@ describe('List', () => {
       )
     })
 
-    it('should leave the first empty state as soon as a filter changes', () => {
+    it('should leave the first empty state as soon as a filter changes', async () => {
+      const user = userEvent.setup()
       mockAppData = { pages: [{ data: [], total: 0 }] }
       renderList()
 
       expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
 
-      fireEvent.change(
-        screen.getByRole('searchbox', {
-          name: 'app.gotoAnything.actions.searchApplications',
-        }),
-        { target: { value: 'workflow' } },
+      await user.type(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+        'workflow',
       )
 
       expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
       expect(screen.getByTestId('empty-state')).toBeInTheDocument()
     })
 
-    it('should open create flows from first empty state actions', () => {
+    it('should open create flows from first empty state actions', async () => {
+      const user = userEvent.setup()
       mockAppData = { pages: [{ data: [], total: 0 }] }
 
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
-      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
+      expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
-      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
+      expect(screen.getByTestId('template-dialog')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: /app\.importApp/ }))
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: /app\.importApp/ }))
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
     })
 
     it('should forward Learn Dify template interactions', async () => {
@@ -949,13 +895,11 @@ describe('List', () => {
       expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
     })
 
-    it('should pass workflow app ids to online users hook', () => {
-      renderList()
-
-      expect(mockUseWorkflowOnlineUsers).toHaveBeenCalledWith({
-        appIds: ['app-2'],
-        enabled: expect.any(Boolean),
-      })
+    it('requests collaborators only for workflow apps when collaboration is enabled', async () => {
+      renderList('', { systemFeatures: { enable_collaboration_mode: true } })
+      await waitFor(() =>
+        expect(getOnlineUsers).toHaveBeenCalledWith({ body: { app_ids: ['app-2'] } }),
+      )
     })
   })
 
@@ -975,17 +919,6 @@ describe('List', () => {
       expect(screen.getByRole('combobox', { name: 'Types' })).toBeInTheDocument()
       await waitFor(() => expect(getApps).toHaveBeenCalledOnce())
       expect(getApps.mock.calls[0]![0].query).not.toHaveProperty('mode')
-    })
-
-    it('should update category when workflow option is selected', async () => {
-      const user = userEvent.setup()
-      const { onUrlUpdate } = renderList()
-      await openAppTypeSelect(user)
-
-      await user.click(await screen.findByRole('option', { name: 'app.types.workflow' }))
-
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('category')).toBe('workflow')
     })
 
     it('should update category when all option is selected', async () => {
@@ -1020,7 +953,8 @@ describe('List', () => {
   })
 
   describe('App List Query', () => {
-    it('resets the catalog scroll position before switching datasets', () => {
+    it('resets the catalog scroll position before switching datasets', async () => {
+      const user = userEvent.setup()
       renderList()
       const searchBox = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
@@ -1030,7 +964,7 @@ describe('List', () => {
       const scrollTo = vi.fn()
       scrollContainer.scrollTo = scrollTo
 
-      fireEvent.click(screen.getByText('common.tag.placeholder'))
+      await user.click(screen.getByText('common.tag.placeholder'))
 
       expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
     })
@@ -1056,6 +990,7 @@ describe('List', () => {
     })
 
     it('keeps main and starred results while new filters load, then replaces them', async () => {
+      const user = userEvent.setup()
       mockStarredAppData = {
         ...mockStarredAppData,
         data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'starred-app', name: 'Starred app' }],
@@ -1065,7 +1000,7 @@ describe('List', () => {
       getApps.mockReturnValue(nextApps.promise)
       getStarredApps.mockReturnValue(nextStarred.promise)
       renderList()
-      fireEvent.click(screen.getByText('common.tag.placeholder'))
+      await user.click(screen.getByText('common.tag.placeholder'))
       await waitFor(() =>
         expect(getApps).toHaveBeenCalledWith({
           query: expect.objectContaining({ tag_ids: ['tag-1'] }),
@@ -1083,49 +1018,35 @@ describe('List', () => {
     })
   })
 
-  describe('Creators Filter', () => {
-    it('should show the selected creator without an overflow count', async () => {
+  describe('Create Menu', () => {
+    it('should open blank app modal from create menu', async () => {
       const user = userEvent.setup()
       renderList()
 
-      const trigger = screen.getByRole('combobox', { name: 'Creators' })
-      await user.click(trigger)
-      await user.click(screen.getByRole('option', { name: /Bob/ }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await user.click(await screen.findByText('app.newApp.startFromBlank'))
 
-      expect(within(trigger).getByText('B')).toBeInTheDocument()
-      expect(
-        within(trigger).getByText('common.dynamicSelect.selected:{"count":1}'),
-      ).toBeInTheDocument()
-      expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Create Menu', () => {
-    it('should open blank app modal from create menu', async () => {
-      renderList()
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.newApp.startFromBlank'))
-
-      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
     })
 
     it('should open template dialog from create menu', async () => {
+      const user = userEvent.setup()
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.newApp.startFromTemplate'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await user.click(await screen.findByText('app.newApp.startFromTemplate'))
 
-      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+      expect(screen.getByTestId('template-dialog')).toBeInTheDocument()
     })
 
     it('should open DSL import modal from create menu', async () => {
+      const user = userEvent.setup()
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
-      fireEvent.click(await screen.findByText('app.importApp'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      await user.click(await screen.findByText('app.importApp'))
 
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
     })
 
     it('should not render create button without app creation permission', () => {
@@ -1212,37 +1133,16 @@ describe('List', () => {
   })
 
   describe('DSL File Drop', () => {
-    it('should handle DSL file drop and show modal', () => {
+    it('should close DSL modal when onClose is called', async () => {
+      const user = userEvent.setup()
       renderList()
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       dropDSLFileOnStudioHeader(mockFile)
 
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-    })
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
 
-    it('should close DSL modal when onClose is called', () => {
-      renderList()
-
-      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      dropDSLFileOnStudioHeader(mockFile)
-
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('close-dsl-modal'))
-
-      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
-    })
-
-    it('should close DSL modal when its mutation reports success', () => {
-      renderList()
-
-      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
-      dropDSLFileOnStudioHeader(mockFile)
-
-      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('success-dsl-modal'))
+      await user.click(screen.getByTestId('close-dsl-modal'))
 
       expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
     })

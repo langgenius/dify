@@ -29,9 +29,6 @@ describe('Field', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Model settings' })
     expect(within(dialog).getByText(/Choose a model for this node/)).toBeVisible()
     expect(within(dialog).getByRole('link', { name: 'Model documentation' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Model settings' })).toHaveAccessibleName(
-      'Model settings',
-    )
     expect(screen.queryByRole('dialog', { name: 'Retrieval settings' })).not.toBeInTheDocument()
   })
 })

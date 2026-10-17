@@ -1,5 +1,6 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VarInInspectType } from '@/types/workflow'
 import { BlockEnum, VarType } from '../../types'
 import Group from '../group'
@@ -50,7 +51,7 @@ describe('VariableInspect Group', () => {
     vi.clearAllMocks()
   })
 
-  it('should mask secret environment variables before selecting them', () => {
+  it('should mask secret environment variables before selecting them', async () => {
     const handleSelect = vi.fn()
 
     render(
@@ -69,9 +70,9 @@ describe('VariableInspect Group', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /API_KEY/ }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /API_KEY/ }))
 
-    expect(screen.getByText('workflowDebug.debug.variableInspect.envNode'))!.toBeInTheDocument()
+    expect(screen.getByText('workflowDebug.debug.variableInspect.envNode')).toBeInTheDocument()
     expect(handleSelect).toHaveBeenCalledWith({
       nodeId: VarInInspectType.environment,
       nodeType: VarInInspectType.environment,
@@ -84,7 +85,7 @@ describe('VariableInspect Group', () => {
     })
   })
 
-  it('should hide invisible variables and collapse the list when the group header is clicked', () => {
+  it('keeps invisible variables hidden when collapsing and reopening the group', async () => {
     render(
       <Group
         nodeData={createNodeData()}
@@ -97,15 +98,18 @@ describe('VariableInspect Group', () => {
       />,
     )
 
-    expect(screen.getByText('visible_var'))!.toBeInTheDocument()
+    expect(screen.getByText('visible_var')).toBeInTheDocument()
     expect(screen.queryByText('hidden_var')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Code' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Code' }))
 
     expect(screen.queryByText('visible_var')).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Code' }))
+    expect(screen.getByText('visible_var')).toBeInTheDocument()
+    expect(screen.queryByText('hidden_var')).not.toBeInTheDocument()
   })
 
-  it('should expose node view and clear actions for node groups', () => {
+  it('should expose node view and clear actions for node groups', async () => {
     const handleView = vi.fn()
     const handleClear = vi.fn()
 
@@ -120,12 +124,12 @@ describe('VariableInspect Group', () => {
       />,
     )
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.view' }),
-    )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.clearNode' }),
-    )
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.view' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'workflowDebug.debug.variableInspect.clearNode' }))
 
     expect(handleView).toHaveBeenCalledTimes(1)
     expect(handleClear).toHaveBeenCalledTimes(1)

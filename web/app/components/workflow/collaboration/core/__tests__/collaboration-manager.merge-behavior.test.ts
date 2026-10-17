@@ -181,8 +181,8 @@ const syncNodes = (manager: CollaborationManager, previous: Node[], next: Node[]
 
 const exportNodes = (manager: CollaborationManager) => manager.getNodes()
 
-describe('Loro merge behavior smoke test', () => {
-  it('inspects concurrent edits after merge', () => {
+describe('Workflow collaboration convergence', () => {
+  it('preserves concurrent variable insertions on both replicas', () => {
     const docA = new LoroDoc()
     const managerA = getManager(docA)
     syncNodes(managerA, [], [createNode(['a'])])
@@ -203,8 +203,10 @@ describe('Loro merge behavior smoke test', () => {
 
     const finalA = exportNodes(managerA)
     const finalB = exportNodes(managerB)
-    expect(finalA.length).toBe(1)
-    expect(finalB.length).toBe(1)
+    expect(finalA).toHaveLength(1)
+    expect(finalB).toEqual(finalA)
+    const variables = (finalA[0] as Node<StartNodeData>).data.variables
+    expect(variables.map(({ variable }) => variable).sort()).toEqual(['a', 'b', 'c'])
   })
 
   it('merges prompt template insertions and edits across replicas', () => {

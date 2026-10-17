@@ -13,7 +13,8 @@ import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import useKnowledgeDatasetSelection from '../use-knowledge-dataset-selection'
 
-vi.mock('@/service/datasets', () => ({
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
   fetchDatasets: vi.fn(),
 }))
 

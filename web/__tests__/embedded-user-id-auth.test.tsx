@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import CheckCode from '@/app/(shareLayout)/webapp-signin/check-code/page'
 import MailAndCodeAuth from '@/app/(shareLayout)/webapp-signin/components/mail-and-code-auth'
 import MailAndPasswordAuth from '@/app/(shareLayout)/webapp-signin/components/mail-and-password-auth'
+import { useWebAppStore } from '@/context/web-app-context'
 
 const replaceMock = vi.fn()
 const backMock = vi.fn()
@@ -15,20 +17,6 @@ vi.mock('@/next/navigation', () => ({
     back: backMock,
   })),
   useSearchParams: () => useSearchParamsMock(),
-}))
-
-const mockStoreState = {
-  embeddedUserId: 'embedded-user-99',
-  shareCode: 'test-app',
-}
-
-const useWebAppStoreMock = vi.fn((selector?: (state: typeof mockStoreState) => unknown) => {
-  return selector ? selector(mockStoreState) : mockStoreState
-})
-
-vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector?: (state: typeof mockStoreState) => unknown) =>
-    useWebAppStoreMock(selector),
 }))
 
 const webAppLoginMock = vi.fn()
@@ -60,17 +48,14 @@ vi.mock('@/app/components/signin/countdown', () => ({
   default: () => <div data-testid="countdown" />,
 }))
 
-vi.mock('@remixicon/react', () => ({
-  RiMailSendFill: () => <div data-testid="mail-icon" />,
-  RiArrowLeftLine: () => <div data-testid="arrow-icon" />,
-}))
-
 beforeEach(() => {
   vi.clearAllMocks()
+  useWebAppStore.setState({ embeddedUserId: 'embedded-user-99', shareCode: 'test-app' })
 })
 
 describe('embedded user id propagation in authentication flows', () => {
   it('passes embedded user id when logging in with email and password', async () => {
+    const user = userEvent.setup()
     const params = new URLSearchParams()
     params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
     useSearchParamsMock.mockReturnValue(params)
@@ -80,13 +65,9 @@ describe('embedded user id propagation in authentication flows', () => {
 
     render(<MailAndPasswordAuth isEmailSetup />)
 
-    fireEvent.change(screen.getByLabelText('login.email'), {
-      target: { value: 'user@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText(/login\.password/), {
-      target: { value: 'strong-password' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'login.signBtn' }))
+    await user.type(screen.getByLabelText('login.email'), 'user@example.com')
+    await user.type(screen.getByLabelText(/login\.password/), 'strong-password')
+    await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
 
     await waitFor(() => {
       expect(fetchAccessTokenMock).toHaveBeenCalledWith({
@@ -103,19 +84,16 @@ describe('embedded user id propagation in authentication flows', () => {
   })
 
   it('does not call password login services when the redirect target is external', async () => {
+    const user = userEvent.setup()
     const params = new URLSearchParams()
     params.set('redirect_url', 'https://evil.example/chatbot/evil-app')
     useSearchParamsMock.mockReturnValue(params)
 
     render(<MailAndPasswordAuth isEmailSetup />)
 
-    fireEvent.change(screen.getByLabelText('login.email'), {
-      target: { value: 'user@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText(/login\.password/), {
-      target: { value: 'strong-password' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'login.signBtn' }))
+    await user.type(screen.getByLabelText('login.email'), 'user@example.com')
+    await user.type(screen.getByLabelText(/login\.password/), 'strong-password')
+    await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith('/')
@@ -125,16 +103,15 @@ describe('embedded user id propagation in authentication flows', () => {
   })
 
   it('does not request an email code when the redirect target is external', async () => {
+    const user = userEvent.setup()
     const params = new URLSearchParams()
     params.set('redirect_url', 'https://evil.example/chatbot/evil-app')
     useSearchParamsMock.mockReturnValue(params)
 
     render(<MailAndCodeAuth />)
 
-    fireEvent.change(screen.getByLabelText('login.email'), {
-      target: { value: 'user@example.com' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
+    await user.type(screen.getByLabelText('login.email'), 'user@example.com')
+    await user.click(screen.getByRole('button', { name: 'login.signup.verifyMail' }))
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith('/')
@@ -143,6 +120,7 @@ describe('embedded user id propagation in authentication flows', () => {
   })
 
   it('passes embedded user id when verifying email code', async () => {
+    const user = userEvent.setup()
     const params = new URLSearchParams()
     params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
     params.set('email', encodeURIComponent('user@example.com'))
@@ -157,10 +135,11 @@ describe('embedded user id propagation in authentication flows', () => {
 
     render(<CheckCode />)
 
-    fireEvent.change(screen.getByPlaceholderText('login.checkCode.verificationCodePlaceholder'), {
-      target: { value: '123456' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+    await user.type(
+      screen.getByPlaceholderText('login.checkCode.verificationCodePlaceholder'),
+      '123456',
+    )
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
     await waitFor(() => {
       expect(fetchAccessTokenMock).toHaveBeenCalledWith({
@@ -177,6 +156,7 @@ describe('embedded user id propagation in authentication flows', () => {
   })
 
   it('does not call code login services when the redirect target is external', async () => {
+    const user = userEvent.setup()
     const params = new URLSearchParams()
     params.set('redirect_url', 'https://evil.example/chatbot/evil-app')
     params.set('email', encodeURIComponent('user@example.com'))
@@ -185,10 +165,11 @@ describe('embedded user id propagation in authentication flows', () => {
 
     render(<CheckCode />)
 
-    fireEvent.change(screen.getByPlaceholderText('login.checkCode.verificationCodePlaceholder'), {
-      target: { value: '123456' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+    await user.type(
+      screen.getByPlaceholderText('login.checkCode.verificationCodePlaceholder'),
+      '123456',
+    )
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
     await waitFor(() => {
       expect(replaceMock).toHaveBeenCalledWith('/')

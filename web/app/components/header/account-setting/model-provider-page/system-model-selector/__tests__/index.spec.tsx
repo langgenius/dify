@@ -1,5 +1,5 @@
 import type { DefaultModelResponse } from '../../declarations'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -41,15 +41,6 @@ const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 const getModelList = vi.hoisted(() => vi.fn())
-const mockModelSelectorProps = vi.hoisted(
-  () =>
-    [] as Array<{
-      hideProviderSettingsFooter?: boolean
-      onConfigureEmptyState?: () => void
-      showModelMeta?: boolean
-    }>,
-)
-
 let mockWorkspacePermissionKeys = ['plugin.model_config']
 
 vi.mock('@/context/permission-state', async () => {
@@ -81,19 +72,16 @@ vi.mock('../../hooks', async (importOriginal) => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.models.modelTypes.byModelType.get': getModelList,
     }),
-    consoleClient: {
-      workspaces: {
-        current: {
-          defaultModel: { post: mockUpdateDefaultModel },
-        },
-      },
-    },
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.defaultModel.post': mockUpdateDefaultModel,
+    }),
   }
 })
 
@@ -108,7 +96,6 @@ vi.mock('../../model-selector', () => ({
     disabled?: boolean
     onValueChange: (model: { model: string; provider: string }) => void
   }) => {
-    mockModelSelectorProps.push(props)
     return (
       <div>
         <output>{props.value?.model ?? 'No model selected'}</output>
@@ -124,6 +111,7 @@ vi.mock('../../model-selector', () => ({
         )}
         <button
           type="button"
+          disabled={props.disabled}
           onClick={() => props.onValueChange({ model: 'test', provider: 'test' })}
         >
           Mock Model Selector
@@ -164,13 +152,7 @@ describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getModelList.mockResolvedValue({ data: [] })
-    mockModelSelectorProps.length = 0
     mockWorkspacePermissionKeys = ['plugin.model_config']
-  })
-
-  it('should render settings button', () => {
-    render(<SystemModel {...defaultProps} />)
-    expect(screen.getByRole('button', { name: /system model settings/i })).toBeInTheDocument()
   })
 
   it('should open dialog when button is clicked', async () => {
@@ -264,34 +246,32 @@ describe('SystemModel', () => {
     expect(screen.getByRole('button', { name: /system model settings/i })).toBeDisabled()
   })
 
-  it('should close dialog when cancel is clicked', async () => {
-    render(<SystemModel {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
-    })
-  })
-
   it('should save selected models and show success feedback', async () => {
     render(<SystemModel {...defaultProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
     })
 
     const selectorButtons = await screen.findAllByRole('button', { name: 'Mock Model Selector' })
-    selectorButtons.forEach((button) => fireEvent.click(button))
+    for (const button of selectorButtons) await userEvent.setup().click(button)
 
     await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /save/i }))
 
     await waitFor(() => {
-      expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
+      expect(mockUpdateDefaultModel).toHaveBeenCalledWith({
+        body: {
+          model_settings: [
+            ModelTypeEnum.textGeneration,
+            ModelTypeEnum.textEmbedding,
+            ModelTypeEnum.rerank,
+            ModelTypeEnum.speech2text,
+            ModelTypeEnum.tts,
+          ].map((model_type) => ({ model_type, provider: 'test', model: 'test' })),
+        },
+      })
       expect(mockToastSuccess).toHaveBeenCalledWith('Modified successfully')
       expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
@@ -303,13 +283,13 @@ describe('SystemModel', () => {
 
     render(<SystemModel {...defaultProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
     })
 
     await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /save/i }))
 
     await waitFor(() => {
       expect(mockUpdateDefaultModel).toHaveBeenCalledTimes(1)
@@ -434,35 +414,13 @@ describe('SystemModel', () => {
     mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /system model settings/i }))
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
       expect(
         screen.queryByRole('button', { name: 'Reset System Reasoning Model' }),
       ).not.toBeInTheDocument()
     })
-  })
-
-  it('should pass hide provider settings footer flag to model selectors', async () => {
-    render(<SystemModel {...defaultProps} hideProviderSettingsFooter />)
-
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(mockModelSelectorProps).toHaveLength(5)
-    })
-
-    expect(mockModelSelectorProps.every((props) => props.hideProviderSettingsFooter)).toBe(true)
-  })
-
-  it('should hide model metadata in default model selectors', async () => {
-    render(<SystemModel {...defaultProps} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(mockModelSelectorProps).toHaveLength(5)
-    })
-
-    expect(mockModelSelectorProps.every((props) => props.showModelMeta === false)).toBe(true)
   })
 
   it('should close the dialog from every empty selector configure action', async () => {

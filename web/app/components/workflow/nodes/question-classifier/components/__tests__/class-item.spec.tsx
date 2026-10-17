@@ -1,5 +1,5 @@
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ClassItem from '../../../_base/components/branch-list/class-item'
 
@@ -11,6 +11,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', ()
   }),
 }))
 
+// The independently tested rich editor is outside this payload-preservation contract.
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
   __esModule: true,
   default: (props: {
@@ -61,9 +62,8 @@ describe('question-classifier/class-item', () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText('class-name'), {
-      target: { value: 'Billing questions updated' },
-    })
+    await user.tripleClick(screen.getByRole('textbox', { name: 'class-name' }))
+    await user.paste('Billing questions updated')
     await user.click(screen.getByRole('button', { name: 'remove-item' }))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -74,13 +74,14 @@ describe('question-classifier/class-item', () => {
     expect(screen.getByRole('button', { name: 'CLASS 1' })).toBeInTheDocument()
   })
 
-  it('preserves a custom label when editing the classifier name', () => {
+  it('preserves a custom label when editing the classifier name', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
       <ClassItem
         nodeId="node-1"
-        payload={{ id: 'topic-1', name: 'Billing questions', label: 'Billing' } as Topic}
+        payload={createTopic({ label: 'Billing' })}
         onChange={onChange}
         onRemove={vi.fn()}
         index={1}
@@ -88,9 +89,8 @@ describe('question-classifier/class-item', () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText('class-name'), {
-      target: { value: 'Billing questions updated' },
-    })
+    await user.tripleClick(screen.getByRole('textbox', { name: 'class-name' }))
+    await user.paste('Billing questions updated')
 
     expect(onChange).toHaveBeenCalledWith({
       id: 'topic-1',

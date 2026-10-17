@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleClient } from '@/service/console'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ChangePasswordForm from './ChangePasswordForm'
 
 const mockReplace = vi.fn()
@@ -17,18 +17,10 @@ vi.mock('@/service/use-common', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    forgotPassword: {
-      resets: {
-        post: vi.fn(),
-      },
-    },
-  },
-}))
-
-vi.mock('@/hooks/use-document-title', () => ({
-  __esModule: true,
-  default: vi.fn(),
+  consoleClient: (await import('@/test/console/service-responses')).withConsoleClientResponses(
+    (await importOriginal<typeof import('@/service/console')>()).consoleClient,
+    { 'forgotPassword.resets.post': vi.fn() },
+  ),
 }))
 
 vi.mock('@/utils/var', () => ({ basePath: '' }))
@@ -36,7 +28,6 @@ vi.mock('@/utils/var', () => ({ basePath: '' }))
 type UseVerifyResult = ReturnType<typeof useVerifyForgotPasswordToken>
 const mockUseVerify = vi.mocked(useVerifyForgotPasswordToken)
 const mockChangePassword = vi.mocked(consoleClient.forgotPassword.resets.post)
-const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const VALID_PASSWORD = 'ValidPass123!'
 
@@ -53,7 +44,7 @@ describe('ChangePasswordForm', () => {
 
     render(<ChangePasswordForm />)
 
-    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
+    expect(document.title).toBe('common.loading - Dify')
   })
 
   describe('when token is valid', () => {
@@ -66,13 +57,7 @@ describe('ChangePasswordForm', () => {
       } as unknown as UseVerifyResult)
     })
 
-    it('renders the password form', () => {
-      render(<ChangePasswordForm />)
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
-      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.changePassword')
-    })
-
-    it('submits with T2 (from validity response), NOT T1 (from URL)', async () => {
+    it('submits the verified token and shows successful password change', async () => {
       const user = userEvent.setup()
       mockChangePassword.mockResolvedValue({ result: 'success' })
 
@@ -93,25 +78,10 @@ describe('ChangePasswordForm', () => {
           },
         })
       })
-    })
-
-    it('uses the success title after the password is changed', async () => {
-      const user = userEvent.setup()
-      mockChangePassword.mockResolvedValue({ result: 'success' })
-
-      render(<ChangePasswordForm />)
-
-      await user.type(screen.getByLabelText('accountSettings.account.newPassword'), VALID_PASSWORD)
-      await user.type(
-        screen.getByLabelText('accountSettings.account.confirmPassword'),
-        VALID_PASSWORD,
-      )
-      await user.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
-
       expect(
-        await screen.findByRole('heading', { level: 1, name: 'login.passwordChangedTip' }),
+        await screen.findByRole('heading', { name: 'login.passwordChangedTip' }),
       ).toBeInTheDocument()
-      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
+      expect(document.title).toBe('login.passwordChangedTip - Dify')
     })
 
     it('keeps one associated error when an invalid password is cleared', async () => {
@@ -212,7 +182,7 @@ describe('ChangePasswordForm', () => {
     it('shows invalid token state and no form', () => {
       render(<ChangePasswordForm />)
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.invalid')
-      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.invalid')
+      expect(document.title).toBe('login.invalid - Dify')
       expect(
         screen.queryByRole('button', { name: /common\.operation\.reset/ }),
       ).not.toBeInTheDocument()

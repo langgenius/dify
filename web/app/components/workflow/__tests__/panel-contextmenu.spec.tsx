@@ -1,29 +1,21 @@
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
 import { detectPlatform } from '@tanstack/react-hotkeys'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { withSelectorKey } from '@/test/i18n-mock'
 import { fullWorkflowAccessControl } from '../hooks-store'
 import { PanelContextmenu } from '../panel-contextmenu'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
 import { renderWorkflowFlowComponent } from './workflow-test-env'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseNodesInteractions = vi.hoisted(() => vi.fn())
-const mockUsePanelInteractions = vi.hoisted(() => vi.fn())
 const mockUseWorkflowStartRun = vi.hoisted(() => vi.fn())
 const mockUseWorkflowMoveMode = vi.hoisted(() => vi.fn())
 const mockUseOperator = vi.hoisted(() => vi.fn())
 const mockUseDSL = vi.hoisted(() => vi.fn())
-const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseAvailableBlocks = vi.hoisted(() => vi.fn())
 const mockUseNodesMetaData = vi.hoisted(() => vi.fn())
 let chatflowMode = false
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
 
 vi.mock('../hooks/use-DSL', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../hooks/use-DSL')>()
@@ -58,25 +50,6 @@ vi.mock('../hooks/use-nodes-meta-data', async (importOriginal) => {
   return {
     ...actual,
     useNodesMetaData: () => mockUseNodesMetaData(),
-  }
-})
-
-vi.mock('../hooks/use-panel-interactions', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/use-panel-interactions')>()
-
-  return {
-    ...actual,
-    usePanelInteractions: () => mockUsePanelInteractions(),
-  }
-})
-
-vi.mock('../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-
-    useNodesReadOnly: () => mockUseNodesReadOnly(),
   }
 })
 
@@ -121,13 +94,9 @@ describe('PanelContextmenu', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
     mockUseNodesInteractions.mockReturnValue({
       handleNodesPaste: mockHandleNodesPaste,
     })
-    mockUsePanelInteractions.mockReturnValue({})
     mockUseWorkflowStartRun.mockReturnValue({
       handleStartWorkflowRun: mockHandleStartWorkflowRun,
       handleWorkflowStartRunInChatflow: mockHandleWorkflowStartRunInChatflow,
@@ -140,9 +109,6 @@ describe('PanelContextmenu', () => {
     })
     mockUseDSL.mockReturnValue({
       exportCheck: mockExportCheck,
-    })
-    mockUseNodesReadOnly.mockReturnValue({
-      nodesReadOnly: false,
     })
     mockUseAvailableBlocks.mockReturnValue({
       availableNextBlocks: [BlockEnum.Answer],
@@ -172,7 +138,7 @@ describe('PanelContextmenu', () => {
   it('should stay hidden when the panel menu is absent', () => {
     renderPanelContextmenu()
 
-    expect(screen.queryByText('common.addBlock')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.common.addBlock')).not.toBeInTheDocument()
   })
 
   it('should keep paste disabled when the clipboard is empty', async () => {
@@ -183,8 +149,8 @@ describe('PanelContextmenu', () => {
       hooksStoreProps: {},
     })
 
-    await screen.findByText('common.pasteHere')
-    fireEvent.click(screen.getByText('common.pasteHere'))
+    await screen.findByText('workflow.common.pasteHere')
+    await userEvent.setup().click(screen.getByText('workflow.common.pasteHere'))
 
     expect(mockHandleNodesPaste).not.toHaveBeenCalled()
     expect(mockClose).not.toHaveBeenCalled()
@@ -201,7 +167,7 @@ describe('PanelContextmenu', () => {
         },
         hooksStoreProps: {},
       })
-      const item = await screen.findByRole('menuitem', { name: /common.run/ })
+      const item = await screen.findByRole('menuitem', { name: /workflow.common.run/ })
       act(() => item.focus())
       const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
       await user.keyboard(`{${mod}>}v{/${mod}}`)
@@ -219,15 +185,15 @@ describe('PanelContextmenu', () => {
       hooksStoreProps: {},
     })
 
-    expect(await screen.findByText('common.addBlock')).toBeInTheDocument()
-    expect(screen.getByText('common.run')).toBeInTheDocument()
-    expect(screen.getByText('common.pasteHere')).toBeInTheDocument()
+    expect(await screen.findByText('workflow.common.addBlock')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.run')).toBeInTheDocument()
+    expect(screen.getByText('workflow.common.pasteHere')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('nodes.note.addNote'))
-    fireEvent.click(screen.getByText('common.run'))
-    fireEvent.click(screen.getByText('common.pasteHere'))
-    fireEvent.click(screen.getByText('exportApp'))
-    fireEvent.click(screen.getByText('importApp'))
+    await userEvent.setup().click(screen.getByText('workflow.nodes.note.addNote'))
+    await userEvent.setup().click(screen.getByText('workflow.common.run'))
+    await userEvent.setup().click(screen.getByText('workflow.common.pasteHere'))
+    await userEvent.setup().click(screen.getByText('app.exportApp'))
+    await userEvent.setup().click(screen.getByText('app.importApp'))
 
     await waitFor(() => {
       expect(mockHandleAddNote).toHaveBeenCalledTimes(1)
@@ -249,8 +215,8 @@ describe('PanelContextmenu', () => {
       },
     })
 
-    expect(await screen.findByText('exportApp')).toBeInTheDocument()
-    expect(screen.queryByText('importApp')).not.toBeInTheDocument()
+    expect(await screen.findByText('app.exportApp')).toBeInTheDocument()
+    expect(screen.queryByText('app.importApp')).not.toBeInTheDocument()
   })
 
   it('should render preview action in chat mode', async () => {
@@ -263,10 +229,10 @@ describe('PanelContextmenu', () => {
       hooksStoreProps: {},
     })
 
-    expect(await screen.findByText('common.debugAndPreview')).toBeInTheDocument()
-    expect(screen.queryByText('common.run')).not.toBeInTheDocument()
+    expect(await screen.findByText('workflow.common.debugAndPreview')).toBeInTheDocument()
+    expect(screen.queryByText('workflow.common.run')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('common.debugAndPreview'))
+    await userEvent.setup().click(screen.getByText('workflow.common.debugAndPreview'))
 
     await waitFor(() => {
       expect(mockHandleWorkflowStartRunInChatflow).toHaveBeenCalledTimes(1)
@@ -292,7 +258,9 @@ describe('PanelContextmenu', () => {
       },
     })
 
-    expect(await screen.findByText('comments.actions.addComment')).toBeInTheDocument()
-    expect(screen.queryByText('nodes.note.addNote')).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('workflowComments.comments.actions.addComment'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.note.addNote')).not.toBeInTheDocument()
   })
 })

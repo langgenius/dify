@@ -16,7 +16,6 @@ const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
-const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockCreateApp = vi.hoisted(() => vi.fn())
 
 vi.mock('@/next/navigation', () => ({
@@ -26,32 +25,18 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: vi.fn(),
 }))
+let appQuota = { size: 0, limit: 1 }
+
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      features: actual.consoleQuery.features,
-      files: actual.consoleQuery.files,
-      account: {
-        profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
-        },
-      },
-      systemFeatures: actual.consoleQuery.systemFeatures,
-      apps: {
-        ...actual.consoleQuery.apps,
-        post: {
-          mutationOptions: () => ({
-            mutationFn: ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
-          }),
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': async () => zGetFeaturesResponse.parse({ apps: appQuota }),
+      'apps.post': ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
+    }),
   }
 })
 const toastMocks = vi.hoisted(() => ({
@@ -89,8 +74,6 @@ const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
 const { mockToastError } = toastMocks
 
-let appQuota = { size: 0, limit: 1 }
-
 const renderModal = () => {
   const onClose = vi.fn()
   const onCreateFromTemplate = vi.fn()
@@ -109,6 +92,7 @@ function render(ui: ReactElement) {
   return renderWithConsoleQuery(ui, {
     systemFeatures: { deployment_edition: 'CLOUD' },
     features: { apps: appQuota },
+    accountProfile: { id: 'user-1' },
   })
 }
 
@@ -118,15 +102,12 @@ describe('CreateAppModal', () => {
     HotkeyManager.resetInstance()
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
     appQuota = { size: 0, limit: 1 }
-    mockConsoleStateReader.mockReturnValue({
-      userProfile: { id: 'user-1' },
-      workspacePermissionKeys: ['app.create_and_management'],
-    })
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
 
   it('creates an app and fires callbacks', async () => {
+    const user = userEvent.setup()
     const mockApp = createAppDetailFixture({
       mode: 'advanced-chat' as const,
       maintainer: 'user-1',
@@ -135,8 +116,8 @@ describe('CreateAppModal', () => {
     const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-    fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.type(nameInput, 'My App')
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() =>
       expect(mockCreateApp).toHaveBeenCalledWith({
@@ -165,6 +146,7 @@ describe('CreateAppModal', () => {
   })
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
+    const user = userEvent.setup()
     const mockApp = createAppDetailFixture({
       mode: 'advanced-chat' as const,
       maintainer: 'user-1',
@@ -178,10 +160,8 @@ describe('CreateAppModal', () => {
     )
     renderModal()
 
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Tracked App' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Tracked App')
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => {
       expect(mockTrackCreateApp).toHaveBeenCalledWith({
@@ -191,7 +171,7 @@ describe('CreateAppModal', () => {
     })
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
     expect(createButton).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(createButton)
+    await user.click(createButton)
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
     expect(mockGetRedirection).not.toHaveBeenCalled()
@@ -204,12 +184,13 @@ describe('CreateAppModal', () => {
   })
 
   it('shows error toast when creation fails', async () => {
+    const user = userEvent.setup()
     mockCreateApp.mockRejectedValue(new Error('boom'))
     const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-    fireEvent.change(nameInput, { target: { value: 'My App' } })
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.type(nameInput, 'My App')
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => expect(mockCreateApp).toHaveBeenCalled())
     expect(mockToastError).toHaveBeenCalledWith('boom')
@@ -225,10 +206,11 @@ describe('CreateAppModal', () => {
     expect(screen.getByRole('button', { name: /app\.newApp\.Create/ })).toBeDisabled()
   })
 
-  it('forwards the create-from-template entry action', () => {
+  it('forwards the create-from-template entry action', async () => {
+    const user = userEvent.setup()
     const { onCreateFromTemplate } = renderModal()
 
-    fireEvent.click(screen.getByText('app.newApp.noIdeaTip'))
+    await user.click(screen.getByText('app.newApp.noIdeaTip'))
 
     expect(onCreateFromTemplate).toHaveBeenCalled()
   })
@@ -239,18 +221,17 @@ describe('CreateAppModal', () => {
   ])(
     'creates a beginner chat app from its scoped $platform shortcut and selected icon style',
     async ({ platform, modifier }) => {
+      const user = userEvent.setup()
       vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
       mockCreateApp.mockResolvedValue(
         createAppDetailFixture({ id: 'chat-app', mode: 'chat' as const }),
       )
       renderModal()
 
-      fireEvent.click(screen.getByText('app.newApp.forBeginners'))
-      fireEvent.click(screen.getByText('app.types.chatbot'))
-      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-        target: { value: 'Keyboard App' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await user.click(screen.getByText('app.newApp.forBeginners'))
+      await user.click(screen.getByText('app.types.chatbot'))
+      await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Keyboard App')
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       await waitFor(() => {
         expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
       })
@@ -258,14 +239,15 @@ describe('CreateAppModal', () => {
       fireEvent.keyDown(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
       fireEvent.keyUp(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
       expect(mockCreateApp).not.toHaveBeenCalled()
-      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
-      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
       await waitFor(() => {
         expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
       })
-      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
-        target: { value: 'Created from shortcut' },
-      })
+      await user.type(
+        screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'),
+        'Created from shortcut',
+      )
 
       const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
       fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
@@ -290,6 +272,7 @@ describe('CreateAppModal', () => {
   ])(
     're-registers the $platform shortcut after the outer dialog remounts its content',
     async ({ platform, modifier }) => {
+      const user = userEvent.setup()
       vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
       mockCreateApp.mockResolvedValue(
         createAppDetailFixture({ id: 'reopened-app', mode: 'advanced-chat' as const }),
@@ -304,13 +287,13 @@ describe('CreateAppModal', () => {
         />
       )
       const { rerender } = render(modal(true))
-      await userEvent.setup().click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
       const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
       rerender(modal(false))
       await waitFor(() => expect(picker).not.toBeInTheDocument())
       rerender(modal(true))
       const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
-      fireEvent.change(nameInput, { target: { value: 'Reopened App' } })
+      await user.type(nameInput, 'Reopened App')
       fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
       fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
       await waitFor(() => expect(mockCreateApp).toHaveBeenCalledOnce())
@@ -332,15 +315,16 @@ describe('CreateAppModal', () => {
   })
 
   it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
+    const user = userEvent.setup()
     appQuota = { size: 1, limit: 1 }
 
     renderModal()
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+    await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    await userEvent.setup().keyboard('{Escape}')
+    await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
@@ -355,21 +339,20 @@ describe('CreateAppModal', () => {
   })
 
   it('should switch between app types before creating a completion app', async () => {
+    const user = userEvent.setup()
     mockCreateApp.mockResolvedValue(
       createAppDetailFixture({ id: 'completion-app', mode: 'completion' as const }),
     )
     renderModal()
 
-    fireEvent.click(screen.getByText('app.types.workflow'))
-    fireEvent.click(screen.getByText('app.types.advanced'))
-    fireEvent.click(screen.getByText('app.newApp.forBeginners'))
-    fireEvent.click(screen.getByText('app.types.agent'))
-    fireEvent.click(screen.getByText('app.newApp.completeApp'))
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Completion App' },
-    })
+    await user.click(screen.getByText('app.types.workflow'))
+    await user.click(screen.getByText('app.types.advanced'))
+    await user.click(screen.getByText('app.newApp.forBeginners'))
+    await user.click(screen.getByText('app.types.agent'))
+    await user.click(screen.getByText('app.newApp.completeApp'))
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Completion App')
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
+    await user.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledWith(
@@ -382,6 +365,7 @@ describe('CreateAppModal', () => {
   })
 
   it('should ignore duplicate create clicks while a request is in flight', async () => {
+    const user = userEvent.setup()
     let resolveCreate: ((value: AppDetail) => void) | undefined
     mockCreateApp.mockImplementation(
       () =>
@@ -391,18 +375,16 @@ describe('CreateAppModal', () => {
     )
     renderModal()
 
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Slow App' },
-    })
+    await user.type(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), 'Slow App')
 
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
-    fireEvent.click(createButton)
+    await user.click(createButton)
     await waitFor(() => {
       expect(mockCreateApp).toHaveBeenCalledTimes(1)
     })
 
     expect(createButton).toHaveAttribute('aria-disabled', 'true')
-    fireEvent.click(createButton)
+    await user.click(createButton)
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
 

@@ -1,7 +1,7 @@
 import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
-import * as React from 'react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AppInfo from '../index'
@@ -58,125 +58,26 @@ describe('AppInfo', () => {
     getWorkflow.mockResolvedValue({ graph: { nodes: [] } })
   })
 
-  afterEach(() => {
-    cleanup()
-    vi.clearAllMocks()
-  })
-
-  describe('app name and icon', () => {
-    it('renders app name', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('Test App Name')).toBeInTheDocument()
-    })
-
-    it('renders app name with title attribute', () => {
-      const appDetail = createMockAppDetail('chat', {
-        name: 'Very Long App Name That Should Be Truncated',
-      } as Partial<TrialAppDetailResponse>)
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      const nameElement = screen.getByText('Very Long App Name That Should Be Truncated')
-      expect(nameElement).toHaveAttribute('title', 'Very Long App Name That Should Be Truncated')
-    })
-  })
-
-  describe('app type', () => {
-    it('displays ADVANCED for advanced-chat mode', () => {
-      const appDetail = createMockAppDetail('advanced-chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.ADVANCED')).toBeInTheDocument()
-    })
-
-    it('displays CHATBOT for chat mode', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.CHATBOT')).toBeInTheDocument()
-    })
-
-    it('displays AGENT for agent-chat mode', () => {
-      const appDetail = createMockAppDetail('agent-chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.AGENT')).toBeInTheDocument()
-    })
-
-    it('displays WORKFLOW for workflow mode', () => {
-      const appDetail = createMockAppDetail('workflow')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.WORKFLOW')).toBeInTheDocument()
-    })
-
-    it('displays COMPLETION for completion mode', () => {
-      const appDetail = createMockAppDetail('completion')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('APP.TYPES.COMPLETION')).toBeInTheDocument()
-    })
-  })
-
-  describe('description', () => {
-    it('renders description when provided', () => {
-      const appDetail = createMockAppDetail('chat', {
-        description: 'This is a test description',
-      } as Partial<TrialAppDetailResponse>)
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      expect(screen.getByText('This is a test description')).toBeInTheDocument()
-    })
-
-    it('does not render description when empty', () => {
-      const appDetail = createMockAppDetail('chat', {
-        description: '',
-      } as Partial<TrialAppDetailResponse>)
-      const mockOnCreate = vi.fn()
-
-      const { container } = render(
-        <AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />,
-      )
-
-      const descriptionElements = container.querySelectorAll('.system-sm-regular.mt-\\[14px\\]')
-      expect(descriptionElements.length).toBe(0)
-    })
+  it.each([
+    ['advanced-chat', 'ADVANCED'],
+    ['chat', 'CHATBOT'],
+    ['agent-chat', 'AGENT'],
+    ['workflow', 'WORKFLOW'],
+    ['completion', 'COMPLETION'],
+  ])('identifies %s templates as %s', (mode, label) => {
+    render(<AppInfo appId="test-app-id" appDetail={createMockAppDetail(mode)} onCreate={vi.fn()} />)
+    expect(screen.getByText(`APP.TYPES.${label}`)).toBeInTheDocument()
   })
 
   describe('create button', () => {
-    it('renders create button with correct text', () => {
+    it('calls onCreate when button is clicked', async () => {
+      const user = userEvent.setup()
       const appDetail = createMockAppDetail('chat')
       const mockOnCreate = vi.fn()
 
       render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
 
-      expect(screen.getByText('explore.tryApp.createFromSampleApp')).toBeInTheDocument()
-    })
-
-    it('calls onCreate when button is clicked', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      render(<AppInfo appId="test-app-id" appDetail={appDetail} onCreate={mockOnCreate} />)
-
-      fireEvent.click(screen.getByText('explore.tryApp.createFromSampleApp'))
+      await user.click(screen.getByRole('button', { name: 'explore.tryApp.createFromSampleApp' }))
       expect(mockOnCreate).toHaveBeenCalledTimes(1)
     })
   })

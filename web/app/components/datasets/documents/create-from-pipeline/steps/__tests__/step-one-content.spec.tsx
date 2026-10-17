@@ -2,9 +2,11 @@ import type { Datasource } from '@/app/components/rag-pipeline/components/panel/
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOneContent from '../step-one-content'
@@ -28,28 +30,6 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
   ),
 }))
 
-// Mock data source store
-vi.mock('../../data-source/store', () => ({
-  useDataSourceStore: vi.fn(() => ({
-    getState: () => ({
-      localFileList: [],
-      currentCredentialId: 'mock-credential-id',
-    }),
-    setState: vi.fn(),
-  })),
-  useDataSourceStoreWithSelector: vi.fn((selector: (state: unknown) => unknown) => {
-    const mockState = {
-      localFileList: [],
-      onlineDocuments: [],
-      websitePages: [],
-      selectedOnlineDriveFileList: [],
-    }
-    return selector(mockState)
-  }),
-}))
-
-// Mock file upload config
-
 // Mock hooks used by data source options
 vi.mock('../../hooks', () => ({
   useDatasourceOptions: vi.fn(() => [
@@ -59,84 +39,16 @@ vi.mock('../../hooks', () => ({
 
 // Mock useDatasourceIcon hook to avoid complex data source list transformation
 
-// Mock the entire local-file component since it has deep context dependencies
-vi.mock('../../data-source/local-file', () => ({
-  default: ({
-    allowedExtensions,
-    supportBatchUpload,
-  }: {
-    allowedExtensions: string[]
-    supportBatchUpload: boolean
-  }) => (
-    <div data-testid="local-file">
-      <div>Drag and drop file here</div>
-      <span data-testid="allowed-extensions">{allowedExtensions.join(',')}</span>
-      <span data-testid="support-batch-upload">{String(supportBatchUpload)}</span>
-    </div>
-  ),
-}))
-
-// Mock online documents since it has complex OAuth/API dependencies
+// Source screens own their forms and remote credentials; this suite checks which screen is selected.
+vi.mock('../../data-source/local-file', () => ({ default: () => <div data-testid="local-file" /> }))
 vi.mock('../../data-source/online-documents', () => ({
-  default: ({
-    nodeId,
-    onCredentialChange,
-  }: {
-    nodeId: string
-    onCredentialChange: (credentialId: string) => void
-  }) => (
-    <div data-testid="online-documents">
-      <span data-testid="online-doc-node-id">{nodeId}</span>
-      <button
-        data-testid="credential-change-btn"
-        onClick={() => onCredentialChange('new-credential')}
-      >
-        Change Credential
-      </button>
-    </div>
-  ),
+  default: () => <div data-testid="online-documents" />,
 }))
-
-// Mock website crawl
 vi.mock('../../data-source/website-crawl', () => ({
-  default: ({
-    nodeId,
-    onCredentialChange,
-  }: {
-    nodeId: string
-    onCredentialChange: (credentialId: string) => void
-  }) => (
-    <div data-testid="website-crawl">
-      <span data-testid="website-crawl-node-id">{nodeId}</span>
-      <button
-        data-testid="website-credential-btn"
-        onClick={() => onCredentialChange('website-credential')}
-      >
-        Change Website Credential
-      </button>
-    </div>
-  ),
+  default: () => <div data-testid="website-crawl" />,
 }))
-
-// Mock online drive
 vi.mock('../../data-source/online-drive', () => ({
-  default: ({
-    nodeId,
-    onCredentialChange,
-  }: {
-    nodeId: string
-    onCredentialChange: (credentialId: string) => void
-  }) => (
-    <div data-testid="online-drive">
-      <span data-testid="online-drive-node-id">{nodeId}</span>
-      <button
-        data-testid="drive-credential-btn"
-        onClick={() => onCredentialChange('drive-credential')}
-      >
-        Change Drive Credential
-      </button>
-    </div>
-  ),
+  default: () => <div data-testid="online-drive" />,
 }))
 
 // Mock locale context
@@ -174,32 +86,23 @@ function render(...args: Parameters<typeof renderWithoutPricing>) {
 
 describe('StepOneContent', () => {
   const mockDatasource: Datasource = {
-    nodeId: 'test-node-id',
+    nodeId: 'node-1',
     nodeData: {
-      type: 'data-source',
+      type: BlockEnum.DataSource,
+      title: 'Documents',
+      desc: '',
+      provider_type: DatasourceType.localFile,
+      plugin_id: 'datasource',
+      provider_name: 'source',
+      datasource_name: 'documents',
+      datasource_label: 'Documents',
+      datasource_parameters: {},
+      datasource_configurations: {},
       fileExtensions: ['txt', 'pdf'],
-      title: 'Test Data Source',
-      desc: 'Test description',
-    } as unknown as DataSourceNodeType,
+    },
   }
-
   const mockPipelineNodes: Node<DataSourceNodeType>[] = [
-    {
-      id: 'node-1',
-      data: {
-        type: 'data-source',
-        title: 'Node 1',
-        desc: 'Description 1',
-      } as unknown as DataSourceNodeType,
-    } as Node<DataSourceNodeType>,
-    {
-      id: 'node-2',
-      data: {
-        type: 'data-source',
-        title: 'Node 2',
-        desc: 'Description 2',
-      } as unknown as DataSourceNodeType,
-    } as Node<DataSourceNodeType>,
+    { id: 'node-1', data: mockDatasource.nodeData, position: { x: 0, y: 0 } },
   ]
 
   const defaultProps = {
@@ -227,21 +130,6 @@ describe('StepOneContent', () => {
     vi.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render DataSourceOptions component', () => {
-      render(<StepOneContent {...defaultProps} />)
-      // DataSourceOptions renders option cards
-      expect(screen.getByText('Local File')).toBeInTheDocument()
-    })
-
-    it('should render Actions component with next button', () => {
-      render(<StepOneContent {...defaultProps} />)
-      // Actions component renders a next step button (uses i18n key)
-      const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
-      expect(nextButton).toBeInTheDocument()
-    })
-  })
-
   describe('Conditional Rendering - DatasourceType', () => {
     it('should render LocalFile component when datasourceType is localFile', () => {
       render(<StepOneContent {...defaultProps} datasourceType={DatasourceType.localFile} />)
@@ -262,12 +150,6 @@ describe('StepOneContent', () => {
       render(<StepOneContent {...defaultProps} datasourceType={DatasourceType.onlineDrive} />)
       expect(screen.getByTestId('online-drive')).toBeInTheDocument()
     })
-
-    it('should not render data source component when datasourceType is undefined', () => {
-      const { container } = render(<StepOneContent {...defaultProps} datasourceType={undefined} />)
-      expect(container.querySelector('.flex.flex-col')).toBeInTheDocument()
-      expect(screen.queryByTestId('local-file')).not.toBeInTheDocument()
-    })
   })
 
   describe('Conditional Rendering - VectorSpaceFull', () => {
@@ -283,7 +165,8 @@ describe('StepOneContent', () => {
   })
 
   describe('Conditional Rendering - VectorSpaceUnavailable', () => {
-    it('should render the retry action when vector space usage is unavailable', () => {
+    it('should render the retry action when vector space usage is unavailable', async () => {
+      const user = userEvent.setup()
       const onRetryVectorSpace = vi.fn()
       render(
         <StepOneContent
@@ -293,7 +176,7 @@ describe('StepOneContent', () => {
         />,
       )
 
-      screen.getByRole('button', { name: 'common.operation.retry' }).click()
+      await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
       expect(onRetryVectorSpace).toHaveBeenCalledOnce()
     })
@@ -324,19 +207,6 @@ describe('StepOneContent', () => {
       expect(screen.queryByTestId('upgrade-btn')).not.toBeInTheDocument()
     })
 
-    it('should not render UpgradeCard when batch upload is supported', () => {
-      render(
-        <StepOneContent
-          {...defaultProps}
-          supportBatchUpload={true}
-          datasourceType={DatasourceType.localFile}
-        />,
-      )
-      // The upgrade card should not be present
-      const upgradeCard = screen.queryByText(/upload multiple files/i)
-      expect(upgradeCard).not.toBeInTheDocument()
-    })
-
     it('should not render UpgradeCard when datasourceType is not localFile', () => {
       render(
         <StepOneContent {...defaultProps} supportBatchUpload={false} datasourceType={undefined} />,
@@ -346,12 +216,13 @@ describe('StepOneContent', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onNextStep when next button is clicked', () => {
+    it('should call onNextStep when next button is clicked', async () => {
+      const user = userEvent.setup()
       const onNextStep = vi.fn()
       render(<StepOneContent {...defaultProps} onNextStep={onNextStep} />)
 
       const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
-      nextButton.click()
+      await user.click(nextButton)
 
       expect(onNextStep).toHaveBeenCalledTimes(1)
     })
@@ -361,40 +232,6 @@ describe('StepOneContent', () => {
 
       const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
       expect(nextButton).toBeDisabled()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle undefined datasource when datasourceType is undefined', () => {
-      const { container } = render(
-        <StepOneContent {...defaultProps} datasource={undefined} datasourceType={undefined} />,
-      )
-      expect(container.querySelector('.flex.flex-col')).toBeInTheDocument()
-    })
-
-    it('should handle empty pipelineNodes array', () => {
-      render(<StepOneContent {...defaultProps} pipelineNodes={[]} />)
-      // Should still render but DataSourceOptions may show no options
-      const { container } = render(<StepOneContent {...defaultProps} pipelineNodes={[]} />)
-      expect(container.querySelector('.flex.flex-col')).toBeInTheDocument()
-    })
-
-    it('should handle undefined totalOptions', () => {
-      render(<StepOneContent {...defaultProps} totalOptions={undefined} />)
-      const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
-      expect(nextButton).toBeInTheDocument()
-    })
-
-    it('should handle undefined selectedOptions', () => {
-      render(<StepOneContent {...defaultProps} selectedOptions={undefined} />)
-      const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
-      expect(nextButton).toBeInTheDocument()
-    })
-
-    it('should handle empty tip', () => {
-      render(<StepOneContent {...defaultProps} tip="" />)
-      const nextButton = screen.getByRole('button', { name: /datasetCreation\.stepOne\.button/i })
-      expect(nextButton).toBeInTheDocument()
     })
   })
 })

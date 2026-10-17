@@ -86,7 +86,10 @@ class ErrorBoundaryInner extends React.Component<
     const { hasError } = this.state
 
     if (hasError && prevProps.resetKeys !== resetKeys) {
-      if (resetKeys?.some((key, idx) => key !== prevProps.resetKeys?.[idx]))
+      if (
+        (resetKeys?.length ?? 0) !== (prevProps.resetKeys?.length ?? 0) ||
+        resetKeys?.some((key, idx) => key !== prevProps.resetKeys?.[idx])
+      )
         this.props.resetErrorBoundary()
     }
 

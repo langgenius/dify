@@ -1,10 +1,8 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import { render, screen } from '@testing-library/react'
-import { ChunkingMode, DataSourceType } from '@/models/datasets'
-import { PermissionLevel } from '@/models/permission'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { RETRIEVE_TYPE } from '@/types/app'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
 import { BlockEnum } from '../../../types'
@@ -17,55 +15,6 @@ const createDataset = (
   ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Dataset Name',
-  icon_info: {
-    icon: '📙',
-    icon_background: '#FFF4ED',
-    icon_type: 'emoji',
-    icon_url: '',
-  },
-  description: 'Dataset description',
-  permission: PermissionLevel.onlyMe,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique:
-    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
-  created_by: 'user-1',
-  updated_by: 'user-1',
-  updated_at: 1690000000,
-  app_count: 0,
-  doc_form: ChunkingMode.text,
-  document_count: 1,
-  word_count: 1000,
-  provider: 'internal',
-  embedding_model: 'text-embedding-3',
-  embedding_model_provider: 'openai',
-  embedding_available: true,
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  tags: [],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 0,
-    score_threshold: 0,
-    score_threshold_enabled: false,
-  },
-  built_in_field_enabled: false,
-  runtime_mode: 'rag_pipeline',
-  enable_api: false,
-  is_multimodal: false,
   ...overrides,
 })
 
@@ -98,7 +47,7 @@ const renderWithDatasets = (
 }
 
 describe('knowledge-retrieval/node', () => {
-  it('renders matched dataset details and falls back to the default icon info when a dataset has no icon', async () => {
+  it('renders only the datasets selected by the node', async () => {
     renderWithDatasets(
       createData({
         dataset_ids: ['dataset-1', 'dataset-2'],
@@ -107,14 +56,15 @@ describe('knowledge-retrieval/node', () => {
         createDataset(),
         createDataset({
           id: 'dataset-2',
-          name: 'Fallback Icon Dataset',
-          icon_info: undefined as never,
+          name: 'Second Dataset',
         }),
+        createDataset({ id: 'unselected', name: 'Unselected Dataset' }),
       ],
     )
 
     expect(await screen.findByText('Dataset Name')).toBeInTheDocument()
-    expect(screen.getByText('Fallback Icon Dataset')).toBeInTheDocument()
+    expect(screen.getByText('Second Dataset')).toBeInTheDocument()
+    expect(screen.queryByText('Unselected Dataset')).not.toBeInTheDocument()
   })
 
   it('renders nothing when the node has no dataset ids or no matching dataset details', () => {

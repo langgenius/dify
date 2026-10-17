@@ -35,7 +35,7 @@ const createVersionInfo = (
 })
 
 describe('RestoreConfirmModal', () => {
-  it('renders the version name and triggers restore and close actions', async () => {
+  it('restores the named version after confirmation', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
     const onRestore = vi.fn()
@@ -52,23 +52,27 @@ describe('RestoreConfirmModal', () => {
 
     expect(screen.getByText('workflow.common.restore Release 1')).toBeInTheDocument()
 
-    await user.click(screen.getByText('common.operation.cancel'))
-    await user.click(screen.getByText('workflow.common.restore'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.restore' }))
 
-    expect(onClose).toHaveBeenCalled()
     expect(onRestore).toHaveBeenCalledWith(versionInfo, expect.anything())
   })
 
-  it('renders the version number when the marked name is empty', () => {
+  it('identifies an unnamed version by number and cancels without restoring it', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const onRestore = vi.fn()
     render(
       <RestoreConfirmModal
         isOpen
         versionInfo={createVersionInfo({ marked_name: '', version_number: 5 })}
-        onClose={vi.fn()}
-        onRestore={vi.fn()}
+        onClose={onClose}
+        onRestore={onRestore}
       />,
     )
 
     expect(screen.getByText('workflow.common.restore # 5')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onClose).toHaveBeenCalled()
+    expect(onRestore).not.toHaveBeenCalled()
   })
 })

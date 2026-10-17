@@ -1,3 +1,4 @@
+import type { LoroMap } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import type {
   CollaborationUpdate,
@@ -9,7 +10,7 @@ import type {
   WorkflowSyncRequest,
 } from '../../types/collaboration'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { LoroDoc, LoroMap } from 'loro-crdt'
+import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
 import * as websocketManager from '../websocket-manager'
@@ -24,10 +25,6 @@ type ReactFlowStore = {
     getEdges: () => Edge[]
     setEdges: (edges: Edge[]) => void
   }
-}
-
-type LoroSubscribeEvent = {
-  by?: string
 }
 
 type UndoManagerLike = {
@@ -140,7 +137,9 @@ const createMockSocket = (id = 'socket-1'): MockSocket => {
     on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       handlers.set(event, handler)
     }),
-    off: vi.fn(),
+    off: vi.fn((event: string, handler?: (...args: unknown[]) => void) => {
+      if (!handler || handlers.get(event) === handler) handlers.delete(event)
+    }),
     trigger: (event: string, ...args: unknown[]) => {
       const handler = handlers.get(event)
       if (handler) handler(...args)
@@ -148,8 +147,15 @@ const createMockSocket = (id = 'socket-1'): MockSocket => {
   }
 }
 
-const setupManagerWithDoc = () => {
+const managers: CollaborationManager[] = []
+const createManager = () => {
   const manager = new CollaborationManager()
+  managers.push(manager)
+  return manager
+}
+
+const setupManagerWithDoc = () => {
+  const manager = createManager()
   attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
@@ -162,7 +168,13 @@ const setupManagerWithDoc = () => {
 
 describe('CollaborationManager socket and subscription behavior', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    for (const manager of managers.splice(0)) getManagerInternals(manager).forceDisconnect()
+    vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('allows local draft fallback only before the first collaboration connection', () => {
@@ -184,7 +196,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
   it('switches to local editing and stops reconnecting when the initial connection fails', async () => {
     vi.spyOn(websocketManager, 'isDefaultSocketUrl').mockReturnValueOnce(true)
-    const manager = new CollaborationManager()
+    const manager = createManager()
     attachCrdtRuntime(manager)
     const socket = createMockSocket('socket-initial-failure')
     socket.connected = false
@@ -231,7 +243,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     vi.spyOn(websocketManager, 'isDefaultSocketUrl')
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(false)
-    const manager = new CollaborationManager()
+    const manager = createManager()
     attachCrdtRuntime(manager)
     const internals = getManagerInternals(manager)
     const socket = createMockSocket('socket-configured-failure')
@@ -251,7 +263,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   })
 
   it('keeps editing blocked when a previously established connection fails', async () => {
-    const manager = new CollaborationManager()
+    const manager = createManager()
     attachCrdtRuntime(manager)
     const socket = createMockSocket('socket-established-failure')
     const reactFlowStore: ReactFlowStore = {
@@ -612,9 +624,21 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(latestCursors).toMatchObject({
       'u-1': { x: 1, y: 2, userId: 'u-1' },
     })
-    expect(varsFeatureHandler).toHaveBeenCalledTimes(1)
-    expect(appMetaHandler).toHaveBeenCalledTimes(1)
-    expect(appPublishHandler).toHaveBeenCalledTimes(1)
+    expect(varsFeatureHandler).toHaveBeenCalledExactlyOnceWith({
+      ...baseUpdate,
+      type: 'vars_and_features_update',
+      data: { value: 1 },
+    })
+    expect(appMetaHandler).toHaveBeenCalledExactlyOnceWith({
+      ...baseUpdate,
+      type: 'app_meta_update',
+      data: { value: 3 },
+    })
+    expect(appPublishHandler).toHaveBeenCalledExactlyOnceWith({
+      ...baseUpdate,
+      type: 'app_publish_update',
+      data: { value: 4 },
+    })
     expect(workflowUpdateHandler).toHaveBeenCalledWith({ appId: 'wf', timestamp: 9 })
     expect(commentsHandler).toHaveBeenCalledWith({ appId: 'wf', timestamp: 10 })
     expect(latestPresence).toMatchObject({ 'n-1': { 'socket-events': { userId: 'u-1' } } })
@@ -629,7 +653,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
       versionId: 'v1',
       success: true,
     } satisfies RestoreCompleteData)
-    expect(historyHandler).toHaveBeenCalledWith({ action: 'undo', userId: 'u-1' })
+    expect(historyHandler).toHaveBeenCalledExactlyOnceWith({ action: 'undo', userId: 'u-1' })
   })
 
   it('processes online_users/status/connect/disconnect/error socket events', () => {
@@ -788,108 +812,49 @@ describe('CollaborationManager socket and subscription behavior', () => {
     })
   })
 
-  it('setupSubscriptions applies import updates and emits merged graph payload', () => {
+  it('imports a remote graph while retaining local selection and editor metadata', async () => {
+    vi.useFakeTimers()
     const { manager, internals } = setupManagerWithDoc()
-    const rafSpy = vi
-      .spyOn(globalThis, 'requestAnimationFrame')
-      .mockImplementation((callback: FrameRequestCallback) => {
-        callback(0)
-        return 1
-      })
-    const initialNode = {
-      ...createNode('n-1', 'Initial'),
-      data: {
-        ...createNode('n-1', 'Initial').data,
-        selected: false,
-      },
-    }
-    const remoteNode = {
-      ...initialNode,
-      data: {
-        ...initialNode.data,
-        title: 'RemoteTitle',
-      },
-    }
+    const initialNode = createNode('n-1', 'Initial')
+    const secondNode = createNode('n-2')
     const edge = createEdge('e-1', 'n-1', 'n-2')
-
-    manager.setNodes([], [initialNode])
-    manager.setEdges([], [edge])
-    manager.setNodes([initialNode], [remoteNode])
-
-    let reactFlowNodes: Node[] = [
-      {
-        ...initialNode,
-        data: {
-          ...initialNode.data,
-          selected: true,
-          _localMeta: 'keep-me',
-        } as Node['data'] & Record<string, unknown>,
-      },
+    manager.setNodes([], [initialNode, secondNode])
+    let nodes: Node<{ _localMeta?: string }>[] = [
+      { ...initialNode, data: { ...initialNode.data, selected: true, _localMeta: 'keep-me' } },
+      secondNode,
     ]
-    let reactFlowEdges: Edge[] = [edge]
-    const setNodesSpy = vi.fn((nodes: Node[]) => {
-      reactFlowNodes = nodes
-    })
-    const setEdgesSpy = vi.fn((edges: Edge[]) => {
-      reactFlowEdges = edges
-    })
+    let edges: Edge[] = []
     internals.reactFlowStore = {
       getState: () => ({
-        getNodes: () => reactFlowNodes,
-        setNodes: setNodesSpy,
-        getEdges: () => reactFlowEdges,
-        setEdges: setEdgesSpy,
+        getNodes: () => nodes,
+        setNodes: (next) => {
+          nodes = next
+        },
+        getEdges: () => edges,
+        setEdges: (next) => {
+          edges = next
+        },
       }),
     }
-
-    let nodesSubscribeHandler: (event: LoroSubscribeEvent) => void = () => {}
-    let edgesSubscribeHandler: (event: LoroSubscribeEvent) => void = () => {}
-    vi.spyOn(
-      internals.nodesMap as object as {
-        subscribe: (handler: (event: LoroSubscribeEvent) => void) => void
-      },
-      'subscribe',
-    ).mockImplementation((handler: (event: LoroSubscribeEvent) => void) => {
-      nodesSubscribeHandler = handler
-    })
-    vi.spyOn(
-      internals.edgesMap as object as {
-        subscribe: (handler: (event: LoroSubscribeEvent) => void) => void
-      },
-      'subscribe',
-    ).mockImplementation((handler: (event: LoroSubscribeEvent) => void) => {
-      edgesSubscribeHandler = handler
-    })
-
-    const importedGraphs: Array<{ nodes: Node[]; edges: Edge[] }> = []
-    manager.onGraphImport((payload) => {
-      importedGraphs.push(payload)
-    })
-
+    const imported = vi.fn()
+    manager.onGraphImport(imported)
     internals.setupSubscriptions()
-    nodesSubscribeHandler({ by: 'local' })
-    nodesSubscribeHandler({ by: 'import' })
-    edgesSubscribeHandler({ by: 'import' })
-
-    expect(setNodesSpy).toHaveBeenCalled()
-    expect(setEdgesSpy).toHaveBeenCalled()
-    expect(importedGraphs.length).toBeGreaterThan(0)
-    const importedGraph = importedGraphs.at(-1)
-    if (!importedGraph) throw new Error('imported graph should exist')
-    expect(importedGraph.nodes[0]?.data).toMatchObject({
-      title: 'RemoteTitle',
+    const { manager: remote, internals: remoteInternals } = setupManagerWithDoc()
+    remoteInternals.doc!.import(internals.doc!.export({ mode: 'snapshot' }))
+    remote.setNodes(remote.getNodes(), [
+      { ...initialNode, data: { ...initialNode.data, title: 'Remote title' } },
+      secondNode,
+    ])
+    remote.setEdges([], [edge])
+    internals.doc!.import(remoteInternals.doc!.export({ mode: 'snapshot' }))
+    await vi.runAllTimersAsync()
+    expect(nodes[0]?.data).toMatchObject({
+      title: 'Remote title',
       selected: true,
       _localMeta: 'keep-me',
     })
-
-    internals.pendingGraphImportEmit = true
-    internals.scheduleGraphImportEmit()
-    expect(internals.pendingGraphImportEmit).toBe(true)
-
-    internals.reactFlowStore = null
-    nodesSubscribeHandler({ by: 'import' })
-
-    rafSpy.mockRestore()
+    expect(edges).toEqual([edge])
+    expect(imported).toHaveBeenLastCalledWith({ nodes, edges })
   })
 
   it('respects diagnostic and anomaly log limits', () => {
@@ -960,7 +925,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(internals.pendingGraphResyncBroadcast).toBe(true)
   })
 
-  it('covers connect lifecycle branches including reconnect and force disconnect cleanup', async () => {
+  it('shares connections within a workflow and ignores stale releases after switching workflows', async () => {
     const { manager, internals } = setupManagerWithDoc()
     const socket = createMockSocket('socket-connect')
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -984,7 +949,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
       }),
     }
 
-    const eventEmitSpy = vi.spyOn(internals.eventEmitter, 'emit')
+    const leaderChanged = vi.fn()
+    manager.onLeaderChange(leaderChanged)
 
     const firstConnectionId = await manager.connect('app-1', reactFlowStore)
     expect(firstConnectionId).toBeTruthy()
@@ -999,6 +965,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(disconnectSpy).toHaveBeenCalledWith('app-1')
     expect(internals.currentAppId).toBe('app-2')
 
+    manager.onLeaderChange(leaderChanged)
     internals.isLeader = true
     manager.disconnect(secondConnectionId)
     manager.disconnect(firstConnectionId)
@@ -1007,13 +974,13 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
     manager.disconnect(thirdConnectionId)
     expect(disconnectSpy).toHaveBeenCalledWith('app-2')
-    expect(eventEmitSpy).toHaveBeenCalledWith('leaderChange', false)
+    expect(leaderChanged).toHaveBeenCalledWith(false)
     expect(internals.currentAppId).toBeNull()
     expect(internals.activeConnections.size).toBe(0)
   })
 
   it('rebuilds the CRDT document on reconnect and reloads a re-elected leader from HTTP', async () => {
-    const manager = new CollaborationManager()
+    const manager = createManager()
     const internals = getManagerInternals(manager)
     const socket = createMockSocket('socket-reconnect')
     const authoritativeNode = createNode('node-latest', 'Latest')
@@ -1073,7 +1040,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   })
 
   it('keeps a fresh reconnect untrusted when promoted before the follower snapshot arrives', async () => {
-    const manager = new CollaborationManager()
+    const manager = createManager()
     const internals = getManagerInternals(manager)
     const socket = createMockSocket('socket-reconnect-promotion')
     const staleNode = createNode('node-stale', 'Stale')
@@ -1115,7 +1082,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   it('retries follower graph resync until a snapshot arrives', async () => {
     vi.useFakeTimers()
     try {
-      const manager = new CollaborationManager()
+      const manager = createManager()
       const socket = createMockSocket('socket-resync-retry')
       const reactFlowStore: ReactFlowStore = {
         getState: () => ({
@@ -1159,7 +1126,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   })
 
   it('lets a requested snapshot win over the HTTP fallback after follower promotion', async () => {
-    const manager = new CollaborationManager()
+    const manager = createManager()
     const socket = createMockSocket('socket-snapshot-race')
     const reactFlowStore: ReactFlowStore = {
       getState: () => ({
@@ -1205,7 +1172,7 @@ describe('CollaborationManager socket and subscription behavior', () => {
   })
 
   it('invalidates an older HTTP reload token across another reconnect', async () => {
-    const manager = new CollaborationManager()
+    const manager = createManager()
     const socket = createMockSocket('socket-double-reconnect')
     const reactFlowStore: ReactFlowStore = {
       getState: () => ({
@@ -1263,44 +1230,22 @@ describe('CollaborationManager socket and subscription behavior', () => {
     rafSpy.mockRestore()
   })
 
-  it('covers setNodes/setEdges guards and destroy delegation', () => {
+  it('ignores reentrant graph mutations during undo and resumes afterward', () => {
     const { manager, internals } = setupManagerWithDoc()
-    const destroyDisconnectSpy = vi
-      .spyOn(manager as { disconnect: () => void }, 'disconnect')
-      .mockImplementation(() => undefined)
-
-    manager.setNodes([], [createNode('n-guard')])
-    manager.setEdges([], [createEdge('e-guard', 'n-a', 'n-b')])
-
-    const commitSpy = vi.fn()
-    internals.doc = { commit: commitSpy } as unknown as LoroDoc
-    const syncNodesSpy = vi
-      .spyOn(
-        internals as unknown as { syncNodes: (oldNodes: Node[], newNodes: Node[]) => void },
-        'syncNodes',
-      )
-      .mockImplementation(() => undefined)
-    const syncEdgesSpy = vi
-      .spyOn(
-        internals as unknown as { syncEdges: (oldEdges: Edge[], newEdges: Edge[]) => void },
-        'syncEdges',
-      )
-      .mockImplementation(() => undefined)
-
+    const node = createNode('n-guard')
+    const edge = createEdge('e-guard', 'n-guard', 'n-other')
+    manager.setNodes([], [node])
+    manager.setEdges([], [edge])
     internals.isUndoRedoInProgress = true
-    manager.setNodes([], [createNode('n-skip')])
-    manager.setEdges([], [createEdge('e-skip', 'n-a', 'n-b')])
-
+    manager.setNodes([node], [])
+    manager.setEdges([edge], [])
+    expect(manager.getNodes()).toEqual([expect.objectContaining(node)])
+    expect(manager.getEdges()).toEqual([edge])
     internals.isUndoRedoInProgress = false
-    manager.setNodes([], [createNode('n-apply')])
-    manager.setEdges([], [createEdge('e-apply', 'n-a', 'n-b')])
-
-    expect(syncNodesSpy).toHaveBeenCalledTimes(1)
-    expect(syncEdgesSpy).toHaveBeenCalledTimes(1)
-    expect(commitSpy).toHaveBeenCalledTimes(2)
-
-    manager.destroy()
-    expect(destroyDisconnectSpy).toHaveBeenCalledTimes(1)
+    manager.setNodes([node], [])
+    manager.setEdges([edge], [])
+    expect(manager.getNodes()).toEqual([])
+    expect(manager.getEdges()).toEqual([])
   })
 
   it('covers emit guards and node panel presence local updates', () => {
@@ -1346,87 +1291,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
     })
   })
 
-  it('covers merge/import log helper branches and log cap', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    const reactFlowStore = {
-      getState: () => ({
-        getNodes: () => [{ ...createNode('local-node'), selected: true }],
-        setNodes: vi.fn(),
-        getEdges: () => [],
-        setEdges: vi.fn(),
-      }),
-    }
-    internals.reactFlowStore = reactFlowStore
-
-    const helperInternals = internals as unknown as {
-      mergeLocalNodeState: (nodes: Node[]) => Node[]
-      snapshotReactFlowGraph: () => { nodes: Node[]; edges: Edge[] }
-      startImportLog: (source: 'nodes' | 'edges') => void
-      finalizeImportLog: () => void
-    }
-
-    const merged = helperInternals.mergeLocalNodeState([createNode('remote-node')])
-    expect(merged[0]?.id).toBe('remote-node')
-
-    const mergedWithLocalSelection = helperInternals.mergeLocalNodeState([createNode('local-node')])
-    expect(mergedWithLocalSelection[0]?.data.selected).toBe(true)
-
-    internals.reactFlowStore = null
-    const snapshot = helperInternals.snapshotReactFlowGraph()
-    expect(snapshot).toEqual({ nodes: manager.getNodes(), edges: manager.getEdges() })
-
-    helperInternals.startImportLog('nodes')
-    helperInternals.startImportLog('edges')
-    helperInternals.finalizeImportLog()
-    helperInternals.finalizeImportLog()
-
-    for (let i = 0; i < 25; i += 1) {
-      helperInternals.startImportLog('nodes')
-      helperInternals.finalizeImportLog()
-    }
-
-    expect(manager.getGraphImportLog()).toHaveLength(20)
-  })
-
-  it('covers socket handler catch branches and initial sync leader short-circuit', () => {
-    const { internals } = setupManagerWithDoc()
-    const socket = createMockSocket('socket-catch')
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    const cleanupSpy = vi.spyOn(internals, 'cleanupNodePanelPresence').mockImplementation(() => {
-      throw new Error('cleanup-failed')
-    })
-
-    internals.setupSocketEventListeners(socket as unknown as Socket)
-    socket.trigger('online_users', {
-      users: [
-        {
-          user_id: 'u-1',
-          username: 'Alice',
-          avatar: '',
-          sid: 'socket-catch',
-        },
-      ],
-    })
-    expect(cleanupSpy).toHaveBeenCalled()
-
-    const requestSyncSpy = vi
-      .spyOn(internals, 'requestInitialSyncIfNeeded')
-      .mockImplementationOnce(() => {
-        throw new Error('status-failed')
-      })
-    internals.crdtTrusted = false
-    socket.trigger('status', { isLeader: false })
-    expect(requestSyncSpy).toHaveBeenCalled()
-    expect(errorSpy).toHaveBeenCalled()
-
-    const resyncSpy = vi.spyOn(internals, 'emitGraphResyncRequest').mockReturnValue(true)
-    internals.pendingInitialSync = true
-    internals.isLeader = true
-    internals.requestInitialSyncIfNeeded()
-    expect(internals.pendingInitialSync).toBe(false)
-    expect(resyncSpy).not.toHaveBeenCalled()
-  })
-
   it('covers graph broadcast guard and error path', () => {
     const { manager, internals } = setupManagerWithDoc()
     const socket = createMockSocket('socket-broadcast')
@@ -1463,278 +1327,59 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(errorSpy).toHaveBeenCalledWith('Failed to broadcast graph snapshot:', expect.any(Error))
   })
 
-  it('covers private guard branches for socket helpers and container migration', async () => {
-    const manager = new CollaborationManager()
-    attachCrdtRuntime(manager)
-    const internals = getManagerInternals(manager)
-    const socket = createMockSocket('socket-private')
-    const getSocketSpy = vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(null)
-    vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
-
-    type PrivateInternals = {
-      getActiveSocket: () => Socket | null
-      sendCollaborationEvent: (payload: CollaborationUpdate) => void
-      sendGraphEvent: (payload: Uint8Array) => void
-      getNodeContainer: (nodeId: string) => LoroMap
-      populateNodeContainer: (container: LoroMap, node: Node) => void
-      mergeLocalNodeState: (nodes: Node[]) => Node[]
-      requestInitialSyncIfNeeded: () => void
-    }
-    const privateInternals = internals as unknown as PrivateInternals
-
-    expect(privateInternals.getActiveSocket()).toBeNull()
-    privateInternals.sendCollaborationEvent({
-      type: 'sync_request',
-      data: {},
-      timestamp: Date.now(),
-      userId: 'u-1',
-    } satisfies CollaborationUpdate)
-    privateInternals.sendGraphEvent(new Uint8Array([1, 2]))
-
-    internals.currentAppId = 'app-private'
-    expect(privateInternals.getActiveSocket()).toBeNull()
-
-    getSocketSpy.mockReturnValue(socket as unknown as Socket)
-    privateInternals.sendCollaborationEvent({
-      type: 'sync_request',
-      data: {},
-      timestamp: Date.now(),
-      userId: 'u-1',
-    } satisfies CollaborationUpdate)
-    privateInternals.sendGraphEvent(new Uint8Array([3, 4]))
-    expect(socket.emit).toHaveBeenCalled()
-
-    expect(() => privateInternals.getNodeContainer('no-map')).toThrow('Nodes map not initialized')
-
-    const doc = new LoroDoc()
-    internals.doc = doc
-    internals.nodesMap = doc.getMap('nodes')
-    internals.edgesMap = doc.getMap('edges')
-    internals.nodesMap.set('legacy-node', {
-      id: 'legacy-node',
-      type: 'custom',
-      position: { x: 0, y: 0 },
-      data: {
-        type: BlockEnum.Start,
-        title: 'Legacy',
-        desc: '',
-      },
-    } as unknown as Record<string, unknown>)
-    privateInternals.getNodeContainer('legacy-node')
-
-    const modernContainer = privateInternals.getNodeContainer('modern-node')
-    const dataContainer = modernContainer.setContainer('data', new LoroMap()) as LoroMap
-    dataContainer.set('_internal_only', 'do-not-sync')
-    privateInternals.populateNodeContainer(modernContainer, createNode('modern-node'))
-
-    const noLocalState = privateInternals.mergeLocalNodeState([createNode('no-local')])
-    expect(noLocalState[0]?.id).toBe('no-local')
-
-    internals.pendingInitialSync = false
-    const resyncSpy = vi.spyOn(internals, 'emitGraphResyncRequest').mockReturnValue(true)
-    privateInternals.requestInitialSyncIfNeeded()
-    expect(resyncSpy).not.toHaveBeenCalled()
-
-    const reactFlowStore = {
-      getState: () => ({
-        getNodes: () => [],
-        setNodes: vi.fn(),
-        getEdges: () => [],
-        setEdges: vi.fn(),
-      }),
-    }
-    manager.init('app-init-with-store', reactFlowStore)
-    await manager.connect('app-no-store')
-    await manager.connect('app-no-store', reactFlowStore)
-    expect(internals.reactFlowStore).toBe(reactFlowStore)
-  })
-
-  it('covers undo/redo and sync negative branches', () => {
-    const { manager, internals } = setupManagerWithDoc()
-    const undoManager = {
-      canUndo: vi.fn(() => true),
-      canRedo: vi.fn(() => true),
-      undo: vi.fn(() => false),
-      redo: vi.fn(() => false),
-      clear: vi.fn(),
-    }
-    internals.undoManager = undoManager
-    internals.reactFlowStore = null
-
-    expect(manager.undo()).toBe(false)
-    expect(manager.redo()).toBe(false)
-
-    undoManager.canUndo.mockReturnValue(false)
-    undoManager.canRedo.mockReturnValue(false)
-    expect(manager.undo()).toBe(false)
-    expect(manager.redo()).toBe(false)
-
-    internals.undoManager = null
-    manager.clearUndoStack()
-
-    const privateInternals = internals as unknown as {
-      syncNodes: (oldNodes: Node[], newNodes: Node[]) => void
-      syncEdges: (oldEdges: Edge[], newEdges: Edge[]) => void
-    }
-
-    const oldNode = createNode('old-node')
-    internals.doc = null
-    internals.nodesMap = null
-    privateInternals.syncNodes([oldNode], [])
-
-    const doc = new LoroDoc()
-    internals.doc = doc
-    internals.nodesMap = doc.getMap('nodes')
-    internals.edgesMap = doc.getMap('edges')
-
-    privateInternals.syncNodes([], [oldNode])
-    privateInternals.syncNodes([oldNode], [])
-    privateInternals.syncNodes([oldNode], [oldNode])
-    privateInternals.syncNodes([createNode('old-node')], [createNode('old-node')])
-
-    internals.edgesMap = null
-    privateInternals.syncEdges([createEdge('e-old', 'a', 'b')], [])
-  })
-
-  it('covers import subscription skip branches', () => {
-    const { internals } = setupManagerWithDoc()
-    const reactFlowStore = {
-      getState: () => ({
-        getNodes: () => [],
-        setNodes: vi.fn(),
-        getEdges: () => [],
-        setEdges: vi.fn(),
-      }),
-    }
-    internals.reactFlowStore = reactFlowStore
-
-    let nodesHandler: (event: LoroSubscribeEvent) => void = () => {}
-    let edgesHandler: (event: LoroSubscribeEvent) => void = () => {}
-    vi.spyOn(
-      internals.nodesMap as object as {
-        subscribe: (handler: (event: LoroSubscribeEvent) => void) => void
-      },
-      'subscribe',
-    ).mockImplementation((handler: (event: LoroSubscribeEvent) => void) => {
-      nodesHandler = handler
-    })
-    vi.spyOn(
-      internals.edgesMap as object as {
-        subscribe: (handler: (event: LoroSubscribeEvent) => void) => void
-      },
-      'subscribe',
-    ).mockImplementation((handler: (event: LoroSubscribeEvent) => void) => {
-      edgesHandler = handler
-    })
-
-    internals.setupSubscriptions()
-    internals.isUndoRedoInProgress = true
-    nodesHandler({ by: 'import' })
-    edgesHandler({ by: 'import' })
-
-    internals.isUndoRedoInProgress = false
-    edgesHandler({ by: 'local' })
-    internals.reactFlowStore = null
-    edgesHandler({ by: 'import' })
-  })
-
-  it('covers missing-doc guards and unauthorized rejoin early returns', () => {
-    const manager = new CollaborationManager()
-    const internals = getManagerInternals(manager)
-    const getSocketSpy = vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(null)
-
-    manager.setNodes([], [createNode('doc-missing-node')])
-    manager.setEdges([], [createEdge('doc-missing-edge', 'a', 'b')])
-    expect(manager.getNodes()).toEqual([])
-
-    internals.handleSessionUnauthorized()
-    internals.currentAppId = 'app-unauthorized'
-    internals.handleSessionUnauthorized()
-    expect(getSocketSpy).toHaveBeenCalled()
-  })
-
-  it('covers undo manager push/pop metadata path with real connect flow', async () => {
-    const manager = new CollaborationManager()
-    const internals = getManagerInternals(manager)
-    const socket = createMockSocket('socket-undo-pop')
-    const rafSpy = vi
-      .spyOn(globalThis, 'requestAnimationFrame')
-      .mockImplementation((callback: FrameRequestCallback) => {
-        callback(0)
-        return 1
-      })
+  it('restores plain graph nodes and selection through real undo and redo', async () => {
     vi.useFakeTimers()
+    const manager = createManager()
+    const socket = createMockSocket('socket-undo')
     vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket as unknown as Socket)
     vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
     vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
-
+    vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
     let nodes: Node[] = [
       {
-        ...createNode('undo-node-1'),
-        data: {
-          ...createNode('undo-node-1').data,
-          selected: true,
-        },
+        ...createNode('n-1', 'Original'),
+        data: { ...createNode('n-1', 'Original').data, selected: true },
       },
-      createNode('undo-node-2'),
     ]
     let edges: Edge[] = []
-    const setNodesSpy = vi.fn((nextNodes: Node[]) => {
-      nodes = nextNodes
-    })
-    const setEdgesSpy = vi.fn((nextEdges: Edge[]) => {
-      edges = nextEdges
-    })
-    const reactFlowStore = {
+    const connectionId = await manager.connect('app-undo', {
       getState: () => ({
         getNodes: () => nodes,
-        setNodes: setNodesSpy,
+        setNodes: (next) => {
+          nodes = next
+        },
         getEdges: () => edges,
-        setEdges: setEdgesSpy,
+        setEdges: (next) => {
+          edges = next
+        },
       }),
-    }
-
-    const undoStateSpy = vi.fn()
-    manager.onUndoRedoStateChange(undoStateSpy)
-
-    const connectionId = await manager.connect('app-undo-pop', reactFlowStore)
-    socket.trigger('status', { isLeader: true })
-    manager.setNodes([], nodes)
-    const nextNodes = nodes.map((node) => {
-      if (node.id === 'undo-node-1') {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            selected: false,
-          },
-        }
-      }
-      if (node.id === 'undo-node-2') {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            selected: true,
-          },
-        }
-      }
-      return node
     })
-    manager.setNodes(nodes, nextNodes)
-    nodes = nextNodes
-
-    expect(manager.canUndo()).toBe(true)
+    socket.trigger('status', { isLeader: true })
+    manager.clearUndoStack()
+    const updated = nodes.map((node) => ({ ...node, data: { ...node.data, title: 'Edited' } }))
+    manager.setNodes(nodes, updated)
+    nodes = updated
+    const undoStates = vi.fn()
+    manager.onUndoRedoStateChange(undoStates)
     expect(manager.undo()).toBe(true)
-
-    vi.runAllTimers()
-    expect(setNodesSpy).toHaveBeenCalled()
-    expect(undoStateSpy).toHaveBeenCalled()
-
+    await vi.runAllTimersAsync()
+    expect(nodes).toEqual([
+      expect.objectContaining({
+        id: 'n-1',
+        data: expect.objectContaining({ title: 'Original', selected: true }),
+      }),
+    ])
+    expect(undoStates).toHaveBeenLastCalledWith({ canUndo: false, canRedo: true })
+    expect(manager.redo()).toBe(true)
+    await vi.runAllTimersAsync()
+    expect(nodes).toEqual([
+      expect.objectContaining({
+        id: 'n-1',
+        data: expect.objectContaining({ title: 'Edited', selected: true }),
+      }),
+    ])
+    expect(undoStates).toHaveBeenLastCalledWith({ canUndo: true, canRedo: false })
     manager.disconnect(connectionId)
-    expect(internals.isUndoRedoInProgress).toBe(false)
-    vi.useRealTimers()
-    rafSpy.mockRestore()
   })
 
   describe('graph view state reporting', () => {
@@ -1794,11 +1439,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
       vi.spyOn(webSocketClient, 'getSocket').mockReturnValue(socket as unknown as Socket)
       vi.spyOn(webSocketClient, 'isConnected').mockReturnValue(true)
       vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => undefined)
-      // Invoke the captured handler directly instead of dispatching on the shared jsdom
-      // document, which would also trigger listeners leaked by other tests' managers.
-      const addListenerSpy = vi.spyOn(document, 'addEventListener')
-      const removeListenerSpy = vi.spyOn(document, 'removeEventListener')
-
       stubVisibilityState('visible')
       const connectionId = await manager.connect('app-visibility', {
         getState: () => ({
@@ -1811,14 +1451,8 @@ describe('CollaborationManager socket and subscription behavior', () => {
 
       expect(internals.visibilityListenerAttached).toBe(true)
       expect(internals.graphViewActive).toBe(true)
-      const visibilityCall = addListenerSpy.mock.calls.find(
-        (call) => call[0] === 'visibilitychange',
-      )
-      expect(visibilityCall).toBeDefined()
-      const visibilityHandler = visibilityCall?.[1] as () => void
-
       stubVisibilityState('hidden')
-      visibilityHandler()
+      document.dispatchEvent(new Event('visibilitychange'))
 
       expect(internals.graphViewActive).toBe(false)
       const viewStateCalls = socket.emit.mock.calls.filter(
@@ -1832,11 +1466,10 @@ describe('CollaborationManager socket and subscription behavior', () => {
       manager.disconnect(connectionId)
       expect(internals.visibilityListenerAttached).toBe(false)
       expect(internals.graphViewActive).toBeNull()
-      expect(
-        removeListenerSpy.mock.calls.some(
-          (call) => call[0] === 'visibilitychange' && call[1] === visibilityHandler,
-        ),
-      ).toBe(true)
+      socket.emit.mockClear()
+      stubVisibilityState('visible')
+      document.dispatchEvent(new Event('visibilitychange'))
+      expect(socket.emit).not.toHaveBeenCalled()
     })
 
     it('re-reports both hidden and visible state after status with increasing sequences', () => {

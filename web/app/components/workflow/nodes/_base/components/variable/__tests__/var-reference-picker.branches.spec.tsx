@@ -1,7 +1,8 @@
 import type { ComponentProps } from 'react'
 import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   createNode,
   createStartNode,
@@ -16,7 +17,8 @@ const { mockFetchDynamicOptions } = vi.hoisted(() => ({
   mockFetchDynamicOptions: vi.fn(),
 }))
 
-vi.mock('@/service/use-plugins', () => ({
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   useFetchDynamicOptions: () => ({
     mutateAsync: mockFetchDynamicOptions,
   }),
@@ -155,7 +157,8 @@ describe('VarReferencePicker branches', () => {
       trigger: <button>custom-trigger</button>,
     })
 
-    fireEvent.click(screen.getByText('custom-trigger'))
+    onOpen.mockClear()
+    await userEvent.setup().click(screen.getByText('custom-trigger'))
 
     expect(await screen.findByText('select-normal')).toBeInTheDocument()
     await waitFor(() => {
@@ -166,8 +169,8 @@ describe('VarReferencePicker branches', () => {
   it('should rewrite system selectors before forwarding the selection', async () => {
     const { onChange } = renderPicker()
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
-    fireEvent.click(await screen.findByText('select-system'))
+    await userEvent.setup().click(screen.getByTestId('var-reference-picker-trigger'))
+    await userEvent.setup().click(await screen.findByText('select-system'))
 
     expect(onChange).toHaveBeenCalledWith(
       ['sys', 'query'],
@@ -179,26 +182,16 @@ describe('VarReferencePicker branches', () => {
     )
   })
 
-  it('should clear variable-mode values to an empty selector array', () => {
+  it('should clear variable-mode values to an empty selector array', async () => {
     const { onChange } = renderPicker({
       defaultVarKindType: VarKindType.variable,
       isSupportConstantValue: true,
       value: ['node-a', 'answer'],
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
+    await userEvent.setup().click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
 
     expect(onChange).toHaveBeenCalledWith([], VarKindType.variable)
-  })
-
-  it('should jump to the selected node when ctrl-clicking the node name', () => {
-    const { onChange } = renderPicker({
-      value: ['node-a', 'answer'],
-    })
-
-    fireEvent.click(screen.getByText('Source Node'), { ctrlKey: true })
-
-    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('should fetch dynamic options for supported constant fields', async () => {
@@ -225,11 +218,12 @@ describe('VarReferencePicker branches', () => {
 
     await waitFor(() => {
       expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('Dynamic 1')).toBeInTheDocument()
     })
   })
 
   it('should focus the hidden control input for supported constant values', async () => {
-    const { container } = renderPicker({
+    renderPicker({
       isSupportConstantValue: true,
       schema: {
         type: 'text-input',
@@ -237,9 +231,9 @@ describe('VarReferencePicker branches', () => {
       value: 'constant-value',
     })
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-trigger'))
+    await userEvent.setup().click(screen.getByTestId('var-reference-picker-trigger'))
 
-    const hiddenInput = container.querySelector('input.sr-only') as HTMLInputElement
+    const hiddenInput = screen.getByRole('textbox', { name: '' })
     await waitFor(() => {
       expect(document.activeElement).toBe(hiddenInput)
     })

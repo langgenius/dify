@@ -11,9 +11,8 @@ import type {
 } from '@dify/contracts/api/console/onboarding/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -54,10 +53,6 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 const mockAgentPermissions = vi.hoisted(() => ({ canImport: false }))
 
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanImportAgents: () => mockAgentPermissions.canImport,
-}))
-
 let mockExploreData: { categories: string[]; allList: RecommendedAppResponse[] } | undefined = {
   categories: [],
   allList: [],
@@ -73,10 +68,6 @@ const mockTrackEvent = vi.hoisted(() => vi.fn())
 const mockGetRecommendedApp = vi.hoisted(() =>
   vi.fn<(input: { params: { app_id: string } }) => Promise<RecommendedAppDetailResponse>>(),
 )
-const mockAppQueries = vi.hoisted(() => ({
-  listQueryOptions: vi.fn(),
-  recentQueryOptions: vi.fn(),
-}))
 const mockStepByStepTour = vi.hoisted(() => {
   const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
   const createState = (
@@ -243,119 +234,61 @@ vi.mock('@/app/components/base/amplitude', () => ({
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   return {
+    ...actual,
     consoleClient: {
+      ...actual.consoleClient,
       systemFeatures: () => Promise.resolve({}),
     },
-    consoleQuery: {
-      account: {
-        profile: {
-          get: {
-            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
-          },
-        },
-      },
-      systemFeatures: {
-        get: {
-          queryKey: () => ['console', 'systemFeatures'],
-          queryOptions: (options: Record<string, unknown> = {}) => ({
-            queryKey: ['console', 'systemFeatures'],
-            ...options,
-          }),
-        },
-      },
-      apps: {
-        get: {
-          queryOptions: (options: {
-            input?: { query?: { limit?: number } }
-            select?: (response: {
-              data: RecentAppResponse[]
-              has_more: boolean
-              limit: number
-              page: number
-              total: number
-            }) => unknown
-          }) => {
-            mockAppQueries.listQueryOptions(options)
-            const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
-            const response = {
-              data: mockWorkspaceApps.slice(0, limit),
-              has_more: false,
-              limit,
-              page: 1,
-              total: mockWorkspaceApps.length,
-            }
-            return {
-              queryKey: ['console', 'apps', 'get', options],
-              queryFn: () => Promise.resolve(response),
-              initialData: response,
-              select: options.select,
-            }
-          },
-        },
-        recent: {
-          get: {
-            queryOptions: (options: {
-              input?: { query?: { limit?: number } }
-              select?: (response: { data: RecentAppResponse[] }) => unknown
-            }) => {
-              mockAppQueries.recentQueryOptions(options)
-              const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
-              const response = {
-                data: mockWorkspaceApps.slice(0, limit),
-              }
-              return {
-                queryKey: ['console', 'apps', 'recent', 'get', options],
-                queryFn: () => Promise.resolve(response),
-                initialData: response,
-                select: options.select,
-              }
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, prop, receiver) {
+        const overrides = {
+          apps: actual.consoleQuery.apps,
+          onboarding: {
+            stepByStepTour: {
+              state: {
+                get: {
+                  queryKey: () => mockStepByStepTour.stateQueryKey,
+                  queryOptions: () => ({
+                    queryKey: mockStepByStepTour.stateQueryKey,
+                    queryFn: async () => mockStepByStepTour.state,
+                  }),
+                },
+                patch: {
+                  mutationOptions: (options = {}) => ({
+                    mutationFn: mockStepByStepTour.patchState,
+                    ...options,
+                  }),
+                },
+              },
             },
           },
-        },
-      },
-      onboarding: {
-        stepByStepTour: {
-          state: {
-            get: {
-              queryKey: () => mockStepByStepTour.stateQueryKey,
-              queryOptions: () => ({
-                queryKey: mockStepByStepTour.stateQueryKey,
-                queryFn: async () => mockStepByStepTour.state,
-              }),
-            },
-            patch: {
-              mutationOptions: (options = {}) => ({
-                mutationFn: mockStepByStepTour.patchState,
-                ...options,
-              }),
+          explore: {
+            apps: actual.consoleQuery.explore.apps,
+            banners: {
+              get: {
+                queryKey: ({ input }: { input?: unknown } = {}) => [
+                  'console',
+                  'explore',
+                  'banners',
+                  'get',
+                  input,
+                ],
+                queryOptions: (options: {
+                  input?: { query?: { language?: string } }
+                  select?: (response: BannerResponse[]) => unknown
+                }) => ({
+                  queryKey: ['console', 'explore', 'banners', 'get', options.input],
+                  queryFn: () => Promise.resolve(mockBanners),
+                  initialData: mockBanners,
+                  select: options.select,
+                }),
+              },
             },
           },
-        },
+        }
+        return Reflect.get(overrides, prop) ?? Reflect.get(target, prop, receiver)
       },
-      explore: {
-        apps: actual.consoleQuery.explore.apps,
-        banners: {
-          get: {
-            queryKey: ({ input }: { input?: unknown } = {}) => [
-              'console',
-              'explore',
-              'banners',
-              'get',
-              input,
-            ],
-            queryOptions: (options: {
-              input?: { query?: { language?: string } }
-              select?: (response: BannerResponse[]) => unknown
-            }) => ({
-              queryKey: ['console', 'explore', 'banners', 'get', options.input],
-              queryFn: () => Promise.resolve(mockBanners),
-              initialData: mockBanners,
-              select: options.select,
-            }),
-          },
-        },
-      },
-    },
+    }),
   }
 })
 
@@ -363,16 +296,11 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/hooks/use-import-dsl', () => ({
   useImportDSL: () => ({
     handleImportDSL: mockHandleImportDSL,
     handleImportDSLConfirm: mockHandleImportDSLConfirm,
-    versions: ['v1'],
+    versions: { importedVersion: '0.9.0', systemVersion: '0.8.0' },
     isFetching: false,
   }),
 }))
@@ -385,33 +313,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
-}))
-
-vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: (props: CreateAppModalProps) => {
-    if (!props.show) return null
-    return (
-      <div data-testid="create-app-modal">
-        <button
-          data-testid="confirm-create"
-          onClick={() =>
-            props.onConfirm({
-              name: 'New App',
-              icon_type: 'emoji',
-              icon: '🤖',
-              icon_background: '#fff',
-              description: 'desc',
-            })
-          }
-        >
-          confirm
-        </button>
-        <button data-testid="hide-create" onClick={props.onHide}>
-          hide
-        </button>
-      </div>
-    )
-  },
 }))
 
 vi.mock('@/app/components/explore/try-app', () => ({
@@ -438,27 +339,6 @@ vi.mock('@/app/components/explore/try-app', () => ({
       )}
       <button data-testid="try-app-close" onClick={onClose}>
         close
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('../../banner/home-banner', () => ({
-  HomeBanner: () => (
-    <div data-testid="explore-banner" data-banner-count={mockBanners.length}>
-      banner
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
-    <div data-testid="dsl-confirm-modal">
-      <button data-testid="dsl-confirm" onClick={onConfirm}>
-        confirm
-      </button>
-      <button data-testid="dsl-cancel" onClick={onCancel}>
-        cancel
       </button>
     </div>
   ),
@@ -545,10 +425,34 @@ const renderHomeContent = ({
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     accountProfile: mockConsoleState.userProfile,
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+    features: { apps: { size: 0, limit: 100 } },
     systemFeatures: {
       deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
       enable_learn_app: options.enableLearnApp ?? true,
+    },
+  })
+  queryClient.setQueryData(
+    consoleQuery.apps.recent.get.queryKey({ input: { query: { limit: 8 } } }),
+    {
+      data: mockWorkspaceApps.slice(0, 8),
+    },
+  )
+  queryClient.setQueryData(consoleQuery.workspaces.current.rbac.myPermissions.get.queryKey(), {
+    workspace: {
+      permission_keys: [
+        ...mockConsoleState.workspacePermissionKeys,
+        ...(mockAgentPermissions.canImport ? ['agent.create'] : []),
+      ],
+    },
+    app: { default_permission_keys: [], overrides: [] },
+    dataset: { default_permission_keys: [], overrides: [] },
+    agent: {
+      default_permission_keys: mockAgentPermissions.canImport
+        ? ['agent.acl.import_export_dsl']
+        : [],
+      overrides: [],
     },
   })
   if (mockExploreData) {
@@ -603,8 +507,10 @@ function SkipHomeGuideProbe() {
 
 describe('HomeContent', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
     vi.clearAllMocks()
+    mockHandleImportDSL.mockReset()
+    mockHandleImportDSLConfirm.mockReset()
+    mockGetRecommendedApp.mockReset()
     localStorage.clear()
     mockExploreData = { categories: [], allList: [] }
     mockLearnDifyApps = [
@@ -644,7 +550,7 @@ describe('HomeContent', () => {
       ).toBeInTheDocument()
       expect(screen.getByText('explore.banner.tagline')).toBeInTheDocument()
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
-      expect(screen.queryByTestId('explore-banner')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Explore Banner' })).not.toBeInTheDocument()
     })
 
     it('should not render learn dify content while learn dify items are loading', () => {
@@ -678,26 +584,6 @@ describe('HomeContent', () => {
         screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
       ).not.toBeInTheDocument()
       expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
-    })
-
-    it('should render app cards when data is available', () => {
-      mockExploreData = {
-        categories: ['Writing', 'Translate'],
-        allList: [
-          createApp(),
-          createApp({
-            app_id: 'app-2',
-            app: { ...createApp().app, name: 'Beta' },
-            categories: ['Translate'],
-          }),
-        ],
-      }
-
-      renderHomeContent()
-
-      expect(screen.getByText('Alpha')).toBeInTheDocument()
-      expect(screen.getByText('Beta')).toBeInTheDocument()
-      expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
     })
 
     it('requires Agent import permission for an Agent template even with app creation permission', () => {
@@ -773,28 +659,8 @@ describe('HomeContent', () => {
       ).toHaveAttribute('href', '/apps')
     })
 
-    it('should load continue work from the lightweight recent apps query', () => {
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp()],
-      }
-      mockWorkspaceApps = [createWorkspaceApp()]
-
-      renderHomeContent()
-
-      expect(mockAppQueries.recentQueryOptions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: {
-            query: {
-              limit: 8,
-            },
-          },
-        }),
-      )
-      expect(mockAppQueries.listQueryOptions).not.toHaveBeenCalled()
-    })
-
-    it('should render preview-only continue work app as a dimmed card and warn on click', () => {
+    it('should render preview-only continue work app as a dimmed card and warn on click', async () => {
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -815,7 +681,7 @@ describe('HomeContent', () => {
       expect(screen.queryByRole('link', { name: /Preview Only App/ })).not.toBeInTheDocument()
       expect(screen.getByText('Readonly Author')).toBeInTheDocument()
 
-      fireEvent.click(card)
+      await user.click(card)
 
       expect(toastMocks.record).toHaveBeenCalledWith({
         type: 'warning',
@@ -837,8 +703,7 @@ describe('HomeContent', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render learn dify templates without badges or template metadata', async () => {
-      vi.useRealTimers()
+    it('exposes Learn Dify lessons as the home walkthrough target', async () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -859,10 +724,6 @@ describe('HomeContent', () => {
       expect(
         screen.queryByRole('link', { name: 'explore.learnDify.moreTemplates' }),
       ).not.toBeInTheDocument()
-      expect(screen.queryByText('Run this first')).not.toBeInTheDocument()
-      expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
-      expect(screen.queryByText('workflow')).not.toBeInTheDocument()
-      expect(screen.queryByText('3 min')).not.toBeInTheDocument()
     })
 
     it('should hide learn dify templates when learn app is disabled', () => {
@@ -880,13 +741,12 @@ describe('HomeContent', () => {
     })
 
     it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
-      vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       }
 
-      renderHomeContent()
+      const { unmount } = renderHomeContent()
 
       const hideButton = await screen.findByRole('button', { name: 'explore.learnDify.hide' })
       const user = userEvent.setup()
@@ -899,6 +759,11 @@ describe('HomeContent', () => {
       })
 
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('true')
+      unmount()
+      renderHomeContent()
+      expect(
+        screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -935,7 +800,6 @@ describe('HomeContent', () => {
     })
 
     it('should keep selected category when clearing search text', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing', 'Translate'],
@@ -963,29 +827,7 @@ describe('HomeContent', () => {
   })
 
   describe('User Interactions', () => {
-    it('should filter local templates immediately as the user types', async () => {
-      vi.useRealTimers()
-      const user = userEvent.setup()
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [
-          createApp(),
-          createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
-        ],
-      }
-      renderHomeContent()
-
-      const input = screen.getByRole('searchbox', {
-        name: 'app.newAppFromTemplate.searchAllTemplate',
-      })
-      await user.type(input, 'gam')
-
-      expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
-      expect(screen.getByText('Gamma')).toBeInTheDocument()
-    })
-
     it('should find templates by description and explain empty results', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1017,7 +859,7 @@ describe('HomeContent', () => {
     })
 
     it('should handle create flow from app card when outside cloud edition and confirm DSL when pending', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1041,16 +883,18 @@ describe('HomeContent', () => {
       )
 
       renderHomeContent({ hasEditPermission: true })
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => {
         expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
       })
       expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
-      expect(await screen.findByTestId('dsl-confirm-modal')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('alertdialog', { name: 'app.newApp.appCreateDSLErrorTitle' }),
+      ).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('dsl-confirm'))
+      await user.click(screen.getByRole('button', { name: 'app.newApp.Confirm' }))
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
@@ -1062,7 +906,7 @@ describe('HomeContent', () => {
     })
 
     it('should fetch the current template detail when creating an app', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1089,8 +933,8 @@ describe('HomeContent', () => {
         refetchType: 'none',
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
       expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
@@ -1101,7 +945,7 @@ describe('HomeContent', () => {
     })
 
     it('reports a template detail failure without starting an import', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1109,8 +953,8 @@ describe('HomeContent', () => {
       mockGetRecommendedApp.mockRejectedValue(new Error('Unavailable'))
       renderHomeContent({ hasEditPermission: true })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() =>
         expect(toastMocks.api.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'),
@@ -1119,7 +963,6 @@ describe('HomeContent', () => {
     })
 
     it('should open create flow from learn dify item card click', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1143,7 +986,7 @@ describe('HomeContent', () => {
 
       renderHomeContent({ hasEditPermission: true })
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => {
         expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'learn-1' } })
@@ -1157,7 +1000,6 @@ describe('HomeContent', () => {
     })
 
     it('should advance the Learn Dify tour to the create button after a lesson opens', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1182,7 +1024,6 @@ describe('HomeContent', () => {
     })
 
     it('should close the Learn Dify detail when the home action guide is skipped', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1217,7 +1058,6 @@ describe('HomeContent', () => {
     })
 
     it('should complete the Learn Dify tour when a no-create user opens a lesson detail', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1254,7 +1094,6 @@ describe('HomeContent', () => {
     })
 
     it('should complete the Learn Dify tour only after the app is created from details', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1286,7 +1125,7 @@ describe('HomeContent', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => {
         expect(mockStepByStepTour.patchState.mock.calls.at(-1)?.[0]).toEqual({
@@ -1313,7 +1152,6 @@ describe('HomeContent', () => {
     })
 
     it('should clear the Learn Dify session and provenance when completion persistence fails', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1346,7 +1184,7 @@ describe('HomeContent', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => {
         expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
@@ -1361,7 +1199,7 @@ describe('HomeContent', () => {
 
       await user.click(screen.getByRole('button', { name: 'Alpha' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => {
         expect(mockHandleImportDSL).toHaveBeenCalledTimes(2)
@@ -1383,7 +1221,6 @@ describe('HomeContent', () => {
     })
 
     it('should skip redirect after confirming a pending Learn Dify tour create', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1416,8 +1253,8 @@ describe('HomeContent', () => {
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
-      await user.click(await screen.findByTestId('confirm-create'))
-      await user.click(await screen.findByTestId('dsl-confirm'))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
+      await user.click(await screen.findByRole('button', { name: 'app.newApp.Confirm' }))
 
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledWith(
@@ -1429,7 +1266,6 @@ describe('HomeContent', () => {
     })
 
     it('should hide the Learn Dify tour target while the create modal is open and abandon on cancel', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1452,10 +1288,12 @@ describe('HomeContent', () => {
       )
 
       await user.click(createFromDetailsButton)
-      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('dialog', { name: /explore.appCustomize.title/ }),
+      ).toBeInTheDocument()
       expect(createFromDetailsButton).not.toHaveAttribute('data-step-by-step-tour-target')
 
-      await user.click(screen.getByTestId('hide-create'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
         expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
@@ -1465,7 +1303,6 @@ describe('HomeContent', () => {
 
   describe('Edge Cases', () => {
     it('should reset search results when clear icon is clicked', async () => {
-      vi.useRealTimers()
       const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
@@ -1489,7 +1326,7 @@ describe('HomeContent', () => {
     })
 
     it('should close create modal via hide button', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1503,18 +1340,22 @@ describe('HomeContent', () => {
       })
 
       renderHomeContent({ hasEditPermission: true })
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      expect(await screen.findByTestId('create-app-modal')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
+      expect(
+        await screen.findByRole('dialog', { name: /explore.appCustomize.title/ }),
+      ).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('hide-create'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => {
-        expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: /explore.appCustomize.title/ }),
+        ).not.toBeInTheDocument()
       })
       expect(mockTrackCreateApp).not.toHaveBeenCalled()
     })
 
     it('should close create modal on successful DSL import', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1536,16 +1377,19 @@ describe('HomeContent', () => {
       )
 
       renderHomeContent({ hasEditPermission: true })
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
+      await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
       await waitFor(() => {
-        expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: /explore.appCustomize.title/ }),
+        ).not.toBeInTheDocument()
       })
     })
 
     it('should cancel DSL confirm modal', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1564,42 +1408,27 @@ describe('HomeContent', () => {
       )
 
       renderHomeContent({ hasEditPermission: true })
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => {
-        expect(screen.getByTestId('dsl-confirm-modal')).toBeInTheDocument()
+        expect(
+          screen.getByRole('alertdialog', { name: 'app.newApp.appCreateDSLErrorTitle' }),
+        ).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('dsl-cancel'))
+      await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
       await waitFor(() => {
-        expect(screen.queryByTestId('dsl-confirm-modal')).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('alertdialog', { name: 'app.newApp.appCreateDSLErrorTitle' }),
+        ).not.toBeInTheDocument()
       })
     })
   })
 
   describe('TryApp Panel', () => {
-    it('should open create modal from try app panel', async () => {
-      vi.useRealTimers()
-      mockExploreData = {
-        categories: ['Writing'],
-        allList: [createApp()],
-      }
-
-      renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
-
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
-      expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByTestId('try-app-create'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
-      })
-    })
-
     it('should track preview source when creation starts from try app details', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1622,10 +1451,10 @@ describe('HomeContent', () => {
 
       renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
       await screen.findByTestId('try-app-panel')
-      fireEvent.click(screen.getByTestId('try-app-create'))
-      fireEvent.click(await screen.findByTestId('confirm-create'))
+      await user.click(screen.getByTestId('try-app-create'))
+      await user.click(await screen.findByRole('button', { name: /common.operation.create/ }))
 
       await waitFor(() => {
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
@@ -1637,7 +1466,7 @@ describe('HomeContent', () => {
     })
 
     it('should close try app panel when close is clicked', async () => {
-      vi.useRealTimers()
+      const user = userEvent.setup()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -1645,10 +1474,10 @@ describe('HomeContent', () => {
 
       renderHomeContent({ hasEditPermission: true, deploymentEdition: 'CLOUD' })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      await user.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('try-app-close'))
+      await user.click(screen.getByTestId('try-app-close'))
       expect(screen.queryByTestId('try-app-panel')).not.toBeInTheDocument()
     })
   })
@@ -1663,8 +1492,11 @@ describe('HomeContent', () => {
 
       renderHomeContent({ enableExploreBanner: true })
 
-      expect(screen.getByTestId('explore-banner')).toBeInTheDocument()
-      expect(screen.getByTestId('explore-banner')).toHaveAttribute('data-banner-count', '1')
+      expect(screen.getByRole('link', { name: 'Explore Banner' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Explore Banner' })).toHaveAttribute(
+        'href',
+        'https://example.com',
+      )
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     })
   })

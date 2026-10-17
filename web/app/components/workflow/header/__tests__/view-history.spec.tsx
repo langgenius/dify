@@ -1,5 +1,6 @@
 import type { WorkflowRunHistory, WorkflowRunHistoryResponse } from '@/types/workflow'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { ControlMode, WorkflowRunningStatus } from '../../types'
@@ -16,8 +17,6 @@ const mockFormatWorkflowRunIdentifier = vi.fn(
 )
 
 let chatflowMode = false
-
-vi.mock('../../hooks/use-workflow', () => ({}))
 
 vi.mock('../../hooks/use-nodes-interactions', () => ({
   useNodesInteractions: () => ({
@@ -37,9 +36,9 @@ vi.mock('../../hooks/use-workflow-run', () => ({
   }),
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useWorkflowRunHistory: (url?: string, enabled?: boolean) =>
-    mockUseWorkflowRunHistory(url, enabled),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: (...args: unknown[]) => mockUseWorkflowRunHistory(...args),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -52,10 +51,6 @@ vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
   useInputFieldPanel: () => ({
     closeAllInputFieldPanels: mockCloseAllInputFieldPanels,
   }),
-}))
-
-vi.mock('@/app/components/base/loading-placeholder', () => ({
-  LoadingPlaceholder: () => <div data-testid="loading" />,
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -102,14 +97,12 @@ const createHistoryItem = (overrides: Partial<WorkflowRunHistory> = {}): Workflo
 describe('ViewHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseWorkflowRunHistory.mockReset()
     chatflowMode = false
-    mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
-      isLoading: false,
-    })
+    mockUseWorkflowRunHistory.mockResolvedValue({ data: [] } satisfies WorkflowRunHistoryResponse)
   })
 
-  it('defers fetching until the history popup is opened and renders the empty state', () => {
+  it('defers fetching until the history popup is opened and renders the empty state', async () => {
     renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
       resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       hooksStoreProps: {
@@ -117,22 +110,21 @@ describe('ViewHistory', () => {
       },
     })
 
-    expect(mockUseWorkflowRunHistory).toHaveBeenCalledWith('/history', false)
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(mockUseWorkflowRunHistory).not.toHaveBeenCalled()
+    expect(screen.queryByText('workflow.common.runHistory')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
-    expect(mockUseWorkflowRunHistory).toHaveBeenLastCalledWith('/history', true)
-    expect(screen.getByText('workflow.common.notRunning')).toBeInTheDocument()
+    expect(mockUseWorkflowRunHistory).toHaveBeenCalledExactlyOnceWith('/history')
+    expect(await screen.findByText('workflow.common.notRunning')).toBeInTheDocument()
     expect(screen.getByText('workflow.common.showRunHistory')).toBeInTheDocument()
   })
 
-  it('renders the icon trigger variant and loading state, and clears log modals on trigger click', () => {
+  it('renders the icon trigger variant and loading state, and clears log modals on trigger click', async () => {
     const onClearLogAndMessageModal = vi.fn()
-    mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
-      isLoading: true,
-    })
+    mockUseWorkflowRunHistory.mockReturnValue(new Promise(() => {}))
 
     renderWorkflowComponent(
       <ViewHistory historyUrl="/history" onClearLogAndMessageModal={onClearLogAndMessageModal} />,
@@ -148,13 +140,15 @@ describe('ViewHistory', () => {
       },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.viewRunHistory' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'workflow.common.viewRunHistory' }))
 
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   })
 
-  it('renders workflow run history items and updates the workflow store when one is selected', () => {
+  it('renders workflow run history items and updates the workflow store when one is selected', async () => {
     const pausedRun = createHistoryItem({
       id: 'run-paused',
       status: WorkflowRunningStatus.Paused,
@@ -174,12 +168,9 @@ describe('ViewHistory', () => {
       finished_at: 140,
     })
 
-    mockUseWorkflowRunHistory.mockReturnValue({
-      data: {
-        data: [pausedRun, failedRun, succeededRun],
-      } satisfies WorkflowRunHistoryResponse,
-      isLoading: false,
-    })
+    mockUseWorkflowRunHistory.mockResolvedValue({
+      data: [pausedRun, failedRun, succeededRun],
+    } satisfies WorkflowRunHistoryResponse)
 
     const { store } = renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
       resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
@@ -191,13 +182,15 @@ describe('ViewHistory', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
-    expect(screen.getByText('Test Run (paused)')).toBeInTheDocument()
+    expect(await screen.findByText('Test Run (paused)')).toBeInTheDocument()
     expect(screen.getByText('Test Run (failed)')).toBeInTheDocument()
     expect(screen.getByText('Test Run (succeeded)')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Test Run (succeeded)'))
+    await userEvent.setup().click(screen.getByText('Test Run (succeeded)'))
 
     expect(store.getState().historyWorkflowData).toEqual(succeededRun)
     expect(store.getState().showInputsPanel).toBe(false)
@@ -209,19 +202,16 @@ describe('ViewHistory', () => {
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)
   })
 
-  it('renders chat history labels without workflow status icons in chat mode', () => {
+  it('renders chat history labels without workflow status icons in chat mode', async () => {
     chatflowMode = true
     const chatRun = createHistoryItem({
       id: 'chat-run',
       status: WorkflowRunningStatus.Failed,
     })
 
-    mockUseWorkflowRunHistory.mockReturnValue({
-      data: {
-        data: [chatRun],
-      } satisfies WorkflowRunHistoryResponse,
-      isLoading: false,
-    })
+    mockUseWorkflowRunHistory.mockResolvedValue({
+      data: [chatRun],
+    } satisfies WorkflowRunHistoryResponse)
 
     renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
       resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
@@ -230,17 +220,16 @@ describe('ViewHistory', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
-    expect(screen.getByText('Test Chat (failed)')).toBeInTheDocument()
+    expect(await screen.findByText('Test Chat (failed)')).toBeInTheDocument()
   })
 
-  it('closes the popup from the close button and clears log modals', () => {
+  it('closes the popup from the close button and clears log modals', async () => {
     const onClearLogAndMessageModal = vi.fn()
-    mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
-      isLoading: false,
-    })
+    mockUseWorkflowRunHistory.mockResolvedValue({ data: [] } satisfies WorkflowRunHistoryResponse)
 
     renderWorkflowComponent(
       <ViewHistory
@@ -260,10 +249,12 @@ describe('ViewHistory', () => {
       },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
-    expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+    expect(screen.queryByText('workflow.common.runHistory')).not.toBeInTheDocument()
   })
 })

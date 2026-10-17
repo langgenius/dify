@@ -44,7 +44,7 @@ export const normalizeJsonSchemaType = (schema: any): string | undefined => {
 
   for (const candidate of compositeCandidates) {
     const normalized = normalizeJsonSchemaType(candidate)
-    if (normalized) return normalized
+    if (normalized && normalized !== 'null') return normalized
   }
 
   if (properties) return 'object'

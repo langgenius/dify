@@ -99,17 +99,11 @@ describe('NewFeaturePanel', () => {
 
       expect(screen.queryByText(/common\.features/)).not.toBeInTheDocument()
     })
-
-    it('should render header with title and description when show is true', () => {
-      renderPanel({ show: true })
-
-      expect(screen.getByText(/common\.featuresDescription/)).toBeInTheDocument()
-      expect(screen.getByRole('dialog', { name: 'workflow.common.features' })).toBeInTheDocument()
-    })
   })
 
   it('names each configuration feature switch from its visible title', () => {
     renderPanel({ isChatMode: true, inWorkflow: false, showFileUpload: false })
+    expect(screen.getByRole('dialog', { name: 'workflow.common.features' })).toBeInTheDocument()
 
     for (const feature of [
       'conversationOpener',
@@ -125,24 +119,6 @@ describe('NewFeaturePanel', () => {
   })
 
   describe('Chat Mode Features', () => {
-    it('should render conversation opener in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.conversationOpener\.title/)).toBeInTheDocument()
-    })
-
-    it('should render follow-up in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.suggestedQuestionsAfterAnswer\.title/)).toBeInTheDocument()
-    })
-
-    it('should render citation in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.citation\.title/)).toBeInTheDocument()
-    })
-
     it('should render speech-to-text in chat mode when model is available', () => {
       renderPanel({ isChatMode: true })
 
@@ -154,12 +130,6 @@ describe('NewFeaturePanel', () => {
 
       expect(screen.getByText(/feature\.textToSpeech\.title/)).toBeInTheDocument()
     })
-
-    it('should render moderation in chat mode', () => {
-      renderPanel({ isChatMode: true })
-
-      expect(screen.getByText(/feature\.moderation\.title/)).toBeInTheDocument()
-    })
   })
 
   describe('File Upload', () => {
@@ -167,11 +137,6 @@ describe('NewFeaturePanel', () => {
       renderPanel({ isChatMode: true, showFileUpload: true })
 
       expect(screen.getByText(/feature\.fileUpload\.title/)).toBeInTheDocument()
-    })
-
-    it('should not render image upload in chat mode', () => {
-      renderPanel({ isChatMode: true, showFileUpload: true })
-
       expect(screen.queryByText(/feature\.imageUpload\.title/)).not.toBeInTheDocument()
     })
 
@@ -211,12 +176,6 @@ describe('NewFeaturePanel', () => {
   })
 
   describe('Annotation Reply Feature', () => {
-    it('should render AnnotationReply in chat mode when not in workflow', () => {
-      renderPanel({ isChatMode: true, inWorkflow: false })
-
-      expect(screen.getByText(/feature\.annotation\.title/)).toBeInTheDocument()
-    })
-
     it('should not render AnnotationReply in workflow mode', () => {
       renderPanel({ isChatMode: true, inWorkflow: true })
 

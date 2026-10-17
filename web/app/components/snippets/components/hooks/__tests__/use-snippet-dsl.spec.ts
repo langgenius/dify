@@ -49,6 +49,9 @@ describe('useSnippetDSL', () => {
       data: expect.any(Blob),
       fileName: 'My Snippet.yml',
     })
+    const file = vi.mocked(downloadBlob).mock.lastCall![0].data
+    expect(file.type).toBe('application/yaml')
+    expect(await file.text()).toBe('kind: snippet')
   })
 
   it('shows an error when exporting fails', async () => {

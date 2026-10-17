@@ -1,8 +1,9 @@
+import type { Node } from '../../types'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useStoreApi } from 'reactflow'
 import { createNode } from '../../__tests__/fixtures'
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
 import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constants'
 import { BlockEnum, ControlMode } from '../../types'
@@ -14,12 +15,6 @@ const state = vi.hoisted(() => ({
   history: vi.fn(),
   select: vi.fn(),
 }))
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
-vi.mock('../use-workflow', () => ({
-  useNodesReadOnly: () => ({ getNodesReadOnly: () => state.readonly }),
-}))
 vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: state.sync }),
 }))
@@ -28,7 +23,20 @@ vi.mock('../use-workflow-history', () => ({
   useWorkflowHistory: () => ({ saveStateToHistory: state.history }),
 }))
 
+let nodes: Node[]
+let flowStore: ReturnType<typeof useStoreApi>
+const getNodes = () => flowStore.getState().getNodes()
+const focusNode = () => screen.getByRole('button', { name: 'Node Select node' }).focus()
+const setup = (options: Parameters<typeof renderWorkflowFlowComponent>[1] = {}) =>
+  renderWorkflowFlowComponent(<Canvas />, {
+    ...options,
+    nodes,
+    reactFlowProps: { nodesFocusable: false, edgesFocusable: false },
+    initialStoreState: { canvasReadOnly: state.readonly, ...options.initialStoreState },
+  })
+
 function Canvas() {
+  flowStore = useStoreApi()
   const onKeyDownCapture = useNodeKeyboardInteractions(state.select)
   return (
     <div onKeyDownCapture={onKeyDownCapture}>
@@ -52,24 +60,20 @@ function Canvas() {
 describe('node keyboard interactions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    resetReactFlowMockState()
     vi.spyOn(collaborationManager, 'canApplyLocalGraphMutation').mockReturnValue(true)
     vi.spyOn(collaborationManager, 'setNodes').mockImplementation(() => {})
     state.readonly = false
-    rfState.nodes = [
+    nodes = [
       createNode({ id: 'node', selected: true, position: { x: 0, y: 0 }, width: 100, height: 80 }),
     ]
-    rfState.setNodes.mockImplementation((nodes) => {
-      rfState.nodes = nodes
-    })
   })
 
   it('moves from the origin, broadcasts the old and new positions, and saves undo history', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(<Canvas />)
-    await user.tab()
+    setup()
+    focusNode()
     await user.keyboard('{ArrowRight}{Shift>}{ArrowDown}{/Shift}')
-    expect(rfState.nodes[0]!.position).toEqual({ x: 5, y: 20 })
+    expect(getNodes()[0]!.position).toEqual({ x: 5, y: 20 })
     expect(collaborationManager.setNodes).toHaveBeenLastCalledWith(
       expect.arrayContaining([expect.objectContaining({ position: { x: 5, y: 0 } })]),
       expect.arrayContaining([expect.objectContaining({ position: { x: 5, y: 20 } })]),
@@ -81,8 +85,8 @@ describe('node keyboard interactions', () => {
 
   it('selects and deselects the focused node while leaving editor keys alone', async () => {
     const user = userEvent.setup()
-    const { store } = renderWorkflowComponent(<Canvas />)
-    await user.tab()
+    const { store } = setup()
+    focusNode()
     await user.keyboard('{Enter}')
     expect(store.getState().pendingNodePanelFocusId).toBe('node')
     await user.keyboard('{Escape}')
@@ -102,28 +106,28 @@ describe('node keyboard interactions', () => {
   it('allows readonly nodes to be selected and inspected without allowing movement', async () => {
     state.readonly = true
     const user = userEvent.setup()
-    renderWorkflowComponent(<Canvas />)
-    await user.tab()
+    setup()
+    focusNode()
     await user.keyboard('{Enter}{Escape} {ArrowRight}')
     expect(state.select.mock.calls).toEqual([
       ['node', false],
       ['node', true],
       ['node', false],
     ])
-    expect(rfState.nodes[0]!.position).toEqual({ x: 0, y: 0 })
+    expect(getNodes()[0]!.position).toEqual({ x: 0, y: 0 })
     expect(state.sync).not.toHaveBeenCalled()
   })
 
   it('moves a Tab-focused unselected node without moving a separate selection', async () => {
-    rfState.nodes = [
+    nodes = [
       createNode({ id: 'node', selected: false, position: { x: 0, y: 0 } }),
       createNode({ id: 'other', selected: true, position: { x: 100, y: 100 } }),
     ]
     const user = userEvent.setup()
-    renderWorkflowComponent(<Canvas />)
-    await user.tab()
+    setup()
+    focusNode()
     await user.keyboard('{ArrowRight}')
-    expect(rfState.nodes.map((node) => node.position)).toEqual([
+    expect(getNodes().map((node) => node.position)).toEqual([
       { x: 5, y: 0 },
       { x: 100, y: 100 },
     ])
@@ -133,17 +137,17 @@ describe('node keyboard interactions', () => {
 
   it('leaves independent node button keys to that button', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(<Canvas />)
+    setup()
     await user.click(screen.getByRole('button', { name: 'Select node' }))
     state.select.mockClear()
-    await user.keyboard('{ArrowRight}{Enter} ')
-    expect(rfState.nodes[0]!.position).toEqual({ x: 0, y: 0 })
+    await user.keyboard('{ArrowRight}{Enter}')
+    expect(getNodes()[0]!.position).toEqual({ x: 0, y: 0 })
     expect(state.sync).not.toHaveBeenCalled()
-    expect(state.select.mock.calls).toEqual([['node'], ['node']])
+    expect(state.select).toHaveBeenCalledExactlyOnceWith('node')
   })
 
   it('keeps selected children stationary relative to a moving selected container', async () => {
-    rfState.nodes = [
+    nodes = [
       createNode({
         id: 'node',
         selected: true,
@@ -154,12 +158,10 @@ describe('node keyboard interactions', () => {
       createNode({ id: 'other', selected: true, position: { x: 500, y: 500 } }),
     ]
     const user = userEvent.setup()
-    renderWorkflowComponent(<Canvas />)
-    await user.tab()
-    await user.tab()
-    await user.tab()
+    setup()
+    screen.getByRole('button', { name: 'Selection' }).focus()
     await user.keyboard('{ArrowRight}')
-    expect(rfState.nodes.map((node) => node.position)).toEqual([
+    expect(getNodes().map((node) => node.position)).toEqual([
       { x: 105, y: 100 },
       { x: 30, y: 60 },
       { x: 505, y: 500 },
@@ -169,7 +171,7 @@ describe('node keyboard interactions', () => {
   it.each(['iteration', 'loop'] as const)(
     'clamps a child to its %s container and skips empty history at the boundary',
     async (type) => {
-      rfState.nodes = [
+      nodes = [
         createNode({
           id: 'parent',
           width: 300,
@@ -187,10 +189,10 @@ describe('node keyboard interactions', () => {
         }),
       ]
       const user = userEvent.setup()
-      renderWorkflowComponent(<Canvas />)
-      await user.tab()
+      setup()
+      focusNode()
       await user.keyboard('{ArrowRight}{ArrowDown}')
-      expect(rfState.nodes[1]!.position).toEqual({ x: 184, y: 150 })
+      expect(getNodes()[1]!.position).toEqual({ x: 184, y: 150 })
       expect(state.sync).not.toHaveBeenCalled()
     },
   )
@@ -199,18 +201,18 @@ describe('node keyboard interactions', () => {
     'does not move in %s state',
     async (mode) => {
       state.readonly = mode === 'readonly'
-      if (mode === 'locked') Object.assign(rfState.nodes[0]!, { draggable: false })
-      if (mode === 'start') Object.assign(rfState.nodes[0]!, { type: CUSTOM_ITERATION_START_NODE })
+      if (mode === 'locked') Object.assign(nodes[0]!, { draggable: false })
+      if (mode === 'start') Object.assign(nodes[0]!, { type: CUSTOM_ITERATION_START_NODE })
       const user = userEvent.setup()
-      renderWorkflowComponent(<Canvas />, {
+      setup({
         initialStoreState: {
           controlMode: mode === 'comment' ? ControlMode.Comment : ControlMode.Pointer,
         },
       })
-      await user.tab()
+      focusNode()
       await user.keyboard('{ArrowRight}')
       expect(state.sync).not.toHaveBeenCalled()
-      expect(rfState.nodes[0]!.position).toEqual({ x: 0, y: 0 })
+      expect(getNodes()[0]!.position).toEqual({ x: 0, y: 0 })
     },
   )
 })

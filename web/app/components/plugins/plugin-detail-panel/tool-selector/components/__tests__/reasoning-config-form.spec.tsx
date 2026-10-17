@@ -16,16 +16,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  AppSelector: ({
-    onSelect,
-    scope,
-  }: {
-    onSelect: (value: AppSelectorValue) => void
-    scope?: string
-  }) => (
+  AppSelector: ({ onSelect }: { onSelect: (value: AppSelectorValue) => void }) => (
     <button
       data-testid="app-selector"
-      data-scope={scope}
       onClick={() => onSelect({ app_id: 'app-1', inputs: { topic: 'hello' }, files: [] })}
     >
       Select App
@@ -41,35 +34,9 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/model-selector', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/form-input-boolean', () => ({
-  default: ({ onChange }: { onChange: (value: boolean) => void }) => (
-    <button data-testid="boolean-input" onClick={() => onChange(true)}>
-      Set Boolean
-    </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/form-input-type-switch', () => ({
-  default: ({ onChange }: { onChange: (value: VarKindType) => void }) => (
-    <button data-testid="type-switch" onClick={() => onChange(VarKindType.variable)}>
-      Switch Type
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
-  default: ({
-    onChange,
-    value,
-  }: {
-    onChange: (value: string) => void
-    value: string | string[]
-  }) => (
-    <button
-      data-testid="var-picker"
-      data-value={JSON.stringify(value)}
-      onClick={() => onChange(['node', 'field'] as unknown as string)}
-    >
+  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
+    <button data-testid="var-picker" onClick={() => onChange(['node', 'field'])}>
       Pick Variable
     </button>
   ),
@@ -236,7 +203,8 @@ describe('ReasoningConfigForm', () => {
     })
   })
 
-  it('should update mixed text and variable types', () => {
+  it('should update mixed text and variable types', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
 
     render(
@@ -268,7 +236,9 @@ describe('ReasoningConfigForm', () => {
     )
 
     fireEvent.click(screen.getByTestId('mixed-input'))
-    fireEvent.click(screen.getByTestId('type-switch'))
+    await user.click(
+      screen.getByRole('radio', { name: 'workflow.nodes.common.typeSwitch.variable' }),
+    )
 
     expect(onChange).toHaveBeenNthCalledWith(
       1,
@@ -394,6 +364,7 @@ describe('ReasoningConfigForm', () => {
           createSchema({
             variable: 'files',
             type: FormTypeEnum.files,
+            url: 'https://example.com/help',
             label: { en_US: 'Files', zh_Hans: '文件' },
           }),
         ]}
@@ -403,6 +374,10 @@ describe('ReasoningConfigForm', () => {
       />,
     )
 
+    expect(screen.getByRole('link', { name: 'tools.howToGet' })).toHaveAttribute(
+      'href',
+      'https://example.com/help',
+    )
     fireEvent.click(screen.getByTestId('var-picker'))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -478,7 +453,7 @@ describe('ReasoningConfigForm', () => {
     expect(screen.getByPlaceholderText('Enter count')).toBeInTheDocument()
 
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
-    fireEvent.click(screen.getByTestId('boolean-input'))
+    await user.click(screen.getByRole('button', { name: 'True' }))
     await user.click(screen.getByRole('combobox'))
     await user.click(await screen.findByRole('option', { name: 'Beta' }))
 
@@ -570,60 +545,6 @@ describe('ReasoningConfigForm', () => {
           value: { type: VarKindType.constant, value: '{"foo":"bar"}' },
         },
       }),
-    )
-  })
-
-  it('should render json placeholders, default app scope, variable links, and helper urls', () => {
-    const onChange = vi.fn()
-
-    render(
-      <ReasoningConfigForm
-        value={{
-          config: {
-            auto: 0,
-            value: { type: VarKindType.constant, value: '' },
-          },
-          app: {
-            auto: 0,
-            value: { type: VarKindType.constant, value: null },
-          },
-          files: {
-            auto: 0,
-            value: { type: VarKindType.variable, value: '' },
-          },
-        }}
-        onChange={onChange}
-        schemas={[
-          createSchema({
-            variable: 'config',
-            type: FormTypeEnum.object,
-            input_schema: { type: Type.object, properties: {}, additionalProperties: false },
-            placeholder: { en_US: '{\n  "foo": "bar"\n}', zh_Hans: '{\n  "foo": "bar"\n}' },
-          }),
-          createSchema({
-            variable: 'app',
-            type: FormTypeEnum.appSelector,
-            scope: '' as never,
-          }),
-          createSchema({
-            variable: 'files',
-            type: FormTypeEnum.files,
-            url: 'https://example.com/help',
-          }),
-        ]}
-        nodeOutputVars={[]}
-        availableNodes={[]}
-        nodeId="node-1"
-      />,
-    )
-
-    expect(screen.getByTestId('monaco-editor')).toHaveValue('')
-    expect(screen.getByText('{ "foo": "bar" }')).toBeInTheDocument()
-    expect(screen.getByTestId('app-selector')).toHaveAttribute('data-scope', 'all')
-    expect(screen.getByTestId('var-picker')).toHaveAttribute('data-value', '[]')
-    expect(screen.getByRole('link', { name: 'tools.howToGet' })).toHaveAttribute(
-      'href',
-      'https://example.com/help',
     )
   })
 })

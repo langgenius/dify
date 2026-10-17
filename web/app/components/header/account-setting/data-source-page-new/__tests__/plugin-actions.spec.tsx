@@ -1,83 +1,11 @@
-import type { ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import DataSourcePluginActions from '../plugin-actions'
-
-const {
-  mockHandleDelete,
-  mockHandleUpdate,
-  mockHandleUpdatedFromMarketplace,
-  mockOpenReadmePanel,
-} = vi.hoisted(() => ({
-  mockHandleDelete: vi.fn(),
-  mockHandleUpdate: vi.fn(),
-  mockHandleUpdatedFromMarketplace: vi.fn(),
-  mockOpenReadmePanel: vi.fn(),
-}))
-
-vi.mock('@/app/components/plugins/readme-panel/store', () => ({
-  useReadmePanelStore: (
-    selector: (value: { openReadmePanel: typeof mockOpenReadmePanel }) => unknown,
-  ) =>
-    selector({
-      openReadmePanel: mockOpenReadmePanel,
-    }),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useVersionListOfPlugin: () => ({ data: { data: { versions: [] } } }),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/hooks', () => ({
-  useDetailHeaderState: () => ({
-    modalStates: {
-      showPluginInfo: vi.fn(),
-      showDeleteConfirm: vi.fn(),
-    },
-    versionPicker: {
-      isShow: false,
-      setIsShow: vi.fn(),
-      setTargetVersion: vi.fn(),
-      targetVersion: undefined,
-      isDowngrade: false,
-    },
-    hasNewVersion: false,
-    isAutoUpgradeEnabled: false,
-    isFromGitHub: false,
-    isFromMarketplace: true,
-  }),
-  usePluginOperations: () => ({
-    handleUpdate: mockHandleUpdate,
-    handleUpdatedFromMarketplace: mockHandleUpdatedFromMarketplace,
-    handleDelete: mockHandleDelete,
-  }),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/components', () => ({
-  HeaderModals: () => <div data-testid="header-modals" />,
-}))
-
-vi.mock('@/app/components/base/badge', () => ({
-  __esModule: true,
-  default: ({ text }: { text: ReactNode }) => <div data-testid="badge">{text}</div>,
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: () => ({ theme: 'light' }),
-}))
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: (path: string) => `https://marketplace.example.com${path}`,
-}))
-
-vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  usePluginSettingsAccess: () => ({
-    canDeletePlugin: true,
-    canUpdatePlugin: true,
-  }),
-}))
 
 const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail => ({
   id: 'plugin-installation-id',
@@ -121,34 +49,68 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   ...overrides,
 })
 
+const renderActions: typeof renderWithConsoleQuery = (ui, options) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
+    install_permission: 'everyone',
+    debug_permission: 'everyone',
+  })
+  queryClient.setQueryData(
+    ['plugins', 'referenceSettings', 'autoUpgrade', PluginCategoryEnum.datasource],
+    {
+      category: PluginCategoryEnum.datasource,
+      auto_upgrade: {
+        strategy_setting: 'disabled',
+        upgrade_mode: 'all',
+        upgrade_time_of_day: 0,
+        include_plugins: [],
+        exclude_plugins: [],
+      },
+    },
+  )
+  for (const model_type of ['llm', 'text-embedding', 'rerank', 'speech2text', 'tts'] as const) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type } },
+      }),
+      { data: [] },
+    )
+  }
+  return renderWithConsoleQuery(ui, { ...options, queryClient })
+}
+
 describe('DataSourcePluginActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('opens the plugin README from the actions menu', () => {
+  it('opens the plugin README from the actions menu', async () => {
+    const user = userEvent.setup()
     const detail = createPluginDetail()
 
-    renderWithConsoleQuery(<DataSourcePluginActions detail={detail} />, {
+    renderActions(<DataSourcePluginActions detail={detail} />, {
       systemFeatures: { enable_marketplace: true },
     })
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', {
         name: 'common.operation.moreActionsFor:{"name":"Data Source Plugin"}',
       }),
     )
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.viewReadme'))
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'plugin.detailPanel.operation.viewReadme' }),
+    )
 
-    expect(mockOpenReadmePanel).toHaveBeenCalledWith(
+    expect(useReadmePanelStore.getState().currentPanel).toEqual(
       expect.objectContaining({
         detail,
+        presentation: 'drawer',
         triggerId: expect.any(String),
       }),
     )
   })
 
   it('identifies the plugin and current version in the version action', () => {
-    renderWithConsoleQuery(<DataSourcePluginActions detail={createPluginDetail()} />, {
+    renderActions(<DataSourcePluginActions detail={createPluginDetail()} />, {
       systemFeatures: { enable_marketplace: true },
     })
 

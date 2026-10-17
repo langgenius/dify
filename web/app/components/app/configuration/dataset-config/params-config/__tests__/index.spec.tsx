@@ -10,6 +10,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ConfigContext from '@/context/debug-configuration'
 import { RerankingModeEnum } from '@/models/datasets'
+import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
 import { RETRIEVE_TYPE } from '@/types/app'
 import ParamsConfig from '../index'
 
@@ -86,7 +87,7 @@ const renderParamsConfig = ({
     const [datasetConfigsState, setDatasetConfigsState] = React.useState(datasetConfigs)
     const [modalOpen, setModalOpen] = React.useState(initialModalOpen)
 
-    const contextValue = {
+    const contextValue = createDebugConfigurationFixture({
       datasetConfigs: datasetConfigsState,
       setDatasetConfigs: (next: DatasetConfigs) => {
         setDatasetConfigsState(next)
@@ -95,7 +96,7 @@ const renderParamsConfig = ({
       setRerankSettingModalOpen: (open: boolean) => {
         setModalOpen(open)
       },
-    } as unknown as React.ComponentProps<typeof ConfigContext.Provider>['value']
+    })
 
     return <ConfigContext.Provider value={contextValue}>{children}</ConfigContext.Provider>
   }

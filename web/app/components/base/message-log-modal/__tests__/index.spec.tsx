@@ -1,152 +1,77 @@
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ComponentProps } from 'react'
+import type Run from '@/app/components/workflow/run'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import MessageLogModal from '../index'
 
+const run = vi.hoisted(() => vi.fn<(_props: ComponentProps<typeof Run>) => null>(() => null))
+// The run viewer is independently tested; this owner selects its run and tab.
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({
-    activeTab,
-    runDetailUrl,
-    tracingListUrl,
-  }: {
-    activeTab: string
-    runDetailUrl: string
-    tracingListUrl: string
-  }) => (
-    <div
-      data-testid="workflow-run"
-      data-active-tab={activeTab}
-      data-run-detail-url={runDetailUrl}
-      data-tracing-list-url={tracingListUrl}
-    />
-  ),
+  default: (props: ComponentProps<typeof Run>) => run(props),
 }))
+const log = { id: 'message-1', content: 'Message', isAnswer: true, workflow_run_id: 'run-1' }
 
-const mockLog = {
-  id: 'msg-1',
-  content: 'mock log message',
-  workflow_run_id: 'run-1',
-  isAnswer: true,
-}
+it.each([undefined, { ...log, workflow_run_id: undefined }])(
+  'omits the viewer without a workflow run: %j',
+  (currentLogItem) => {
+    const { container } = render(
+      <MessageLogModal
+        appId="app-1"
+        width={800}
+        onCancel={vi.fn()}
+        currentLogItem={currentLogItem}
+      />,
+    )
+    expect(container).toBeEmptyDOMElement()
+    expect(run).not.toHaveBeenCalled()
+  },
+)
 
-describe('MessageLogModal', () => {
+it.each([false, true])(
+  'selects the message run and closes its viewer (fixed=%s)',
+  async (fixedWidth) => {
+    const user = userEvent.setup()
+    const onCancel = vi.fn()
+    render(
+      <MessageLogModal
+        appId="inspected-app"
+        width={800}
+        onCancel={onCancel}
+        currentLogItem={log}
+        defaultTab="TRACING"
+        fixedWidth={fixedWidth}
+      />,
+    )
+    expect(run).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        activeTab: 'TRACING',
+        hideResult: true,
+        runDetailUrl: '/apps/inspected-app/workflow-runs/run-1',
+        tracingListUrl: '/apps/inspected-app/workflow-runs/run-1/node-executions',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  },
+)
+
+it('dismisses the fixed viewer on an outside click but not an inside click', async () => {
+  const user = userEvent.setup()
   const onCancel = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Render', () => {
-    it('renders nothing if currentLogItem is missing', () => {
-      const { container } = render(
-        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} />,
-      )
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('renders nothing if currentLogItem.workflow_run_id is missing', () => {
-      const { container } = render(
-        <MessageLogModal
-          appId="app-1"
-          width={800}
-          onCancel={onCancel}
-          currentLogItem={{ id: '1' } as IChatItem}
-        />,
-      )
-      expect(container.firstChild).toBeNull()
-    })
-
-    it('renders modal with correct title and Run component', () => {
-      render(
-        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} currentLogItem={mockLog} />,
-      )
-      expect(screen.getByText(/title/i))!.toBeInTheDocument()
-      expect(screen.getByTestId('workflow-run'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('passes correct props to Run component', () => {
-      render(
-        <MessageLogModal
-          appId="inspected-app"
-          width={800}
-          onCancel={onCancel}
-          currentLogItem={mockLog}
-          defaultTab="TRACING"
-        />,
-      )
-      const runComponent = screen.getByTestId('workflow-run')
-      expect(runComponent.getAttribute('data-active-tab')).toBe('TRACING')
-      expect(runComponent.getAttribute('data-run-detail-url')).toBe(
-        '/apps/inspected-app/workflow-runs/run-1',
-      )
-      expect(runComponent.getAttribute('data-tracing-list-url')).toBe(
-        '/apps/inspected-app/workflow-runs/run-1/node-executions',
-      )
-    })
-
-    it('sets fixed style when fixedWidth is false (floating)', () => {
-      const { container } = render(
-        <MessageLogModal
-          appId="app-1"
-          width={1000}
-          onCancel={onCancel}
-          currentLogItem={mockLog}
-          fixedWidth={false}
-        />,
-      )
-      const modal = screen.getByRole('dialog')
-      expect(container).not.toContainElement(modal)
-      expect(document.body).toContainElement(modal)
-    })
-
-    it('sets fixed width when fixedWidth is true', () => {
-      const { container } = render(
-        <MessageLogModal
-          appId="app-1"
-          width={1000}
-          onCancel={onCancel}
-          currentLogItem={mockLog}
-          fixedWidth={true}
-        />,
-      )
-      const panel = container.firstElementChild as HTMLElement
-      expect(panel).toHaveClass('relative', 'z-10')
-      expect(panel.style.width).toBe('1000px')
-    })
-  })
-
-  describe('Interaction', () => {
-    it('calls onCancel when close icon is clicked', () => {
-      render(
-        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} currentLogItem={mockLog} />,
-      )
-      const closeButton = screen.getByRole('button', { name: 'common.operation.close' })
-      expect(closeButton)!.toBeInTheDocument()
-      fireEvent.click(closeButton)
-      expect(onCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('calls onCancel when clicked away', () => {
-      render(
-        <MessageLogModal
-          appId="app-1"
-          width={800}
-          onCancel={onCancel}
-          currentLogItem={mockLog}
-          fixedWidth
-        />,
-      )
-      fireEvent.click(document.body)
-      expect(onCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('keeps the floating dialog open when its content is clicked', () => {
-      render(
-        <MessageLogModal appId="app-1" width={800} onCancel={onCancel} currentLogItem={mockLog} />,
-      )
-      fireEvent.click(screen.getByRole('dialog'))
-      expect(onCancel).not.toHaveBeenCalled()
-    })
-  })
+  render(
+    <>
+      <button type="button">Outside viewer</button>
+      <MessageLogModal
+        appId="app-1"
+        width={800}
+        onCancel={onCancel}
+        currentLogItem={log}
+        fixedWidth
+      />
+    </>,
+  )
+  await user.click(screen.getByRole('heading', { name: 'appLog.runDetail.title' }))
+  expect(onCancel).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'Outside viewer' }))
+  expect(onCancel).toHaveBeenCalledTimes(1)
 })

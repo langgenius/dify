@@ -33,7 +33,7 @@ type RoleModalProps = {
   open: boolean
   role?: Role
   onClose: () => void
-  onSubmit?: (data: submitRoleData) => void
+  onSubmit?: (data: submitRoleData) => void | Promise<void>
 }
 
 const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
@@ -44,6 +44,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
   const [desc, setDesc] = useState(role?.description ?? '')
   const [permissionKeys, setPermissionKeys] = useState<string[]>(role?.permission_keys ?? [])
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const readonly = mode === 'view'
 
   const onRoleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,9 +55,17 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
     setDesc(value)
   }, [])
 
-  const handleSubmit = () => {
-    onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
-    onClose()
+  const handleSubmit = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onSubmit?.({ name: name.trim(), description: desc.trim(), permissionKeys })
+      onClose()
+    } catch {
+      // The mutation reports the error; keep the draft available for retry.
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -122,7 +131,11 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
               : t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
           {!readonly && (
-            <Button variant="primary" disabled={!name.trim()} onClick={handleSubmit}>
+            <Button
+              variant="primary"
+              disabled={!name.trim() || isSubmitting}
+              onClick={handleSubmit}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </Button>
           )}

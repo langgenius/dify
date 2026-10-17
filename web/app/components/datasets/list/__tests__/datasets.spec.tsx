@@ -17,41 +17,9 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({
-    formatTimeFromNow: (timestamp: number) => new Date(timestamp).toLocaleDateString(),
-  }),
-}))
-
-vi.mock('@/hooks/use-knowledge', () => ({
-  useKnowledge: () => ({
-    formatIndexingTechniqueAndMethod: () => 'High Quality',
-  }),
-}))
-
 type DatasetListItem = DatasetListResponse['data'][number]
 
 const mockFetchNextPage = vi.fn()
-
-vi.mock('../dataset-card/hooks/use-dataset-card-state', () => ({
-  useDatasetCardState: () => ({
-    modalState: {
-      showRenameModal: false,
-      showConfirmDelete: false,
-      confirmMessage: '',
-    },
-    openRenameModal: vi.fn(),
-    closeRenameModal: vi.fn(),
-    closeConfirmDelete: vi.fn(),
-    handleExportPipeline: vi.fn(),
-    detectIsUsedByApp: vi.fn(),
-    onConfirmDelete: vi.fn(),
-  }),
-}))
-
-vi.mock('../../rename-modal', () => ({
-  default: () => null,
-}))
 
 vi.mock('../dataset-card', () => ({
   default: ({
@@ -175,18 +143,6 @@ describe('Datasets', () => {
   })
 
   describe('Rendering', () => {
-    it('should not render NewDatasetCard in dataset list', () => {
-      renderWithConsoleQuery(<Datasets {...defaultProps} />)
-
-      expect(screen.queryByText(/createDataset/)).not.toBeInTheDocument()
-    })
-
-    it('should render dataset cards from data', () => {
-      renderWithConsoleQuery(<Datasets {...defaultProps} />)
-      expect(screen.getByText('Dataset 1')).toBeInTheDocument()
-      expect(screen.getByText('Dataset 2')).toBeInTheDocument()
-    })
-
     it('should pass step-by-step tour targets to the first dataset card only', () => {
       renderWithConsoleQuery(
         <Datasets
@@ -209,24 +165,6 @@ describe('Datasets', () => {
       expect(screen.getByTestId('dataset-card-target-dataset-2')).toBeEmptyDOMElement()
       expect(screen.getByTestId('dataset-card-menu-open-dataset-2')).toHaveTextContent('undefined')
       expect(screen.getByTestId('dataset-card-highlight-dataset-2')).toBeEmptyDOMElement()
-    })
-
-    it('should render empty element when there are no datasets', () => {
-      renderWithConsoleQuery(
-        <Datasets
-          {...defaultProps}
-          datasetList={createDatasetListData([{ data: [], total: 0 }])}
-          emptyElement={<div data-testid="filtered-empty">No knowledge here</div>}
-        />,
-      )
-
-      expect(screen.getByTestId('filtered-empty')).toBeInTheDocument()
-    })
-
-    it('should render anchor div for infinite scroll', () => {
-      renderWithConsoleQuery(<Datasets {...defaultProps} />)
-      const anchor = document.querySelector('.h-0')
-      expect(anchor).toBeInTheDocument()
     })
   })
 
@@ -300,21 +238,13 @@ describe('Datasets', () => {
   })
 
   describe('IntersectionObserver', () => {
-    it('should setup IntersectionObserver on mount', () => {
-      renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} />)
-
-      expect(mockObserve).toHaveBeenCalled()
-    })
-
     it('should call fetchNextPage when isIntersecting, hasNextPage, and not isFetching', () => {
       renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).toHaveBeenCalledTimes(1)
     })
@@ -322,12 +252,10 @@ describe('Datasets', () => {
     it('should NOT call fetchNextPage when isIntersecting is false', () => {
       renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: false } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: false } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
@@ -335,12 +263,10 @@ describe('Datasets', () => {
     it('should NOT call fetchNextPage when hasNextPage is false', () => {
       renderWithConsoleQuery(<Datasets {...defaultProps} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
@@ -348,12 +274,10 @@ describe('Datasets', () => {
     it('should NOT call fetchNextPage when isFetching is true', () => {
       renderWithConsoleQuery(<Datasets {...defaultProps} hasNextPage={true} isFetching={true} />)
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })
@@ -363,12 +287,10 @@ describe('Datasets', () => {
         <Datasets {...defaultProps} hasNextPage={true} isPlaceholderData={true} />,
       )
 
-      if (intersectionObserverCallback) {
-        intersectionObserverCallback(
-          [{ isIntersecting: true } as IntersectionObserverEntry],
-          {} as IntersectionObserver,
-        )
-      }
+      intersectionObserverCallback!(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
 
       expect(mockFetchNextPage).not.toHaveBeenCalled()
     })

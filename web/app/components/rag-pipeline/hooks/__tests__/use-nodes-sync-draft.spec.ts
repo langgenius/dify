@@ -104,25 +104,74 @@ describe('useNodesSyncDraft', () => {
     vi.clearAllMocks()
   })
 
-  describe('hook initialization', () => {
-    it('should return doSyncWorkflowDraft function', () => {
+  it.each(['page close', 'queued sync'] as const)(
+    'sends the complete sanitized draft on %s without changing the canvas',
+    async (mode) => {
+      const node = {
+        id: 'node-1',
+        data: { type: 'start', _privateData: 'secret' },
+        position: { x: 0, y: 0 },
+      }
+      const temp = {
+        id: 'temp',
+        data: { type: 'start', _isTempNode: true },
+        position: { x: 50, y: 0 },
+      }
+      const edge = {
+        id: 'edge-1',
+        source: 'node-1',
+        target: 'node-2',
+        data: { _hidden: true, visible: false },
+      }
+      mockGetNodes.mockReturnValue([node, temp])
+      mockStoreGetState.mockReturnValue({
+        getNodes: mockGetNodes,
+        edges: [edge],
+        transform: [100, 200, 1.5],
+      })
+      const environmentVariables = [
+        { id: 'env', name: 'URL', value_type: 'string', value: 'https://example.com' },
+      ]
+      const ragPipelineVariables = [{ variable: 'input', type: 'text-input' }]
+      mockWorkflowStoreGetState.mockReturnValue({
+        environmentVariables,
+        ragPipelineVariables,
+        syncWorkflowDraftHash: 'test-hash',
+        setSyncWorkflowDraftHash: vi.fn(),
+        setDraftUpdatedAt: vi.fn(),
+      })
       const { result } = renderHook(() => useNodesSyncDraft(), {
         resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
       })
-
-      expect(result.current.doSyncWorkflowDraft).toBeDefined()
-      expect(typeof result.current.doSyncWorkflowDraft).toBe('function')
-    })
-
-    it('should return syncWorkflowDraftWhenPageClose function', () => {
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      expect(result.current.syncWorkflowDraftWhenPageClose).toBeDefined()
-      expect(typeof result.current.syncWorkflowDraftWhenPageClose).toBe('function')
-    })
-  })
+      const payload = {
+        graph: {
+          nodes: [{ ...node, data: { type: 'start' } }],
+          edges: [{ ...edge, data: { visible: false } }],
+          viewport: { x: 100, y: 200, zoom: 1.5 },
+        },
+        environment_variables: environmentVariables,
+        rag_pipeline_variables: ragPipelineVariables,
+        hash: 'test-hash',
+      }
+      if (mode === 'page close') {
+        act(() => result.current.syncWorkflowDraftWhenPageClose())
+        expect(mockPostWithKeepalive).toHaveBeenCalledExactlyOnceWith(
+          '/api/rag/pipelines/test-pipeline-id/workflows/draft',
+          payload,
+        )
+      } else {
+        await act(async () => {
+          await result.current.doSyncWorkflowDraft()
+        })
+        expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith({
+          url: '/rag/pipelines/test-pipeline-id/workflows/draft',
+          params: payload,
+        })
+      }
+      expect(node.data._privateData).toBe('secret')
+      expect(edge.data._hidden).toBe(true)
+    },
+  )
 
   describe('syncWorkflowDraftWhenPageClose', () => {
     it('should not call postWithKeepalive when nodes are read only', () => {
@@ -137,29 +186,6 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockPostWithKeepalive).not.toHaveBeenCalled()
-    })
-
-    it('should call postWithKeepalive with correct URL and params', () => {
-      mockGetNodesReadOnly.mockReturnValue(false)
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      expect(mockPostWithKeepalive).toHaveBeenCalledWith(
-        '/api/rag/pipelines/test-pipeline-id/workflows/draft',
-        expect.objectContaining({
-          graph: expect.any(Object),
-          hash: 'test-hash',
-        }),
-      )
     })
 
     it('should not call postWithKeepalive when nodes array is empty', () => {
@@ -191,24 +217,6 @@ describe('useNodesSyncDraft', () => {
 
       expect(mockPostWithKeepalive).not.toHaveBeenCalled()
     })
-
-    it('should remove underscore-prefixed data keys from nodes', () => {
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start', _privateData: 'secret' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      expect(mockPostWithKeepalive).toHaveBeenCalled()
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
-      expect(sentParams.graph.nodes[0].data._privateData).toBeUndefined()
-    })
   })
 
   describe('doSyncWorkflowDraft', () => {
@@ -224,23 +232,6 @@ describe('useNodesSyncDraft', () => {
       })
 
       expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
-    })
-
-    it('should call syncWorkflowDraft service', async () => {
-      mockGetNodesReadOnly.mockReturnValue(false)
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.doSyncWorkflowDraft()
-      })
-
-      expect(mockSyncWorkflowDraft).toHaveBeenCalled()
     })
 
     it('should capture the graph before a queued sync runs after the canvas is torn down', async () => {
@@ -345,65 +336,6 @@ describe('useNodesSyncDraft', () => {
       )
     })
 
-    it('should not include source_workflow_id in sync payloads', async () => {
-      mockGetNodesReadOnly.mockReturnValue(false)
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.doSyncWorkflowDraft()
-      })
-
-      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
-        expect.objectContaining({
-          params: expect.not.objectContaining({
-            source_workflow_id: expect.anything(),
-          }),
-        }),
-      )
-    })
-
-    it('should call onSuccess callback when sync succeeds', async () => {
-      mockGetNodesReadOnly.mockReturnValue(false)
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-      const onSuccess = vi.fn()
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.doSyncWorkflowDraft(false, { onSuccess })
-      })
-
-      expect(onSuccess).toHaveBeenCalled()
-    })
-
-    it('should call onSettled callback after sync completes', async () => {
-      mockGetNodesReadOnly.mockReturnValue(false)
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-      const onSettled = vi.fn()
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      await act(async () => {
-        await result.current.doSyncWorkflowDraft(false, { onSettled })
-      })
-
-      expect(onSettled).toHaveBeenCalled()
-    })
-
     it('should call onError callback when sync fails', async () => {
       mockGetNodesReadOnly.mockReturnValue(false)
       mockGetNodes.mockReturnValue([
@@ -411,19 +343,26 @@ describe('useNodesSyncDraft', () => {
       ])
       mockSyncWorkflowDraft.mockRejectedValue(new Error('Sync failed'))
       const onError = vi.fn()
+      const onSuccess = vi.fn()
+      const onSettled = vi.fn()
 
       const { result } = renderHook(() => useNodesSyncDraft(), {
         resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
       })
 
       await act(async () => {
-        await result.current.doSyncWorkflowDraft(false, { onError })
+        await result.current.doSyncWorkflowDraft(false, { onError, onSuccess, onSettled })
       })
 
       expect(onError).toHaveBeenCalled()
+      expect(onSuccess).not.toHaveBeenCalled()
+      expect(onSettled).toHaveBeenCalledOnce()
     })
 
     it('should update hash and draft updated at on success', async () => {
+      const onSuccess = vi.fn()
+      const onSettled = vi.fn()
+      const onError = vi.fn()
       const mockSetSyncWorkflowDraftHash = vi.fn()
       const mockSetDraftUpdatedAt = vi.fn()
 
@@ -445,11 +384,14 @@ describe('useNodesSyncDraft', () => {
       })
 
       await act(async () => {
-        await result.current.doSyncWorkflowDraft()
+        await result.current.doSyncWorkflowDraft(false, { onSuccess, onSettled, onError })
       })
 
       expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
       expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith('2024-01-01T00:00:00Z')
+      expect(onSuccess).toHaveBeenCalledOnce()
+      expect(onSettled).toHaveBeenCalledOnce()
+      expect(onError).not.toHaveBeenCalled()
     })
 
     it('should handle draft not sync error', async () => {
@@ -472,8 +414,6 @@ describe('useNodesSyncDraft', () => {
       await act(async () => {
         await result.current.doSyncWorkflowDraft(false)
       })
-
-      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(mockHandleRefreshWorkflowDraft).toHaveBeenCalled()
     })
@@ -499,130 +439,7 @@ describe('useNodesSyncDraft', () => {
         await result.current.doSyncWorkflowDraft(true)
       })
 
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
       expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('getPostParams', () => {
-    it('should include viewport coordinates in params', () => {
-      mockStoreGetState.mockReturnValue({
-        getNodes: mockGetNodes,
-        edges: [],
-        transform: [100, 200, 1.5],
-      })
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
-      expect(sentParams.graph.viewport).toEqual({ x: 100, y: 200, zoom: 1.5 })
-    })
-
-    it('should include environment variables in params', () => {
-      mockWorkflowStoreGetState.mockReturnValue({
-        pipelineId: 'test-pipeline-id',
-        environmentVariables: [{ key: 'API_KEY', value: 'secret' }],
-        syncWorkflowDraftHash: 'test-hash',
-        ragPipelineVariables: [],
-        setSyncWorkflowDraftHash: vi.fn(),
-        setDraftUpdatedAt: vi.fn(),
-      })
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
-      expect(sentParams.environment_variables).toEqual([{ key: 'API_KEY', value: 'secret' }])
-    })
-
-    it('should include rag pipeline variables in params', () => {
-      mockWorkflowStoreGetState.mockReturnValue({
-        pipelineId: 'test-pipeline-id',
-        environmentVariables: [],
-        syncWorkflowDraftHash: 'test-hash',
-        ragPipelineVariables: [{ variable: 'input', type: 'text-input' }],
-        setSyncWorkflowDraftHash: vi.fn(),
-        setDraftUpdatedAt: vi.fn(),
-      })
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
-      expect(sentParams.rag_pipeline_variables).toEqual([{ variable: 'input', type: 'text-input' }])
-    })
-
-    it('should not include source_workflow_id when syncing on page close', () => {
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
-      expect(sentParams.source_workflow_id).toBeUndefined()
-    })
-
-    it('should remove underscore-prefixed keys from edges', () => {
-      mockStoreGetState.mockReturnValue({
-        getNodes: mockGetNodes,
-        edges: [
-          {
-            id: 'edge-1',
-            source: 'node-1',
-            target: 'node-2',
-            data: { _hidden: true, visible: false },
-          },
-        ],
-        transform: [0, 0, 1],
-      })
-      mockGetNodes.mockReturnValue([
-        { id: 'node-1', data: { type: 'start' }, position: { x: 0, y: 0 } },
-      ])
-
-      const { result } = renderHook(() => useNodesSyncDraft(), {
-        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
-      })
-
-      act(() => {
-        result.current.syncWorkflowDraftWhenPageClose()
-      })
-
-      const sentParams = mockPostWithKeepalive.mock.calls[0]![1]
-      expect(sentParams.graph.edges[0].data._hidden).toBeUndefined()
-      expect(sentParams.graph.edges[0].data.visible).toBe(false)
     })
   })
 })

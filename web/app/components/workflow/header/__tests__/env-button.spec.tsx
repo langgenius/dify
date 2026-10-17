@@ -1,13 +1,13 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import EnvButton from '../env-button'
 
 const mockCloseAllInputFieldPanels = vi.fn()
-let mockTheme: 'light' | 'dark' = 'light'
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
-    theme: mockTheme,
+    theme: 'light',
   }),
 }))
 
@@ -18,12 +18,8 @@ vi.mock('@/app/components/rag-pipeline/hooks/use-input-field-panel', () => ({
 }))
 
 describe('EnvButton', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockTheme = 'light'
-  })
-
-  it('should open the environment panel and close the other panels when clicked', () => {
+  it('should open the environment panel and close the other panels when clicked', async () => {
+    const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<EnvButton disabled={false} />, {
       initialStoreState: {
         showChatVariablePanel: true,
@@ -32,7 +28,7 @@ describe('EnvButton', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelTitle' }))
 
     expect(store.getState().showEnvPanel).toBe(true)
     expect(store.getState().showChatVariablePanel).toBe(false)
@@ -41,16 +37,17 @@ describe('EnvButton', () => {
     expect(mockCloseAllInputFieldPanels).toHaveBeenCalledTimes(1)
   })
 
-  it('should keep the button disabled when the disabled prop is true', () => {
+  it('should keep the button disabled when the disabled prop is true', async () => {
+    const user = userEvent.setup()
     const { store } = renderWorkflowComponent(<EnvButton disabled />, {
       initialStoreState: {
         showEnvPanel: false,
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelTitle' }))
 
-    expect(screen.getByRole('button')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'workflow.env.envPanelTitle' })).toBeDisabled()
     expect(store.getState().showEnvPanel).toBe(false)
     expect(mockCloseAllInputFieldPanels).not.toHaveBeenCalled()
   })

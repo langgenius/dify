@@ -1,12 +1,26 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { zProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import Log from '@/app/components/base/chat/chat/log'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ModelFeatureEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ConfigContext from '@/context/debug-configuration'
-import { ModelModeType, TransferMethod } from '@/types/app'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import {
+  createDatasetConfigsFixture,
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
+import { ModelModeType, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 import Debug from '../index'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
 
@@ -64,10 +78,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
     update: mockState.mockToastUpdate,
     promise: mockState.mockToastPromise,
   }),
-}))
-
-vi.mock('@/app/components/app/configuration/debug/chat-user-input', () => ({
-  default: () => <div data-testid="chat-user-input">ChatUserInput</div>,
 }))
 
 vi.mock('@/app/components/app/configuration/prompt-value-panel', () => ({
@@ -230,33 +240,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useDefaultModel: () => ({ data: mockState.mockText2speechDefaultModel }),
 }))
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: { emit: mockState.mockEventEmitterEmit },
-  }),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: () => mockState.mockModelListResult,
-}))
-
 vi.mock('@/service/debug', () => ({
   sendCompletionMessage: mockState.mockSendCompletionMessage,
-}))
-
-vi.mock('../../base/group-name', () => ({
-  default: ({ name }: { name: string }) => <div>{name}</div>,
-}))
-
-vi.mock('../../base/warning-mask/cannot-query-dataset', () => ({
-  default: ({ onConfirm }: { onConfirm: () => void }) => (
-    <div data-testid="cannot-query-dataset">
-      <button type="button" data-testid="cannot-query-confirm" onClick={onConfirm}>
-        Confirm
-      </button>
-    </div>
-  ),
 }))
 
 vi.mock('../../base/warning-mask/formatting-changed', () => ({
@@ -339,141 +324,27 @@ vi.mock('../debug-with-single-model', () => {
   return { default: DebugWithSingleModelMock }
 })
 
-const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugContextValue => ({
-  readonly: false,
-  canTestAndRun: true,
-  appId: 'app-id',
-  onOpenFeatures: vi.fn(),
-  isTrailFinished: false,
-  mode: 'chat',
-  modelModeType: ModelModeType.chat,
-  promptMode: 'simple' as DebugContextValue['promptMode'],
-  setPromptMode: vi.fn(),
-  isAdvancedMode: false,
-  isAgent: false,
-  isFunctionCall: false,
-  isOpenAI: true,
-  collectionList: [],
-  canReturnToSimpleMode: false,
-  setCanReturnToSimpleMode: vi.fn(),
-  chatPromptConfig: { prompt: [] } as DebugContextValue['chatPromptConfig'],
-  completionPromptConfig: {
-    prompt: { text: '' },
-    conversation_histories_role: { user_prefix: 'user', assistant_prefix: 'assistant' },
-  } as DebugContextValue['completionPromptConfig'],
-  currentAdvancedPrompt: [],
-  setCurrentAdvancedPrompt: vi.fn(),
-  showHistoryModal: vi.fn(),
-  conversationHistoriesRole: { user_prefix: 'user', assistant_prefix: 'assistant' },
-  setConversationHistoriesRole: vi.fn(),
-  hasSetBlockStatus: { context: false, history: true, query: true },
-  conversationId: null,
-  setConversationId: vi.fn(),
-  introduction: '',
-  setIntroduction: vi.fn(),
-  suggestedQuestions: [],
-  setSuggestedQuestions: vi.fn(),
-  controlClearChatMessage: 0,
-  setControlClearChatMessage: vi.fn(),
-  prevPromptConfig: { prompt_template: '', prompt_variables: [] },
-  setPrevPromptConfig: vi.fn(),
-  moreLikeThisConfig: { enabled: false },
-  setMoreLikeThisConfig: vi.fn(),
-  suggestedQuestionsAfterAnswerConfig: { enabled: false },
-  setSuggestedQuestionsAfterAnswerConfig: vi.fn(),
-  speechToTextConfig: { enabled: false },
-  setSpeechToTextConfig: vi.fn(),
-  textToSpeechConfig: { enabled: false, voice: '', language: '' },
-  setTextToSpeechConfig: vi.fn(),
-  citationConfig: { enabled: false },
-  setCitationConfig: vi.fn(),
-  annotationConfig: {
-    id: '',
-    enabled: false,
-    score_threshold: 0.7,
-    embedding_model: {
-      embedding_model_name: '',
-      embedding_provider_name: '',
-    },
-  },
-  setAnnotationConfig: vi.fn(),
-  moderationConfig: { enabled: false },
-  setModerationConfig: vi.fn(),
-  externalDataToolsConfig: [],
-  setExternalDataToolsConfig: vi.fn(),
-  formattingChanged: false,
-  setFormattingChanged: vi.fn(),
-  inputs: {},
-  setInputs: vi.fn(),
-  query: '',
-  setQuery: vi.fn(),
-  completionParams: {},
-  setCompletionParams: vi.fn(),
-  modelConfig: {
-    provider: 'openai',
-    model_id: 'gpt-4',
-    mode: ModelModeType.chat,
-    configs: {
-      prompt_template: '',
-      prompt_variables: [],
-    },
-    chat_prompt_config: { prompt: [] },
-    completion_prompt_config: {
-      prompt: { text: '' },
-      conversation_histories_role: { user_prefix: 'user', assistant_prefix: 'assistant' },
-    },
-    more_like_this: null,
-    opening_statement: '',
-    suggested_questions: [],
-    sensitive_word_avoidance: null,
-    speech_to_text: null,
-    text_to_speech: null,
-    file_upload: null,
-    suggested_questions_after_answer: null,
-    retriever_resource: null,
-    annotation_reply: null,
-    external_data_tools: [],
-    dataSets: [],
-    agentConfig: {
-      enabled: false,
-      max_iteration: 5,
-      tools: [],
-      strategy: 'react',
-    },
-  } as DebugContextValue['modelConfig'],
-  setModelConfig: vi.fn(),
-  dataSets: [],
-  setDataSets: vi.fn(),
-  showSelectDataSet: vi.fn(),
-  datasetConfigs: {
-    retrieval_model: 'single',
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 4,
-    score_threshold_enabled: false,
-    score_threshold: 0.7,
-    datasets: { datasets: [] },
-  } as DebugContextValue['datasetConfigs'],
-  datasetConfigsRef: { current: null } as unknown as DebugContextValue['datasetConfigsRef'],
-  setDatasetConfigs: vi.fn(),
-  hasSetContextVar: false,
-  isShowVisionConfig: false,
-  visionConfig: {
-    enabled: false,
-    number_limits: 2,
-    detail: 'low',
-    transfer_methods: [],
-  } as DebugContextValue['visionConfig'],
-  setVisionConfig: vi.fn(),
-  isAllowVideoUpload: false,
-  isShowDocumentConfig: false,
-  isShowAudioConfig: false,
-  rerankSettingModalOpen: false,
-  setRerankSettingModalOpen: vi.fn(),
-  ...overrides,
-})
+const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugContextValue =>
+  createDebugConfigurationFixture({
+    canTestAndRun: true,
+    appId: 'app-id',
+    isOpenAI: true,
+    hasSetBlockStatus: { context: false, history: true, query: true },
+    completionParams: {},
+    modelConfig: createModelConfigFixture({
+      provider: 'openai',
+      model_id: 'gpt-4',
+      mode: ModelModeType.chat,
+    }),
+    datasetConfigs: createDatasetConfigsFixture({ retrieval_model: RETRIEVE_TYPE.oneWay }),
+    ...overrides,
+  })
+
+function EventObserver({ children }: { children: ReactNode }) {
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription(mockState.mockEventEmitterEmit)
+  return children
+}
 
 const renderDebug = (
   options: {
@@ -495,11 +366,39 @@ const renderDebug = (
     ...options.props,
   }
 
+  const { queryClient, wrapper } = createConsoleQueryWrapper()
+  const modelQuery = consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions(
+    {
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+    },
+  )
+  queryClient.setQueryData(modelQuery.queryKey, {
+    data: mockState.mockModelListResult.data.map((provider) =>
+      zProviderWithModelsResponse.parse({
+        ...provider,
+        tenant_id: 'workspace-1',
+        label: { en_US: provider.provider },
+        models: provider.models.map((model) => ({
+          ...model,
+          label: { en_US: model.model },
+          model_type: 'llm',
+          status: 'active',
+          fetch_from: 'predefined-model',
+        })),
+      }),
+    ),
+  })
   const view = render(
-    // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
-    <ConfigContext.Provider value={createContextValue(options.contextValue)}>
-      <Debug {...props} />
-    </ConfigContext.Provider>,
+    <EventEmitterContextProvider>
+      <EventObserver>
+        // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector
+        contexts are not React 19 context components.
+        <ConfigContext.Provider value={createContextValue(options.contextValue)}>
+          <Debug {...props} />
+        </ConfigContext.Provider>
+      </EventObserver>
+    </EventEmitterContextProvider>,
+    { wrapper },
   )
 
   return { ...view, onSetting, notify: mockState.mockToastCall, props }
@@ -537,7 +436,8 @@ describe('Debug', () => {
   })
 
   describe('Empty states', () => {
-    it('should render no-provider empty state and forward manage action', () => {
+    it('should render no-provider empty state and forward manage action', async () => {
+      const user = userEvent.setup()
       const { onSetting } = renderDebug({
         contextValue: {
           modelConfig: {
@@ -549,10 +449,10 @@ describe('Debug', () => {
         props: {},
       })
 
-      expect(screen.getByText('appDebug.noModelProviderConfigured'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.noModelProviderConfiguredTip'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelProviderConfigured')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelProviderConfiguredTip')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'appDebug.manageModels' }))
+      await user.click(screen.getByRole('button', { name: 'appDebug.manageModels' }))
       expect(onSetting).toHaveBeenCalledTimes(1)
     })
 
@@ -568,23 +468,25 @@ describe('Debug', () => {
         props: {},
       })
 
-      expect(screen.getByText('appDebug.noModelSelected'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.noModelSelectedTip'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelSelected')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.noModelSelectedTip')).toBeInTheDocument()
       expect(screen.queryByText('appDebug.noModelProviderConfigured')).not.toBeInTheDocument()
     })
   })
 
   describe('Single model mode', () => {
-    it('should render single-model panel and refresh conversation', () => {
+    it('should render single-model panel and refresh conversation', async () => {
+      const user = userEvent.setup()
       renderDebug()
 
-      expect(screen.getByTestId('debug-with-single-model'))!.toBeInTheDocument()
+      expect(screen.getByTestId('debug-with-single-model')).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
-    it('should toggle chat input visibility when variable panel button is clicked', () => {
+    it('should toggle chat input visibility when variable panel button is clicked', async () => {
+      const user = userEvent.setup()
       renderDebug({
         contextValue: {
           inputs: { question: 'hello' },
@@ -605,19 +507,20 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByTestId('chat-user-input'))!.toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Question' })).toBeInTheDocument()
       const inputPanelButton = screen.getByRole('button', {
         name: 'workflow.panel.userInputField',
       })
       expect(inputPanelButton).toHaveAttribute('aria-expanded', 'true')
 
-      fireEvent.click(inputPanelButton)
+      await user.click(inputPanelButton)
 
       expect(inputPanelButton).toHaveAttribute('aria-expanded', 'false')
-      expect(screen.queryByTestId('chat-user-input')).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox', { name: 'Question' })).not.toBeInTheDocument()
     })
 
-    it('should keep refresh action available when readonly app still has test/run permission', () => {
+    it('should keep refresh action available when readonly app still has test/run permission', async () => {
+      const user = userEvent.setup()
       renderDebug({
         contextValue: {
           readonly: true,
@@ -625,7 +528,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.refresh' }))
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
@@ -642,7 +545,8 @@ describe('Debug', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should show formatting confirmation and handle cancel', () => {
+    it('should show formatting confirmation and handle cancel', async () => {
+      const user = userEvent.setup()
       const setFormattingChanged = vi.fn()
 
       renderDebug({
@@ -652,12 +556,13 @@ describe('Debug', () => {
         },
       })
 
-      expect(screen.getByTestId('formatting-changed'))!.toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('formatting-cancel'))
+      expect(screen.getByTestId('formatting-changed')).toBeInTheDocument()
+      await user.click(screen.getByTestId('formatting-cancel'))
       expect(setFormattingChanged).toHaveBeenCalledWith(false)
     })
 
-    it('should handle formatting confirmation with restart', () => {
+    it('should handle formatting confirmation with restart', async () => {
+      const user = userEvent.setup()
       const setFormattingChanged = vi.fn()
 
       renderDebug({
@@ -667,12 +572,13 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('formatting-confirm'))
+      await user.click(screen.getByTestId('formatting-confirm'))
       expect(setFormattingChanged).toHaveBeenCalledWith(false)
       expect(mockState.mockHandleRestart).toHaveBeenCalledTimes(1)
     })
 
-    it('should notify when history block is missing in advanced completion mode', () => {
+    it('should notify when history block is missing in advanced completion mode', async () => {
+      const user = userEvent.setup()
       const { notify } = renderDebug({
         contextValue: {
           isAdvancedMode: true,
@@ -682,14 +588,15 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('single-check-can-send'))
+      await user.click(screen.getByTestId('single-check-can-send'))
       expect(notify).toHaveBeenCalledWith({
         type: 'error',
         message: 'appDebug.otherError.historyNoBeEmpty',
       })
     })
 
-    it('should notify when query block is missing in advanced completion mode', () => {
+    it('should notify when query block is missing in advanced completion mode', async () => {
+      const user = userEvent.setup()
       const { notify } = renderDebug({
         contextValue: {
           isAdvancedMode: true,
@@ -699,7 +606,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('single-check-can-send'))
+      await user.click(screen.getByTestId('single-check-can-send'))
       expect(notify).toHaveBeenCalledWith({
         type: 'error',
         message: 'appDebug.otherError.queryNoBeEmpty',
@@ -708,18 +615,8 @@ describe('Debug', () => {
   })
 
   describe('Completion mode', () => {
-    it('should render prompt value panel and no-result placeholder', () => {
-      renderDebug({
-        contextValue: {
-          mode: 'completion' as const,
-        },
-      })
-
-      expect(screen.getByTestId('prompt-value-panel'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.noResult'))!.toBeInTheDocument()
-    })
-
-    it('should notify when required input is missing', () => {
+    it('should notify when required input is missing', async () => {
+      const user = userEvent.setup()
       const { notify } = renderDebug({
         contextValue: {
           mode: 'completion' as const,
@@ -741,7 +638,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('panel-send'))
+      await user.click(screen.getByTestId('panel-send'))
       expect(notify).toHaveBeenCalledWith({
         type: 'error',
         message: 'appDebug.errorMessage.valueOfVarRequired:{"key":"Question"}',
@@ -749,7 +646,8 @@ describe('Debug', () => {
       expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
     })
 
-    it('should notify when local file upload is still pending', () => {
+    it('should notify when local file upload is still pending', async () => {
+      const user = userEvent.setup()
       const { notify } = renderDebug({
         contextValue: {
           mode: 'completion' as const,
@@ -763,8 +661,8 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('panel-set-pending-file'))
-      fireEvent.click(screen.getByTestId('panel-send'))
+      await user.click(screen.getByTestId('panel-set-pending-file'))
+      await user.click(screen.getByTestId('panel-send'))
 
       expect(notify).toHaveBeenCalledWith({
         type: 'info',
@@ -773,11 +671,12 @@ describe('Debug', () => {
       expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
     })
 
-    it('should show cannot-query-dataset warning when dataset context variable is missing', () => {
+    it('should show cannot-query-dataset warning when dataset context variable is missing', async () => {
+      const user = userEvent.setup()
       renderDebug({
         contextValue: {
           mode: 'completion' as const,
-          dataSets: [{ id: 'dataset-1' }] as DebugContextValue['dataSets'],
+          dataSets: [createDatasetFixture({ id: 'dataset-1' })],
           hasSetContextVar: false,
           modelConfig: {
             ...createContextValue().modelConfig,
@@ -789,11 +688,18 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('panel-send'))
-      expect(screen.getByTestId('cannot-query-dataset'))!.toBeInTheDocument()
+      await user.click(screen.getByTestId('panel-send'))
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.unableToQueryDataSet'),
+      ).toBeInTheDocument()
 
-      fireEvent.click(screen.getByTestId('cannot-query-confirm'))
-      expect(screen.queryByTestId('cannot-query-dataset')).not.toBeInTheDocument()
+      expect(mockState.mockSendCompletionMessage).not.toHaveBeenCalled()
+      await user.click(
+        screen.getByRole('button', { name: 'appDebug.feature.dataSet.queryVariable.ok' }),
+      )
+      expect(
+        screen.queryByText('appDebug.feature.dataSet.queryVariable.unableToQueryDataSet'),
+      ).not.toBeInTheDocument()
     })
 
     it('reports an invalid chat prompt before starting a completion request', async () => {
@@ -840,6 +746,7 @@ describe('Debug', () => {
     })
 
     it('should send completion request and render completion result', async () => {
+      const user = userEvent.setup()
       mockState.mockText2speechDefaultModel = { provider: 'openai' }
       mockState.mockFeaturesState = {
         ...mockState.mockFeaturesState,
@@ -894,7 +801,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('panel-send'))
+      await user.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
       const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
@@ -909,9 +816,9 @@ describe('Debug', () => {
           dataset_query_variable: 'question',
         },
       })
-      expect(screen.getByTestId('text-generation'))!.toHaveTextContent('final answer')
-      expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
-      expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
+      expect(screen.getByTestId('text-generation')).toHaveTextContent('final answer')
+      expect(screen.getByTestId('text-generation')).toHaveAttribute('data-message-id', 'msg-1')
+      expect(screen.getByTestId('text-generation')).toHaveAttribute('data-tts', 'true')
 
       handlers.onNotifyError('Base model not found')
       expect(mockState.mockToastCall).toHaveBeenCalledWith({
@@ -921,6 +828,7 @@ describe('Debug', () => {
     })
 
     it('should notify when sending again while a response is in progress', async () => {
+      const user = userEvent.setup()
       mockState.mockSendCompletionMessage.mockImplementation(() => undefined)
       const { notify } = renderDebug({
         contextValue: {
@@ -935,8 +843,8 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('panel-send'))
-      fireEvent.click(screen.getByTestId('panel-send'))
+      await user.click(screen.getByTestId('panel-send'))
+      await user.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
       expect(notify).toHaveBeenCalledWith({
@@ -946,6 +854,7 @@ describe('Debug', () => {
     })
 
     it('should keep remote files and reset responding state on send error', async () => {
+      const user = userEvent.setup()
       mockState.mockFeaturesState = {
         ...mockState.mockFeaturesState,
         file: {
@@ -986,11 +895,13 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('panel-set-remote-file'))
-      fireEvent.click(screen.getByTestId('panel-send'))
+      await user.click(screen.getByTestId('panel-set-remote-file'))
+      await user.click(screen.getByTestId('panel-send'))
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
-      expect(screen.getByText('appDebug.noResult'))!.toBeInTheDocument()
+      expect(screen.getByText('appDebug.noResult')).toBeInTheDocument()
+      await user.click(screen.getByTestId('panel-send'))
+      await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(2))
     })
 
     it('opens and closes the completion result log from its action', async () => {
@@ -1013,7 +924,8 @@ describe('Debug', () => {
   })
 
   describe('Multiple model mode', () => {
-    it('should append a blank model when add-model button is clicked', () => {
+    it('should append a blank model when add-model button is clicked', async () => {
+      const user = userEvent.setup()
       const onMultipleModelConfigsChange = vi.fn()
 
       renderDebug({
@@ -1026,7 +938,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel(1/4)' }),
       )
       expect(onMultipleModelConfigsChange).toHaveBeenCalledWith(true, [
@@ -1050,10 +962,11 @@ describe('Debug', () => {
 
       expect(
         screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel(4/4)' }),
-      )!.toBeDisabled()
+      ).toBeDisabled()
     })
 
-    it('should disable add-model button when test/run permission is missing', () => {
+    it('should disable add-model button when test/run permission is missing', async () => {
+      const user = userEvent.setup()
       const onMultipleModelConfigsChange = vi.fn()
 
       renderDebug({
@@ -1073,11 +986,12 @@ describe('Debug', () => {
         name: 'modelProvider.modelProvider.addModel(1/4)',
       })
       expect(addModelButton).toBeDisabled()
-      fireEvent.click(addModelButton)
+      await user.click(addModelButton)
       expect(onMultipleModelConfigsChange).not.toHaveBeenCalled()
     })
 
-    it('should emit completion event in multiple-model completion mode', () => {
+    it('should emit completion event in multiple-model completion mode', async () => {
+      const user = userEvent.setup()
       renderDebug({
         contextValue: {
           mode: 'completion' as const,
@@ -1097,8 +1011,8 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('panel-set-uploaded-file'))
-      fireEvent.click(screen.getByTestId('panel-send'))
+      await user.click(screen.getByTestId('panel-set-uploaded-file'))
+      await user.click(screen.getByTestId('panel-send'))
 
       expect(mockState.mockEventEmitterEmit).toHaveBeenCalledWith({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
@@ -1127,7 +1041,8 @@ describe('Debug', () => {
       })
     })
 
-    it('should switch from multiple model to single model with selected parameters', () => {
+    it('should switch from multiple model to single model with selected parameters', async () => {
+      const user = userEvent.setup()
       const setModel = vi.fn()
       const onCompletionParamsChange = vi.fn()
       const onMultipleModelConfigsChange = vi.fn()
@@ -1151,7 +1066,7 @@ describe('Debug', () => {
         },
       })
 
-      fireEvent.click(screen.getByTestId('multiple-switch-to-single'))
+      await user.click(screen.getByTestId('multiple-switch-to-single'))
 
       expect(setModel).toHaveBeenCalledWith({
         modelId: 'vision-model',

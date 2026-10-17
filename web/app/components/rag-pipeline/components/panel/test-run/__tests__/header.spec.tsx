@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Header from '../header'
 
 const { mockSetIsPreparingDataSource, mockHandleCancelDebugAndPreviewPanel, mockWorkflowStore } =
@@ -32,24 +33,24 @@ describe('TestRun header', () => {
     })
   })
 
-  it('should render the title and reset preparing state on close', () => {
+  it('should render the title and reset preparing state on close', async () => {
     render(<Header />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(screen.getByText('datasetPipeline.testRun.title')).toBeInTheDocument()
     expect(mockSetIsPreparingDataSource).toHaveBeenCalledWith(false)
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)
   })
 
-  it('should only cancel the panel when the datasource preparation flag is false', () => {
+  it('should only cancel the panel when the datasource preparation flag is false', async () => {
     mockWorkflowStore.getState.mockReturnValue({
       isPreparingDataSource: false,
       setIsPreparingDataSource: mockSetIsPreparingDataSource,
     })
 
     render(<Header />)
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(mockSetIsPreparingDataSource).not.toHaveBeenCalled()
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)

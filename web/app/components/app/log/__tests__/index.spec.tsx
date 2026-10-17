@@ -1,5 +1,5 @@
 import type { CloudSandboxPlanState } from '../cloud-sandbox-retention'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import dayjs from 'dayjs'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -106,6 +106,7 @@ describe('Logs', () => {
   })
 
   it('should update the page query parameter when pagination changes', async () => {
+    const user = userEvent.setup()
     getChatConversations.mockResolvedValue({
       total: APP_PAGE_LIMIT + 1,
       data: [],
@@ -116,7 +117,7 @@ describe('Logs', () => {
 
     render(<Logs appDetail={createAppDetailFixture({ id: 'app-3', mode: 'chat' })} />)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Go to page 2' }))
+    await user.click(await screen.findByRole('button', { name: 'Go to page 2' }))
 
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
   })

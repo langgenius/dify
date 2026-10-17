@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../../types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { renderWorkflowFlowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { ErrorHandleTypeEnum } from '../../../_base/components/error-handle/types'
 import { getAgentV2DeclaredOutputs } from '../../output-variables'
@@ -23,8 +24,8 @@ vi.mock('@/app/components/workflow/hooks/use-edges-interactions', () => ({
 vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
 }))
-vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
+vi.mock('@/app/components/workflow/hooks/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/workflow/hooks/use-workflow')>()),
   useWorkflow: () => ({ removeUsedVarInNodes: removeVariable }),
 }))
 vi.mock('@/app/components/workflow/hooks/use-workflow-history', () => ({
@@ -221,4 +222,16 @@ it('clears node-level default values when enabling routes', async () => {
     error_strategy: undefined,
     default_value: undefined,
   })
+})
+
+it('blocks route changes when the canvas is readonly', async () => {
+  const user = userEvent.setup()
+  render(<Harness initial={{ enabled: false, routes: [] }} />, {
+    initialStoreState: { canvasReadOnly: true },
+  })
+  const toggle = screen.getByRole('switch', { name: 'workflow.nodes.agent.outputRoutes.title' })
+  expect(toggle).toHaveAttribute('aria-disabled', 'true')
+  await user.click(toggle)
+  expect(update).not.toHaveBeenCalled()
+  expect(removeEdges).not.toHaveBeenCalled()
 })

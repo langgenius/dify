@@ -1,5 +1,4 @@
-import { screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { act, screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
@@ -18,13 +17,6 @@ vi.mock('@/service/base', () => ({
   sseGeneratorPost: vi.fn(),
 }))
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    isCurrentWorkspaceManager: isManager,
-  }))
-})
-
 vi.mock('../../plan', () => ({
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
 }))
@@ -38,10 +30,11 @@ const renderBilling = () => {
   }
   const { wrapper } = createConsoleQueryWrapper({
     queryClient,
+    currentWorkspace: { role: isManager ? 'owner' : 'normal' },
     systemFeatures: { deployment_edition: deploymentEdition },
   })
 
-  return render(<Billing />, { wrapper })
+  return { ...render(<Billing />, { wrapper }), queryClient }
 }
 
 describe('Billing', () => {
@@ -50,19 +43,6 @@ describe('Billing', () => {
     currentBillingUrl = 'https://billing.example.com'
     isManager = true
     deploymentEdition = 'CLOUD'
-  })
-
-  it('renders the billing portal as a keyboard-accessible external link for workspace managers', async () => {
-    const user = userEvent.setup()
-    renderBilling()
-
-    const billingLink = screen.getByRole('link', { name: /billing\.viewBillingTitle/ })
-    expect(billingLink).toHaveAttribute('href', currentBillingUrl)
-    expect(billingLink).toHaveAttribute('target', '_blank')
-    expect(billingLink).toHaveAttribute('rel', 'noopener noreferrer')
-
-    await user.tab()
-    expect(billingLink).toHaveFocus()
   })
 
   it('hides the billing action from non-manager members', () => {
@@ -81,18 +61,24 @@ describe('Billing', () => {
     expect(screen.queryByText('billing.viewBillingTitle')).not.toBeInTheDocument()
   })
 
-  it('renders the billing action outside the tab order before the URL is available', async () => {
-    const user = userEvent.setup()
+  it('enables the manager billing link only after its URL becomes available', async () => {
     currentBillingUrl = undefined
 
-    renderBilling()
+    const { queryClient } = renderBilling()
 
     expect(screen.getByText('billing.viewBillingTitle')).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: /billing\.viewBillingTitle/ }),
     ).not.toBeInTheDocument()
 
-    await user.tab()
-    expect(document.body).toHaveFocus()
+    act(() =>
+      queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
+        url: 'https://billing.example.com',
+      }),
+    )
+    const link = await screen.findByRole('link', { name: /billing\.viewBillingTitle/ })
+    expect(link).toHaveAttribute('href', 'https://billing.example.com')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 })

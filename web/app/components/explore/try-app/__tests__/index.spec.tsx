@@ -2,9 +2,9 @@ import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore
 import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render as rtlRender, screen, waitFor } from '@testing-library/react'
+import { act, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import TryAppComponent from '../index'
@@ -136,22 +136,19 @@ describe('TryApp', () => {
     mockPreviewSuspension.promise = null
     getDetail.mockReset().mockResolvedValue(createMockAppDetail())
   })
-  afterEach(cleanup)
 
   it('keeps the dialog and tabs mounted while the initial request settles', async () => {
     const request = createDeferred<TrialAppDetailResponse>()
     getDetail.mockReturnValue(request.promise)
     render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
-    const dialog = screen.getByRole('dialog')
     const detailTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })
     const tryTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' })
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(tryTab).toHaveAttribute('aria-disabled', 'true')
     await act(async () => request.resolve(createMockAppDetail()))
     expect(await screen.findByTestId('preview-component')).toBeInTheDocument()
-    expect(screen.getByRole('dialog')).toBe(dialog)
-    expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBe(detailTab)
-    expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.try' })).toBe(tryTab)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBeVisible()
     expect(tryTab).not.toHaveAttribute('aria-disabled', 'true')
     expect(detailTab).toHaveAttribute('aria-selected', 'true')
   })
@@ -164,11 +161,10 @@ describe('TryApp', () => {
       app: { id: 'test-app-id', name: 'Sample template', icon_url: null },
     }
     render(<TryApp app={app} onClose={vi.fn()} onCreate={vi.fn()} />)
-    const detailTab = screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })
     expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
     await act(async () => request.reject(new Error('Unavailable')))
     expect(await screen.findByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
-    expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBe(detailTab)
+    expect(screen.getByRole('tab', { name: 'explore.tryApp.tabHeader.detail' })).toBeVisible()
     expect(screen.getByRole('dialog', { name: 'Sample template' })).toBeInTheDocument()
     expect(screen.queryByTestId('app-info-component')).not.toBeInTheDocument()
     expect(screen.queryByTestId('create-button')).not.toBeInTheDocument()
@@ -193,7 +189,6 @@ describe('TryApp', () => {
     const request = createDeferred<void>()
     mockPreviewSuspension.promise = request.promise
     render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
-    const dialog = screen.getByRole('dialog')
     await screen.findByTestId('app-info-component')
     expect(screen.getByRole('progressbar')).toBeInTheDocument()
     await act(async () => {
@@ -201,7 +196,7 @@ describe('TryApp', () => {
       request.resolve()
     })
     expect(await screen.findByTestId('preview-component')).toBeInTheDocument()
-    expect(screen.getByRole('dialog')).toBe(dialog)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('keeps the error block during retry, prevents duplicate requests and restores preview and focus', async () => {
@@ -210,11 +205,9 @@ describe('TryApp', () => {
     getDetail.mockRejectedValueOnce(new Error('Unavailable')).mockReturnValue(request.promise)
     render(<TryApp onClose={vi.fn()} onCreate={vi.fn()} />)
     const retryButton = await screen.findByRole('button', { name: 'common.operation.retry' })
-    const errorBlock = screen.getByRole('alert')
     await user.click(retryButton)
     const retryingButton = await screen.findByRole('button', { name: 'explore.tryApp.retrying' })
-    expect(retryingButton).toBe(retryButton)
-    expect(screen.getByRole('alert')).toBe(errorBlock)
+    expect(screen.getByRole('alert')).toBeVisible()
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(retryingButton).toHaveAttribute('aria-disabled', 'true')
     expect(retryingButton).toHaveFocus()

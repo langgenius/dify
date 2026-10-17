@@ -1,11 +1,13 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { PermissionLevel } from '@/models/permission'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from '../index'
 
@@ -51,7 +53,7 @@ const baseProps = {
 const makeDataset = (
   overrides: Partial<DatasetDetailWithPartialMembersResponse>,
 ): DatasetDetailWithPartialMembersResponse =>
-  ({
+  createDatasetFixture({
     id: 'dataset-id',
     name: 'Dataset Name',
     provider: 'internal',
@@ -78,7 +80,7 @@ const makeDataset = (
       score_threshold: 0,
     },
     ...overrides,
-  }) as DatasetDetailWithPartialMembersResponse
+  })
 
 describe('SelectDataSet', () => {
   beforeEach(() => {
@@ -92,6 +94,7 @@ describe('SelectDataSet', () => {
   })
 
   it('renders dataset entries, allows selection, and fires onSelect', async () => {
+    const user = userEvent.setup()
     const datasetOne = makeDataset({
       id: 'set-1',
       name: 'Dataset One',
@@ -107,31 +110,23 @@ describe('SelectDataSet', () => {
     getDatasets.mockResolvedValue(page([datasetOne, datasetTwo]))
 
     const onSelect = vi.fn()
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={[]} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={[]} />)
 
     expect(await screen.findByText('Dataset One')).toBeInTheDocument()
     expect(screen.getByText('Hidden Dataset')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Dataset One'))
-    })
+    await user.click(screen.getByText('Dataset One'))
     expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
 
     const addButton = screen.getByRole('button', { name: 'common.operation.add' })
-    await act(async () => {
-      fireEvent.click(addButton)
-    })
+    await user.click(addButton)
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
   })
 
   it('shows empty state when no datasets are available and disables add', async () => {
     getDatasets.mockResolvedValue(page([]))
 
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
 
     expect(await screen.findByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).toHaveAttribute(
@@ -145,9 +140,7 @@ describe('SelectDataSet', () => {
     mockWorkspacePermissionKeys = []
     getDatasets.mockResolvedValue(page([]))
 
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
 
     expect(await screen.findByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
     expect(
@@ -157,6 +150,7 @@ describe('SelectDataSet', () => {
   })
 
   it('uses selectedIds as the initial modal selection', async () => {
+    const user = userEvent.setup()
     const datasetOne = makeDataset({
       id: 'set-1',
       name: 'Dataset One',
@@ -164,21 +158,18 @@ describe('SelectDataSet', () => {
     getDatasets.mockResolvedValue(page([datasetOne]))
 
     const onSelect = vi.fn()
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
 
     await screen.findByText('Dataset One')
     expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
   })
 
   it('should deselect existing selections and ignore unavailable dataset clicks', async () => {
+    const user = userEvent.setup()
     const datasetOne = makeDataset({
       id: 'set-1',
       name: 'Dataset One',
@@ -191,25 +182,17 @@ describe('SelectDataSet', () => {
     const onSelect = vi.fn()
     getDatasets.mockResolvedValue(page([datasetOne, datasetTwo]))
 
-    await act(async () => {
-      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
-    })
+    render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={['set-1']} />)
 
     await screen.findByText('Dataset One')
-    await act(async () => {
-      fireEvent.click(screen.getByText('Dataset One').parentElement?.parentElement as HTMLElement)
-    })
+    await user.click(screen.getByText('Dataset One'))
 
     await waitFor(() => {
       expect(screen.queryByText('1 appDebug.feature.dataSet.selected')).not.toBeInTheDocument()
     })
 
-    await act(async () => {
-      fireEvent.click(
-        screen.getByText('Unavailable Dataset').parentElement?.parentElement as HTMLElement,
-      )
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
-    })
+    await user.click(screen.getByText('Unavailable Dataset'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
     expect(onSelect).toHaveBeenCalledWith([])
   })

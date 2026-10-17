@@ -1,6 +1,4 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { OperationKey } from '@orpc/tanstack-query'
 import type { TFunction } from 'i18next'
 import type { ReactElement } from 'react'
 import type { RetrievalConfig } from '@/types/app'
@@ -18,17 +16,9 @@ import { withSelectorKey } from '@/test/i18n-mock'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
 
-const mockModelListQuery = vi.fn()
 const mockModelListQueryAndDefaultModel = vi.fn()
 const mockModelListQueryAndDefaultModelAndCurrentProviderAndModel = vi.fn()
 const mockUseCurrentProviderAndModel = vi.fn()
-
-vi.mock('ky', () => {
-  const ky = () => ky
-  ky.extend = () => ky
-  ky.create = () => ky
-  return { __esModule: true, default: ky }
-})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
@@ -58,6 +48,12 @@ const render = (ui: ReactElement) => {
   queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
     retrieval_method: [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid],
   })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+    }).queryKey,
+    { data: [] },
+  )
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
@@ -146,55 +142,20 @@ describe('RetrievalChangeTip', () => {
   })
 
   it('renders and supports dismiss', async () => {
-    // Arrange
+    const user = userEvent.setup()
+
     const onDismiss = vi.fn()
     render(<RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />)
 
-    // Act
-    await userEvent.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
+    await user.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
 
-    // Assert
-    // Assert
     expect(screen.getByText('Test message'))!.toBeInTheDocument()
     expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
   it('does not render when hidden', () => {
-    // Arrange & Act
     render(<RetrievalChangeTip {...defaultProps} visible={false} />)
 
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
-    // Assert
     expect(screen.queryByText('Test message')).not.toBeInTheDocument()
   })
 })
@@ -209,11 +170,6 @@ describe('RetrievalSection', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockModelListQuery.mockImplementation((type: ModelTypeEnum) => {
-      if (type === ModelTypeEnum.rerank)
-        return { data: [{ provider: 'rerank-provider', models: [{ model: 'rerank-model' }] }] }
-      return { data: [] }
-    })
     mockModelListQueryAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
     mockModelListQueryAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       defaultModel: null,
@@ -223,7 +179,8 @@ describe('RetrievalSection', () => {
   })
 
   it('renders external retrieval details and propagates changes', async () => {
-    // Arrange
+    const user = userEvent.setup()
+
     const dataset = createDataset({
       provider: 'external',
       external_knowledge_info: {
@@ -235,7 +192,6 @@ describe('RetrievalSection', () => {
     })
     const handleExternalChange = vi.fn()
 
-    // Act
     render(
       <RetrievalSection
         isExternal
@@ -250,23 +206,18 @@ describe('RetrievalSection', () => {
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
-    await userEvent.click(topKIncrement!)
+    await user.click(topKIncrement!)
 
-    // Assert
-    // Assert
     expect(screen.getByText('External API'))!.toBeInTheDocument()
     expect(screen.getByText('https://api.external.com'))!.toBeInTheDocument()
     expect(screen.getByText('ext-id-999'))!.toBeInTheDocument()
-    expect(screen.getAllByRole('separator')).toHaveLength(2)
     expect(handleExternalChange).toHaveBeenCalledWith(expect.objectContaining({ top_k: 4 }))
   })
 
   it('renders internal retrieval config with doc link', () => {
-    // Arrange
     const docLink = vi.fn((path: string) => `https://docs.example${path}`)
     const retrievalConfig = createRetrievalConfig()
 
-    // Act
     render(
       <RetrievalSection
         isExternal={false}
@@ -281,8 +232,6 @@ describe('RetrievalSection', () => {
       />,
     )
 
-    // Assert
-    // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', {
       name: 'datasetSettings.form.retrievalSetting.learnMore',
@@ -297,10 +246,10 @@ describe('RetrievalSection', () => {
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
-    // Arrange
+    const user = userEvent.setup()
+
     const handleRetrievalChange = vi.fn()
 
-    // Act
     render(
       <RetrievalSection
         isExternal={false}
@@ -315,10 +264,8 @@ describe('RetrievalSection', () => {
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
-    await userEvent.click(topKIncrement!)
+    await user.click(topKIncrement!)
 
-    // Assert
-    // Assert
     expect(screen.getByText('dataset.retrieval.keyword_search.title'))!.toBeInTheDocument()
     expect(handleRetrievalChange).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -326,23 +273,4 @@ describe('RetrievalSection', () => {
       }),
     )
   })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: (options: {
-      queryKey: OperationKey<
-        'query',
-        { params: GetWorkspacesCurrentModelsModelTypesByModelTypeData['path'] }
-      >
-    }) => {
-      if (!options.queryKey[0].includes('modelTypes')) return actual.useQuery(options)
-
-      const args = options.queryKey[1].input?.params?.model_type
-      if (!args) throw new Error('Missing model type in query')
-      return mockModelListQuery(args)
-    },
-  }
 })

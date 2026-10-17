@@ -83,14 +83,10 @@ const useSingleRunFormParams = ({
   const handleFetchFormContent = useCallback(
     async (inputs: Record<string, string>) => {
       if (!fetchURL) return null
-      let requestParamsObj: Record<string, string> = {}
-      Object.keys(inputs).forEach((key) => {
-        if (inputs[key] === undefined) {
-          delete inputs[key]
-        }
-      })
-      requestParamsObj = { ...inputs }
-      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj! })
+      const requestParamsObj = Object.fromEntries(
+        Object.entries(inputs).filter(([, value]) => value !== undefined),
+      )
+      const data = await fetchHumanInputNodeStepRunForm(fetchURL, { inputs: requestParamsObj })
       setFormData(data)
       setRequiredInputs(requestParamsObj)
       return data

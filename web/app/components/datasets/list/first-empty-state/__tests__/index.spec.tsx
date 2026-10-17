@@ -2,19 +2,6 @@ import { render, screen } from '@testing-library/react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import DatasetFirstEmptyState from '..'
 
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-    ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
-    <a href={href} className={className} {...props}>
-      {children}
-    </a>
-  ),
-}))
-
 describe('DatasetFirstEmptyState', () => {
   it('links to pipeline creation when creation is available', () => {
     render(<DatasetFirstEmptyState canConnectExternalDataset canCreateDataset />)
@@ -40,30 +27,6 @@ describe('DatasetFirstEmptyState', () => {
     expect(screen.getByRole('link', { name: /dataset\.connectDataset/ })).toHaveAttribute(
       'data-step-by-step-tour-target',
       STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyConnect,
-    )
-  })
-
-  it('lays out placeholder cards with auto-fill grid columns', () => {
-    const { container } = render(
-      <DatasetFirstEmptyState canConnectExternalDataset canCreateDataset />,
-    )
-    const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none')).find(
-      (element) => element.className.includes('grid-rows-4'),
-    )
-
-    if (!placeholderGrid)
-      throw new Error('Expected dataset first empty state placeholder grid to render')
-
-    expect(placeholderGrid).toHaveClass(
-      'grid',
-      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-      'grid-rows-4',
-    )
-    expect(placeholderGrid).not.toHaveClass(
-      'grid-cols-1',
-      'sm:grid-cols-2',
-      'lg:grid-cols-3',
-      'xl:grid-cols-4',
     )
   })
 

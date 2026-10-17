@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createElement } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { useDataSourceAuthUpdate } from '../use-data-source-auth-update'
 
@@ -24,7 +24,6 @@ describe('datasource authentication reconciliation', () => {
   const wrapper = ({ children }: PropsWithChildren) =>
     createElement(QueryClientProvider, { client }, children)
   beforeEach(() => {
-    vi.clearAllMocks()
     client = new QueryClient()
     client.setQueryData(catalogKey, [])
     client.setQueryData(unrelatedKey, { cached: true })

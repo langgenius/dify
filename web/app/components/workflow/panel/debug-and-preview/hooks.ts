@@ -192,9 +192,9 @@ export const useChat = (
   }, [handleResponding, setIterTimes, setLoopTimes, stopChat])
 
   const handleRestart = useCallback(() => {
+    handleStop()
     conversationIdRef.current = ''
     taskIdRef.current = ''
-    handleStop()
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)
     setChatTree([])
@@ -423,6 +423,12 @@ export const useChat = (
         },
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onError() {
           handleResponding(false)
@@ -678,8 +684,9 @@ export const useChat = (
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
               (item) => item.node_id === data.node_id,
             )
-            responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-              data.expiration_time
+            if (currentFormIndex > -1)
+              responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
+                data.expiration_time
           }
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -996,8 +1003,9 @@ export const useChat = (
               const currentFormIndex = responseItem.humanInputFormDataList.findIndex(
                 (item) => item.node_id === humanInputFormTimeoutData.node_id,
               )
-              responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
-                humanInputFormTimeoutData.expiration_time
+              if (currentFormIndex > -1)
+                responseItem.humanInputFormDataList[currentFormIndex]!.expiration_time =
+                  humanInputFormTimeoutData.expiration_time
             }
           })
         },

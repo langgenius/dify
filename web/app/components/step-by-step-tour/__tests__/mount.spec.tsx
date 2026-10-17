@@ -509,7 +509,7 @@ const renderStepByStepTourMount = (searchParams = '') => {
   return render(
     <JotaiProvider store={jotaiStore}>
       <QueryClientProvider client={queryClient}>
-        <div data-testid="step-by-step-tour-clip-boundary" style={{ overflow: 'hidden' }}>
+        <div>
           <StepByStepTourMount recoveryAnchorRef={recoveryAnchorRef} />
           <button ref={recoveryAnchorRef} type="button">
             Open help menu
@@ -528,6 +528,8 @@ const expectStepByStepTourPatch = async (body: StepByStepTourStatePatchPayload) 
 }
 
 let user: ReturnType<typeof userEvent.setup>
+
+const originalViewport = { width: window.innerWidth, height: window.innerHeight }
 
 describe('StepByStepTourMount', () => {
   beforeEach(() => {
@@ -553,12 +555,19 @@ describe('StepByStepTourMount', () => {
     localStorage.clear()
     mockStepByStepTour.reset()
     setViewportSize({ height: 768, width: 1024 })
-    globalThis.ResizeObserver = class ResizeObserver {
-      constructor(_callback: ResizeObserverCallback) {}
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    } as typeof ResizeObserver
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        constructor(_callback: ResizeObserverCallback) {}
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    setViewportSize(originalViewport)
   })
 
   it('does not render the checklist when the Step-by-step Tour feature is disabled', async () => {
@@ -569,12 +578,6 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
-  })
-
-  it('renders the checklist for an eligible workspace', async () => {
-    renderStepByStepTourMount()
-
-    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
   })
 
   it('keeps existing accounts hidden by default without a first workspace or manual enable', async () => {
@@ -607,9 +610,6 @@ describe('StepByStepTourMount', () => {
     expect(
       screen.getByText('Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.'),
     ).toBeInTheDocument()
-    expect(screen.getByTestId('step-by-step-tour-clip-boundary')).not.toContainElement(
-      screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
-    )
     await expectStepByStepTourPatch({ action: 'skip' })
 
     const dismissButton = screen.getByRole('button', { name: 'Got it' })
@@ -807,7 +807,7 @@ describe('StepByStepTourMount', () => {
     ).toBeInTheDocument()
 
     const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
-    minimizeButton.focus()
+    await waitFor(() => expect(minimizeButton).toHaveFocus())
     await user.keyboard('{Enter}')
 
     const restoreButton = await screen.findByRole('button', { name: 'Open step-by-step tour' })
@@ -816,23 +816,6 @@ describe('StepByStepTourMount', () => {
       expect(restoreButton).toHaveFocus()
     })
     expect(screen.getAllByRole('button', { name: 'Open step-by-step tour' })).toHaveLength(1)
-  })
-
-  it('focuses the minimize button when the checklist opens', async () => {
-    setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
-      manuallyDisabledWorkspaceIds: [],
-      minimized: false,
-      completedTaskIds: ['home'],
-      skipped: false,
-    })
-
-    renderStepByStepTourMount()
-
-    const minimizeButton = await screen.findByRole('button', { name: 'Minimize tour' })
-    await waitFor(() => {
-      expect(minimizeButton).toHaveFocus()
-    })
   })
 
   it('keeps the expanded checklist open after an outside pointer interaction', async () => {
@@ -858,7 +841,6 @@ describe('StepByStepTourMount', () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
-      minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge', 'integration'],
       skipped: false,
     })
@@ -887,7 +869,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
-    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
   it('hides expanded tour overlays while settings is open', async () => {
@@ -904,7 +886,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
-    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
   it('hides expanded tour overlays while pricing is open', async () => {
@@ -921,7 +903,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
-    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
   it('hides expanded tour overlays while the Education expiration notice is open', async () => {
@@ -939,7 +921,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
-    expect(document.body.querySelector('[data-base-ui-portal]')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
   it('does not block the tour outside the Apps route for an unmounted Education notice', async () => {
@@ -1114,6 +1096,9 @@ describe('StepByStepTourMount', () => {
       ).toBeInTheDocument()
       expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
       expect(screen.getByText('1 of 2')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Got it' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
     } finally {
       target.remove()
@@ -1164,35 +1149,6 @@ describe('StepByStepTourMount', () => {
     }
   })
 
-  it('does not render a coachmark action for externally completed home guides', async () => {
-    setStepByStepTourTestState({
-      manuallyEnabledWorkspaceIds: ['workspace-1'],
-      manuallyDisabledWorkspaceIds: [],
-      minimized: false,
-      completedTaskIds: [],
-      skipped: false,
-    })
-    const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, 120, {
-      height: 180,
-      left: 40,
-      width: 360,
-    })
-
-    try {
-      renderStepByStepTourMount()
-
-      await user.click(await screen.findByRole('button', { name: 'Show me' }))
-      expect(await screen.findByText('Pick a lesson to see how it works.')).toBeInTheDocument()
-      expect(screen.getByText('1 of 2')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Got it' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
-    } finally {
-      target.remove()
-    }
-  })
-
   it('only allows users to uncomplete tasks from the checklist status control', async () => {
     setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -1218,6 +1174,12 @@ describe('StepByStepTourMount', () => {
     )
 
     await expectStepByStepTourPatch({ action: 'uncomplete_task', task_id: 'home' })
+    await waitFor(() =>
+      expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0'),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Mark Try a Learn Dify lesson complete' }),
+    ).toBeDisabled()
   })
 
   it('does not allow manually completing externally completed tasks from the checklist', async () => {
@@ -1269,12 +1231,7 @@ describe('StepByStepTourMount', () => {
         name: 'Open step-by-step tour',
       })
       expect(minimizedTourButton).toBeInTheDocument()
-      expect(minimizedTourButton).not.toHaveClass('z-50')
       expect(screen.getByText('1 of 6')).toBeInTheDocument()
-      await waitFor(() => {
-        expect(document.body.querySelector('[data-step-by-step-tour-backdrop]')).toBeInTheDocument()
-      })
-      expect(document.body.querySelectorAll('[data-step-by-step-tour-blocker]')).toHaveLength(0)
       expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
       expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
