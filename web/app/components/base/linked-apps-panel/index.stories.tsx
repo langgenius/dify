@@ -1,8 +1,8 @@
+import type { RelatedAppResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { RelatedApp } from '@/models/datasets'
 import LinkedAppsPanel from '.'
 
-const mockRelatedApps: RelatedApp[] = [
+const mockRelatedApps: RelatedAppResponse[] = [
   {
     id: 'app-cx',
     name: 'Customer Support Assistant',

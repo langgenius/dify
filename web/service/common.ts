@@ -17,7 +17,7 @@ export const webAppLogin = ({
   body,
 }: {
   url: string
-  body: Record<string, any>
+  body: Record<string, unknown>
 }): Promise<LoginResponse> => {
   return post<LoginResponse>(url, { body }, { isPublicAPI: true })
 }

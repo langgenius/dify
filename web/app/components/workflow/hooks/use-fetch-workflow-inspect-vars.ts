@@ -1,5 +1,5 @@
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { Node, WorkflowPluginCatalogs } from '@/app/components/workflow/types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -58,7 +58,7 @@ export const useSetWorkflowVarsWithValue = () => {
     (
       inspectVars: VarInInspect[],
       passedInAllPluginInfoList?: WorkflowPluginCatalogs,
-      passedInSchemaTypeDefinitions?: SchemaTypeDefinition[],
+      passedInSchemaTypeDefinitions?: SchemaDefinitionItemResponse[],
     ) => {
       const { setNodesWithInspectVars } = workflowStore.getState()
       const { getNodes } = store.getState()
@@ -128,7 +128,7 @@ export const useSetWorkflowVarsWithValue = () => {
       passInVars?: boolean
       vars?: VarInInspect[]
       passedInAllPluginInfoList?: WorkflowPluginCatalogs
-      passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+      passedInSchemaTypeDefinitions?: SchemaDefinitionItemResponse[]
     }) => {
       const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
       invalidateConversationVarValues()

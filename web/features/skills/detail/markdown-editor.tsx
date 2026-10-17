@@ -646,7 +646,7 @@ export function EditableMetadataEntry({
       onValueChange={setValueDraft}
       valuePlaceholder="Value"
       onBlurCapture={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+        if (event.currentTarget.contains(event.relatedTarget)) return
         commit()
       }}
     />

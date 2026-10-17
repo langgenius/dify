@@ -30,7 +30,7 @@ function DeploymentDialogSession({
   return (
     <DialogContent
       className={cn(
-        'flex max-h-[min(44rem,calc(100dvh-32px))] min-h-0 w-120 max-w-[calc(100vw-32px)] flex-col overflow-hidden p-0',
+        'flex max-h-[min(44rem,calc(100dvh-32px))] min-h-0 max-w-[calc(100vw-32px)] flex-col overflow-hidden',
         !selectedVersion && 'h-[min(44rem,calc(100dvh-32px))]',
       )}
     >

@@ -159,14 +159,10 @@ describe('PermissionsPage', () => {
       error: null,
     } as ReturnType<typeof useRoleGroups>)
     vi.mocked(mockCreateWorkspaceRoleHook).mockReturnValue(
-      mockMutation(mocks.createWorkspaceRole) as unknown as ReturnType<
-        typeof mockCreateWorkspaceRoleHook
-      >,
+      mockMutation(mocks.createWorkspaceRole) as ReturnType<typeof mockCreateWorkspaceRoleHook>,
     )
     vi.mocked(mockUpdateWorkspaceRoleHook).mockReturnValue(
-      mockMutation(mocks.updateWorkspaceRole) as unknown as ReturnType<
-        typeof mockUpdateWorkspaceRoleHook
-      >,
+      mockMutation(mocks.updateWorkspaceRole) as ReturnType<typeof mockUpdateWorkspaceRoleHook>,
     )
   })
 

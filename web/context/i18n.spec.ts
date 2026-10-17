@@ -295,9 +295,7 @@ describe('useDocLink', () => {
     ] as const)('should fall back to the enterprise documentation home for %s', (communityPath) => {
       const { result } = renderHook(() => useDocLink())
 
-      expect(result.current(communityPath as DocPathWithoutLang)).toBe(
-        `${enterpriseDocBaseUrl}/en/`,
-      )
+      expect(result.current(communityPath)).toBe(`${enterpriseDocBaseUrl}/en/`)
     })
 
     it('should open the enterprise documentation home when no path is provided', () => {

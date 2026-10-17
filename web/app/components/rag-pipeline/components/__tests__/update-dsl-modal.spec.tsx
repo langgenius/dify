@@ -13,7 +13,7 @@ class MockFileReader {
   }
 }
 
-vi.stubGlobal('FileReader', MockFileReader as unknown as typeof FileReader)
+vi.stubGlobal('FileReader', MockFileReader as typeof FileReader)
 
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()

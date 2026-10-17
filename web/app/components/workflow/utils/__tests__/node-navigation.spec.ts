@@ -106,13 +106,15 @@ describe('setupNodeSelectionListener', () => {
 describe('setupScrollToNodeListener', () => {
   it('should call reactflow.setCenter when scroll event targets an existing node', () => {
     const nodes = [{ id: 'n1', position: { x: 100, y: 200 } }]
-    const reactflow = { setCenter: vi.fn() }
+    const reactflow = {
+      setCenter: vi.fn<Parameters<typeof setupScrollToNodeListener>[1]['setCenter']>(),
+    }
 
     const cleanup = setupScrollToNodeListener(nodes, reactflow)
     scrollToWorkflowNode('n1')
 
     expect(reactflow.setCenter).toHaveBeenCalledTimes(1)
-    const [targetX, targetY, options] = (reactflow.setCenter.mock.calls[0] ?? []) as [any, any, any]
+    const [targetX, targetY, options] = reactflow.setCenter.mock.calls[0]!
     expect(targetX).toBeGreaterThan(100)
     expect(targetY).toBeGreaterThan(200)
     expect(options).toEqual({ zoom: 1, duration: 800 })
@@ -122,7 +124,9 @@ describe('setupScrollToNodeListener', () => {
 
   it('should not call setCenter when node is not found', () => {
     const nodes = [{ id: 'n1', position: { x: 0, y: 0 } }]
-    const reactflow = { setCenter: vi.fn() }
+    const reactflow = {
+      setCenter: vi.fn<Parameters<typeof setupScrollToNodeListener>[1]['setCenter']>(),
+    }
 
     const cleanup = setupScrollToNodeListener(nodes, reactflow)
     scrollToWorkflowNode('non-existent')
@@ -134,7 +138,9 @@ describe('setupScrollToNodeListener', () => {
 
   it('should not react after cleanup', () => {
     const nodes = [{ id: 'n1', position: { x: 0, y: 0 } }]
-    const reactflow = { setCenter: vi.fn() }
+    const reactflow = {
+      setCenter: vi.fn<Parameters<typeof setupScrollToNodeListener>[1]['setCenter']>(),
+    }
 
     const cleanup = setupScrollToNodeListener(nodes, reactflow)
     cleanup()
@@ -145,7 +151,9 @@ describe('setupScrollToNodeListener', () => {
 
   it('should ignore events with empty nodeId', () => {
     const nodes = [{ id: 'n1', position: { x: 0, y: 0 } }]
-    const reactflow = { setCenter: vi.fn() }
+    const reactflow = {
+      setCenter: vi.fn<Parameters<typeof setupScrollToNodeListener>[1]['setCenter']>(),
+    }
 
     const cleanup = setupScrollToNodeListener(nodes, reactflow)
 

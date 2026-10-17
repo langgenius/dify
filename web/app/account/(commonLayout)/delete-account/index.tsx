@@ -38,10 +38,10 @@ export default function DeleteAccount(props: DeleteAccountProps) {
       }}
     >
       <DialogContent
-        className="max-w-120 overflow-hidden!"
+        className="max-w-120 overflow-hidden p-6"
         backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
-        <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
+        <DialogTitle className="pr-8 pb-3">
           {t(($) => $['account.delete'], { ns: 'accountSettings' })}
         </DialogTitle>
         {!showVerifyEmail && (

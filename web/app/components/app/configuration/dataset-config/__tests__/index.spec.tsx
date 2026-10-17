@@ -1,4 +1,5 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { ComponentProps, PropsWithChildren } from 'react'
 import type { DatasetConfigs } from '@/models/debug'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -6,12 +7,19 @@ import { useContext } from 'use-context-selector'
 import {
   ComparisonOperator,
   LogicalOperator,
+  MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { DatasetPermission, DataSourceType } from '@/models/datasets'
+import { DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import {
+  createDatasetConfigsFixture,
+  createDebugConfigurationFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
 import { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
@@ -80,31 +88,18 @@ vi.mock('../../debug/hooks', () => ({
   useFormattingChangedDispatcher: vi.fn(() => vi.fn()),
 }))
 
-vi.mock('es-toolkit/compat', () => ({
-  intersectionBy: vi.fn((...arrays) => {
-    // Mock realistic intersection behavior based on metadata name
-    const validArrays = arrays.filter(Array.isArray)
-    if (validArrays.length === 0) return []
-
-    // Start with first array and filter down
-    return validArrays[0]!.filter((item: any) => {
-      if (!item || !item.name) return false
-
-      // Only return items that exist in all arrays
-      return validArrays.every((array) =>
-        array.some((otherItem: any) => otherItem && otherItem.name === item.name),
-      )
-    })
-  }),
-}))
-
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'mock-uuid'),
 }))
 
 // Mock child components
 vi.mock('../card-item', () => ({
-  default: ({ config, onRemove, onSave, editable }: any) => (
+  default: ({
+    config,
+    onRemove,
+    onSave,
+    editable,
+  }: ComponentProps<typeof import('../card-item').default>) => (
     <div data-testid={`card-item-${config.id}`}>
       <span>{config.name}</span>
       {editable && <button onClick={() => onSave(config)}>Edit</button>}
@@ -114,7 +109,10 @@ vi.mock('../card-item', () => ({
 }))
 
 vi.mock('../params-config', () => ({
-  default: ({ disabled, selectedDatasets }: any) => (
+  default: ({
+    disabled,
+    selectedDatasets,
+  }: ComponentProps<typeof import('../params-config').default>) => (
     <button data-testid="params-config" disabled={disabled}>
       Params ({selectedDatasets.length})
     </button>
@@ -122,10 +120,14 @@ vi.mock('../params-config', () => ({
 }))
 
 vi.mock('../context-var', () => ({
-  default: ({ value, options, onChange }: any) => (
+  default: ({
+    value,
+    options,
+    onChange,
+  }: ComponentProps<typeof import('../context-var').default>) => (
     <select data-testid="context-var" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">Select context variable</option>
-      {options.map((opt: any) => (
+      {options.map((opt) => (
         <option key={opt.value} value={opt.value}>
           {opt.name}
         </option>
@@ -147,18 +149,22 @@ vi.mock(
       handleToggleConditionLogicalOperator,
       handleMetadataModelChange,
       handleMetadataCompletionParamsChange,
-    }: any) => (
+    }: ComponentProps<
+      typeof import('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter').default
+    >) => (
       <div data-testid="metadata-filter">
-        <span data-testid="metadata-list-count">{metadataList.length}</span>
+        <span data-testid="metadata-list-count">{metadataList?.length ?? 0}</span>
         <select
           value={metadataFilterMode}
-          onChange={(e) => handleMetadataFilterModeChange(e.target.value)}
+          onChange={(e) =>
+            handleMetadataFilterModeChange(e.target.value as MetadataFilteringModeEnum)
+          }
         >
           <option value="disabled">Disabled</option>
           <option value="automatic">Automatic</option>
           <option value="manual">Manual</option>
         </select>
-        <button onClick={() => handleAddCondition({ name: 'test', type: 'string' })}>
+        <button onClick={() => handleAddCondition({ id: 'test', name: 'test', type: 'string' })}>
           Add Condition
         </button>
         <button
@@ -167,16 +173,26 @@ vi.mock(
           Add Number Condition
         </button>
         <button onClick={() => handleRemoveCondition('condition-id')}>Remove Condition</button>
-        <button onClick={() => handleUpdateCondition('condition-id', { name: 'updated' })}>
+        <button
+          onClick={() =>
+            handleUpdateCondition('condition-id', {
+              id: 'condition-id',
+              name: 'updated',
+              comparison_operator: ComparisonOperator.equal,
+            })
+          }
+        >
           Update Condition
         </button>
         <button onClick={handleToggleConditionLogicalOperator}>Toggle Operator</button>
         <button
-          onClick={() => handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4o-mini' })}
+          onClick={() =>
+            handleMetadataModelChange?.({ provider: 'openai', modelId: 'gpt-4o-mini' })
+          }
         >
           Change Metadata Model
         </button>
-        <button onClick={() => handleMetadataCompletionParamsChange({ temperature: 0.3 })}>
+        <button onClick={() => handleMetadataCompletionParamsChange?.({ temperature: 0.3 })}>
           Change Metadata Params
         </button>
       </div>
@@ -185,17 +201,15 @@ vi.mock(
 )
 
 // Mock context
-const mockConfigContext: any = {
+const mockConfigContext = createDebugConfigurationFixture({
   mode: 'chat' as const,
   modelModeType: ModelModeType.chat,
   isAgent: false,
   dataSets: [],
   setDataSets: vi.fn(),
-  modelConfig: {
-    configs: {
-      prompt_variables: [],
-    },
-  },
+  modelConfig: createModelConfigFixture({
+    configs: { prompt_template: '', prompt_variables: [] },
+  }),
   setModelConfig: vi.fn(),
   showSelectDataSet: vi.fn(),
   datasetConfigs: {
@@ -207,7 +221,7 @@ const mockConfigContext: any = {
     top_k: 4,
     score_threshold_enabled: false,
     score_threshold: 0.7,
-    metadata_filtering_mode: 'disabled' as any,
+    metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
     metadata_filtering_conditions: undefined,
     datasets: {
       datasets: [],
@@ -223,7 +237,7 @@ const mockConfigContext: any = {
       top_k: 4,
       score_threshold_enabled: false,
       score_threshold: 0.7,
-      metadata_filtering_mode: 'disabled' as any,
+      metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
       metadata_filtering_conditions: undefined,
       datasets: {
         datasets: [],
@@ -232,18 +246,22 @@ const mockConfigContext: any = {
   },
   setDatasetConfigs: vi.fn(),
   setRerankSettingModalOpen: vi.fn(),
-}
+})
 
 vi.mock('@/context/debug-configuration', () => ({
-  default: ({ children }: any) => <div data-testid="config-context-provider">{children}</div>,
+  default: ({ children }: PropsWithChildren) => (
+    <div data-testid="config-context-provider">{children}</div>
+  ),
 }))
 
 vi.mock('use-context-selector', () => ({
   useContext: vi.fn(() => mockConfigContext),
 }))
 
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
-  const defaultDataset: DataSet = {
+const createMockDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => {
+  const defaultDataset: DatasetDetailWithPartialMembersResponse = {
     ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
@@ -254,16 +272,16 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
       icon_url: '',
     },
     description: 'Test dataset description',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
-    indexing_technique: 'high_quality' as any,
+    indexing_technique: 'high_quality',
     author_name: 'Test Author',
     created_by: 'user-123',
     maintainer: 'user-123',
     updated_by: 'user-123',
     updated_at: Date.now(),
     app_count: 0,
-    doc_form: 'text' as any,
+    doc_form: 'text',
     document_count: 10,
     total_available_documents: 10,
     word_count: 1000,
@@ -272,7 +290,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     embedding_model_provider: 'openai',
     embedding_available: true,
     retrieval_model_dict: {
-      search_method: 'semantic_search' as any,
+      search_method: 'semantic_search',
       reranking_enable: false,
       reranking_model: {
         reranking_provider_name: '',
@@ -296,8 +314,8 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     },
     built_in_field_enabled: true,
     doc_metadata: [
-      { name: 'category', type: 'string' } as any,
-      { name: 'priority', type: 'number' } as any,
+      { id: 'category', name: 'category', type: 'string' },
+      { id: 'priority', name: 'priority', type: 'number' },
     ],
     keyword_number: 3,
     pipeline_id: 'pipeline-123',
@@ -468,7 +486,7 @@ describe('DatasetConfig', () => {
 
     it('should disable dataset editing when ACL does not grant edit even if legacy dataset permission allows it', () => {
       const dataset = createMockDataset({
-        permission: DatasetPermission.allTeamMembers,
+        permission: PermissionLevel.allTeamMembers,
         permission_keys: [DatasetACLPermission.Use],
       })
       vi.mocked(getDatasetACLCapabilities).mockReturnValue({
@@ -507,14 +525,15 @@ describe('DatasetConfig', () => {
       renderDatasetConfig({
         mode: 'completion' as const,
         dataSets: [dataset],
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
+            prompt_template: '',
             prompt_variables: [
               { key: 'query', name: 'Query', type: 'string', is_context_var: false },
               { key: 'context', name: 'Context', type: 'string', is_context_var: true },
             ],
           },
-        },
+        }),
       })
 
       expect(screen.getByTestId('context-var'))!.toBeInTheDocument()
@@ -528,13 +547,14 @@ describe('DatasetConfig', () => {
       renderDatasetConfig({
         mode: 'chat' as const,
         dataSets: [dataset],
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
+            prompt_template: '',
             prompt_variables: [
               { key: 'query', name: 'Query', type: 'string', is_context_var: false },
             ],
           },
-        },
+        }),
       })
 
       expect(screen.queryByTestId('context-var')).not.toBeInTheDocument()
@@ -546,14 +566,15 @@ describe('DatasetConfig', () => {
       renderDatasetConfig({
         mode: 'completion' as const,
         dataSets: [dataset],
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
+            prompt_template: '',
             prompt_variables: [
               { key: 'query', name: 'Query', type: 'string', is_context_var: false },
               { key: 'context', name: 'Context', type: 'string', is_context_var: true },
             ],
           },
-        },
+        }),
       })
 
       const select = screen.getByTestId('context-var')
@@ -567,8 +588,8 @@ describe('DatasetConfig', () => {
     it('should render metadata filter component', () => {
       const dataset = createMockDataset({
         doc_metadata: [
-          { name: 'category', type: 'string' } as any,
-          { name: 'priority', type: 'number' } as any,
+          { id: 'category', name: 'category', type: 'string' },
+          { id: 'priority', name: 'priority', type: 'number' },
         ],
       })
 
@@ -585,7 +606,7 @@ describe('DatasetConfig', () => {
       const dataset = createMockDataset()
       const updatedDatasetConfigs = {
         ...mockConfigContext.datasetConfigs,
-        metadata_filtering_mode: 'disabled' as any,
+        metadata_filtering_mode: MetadataFilteringModeEnum.disabled,
       }
 
       renderDatasetConfig({
@@ -601,7 +622,7 @@ describe('DatasetConfig', () => {
 
       expect(mockConfigContext.setDatasetConfigs).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata_filtering_mode: 'automatic',
+          metadata_filtering_mode: MetadataFilteringModeEnum.automatic,
         }),
       )
     })
@@ -643,7 +664,7 @@ describe('DatasetConfig', () => {
     it('should append numeric metadata conditions with the equal operator when conditions already exist', async () => {
       renderDatasetConfig({
         dataSets: [createMockDataset()],
-        datasetConfigs: {
+        datasetConfigs: createDatasetConfigsFixture({
           ...mockConfigContext.datasetConfigs,
           metadata_filtering_conditions: {
             logical_operator: LogicalOperator.and,
@@ -656,9 +677,9 @@ describe('DatasetConfig', () => {
               },
             ],
           },
-        },
+        }),
         datasetConfigsRef: {
-          current: {
+          current: createDatasetConfigsFixture({
             ...mockConfigContext.datasetConfigsRef.current,
             metadata_filtering_conditions: {
               logical_operator: LogicalOperator.and,
@@ -671,7 +692,7 @@ describe('DatasetConfig', () => {
                 },
               ],
             },
-          },
+          }),
         },
       })
 
@@ -868,11 +889,9 @@ describe('DatasetConfig', () => {
       renderDatasetConfig({
         mode: 'completion' as const,
         dataSets: [],
-        modelConfig: {
-          configs: {
-            prompt_variables: [],
-          },
-        },
+        modelConfig: createModelConfigFixture({
+          configs: { prompt_template: '', prompt_variables: [] },
+        }),
       })
 
       expect(screen.queryByTestId('context-var')).not.toBeInTheDocument()
@@ -913,15 +932,15 @@ describe('DatasetConfig', () => {
       const datasets = [
         createMockDataset({
           doc_metadata: [
-            { name: 'category', type: 'string' } as any,
-            { name: 'tags', type: 'string' } as any,
+            { id: 'category', name: 'category', type: 'string' },
+            { id: 'tags', name: 'tags', type: 'string' },
           ],
         }),
         createMockDataset({
           id: 'ds2',
           doc_metadata: [
-            { name: 'category', type: 'string' } as any,
-            { name: 'priority', type: 'number' } as any,
+            { id: 'category', name: 'category', type: 'string' },
+            { id: 'priority', name: 'priority', type: 'number' },
           ],
         }),
       ]
@@ -944,7 +963,7 @@ describe('DatasetConfig', () => {
 
       renderDatasetConfig({
         dataSets: [dataset],
-        datasetConfigs: {
+        datasetConfigs: createDatasetConfigsFixture({
           ...mockConfigContext.datasetConfigs,
           metadata_model_config: {
             provider: 'openai',
@@ -952,7 +971,7 @@ describe('DatasetConfig', () => {
             mode: 'chat' as const,
             completion_params: { temperature: 0.7 },
           },
-        },
+        }),
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
@@ -977,7 +996,7 @@ describe('DatasetConfig', () => {
 
       renderDatasetConfig({
         dataSets: [dataset],
-        datasetConfigs: {
+        datasetConfigs: createDatasetConfigsFixture({
           ...mockConfigContext.datasetConfigs,
           metadata_model_config: {
             provider: 'openai',
@@ -985,7 +1004,7 @@ describe('DatasetConfig', () => {
             mode: 'chat' as const,
             completion_params: { temperature: 0.5, max_tokens: 100 },
           },
-        },
+        }),
       })
 
       const metadataFilter = screen.getByTestId('metadata-filter')
@@ -1087,8 +1106,8 @@ describe('DatasetConfig', () => {
           id: `ds-${i}`,
           name: `Dataset ${i}`,
           doc_metadata: [
-            { name: 'category', type: 'string' } as any,
-            { name: 'priority', type: 'number' } as any,
+            { id: 'category', name: 'category', type: 'string' },
+            { id: 'priority', name: 'priority', type: 'number' },
           ],
         }),
       )
@@ -1105,17 +1124,17 @@ describe('DatasetConfig', () => {
         createMockDataset({
           id: 'ds1',
           doc_metadata: [
-            { name: 'category', type: 'string' } as any,
-            { name: 'tags', type: 'string' } as any,
-            { name: 'priority', type: 'number' } as any,
+            { id: 'category', name: 'category', type: 'string' },
+            { id: 'tags', name: 'tags', type: 'string' },
+            { id: 'priority', name: 'priority', type: 'number' },
           ],
         }),
         createMockDataset({
           id: 'ds2',
           doc_metadata: [
-            { name: 'category', type: 'string' } as any,
-            { name: 'status', type: 'string' } as any,
-            { name: 'priority', type: 'number' } as any,
+            { id: 'category', name: 'category', type: 'string' },
+            { id: 'status', name: 'status', type: 'string' },
+            { id: 'priority', name: 'priority', type: 'number' },
           ],
         }),
       ]

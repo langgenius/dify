@@ -7,14 +7,17 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
+  DialogBody,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldItem } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
@@ -85,7 +88,7 @@ export function FollowUpSettingsDialog({ data, onSave, disabled }: FollowUpSetti
           {t(($) => $['operation.settings'], { ns: 'common' })}
         </DialogTrigger>
       </div>
-      <DialogContent className="w-160! max-w-none! p-8! pb-6!">
+      <DialogContent className="w-160 max-w-none">
         <FollowUpSettingsForm
           data={data}
           onSave={(value) => {
@@ -162,21 +165,13 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
         if (!isCustomPromptInvalid) handleSave()
       }}
     >
-      <DialogClose
-        render={
-          <IconButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            size="lg"
-            className="absolute top-8 right-8"
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </IconButton>
-        }
-      />
-      <DialogTitle className="pr-8 text-xl font-semibold text-text-primary">
-        {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}
-      </DialogTitle>
-      <div className="mt-6 space-y-4">
+      <DialogHeader>
+        <DialogTitle>
+          {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.title'], { ns: 'appDebug' })}
+        </DialogTitle>
+        <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody className="space-y-4">
         <div>
           <div className="mb-1.5 system-sm-semibold-uppercase text-text-secondary">
             {t(($) => $['feature.suggestedQuestionsAfterAnswer.modal.modelLabel'], {
@@ -299,15 +294,15 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
             </FieldItem>
           </Fieldset>
         </Field>
-      </div>
-      <div className="mt-6 flex items-center justify-end gap-2">
+      </DialogBody>
+      <DialogFooter>
         <DialogClose render={<Button />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </DialogClose>
         <Button type="submit" variant="primary" disabled={isCustomPromptInvalid}>
           {t(($) => $['operation.save'], { ns: 'common' })}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   )
 }

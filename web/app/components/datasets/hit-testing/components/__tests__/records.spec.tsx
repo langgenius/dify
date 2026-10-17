@@ -1,4 +1,4 @@
-import type { HitTestingRecord } from '@/models/datasets'
+import type { DatasetQueryDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -20,7 +20,7 @@ const makeRecord = (id: string, source: string, created_at: number, content = 'q
     source,
     created_at,
     queries: [{ content, content_type: 'text_query', file_info: null }],
-  }) as unknown as HitTestingRecord
+  }) as unknown as DatasetQueryDetailResponse
 
 describe('Records', () => {
   const mockOnClick = vi.fn()
@@ -123,7 +123,7 @@ describe('Records', () => {
           },
         ],
       },
-    ] as unknown as HitTestingRecord[]
+    ] as unknown as DatasetQueryDetailResponse[]
     render(<Records records={records} onClickRecord={mockOnClick} />)
     expect(screen.getByTestId('image-list')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'time-1000' }))

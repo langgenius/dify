@@ -58,7 +58,7 @@ describe('preprocessNodesAndEdges', () => {
     const nodes = [
       createNode({ id: 'iter-1', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
     expect(startNodes).toHaveLength(1)
     expect(startNodes[0]!.parentId).toBe('iter-1')
@@ -72,7 +72,7 @@ describe('preprocessNodesAndEdges', () => {
       }),
       createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
     expect(startNodes).toHaveLength(1)
   })
@@ -89,7 +89,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.IterationStart, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     expect(result.nodes).toEqual(nodes)
   })
 
@@ -97,7 +97,7 @@ describe('preprocessNodesAndEdges', () => {
     const nodes = [
       createNode({ id: 'loop-1', data: { type: BlockEnum.Loop, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
     expect(startNodes).toHaveLength(1)
   })
@@ -110,7 +110,7 @@ describe('preprocessNodesAndEdges', () => {
       }),
       createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
     expect(startNodes).toHaveLength(1)
   })
@@ -127,7 +127,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.LoopStart, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     expect(result.nodes).toEqual(nodes)
   })
 
@@ -143,7 +143,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.Code, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const newEdges = result.edges
     expect(newEdges).toHaveLength(1)
     expect(newEdges[0]!.target).toBe('child-1')
@@ -163,7 +163,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.Code, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const newEdges = result.edges
     expect(newEdges).toHaveLength(1)
     expect(newEdges[0]!.target).toBe('child-1')
@@ -181,7 +181,7 @@ describe('preprocessNodesAndEdges', () => {
         data: { type: BlockEnum.Loop, title: '', desc: '' },
       }),
     ]
-    const result = preprocessNodesAndEdges(nodes as Node[], [])
+    const result = preprocessNodesAndEdges(nodes, [])
     const iterNode = result.nodes.find((n) => n.id === 'iter-1')
     const loopNode = result.nodes.find((n) => n.id === 'loop-1')
     expect((iterNode!.data as IterationNodeType).start_node_id).toBeTruthy()

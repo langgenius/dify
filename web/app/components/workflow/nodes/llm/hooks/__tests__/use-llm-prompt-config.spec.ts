@@ -57,7 +57,7 @@ describe('use-llm-prompt-config', () => {
             jinja2_text: '{{ city }}',
           },
         ],
-        prompt_config: undefined as unknown as LLMNodeType['prompt_config'],
+        prompt_config: undefined as LLMNodeType['prompt_config'],
       }),
     } as MutableRefObject<LLMNodeType>
     const handleMissingConfigInputs = createSetInputs(missingConfigRef)

@@ -228,16 +228,13 @@ export function ConfigPopup({
             )}
           </div>
           {!readOnly && (
-            <DialogContent
-              initialFocus={firstInputRef}
-              // Recedes behind the nested remove confirmation instead of stacking flat under it.
-              className="max-h-[calc(100dvh-2rem)] w-160 translate-y-[calc(-50%+1.25rem*var(--nested-dialogs))] scale-[calc(1-0.1*var(--nested-dialogs))] p-0 transition-[translate,scale,opacity,filter] data-nested-dialog-open:brightness-95"
-            >
+            <DialogContent initialFocus={firstInputRef} className="max-h-[calc(100dvh-2rem)] w-160">
               {provider && (
                 <ProviderConfigModal
                   resource={resource}
                   type={provider}
                   payload={configs[provider]}
+                  inUse={enabled && chosenProvider === provider}
                   firstInputRef={firstInputRef}
                   onSaved={closeConfig}
                   onRemoved={closeConfig}

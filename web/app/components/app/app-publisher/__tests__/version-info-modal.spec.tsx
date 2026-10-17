@@ -17,13 +17,11 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={
-          {
-            id: 'version-1',
-            marked_name: 'Release 1',
-            marked_comment: 'Initial release',
-          } as any
-        }
+        versionInfo={{
+          id: 'version-1',
+          marked_name: 'Release 1',
+          marked_comment: 'Initial release',
+        }}
         onClose={vi.fn()}
         onPublish={vi.fn()}
       />,
@@ -55,13 +53,11 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={
-          {
-            id: 'version-2',
-            marked_name: 'Old title',
-            marked_comment: 'Old notes',
-          } as any
-        }
+        versionInfo={{
+          id: 'version-2',
+          marked_name: 'Old title',
+          marked_comment: 'Old notes',
+        }}
         onClose={handleClose}
         onPublish={handlePublish}
       />,
@@ -107,13 +103,11 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={
-          {
-            id: 'version-3',
-            marked_name: 'Old title',
-            marked_comment: 'Old notes',
-          } as any
-        }
+        versionInfo={{
+          id: 'version-3',
+          marked_name: 'Old title',
+          marked_comment: 'Old notes',
+        }}
         onClose={handleClose}
         onPublish={handlePublish}
       />,

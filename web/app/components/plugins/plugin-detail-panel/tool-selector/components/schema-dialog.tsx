@@ -3,8 +3,9 @@ import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogClose,
+  DialogCloseButton,
   DialogContent,
+  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
@@ -62,23 +63,13 @@ export function SchemaDialog({ schema, rootName, compact = false }: SchemaDialog
   return (
     <Dialog>
       {entry}
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-240 min-w-0 flex-col overflow-hidden p-0">
-        <div className="relative shrink-0 p-6 pr-14 pb-3">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-240 min-w-0 flex-col overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>
             {t(($) => $['nodes.agent.parameterSchema'], { ns: 'workflowAgent' })}
           </DialogTitle>
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute top-5 right-5"
-              >
-                <span aria-hidden className="i-ri-close-line size-4.5" />
-              </IconButton>
-            }
-          />
-        </div>
+          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
         <div className="min-h-0 overflow-y-auto px-6 pt-2 pb-6">
           <MittProvider>
             <VisualEditorContextProvider>

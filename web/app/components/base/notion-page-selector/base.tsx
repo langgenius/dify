@@ -1,5 +1,5 @@
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { NotionIntegrateInfoListResponse } from '@dify/contracts/api/console/notion/types.gen'
-import type { DataSourceCredential } from '../../header/account-setting/data-source-page-new/types'
 import type { NotionCredential } from './credential-selector'
 import type {
   DataSourceNotionPageMap,
@@ -51,7 +51,7 @@ type NotionPageSelectorProps = {
   previewPageId?: string
   onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
-  credentialList: DataSourceCredential[]
+  credentialList: DatasourceCredentialResponse[]
   onSelectCredential?: (credentialId: string) => void
 }
 

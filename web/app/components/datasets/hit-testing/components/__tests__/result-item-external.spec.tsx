@@ -1,11 +1,11 @@
-import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
+import type { ExternalHitTestingRecordResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ResultItemExternal } from '../result-item-external'
 
 const createExternalPayload = (
-  overrides: Partial<ExternalKnowledgeBaseHitTesting> = {},
-): ExternalKnowledgeBaseHitTesting => ({
+  overrides: Partial<ExternalHitTestingRecordResponse> = {},
+): ExternalHitTestingRecordResponse => ({
   content: 'This is the chunk content for testing.',
   title: 'Test Document Title',
   score: 0.85,

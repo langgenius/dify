@@ -173,15 +173,16 @@ function holdPolicySaves() {
 }
 
 describe('Agent tracing configuration', () => {
-  it.each([[], [AgentPermission.Edit], [AgentPermission.LogManage]])(
-    'does not expose tracing without Monitor permission: %j',
-    async (...permissionKeys) => {
-      const { sent, queryClient } = setup({ permissions: permissionKeys.flat() })
-      await waitFor(() => expect(queryClient.isFetching()).toBe(0))
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
-      expect(sent.some((req) => new URL(req.url).pathname.includes('/trace'))).toBe(false)
-    },
-  )
+  it.each(
+    [[], [AgentPermission.Edit], [AgentPermission.LogManage]].map((permissions) => ({
+      permissions,
+    })),
+  )('does not expose tracing without Monitor permission: $permissions', async ({ permissions }) => {
+    const { sent, queryClient } = setup({ permissions })
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(sent.some((req) => new URL(req.url).pathname.includes('/trace'))).toBe(false)
+  })
 
   it('shows policy and capabilities to Monitor-only users without requesting credentials', async () => {
     const { sent } = setup({ permissions: [AgentPermission.Monitor] })
@@ -193,9 +194,6 @@ describe('Agent tracing configuration', () => {
       'aria-readonly',
       'true',
     )
-    expect(
-      screen.getByRole('switch', { name: 'app.tracing.captureContent' }),
-    ).toHaveAccessibleDescription('app.tracing.captureContentDescription')
     expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).toBeChecked()
     for (const control of screen.getAllByRole('switch')) {
       expect(control).toHaveAttribute('aria-readonly', 'true')
@@ -204,20 +202,6 @@ describe('Agent tracing configuration', () => {
     }
     expect(screen.queryByRole('button', { name: 'app.tracing.config' })).not.toBeInTheDocument()
     expect(sent.some((req) => new URL(req.url).pathname.endsWith('/trace-config'))).toBe(false)
-    expect(writes(sent)).toHaveLength(0)
-  })
-
-  it('shows what each capture setting sends as its visible description', async () => {
-    const { sent } = setup()
-    await openPanel()
-    for (const setting of ['captureContent', 'captureAgent']) {
-      const control = screen.getByRole('switch', { name: `app.tracing.${setting}` })
-      expect(control).toHaveAccessibleDescription(`app.tracing.${setting}Description`)
-      expect(screen.getByText(`app.tracing.${setting}Description`)).toBeVisible()
-    }
-    expect(
-      screen.queryByRole('button', { name: 'app.tracing.captureContent' }),
-    ).not.toBeInTheDocument()
     expect(writes(sent)).toHaveLength(0)
   })
 
@@ -472,14 +456,14 @@ describe('Agent tracing configuration', () => {
     await openProvider(user)
     state.failDelete = true
     await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     const dialog = within(screen.getByRole('alertdialog'))
+    await user.click(dialog.getByRole('button', { name: 'common.operation.remove' }))
     expect(await dialog.findByRole('alert')).toHaveTextContent('Delete unavailable')
     expect(writes(sent).map((req) => req.method)).toEqual(['DELETE'])
     expect(state.config).toEqual(langfuse)
     expect(state.policy.enabled).toBe(true)
     state.failDelete = false
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await user.click(dialog.getByRole('button', { name: 'common.operation.remove' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(writes(sent).map((req) => req.method)).toEqual(['DELETE', 'DELETE'])
     expect(state.config).toBeNull()

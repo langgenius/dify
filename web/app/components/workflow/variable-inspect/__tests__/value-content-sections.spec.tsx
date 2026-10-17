@@ -1,4 +1,4 @@
-import type { FileUploadConfigResponse } from '@/models/common'
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { VarInInspect } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { VarType } from '@/app/components/workflow/types'
@@ -50,7 +50,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 describe('value-content sections', () => {
-  const createFileUploadConfig = (): FileUploadConfigResponse =>
+  const createFileUploadConfig = (): UploadConfig =>
     createFileUploadConfigFixture({
       batch_count_limit: 10,
       image_file_batch_limit: 10,

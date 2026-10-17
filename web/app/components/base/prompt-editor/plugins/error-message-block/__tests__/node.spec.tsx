@@ -8,7 +8,7 @@ describe('ErrorMessageBlockNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     editor = createEditor({
-      nodes: [ErrorMessageBlockNode as unknown as Klass<LexicalNode>],
+      nodes: [ErrorMessageBlockNode as Klass<LexicalNode>],
     })
   })
 

@@ -1,7 +1,13 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useClickAway } from 'ahooks'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,7 +46,10 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   const activeTab = isRunActiveTab(defaultTab) ? defaultTab : 'DETAIL'
   const modalContent = (
     <>
-      <DialogTitle className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">
+      <DialogTitle
+        // oxlint-disable-next-line shadcn/no-restyle -- Side panel keeps its compact header row.
+        className="shrink-0 px-4 py-1"
+      >
         {t(($) => $['runDetail.title'], { ns: 'appLog' })}
       </DialogTitle>
       <button
@@ -69,12 +78,12 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
           if (!open) onCancel()
         }}
       >
-        <DialogContent
-          backdropProps={{ className: 'bg-transparent!' }}
-          className="top-16! bottom-4! left-[max(8px,calc(100vw-1136px))]! flex max-h-none! w-120! max-w-[calc(100vw-16px)]! translate-x-0! translate-y-0! flex-col overflow-hidden! rounded-xl! border-[0.5px]! border-components-panel-border! bg-components-panel-bg! p-0! pt-3! shadow-xl!"
-        >
-          {modalContent}
-        </DialogContent>
+        <DialogPortal>
+          <DialogBackdrop className="bg-transparent" />
+          <DialogPopup className="fixed top-16 bottom-4 left-[max(8px,calc(100vw-1136px))] flex w-120 max-w-[calc(100vw-16px)] flex-col overflow-hidden overscroll-contain rounded-xl pt-3">
+            {modalContent}
+          </DialogPopup>
+        </DialogPortal>
       </Dialog>
     )
   }

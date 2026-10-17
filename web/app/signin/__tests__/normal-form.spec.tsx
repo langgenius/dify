@@ -75,8 +75,8 @@ const mockQueryResults = (
   inviteResult: ReturnType<typeof useQuery>,
 ) => {
   mockUseQuery.mockImplementation((options) => {
-    const queryKey = options.queryKey as readonly unknown[]
-    return (queryKey[0] === 'account' ? profileResult : inviteResult) as ReturnType<typeof useQuery>
+    const queryKey = options.queryKey
+    return queryKey[0] === 'account' ? profileResult : inviteResult
   })
 }
 

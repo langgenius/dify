@@ -11,8 +11,8 @@ type ResultPanelProps = Readonly<{
   elapsed_time?: number
   total_tokens?: number
   error?: string
-  inputs?: any
-  outputs?: any
+  inputs?: string | object
+  outputs?: string | object
   created_by?: string
   created_at: string
   agentMode?: string

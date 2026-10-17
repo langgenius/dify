@@ -27,7 +27,7 @@ let appLimit = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
 vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: any[]) => any) => ({
+  useDebounceFn: (fn: (...args: unknown[]) => unknown) => ({
     run: fn,
   }),
 }))
@@ -735,7 +735,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSL.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          resolveImport = resolve as typeof resolveImport
+          resolveImport = resolve
         }),
     )
     const handleClose = vi.fn()
@@ -792,7 +792,7 @@ describe('CreateFromDSLModal', () => {
     mockImportDSLConfirm.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          resolveConfirm = resolve as typeof resolveConfirm
+          resolveConfirm = resolve
         }),
     )
 

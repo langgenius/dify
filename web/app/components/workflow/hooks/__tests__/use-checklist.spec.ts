@@ -799,7 +799,7 @@ describe('useChecklist', () => {
 describe('useChecklistBeforePublish', () => {
   it('should reject an invalid legacy Agent instead of throwing when its metadata is hidden', async () => {
     const { nodes, edges } = buildLegacyAgentGraph()
-    rfState.nodes = nodes as unknown as typeof rfState.nodes
+    rfState.nodes = nodes
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
@@ -817,7 +817,7 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      initialStoreState: { nodes },
       hooksStoreProps: {},
     })
 
@@ -830,7 +830,7 @@ describe('useWorkflowRunValidation', () => {
     rfState.edges = edges as unknown as typeof rfState.edges
 
     const { result } = renderWorkflowHook(() => useWorkflowRunValidation(), {
-      initialStoreState: { nodes: nodes as Node[] },
+      initialStoreState: { nodes },
       hooksStoreProps: {},
     })
 

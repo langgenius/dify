@@ -3,8 +3,16 @@
 import type { AppDetailWithSite, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { RiAlertFill, RiCloseLine, RiFileDownloadLine } from '@remixicon/react'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { RiAlertFill, RiFileDownloadLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -193,61 +201,56 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           if (!open && !isImporting) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-none p-6 text-left align-middle">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $.importApp, { ns: 'app' })}
-            </div>
-            <button
-              type="button"
-              className="flex h-5.5 w-5.5 cursor-pointer items-center justify-center border-none bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.importApp, { ns: 'app' })}</DialogTitle>
+            <DialogCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               disabled={isImporting}
-              onClick={onCancel}
-            >
-              <RiCloseLine className="h-4.5 w-4.5 text-text-tertiary" aria-hidden="true" />
-            </button>
-          </div>
-          <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
-            <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
-            <div className="flex items-start justify-center p-1">
-              <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
-            </div>
-            <div className="flex grow flex-col items-start gap-0.5 py-1">
-              <div className="system-xs-medium whitespace-pre-line text-text-primary">
-                {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
+            />
+          </DialogHeader>
+          <DialogBody>
+            <div className="relative mb-2 flex grow gap-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs">
+              <div className="pointer-events-none absolute top-0 left-0 size-full bg-toast-warning-bg opacity-40" />
+              <div className="flex items-start justify-center p-1">
+                <RiAlertFill className="size-4 shrink-0 text-text-warning-secondary" />
               </div>
-              <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
-                <Button
-                  size="small"
-                  variant="secondary"
-                  className="relative"
+              <div className="flex grow flex-col items-start gap-0.5 py-1">
+                <div className="system-xs-medium whitespace-pre-line text-text-primary">
+                  {t(($) => $['common.importDSLTip'], { ns: 'workflow' })}
+                </div>
+                <div className="flex items-start gap-1 self-stretch pt-1 pb-0.5">
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    className="relative"
+                    disabled={isImporting}
+                    onClick={onBackup}
+                  >
+                    <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
+                    <div className="flex items-center justify-center gap-1">
+                      {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
+                    </div>
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="pt-2 system-md-semibold text-text-primary">
+                {t(($) => $.chooseAppFile, { ns: 'app' })}
+              </div>
+              <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
+                <Uploader
+                  importType="app"
                   disabled={isImporting}
-                  onClick={onBackup}
-                >
-                  <RiFileDownloadLine className="size-3.5 text-components-button-secondary-text" />
-                  <div className="flex items-center justify-center gap-1">
-                    {t(($) => $['common.backupCurrentDraft'], { ns: 'workflow' })}
-                  </div>
-                </Button>
+                  file={currentFile}
+                  updateFile={setCurrentFile}
+                  className="mt-0! w-full"
+                />
               </div>
             </div>
-          </div>
-          <div>
-            <div className="pt-2 system-md-semibold text-text-primary">
-              {t(($) => $.chooseAppFile, { ns: 'app' })}
-            </div>
-            <div className="flex w-full flex-col items-start justify-center gap-4 self-stretch py-4">
-              <Uploader
-                importType="app"
-                disabled={isImporting}
-                file={currentFile}
-                updateFile={setCurrentFile}
-                className="mt-0! w-full"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-2 self-stretch pt-5">
+          </DialogBody>
+          <DialogFooter>
             <Button disabled={isImporting} onClick={onCancel}>
               {t(($) => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
@@ -260,7 +263,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
             >
               {t(($) => $['common.overwriteAndImport'], { ns: 'workflow' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog
@@ -269,12 +272,12 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
           if (!open && !isImporting) onCancel()
         }}
       >
-        <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
-          <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-            <div className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
-            </div>
-            <div className="flex grow flex-col system-md-regular text-text-secondary">
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div className="flex flex-col system-md-regular text-text-secondary">
               <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
               <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
               <br />
@@ -287,8 +290,8 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
                 <span className="system-md-medium">{pendingImport?.current_dsl_version}</span>
               </div>
             </div>
-          </div>
-          <div className="flex items-start justify-end gap-2 self-stretch pt-6">
+          </DialogBody>
+          <DialogFooter>
             <Button variant="secondary" disabled={isImporting} onClick={onCancel}>
               {t(($) => $['newApp.Cancel'], { ns: 'app' })}
             </Button>
@@ -301,7 +304,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
             >
               {t(($) => $['newApp.Confirm'], { ns: 'app' })}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

@@ -1,11 +1,15 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { renderHook } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetsDetailContext } from '../provider'
 import { createDatasetsDetailStore, useDatasetsDetailStore } from '../store'
 
-const createDataset = (id: string, name = `dataset-${id}`): DataSet => ({
+const createDataset = (
+  id: string,
+  name = `dataset-${id}`,
+): DatasetDetailWithPartialMembersResponse => ({
   ...createDatasetFixture(),
   id,
   name,
@@ -14,9 +18,10 @@ const createDataset = (id: string, name = `dataset-${id}`): DataSet => ({
     icon_type: 'emoji',
   },
   description: `${name} description`,
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   updated_by: 'user-1',
   updated_at: 1,
@@ -28,7 +33,7 @@ const createDataset = (id: string, name = `dataset-${id}`): DataSet => ({
   embedding_model: 'model',
   embedding_model_provider: 'provider',
   embedding_available: true,
-  retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
+  retrieval_model_dict: {} as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
   tags: [],
   external_knowledge_info: {
     external_knowledge_id: '',

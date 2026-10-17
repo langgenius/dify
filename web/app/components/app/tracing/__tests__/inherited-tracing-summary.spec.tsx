@@ -84,29 +84,17 @@ function setup({
   return { sent, state, queryClient }
 }
 
-const region = () => screen.getByRole('group', { name: 'app.tracing.inherited.title' })
-
 describe('InheritedTracingSummary', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('shows the workflow provider and status in one row, with the explanation on demand', async () => {
+  it('shows the workflow provider status and explains the inheritance on demand', async () => {
+    const user = userEvent.setup()
     setup()
-
     const status = await screen.findByText(
       'app.tracing.inherited.providerEnabled:{"provider":"app.tracing.langfuse.title"}',
     )
-    expect(region()).toContainElement(status)
-    expect(screen.queryByText('app.tracing.inherited.description')).not.toBeInTheDocument()
-  })
-
-  it('explains the inheritance and effective capture policy on demand', async () => {
-    const user = userEvent.setup()
-    setup()
-    await screen.findByText(
-      'app.tracing.inherited.providerEnabled:{"provider":"app.tracing.langfuse.title"}',
+    expect(screen.getByRole('group', { name: 'app.tracing.inherited.title' })).toContainElement(
+      status,
     )
+    expect(screen.queryByText('app.tracing.inherited.description')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'app.tracing.inherited.title' }))
 
