@@ -61,7 +61,11 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         tracing_config: dict[str, Any],
     ) -> dict[str, Any]:
         provider_config = self._provider_config(tracing_provider)
-        normalized_config = self._normalize_config(provider_config, tracing_config)
+        normalized_config = (
+            self._normalize_tencent_config(tracing_config)
+            if tracing_provider == "tencent"
+            else self._normalize_config(provider_config, tracing_config)
+        )
         self._verify_config(normalized_config, tracing_provider)
 
         project_url = self._get_project_url(normalized_config, tracing_provider)
@@ -87,6 +91,10 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         current_tracing_config: dict[str, Any] | None,
     ) -> dict[str, Any]:
         provider_config = self._provider_config(tracing_provider)
+        if tracing_provider == "tencent":
+            # Check the original URL before the legacy model discards its path
+            # and query. Masked tokens are restored by encryption below.
+            tracing_config = self._normalize_tencent_config(tracing_config)
         self._validate_config(provider_config, tracing_config)
         try:
             encrypted_config = OpsTraceManager.encrypt_tracing_config(
@@ -145,7 +153,13 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         except Exception as error:
             raise AppTracingConfigProcessingError from error
 
-        if tracing_provider == "opik":
+        if tracing_provider == "tencent":
+            from dify_trace_tencent.configuration import console_url
+
+            # Historical names remain readable. GET performs no connection
+            # check and never constructs legacy tracing or metrics exporters.
+            presented_config["project_url"] = console_url()
+        elif tracing_provider == "opik":
             from dify_trace_opik.config import OpikConfig
             from dify_trace_opik.configuration import console_url, project_url
 
@@ -212,6 +226,15 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
         return normalized_config
 
     @staticmethod
+    def _normalize_tencent_config(tracing_config: dict[str, Any]) -> dict[str, Any]:
+        from dify_trace_tencent.configuration import TencentConfigurationError, normalize_configuration
+
+        try:
+            return normalize_configuration(tracing_config).model_dump()
+        except TencentConfigurationError as error:
+            raise AppTracingConfigInvalidConfigurationError from error
+
+    @staticmethod
     def _validate_config(
         provider_config: TracingProviderConfigEntry,
         tracing_config: dict[str, Any],
@@ -224,6 +247,16 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
 
     @staticmethod
     def _verify_config(tracing_config: dict[str, Any], tracing_provider: str) -> None:
+        if tracing_provider == "tencent":
+            from dify_trace_tencent.config import TencentConfig
+            from dify_trace_tencent.configuration import TencentConfigurationError, verify_configuration
+
+            try:
+                verify_configuration(TencentConfig.model_validate(tracing_config))
+            except TencentConfigurationError as error:
+                logger.warning("Tencent collector connection check failed: error_code=%s", error.code)
+                raise AppTracingConfigVerificationFailedError from error
+            return
         if tracing_provider == "opik":
             from dify_trace_opik.config import OpikConfig
             from dify_trace_opik.configuration import OpikConfigurationError, verify_configuration
@@ -272,6 +305,10 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
     @staticmethod
     def _get_project_url(tracing_config: dict[str, Any], tracing_provider: str) -> str | None:
         try:
+            if tracing_provider == "tencent":
+                from dify_trace_tencent.configuration import console_url
+
+                return console_url()
             if tracing_provider == "opik":
                 from dify_trace_opik.config import OpikConfig
                 from dify_trace_opik.configuration import console_url, project_url
@@ -293,7 +330,7 @@ class OpsTraceManagerGateway(TracingConfigProviderGateway):
             if tracing_provider == "langfuse":
                 project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
                 return f"{tracing_config.get('host')}/project/{project_key}"
-            if tracing_provider in ("langsmith", "opik", "mlflow", "tencent"):
+            if tracing_provider in ("langsmith", "opik", "mlflow"):
                 return OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         except Exception:
             return None
