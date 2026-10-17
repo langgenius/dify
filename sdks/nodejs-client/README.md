@@ -97,6 +97,7 @@ Notes:
 
 - App endpoints use an app API token; knowledge base and workspace endpoints use a dataset API token.
 - Chat/completion require a stable `user` identifier in the request payload.
+- Pagination cursors for `getConversations`, `getConversationMessages`, and `getConversationVariables` may be omitted, `null`, or `''` to request the first page.
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
 
 ## Maintainers
