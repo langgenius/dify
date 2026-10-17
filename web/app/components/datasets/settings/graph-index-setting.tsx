@@ -82,6 +82,7 @@ const GraphIndexSetting = ({
     [onGraphIndexSettingChange],
   )
 
+  const titleLabel = t(($) => $['form.graphIndex.title'], { ns: 'datasetSettings' })
   const maxDepthLabel = t(($) => $['form.graphIndex.maxDepth'], { ns: 'datasetSettings' })
   const queryFallbackLabel = t(($) => $['form.graphIndex.queryFallback'], { ns: 'datasetSettings' })
 
@@ -89,14 +90,13 @@ const GraphIndexSetting = ({
     <div className="space-y-4">
       <div className="flex gap-x-1">
         <div className="flex h-7 w-45 shrink-0 items-center pt-1">
-          <div className="system-sm-semibold text-text-secondary">
-            {t(($) => $['form.graphIndex.title'], { ns: 'datasetSettings' })}
-          </div>
+          <div className="system-sm-semibold text-text-secondary">{titleLabel}</div>
         </div>
         <div className="py-1.5">
           <div className="flex items-center system-sm-semibold text-text-secondary">
             <Switch
               className="mr-2"
+              aria-label={titleLabel}
               checked={graphIndexSetting?.enabled ?? false}
               onCheckedChange={handleEnabledChange}
               size="md"
