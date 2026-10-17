@@ -47,18 +47,10 @@ const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
-  getVersionListUrl?: string
-  deleteVersionUrl?: (versionId: string) => string
-  updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
 
-export const VersionHistoryPanel = ({
-  getVersionListUrl,
-  deleteVersionUrl,
-  updateVersionUrl,
-  latestVersionId,
-}: VersionHistoryPanelProps) => {
+export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProps) => {
   const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(
     WorkflowVersionFilterOptions.all,
   )
@@ -101,7 +93,7 @@ export const VersionHistoryPanel = ({
     hasNextPage,
     isFetching,
   } = useWorkflowVersionHistory({
-    url: getVersionListUrl || '',
+    owner: resource,
     initialPage: INITIAL_PAGE,
     limit: HISTORY_PER_PAGE,
     userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
@@ -307,20 +299,25 @@ export const VersionHistoryPanel = ({
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await deleteWorkflow(deleteVersionUrl?.(id) || '', {
-        onSuccess: () => {
-          setDeleteConfirmOpen(false)
-          resetWorkflowVersionHistory()
-          deleteAllInspectVars()
-          invalidAllLastRun()
+      await deleteWorkflow(
+        { owner: resource, workflowId: id },
+        {
+          onSuccess: () => {
+            setDeleteConfirmOpen(false)
+            resetWorkflowVersionHistory()
+            deleteAllInspectVars()
+            invalidAllLastRun()
+          },
+          onError: () => {
+            toast.error(
+              t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }),
+            )
+          },
+          onSettled: () => {
+            setDeleteConfirmOpen(false)
+          },
         },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }))
-        },
-        onSettled: () => {
-          setDeleteConfirmOpen(false)
-        },
-      })
+      )
     },
     [
       deleteWorkflow,
@@ -328,7 +325,7 @@ export const VersionHistoryPanel = ({
       resetWorkflowVersionHistory,
       deleteAllInspectVars,
       invalidAllLastRun,
-      deleteVersionUrl,
+      resource,
     ],
   )
 
@@ -337,14 +334,9 @@ export const VersionHistoryPanel = ({
   const handleUpdateWorkflow = useCallback(
     async (params: { id?: string; title: string; releaseNotes: string }) => {
       const { id, ...rest } = params
+      if (!id) return
       await updateWorkflow(
-        {
-          ...(resource.kind === 'app' && resourceId
-            ? { appId: resource.appId, appMode: resource.mode }
-            : {}),
-          url: updateVersionUrl?.(id || '') || '',
-          ...rest,
-        },
+        { owner: resource, workflowId: id, ...rest },
         {
           onSuccess: () => {
             setEditModalOpen(false)
@@ -362,15 +354,7 @@ export const VersionHistoryPanel = ({
         },
       )
     },
-    [
-      resourceId,
-      resource,
-      invalidateAppWorkflow,
-      latestVersionId,
-      t,
-      updateWorkflow,
-      updateVersionUrl,
-    ],
+    [resourceId, resource, invalidateAppWorkflow, latestVersionId, t, updateWorkflow],
   )
 
   return (

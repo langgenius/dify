@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Toate fluxurile de lucru ca instrument",
   "auth.authorized": "Autorizat",
   "auth.setup": "Configurează autorizarea pentru a utiliza",
-  "auth.setupModalTitle": "Configurează Autorizarea",
-  "auth.setupModalTitleDescription": "După configurarea credențialelor, toți membrii din spațiul de lucru pot utiliza acest instrument la orchestrarea aplicațiilor.",
   "auth.unauthorized": "Neautorizat",
   "author": "De",
   "builtInPromptTitle": "Prompt",

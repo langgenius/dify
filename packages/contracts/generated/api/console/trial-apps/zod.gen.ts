@@ -1474,79 +1474,89 @@ export const zComposerValidationFindingsResponse = z.object({
 /**
  * AgentFeatureToggleConfig
  */
-export const zAgentFeatureToggleConfig = z.object({
-  enabled: z.boolean().optional().default(false),
-})
+export const zAgentFeatureToggleConfig = z
+  .object({
+    enabled: z.boolean().optional().default(false),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentTextToSpeechFeatureConfig
  */
-export const zAgentTextToSpeechFeatureConfig = z.object({
-  autoPlay: z.enum(['disabled', 'enabled']).nullish(),
-  enabled: z.boolean().optional().default(false),
-  language: z.string().nullish(),
-  voice: z.string().nullish(),
-})
+export const zAgentTextToSpeechFeatureConfig = z
+  .object({
+    autoPlay: z.enum(['disabled', 'enabled']).nullish(),
+    enabled: z.boolean().optional().default(false),
+    language: z.string().nullish(),
+    voice: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentEnvVariableConfig
  */
-export const zAgentEnvVariableConfig = z.object({
-  default: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
-  env_name: z.string().max(255).nullish(),
-  key: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  required: z.boolean().optional().default(false),
-  type: z.string().max(64).nullish(),
-  value: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
-  variable: z.string().max(255).nullish(),
-})
+export const zAgentEnvVariableConfig = z
+  .object({
+    default: z
+      .union([
+        z.string(),
+        z.int(),
+        z.number(),
+        z.boolean(),
+        z.array(z.string()),
+        z.array(z.int()),
+        z.array(z.number()),
+        z.array(z.boolean()),
+      ])
+      .nullish(),
+    env_name: z.string().max(255).nullish(),
+    key: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    required: z.boolean().optional().default(false),
+    type: z.string().max(64).nullish(),
+    value: z
+      .union([
+        z.string(),
+        z.int(),
+        z.number(),
+        z.boolean(),
+        z.array(z.string()),
+        z.array(z.int()),
+        z.array(z.number()),
+        z.array(z.boolean()),
+      ])
+      .nullish(),
+    variable: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentHumanContactConfig
  */
-export const zAgentHumanContactConfig = z.object({
-  channel: z.string().max(64).nullish(),
-  contact_id: z.string().max(255).nullish(),
-  contact_method: z.string().max(64).nullish(),
-  email: z.string().max(255).nullish(),
-  human_id: z.string().max(255).nullish(),
-  id: z.string().max(255).nullish(),
-  method: z.string().max(64).nullish(),
-  name: z.string().max(255).nullish(),
-  tenant_id: z.string().max(255).nullish(),
-})
+export const zAgentHumanContactConfig = z
+  .object({
+    channel: z.string().max(64).nullish(),
+    contact_id: z.string().max(255).nullish(),
+    contact_method: z.string().max(64).nullish(),
+    email: z.string().max(255).nullish(),
+    human_id: z.string().max(255).nullish(),
+    id: z.string().max(255).nullish(),
+    method: z.string().max(64).nullish(),
+    name: z.string().max(255).nullish(),
+    tenant_id: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentHumanToolConfig
  */
-export const zAgentHumanToolConfig = z.object({
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  name: z.string().max(255).nullish(),
-})
+export const zAgentHumanToolConfig = z
+  .object({
+    description: z.string().nullish(),
+    enabled: z.boolean().optional().default(true),
+    name: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulHumanConfig
@@ -1559,12 +1569,14 @@ export const zAgentSoulHumanConfig = z.object({
 /**
  * AgentMemoryArtifactConfig
  */
-export const zAgentMemoryArtifactConfig = z.object({
-  id: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  type: z.string().max(64).nullish(),
-  url: z.string().nullish(),
-})
+export const zAgentMemoryArtifactConfig = z
+  .object({
+    id: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    type: z.string().max(64).nullish(),
+    url: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulMemoryConfig
@@ -1589,12 +1601,14 @@ export const zAgentSoulModelCredentialRef = z.object({
 /**
  * AgentSandboxProviderConfig
  */
-export const zAgentSandboxProviderConfig = z.object({
-  cpu: z.int().gte(1).nullish(),
-  env: z.array(zAgentEnvVariableConfig).optional(),
-  image: z.string().nullish(),
-  working_dir: z.string().nullish(),
-})
+export const zAgentSandboxProviderConfig = z
+  .object({
+    cpu: z.int().gte(1).nullish(),
+    env: z.array(zAgentEnvVariableConfig).optional(),
+    image: z.string().nullish(),
+    working_dir: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulSandboxConfig
@@ -1622,42 +1636,50 @@ export const zFileTransferMethod = z.enum([
 /**
  * AgentFileUploadImageFeatureConfig
  */
-export const zAgentFileUploadImageFeatureConfig = z.object({
-  enabled: z.boolean().optional().default(true),
-})
+export const zAgentFileUploadImageFeatureConfig = z
+  .object({
+    enabled: z.boolean().optional().default(true),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentFileUploadFeatureConfig
  */
-export const zAgentFileUploadFeatureConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  enabled: z.boolean().optional().default(true),
-  image: zAgentFileUploadImageFeatureConfig.optional(),
-  number_limits: z.int().optional().default(3),
-})
+export const zAgentFileUploadFeatureConfig = z
+  .object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z.array(zFileType).optional(),
+    allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+    enabled: z.boolean().optional().default(true),
+    image: zAgentFileUploadImageFeatureConfig.optional(),
+    number_limits: z.int().optional().default(3),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSuggestedQuestionsAfterAnswerModelConfig
  *
  * Legacy Chat App model config used only for follow-up question generation.
  */
-export const zAgentSuggestedQuestionsAfterAnswerModelConfig = z.object({
-  completion_params: z.record(z.string(), z.unknown()).nullish(),
-  mode: z.string().max(64).nullish(),
-  name: z.string().min(1).max(255),
-  provider: z.string().min(1).max(255),
-})
+export const zAgentSuggestedQuestionsAfterAnswerModelConfig = z
+  .object({
+    completion_params: z.record(z.string(), z.unknown()).nullish(),
+    mode: z.string().max(64).nullish(),
+    name: z.string().min(1).max(255),
+    provider: z.string().min(1).max(255),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSuggestedQuestionsAfterAnswerFeatureConfig
  */
-export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
-  enabled: z.boolean().optional().default(false),
-  model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
-  prompt: z.string().nullish(),
-})
+export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z
+  .object({
+    enabled: z.boolean().optional().default(false),
+    model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
+    prompt: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentPermissionConfig
@@ -1671,21 +1693,23 @@ export const zAgentPermissionConfig = z.object({
 /**
  * AgentSecretRefConfig
  */
-export const zAgentSecretRefConfig = z.object({
-  credential_id: z.string().max(255).nullish(),
-  env_name: z.string().max(255).nullish(),
-  id: z.string().max(255).nullish(),
-  key: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  permission: zAgentPermissionConfig.nullish(),
-  permission_status: z.string().max(64).nullish(),
-  provider: z.string().max(255).nullish(),
-  provider_credential_id: z.string().max(255).nullish(),
-  ref: z.string().max(255).nullish(),
-  type: z.string().max(64).nullish(),
-  value: z.string().nullish(),
-  variable: z.string().max(255).nullish(),
-})
+export const zAgentSecretRefConfig = z
+  .object({
+    credential_id: z.string().max(255).nullish(),
+    env_name: z.string().max(255).nullish(),
+    id: z.string().max(255).nullish(),
+    key: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    permission: zAgentPermissionConfig.nullish(),
+    permission_status: z.string().max(64).nullish(),
+    provider: z.string().max(255).nullish(),
+    provider_credential_id: z.string().max(255).nullish(),
+    ref: z.string().max(255).nullish(),
+    type: z.string().max(64).nullish(),
+    value: z.string().nullish(),
+    variable: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulEnvConfig
@@ -1707,9 +1731,11 @@ export const zAgentKnowledgeDatasetConfig = z.object({
 /**
  * AgentModelResponseFormatConfig
  */
-export const zAgentModelResponseFormatConfig = z.object({
-  type: z.string().max(64).nullish(),
-})
+export const zAgentModelResponseFormatConfig = z
+  .object({
+    type: z.string().max(64).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulModelSettings
@@ -1721,15 +1747,17 @@ export const zAgentModelResponseFormatConfig = z.object({
  * fields typed below, so extra keys must round-trip through persistence
  * rather than being dropped.
  */
-export const zAgentSoulModelSettings = z.object({
-  frequency_penalty: z.number().nullish(),
-  max_tokens: z.int().nullish(),
-  presence_penalty: z.number().nullish(),
-  response_format: zAgentModelResponseFormatConfig.nullish(),
-  stop: z.array(z.string()).nullish(),
-  temperature: z.number().nullish(),
-  top_p: z.number().nullish(),
-})
+export const zAgentSoulModelSettings = z
+  .object({
+    frequency_penalty: z.number().nullish(),
+    max_tokens: z.int().nullish(),
+    presence_penalty: z.number().nullish(),
+    response_format: zAgentModelResponseFormatConfig.nullish(),
+    stop: z.array(z.string()).nullish(),
+    temperature: z.number().nullish(),
+    top_p: z.number().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulModelConfig
@@ -1782,33 +1810,35 @@ export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
 /**
  * AgentCliToolConfig
  */
-export const zAgentCliToolConfig = z.object({
-  approved: z.boolean().optional().default(false),
-  authorization_status: zAgentCliToolAuthorizationStatus.nullish(),
-  command: z.string().nullish(),
-  dangerous: z.boolean().optional().default(false),
-  dangerous_accepted: z.boolean().optional().default(false),
-  dangerous_acknowledged: z.boolean().optional().default(false),
-  dangerous_command: z.boolean().optional().default(false),
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  env: zAgentCliToolEnvConfig.optional(),
-  id: z.string().max(255).nullish(),
-  inferred_from: z.string().max(255).nullish(),
-  install: z.string().nullish(),
-  install_command: z.string().nullish(),
-  install_commands: z.array(z.string()).optional(),
-  invoke_metadata: z.record(z.string(), z.unknown()).optional(),
-  label: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  permission: zAgentPermissionConfig.nullish(),
-  pre_authorized: z.boolean().nullish(),
-  requires_confirmation: z.boolean().optional().default(false),
-  risk_accepted: z.boolean().optional().default(false),
-  risk_level: zAgentCliToolRiskLevel.nullish(),
-  setup_command: z.string().nullish(),
-  tool_name: z.string().max(255).nullish(),
-})
+export const zAgentCliToolConfig = z
+  .object({
+    approved: z.boolean().optional().default(false),
+    authorization_status: zAgentCliToolAuthorizationStatus.nullish(),
+    command: z.string().nullish(),
+    dangerous: z.boolean().optional().default(false),
+    dangerous_accepted: z.boolean().optional().default(false),
+    dangerous_acknowledged: z.boolean().optional().default(false),
+    dangerous_command: z.boolean().optional().default(false),
+    description: z.string().nullish(),
+    enabled: z.boolean().optional().default(true),
+    env: zAgentCliToolEnvConfig.optional(),
+    id: z.string().max(255).nullish(),
+    inferred_from: z.string().max(255).nullish(),
+    install: z.string().nullish(),
+    install_command: z.string().nullish(),
+    install_commands: z.array(z.string()).optional(),
+    invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+    label: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    permission: zAgentPermissionConfig.nullish(),
+    pre_authorized: z.boolean().nullish(),
+    requires_confirmation: z.boolean().optional().default(false),
+    risk_accepted: z.boolean().optional().default(false),
+    risk_level: zAgentCliToolRiskLevel.nullish(),
+    setup_command: z.string().nullish(),
+    tool_name: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulDifyToolCredentialRef
@@ -1894,43 +1924,51 @@ export const zAgentSoulToolsConfig = z.object({
 /**
  * AgentModerationIOConfig
  */
-export const zAgentModerationIoConfig = z.object({
-  enabled: z.boolean().optional().default(false),
-  preset_response: z.string().nullish(),
-})
+export const zAgentModerationIoConfig = z
+  .object({
+    enabled: z.boolean().optional().default(false),
+    preset_response: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentModerationProviderConfig
  */
-export const zAgentModerationProviderConfig = z.object({
-  api_based_extension_id: z.string().nullish(),
-  inputs_config: zAgentModerationIoConfig.nullish(),
-  keywords: z.string().nullish(),
-  outputs_config: zAgentModerationIoConfig.nullish(),
-})
+export const zAgentModerationProviderConfig = z
+  .object({
+    api_based_extension_id: z.string().nullish(),
+    inputs_config: zAgentModerationIoConfig.nullish(),
+    keywords: z.string().nullish(),
+    outputs_config: zAgentModerationIoConfig.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSensitiveWordAvoidanceFeatureConfig
  */
-export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
-  config: zAgentModerationProviderConfig.nullish(),
-  enabled: z.boolean().optional().default(false),
-  type: z.string().nullish(),
-})
+export const zAgentSensitiveWordAvoidanceFeatureConfig = z
+  .object({
+    config: zAgentModerationProviderConfig.nullish(),
+    enabled: z.boolean().optional().default(false),
+    type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulAppFeaturesConfig
  */
-export const zAgentSoulAppFeaturesConfig = z.object({
-  file_upload: zAgentFileUploadFeatureConfig.optional(),
-  opening_statement: z.string().nullish(),
-  retriever_resource: zAgentFeatureToggleConfig.nullish(),
-  sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
-  speech_to_text: zAgentFeatureToggleConfig.nullish(),
-  suggested_questions: z.array(z.string()).nullish(),
-  suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
-  text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
-})
+export const zAgentSoulAppFeaturesConfig = z
+  .object({
+    file_upload: zAgentFileUploadFeatureConfig.optional(),
+    opening_statement: z.string().nullish(),
+    retriever_resource: zAgentFeatureToggleConfig.nullish(),
+    sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+    speech_to_text: zAgentFeatureToggleConfig.nullish(),
+    suggested_questions: z.array(z.string()).nullish(),
+    suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
+    text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentKnowledgeModelConfig
@@ -1974,11 +2012,13 @@ export const zAgentKnowledgeRerankingModelConfig = z.object({
 /**
  * AgentKnowledgeWeightedScoreConfig
  */
-export const zAgentKnowledgeWeightedScoreConfig = z.object({
-  keyword_setting: z.record(z.string(), z.unknown()).nullish(),
-  vector_setting: z.record(z.string(), z.unknown()).nullish(),
-  weight_type: z.string().max(64).nullish(),
-})
+export const zAgentKnowledgeWeightedScoreConfig = z
+  .object({
+    keyword_setting: z.record(z.string(), z.unknown()).nullish(),
+    vector_setting: z.record(z.string(), z.unknown()).nullish(),
+    weight_type: z.string().max(64).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentKnowledgeRetrievalConfig

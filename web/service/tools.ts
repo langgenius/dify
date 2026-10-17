@@ -1,7 +1,6 @@
 import type {
   Credential,
   CustomCollectionBackend,
-  ToolCredential,
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
 } from '@/app/components/tools/types'
@@ -12,8 +11,6 @@ import {
   selectToolCollections,
   selectWorkflowToolDetail,
 } from '@/app/components/tools/utils/query-select'
-// oxlint-disable-next-line no-restricted-imports -- legacy built-in credential flow, see below
-import { get, post } from './base'
 import { consoleClient } from './console'
 
 const toolProvider = consoleClient.workspaces.current.toolProvider
@@ -53,40 +50,6 @@ export const fetchWorkflowToolList = (appID: string) => {
   return toolProvider.workflow.tools
     .get({ query: { workflow_tool_id: appID } })
     .then(selectBuiltinProviderTools)
-}
-
-// Not migrated to the console contract: this legacy built-in credential flow predates
-// multi-credential tool auth. The backend now serves the schema at
-// `credential/schema/{credential_type}`, returns a credential list from `credentials`, and
-// requires `credential_id` for update/delete. Only providers without a plugin reach it, and
-// none of the remaining hard-coded built-in providers require credentials.
-export const fetchBuiltInToolCredentialSchema = (collectionName: string) => {
-  return get<ToolCredential[]>(
-    `/workspaces/current/tool-provider/builtin/${collectionName}/credentials_schema`,
-  )
-}
-
-export const fetchBuiltInToolCredential = (collectionName: string) => {
-  return get<Record<string, unknown>>(
-    `/workspaces/current/tool-provider/builtin/${collectionName}/credentials`,
-  )
-}
-
-export const updateBuiltInToolCredential = (
-  collectionName: string,
-  credential: Record<string, unknown>,
-) => {
-  return post(`/workspaces/current/tool-provider/builtin/${collectionName}/update`, {
-    body: {
-      credentials: credential,
-    },
-  })
-}
-
-export const removeBuiltInToolCredential = (collectionName: string) => {
-  return post(`/workspaces/current/tool-provider/builtin/${collectionName}/delete`, {
-    body: {},
-  })
 }
 
 export const parseParamsSchema = (schema: string) => {

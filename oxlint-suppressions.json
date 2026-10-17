@@ -1833,11 +1833,6 @@
       "count": 1
     }
   },
-  "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
     "no-restricted-imports": {
       "count": 2
@@ -1959,11 +1954,6 @@
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/tools/setting/build-in/config-credentials.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/tools/types.ts": {
@@ -2780,7 +2770,7 @@
   },
   "web/app/components/workflow/nodes/tool/hooks/use-config.ts": {
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/workflow/nodes/tool/hooks/use-single-run-form-params.ts": {
@@ -2912,11 +2902,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/operator/hooks.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/panel/__tests__/index.spec.tsx": {
     "eslint-react/static-components": {
       "count": 2
@@ -2998,11 +2983,6 @@
   "web/app/components/workflow/panel/debug-and-preview/chat-wrapper.tsx": {
     "typescript/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/workflow/panel/debug-and-preview/conversation-variable-modal.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/workflow/panel/debug-and-preview/hooks.ts": {
@@ -3217,7 +3197,7 @@
       "count": 3
     },
     "typescript/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/app/components/workflow/utils/index.ts": {
@@ -3510,11 +3490,6 @@
       "count": 1
     }
   },
-  "web/service/log.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/plugins.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -3589,7 +3564,7 @@
   },
   "web/service/use-workflow.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 6
+      "count": 3
     }
   },
   "web/service/webapp-auth.ts": {
@@ -3622,7 +3597,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 16
+      "count": 13
     }
   },
   "web/utils/completion-params.spec.ts": {

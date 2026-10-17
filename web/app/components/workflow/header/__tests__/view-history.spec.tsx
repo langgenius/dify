@@ -1,4 +1,4 @@
-import type { WorkflowRunHistory, WorkflowRunHistoryResponse } from '@/types/workflow'
+import type { WorkflowRunHistoryItem } from '@/service/use-workflow'
 import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
@@ -38,8 +38,8 @@ vi.mock('../../hooks/use-workflow-run', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  useWorkflowRunHistory: (url?: string, enabled?: boolean) =>
-    mockUseWorkflowRunHistory(url, enabled),
+  useWorkflowRunHistory: (resource: unknown, enabled?: boolean) =>
+    mockUseWorkflowRunHistory(resource, enabled),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -76,26 +76,14 @@ vi.mock('../../utils', async () => {
   }
 })
 
-const createHistoryItem = (overrides: Partial<WorkflowRunHistory> = {}): WorkflowRunHistory => ({
+const createHistoryItem = (
+  overrides: Partial<WorkflowRunHistoryItem> = {},
+): WorkflowRunHistoryItem => ({
   id: 'run-1',
-  version: 'v1',
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  inputs: {},
   status: WorkflowRunningStatus.Succeeded,
-  outputs: {},
-  elapsed_time: 1,
-  total_tokens: 2,
-  total_steps: 3,
   created_at: 100,
   finished_at: 120,
-  created_by_account: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
+  created_by_name: 'Alice',
   ...overrides,
 })
 
@@ -104,25 +92,31 @@ describe('ViewHistory', () => {
     vi.clearAllMocks()
     chatflowMode = false
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
+      data: [],
       isLoading: false,
     })
   })
 
   it('defers fetching until the history popup is opened and renders the empty state', () => {
-    renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
+    renderWorkflowComponent(<ViewHistory withText />, {
       resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       hooksStoreProps: {
         handleBackupDraft: vi.fn(),
       },
     })
 
-    expect(mockUseWorkflowRunHistory).toHaveBeenCalledWith('/history', false)
+    expect(mockUseWorkflowRunHistory).toHaveBeenCalledWith(
+      { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      false,
+    )
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.showRunHistory' }))
 
-    expect(mockUseWorkflowRunHistory).toHaveBeenLastCalledWith('/history', true)
+    expect(mockUseWorkflowRunHistory).toHaveBeenLastCalledWith(
+      { kind: 'app', appId: 'app-1', mode: 'workflow' },
+      true,
+    )
     expect(screen.getByText('workflow.common.notRunning')).toBeInTheDocument()
     expect(screen.getByText('workflow.common.showRunHistory')).toBeInTheDocument()
   })
@@ -130,23 +124,20 @@ describe('ViewHistory', () => {
   it('renders the icon trigger variant and loading state, and clears log modals on trigger click', () => {
     const onClearLogAndMessageModal = vi.fn()
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
+      data: [],
       isLoading: true,
     })
 
-    renderWorkflowComponent(
-      <ViewHistory historyUrl="/history" onClearLogAndMessageModal={onClearLogAndMessageModal} />,
-      {
-        resource: {
-          kind: 'app',
-          appId: 'app-1',
-          mode: chatflowMode ? 'advanced-chat' : 'workflow',
-        },
-        hooksStoreProps: {
-          handleBackupDraft: vi.fn(),
-        },
+    renderWorkflowComponent(<ViewHistory onClearLogAndMessageModal={onClearLogAndMessageModal} />, {
+      resource: {
+        kind: 'app',
+        appId: 'app-1',
+        mode: chatflowMode ? 'advanced-chat' : 'workflow',
       },
-    )
+      hooksStoreProps: {
+        handleBackupDraft: vi.fn(),
+      },
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.viewRunHistory' }))
 
@@ -175,13 +166,11 @@ describe('ViewHistory', () => {
     })
 
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: {
-        data: [pausedRun, failedRun, succeededRun],
-      } satisfies WorkflowRunHistoryResponse,
+      data: [pausedRun, failedRun, succeededRun],
       isLoading: false,
     })
 
-    const { store } = renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
+    const { store } = renderWorkflowComponent(<ViewHistory withText />, {
       resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       initialStoreState: {
         historyWorkflowData: failedRun,
@@ -217,13 +206,11 @@ describe('ViewHistory', () => {
     })
 
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: {
-        data: [chatRun],
-      } satisfies WorkflowRunHistoryResponse,
+      data: [chatRun],
       isLoading: false,
     })
 
-    renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
+    renderWorkflowComponent(<ViewHistory withText />, {
       resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       hooksStoreProps: {
         handleBackupDraft: vi.fn(),
@@ -238,16 +225,12 @@ describe('ViewHistory', () => {
   it('closes the popup from the close button and clears log modals', () => {
     const onClearLogAndMessageModal = vi.fn()
     mockUseWorkflowRunHistory.mockReturnValue({
-      data: { data: [] } satisfies WorkflowRunHistoryResponse,
+      data: [],
       isLoading: false,
     })
 
     renderWorkflowComponent(
-      <ViewHistory
-        historyUrl="/history"
-        withText
-        onClearLogAndMessageModal={onClearLogAndMessageModal}
-      />,
+      <ViewHistory withText onClearLogAndMessageModal={onClearLogAndMessageModal} />,
       {
         resource: {
           kind: 'app',

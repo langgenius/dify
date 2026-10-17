@@ -6,7 +6,6 @@ import type {
   PipelineGenerateResponse,
   PipelineTemplateDetailResponse,
   PipelineTemplateListResponse as PipelineTemplateListContract,
-  PipelineVariableResponse,
   PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
   RagPipelineImportCheckDependenciesResponse,
   RagPipelinePublishedRunResponse,
@@ -23,14 +22,13 @@ import type {
   PipelineExecutionLogResponse,
   PipelineTemplate,
   PipelineTemplateByIdResponse,
-  RAGPipelineVariable,
 } from '@/models/pipeline'
 import type { AppIconType } from '@/types/app'
 import type { NodeTracing } from '@/types/workflow'
-import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { toPipelineVariables } from '@/app/components/workflow/utils/workflow-response'
 import { ChunkingMode } from '@/models/datasets'
-import { DatasourceType, PipelineInputVarType } from '@/models/pipeline'
-import { TransferMethod } from '@/types/app'
+import { DatasourceType } from '@/models/pipeline'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -123,40 +121,9 @@ export const selectPipelineTemplate = (
 export const selectPublishedPipelineNodes = (workflow: WorkflowResponse) =>
   toGraphNodes(workflow.graph)
 
-const toDefaultValue = (value: unknown) =>
-  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
-    ? value
-    : undefined
-
-const toPipelineVariable = (variable: PipelineVariableResponse): RAGPipelineVariable[] => {
-  if (!isOneOf(PipelineInputVarType, variable.type)) return []
-  return [
-    {
-      belong_to_node_id: variable.belong_to_node_id,
-      type: variable.type,
-      label: variable.label,
-      variable: variable.variable,
-      required: variable.required,
-      max_length: variable.max_length ?? undefined,
-      default_value: toDefaultValue(variable.default_value),
-      placeholder: variable.placeholder ?? undefined,
-      unit: variable.unit ?? undefined,
-      tooltips: variable.tooltips ?? undefined,
-      options: variable.options ?? undefined,
-      allowed_file_types: variable.allowed_file_types?.filter((type) =>
-        isOneOf(SupportUploadFileTypes, type),
-      ),
-      allowed_file_extensions: variable.allowed_file_extensions ?? undefined,
-      allowed_file_upload_methods: variable.allowed_file_upload_methods?.filter((method) =>
-        isOneOf(TransferMethod, method),
-      ),
-    },
-  ]
-}
-
 // Variables of a type the input forms cannot render are left out.
 export const selectPipelineStepParameters = (data: RagPipelineStepParametersResponse) => ({
-  variables: data.variables.flatMap(toPipelineVariable),
+  variables: toPipelineVariables(data.variables),
 })
 
 export const selectPipelineExecutionLog = (

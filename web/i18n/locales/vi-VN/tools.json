@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Tất cả quy trình làm việc dưới dạng công cụ",
   "auth.authorized": "Đã xác thực",
   "auth.setup": "Thiết lập xác thực để sử dụng",
-  "auth.setupModalTitle": "Thiết lập xác thực",
-  "auth.setupModalTitleDescription": "Sau khi cấu hình thông tin đăng nhập, tất cả thành viên trong không gian làm việc có thể sử dụng công cụ này khi triển khai ứng dụng.",
   "auth.unauthorized": "Không được phép",
   "author": "Tác giả",
   "builtInPromptTitle": "Lời nhắc",

@@ -5,7 +5,6 @@ import SnippetHeader from './snippet-header'
 import SnippetWorkflowPanel from './workflow-panel'
 
 type SnippetChildrenProps = {
-  snippetId: string
   fields: InputVar[]
   canSave: boolean
   canEdit: boolean
@@ -14,7 +13,6 @@ type SnippetChildrenProps = {
 }
 
 const SnippetChildren = ({
-  snippetId,
   fields,
   canSave,
   canEdit,
@@ -26,14 +24,13 @@ const SnippetChildren = ({
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-linear-to-b from-background-body to-transparent" />
 
       <SnippetHeader
-        snippetId={snippetId}
         canSave={canSave}
         canEdit={canEdit}
         isPublishing={isPublishing}
         onPublish={onPublish}
       />
 
-      <SnippetWorkflowPanel snippetId={snippetId} fields={fields} />
+      <SnippetWorkflowPanel fields={fields} />
     </>
   )
 }

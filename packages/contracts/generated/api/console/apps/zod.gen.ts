@@ -2050,64 +2050,6 @@ export const zSimpleEndUser = z.object({
 })
 
 /**
- * WorkflowRunDetailResponse
- */
-export const zWorkflowRunDetailResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  created_by_role: z.string().nullish(),
-  elapsed_time: z.number().nullish(),
-  error: z.string().nullish(),
-  exceptions_count: z.int().nullish(),
-  finished_at: z.int().nullish(),
-  graph: z.unknown(),
-  id: z.string(),
-  inputs: z.unknown(),
-  outputs: z.unknown(),
-  status: z.string().nullish(),
-  total_steps: z.int().nullish(),
-  total_tokens: z.int().nullish(),
-  version: z.string().nullish(),
-})
-
-/**
- * WorkflowRunNodeExecutionResponse
- */
-export const zWorkflowRunNodeExecutionResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  created_by_role: z.string().nullish(),
-  elapsed_time: z.number().nullish(),
-  error: z.string().nullish(),
-  execution_metadata: z.unknown().optional(),
-  extras: z.unknown().optional(),
-  finished_at: z.int().nullish(),
-  id: z.string(),
-  index: z.int().nullish(),
-  inputs: z.unknown().optional(),
-  inputs_truncated: z.boolean().nullish(),
-  node_id: z.string().nullish(),
-  node_type: z.string().nullish(),
-  outputs: z.unknown().optional(),
-  outputs_truncated: z.boolean().nullish(),
-  predecessor_node_id: z.string().nullish(),
-  process_data: z.unknown().optional(),
-  process_data_truncated: z.boolean().nullish(),
-  retry_index: z.int().nullish(),
-  status: z.string().nullish(),
-  title: z.string().nullish(),
-})
-
-/**
- * WorkflowRunNodeExecutionListResponse
- */
-export const zWorkflowRunNodeExecutionListResponse = z.object({
-  data: z.array(zWorkflowRunNodeExecutionResponse),
-})
-
-/**
  * SandboxFileEntryResponse
  */
 export const zSandboxFileEntryResponse = z.object({
@@ -2307,38 +2249,6 @@ export const zPipelineVariableResponse = z.object({
 })
 
 /**
- * WorkflowResponse
- */
-export const zWorkflowResponse = z.object({
-  conversation_variables: z.array(zWorkflowConversationVariableResponse),
-  created_at: z.int(),
-  created_by: zSimpleAccountResponse.nullish(),
-  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string(),
-  id: z.string(),
-  marked_comment: z.string(),
-  marked_name: z.string(),
-  rag_pipeline_variables: z.array(zPipelineVariableResponse),
-  tool_published: z.boolean(),
-  updated_at: z.int(),
-  updated_by: zSimpleAccountResponse.nullish(),
-  version: z.string(),
-  version_number: z.int().nullish(),
-})
-
-/**
- * WorkflowPaginationResponse
- */
-export const zWorkflowPaginationResponse = z.object({
-  has_more: z.boolean(),
-  items: z.array(zWorkflowResponse),
-  limit: z.int(),
-  page: z.int(),
-})
-
-/**
  * SyncEnvironmentVariablePatchPayload
  */
 export const zSyncEnvironmentVariablePatchPayload = z.object({
@@ -2362,13 +2272,15 @@ export const zSyncDraftWorkflowPayload = z.object({
 /**
  * ConversationVariableItemPayload
  */
-export const zConversationVariableItemPayload = z.object({
-  description: z.string().nullish(),
-  id: z.string().nullish(),
-  name: z.string().nullish(),
-  value: z.unknown().nullish(),
-  value_type: z.string().nullish(),
-})
+export const zConversationVariableItemPayload = z
+  .object({
+    description: z.string().nullish(),
+    id: z.string().nullish(),
+    name: z.string().nullish(),
+    value: z.unknown().nullish(),
+    value_type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * ConversationVariableUpdatePayload
@@ -2403,13 +2315,15 @@ export const zEnvironmentVariableListResponse = z.object({
 /**
  * EnvironmentVariableItemPayload
  */
-export const zEnvironmentVariableItemPayload = z.object({
-  description: z.string().nullish(),
-  id: z.string().nullish(),
-  name: z.string().nullish(),
-  value: z.unknown().nullish(),
-  value_type: z.string().nullish(),
-})
+export const zEnvironmentVariableItemPayload = z
+  .object({
+    description: z.string().nullish(),
+    id: z.string().nullish(),
+    name: z.string().nullish(),
+    value: z.unknown().nullish(),
+    value_type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * EnvironmentVariableUpdatePayload
@@ -3289,6 +3203,17 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 })
 
 /**
+ * WorkflowGraphViewportResponse
+ */
+export const zWorkflowGraphViewportResponse = z
+  .object({
+    x: z.number(),
+    y: z.number(),
+    zoom: z.number(),
+  })
+  .catchall(z.unknown())
+
+/**
  * MemberRoleSummaryResponse
  */
 export const zMemberRoleSummaryResponse = z.object({
@@ -3321,39 +3246,79 @@ export const zWorkflowCommentMentionUsersPayload = z.object({
 })
 
 /**
+ * WorkflowFeatureToggleResponse
+ */
+export const zWorkflowFeatureToggleResponse = z
+  .object({
+    enabled: z.boolean().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowSensitiveWordAvoidanceResponse
+ */
+export const zWorkflowSensitiveWordAvoidanceResponse = z
+  .object({
+    config: z.record(z.string(), z.unknown()).nullish(),
+    enabled: z.boolean().nullish(),
+    type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowTextToSpeechResponse
+ */
+export const zWorkflowTextToSpeechResponse = z
+  .object({
+    autoPlay: z.enum(['disabled', 'enabled']).nullish(),
+    enabled: z.boolean().nullish(),
+    language: z.string().nullish(),
+    voice: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
  * WorkflowFeatureTogglePayload
  */
-export const zWorkflowFeatureTogglePayload = z.object({
-  enabled: z.boolean().nullish(),
-})
+export const zWorkflowFeatureTogglePayload = z
+  .object({
+    enabled: z.boolean().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowSensitiveWordAvoidancePayload
  */
-export const zWorkflowSensitiveWordAvoidancePayload = z.object({
-  config: z.record(z.string(), z.unknown()).nullish(),
-  enabled: z.boolean().nullish(),
-  type: z.string().nullish(),
-})
+export const zWorkflowSensitiveWordAvoidancePayload = z
+  .object({
+    config: z.record(z.string(), z.unknown()).nullish(),
+    enabled: z.boolean().nullish(),
+    type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowSuggestedQuestionsAfterAnswerPayload
  */
-export const zWorkflowSuggestedQuestionsAfterAnswerPayload = z.object({
-  enabled: z.boolean().nullish(),
-  model: z.record(z.string(), z.unknown()).nullish(),
-  prompt: z.string().nullish(),
-})
+export const zWorkflowSuggestedQuestionsAfterAnswerPayload = z
+  .object({
+    enabled: z.boolean().nullish(),
+    model: z.record(z.string(), z.unknown()).nullish(),
+    prompt: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowTextToSpeechPayload
  */
-export const zWorkflowTextToSpeechPayload = z.object({
-  autoPlay: z.enum(['disabled', 'enabled']).nullish(),
-  enabled: z.boolean().nullish(),
-  language: z.string().nullish(),
-  voice: z.string().nullish(),
-})
+export const zWorkflowTextToSpeechPayload = z
+  .object({
+    autoPlay: z.enum(['disabled', 'enabled']).nullish(),
+    enabled: z.boolean().nullish(),
+    language: z.string().nullish(),
+    voice: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentScope
@@ -3482,6 +3447,7 @@ export const zDeclaredArrayItem = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
+          .catchall(z.unknown())
           .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
@@ -3509,17 +3475,19 @@ export const zDeclaredOutputFileConfig = z.object({
 /**
  * AgentHumanContactConfig
  */
-export const zAgentHumanContactConfig = z.object({
-  channel: z.string().max(64).nullish(),
-  contact_id: z.string().max(255).nullish(),
-  contact_method: z.string().max(64).nullish(),
-  email: z.string().max(255).nullish(),
-  human_id: z.string().max(255).nullish(),
-  id: z.string().max(255).nullish(),
-  method: z.string().max(64).nullish(),
-  name: z.string().max(255).nullish(),
-  tenant_id: z.string().max(255).nullish(),
-})
+export const zAgentHumanContactConfig = z
+  .object({
+    channel: z.string().max(64).nullish(),
+    contact_id: z.string().max(255).nullish(),
+    contact_method: z.string().max(64).nullish(),
+    email: z.string().max(255).nullish(),
+    human_id: z.string().max(255).nullish(),
+    id: z.string().max(255).nullish(),
+    method: z.string().max(64).nullish(),
+    name: z.string().max(255).nullish(),
+    tenant_id: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowNodeJobMode
@@ -3529,20 +3497,22 @@ export const zWorkflowNodeJobMode = z.enum(['let_agent_figure_it_out', 'tell_age
 /**
  * WorkflowPreviousNodeOutputRef
  */
-export const zWorkflowPreviousNodeOutputRef = z.object({
-  key: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  node_id: z.string().max(255).nullish(),
-  output: z.string().max(255).nullish(),
-  selector: z.array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()])).nullish(),
-  value_selector: z
-    .array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()]))
-    .nullish(),
-  variable: z.string().max(255).nullish(),
-  variable_selector: z
-    .array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()]))
-    .nullish(),
-})
+export const zWorkflowPreviousNodeOutputRef = z
+  .object({
+    key: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    node_id: z.string().max(255).nullish(),
+    output: z.string().max(255).nullish(),
+    selector: z.array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()])).nullish(),
+    value_selector: z
+      .array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()]))
+      .nullish(),
+    variable: z.string().max(255).nullish(),
+    variable_selector: z
+      .array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()]))
+      .nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentComposerNodeJobCandidatesResponse
@@ -3566,6 +3536,16 @@ export const zAgentComposerDifyToolCandidateResponse = z.object({
   provider_id: z.string().nullish(),
   tools_count: z.int().nullish(),
 })
+
+/**
+ * WorkflowNodeToolInfoResponse
+ */
+export const zWorkflowNodeToolInfoResponse = z
+  .object({
+    agent_strategy: z.string().nullish(),
+    icon: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * CheckResultView
@@ -3615,10 +3595,12 @@ export const zWorkflowRunSnapshotView = z.object({
 /**
  * AppAgentPromptResponse
  */
-export const zAppAgentPromptResponse = z.object({
-  first_prompt: z.string().optional(),
-  next_iteration: z.string().optional(),
-})
+export const zAppAgentPromptResponse = z
+  .object({
+    first_prompt: z.string().optional(),
+    next_iteration: z.string().optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppEmbeddingModelResponse
@@ -3679,48 +3661,56 @@ export const zAppCompletionPromptConfigResponse = z.object({
 /**
  * AppRerankingModelResponse
  */
-export const zAppRerankingModelResponse = z.object({
-  reranking_model_name: z.string().optional(),
-  reranking_provider_name: z.string().optional(),
-})
+export const zAppRerankingModelResponse = z
+  .object({
+    reranking_model_name: z.string().optional(),
+    reranking_provider_name: z.string().optional(),
+  })
+  .catchall(z.unknown())
 
 export const zJsonValue = z.unknown()
 
 /**
  * AppEnabledExternalDataToolResponse
  */
-export const zAppEnabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue),
-  enabled: z.literal(true),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  label: z.string().optional(),
-  type: z.string(),
-  variable: z.string(),
-})
+export const zAppEnabledExternalDataToolResponse = z
+  .object({
+    config: z.record(z.string(), zJsonValue),
+    enabled: z.literal(true),
+    icon: z.string().optional(),
+    icon_background: z.string().optional(),
+    label: z.string().optional(),
+    type: z.string(),
+    variable: z.string(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppDisabledExternalDataToolResponse
  */
-export const zAppDisabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue).optional(),
-  enabled: z.literal(false),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  label: z.string().optional(),
-  type: z.string().optional(),
-  variable: z.string().optional(),
-})
+export const zAppDisabledExternalDataToolResponse = z
+  .object({
+    config: z.record(z.string(), zJsonValue).optional(),
+    enabled: z.literal(false),
+    icon: z.string().optional(),
+    icon_background: z.string().optional(),
+    label: z.string().optional(),
+    type: z.string().optional(),
+    variable: z.string().optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppSensitiveWordAvoidanceResponse
  */
-export const zAppSensitiveWordAvoidanceResponse = z.object({
-  config: z.record(z.string(), zJsonValue).optional(),
-  configs: z.array(zJsonValue).optional(),
-  enabled: z.boolean(),
-  type: z.string().optional(),
-})
+export const zAppSensitiveWordAvoidanceResponse = z
+  .object({
+    config: z.record(z.string(), zJsonValue).optional(),
+    configs: z.array(zJsonValue).optional(),
+    enabled: z.boolean(),
+    type: z.string().optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * HumanInputFormSubmissionData
@@ -3737,30 +3727,38 @@ export const zHumanInputFormSubmissionData = z.object({
 /**
  * AppLegacyGoogleSearchToolResponse
  */
-export const zAppLegacyGoogleSearchToolResponse = z.object({
-  google_search: z.record(z.string(), zJsonValue),
-})
+export const zAppLegacyGoogleSearchToolResponse = z
+  .object({
+    google_search: z.record(z.string(), zJsonValue),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppLegacyWebReaderToolResponse
  */
-export const zAppLegacyWebReaderToolResponse = z.object({
-  web_reader: z.record(z.string(), zJsonValue),
-})
+export const zAppLegacyWebReaderToolResponse = z
+  .object({
+    web_reader: z.record(z.string(), zJsonValue),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppLegacyWikipediaToolResponse
  */
-export const zAppLegacyWikipediaToolResponse = z.object({
-  wikipedia: z.record(z.string(), zJsonValue),
-})
+export const zAppLegacyWikipediaToolResponse = z
+  .object({
+    wikipedia: z.record(z.string(), zJsonValue),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppLegacyCurrentDatetimeToolResponse
  */
-export const zAppLegacyCurrentDatetimeToolResponse = z.object({
-  current_datetime: z.record(z.string(), zJsonValue),
-})
+export const zAppLegacyCurrentDatetimeToolResponse = z
+  .object({
+    current_datetime: z.record(z.string(), zJsonValue),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppImageUploadResponse
@@ -3794,12 +3792,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 /**
  * AppModelSelectionResponse
  */
-export const zAppModelSelectionResponse = z.object({
-  completion_params: z.record(z.string(), zJsonValue).optional(),
-  mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
-})
+export const zAppModelSelectionResponse = z
+  .object({
+    completion_params: z.record(z.string(), zJsonValue).optional(),
+    mode: z.union([zLlmMode, z.literal('')]).optional(),
+    name: z.string().optional(),
+    provider: z.string().optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * ModelConfigPartial
@@ -3901,27 +3901,40 @@ export const zAppSuggestedQuestionsPayload = z
   .catchall(z.json())
 
 /**
+ * WorkflowSuggestedQuestionsAfterAnswerResponse
+ */
+export const zWorkflowSuggestedQuestionsAfterAnswerResponse = z
+  .object({
+    enabled: z.boolean().nullish(),
+    model: zAppModelSelectionResponse.nullish(),
+    prompt: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
  * AppUserInputFormConfigResponse
  */
-export const zAppUserInputFormConfigResponse = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  config: z.record(z.string(), zJsonValue).optional(),
-  default: zJsonValue.optional(),
-  description: z.string().optional(),
-  enabled: z.boolean().optional(),
-  hide: z.boolean().optional(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  json_schema: z.union([z.string(), z.record(z.string(), zJsonValue)]).nullish(),
-  label: z.string(),
-  max_length: z.int().nullish(),
-  options: z.array(z.string()).optional(),
-  required: z.boolean().optional(),
-  type: z.string().optional(),
-  variable: z.string(),
-})
+export const zAppUserInputFormConfigResponse = z
+  .object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z.array(zFileType).optional(),
+    allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+    config: z.record(z.string(), zJsonValue).optional(),
+    default: zJsonValue.optional(),
+    description: z.string().optional(),
+    enabled: z.boolean().optional(),
+    hide: z.boolean().optional(),
+    icon: z.string().nullish(),
+    icon_background: z.string().nullish(),
+    json_schema: z.union([z.string(), z.record(z.string(), zJsonValue)]).nullish(),
+    label: z.string(),
+    max_length: z.int().nullish(),
+    options: z.array(z.string()).optional(),
+    required: z.boolean().optional(),
+    type: z.string().optional(),
+    variable: z.string(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppTextInputFormResponse
@@ -4234,23 +4247,191 @@ export const zAppUserInputFormPayload = z.union([
 ])
 
 /**
+ * WorkflowGraphEdgeDataResponse
+ */
+export const zWorkflowGraphEdgeDataResponse = z
+  .object({
+    sourceType: z.string().nullish(),
+    targetType: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowGraphEdgeResponse
+ */
+export const zWorkflowGraphEdgeResponse = z
+  .object({
+    data: zWorkflowGraphEdgeDataResponse.nullish(),
+    id: z.string().nullish(),
+    source: z.string(),
+    sourceHandle: z.string().nullish(),
+    target: z.string(),
+    targetHandle: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowGraphNodeDataResponse
+ */
+export const zWorkflowGraphNodeDataResponse = z
+  .object({
+    desc: z.string().nullish(),
+    title: z.string().nullish(),
+    type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowGraphPositionResponse
+ */
+export const zWorkflowGraphPositionResponse = z
+  .object({
+    x: z.number(),
+    y: z.number(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowGraphNodeResponse
+ */
+export const zWorkflowGraphNodeResponse = z
+  .object({
+    data: zWorkflowGraphNodeDataResponse.nullish(),
+    id: z.string(),
+    position: zWorkflowGraphPositionResponse.nullish(),
+    type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowGraphResponse
+ */
+export const zWorkflowGraphResponse = z
+  .object({
+    edges: z.array(zWorkflowGraphEdgeResponse).optional(),
+    nodes: z.array(zWorkflowGraphNodeResponse).optional(),
+    viewport: zWorkflowGraphViewportResponse.nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowRunDetailResponse
+ */
+export const zWorkflowRunDetailResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  exceptions_count: z.int().nullish(),
+  finished_at: z.int().nullish(),
+  graph: zWorkflowGraphResponse,
+  id: z.string(),
+  inputs: z.record(z.string(), z.unknown()),
+  outputs: z.record(z.string(), z.unknown()),
+  status: z.string().nullish(),
+  total_steps: z.int().nullish(),
+  total_tokens: z.int().nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * WorkflowFileUploadImageResponse
+ */
+export const zWorkflowFileUploadImageResponse = z
+  .object({
+    detail: z.string().nullish(),
+    enabled: z.boolean().nullish(),
+    number_limits: z.int().nullish(),
+    transfer_methods: z.array(z.string()).nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowFileUploadResponse
+ */
+export const zWorkflowFileUploadResponse = z
+  .object({
+    allowed_file_extensions: z.array(z.string()).nullish(),
+    allowed_file_types: z.array(z.string()).nullish(),
+    allowed_file_upload_methods: z.array(z.string()).nullish(),
+    enabled: z.boolean().nullish(),
+    image: zWorkflowFileUploadImageResponse.nullish(),
+    number_limits: z.int().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowFeaturesResponse
+ */
+export const zWorkflowFeaturesResponse = z
+  .object({
+    file_upload: zWorkflowFileUploadResponse.nullish(),
+    opening_statement: z.string().nullish(),
+    retriever_resource: zWorkflowFeatureToggleResponse.nullish(),
+    sensitive_word_avoidance: zWorkflowSensitiveWordAvoidanceResponse.nullish(),
+    speech_to_text: zWorkflowFeatureToggleResponse.nullish(),
+    suggested_questions: z.array(z.string()).nullish(),
+    suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerResponse.nullish(),
+    text_to_speech: zWorkflowTextToSpeechResponse.nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowResponse
+ */
+export const zWorkflowResponse = z.object({
+  conversation_variables: z.array(zWorkflowConversationVariableResponse),
+  created_at: z.int(),
+  created_by: zSimpleAccountResponse.nullish(),
+  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
+  features: zWorkflowFeaturesResponse,
+  graph: zWorkflowGraphResponse,
+  hash: z.string(),
+  id: z.string(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  rag_pipeline_variables: z.array(zPipelineVariableResponse),
+  tool_published: z.boolean(),
+  updated_at: z.int(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  version: z.string(),
+  version_number: z.int().nullish(),
+})
+
+/**
+ * WorkflowPaginationResponse
+ */
+export const zWorkflowPaginationResponse = z.object({
+  has_more: z.boolean(),
+  items: z.array(zWorkflowResponse),
+  limit: z.int(),
+  page: z.int(),
+})
+
+/**
  * WorkflowFileUploadTransferPayload
  */
-export const zWorkflowFileUploadTransferPayload = z.object({
-  enabled: z.boolean().nullish(),
-  number_limits: z.int().nullish(),
-  transfer_methods: z.array(z.string()).nullish(),
-})
+export const zWorkflowFileUploadTransferPayload = z
+  .object({
+    enabled: z.boolean().nullish(),
+    number_limits: z.int().nullish(),
+    transfer_methods: z.array(z.string()).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowFileUploadImagePayload
  */
-export const zWorkflowFileUploadImagePayload = z.object({
-  detail: z.string().nullish(),
-  enabled: z.boolean().nullish(),
-  number_limits: z.int().nullish(),
-  transfer_methods: z.array(z.string()).nullish(),
-})
+export const zWorkflowFileUploadImagePayload = z
+  .object({
+    detail: z.string().nullish(),
+    enabled: z.boolean().nullish(),
+    number_limits: z.int().nullish(),
+    transfer_methods: z.array(z.string()).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowFileUploadPreviewConfigPayload
@@ -4263,34 +4444,38 @@ export const zWorkflowFileUploadPreviewConfigPayload = z.object({
 /**
  * WorkflowFileUploadPayload
  */
-export const zWorkflowFileUploadPayload = z.object({
-  allowed_file_extensions: z.array(z.string()).nullish(),
-  allowed_file_types: z.array(z.string()).nullish(),
-  allowed_file_upload_methods: z.array(z.string()).nullish(),
-  audio: zWorkflowFileUploadTransferPayload.nullish(),
-  custom: zWorkflowFileUploadTransferPayload.nullish(),
-  document: zWorkflowFileUploadTransferPayload.nullish(),
-  enabled: z.boolean().nullish(),
-  fileUploadConfig: z.record(z.string(), z.unknown()).nullish(),
-  image: zWorkflowFileUploadImagePayload.nullish(),
-  number_limits: z.int().nullish(),
-  preview_config: zWorkflowFileUploadPreviewConfigPayload.nullish(),
-  video: zWorkflowFileUploadTransferPayload.nullish(),
-})
+export const zWorkflowFileUploadPayload = z
+  .object({
+    allowed_file_extensions: z.array(z.string()).nullish(),
+    allowed_file_types: z.array(z.string()).nullish(),
+    allowed_file_upload_methods: z.array(z.string()).nullish(),
+    audio: zWorkflowFileUploadTransferPayload.nullish(),
+    custom: zWorkflowFileUploadTransferPayload.nullish(),
+    document: zWorkflowFileUploadTransferPayload.nullish(),
+    enabled: z.boolean().nullish(),
+    fileUploadConfig: z.record(z.string(), z.unknown()).nullish(),
+    image: zWorkflowFileUploadImagePayload.nullish(),
+    number_limits: z.int().nullish(),
+    preview_config: zWorkflowFileUploadPreviewConfigPayload.nullish(),
+    video: zWorkflowFileUploadTransferPayload.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowFeaturesConfigPayload
  */
-export const zWorkflowFeaturesConfigPayload = z.object({
-  file_upload: zWorkflowFileUploadPayload.nullish(),
-  opening_statement: z.string().nullish(),
-  retriever_resource: zWorkflowFeatureTogglePayload.nullish(),
-  sensitive_word_avoidance: zWorkflowSensitiveWordAvoidancePayload.nullish(),
-  speech_to_text: zWorkflowFeatureTogglePayload.nullish(),
-  suggested_questions: z.array(z.string()).nullish(),
-  suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerPayload.nullish(),
-  text_to_speech: zWorkflowTextToSpeechPayload.nullish(),
-})
+export const zWorkflowFeaturesConfigPayload = z
+  .object({
+    file_upload: zWorkflowFileUploadPayload.nullish(),
+    opening_statement: z.string().nullish(),
+    retriever_resource: zWorkflowFeatureTogglePayload.nullish(),
+    sensitive_word_avoidance: zWorkflowSensitiveWordAvoidancePayload.nullish(),
+    speech_to_text: zWorkflowFeatureTogglePayload.nullish(),
+    suggested_questions: z.array(z.string()).nullish(),
+    suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerPayload.nullish(),
+    text_to_speech: zWorkflowTextToSpeechPayload.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowFeaturesPayload
@@ -4302,64 +4487,72 @@ export const zWorkflowFeaturesPayload = z.object({
 /**
  * AgentFeatureToggleConfig
  */
-export const zAgentFeatureToggleConfig = z.object({
-  enabled: z.boolean().optional().default(false),
-})
+export const zAgentFeatureToggleConfig = z
+  .object({
+    enabled: z.boolean().optional().default(false),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentTextToSpeechFeatureConfig
  */
-export const zAgentTextToSpeechFeatureConfig = z.object({
-  autoPlay: z.enum(['disabled', 'enabled']).nullish(),
-  enabled: z.boolean().optional().default(false),
-  language: z.string().nullish(),
-  voice: z.string().nullish(),
-})
+export const zAgentTextToSpeechFeatureConfig = z
+  .object({
+    autoPlay: z.enum(['disabled', 'enabled']).nullish(),
+    enabled: z.boolean().optional().default(false),
+    language: z.string().nullish(),
+    voice: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentEnvVariableConfig
  */
-export const zAgentEnvVariableConfig = z.object({
-  default: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
-  env_name: z.string().max(255).nullish(),
-  key: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  required: z.boolean().optional().default(false),
-  type: z.string().max(64).nullish(),
-  value: z
-    .union([
-      z.string(),
-      z.int(),
-      z.number(),
-      z.boolean(),
-      z.array(z.string()),
-      z.array(z.int()),
-      z.array(z.number()),
-      z.array(z.boolean()),
-    ])
-    .nullish(),
-  variable: z.string().max(255).nullish(),
-})
+export const zAgentEnvVariableConfig = z
+  .object({
+    default: z
+      .union([
+        z.string(),
+        z.int(),
+        z.number(),
+        z.boolean(),
+        z.array(z.string()),
+        z.array(z.int()),
+        z.array(z.number()),
+        z.array(z.boolean()),
+      ])
+      .nullish(),
+    env_name: z.string().max(255).nullish(),
+    key: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    required: z.boolean().optional().default(false),
+    type: z.string().max(64).nullish(),
+    value: z
+      .union([
+        z.string(),
+        z.int(),
+        z.number(),
+        z.boolean(),
+        z.array(z.string()),
+        z.array(z.int()),
+        z.array(z.number()),
+        z.array(z.boolean()),
+      ])
+      .nullish(),
+    variable: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentHumanToolConfig
  */
-export const zAgentHumanToolConfig = z.object({
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  name: z.string().max(255).nullish(),
-})
+export const zAgentHumanToolConfig = z
+  .object({
+    description: z.string().nullish(),
+    enabled: z.boolean().optional().default(true),
+    name: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulHumanConfig
@@ -4372,12 +4565,14 @@ export const zAgentSoulHumanConfig = z.object({
 /**
  * AgentMemoryArtifactConfig
  */
-export const zAgentMemoryArtifactConfig = z.object({
-  id: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  type: z.string().max(64).nullish(),
-  url: z.string().nullish(),
-})
+export const zAgentMemoryArtifactConfig = z
+  .object({
+    id: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    type: z.string().max(64).nullish(),
+    url: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulMemoryConfig
@@ -4402,12 +4597,14 @@ export const zAgentSoulModelCredentialRef = z.object({
 /**
  * AgentSandboxProviderConfig
  */
-export const zAgentSandboxProviderConfig = z.object({
-  cpu: z.int().gte(1).nullish(),
-  env: z.array(zAgentEnvVariableConfig).optional(),
-  image: z.string().nullish(),
-  working_dir: z.string().nullish(),
-})
+export const zAgentSandboxProviderConfig = z
+  .object({
+    cpu: z.int().gte(1).nullish(),
+    env: z.array(zAgentEnvVariableConfig).optional(),
+    image: z.string().nullish(),
+    working_dir: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulSandboxConfig
@@ -4420,18 +4617,20 @@ export const zAgentSoulSandboxConfig = z.object({
 /**
  * AgentFileRefConfig
  */
-export const zAgentFileRefConfig = z.object({
-  file_id: z.string().max(255).nullish(),
-  id: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  reference: z.string().max(255).nullish(),
-  remote_url: z.string().nullish(),
-  tenant_id: z.string().max(255).nullish(),
-  transfer_method: z.string().max(64).nullish(),
-  type: z.string().max(64).nullish(),
-  upload_file_id: z.string().max(255).nullish(),
-  url: z.string().nullish(),
-})
+export const zAgentFileRefConfig = z
+  .object({
+    file_id: z.string().max(255).nullish(),
+    id: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    reference: z.string().max(255).nullish(),
+    remote_url: z.string().nullish(),
+    tenant_id: z.string().max(255).nullish(),
+    transfer_method: z.string().max(64).nullish(),
+    type: z.string().max(64).nullish(),
+    upload_file_id: z.string().max(255).nullish(),
+    url: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowNodeJobMetadata
@@ -4530,21 +4729,23 @@ export const zAgentPermissionConfig = z.object({
 /**
  * AgentSecretRefConfig
  */
-export const zAgentSecretRefConfig = z.object({
-  credential_id: z.string().max(255).nullish(),
-  env_name: z.string().max(255).nullish(),
-  id: z.string().max(255).nullish(),
-  key: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  permission: zAgentPermissionConfig.nullish(),
-  permission_status: z.string().max(64).nullish(),
-  provider: z.string().max(255).nullish(),
-  provider_credential_id: z.string().max(255).nullish(),
-  ref: z.string().max(255).nullish(),
-  type: z.string().max(64).nullish(),
-  value: z.string().nullish(),
-  variable: z.string().max(255).nullish(),
-})
+export const zAgentSecretRefConfig = z
+  .object({
+    credential_id: z.string().max(255).nullish(),
+    env_name: z.string().max(255).nullish(),
+    id: z.string().max(255).nullish(),
+    key: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    permission: zAgentPermissionConfig.nullish(),
+    permission_status: z.string().max(64).nullish(),
+    provider: z.string().max(255).nullish(),
+    provider_credential_id: z.string().max(255).nullish(),
+    ref: z.string().max(255).nullish(),
+    type: z.string().max(64).nullish(),
+    value: z.string().nullish(),
+    variable: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulEnvConfig
@@ -4572,33 +4773,35 @@ export const zAgentCliToolRiskLevel = z.enum(['dangerous', 'safe', 'unknown'])
 /**
  * AgentCliToolConfig
  */
-export const zAgentCliToolConfig = z.object({
-  approved: z.boolean().optional().default(false),
-  authorization_status: zAgentCliToolAuthorizationStatus.nullish(),
-  command: z.string().nullish(),
-  dangerous: z.boolean().optional().default(false),
-  dangerous_accepted: z.boolean().optional().default(false),
-  dangerous_acknowledged: z.boolean().optional().default(false),
-  dangerous_command: z.boolean().optional().default(false),
-  description: z.string().nullish(),
-  enabled: z.boolean().optional().default(true),
-  env: zAgentCliToolEnvConfig.optional(),
-  id: z.string().max(255).nullish(),
-  inferred_from: z.string().max(255).nullish(),
-  install: z.string().nullish(),
-  install_command: z.string().nullish(),
-  install_commands: z.array(z.string()).optional(),
-  invoke_metadata: z.record(z.string(), z.unknown()).optional(),
-  label: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  permission: zAgentPermissionConfig.nullish(),
-  pre_authorized: z.boolean().nullish(),
-  requires_confirmation: z.boolean().optional().default(false),
-  risk_accepted: z.boolean().optional().default(false),
-  risk_level: zAgentCliToolRiskLevel.nullish(),
-  setup_command: z.string().nullish(),
-  tool_name: z.string().max(255).nullish(),
-})
+export const zAgentCliToolConfig = z
+  .object({
+    approved: z.boolean().optional().default(false),
+    authorization_status: zAgentCliToolAuthorizationStatus.nullish(),
+    command: z.string().nullish(),
+    dangerous: z.boolean().optional().default(false),
+    dangerous_accepted: z.boolean().optional().default(false),
+    dangerous_acknowledged: z.boolean().optional().default(false),
+    dangerous_command: z.boolean().optional().default(false),
+    description: z.string().nullish(),
+    enabled: z.boolean().optional().default(true),
+    env: zAgentCliToolEnvConfig.optional(),
+    id: z.string().max(255).nullish(),
+    inferred_from: z.string().max(255).nullish(),
+    install: z.string().nullish(),
+    install_command: z.string().nullish(),
+    install_commands: z.array(z.string()).optional(),
+    invoke_metadata: z.record(z.string(), z.unknown()).optional(),
+    label: z.string().max(255).nullish(),
+    name: z.string().max(255).nullish(),
+    permission: zAgentPermissionConfig.nullish(),
+    pre_authorized: z.boolean().nullish(),
+    requires_confirmation: z.boolean().optional().default(false),
+    risk_accepted: z.boolean().optional().default(false),
+    risk_level: zAgentCliToolRiskLevel.nullish(),
+    setup_command: z.string().nullish(),
+    tool_name: z.string().max(255).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentComposerKnowledgeDatasetCandidateResponse
@@ -4643,6 +4846,98 @@ export const zAgentComposerCandidatesResponse = z.object({
 })
 
 /**
+ * WorkflowAgentLogMetadataResponse
+ */
+export const zWorkflowAgentLogMetadataResponse = z
+  .object({
+    elapsed_time: z.number().nullish(),
+    icon: z.string().nullish(),
+    provider: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowAgentLogResponse
+ */
+export const zWorkflowAgentLogResponse = z
+  .object({
+    data: z.record(z.string(), z.unknown()).nullish(),
+    error: z.string().nullish(),
+    label: z.string().nullish(),
+    message_id: z.string().nullish(),
+    metadata: zWorkflowAgentLogMetadataResponse.nullish(),
+    node_execution_id: z.string().nullish(),
+    node_id: z.string().nullish(),
+    parent_id: z.string().nullish(),
+    status: z.string().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowNodeExecutionMetadataResponse
+ */
+export const zWorkflowNodeExecutionMetadataResponse = z
+  .object({
+    agent_log: z
+      .union([z.array(zWorkflowAgentLogResponse), z.record(z.string(), z.unknown())])
+      .nullish(),
+    currency: z.string().nullish(),
+    error_strategy: z.string().nullish(),
+    iteration_duration_map: z.record(z.string(), z.number()).nullish(),
+    iteration_id: z.string().nullish(),
+    iteration_index: z.int().nullish(),
+    loop_duration_map: z.record(z.string(), z.number()).nullish(),
+    loop_id: z.string().nullish(),
+    loop_index: z.int().nullish(),
+    loop_variable_map: z.record(z.string(), z.unknown()).nullish(),
+    parallel_id: z.string().nullish(),
+    parallel_mode_run_id: z.string().nullish(),
+    parallel_start_node_id: z.string().nullish(),
+    parent_parallel_id: z.string().nullish(),
+    parent_parallel_start_node_id: z.string().nullish(),
+    tool_info: zWorkflowNodeToolInfoResponse.nullish(),
+    total_price: z.number().nullish(),
+    total_tokens: z.int().nullish(),
+  })
+  .catchall(z.unknown())
+
+/**
+ * WorkflowRunNodeExecutionResponse
+ */
+export const zWorkflowRunNodeExecutionResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
+  created_by_end_user: zSimpleEndUser.nullish(),
+  created_by_role: z.string().nullish(),
+  elapsed_time: z.number().nullish(),
+  error: z.string().nullish(),
+  execution_metadata: zWorkflowNodeExecutionMetadataResponse.nullish(),
+  extras: z.unknown().optional(),
+  finished_at: z.int().nullish(),
+  id: z.string(),
+  index: z.int().nullish(),
+  inputs: z.unknown().optional(),
+  inputs_truncated: z.boolean().nullish(),
+  node_id: z.string().nullish(),
+  node_type: z.string().nullish(),
+  outputs: z.unknown().optional(),
+  outputs_truncated: z.boolean().nullish(),
+  predecessor_node_id: z.string().nullish(),
+  process_data: z.unknown().optional(),
+  process_data_truncated: z.boolean().nullish(),
+  retry_index: z.int().nullish(),
+  status: z.string().nullish(),
+  title: z.string().nullish(),
+})
+
+/**
+ * WorkflowRunNodeExecutionListResponse
+ */
+export const zWorkflowRunNodeExecutionListResponse = z.object({
+  data: z.array(zWorkflowRunNodeExecutionResponse),
+})
+
+/**
  * ToolProviderType
  *
  * Enum class for tool provider
@@ -4660,19 +4955,21 @@ export const zToolProviderType = z.enum([
 /**
  * AppProviderAgentToolResponse
  */
-export const zAppProviderAgentToolResponse = z.object({
-  credential_id: z.string().nullish(),
-  enabled: z.boolean().optional(),
-  isDeleted: z.boolean().optional(),
-  notAuthor: z.boolean().optional(),
-  plugin_unique_identifier: z.string().nullish(),
-  provider_id: z.string(),
-  provider_name: z.string().optional(),
-  provider_type: zToolProviderType,
-  tool_label: z.string().optional(),
-  tool_name: z.string(),
-  tool_parameters: z.record(z.string(), zJsonValue),
-})
+export const zAppProviderAgentToolResponse = z
+  .object({
+    credential_id: z.string().nullish(),
+    enabled: z.boolean().optional(),
+    isDeleted: z.boolean().optional(),
+    notAuthor: z.boolean().optional(),
+    plugin_unique_identifier: z.string().nullish(),
+    provider_id: z.string(),
+    provider_name: z.string().optional(),
+    provider_type: zToolProviderType,
+    tool_label: z.string().optional(),
+    tool_name: z.string(),
+    tool_parameters: z.record(z.string(), zJsonValue),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppProviderAgentToolPayload
@@ -4696,153 +4993,179 @@ export const zAppProviderAgentToolPayload = z
 /**
  * AppDatasetReferenceResponse
  */
-export const zAppDatasetReferenceResponse = z.object({
-  enabled: z.boolean().optional(),
-  id: z.string().optional(),
-})
+export const zAppDatasetReferenceResponse = z
+  .object({
+    enabled: z.boolean().optional(),
+    id: z.string().optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppLegacyDatasetToolResponse
  */
-export const zAppLegacyDatasetToolResponse = z.object({
-  dataset: zAppDatasetReferenceResponse,
-})
+export const zAppLegacyDatasetToolResponse = z
+  .object({
+    dataset: zAppDatasetReferenceResponse,
+  })
+  .catchall(z.unknown())
 
 /**
  * AppLegacySensitiveWordToolResponse
  */
-export const zAppLegacySensitiveWordToolResponse = z.object({
-  canned_response: z.string(),
-  enabled: z.boolean(),
-  words: z.array(z.string()),
-})
+export const zAppLegacySensitiveWordToolResponse = z
+  .object({
+    canned_response: z.string(),
+    enabled: z.boolean(),
+    words: z.array(z.string()),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppLegacySensitiveWordToolResponseItem
  */
-export const zAppLegacySensitiveWordToolResponseItem = z.object({
-  'sensitive-word-avoidance': zAppLegacySensitiveWordToolResponse,
-})
+export const zAppLegacySensitiveWordToolResponseItem = z
+  .object({
+    'sensitive-word-avoidance': zAppLegacySensitiveWordToolResponse,
+  })
+  .catchall(z.unknown())
 
 /**
  * AppAgentModeResponse
  */
-export const zAppAgentModeResponse = z.object({
-  enabled: z.boolean(),
-  max_iteration: z.int().optional(),
-  prompt: z.union([zAppAgentPromptResponse, z.string()]).nullish(),
-  strategy: z.union([zPlanningStrategy, z.enum(['cot', 'function-calling'])]).nullish(),
-  tools: z
-    .array(
-      z.union([
-        zAppProviderAgentToolResponse,
-        zAppLegacyDatasetToolResponse,
-        zAppLegacyGoogleSearchToolResponse,
-        zAppLegacyWebReaderToolResponse,
-        zAppLegacyWikipediaToolResponse,
-        zAppLegacyCurrentDatetimeToolResponse,
-        zAppLegacySensitiveWordToolResponseItem,
-      ]),
-    )
-    .optional(),
-})
+export const zAppAgentModeResponse = z
+  .object({
+    enabled: z.boolean(),
+    max_iteration: z.int().optional(),
+    prompt: z.union([zAppAgentPromptResponse, z.string()]).nullish(),
+    strategy: z.union([zPlanningStrategy, z.enum(['cot', 'function-calling'])]).nullish(),
+    tools: z
+      .array(
+        z.union([
+          zAppProviderAgentToolResponse,
+          zAppLegacyDatasetToolResponse,
+          zAppLegacyGoogleSearchToolResponse,
+          zAppLegacyWebReaderToolResponse,
+          zAppLegacyWikipediaToolResponse,
+          zAppLegacyCurrentDatetimeToolResponse,
+          zAppLegacySensitiveWordToolResponseItem,
+        ]),
+      )
+      .optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppDatasetItemResponse
  */
-export const zAppDatasetItemResponse = z.object({
-  dataset: zAppDatasetReferenceResponse,
-})
+export const zAppDatasetItemResponse = z
+  .object({
+    dataset: zAppDatasetReferenceResponse,
+  })
+  .catchall(z.unknown())
 
 /**
  * AppDatasetListResponse
  */
-export const zAppDatasetListResponse = z.object({
-  datasets: z.array(zAppDatasetItemResponse),
-  strategy: z.string().optional(),
-})
+export const zAppDatasetListResponse = z
+  .object({
+    datasets: z.array(zAppDatasetItemResponse),
+    strategy: z.string().optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppMetadataConditionResponse
  */
-export const zAppMetadataConditionResponse = z.object({
-  comparison_operator: z.enum([
-    '<',
-    '=',
-    '>',
-    'after',
-    'before',
-    'contains',
-    'empty',
-    'end with',
-    'in',
-    'is',
-    'is not',
-    'not contains',
-    'not empty',
-    'not in',
-    'start with',
-    '≠',
-    '≤',
-    '≥',
-  ]),
-  id: z.string().optional(),
-  metadata_id: z.string().optional(),
-  name: z.string(),
-  value: z.union([z.string(), z.array(z.string()), z.int(), z.number()]).nullish(),
-})
+export const zAppMetadataConditionResponse = z
+  .object({
+    comparison_operator: z.enum([
+      '<',
+      '=',
+      '>',
+      'after',
+      'before',
+      'contains',
+      'empty',
+      'end with',
+      'in',
+      'is',
+      'is not',
+      'not contains',
+      'not empty',
+      'not in',
+      'start with',
+      '≠',
+      '≤',
+      '≥',
+    ]),
+    id: z.string().optional(),
+    metadata_id: z.string().optional(),
+    name: z.string(),
+    value: z.union([z.string(), z.array(z.string()), z.int(), z.number()]).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppMetadataFilteringConditionsResponse
  */
-export const zAppMetadataFilteringConditionsResponse = z.object({
-  conditions: z.array(zAppMetadataConditionResponse).nullish(),
-  logical_operator: z.enum(['and', 'or']).nullish(),
-})
+export const zAppMetadataFilteringConditionsResponse = z
+  .object({
+    conditions: z.array(zAppMetadataConditionResponse).nullish(),
+    logical_operator: z.enum(['and', 'or']).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppKeywordSettingResponse
  */
-export const zAppKeywordSettingResponse = z.object({
-  keyword_weight: z.number(),
-})
+export const zAppKeywordSettingResponse = z
+  .object({
+    keyword_weight: z.number(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppVectorSettingResponse
  */
-export const zAppVectorSettingResponse = z.object({
-  embedding_model_name: z.string(),
-  embedding_provider_name: z.string(),
-  vector_weight: z.number(),
-})
+export const zAppVectorSettingResponse = z
+  .object({
+    embedding_model_name: z.string(),
+    embedding_provider_name: z.string(),
+    vector_weight: z.number(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppWeightsResponse
  */
-export const zAppWeightsResponse = z.object({
-  keyword_setting: zAppKeywordSettingResponse,
-  vector_setting: zAppVectorSettingResponse,
-  weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).optional(),
-})
+export const zAppWeightsResponse = z
+  .object({
+    keyword_setting: zAppKeywordSettingResponse,
+    vector_setting: zAppVectorSettingResponse,
+    weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).optional(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppDatasetConfigsResponse
  */
-export const zAppDatasetConfigsResponse = z.object({
-  datasets: zAppDatasetListResponse.optional(),
-  metadata_filtering_conditions: zAppMetadataFilteringConditionsResponse.nullish(),
-  metadata_filtering_mode: z.enum(['automatic', 'disabled', 'manual']).optional(),
-  metadata_model_config: zAppModelSelectionResponse.nullish(),
-  reranking_enable: z.boolean().optional(),
-  reranking_enabled: z.boolean().optional(),
-  reranking_mode: zRerankMode.optional(),
-  reranking_model: zAppRerankingModelResponse.nullish(),
-  retrieval_model: z.enum(['multiple', 'single']),
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean().optional(),
-  top_k: z.int().optional(),
-  weights: zAppWeightsResponse.nullish(),
-})
+export const zAppDatasetConfigsResponse = z
+  .object({
+    datasets: zAppDatasetListResponse.optional(),
+    metadata_filtering_conditions: zAppMetadataFilteringConditionsResponse.nullish(),
+    metadata_filtering_mode: z.enum(['automatic', 'disabled', 'manual']).optional(),
+    metadata_model_config: zAppModelSelectionResponse.nullish(),
+    reranking_enable: z.boolean().optional(),
+    reranking_enabled: z.boolean().optional(),
+    reranking_mode: zRerankMode.optional(),
+    reranking_model: zAppRerankingModelResponse.nullish(),
+    retrieval_model: z.enum(['multiple', 'single']),
+    score_threshold: z.number().nullish(),
+    score_threshold_enabled: z.boolean().optional(),
+    top_k: z.int().optional(),
+    weights: zAppWeightsResponse.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AppModelConfigResponse
@@ -5137,42 +5460,50 @@ export const zAppModelConfigPayload = z.object({
 /**
  * AgentFileUploadImageFeatureConfig
  */
-export const zAgentFileUploadImageFeatureConfig = z.object({
-  enabled: z.boolean().optional().default(true),
-})
+export const zAgentFileUploadImageFeatureConfig = z
+  .object({
+    enabled: z.boolean().optional().default(true),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentFileUploadFeatureConfig
  */
-export const zAgentFileUploadFeatureConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  enabled: z.boolean().optional().default(true),
-  image: zAgentFileUploadImageFeatureConfig.optional(),
-  number_limits: z.int().optional().default(3),
-})
+export const zAgentFileUploadFeatureConfig = z
+  .object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z.array(zFileType).optional(),
+    allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+    enabled: z.boolean().optional().default(true),
+    image: zAgentFileUploadImageFeatureConfig.optional(),
+    number_limits: z.int().optional().default(3),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSuggestedQuestionsAfterAnswerModelConfig
  *
  * Legacy Chat App model config used only for follow-up question generation.
  */
-export const zAgentSuggestedQuestionsAfterAnswerModelConfig = z.object({
-  completion_params: z.record(z.string(), z.unknown()).nullish(),
-  mode: z.string().max(64).nullish(),
-  name: z.string().min(1).max(255),
-  provider: z.string().min(1).max(255),
-})
+export const zAgentSuggestedQuestionsAfterAnswerModelConfig = z
+  .object({
+    completion_params: z.record(z.string(), z.unknown()).nullish(),
+    mode: z.string().max(64).nullish(),
+    name: z.string().min(1).max(255),
+    provider: z.string().min(1).max(255),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSuggestedQuestionsAfterAnswerFeatureConfig
  */
-export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
-  enabled: z.boolean().optional().default(false),
-  model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
-  prompt: z.string().nullish(),
-})
+export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z
+  .object({
+    enabled: z.boolean().optional().default(false),
+    model: zAgentSuggestedQuestionsAfterAnswerModelConfig.nullish(),
+    prompt: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentKnowledgeDatasetConfig
@@ -5186,9 +5517,11 @@ export const zAgentKnowledgeDatasetConfig = z.object({
 /**
  * AgentModelResponseFormatConfig
  */
-export const zAgentModelResponseFormatConfig = z.object({
-  type: z.string().max(64).nullish(),
-})
+export const zAgentModelResponseFormatConfig = z
+  .object({
+    type: z.string().max(64).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulModelSettings
@@ -5200,15 +5533,17 @@ export const zAgentModelResponseFormatConfig = z.object({
  * fields typed below, so extra keys must round-trip through persistence
  * rather than being dropped.
  */
-export const zAgentSoulModelSettings = z.object({
-  frequency_penalty: z.number().nullish(),
-  max_tokens: z.int().nullish(),
-  presence_penalty: z.number().nullish(),
-  response_format: zAgentModelResponseFormatConfig.nullish(),
-  stop: z.array(z.string()).nullish(),
-  temperature: z.number().nullish(),
-  top_p: z.number().nullish(),
-})
+export const zAgentSoulModelSettings = z
+  .object({
+    frequency_penalty: z.number().nullish(),
+    max_tokens: z.int().nullish(),
+    presence_penalty: z.number().nullish(),
+    response_format: zAgentModelResponseFormatConfig.nullish(),
+    stop: z.array(z.string()).nullish(),
+    temperature: z.number().nullish(),
+    top_p: z.number().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulModelConfig
@@ -5258,6 +5593,7 @@ export const zDeclaredOutputConfig = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
+          .catchall(z.unknown())
           .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
@@ -5360,43 +5696,51 @@ export const zAgentSoulToolsConfig = z.object({
 /**
  * AgentModerationIOConfig
  */
-export const zAgentModerationIoConfig = z.object({
-  enabled: z.boolean().optional().default(false),
-  preset_response: z.string().nullish(),
-})
+export const zAgentModerationIoConfig = z
+  .object({
+    enabled: z.boolean().optional().default(false),
+    preset_response: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentModerationProviderConfig
  */
-export const zAgentModerationProviderConfig = z.object({
-  api_based_extension_id: z.string().nullish(),
-  inputs_config: zAgentModerationIoConfig.nullish(),
-  keywords: z.string().nullish(),
-  outputs_config: zAgentModerationIoConfig.nullish(),
-})
+export const zAgentModerationProviderConfig = z
+  .object({
+    api_based_extension_id: z.string().nullish(),
+    inputs_config: zAgentModerationIoConfig.nullish(),
+    keywords: z.string().nullish(),
+    outputs_config: zAgentModerationIoConfig.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSensitiveWordAvoidanceFeatureConfig
  */
-export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
-  config: zAgentModerationProviderConfig.nullish(),
-  enabled: z.boolean().optional().default(false),
-  type: z.string().nullish(),
-})
+export const zAgentSensitiveWordAvoidanceFeatureConfig = z
+  .object({
+    config: zAgentModerationProviderConfig.nullish(),
+    enabled: z.boolean().optional().default(false),
+    type: z.string().nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentSoulAppFeaturesConfig
  */
-export const zAgentSoulAppFeaturesConfig = z.object({
-  file_upload: zAgentFileUploadFeatureConfig.optional(),
-  opening_statement: z.string().nullish(),
-  retriever_resource: zAgentFeatureToggleConfig.nullish(),
-  sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
-  speech_to_text: zAgentFeatureToggleConfig.nullish(),
-  suggested_questions: z.array(z.string()).nullish(),
-  suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
-  text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
-})
+export const zAgentSoulAppFeaturesConfig = z
+  .object({
+    file_upload: zAgentFileUploadFeatureConfig.optional(),
+    opening_statement: z.string().nullish(),
+    retriever_resource: zAgentFeatureToggleConfig.nullish(),
+    sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
+    speech_to_text: zAgentFeatureToggleConfig.nullish(),
+    suggested_questions: z.array(z.string()).nullish(),
+    suggested_questions_after_answer: zAgentSuggestedQuestionsAfterAnswerFeatureConfig.nullish(),
+    text_to_speech: zAgentTextToSpeechFeatureConfig.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentKnowledgeModelConfig
@@ -5440,11 +5784,13 @@ export const zAgentKnowledgeRerankingModelConfig = z.object({
 /**
  * AgentKnowledgeWeightedScoreConfig
  */
-export const zAgentKnowledgeWeightedScoreConfig = z.object({
-  keyword_setting: z.record(z.string(), z.unknown()).nullish(),
-  vector_setting: z.record(z.string(), z.unknown()).nullish(),
-  weight_type: z.string().max(64).nullish(),
-})
+export const zAgentKnowledgeWeightedScoreConfig = z
+  .object({
+    keyword_setting: z.record(z.string(), z.unknown()).nullish(),
+    vector_setting: z.record(z.string(), z.unknown()).nullish(),
+    weight_type: z.string().max(64).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * AgentKnowledgeRetrievalConfig

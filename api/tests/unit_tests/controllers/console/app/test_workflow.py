@@ -758,8 +758,19 @@ def test_get_published_workflows_uses_the_request_session(
     assert response["has_more"] is False
 
 
-def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    workflow = _make_workflow()
+@pytest.mark.parametrize(
+    "graph",
+    [
+        {"nodes": [], "edges": []},
+        # Persisted by sync_draft_workflow in the 1.9.0 service integration test.
+        {"nodes": [{"id": "start", "type": "start"}], "edges": []},
+        {"nodes": [{"id": "start", "data": {"title": "Start"}}], "edges": []},
+    ],
+)
+def test_draft_workflow_get_serializes_response_model(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, graph: dict[str, object]
+) -> None:
+    workflow = _make_workflow(graph_dict=graph)
     sqlite_session.add_all([_account(), workflow])
     sqlite_session.commit()
     monkeypatch.setattr(
@@ -772,7 +783,7 @@ def test_draft_workflow_get_serializes_response_model(monkeypatch: pytest.Monkey
     response = handler(api, sqlite_session, app_model=_app())
 
     assert response["id"] == "workflow-1"
-    assert response["graph"] == {"nodes": [], "edges": []}
+    assert response["graph"] == graph
     assert response["features"] == {"file_upload": {"enabled": False}}
     assert response["hash"] == workflow.unique_hash
     assert response["created_by"] == {"id": "user-1", "name": "Alice", "email": "alice@example.com"}

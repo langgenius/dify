@@ -1,5 +1,5 @@
 import type { TriggerEventParameter } from '../../../plugins/types'
-import type { ToolCredential, ToolParameter } from '../../types'
+import type { ToolParameter } from '../../types'
 import { describe, expect, it } from 'vite-plus/test'
 import {
   addDefaultValue,
@@ -8,7 +8,6 @@ import {
   getConfiguredValue,
   getPlainValue,
   getStructureValue,
-  toolCredentialToFormSchemas,
   toolParametersToFormSchemas,
   toType,
   triggerEventParametersToFormSchemas,
@@ -147,72 +146,6 @@ describe('to-form-schema utilities', () => {
       ]
       const result = toolParametersToFormSchemas(params)
       expect(result[0]!.options).toBeUndefined()
-    })
-  })
-
-  describe('toolCredentialToFormSchemas', () => {
-    it('returns empty array for null parameters', () => {
-      expect(toolCredentialToFormSchemas(null as unknown as ToolCredential[])).toEqual([])
-    })
-
-    it('converts credentials with variable = name and tooltip from help', () => {
-      const creds: ToolCredential[] = [
-        {
-          name: 'api_key',
-          label: { en_US: 'API Key', zh_Hans: 'API 密钥' },
-          help: { en_US: 'Enter your API key', zh_Hans: '输入你的 API 密钥' },
-          placeholder: { en_US: 'sk-xxx', zh_Hans: 'sk-xxx' },
-          type: 'secret-input',
-          required: true,
-          default: '',
-        },
-      ]
-      const result = toolCredentialToFormSchemas(creds)
-      expect(result).toHaveLength(1)
-      expect(result[0]!.variable).toBe('api_key')
-      expect(result[0]!.type).toBe('secret-input')
-      expect(result[0]!.tooltip).toEqual({
-        en_US: 'Enter your API key',
-        zh_Hans: '输入你的 API 密钥',
-      })
-      expect(result[0]!.show_on).toEqual([])
-    })
-
-    it('handles null help field → tooltip becomes undefined', () => {
-      const creds: ToolCredential[] = [
-        {
-          name: 'token',
-          label: { en_US: 'Token', zh_Hans: '令牌' },
-          help: null,
-          placeholder: { en_US: '', zh_Hans: '' },
-          type: 'string',
-          required: false,
-          default: '',
-        },
-      ]
-      const result = toolCredentialToFormSchemas(creds)
-      expect(result[0]!.tooltip).toBeUndefined()
-    })
-
-    it('maps credential options with show_on = []', () => {
-      const creds: ToolCredential[] = [
-        {
-          name: 'auth_method',
-          label: { en_US: 'Auth', zh_Hans: '认证' },
-          help: null,
-          placeholder: { en_US: '', zh_Hans: '' },
-          type: 'select',
-          required: true,
-          default: 'bearer',
-          options: [
-            { label: { en_US: 'Bearer', zh_Hans: 'Bearer' }, value: 'bearer' },
-            { label: { en_US: 'Basic', zh_Hans: 'Basic' }, value: 'basic' },
-          ],
-        },
-      ]
-      const result = toolCredentialToFormSchemas(creds)
-      expect(result[0]!.options).toHaveLength(2)
-      result[0]!.options!.forEach((opt) => expect(opt.show_on).toEqual([]))
     })
   })
 

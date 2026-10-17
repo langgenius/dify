@@ -57,10 +57,7 @@ const DetailPanel: FC<ILogDetail> = ({ appId, runID, onClose, canReplay = false 
         )}
       </div>
       <WorkflowContextProvider>
-        <Run
-          runDetailUrl={runID ? `/apps/${appId}/workflow-runs/${runID}` : ''}
-          tracingListUrl={runID ? `/apps/${appId}/workflow-runs/${runID}/node-executions` : ''}
-        />
+        <Run owner={{ kind: 'app', appId }} runId={runID || undefined} />
       </WorkflowContextProvider>
     </div>
   )

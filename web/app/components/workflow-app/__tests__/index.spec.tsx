@@ -24,7 +24,6 @@ const mockWorkflowStoreSetState = vi.fn((state: Record<string, unknown>) => {
 const mockDebouncedCancel = vi.fn()
 const mockFinalDraftSync = vi.fn()
 const mockFetchRunDetail = vi.fn()
-const mockGetWorkflowRunAndTraceUrl = vi.fn()
 
 let appDetail: AppDetailWithSite
 
@@ -134,12 +133,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('../hooks/use-workflow-init', () => ({
   useWorkflowInit: () => workflowInitState,
-}))
-
-vi.mock('../hooks/use-get-run-and-trace-url', () => ({
-  useGetRunAndTraceUrl: () => ({
-    getWorkflowRunAndTraceUrl: mockGetWorkflowRunAndTraceUrl,
-  }),
 }))
 
 vi.mock('@/app/components/base/loading-placeholder', () => ({
@@ -260,7 +253,6 @@ describe('WorkflowApp', () => {
     appTriggersState = {}
     searchParamsValue = null
     mockFetchRunDetail.mockResolvedValue({ inputs: null })
-    mockGetWorkflowRunAndTraceUrl.mockReturnValue({ runUrl: '/runs/run-1' })
   })
 
   it('should render the loading shell while workflow data is still loading', () => {
@@ -328,7 +320,7 @@ describe('WorkflowApp', () => {
     const { unmount } = render(<WorkflowApp />)
 
     await waitFor(() => {
-      expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
+      expect(mockFetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
       expect(mockSetInputs).toHaveBeenCalledWith({
         foo: 'bar',
         count: 2,
@@ -355,7 +347,6 @@ describe('WorkflowApp', () => {
   it('should skip replay lookups when replayRunId is missing', () => {
     render(<WorkflowApp />)
 
-    expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
     expect(mockFetchRunDetail).not.toHaveBeenCalled()
     expect(mockSetInputs).not.toHaveBeenCalled()
   })
@@ -374,21 +365,6 @@ describe('WorkflowApp', () => {
       expect(screen.getByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     })
 
-    expect(mockGetWorkflowRunAndTraceUrl).not.toHaveBeenCalled()
-    expect(mockFetchRunDetail).not.toHaveBeenCalled()
-    expect(mockSetInputs).not.toHaveBeenCalled()
-  })
-
-  it('should skip replay fetches when the resolved run url is empty', async () => {
-    searchParamsValue = 'run-1'
-    mockGetWorkflowRunAndTraceUrl.mockReturnValue({ runUrl: '' })
-
-    render(<WorkflowApp />)
-
-    await waitFor(() => {
-      expect(mockGetWorkflowRunAndTraceUrl).toHaveBeenCalledWith('run-1')
-    })
-
     expect(mockFetchRunDetail).not.toHaveBeenCalled()
     expect(mockSetInputs).not.toHaveBeenCalled()
   })
@@ -403,7 +379,7 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     await waitFor(() => {
-      expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
+      expect(mockFetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
     })
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -426,7 +402,7 @@ describe('WorkflowApp', () => {
     render(<WorkflowApp />)
 
     await waitFor(() => {
-      expect(mockFetchRunDetail).toHaveBeenCalledWith('/runs/run-1')
+      expect(mockFetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
     })
 
     expect(mockSetInputs).not.toHaveBeenCalled()

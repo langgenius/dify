@@ -74,7 +74,7 @@ vi.mock('@/service/base', () => ({
 
 const mockStopWorkflowRun = vi.fn()
 vi.mock('@/service/workflow', () => ({
-  stopWorkflowRun: (url: string) => mockStopWorkflowRun(url),
+  stopWorkflowRun: (...args: unknown[]) => mockStopWorkflowRun(...args),
 }))
 
 const mockInvalidAllLastRun = vi.fn()
@@ -295,7 +295,8 @@ describe('usePipelineRunByCanEdit', () => {
       })
 
       expect(mockStopWorkflowRun).toHaveBeenCalledWith(
-        '/rag/pipelines/test-pipeline-id/workflow-runs/tasks/task-123/stop',
+        { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+        'task-123',
       )
     })
   })

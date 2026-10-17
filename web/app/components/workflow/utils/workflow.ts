@@ -1,9 +1,9 @@
-import type { Edge, Node } from '../types'
+import type { Edge, Node, NodeDataType } from '../types'
 import { uniqBy } from 'es-toolkit/compat'
 import { getOutgoers } from 'reactflow'
 import { BlockEnum } from '../types'
 
-export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
+export const canRunBySingle = (nodeType: NodeDataType, isChildNode: boolean) => {
   // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.
   if (isChildNode && nodeType === BlockEnum.Assigner) return false
   return (
@@ -32,7 +32,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   )
 }
 
-export const isSupportCustomRunForm = (nodeType: BlockEnum) => {
+export const isSupportCustomRunForm = (nodeType: NodeDataType) => {
   return nodeType === BlockEnum.DataSource
 }
 
@@ -163,7 +163,7 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
     maxDepth,
   }
 }
-export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
+export const hasErrorHandleNode = (nodeType?: NodeDataType) => {
   return (
     nodeType === BlockEnum.LLM ||
     nodeType === BlockEnum.Tool ||

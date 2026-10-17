@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
@@ -20,14 +19,13 @@ import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { toFeaturesData } from '@/app/components/workflow/utils/workflow-response'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useDSLByCanEdit } from '../hooks/use-DSL'
-import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
 import { useNodesSyncDraftByCanEdit } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowDraftGraphForCanvas } from '../hooks/use-workflow-draft-graph-for-canvas'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
@@ -36,10 +34,15 @@ import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
 import WorkflowChildren from './workflow-children'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
-type WorkflowDataUpdatePayload = Pick<
-  FetchWorkflowDraftResponse,
-  'features' | 'conversation_variables' | 'environment_variables'
->
+type WorkflowDataUpdatePayload = Partial<
+  Pick<FetchWorkflowDraftResponse, 'conversation_variables' | 'environment_variables'>
+> & { features?: FeaturesData }
+
+const toWorkflowDataUpdate = (draft: FetchWorkflowDraftResponse): WorkflowDataUpdatePayload => ({
+  features: toFeaturesData(draft.features),
+  conversation_variables: draft.conversation_variables,
+  environment_variables: draft.environment_variables,
+})
 type VarsUpdateSnapshot = {
   generation: number
   response: FetchWorkflowDraftResponse
@@ -132,44 +135,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       if (features && featuresStore) {
         const { setFeatures } = featuresStore.getState()
 
-        const transformedFeatures: FeaturesData = {
-          file: {
-            image: {
-              enabled: !!features.file_upload?.image?.enabled,
-              number_limits: features.file_upload?.image?.number_limits || 3,
-              transfer_methods: features.file_upload?.image?.transfer_methods || [
-                'local_file',
-                'remote_url',
-              ],
-            },
-            enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
-            allowed_file_types: features.file_upload?.allowed_file_types || [
-              SupportUploadFileTypes.image,
-            ],
-            allowed_file_extensions:
-              features.file_upload?.allowed_file_extensions ||
-              FILE_EXTS[SupportUploadFileTypes.image]!.map((ext) => `.${ext}`),
-            allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods ||
-              features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-            number_limits:
-              features.file_upload?.number_limits ||
-              features.file_upload?.image?.number_limits ||
-              3,
-          },
-          opening: {
-            enabled: !!features.opening_statement,
-            opening_statement: features.opening_statement,
-            suggested_questions: features.suggested_questions,
-          },
-          suggested: features.suggested_questions_after_answer || { enabled: false },
-          speech2text: features.speech_to_text || { enabled: false },
-          text2speech: features.text_to_speech || { enabled: false },
-          citation: features.retriever_resource || { enabled: false },
-          moderation: features.sensitive_word_avoidance || { enabled: false },
-          annotationReply: features.annotation_reply || { enabled: false },
-        }
-
-        setFeatures(transformedFeatures)
+        setFeatures(features)
       }
       if (conversation_variables) {
         const { setConversationVariables } = workflowStore.getState()
@@ -219,7 +185,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     const applySnapshot = async (snapshot: VarsUpdateSnapshot) => {
       if (snapshot.generation <= varsUpdateAppliedGenerationRef.current) return
 
-      handleWorkflowDataUpdate(snapshot.response)
+      handleWorkflowDataUpdate(toWorkflowDataUpdate(snapshot.response))
       varsUpdateAppliedGenerationRef.current = snapshot.generation
       if (
         snapshot.syncRequest > varsUpdateCompletedSyncRef.current &&
@@ -251,7 +217,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         const updateGeneration = ++varsUpdateGenerationRef.current
         const syncRequest = varsUpdateSyncRequestRef.current
         try {
-          const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+          const response = await fetchWorkflowDraft({ kind: 'app', appId })
           const snapshot = { generation: updateGeneration, response, syncRequest }
           if (
             !varsUpdateLatestSuccessfulRef.current ||
@@ -286,7 +252,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
           }
 
           try {
-            const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+            const response = await fetchWorkflowDraft({ kind: 'app', appId })
             const snapshot = { generation: updateGeneration, response, syncRequest }
             if (
               !varsUpdateLatestSuccessfulRef.current ||
@@ -319,12 +285,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
       try {
-        const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+        const response = await fetchWorkflowDraft({ kind: 'app', appId })
 
         if (response.hash) workflowStore.getState().setSyncWorkflowDraftHash(response.hash)
 
         // Handle features, variables etc.
-        handleWorkflowDataUpdate(response)
+        handleWorkflowDataUpdate(toWorkflowDataUpdate(response))
 
         // Update workflow canvas (nodes, edges, viewport)
         if (response.graph)
@@ -418,7 +384,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useWorkflowNodeCatalog()
-  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const { exportCheck, handleExportDSL, isExporting } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const fileSettings = useFeatures((state) => state.features.file)
@@ -459,7 +424,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       handleWorkflowTriggerPluginRunInWorkflow,
       handleWorkflowRunAllTriggersInWorkflow,
       availableNodesMetaData,
-      getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
       isExporting,
@@ -503,7 +467,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
     availableNodesMetaData,
-    getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
     isExporting,

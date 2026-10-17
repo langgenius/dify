@@ -187,7 +187,6 @@ vi.mock('@/app/components/app/app-publisher', () => ({
           onClick={() => {
             Promise.resolve(
               props.onPublish?.({
-                url: '/apps/app-1/workflows/publish',
                 title: 'Test title',
                 releaseNotes: 'Test notes',
               }),
@@ -195,20 +194,6 @@ vi.mock('@/app/components/app/app-publisher', () => ({
           }}
         >
           publisher-publish-with-params
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            Promise.resolve(
-              props.onPublish?.({
-                url: '/apps/app-id/workflows/publish/custom',
-                title: 'Custom title',
-                releaseNotes: 'Custom notes',
-              }),
-            ).catch(() => undefined)
-          }}
-        >
-          publisher-publish-custom
         </button>
       </div>
     )
@@ -252,10 +237,16 @@ const renderWithToast = (
   }
 }
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  post: (...args: unknown[]) => mockPublishWorkflow(...args),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.publish.post': (input) => mockPublishWorkflow(input),
+    }),
+  }
+})
 
 describe('FeaturesTrigger', () => {
   beforeEach(() => {
@@ -622,7 +613,8 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockPublishWorkflow).toHaveBeenCalledWith('/apps/app-id/workflows/publish', {
+        expect(mockPublishWorkflow).toHaveBeenCalledWith({
+          params: { app_id: 'app-id' },
           body: { marked_name: '', marked_comment: '' },
         })
         expect(mockUpdatePublishedWorkflow).toHaveBeenCalledWith('app-id')
@@ -753,24 +745,9 @@ describe('FeaturesTrigger', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockPublishWorkflow).toHaveBeenCalledWith('/apps/app-1/workflows/publish', {
+        expect(mockPublishWorkflow).toHaveBeenCalledWith({
+          params: { app_id: 'app-id' },
           body: { marked_name: 'Test title', marked_comment: 'Test notes' },
-        })
-      })
-    })
-
-    it('should respect the publish url passed by the publisher', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      renderWithToast(<FeaturesTrigger />)
-
-      // Act
-      await user.click(screen.getByRole('button', { name: 'publisher-publish-custom' }))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockPublishWorkflow).toHaveBeenCalledWith('/apps/app-id/workflows/publish/custom', {
-          body: { marked_name: 'Custom title', marked_comment: 'Custom notes' },
         })
       })
     })

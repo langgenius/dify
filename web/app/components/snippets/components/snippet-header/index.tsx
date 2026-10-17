@@ -8,7 +8,6 @@ import Header from '@/app/components/workflow/header'
 import RunMode from './run-mode'
 
 type SnippetHeaderProps = {
-  snippetId: string
   canSave: boolean
   canEdit: boolean
   isPublishing: boolean
@@ -29,20 +28,8 @@ const PublishAction = ({
   )
 }
 
-const SnippetHeader = ({
-  snippetId,
-  canSave,
-  canEdit,
-  isPublishing,
-  onPublish,
-}: SnippetHeaderProps) => {
+const SnippetHeader = ({ canSave, canEdit, isPublishing, onPublish }: SnippetHeaderProps) => {
   const { t } = useTranslation(['snippet'])
-  const viewHistoryProps = useMemo(() => {
-    return {
-      historyUrl: `/snippets/${snippetId}/workflow-runs`,
-    }
-  }, [snippetId])
-
   const headerProps: HeaderProps = useMemo(() => {
     return {
       normal: {
@@ -58,17 +45,14 @@ const SnippetHeader = ({
         runAndHistoryProps: {
           showRunButton: true,
           runButtonText: t(($) => $.testRunButton),
-          viewHistoryProps,
           components: {
             RunMode,
           },
         },
       },
-      viewHistory: {
-        viewHistoryProps,
-      },
+      viewHistory: {},
     }
-  }, [canEdit, canSave, isPublishing, onPublish, t, viewHistoryProps])
+  }, [canEdit, canSave, isPublishing, onPublish, t])
 
   return <Header {...headerProps} />
 }

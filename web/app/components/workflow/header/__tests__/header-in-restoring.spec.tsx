@@ -8,6 +8,7 @@ import {
   seedFeatures,
   seedSystemFeatures,
 } from '@/test/console/query-data'
+import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import { renderWorkflowComponent as renderWorkflow } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import HeaderInRestoring from '../header-in-restoring'
@@ -60,31 +61,32 @@ vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
 
 const createVersion = (
   overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  created_at: 1_700_000_000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 1_700_000_100,
-  updated_by: {
-    id: 'user-2',
-    name: 'Bob',
-    email: 'bob@example.com',
-  },
-  tool_published: false,
-  version: 'v1',
-  marked_name: 'Release 1',
-  marked_comment: '',
-  ...overrides,
-})
+): FetchWorkflowDraftResponse =>
+  createWorkflowDraftFixture({
+    id: 'version-1',
+    graph: {
+      nodes: [],
+      edges: [],
+    },
+    created_at: 1_700_000_000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 1_700_000_100,
+    updated_by: {
+      id: 'user-2',
+      name: 'Bob',
+      email: 'bob@example.com',
+    },
+    tool_published: false,
+    version: 'v1',
+    marked_name: 'Release 1',
+    marked_comment: '',
+    ...overrides,
+  })
 
 describe('HeaderInRestoring', () => {
   beforeEach(() => {

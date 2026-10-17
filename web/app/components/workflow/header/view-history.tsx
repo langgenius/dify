@@ -6,7 +6,7 @@ import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks/use-input-field-panel'
-import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { editorResourceAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useWorkflowRunHistory } from '@/service/use-workflow'
@@ -19,9 +19,8 @@ import { formatWorkflowRunIdentifier } from '../utils'
 export type ViewHistoryProps = {
   withText?: boolean
   onClearLogAndMessageModal?: () => void
-  historyUrl?: string
 }
-const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHistoryProps) => {
+const ViewHistory = ({ withText, onClearLogAndMessageModal }: ViewHistoryProps) => {
   const { t } = useTranslation(['common', 'workflow'])
   const isChatflow = useAtomValue(isChatflowAtom)
   const [open, setOpen] = useState(false)
@@ -34,8 +33,8 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
-  const shouldFetchHistory = open && !!historyUrl
-  const { data, isLoading } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
+  const resource = useAtomValue(editorResourceAtom)
+  const { data, isLoading } = useWorkflowRunHistory(resource, open)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -111,7 +110,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
           )}
           {!isLoading && (
             <div className="p-2">
-              {!data?.data.length && (
+              {!data?.length && (
                 <div className="py-12">
                   <span className="mx-auto mb-2 i-custom-vender-line-time-clock-play-slim size-8 text-text-quaternary" />
                   <div className="text-center text-[13px] text-text-quaternary">
@@ -119,8 +118,8 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                   </div>
                 </div>
               )}
-              {data?.data.map((item) => {
-                const interruptedStatuses: readonly WorkflowRunningStatus[] = [
+              {data?.map((item) => {
+                const interruptedStatuses: readonly string[] = [
                   WorkflowRunningStatus.Stopped,
                   WorkflowRunningStatus.Paused,
                 ]
@@ -165,7 +164,7 @@ const ViewHistory = ({ withText, onClearLogAndMessageModal, historyUrl }: ViewHi
                         {`Test ${isChatflow ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at, item.status)}`}
                       </div>
                       <div className="flex items-center text-xs leading-4.5 text-text-tertiary">
-                        {item.created_by_account?.name} ·
+                        {item.created_by_name} ·
                         {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
                       </div>
                     </div>

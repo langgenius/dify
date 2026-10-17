@@ -7,7 +7,7 @@ import { selectToolsWithProvider } from '@/app/components/tools/utils/query-sele
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getNodeCatalogType } from '@/app/components/workflow/utils/node'
+import { getNodeBlockEntry } from '@/app/components/workflow/utils/node'
 import { useGetLanguage } from '@/context/i18n'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -43,7 +43,7 @@ export const useNodeMetaData = (node: Node) => {
   const dataSourceList = useStore((s) => s.dataSourceList)
   const availableNodesMetaData = useNodesMetaData()
   const { data } = node
-  const nodeMetaData = availableNodesMetaData.nodesMap?.[getNodeCatalogType(data)]
+  const nodeMetaData = getNodeBlockEntry(availableNodesMetaData.nodesMap, data)
   const author = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
       return matchDataSource(dataSourceList ?? [], data)?.declaration.identity.author

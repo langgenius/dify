@@ -3441,6 +3441,28 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | app_base_url | string |  | Yes |
 | url | string |  | No |
 
+#### WorkflowAgentLogMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| elapsed_time | number |  | No |
+| icon | string |  | No |
+| provider | string |  | No |
+
+#### WorkflowAgentLogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | object |  | No |
+| error | string |  | No |
+| label | string |  | No |
+| message_id | string |  | No |
+| metadata | [WorkflowAgentLogMetadataResponse](#workflowagentlogmetadataresponse) |  | No |
+| node_execution_id | string |  | No |
+| node_id | string |  | No |
+| parent_id | string |  | No |
+| status | string |  | No |
+
 #### WorkflowDiff
 
 | Name | Type | Description | Required |
@@ -3454,6 +3476,94 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | nodes_changed | [ [NodeChange](#nodechange) ] |  | Yes |
 | nodes_removed | [ [NodeChange](#nodechange) ] |  | Yes |
 | published | boolean | false when the app was never published; then everything counts as added | Yes |
+
+#### WorkflowGraphEdgeDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sourceType | string |  | No |
+| targetType | string |  | No |
+
+#### WorkflowGraphEdgeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowGraphEdgeDataResponse](#workflowgraphedgedataresponse) |  | No |
+| id | string |  | No |
+| source | string |  | Yes |
+| sourceHandle | string |  | No |
+| target | string |  | Yes |
+| targetHandle | string |  | No |
+
+#### WorkflowGraphNodeDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| desc | string |  | No |
+| title | string |  | No |
+| type | string |  | No |
+
+#### WorkflowGraphNodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowGraphNodeDataResponse](#workflowgraphnodedataresponse) |  | No |
+| id | string |  | Yes |
+| position | [WorkflowGraphPositionResponse](#workflowgraphpositionresponse) |  | No |
+| type | string |  | No |
+
+#### WorkflowGraphPositionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| x | number |  | Yes |
+| y | number |  | Yes |
+
+#### WorkflowGraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| edges | [ [WorkflowGraphEdgeResponse](#workflowgraphedgeresponse) ] |  | No |
+| nodes | [ [WorkflowGraphNodeResponse](#workflowgraphnoderesponse) ] |  | No |
+| viewport | [WorkflowGraphViewportResponse](#workflowgraphviewportresponse) |  | No |
+
+#### WorkflowGraphViewportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| x | number |  | Yes |
+| y | number |  | Yes |
+| zoom | number |  | Yes |
+
+#### WorkflowNodeExecutionMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_log | [ [WorkflowAgentLogResponse](#workflowagentlogresponse) ]<br>object |  | No |
+| currency | string |  | No |
+| error_strategy | string |  | No |
+| iteration_duration_map | object |  | No |
+| iteration_id | string |  | No |
+| iteration_index | integer |  | No |
+| loop_duration_map | object |  | No |
+| loop_id | string |  | No |
+| loop_index | integer |  | No |
+| loop_variable_map | object |  | No |
+| parallel_id | string |  | No |
+| parallel_mode_run_id | string |  | No |
+| parallel_start_node_id | string |  | No |
+| parent_parallel_id | string |  | No |
+| parent_parallel_start_node_id | string |  | No |
+| tool_info | [WorkflowNodeToolInfoResponse](#workflownodetoolinforesponse) |  | No |
+| total_price | number |  | No |
+| total_tokens | integer |  | No |
+
+#### WorkflowNodeToolInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_strategy | string |  | No |
+| icon | string |  | No |
 
 #### WorkflowRunData
 
@@ -3482,10 +3592,10 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
-| graph |  |  | Yes |
+| graph | [WorkflowGraphResponse](#workflowgraphresponse) |  | Yes |
 | id | string |  | Yes |
-| inputs |  |  | Yes |
-| outputs |  |  | Yes |
+| inputs | object |  | Yes |
+| outputs | object |  | Yes |
 | status | string |  | No |
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
@@ -3523,7 +3633,7 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
 | error | string |  | No |
-| execution_metadata |  |  | No |
+| execution_metadata | [WorkflowNodeExecutionMetadataResponse](#workflownodeexecutionmetadataresponse) |  | No |
 | extras |  |  | No |
 | finished_at | integer |  | No |
 | id | string |  | Yes |

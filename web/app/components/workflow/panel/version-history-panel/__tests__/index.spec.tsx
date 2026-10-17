@@ -8,6 +8,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useEffect, useRef } from 'react'
 import { renderEditor as renderWithConsoleState } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 
 const mockHandleRestoreFromPublishedWorkflow = vi.fn()
@@ -16,6 +17,7 @@ const mockHandleRefreshWorkflowDraft = vi.fn()
 const mockHandleExportDSL = vi.fn()
 const mockRestoreWorkflow = vi.fn()
 const mockUpdateWorkflow = vi.fn()
+const mockDeleteWorkflow = vi.fn()
 const mockInvalidateAppWorkflow = vi.fn()
 const mockSetCurrentVersion = vi.fn()
 const mockSetShowWorkflowVersionHistoryPanel = vi.fn()
@@ -36,31 +38,32 @@ let mockIsFetching = false
 
 const createVersionHistory = (
   overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
-  id: 'version-id',
-  version: WorkflowVersion.Draft,
-  graph: { nodes: [], edges: [] },
-  features: {
-    opening_statement: '',
-    suggested_questions: [],
-    suggested_questions_after_answer: { enabled: false },
-    text_to_speech: { enabled: false },
-    speech_to_text: { enabled: false },
-    retriever_resource: { enabled: false },
-    sensitive_word_avoidance: { enabled: false },
-    file_upload: { image: { enabled: false } },
-  },
-  created_at: Date.now() / 1000,
-  created_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
-  hash: 'test-hash',
-  updated_at: Date.now() / 1000,
-  updated_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
-  tool_published: false,
-  environment_variables: [],
-  marked_name: '',
-  marked_comment: '',
-  ...overrides,
-})
+): FetchWorkflowDraftResponse =>
+  createWorkflowDraftFixture({
+    id: 'version-id',
+    version: WorkflowVersion.Draft,
+    graph: { nodes: [], edges: [] },
+    features: {
+      opening_statement: '',
+      suggested_questions: [],
+      suggested_questions_after_answer: { enabled: false },
+      text_to_speech: { enabled: false },
+      speech_to_text: { enabled: false },
+      retriever_resource: { enabled: false },
+      sensitive_word_avoidance: { enabled: false },
+      file_upload: { image: { enabled: false } },
+    },
+    created_at: Date.now() / 1000,
+    created_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+    hash: 'test-hash',
+    updated_at: Date.now() / 1000,
+    updated_by: { id: 'user-1', name: 'User 1', email: 'user-1@example.com' },
+    tool_published: false,
+    environment_variables: [],
+    marked_name: '',
+    marked_comment: '',
+    ...overrides,
+  })
 
 let mockCurrentVersion: FetchWorkflowDraftResponse | null = null
 
@@ -75,6 +78,8 @@ type MockRestoreConfirmModalProps = {
 }
 type MockDeleteConfirmModalProps = {
   isOpen: boolean
+  versionInfo: FetchWorkflowDraftResponse
+  onDelete: (id: string) => void
 }
 type MockVersionHistoryItemProps = {
   item: FetchWorkflowDraftResponse
@@ -86,7 +91,7 @@ vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
 vi.mock('@/service/use-workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useDeleteWorkflow: () => ({ mutateAsync: vi.fn() }),
+  useDeleteWorkflow: () => ({ mutateAsync: mockDeleteWorkflow }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidateAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
@@ -176,7 +181,12 @@ vi.mock('../../../store', () => ({
 }))
 
 vi.mock('../delete-confirm-modal', () => ({
-  default: ({ isOpen }: MockDeleteConfirmModalProps) => (isOpen ? <div>confirm delete</div> : null),
+  default: ({ isOpen, versionInfo, onDelete }: MockDeleteConfirmModalProps) =>
+    isOpen ? (
+      <button type="button" onClick={() => onDelete(versionInfo.id)}>
+        confirm delete
+      </button>
+    ) : null,
 }))
 
 vi.mock('../restore-confirm-modal', () => ({
@@ -276,10 +286,17 @@ vi.mock('../version-history-item', () => ({
   },
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  patch: (...args: unknown[]) => mockUpdateWorkflow(...args),
-}))
+vi.mock('@/service/console/browser', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console/browser')>()
+  return {
+    consoleBrowserLink: {
+      call: (path: readonly string[], input: unknown, options: unknown) =>
+        path.join('.') === 'apps.byAppId.workflows.byWorkflowId.patch'
+          ? mockUpdateWorkflow(input)
+          : actual.consoleBrowserLink.call(path as never, input, options as never),
+    },
+  }
+})
 
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
@@ -418,6 +435,18 @@ describe('VersionHistoryPanel', () => {
 
     expect(screen.getByText('confirm delete')).toBeInTheDocument()
     expect(mockToast.error).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('confirm delete'))
+
+    await waitFor(() =>
+      expect(mockDeleteWorkflow).toHaveBeenCalledWith(
+        {
+          owner: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+          workflowId: 'published-version-id',
+        },
+        expect.any(Object),
+      ),
+    )
   })
 
   it('should keep restore mode backup state when restore request fails', async () => {
@@ -453,21 +482,16 @@ describe('VersionHistoryPanel', () => {
     })
     const { VersionHistoryPanel } = await import('../index')
 
-    render(
-      <VersionHistoryPanel
-        latestVersionId="published-version-id"
-        updateVersionUrl={(versionId) => `/apps/app-1/workflows/${versionId}`}
-      />,
-    )
+    render(<VersionHistoryPanel latestVersionId="published-version-id" />)
 
     fireEvent.click(screen.getByText('edit-published-version-id'))
     fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
-      expect(mockUpdateWorkflow).toHaveBeenCalledWith(
-        '/apps/app-1/workflows/published-version-id',
-        { body: { marked_name: 'Updated release', marked_comment: 'Updated notes' } },
-      )
+      expect(mockUpdateWorkflow).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', workflow_id: 'published-version-id' },
+        body: { marked_name: 'Updated release', marked_comment: 'Updated notes' },
+      })
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
   })

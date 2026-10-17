@@ -63,6 +63,14 @@ export const BlockEnum = {
 
 export type BlockEnum = (typeof BlockEnum)[keyof typeof BlockEnum]
 
+// Note nodes annotate the canvas instead of running, so their data carries no block type.
+export const NOTE_NODE_DATA_TYPE = ''
+export type NodeDataType = BlockEnum | typeof NOTE_NODE_DATA_TYPE
+
+export function isBlockType(type: NodeDataType): type is BlockEnum {
+  return type !== NOTE_NODE_DATA_TYPE
+}
+
 export const ControlMode = {
   Pointer: 'pointer',
   Hand: 'hand',
@@ -92,7 +100,7 @@ export type CommonNodeType<T = {}> = {
   _singleRunningStatus?: NodeRunningStatus
   _isCandidate?: boolean
   _isBundled?: boolean
-  _children?: { nodeId: string; nodeType: BlockEnum }[]
+  _children?: { nodeId: string; nodeType: NodeDataType }[]
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
@@ -108,7 +116,7 @@ export type CommonNodeType<T = {}> = {
   selected?: boolean
   title: string
   desc: string
-  type: BlockEnum
+  type: NodeDataType
   width?: number
   height?: number
   position?: XYPosition
@@ -143,8 +151,8 @@ export type CommonEdgeType = {
   iteration_id?: string
   isInLoop?: boolean
   loop_id?: string
-  sourceType: BlockEnum
-  targetType: BlockEnum
+  sourceType: NodeDataType
+  targetType: NodeDataType
   _isTemp?: boolean
 }
 
@@ -580,8 +588,8 @@ const TRIGGER_NODE_TYPES = [
 // Type-safe trigger node type extracted from TRIGGER_NODE_TYPES array
 export type TriggerNodeType = (typeof TRIGGER_NODE_TYPES)[number]
 
-export function isTriggerNode(nodeType: BlockEnum): boolean {
-  return TRIGGER_NODE_TYPES.includes(nodeType as any)
+export function isTriggerNode(nodeType: NodeDataType): boolean {
+  return TRIGGER_NODE_TYPES.some((triggerType) => triggerType === nodeType)
 }
 
 export type Block = {

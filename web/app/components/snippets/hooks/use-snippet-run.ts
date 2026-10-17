@@ -77,7 +77,7 @@ export const useSnippetRun = () => {
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
   const invalidAllLastRun = useInvalidateAllLastRun(resource)
-  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory(resource)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
@@ -108,7 +108,6 @@ export const useSnippetRun = () => {
         onError,
         ...restCallback
       } = callback || {}
-      const runHistoryUrl = `/snippets/${snippetId}/workflow-runs`
       workflowStore.setState({ historyWorkflowData: undefined })
       const workflowContainer = document.getElementById('workflow-container')
 
@@ -142,13 +141,13 @@ export const useSnippetRun = () => {
           },
           onWorkflowStarted: (params) => {
             handleWorkflowStarted(params)
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
 
             onWorkflowStarted?.(params)
           },
           onWorkflowFinished: (params) => {
             handleWorkflowFinished(params)
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
             fetchInspectVars({})
             invalidAllLastRun()
 
@@ -156,7 +155,7 @@ export const useSnippetRun = () => {
           },
           onError: (params) => {
             handleWorkflowFailed()
-            invalidateRunHistory(runHistoryUrl)
+            invalidateRunHistory()
 
             onError?.(params)
           },
@@ -259,7 +258,7 @@ export const useSnippetRun = () => {
     (taskId: string) => {
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
 
-      if (taskId) stopWorkflowRun(`/snippets/${snippetId}/workflow-runs/tasks/${taskId}/stop`)
+      if (taskId) stopWorkflowRun(resource, taskId)
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
 
@@ -273,7 +272,7 @@ export const useSnippetRun = () => {
         )
       }
     },
-    [snippetId, workflowStore],
+    [resource, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(

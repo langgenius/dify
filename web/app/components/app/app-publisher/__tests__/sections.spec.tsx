@@ -8,6 +8,7 @@ import { useRef } from 'react'
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import { PublisherActionsSection } from '../built-in-publisher/actions-section'
 import { PublisherSummarySection } from '../built-in-publisher/summary-section'
 import { usePublishController } from '../publisher-content/use-publish-controller'
@@ -28,31 +29,32 @@ vi.mock('../publish-with-multiple-model', () => ({
 
 const createVersionInfo = (
   overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
-  id: 'workflow-version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  created_at: 1_710_000_000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 1_710_000_000,
-  updated_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  tool_published: false,
-  version: '2024-03-09T16:00:00Z',
-  marked_name: '',
-  marked_comment: '',
-  ...overrides,
-})
+): FetchWorkflowDraftResponse =>
+  createWorkflowDraftFixture({
+    id: 'workflow-version-1',
+    graph: {
+      nodes: [],
+      edges: [],
+    },
+    created_at: 1_710_000_000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 1_710_000_000,
+    updated_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    tool_published: false,
+    version: '2024-03-09T16:00:00Z',
+    marked_name: '',
+    marked_comment: '',
+    ...overrides,
+  })
 
 function PublisherPopup({
   defaultOpen = false,

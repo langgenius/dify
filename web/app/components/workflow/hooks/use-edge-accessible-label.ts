@@ -1,11 +1,11 @@
 import type { HumanInputNodeType } from '../nodes/human-input/types'
-import type { CommonNodeType } from '../types'
+import type { CommonNodeType, NodeDataType } from '../types'
 import { useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'reactflow'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
 import { ErrorHandleTypeEnum } from '../nodes/_base/components/error-handle/types'
-import { BlockEnum } from '../types'
+import { BlockEnum, isBlockType } from '../types'
 
 export const useEdgeAccessibleLabel = (
   source: string,
@@ -52,10 +52,10 @@ export const useEdgeAccessibleLabel = (
     if (sourceHandleId === ErrorHandleTypeEnum.failBranch)
       branchName = t(($) => $['common.onFailure'], { ns: 'workflow' })
 
-    const sourceTitle =
-      sourceData.title || t(($) => $[`blocks.${sourceData.type}`], { ns: 'workflow' })
-    const targetTitle =
-      targetData.title || t(($) => $[`blocks.${targetData.type}`], { ns: 'workflow' })
+    const blockName = (type: NodeDataType) =>
+      isBlockType(type) ? t(($) => $[`blocks.${type}`], { ns: 'workflow' }) : ''
+    const sourceTitle = sourceData.title || blockName(sourceData.type)
+    const targetTitle = targetData.title || blockName(targetData.type)
     return t(($) => $['common.edgeLabel'], {
       ns: 'workflow',
       source: branchName ? `${sourceTitle} (${branchName})` : sourceTitle,

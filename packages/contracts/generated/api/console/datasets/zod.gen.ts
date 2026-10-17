@@ -967,9 +967,11 @@ export const zDocumentUploadFileDetailResponse = z.object({
  *
  * The uploaded file for file documents; Notion and website documents repeat their source info.
  */
-export const zDocumentSourceDetailResponse = z.object({
-  upload_file: zDocumentUploadFileDetailResponse.nullish(),
-})
+export const zDocumentSourceDetailResponse = z
+  .object({
+    upload_file: zDocumentUploadFileDetailResponse.nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * DocumentResponse

@@ -739,6 +739,15 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
           )
             return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('json').call())
 
+          // openapi-ts normalizes `additionalProperties: true` to `unknown`. Preserve extra
+          // keys, matching the index signature the TypeScript plugin emits for open objects.
+          if (
+            ctx.schema.properties &&
+            typeof additionalProperties === 'object' &&
+            additionalProperties.type === 'unknown'
+          )
+            return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('unknown').call())
+
           // openapi-ts normalizes `additionalProperties: false` to `never`, but
           // does not make shaped Zod objects strict.
           const isStrictSchema = ctx.path['~ref'].some(

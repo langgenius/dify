@@ -1,3 +1,4 @@
+import type { NodeDataType } from '../types'
 import { useCallback, useMemo } from 'react'
 import { BlockEnum } from '../types'
 import { useNodesMetaData } from './use-nodes-meta-data'
@@ -20,7 +21,7 @@ const availableBlocksFilter = (nodeType: BlockEnum, inContainer?: boolean) => {
   return true
 }
 
-export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) => {
+export const useAvailableBlocks = (nodeType?: NodeDataType, inContainer?: boolean) => {
   const { nodes: availableNodes } = useNodesMetaData()
   const availableNodesType = useMemo(
     () => availableNodes.map((node) => node.metaData.type),
@@ -54,7 +55,7 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
   }, [availableNodesType, nodeType])
 
   const getAvailableBlocks = useCallback(
-    (nodeType?: BlockEnum, inContainer?: boolean) => {
+    (nodeType?: NodeDataType, inContainer?: boolean) => {
       let availablePrevBlocks = availableNodesType
       if (
         !nodeType ||

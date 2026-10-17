@@ -23,7 +23,17 @@ const mockFetchWorkflowDraft = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
-  syncWorkflowDraft: (params: unknown) => mockSyncWorkflowDraft(params),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    const { pathname } = new URL(request.url)
+    const pipelineId = pathname.match(/\/rag\/pipelines\/([^/]+)\/workflows\/draft$/)?.[1]
+    if (pipelineId && request.method === 'POST')
+      return Response.json(await mockSyncWorkflowDraft({ pipelineId, body: await request.json() }))
+    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+  },
 }))
 
 vi.mock('../use-pipeline-config', () => ({
@@ -123,9 +133,10 @@ describe('usePipelineInit', () => {
       })
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
-          '/rag/pipelines/test-pipeline-id/workflows/draft',
-        )
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith({
+          kind: 'knowledge-pipeline',
+          pipelineId: 'test-pipeline-id',
+        })
       })
     })
 
@@ -347,8 +358,8 @@ describe('usePipelineInit', () => {
 
       await waitFor(() => {
         expect(mockSyncWorkflowDraft).toHaveBeenCalledWith({
-          url: '/rag/pipelines/test-pipeline-id/workflows/draft',
-          params: {
+          pipelineId: 'test-pipeline-id',
+          body: {
             graph: {
               nodes: [{ id: 'template-node' }],
               edges: [],

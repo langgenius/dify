@@ -1,13 +1,14 @@
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { NodeDataType } from '@/app/components/workflow/types'
 import { memo } from 'react'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
+import { isBlockType } from '@/app/components/workflow/types'
 
 type VariableNodeLabelProps = {
-  nodeType?: BlockEnum
+  nodeType?: NodeDataType
   nodeTitle?: string
 }
 const VariableNodeLabel = ({ nodeType, nodeTitle }: VariableNodeLabelProps) => {
-  if (!nodeType) return null
+  if (!nodeType || !isBlockType(nodeType)) return null
 
   return (
     <>

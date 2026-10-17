@@ -1,16 +1,25 @@
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
-import type { CommonNodeType, Node } from '../types'
+import type { CommonNodeType, Node, NodeDataType } from '../types'
 import { Position } from 'reactflow'
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 import { CUSTOM_NODE, NESTED_ELEMENT_Z_INDEX } from '../constants'
 import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import { BlockEnum } from '../types'
+import { BlockEnum, isBlockType } from '../types'
 
-export function getNodeCatalogType(data: CommonNodeType): BlockEnum {
+export function getNodeCatalogType(data: CommonNodeType): NodeDataType {
   return isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
+}
+
+// Note nodes have no block catalog entry, so per-block lookups resolve to nothing for them.
+export function getNodeBlockEntry<T>(
+  entries: Partial<Record<BlockEnum, T>> | undefined,
+  data: CommonNodeType,
+): T | undefined {
+  const type = getNodeCatalogType(data)
+  return isBlockType(type) ? entries?.[type] : undefined
 }
 
 export function generateNewNode({
@@ -166,7 +175,7 @@ export const getNodesWithSameDefaultDataType = (
   return nodes.filter((node) => node.data.type === dataType)
 }
 
-export const hasRetryNode = (nodeType?: BlockEnum) => {
+export const hasRetryNode = (nodeType?: NodeDataType) => {
   return (
     nodeType === BlockEnum.LLM ||
     nodeType === BlockEnum.Tool ||

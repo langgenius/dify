@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from fields.base import ResponseModel, SessionResponseSource
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
+from fields.workflow_graph_fields import WorkflowGraphResponse, WorkflowNodeExecutionMetadataResponse
 from libs.helper import to_timestamp
 
 
@@ -118,10 +119,10 @@ class WorkflowRunCountResponse(ResponseModel):
 class WorkflowRunDetailResponse(ResponseModel):
     id: str
     version: str | None = None
-    graph: Any = Field(validation_alias="graph_dict")
-    inputs: Any = Field(validation_alias="inputs_dict")
+    graph: WorkflowGraphResponse = Field(validation_alias="graph_dict")
+    inputs: dict[str, Any] = Field(validation_alias="inputs_dict")
     status: str | None = None
-    outputs: Any = Field(validation_alias="outputs_dict")
+    outputs: dict[str, Any] = Field(validation_alias="outputs_dict")
     error: str | None = None
     elapsed_time: float | None = None
     total_tokens: int | None = None
@@ -159,7 +160,9 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     status: str | None = None
     error: str | None = None
     elapsed_time: float | None = None
-    execution_metadata: Any = Field(default=None, validation_alias="execution_metadata_dict")
+    execution_metadata: WorkflowNodeExecutionMetadataResponse | None = Field(
+        default=None, validation_alias="execution_metadata_dict"
+    )
     extras: Any = None
     created_at: int | None = None
     created_by_role: str | None = None

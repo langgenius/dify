@@ -15,7 +15,6 @@ const SnippetRunPanel = dynamic(() => import('./snippet-run-panel'), {
 })
 
 type SnippetWorkflowPanelProps = {
-  snippetId: string
   fields: InputVar[]
 }
 
@@ -31,15 +30,12 @@ const SnippetPanelOnRight = ({ fields }: Pick<SnippetWorkflowPanelProps, 'fields
   )
 }
 
-const SnippetWorkflowPanel = ({ snippetId, fields }: SnippetWorkflowPanelProps) => {
+const SnippetWorkflowPanel = ({ fields }: SnippetWorkflowPanelProps) => {
   const versionHistoryPanelProps = useMemo(() => {
     return {
-      getVersionListUrl: `/snippets/${snippetId}/workflows`,
-      deleteVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
-      updateVersionUrl: (versionId: string) => `/snippets/${snippetId}/workflows/${versionId}`,
       latestVersionId: '',
     }
-  }, [snippetId])
+  }, [])
 
   const panelProps: PanelProps = useMemo(() => {
     return {

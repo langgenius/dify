@@ -1,7 +1,7 @@
 import type {
-  AppMode,
   WorkflowDraftVariableResponse,
   WorkflowDraftVariableWithoutValueResponse,
+  WorkflowResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
@@ -15,8 +15,8 @@ import type {
   EnvironmentVariable,
   InputVar,
   Node,
+  NodeDataType,
   Variable,
-  WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { TransferMethod } from '@/types/app'
@@ -87,14 +87,15 @@ export type NodeTracing = {
     }
     loop_variable_map?: Record<string, any>
   }
-  metadata: {
+  // Only live run events carry container progress; stored executions do not.
+  metadata?: {
     iterator_length: number
     iterator_index: number
     loop_length: number
     loop_index: number
   }
   created_at: number
-  created_by: {
+  created_by?: {
     id: string
     name: string
     email: string
@@ -126,54 +127,27 @@ type VersionEnvironment = {
   name: string
 }
 
-export type FetchWorkflowDraftResponse = {
-  id: string
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport?: Viewport
-  }
-  features?: any
-  created_at: number
-  created_by: {
-    id: string
-    name: string
-    email: string
-  }
-  hash: string
-  updated_at: number
-  updated_by: {
-    id: string
-    name: string
-    email: string
-  }
-  tool_published: boolean
-  environment_variables?: EnvironmentVariable[]
-  conversation_variables?: ConversationVariable[]
-  rag_pipeline_variables?: RAGPipelineVariables
-  version: string
-  version_number?: number | null
-  marked_name: string
-  marked_comment: string
-  environments?: VersionEnvironment[]
+export type WorkflowCanvasGraph = {
+  nodes: Node[]
+  edges: Edge[]
+  viewport?: Viewport
 }
 
-export type FetchWorkflowDraftPageParams = {
-  url: string
-  initialPage: number
-  limit: number
-  userId?: string
-  namedOnly?: boolean
+export type FetchWorkflowDraftResponse = Omit<
+  WorkflowResponse,
+  'graph' | 'environment_variables' | 'conversation_variables' | 'rag_pipeline_variables'
+> & {
+  graph: WorkflowCanvasGraph
+  environment_variables: EnvironmentVariable[]
+  conversation_variables: ConversationVariable[]
+  rag_pipeline_variables: RAGPipelineVariables
+  environments?: VersionEnvironment[]
 }
 
 export type FetchWorkflowDraftPageResponse = {
   items: FetchWorkflowDraftResponse[]
   has_more: boolean
   page: number
-}
-
-export type NodeTracingListResponse = {
-  data: NodeTracing[]
 }
 
 export type WorkflowStartedResponse = {
@@ -399,66 +373,11 @@ export type HumanInputFormTimeoutResponse = {
   data: HumanInputFormTimeoutData
 }
 
-export type WorkflowRunHistory = {
-  id: string
-  version: string
-  conversation_id?: string
-  message_id?: string
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport?: Viewport
-  }
-  inputs: Record<string, string>
-  status: WorkflowRunningStatus
-  outputs: Record<string, any>
-  error?: string
-  elapsed_time: number
-  total_tokens: number
-  total_steps: number
-  created_at: number
-  finished_at: number
-  created_by_account: {
-    id: string
-    name: string
-    email: string
-  }
-}
-export type WorkflowRunHistoryResponse = {
-  data: WorkflowRunHistory[]
-}
-
-export type NodesDefaultConfigsResponse = {
-  type: string
-  config: any
-}[]
-
-export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number; created_at: number })[]
-  has_more: boolean
-  limit: number
-  total: number
-  page: number
-}
-
 export type IterationDurationMap = Record<string, number>
 export type LoopDurationMap = Record<string, number>
 export type LoopVariableMap = Record<string, any>
 
-export type WorkflowConfigResponse = {
-  parallel_depth_limit: number
-}
-
 export type PublishWorkflowParams = {
-  url: string
-  title: string
-  releaseNotes: string
-}
-
-export type UpdateWorkflowParams = {
-  appId?: string
-  appMode?: AppMode
-  url: string
   title: string
   releaseNotes: string
 }
@@ -493,7 +412,7 @@ export type VarInInspect = WorkflowDraftVariableWithoutValueResponse & {
 export type NodeWithVar = {
   nodeId: string
   nodePayload: CommonNodeType
-  nodeType: BlockEnum
+  nodeType: NodeDataType
   title: string
   vars: VarInInspect[]
   isSingRunRunning?: boolean

@@ -50,7 +50,7 @@ export const useWorkflowNodeIterationStarted = () => {
       }
       const newNodes = produce(nodes, (draft) => {
         draft[currentNodeIndex]!.data._runningStatus = NodeRunningStatus.Running
-        draft[currentNodeIndex]!.data._iterationLength = data.metadata.iterator_length
+        draft[currentNodeIndex]!.data._iterationLength = data.metadata?.iterator_length
         draft[currentNodeIndex]!.data._waitingRun = false
       })
       setNodes(newNodes)

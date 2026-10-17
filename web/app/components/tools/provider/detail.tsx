@@ -44,7 +44,6 @@ import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
@@ -56,10 +55,8 @@ import {
   fetchCustomCollection,
   fetchCustomToolList,
   fetchWorkflowToolDetail,
-  removeBuiltInToolCredential,
   removeCustomCollection,
   saveWorkflowToolProvider,
-  updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
 import { basePath } from '@/utils/var'
@@ -81,14 +78,11 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const { canUseCredential, canCreateCredential } = useCredentialPermissions()
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
-  const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
-  // built in provider
-  const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
   const { data: modelProvider } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
@@ -97,31 +91,26 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   )
   const queryClient = useQueryClient()
   const showSettingAuthModal = async () => {
-    if (!canOpenCredentialSettings) return
+    if (!canOpenCredentialSettings || !isModel || !modelProvider) return
 
-    if (isModel) {
-      if (!modelProvider) return
-      try {
-        const response = await queryClient.query({
-          ...modelProviderDetailsQueryOptions(),
-          staleTime: 'static',
-        })
-        const provider = response.data.find((item) => item.provider === modelProvider.provider)
-        if (!provider) return
-        setShowModelModal({
-          payload: {
-            currentProvider: provider,
-            currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
-            currentCustomConfigurationModelFixedFields: undefined,
-          },
-          onSaveCallback: () => {
-            onRefreshData()
-          },
-        })
-      } catch {}
-    } else {
-      setShowSettingAuth(true)
-    }
+    try {
+      const response = await queryClient.query({
+        ...modelProviderDetailsQueryOptions(),
+        staleTime: 'static',
+      })
+      const provider = response.data.find((item) => item.provider === modelProvider.provider)
+      if (!provider) return
+      setShowModelModal({
+        payload: {
+          currentProvider: provider,
+          currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+          currentCustomConfigurationModelFixedFields: undefined,
+        },
+        onSaveCallback: () => {
+          onRefreshData()
+        },
+      })
+    } catch {}
   }
   // custom provider
   const [customCollection, setCustomCollection] = useState<
@@ -388,13 +377,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                                 <Button
                                   variant="secondary"
                                   size="small"
-                                  onClick={() => {
-                                    if (
-                                      collection.type === CollectionType.builtIn ||
-                                      collection.type === CollectionType.model
-                                    )
-                                      showSettingAuthModal()
-                                  }}
+                                  onClick={showSettingAuthModal}
                                   disabled={!canOpenCredentialSettings}
                                 >
                                   <StatusDot status="success" />
@@ -424,13 +407,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                               <Button
                                 variant="primary"
                                 className={cn('my-3 w-full shrink-0')}
-                                onClick={() => {
-                                  if (
-                                    collection.type === CollectionType.builtIn ||
-                                    collection.type === CollectionType.model
-                                  )
-                                    showSettingAuthModal()
-                                }}
+                                onClick={showSettingAuthModal}
                                 disabled={!canOpenCredentialSettings}
                               >
                                 {t(($) => $['auth.unauthorized'], { ns: 'tools' })}
@@ -498,27 +475,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     </>
                   )}
                 </div>
-                {showSettingAuth && (
-                  <ConfigCredential
-                    collection={collection}
-                    onCancel={() => setShowSettingAuth(false)}
-                    onSaved={async (value) => {
-                      if (!canSaveCredentialSettings) return
-
-                      await updateBuiltInToolCredential(collection.name, value)
-                      await onRefreshData()
-                      setShowSettingAuth(false)
-                    }}
-                    onRemove={async () => {
-                      if (!canManageCredential) return
-
-                      await removeBuiltInToolCredential(collection.name)
-                      await onRefreshData()
-                      setShowSettingAuth(false)
-                    }}
-                    readonly={!canSaveCredentialSettings}
-                  />
-                )}
                 {isShowEditCollectionToolModal && canManageTools && (
                   <EditCustomToolModal
                     payload={customCollection}

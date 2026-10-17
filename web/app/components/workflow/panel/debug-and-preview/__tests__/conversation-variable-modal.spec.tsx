@@ -1,18 +1,33 @@
+import type { PaginatedConversationVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 import ConversationVariableModal from '../conversation-variable-modal'
 
 vi.mock('copy-to-clipboard', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/service/workflow', () => ({
-  fetchCurrentValueOfConversationVariable: vi.fn(),
+const mockFetchCurrentValueOfConversationVariable = vi.hoisted(() =>
+  vi.fn<(query: { appId?: string; conversationId: string | null }) => Promise<unknown>>(),
+)
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    const url = new URL(request.url)
+    const appId = url.pathname.match(/\/apps\/([^/]+)\/conversation-variables$/)?.[1]
+    if (!appId) throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    return Response.json(
+      await mockFetchCurrentValueOfConversationVariable({
+        appId,
+        conversationId: url.searchParams.get('conversation_id'),
+      }),
+    )
+  },
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -27,9 +42,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', (
   ),
 }))
 
-const mockFetchCurrentValueOfConversationVariable = vi.mocked(
-  fetchCurrentValueOfConversationVariable,
-)
 const mockCopy = vi.mocked(copy)
 
 const createConversationVariable = (
@@ -44,10 +56,8 @@ const createConversationVariable = (
 })
 
 const createConversationVariableResponse = (
-  data: Array<
-    Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>>['data'][number]
-  > = [],
-): Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>> => ({
+  data: PaginatedConversationVariableResponse['data'] = [],
+): PaginatedConversationVariableResponse => ({
   data,
   has_more: false,
   limit: 20,
@@ -113,8 +123,8 @@ describe('ConversationVariableModal', () => {
 
     await waitFor(() => {
       expect(mockFetchCurrentValueOfConversationVariable).toHaveBeenCalledWith({
-        url: '/apps/app-1/conversation-variables',
-        params: { conversation_id: 'conversation-1' },
+        appId: 'app-1',
+        conversationId: 'conversation-1',
       })
     })
 

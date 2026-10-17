@@ -2845,36 +2845,40 @@ export const zPluginVerification = z.object({
 /**
  * PluginCategoryBuiltinToolResponse
  */
-export const zPluginCategoryBuiltinToolResponse = z.object({
-  author: z.string(),
-  description: zI18nObject,
-  label: zI18nObject,
-  labels: z.array(z.string()),
-  name: z.string(),
-  output_schema: z.record(z.string(), z.unknown()),
-  parameters: z.array(z.record(z.string(), z.unknown())).nullish(),
-})
+export const zPluginCategoryBuiltinToolResponse = z
+  .object({
+    author: z.string(),
+    description: zI18nObject,
+    label: zI18nObject,
+    labels: z.array(z.string()),
+    name: z.string(),
+    output_schema: z.record(z.string(), z.unknown()),
+    parameters: z.array(z.record(z.string(), z.unknown())).nullish(),
+  })
+  .catchall(z.unknown())
 
 /**
  * PluginCategoryBuiltinToolProviderResponse
  */
-export const zPluginCategoryBuiltinToolProviderResponse = z.object({
-  allow_delete: z.boolean(),
-  author: z.string(),
-  description: zI18nObject,
-  icon: z.union([z.string(), z.record(z.string(), z.string())]),
-  icon_dark: z.union([z.string(), z.record(z.string(), z.string())]).nullable(),
-  id: z.string(),
-  is_team_authorization: z.boolean(),
-  label: zI18nObject,
-  labels: z.array(z.string()),
-  name: z.string(),
-  plugin_id: z.string().nullable(),
-  plugin_unique_identifier: z.string().nullable(),
-  team_credentials: z.record(z.string(), z.unknown()),
-  tools: z.array(zPluginCategoryBuiltinToolResponse),
-  type: zToolProviderType,
-})
+export const zPluginCategoryBuiltinToolProviderResponse = z
+  .object({
+    allow_delete: z.boolean(),
+    author: z.string(),
+    description: zI18nObject,
+    icon: z.union([z.string(), z.record(z.string(), z.string())]),
+    icon_dark: z.union([z.string(), z.record(z.string(), z.string())]).nullable(),
+    id: z.string(),
+    is_team_authorization: z.boolean(),
+    label: zI18nObject,
+    labels: z.array(z.string()),
+    name: z.string(),
+    plugin_id: z.string().nullable(),
+    plugin_unique_identifier: z.string().nullable(),
+    team_credentials: z.record(z.string(), z.unknown()),
+    tools: z.array(zPluginCategoryBuiltinToolResponse),
+    type: zToolProviderType,
+  })
+  .catchall(z.unknown())
 
 /**
  * RBACRoleAccount

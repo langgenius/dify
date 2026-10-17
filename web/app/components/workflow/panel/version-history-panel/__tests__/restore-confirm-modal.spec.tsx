@@ -1,38 +1,40 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import RestoreConfirmModal from '../restore-confirm-modal'
 
 const createVersionInfo = (
   overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  features: {},
-  hash: 'hash-1',
-  created_at: 1710000000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  updated_at: 1710000000,
-  updated_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  conversation_variables: [],
-  version: '1',
-  marked_name: 'Release 1',
-  marked_comment: '',
-  ...overrides,
-})
+): FetchWorkflowDraftResponse =>
+  createWorkflowDraftFixture({
+    id: 'version-1',
+    graph: {
+      nodes: [],
+      edges: [],
+    },
+    features: {},
+    hash: 'hash-1',
+    created_at: 1710000000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    updated_at: 1710000000,
+    updated_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    tool_published: false,
+    environment_variables: [],
+    conversation_variables: [],
+    version: '1',
+    marked_name: 'Release 1',
+    marked_comment: '',
+    ...overrides,
+  })
 
 describe('RestoreConfirmModal', () => {
   it('renders the version name and triggers restore and close actions', async () => {

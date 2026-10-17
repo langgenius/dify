@@ -24,10 +24,10 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock the Run component as it has complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ owner, runId }: { owner: { kind: 'app'; appId: string }; runId?: string }) => (
     <div data-testid="workflow-run">
-      <span data-testid="run-detail-url">{runDetailUrl}</span>
-      <span data-testid="tracing-list-url">{tracingListUrl}</span>
+      <span data-testid="run-app-id">{owner.appId}</span>
+      <span data-testid="run-id">{runId}</span>
     </div>
   ),
 }))
@@ -64,18 +64,14 @@ describe('DetailPanel', () => {
       expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
 
-    it('should render Run component with correct URLs', () => {
+    it('should render Run component for the app run', () => {
       appId = 'app-456'
 
       render(<DetailPanel appId={appId} runID="run-789" onClose={defaultOnClose} />)
 
       expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
-        '/apps/app-456/workflow-runs/run-789',
-      )
-      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent(
-        '/apps/app-456/workflow-runs/run-789/node-executions',
-      )
+      expect(screen.getByTestId('run-app-id')).toHaveTextContent('app-456')
+      expect(screen.getByTestId('run-id')).toHaveTextContent('run-789')
     })
 
     it('should render WorkflowContextProvider wrapper', () => {
@@ -110,8 +106,7 @@ describe('DetailPanel', () => {
     it('should use empty URL when runID is empty', () => {
       render(<DetailPanel appId={appId} runID="" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent('')
-      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent('')
+      expect(screen.getByTestId('run-id')).toHaveTextContent('')
     })
   })
 
@@ -158,24 +153,13 @@ describe('DetailPanel', () => {
   // URL Generation Tests
   // --------------------------------------------------------------------------
   describe('URL Generation', () => {
-    it('should generate correct run detail URL', () => {
+    it('should pass the app and run id to the run panel', () => {
       appId = 'my-app'
 
       render(<DetailPanel appId={appId} runID="my-run" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
-        '/apps/my-app/workflow-runs/my-run',
-      )
-    })
-
-    it('should generate correct tracing list URL', () => {
-      appId = 'my-app'
-
-      render(<DetailPanel appId={appId} runID="my-run" onClose={defaultOnClose} />)
-
-      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent(
-        '/apps/my-app/workflow-runs/my-run/node-executions',
-      )
+      expect(screen.getByTestId('run-app-id')).toHaveTextContent('my-app')
+      expect(screen.getByTestId('run-id')).toHaveTextContent('my-run')
     })
 
     it('should handle special characters in runID', () => {
@@ -183,9 +167,8 @@ describe('DetailPanel', () => {
 
       render(<DetailPanel appId={appId} runID="run-with-special-123" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
-        '/apps/app-id/workflow-runs/run-with-special-123',
-      )
+      expect(screen.getByTestId('run-app-id')).toHaveTextContent('app-id')
+      expect(screen.getByTestId('run-id')).toHaveTextContent('run-with-special-123')
     })
   })
 
@@ -196,8 +179,7 @@ describe('DetailPanel', () => {
     it('should handle empty runID', () => {
       render(<DetailPanel appId={appId} runID="" onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent('')
-      expect(screen.getByTestId('tracing-list-url')).toHaveTextContent('')
+      expect(screen.getByTestId('run-id')).toHaveTextContent('')
     })
 
     it('should handle very long runID', () => {
@@ -206,9 +188,8 @@ describe('DetailPanel', () => {
 
       render(<DetailPanel appId={appId} runID={longRunId} onClose={defaultOnClose} />)
 
-      expect(screen.getByTestId('run-detail-url')).toHaveTextContent(
-        `/apps/app-id/workflow-runs/${longRunId}`,
-      )
+      expect(screen.getByTestId('run-app-id')).toHaveTextContent('app-id')
+      expect(screen.getByTestId('run-id')).toHaveTextContent(`${longRunId}`)
     })
 
     it('should render replay button with correct aria-label', () => {

@@ -628,7 +628,8 @@ describe('useWorkflowRun', () => {
     })
 
     expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
-      '/apps/app-1/workflow-runs/tasks/task-1/stop',
+      expect.objectContaining({ kind: 'app', appId: 'app-1' }),
+      'task-1',
     )
     expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -705,7 +706,7 @@ describe('useWorkflowRun', () => {
           enabled: true,
           opening_statement: 'hello',
         }),
-        file: { enabled: true },
+        file: expect.objectContaining({ enabled: true }),
       }),
     })
     expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([
@@ -741,7 +742,7 @@ describe('useWorkflowRun', () => {
     expect(mocks.featuresStoreSetState).toHaveBeenCalledWith({
       features: expect.objectContaining({
         opening: expect.objectContaining({ enabled: false }),
-        file: { enabled: false },
+        file: expect.objectContaining({ enabled: false }),
       }),
     })
     expect(mocks.workflowStoreState.setEnvironmentVariables).toHaveBeenCalledWith([])

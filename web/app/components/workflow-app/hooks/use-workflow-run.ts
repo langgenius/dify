@@ -22,6 +22,7 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toFeaturesData } from '@/app/components/workflow/utils/workflow-response'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
@@ -35,13 +36,11 @@ import {
 import {
   applyRunningStateForMode,
   applyStoppedState,
-  buildRunHistoryUrl,
   buildTTSConfig,
   buildWorkflowRunRequestBody,
   clearListeningState,
   clearWindowDebugControllers,
   isDebuggableTriggerType,
-  mapPublishedWorkflowFeatures,
   normalizePublishedWorkflowNodes,
   resolveWorkflowRunUrl,
   runTriggerDebug,
@@ -127,7 +126,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
   const resource = useAtomValue(editorResourceAtom)
   const invalidAllLastRun = useInvalidateAllLastRun(resource)
-  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+  const invalidateRunHistory = useInvalidateWorkflowRunHistory(resource)
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
@@ -230,7 +229,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         ...restCallback
       } = callback || {}
       workflowStore.setState({ historyWorkflowData: undefined })
-      const runHistoryUrl = buildRunHistoryUrl(appDetail)
       const workflowContainer = document.getElementById('workflow-container')
 
       const { clientWidth, clientHeight } = workflowContainer!
@@ -385,7 +383,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const baseSseOptions = createBaseWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -420,7 +417,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const finalCallbacks = createFinalWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -501,7 +497,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       if (taskId) {
-        stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+        stopWorkflowRun(resource, taskId)
         setStoppedState()
         return
       }
@@ -527,7 +523,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       abortControllerRef.current = null
       setStoppedState()
     },
-    [appId, workflowStore],
+    [resource, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
@@ -540,7 +536,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         edges,
         viewport,
       })
-      featuresStore?.setState({ features: mapPublishedWorkflowFeatures(publishedWorkflow) })
+      featuresStore?.setState({ features: toFeaturesData(publishedWorkflow.features) })
       workflowStore
         .getState()
         .setEnvironmentVariables(publishedWorkflow.environment_variables || [])

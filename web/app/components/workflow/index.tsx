@@ -7,6 +7,7 @@ import type { Shape as HooksStoreShape } from './hooks-store'
 import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import type { ConversationVariable, Edge, EnvironmentVariable, Node } from './types'
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import type { VarInInspect } from '@/types/workflow'
 import {
@@ -126,7 +127,7 @@ type WorkflowDataUpdatePayload = {
   edges: Edge[]
   viewport?: Viewport
   hash?: string
-  features?: unknown
+  features?: FeaturesData
   conversation_variables?: ConversationVariable[]
   environment_variables?: EnvironmentVariable[]
 }

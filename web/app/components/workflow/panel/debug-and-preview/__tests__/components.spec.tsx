@@ -1,3 +1,4 @@
+import type { PaginatedConversationVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ChatWrapperRefType } from '../index'
 import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { ConversationVariable } from '@/app/components/workflow/types'
@@ -12,7 +13,6 @@ import {
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { InputVarType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 import ChatWrapper from '../chat-wrapper'
 import ConversationVariableModal from '../conversation-variable-modal'
 import UserInput from '../user-input'
@@ -37,8 +37,23 @@ vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: { call: mockRequest },
 }))
 
-vi.mock('@/service/workflow', () => ({
-  fetchCurrentValueOfConversationVariable: vi.fn(),
+const mockFetchCurrentValueOfConversationVariable = vi.hoisted(() =>
+  vi.fn<(query: { appId?: string; conversationId: string | null }) => Promise<unknown>>(),
+)
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    const url = new URL(request.url)
+    const appId = url.pathname.match(/\/apps\/([^/]+)\/conversation-variables$/)?.[1]
+    if (!appId) throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+    return Response.json(
+      await mockFetchCurrentValueOfConversationVariable({
+        appId,
+        conversationId: url.searchParams.get('conversation_id'),
+      }),
+    )
+  },
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -179,9 +194,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-const mockFetchCurrentValueOfConversationVariable = vi.mocked(
-  fetchCurrentValueOfConversationVariable,
-)
 const mockCopy = vi.mocked(copy)
 
 const createConversationVariable = (
@@ -210,10 +222,8 @@ const createChatState = (overrides: Record<string, unknown> = {}) => ({
 })
 
 const createConversationVariableResponse = (
-  data: Array<
-    Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>>['data'][number]
-  > = [],
-): Awaited<ReturnType<typeof fetchCurrentValueOfConversationVariable>> => ({
+  data: PaginatedConversationVariableResponse['data'] = [],
+): PaginatedConversationVariableResponse => ({
   data,
   has_more: false,
   limit: 20,

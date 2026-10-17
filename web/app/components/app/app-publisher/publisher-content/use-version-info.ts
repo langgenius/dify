@@ -38,9 +38,8 @@ export function useVersionInfo({
 
     updateWorkflow(
       {
-        appId,
-        appMode,
-        url: `/apps/${appId}/workflows/${params.id}`,
+        owner: { kind: 'app', appId, mode: appMode },
+        workflowId: params.id,
         title: params.title,
         releaseNotes: params.releaseNotes,
       },

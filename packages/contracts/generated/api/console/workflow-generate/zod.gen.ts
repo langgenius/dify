@@ -93,12 +93,14 @@ export const zWorkflowInstructionSuggestionsResponse = z.object({
  *
  * React Flow edge shape with extensible renderer metadata.
  */
-export const zWorkflowGraphEdge = z.object({
-  id: z.string(),
-  source: z.string(),
-  target: z.string(),
-  type: z.string(),
-})
+export const zWorkflowGraphEdge = z
+  .object({
+    id: z.string(),
+    source: z.string(),
+    target: z.string(),
+    type: z.string(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraphViewport
@@ -215,12 +217,14 @@ export const zWorkflowGraphPosition = z.object({
  * differs for container children, so unknown wrapper fields must survive
  * request validation and response serialization.
  */
-export const zWorkflowGraphNode = z.object({
-  data: z.record(z.string(), z.unknown()),
-  id: z.string(),
-  position: zWorkflowGraphPosition,
-  type: z.string(),
-})
+export const zWorkflowGraphNode = z
+  .object({
+    data: z.record(z.string(), z.unknown()),
+    id: z.string(),
+    position: zWorkflowGraphPosition,
+    type: z.string(),
+  })
+  .catchall(z.unknown())
 
 /**
  * WorkflowGraph

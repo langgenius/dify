@@ -35,9 +35,7 @@ vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
   }),
 }))
 
-vi.mock('@/service/tools', () => ({
-  updateBuiltInToolCredential: vi.fn(),
-}))
+vi.mock('@/service/tools', () => ({}))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => ({

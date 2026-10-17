@@ -149,7 +149,8 @@ describe('useSnippetRun', () => {
     })
 
     expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
-      '/snippets/snippet-1/workflow-runs/tasks/task-1/stop',
+      { kind: 'snippet', snippetId: 'snippet-1' },
+      'task-1',
     )
     expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
       WorkflowRunningStatus.Stopped,

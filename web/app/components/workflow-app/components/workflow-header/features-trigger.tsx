@@ -8,7 +8,7 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { CommonEdgeType, Node } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,11 +35,7 @@ import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
-import {
-  useInvalidateAppWorkflow,
-  usePublishWorkflow,
-  useResetWorkflowVersionHistory,
-} from '@/service/use-workflow'
+import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation(['common', 'workflow'])
@@ -156,7 +152,9 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { mutateAsync: publishWorkflow } = useMutation(
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions(),
+  )
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 
@@ -179,9 +177,11 @@ const FeaturesTrigger = () => {
         if (!draftSyncResult) throw new Error('Workflow draft sync failed')
 
         const res = await publishWorkflow({
-          url: publishParams?.url || `/apps/${appID}/workflows/publish`,
-          title: publishParams?.title || '',
-          releaseNotes: publishParams?.releaseNotes || '',
+          params: { app_id: appID },
+          body: {
+            marked_name: publishParams?.title || '',
+            marked_comment: publishParams?.releaseNotes || '',
+          },
         })
         if (res) {
           // One toast per publish: a warning from the server replaces the success message.

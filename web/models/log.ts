@@ -1,5 +1,5 @@
-import type { Viewport } from 'reactflow'
-import type { Edge, Node } from '@/app/components/workflow/types'
+import type { WorkflowRunDetailResponse as WorkflowRunDetailContract } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowCanvasGraph } from '@/types/workflow'
 
 export type LogAnnotation = {
   id: string
@@ -50,48 +50,7 @@ export type WorkflowLogDetails = {
   trigger_metadata?: TriggerMetadata
 }
 
-type AccountInfo = {
-  id: string
-  name: string
-  email: string
-}
-type EndUserInfo = {
-  id: string
-  type: 'browser' | 'service_api'
-  is_anonymous: boolean
-  session_id: string
-}
-export type WorkflowRunDetailResponse = {
-  id: string
-  version: string
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport?: Viewport
-  }
-  inputs: string
-  inputs_truncated: boolean
-  status:
-    | 'scheduled'
-    | 'running'
-    | 'succeeded'
-    | 'failed'
-    | 'stopped'
-    | 'partial-succeeded'
-    | 'paused'
-  outputs?: string
-  outputs_truncated: boolean
-  outputs_full_content?: {
-    download_url: string
-  }
-  error?: string
-  elapsed_time?: number
-  total_tokens?: number
-  total_steps: number
-  created_by_role: 'account' | 'end_user'
-  created_by_account?: AccountInfo
-  created_by_end_user?: EndUserInfo
-  created_at: number
-  finished_at: number
-  exceptions_count?: number
+// Stored run details carry the canvas graph as JSON; the editor reads it as typed nodes and edges.
+export type WorkflowRunDetailResponse = Omit<WorkflowRunDetailContract, 'graph'> & {
+  graph: WorkflowCanvasGraph
 }

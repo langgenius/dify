@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { WorkflowRunOwner } from '@/service/log'
 import type { NodeTracing } from '@/types/workflow'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
@@ -19,8 +20,8 @@ type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
-  runDetailUrl: string
-  tracingListUrl: string
+  owner: WorkflowRunOwner
+  runId?: string
 }
 
 type RunTab = NonNullable<RunProps['activeTab']>
@@ -36,8 +37,8 @@ const RunPanel: FC<RunProps> = ({
   activeTab = 'RESULT',
   hideResult,
   getResultCallback,
-  runDetailUrl,
-  tracingListUrl,
+  owner,
+  runId,
 }) => {
   const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
   const isListening = useStore((s) => s.isListening)
@@ -48,11 +49,11 @@ const RunPanel: FC<RunProps> = ({
 
   return (
     <RunSession
-      key={JSON.stringify([runDetailUrl, tracingListUrl])}
+      key={JSON.stringify([owner, runId])}
       hideResult={hideResult}
       getResultCallback={getResultCallback}
-      runDetailUrl={runDetailUrl}
-      tracingListUrl={tracingListUrl}
+      owner={owner}
+      runId={runId}
       currentTab={currentTab}
       onTabChange={setCurrentTab}
       isListening={isListening}
@@ -69,13 +70,14 @@ type RunSessionProps = Omit<RunProps, 'activeTab'> & {
 function RunSession({
   hideResult,
   getResultCallback,
-  runDetailUrl,
-  tracingListUrl,
+  owner,
+  runId,
   currentTab,
   onTabChange,
   isListening,
 }: RunSessionProps) {
   const { t } = useTranslation(['runLog'])
+  const ownerKey = JSON.stringify(owner)
   const [loading, setLoading] = useState(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
@@ -91,8 +93,9 @@ function RunSession({
   const getResult = useCallback(
     async (lifetime: RequestLifetime) => {
       const request = ++lifetime.detailRequest
+      if (!runId) return
       try {
-        const res = await fetchRunDetail(runDetailUrl)
+        const res = await fetchRunDetail(owner, runId)
         if (!lifetime.active || request !== lifetime.detailRequest) return
         setRunDetail(res)
         if (getResultCallback) getResultCallback(res)
@@ -106,16 +109,15 @@ function RunSession({
         }
       }
     },
-    [getResultCallback, runDetailUrl],
+    [getResultCallback, owner, runId],
   )
 
   const getTracingList = useCallback(
     async (lifetime: RequestLifetime) => {
       const request = ++lifetime.tracingRequest
+      if (!runId) return
       try {
-        const { data: nodeList } = await fetchTracingList({
-          url: tracingListUrl,
-        })
+        const nodeList = await fetchTracingList(owner, runId)
         if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
       } catch (err) {
         if (lifetime.active && request === lifetime.tracingRequest)
@@ -127,15 +129,16 @@ function RunSession({
         }
       }
     },
-    [tracingListUrl],
+    [owner, runId],
   )
 
   const switchTab = (tab: RunTab) => {
     onTabChange(tab)
     const lifetime = requestLifetimeRef.current
     if (!lifetime?.active) return
-    if (tab === 'RESULT' && runDetailUrl) void getResult(lifetime)
-    if (tracingListUrl) void getTracingList(lifetime)
+    if (!runId) return
+    if (tab === 'RESULT') void getResult(lifetime)
+    void getTracingList(lifetime)
   }
 
   const loadRecord = useEffectEvent((lifetime: RequestLifetime) => {
@@ -152,11 +155,12 @@ function RunSession({
       tracingSettled: false,
     }
     requestLifetimeRef.current = lifetime
-    if (runDetailUrl && tracingListUrl) loadRecord(lifetime)
+    if (runId) loadRecord(lifetime)
     return () => {
       lifetime.active = false
     }
-  }, [runDetailUrl, tracingListUrl])
+    // Callers may rebuild the owner each render; reload only when it names a different run.
+  }, [ownerKey, runId])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -219,25 +223,26 @@ function RunSession({
         )}
         <TabsPanel value="RESULT">
           {!loading && runDetail && (
-            <OutputPanel outputs={runDetail.outputs} error={runDetail.error} height={height} />
+            <OutputPanel
+              outputs={runDetail.outputs}
+              error={runDetail.error ?? undefined}
+              height={height}
+            />
           )}
         </TabsPanel>
         <TabsPanel value="DETAIL">
           {!loading && runDetail && (
             <ResultPanel
               inputs={runDetail.inputs}
-              inputs_truncated={runDetail.inputs_truncated}
               outputs={runDetail.outputs}
-              outputs_truncated={runDetail.outputs_truncated}
-              outputs_full_content={runDetail.outputs_full_content}
-              status={runDetail.status}
-              error={runDetail.error}
-              elapsed_time={runDetail.elapsed_time}
-              total_tokens={runDetail.total_tokens}
-              created_at={runDetail.created_at}
+              status={runDetail.status ?? ''}
+              error={runDetail.error ?? undefined}
+              elapsed_time={runDetail.elapsed_time ?? undefined}
+              total_tokens={runDetail.total_tokens ?? undefined}
+              created_at={runDetail.created_at ?? undefined}
               created_by={executor}
-              steps={runDetail.total_steps}
-              exceptionCounts={runDetail.exceptions_count}
+              steps={runDetail.total_steps ?? undefined}
+              exceptionCounts={runDetail.exceptions_count ?? undefined}
               isListening={isListening}
               workflowRunId={runDetail.id}
               onOpenTracingTab={() => switchTab('TRACING')}

@@ -175,17 +175,13 @@ function render(...args: Parameters<typeof renderWithoutPricing>) {
   return renderWithoutPricing(...args)
 }
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  post: (...args: unknown[]) => mockPublishWorkflow(...args),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.publish.post': (input) => mockPublishWorkflow(input),
       'rag.pipelines.byPipelineId.customized.publish.post': (input) =>
         mockPublishAsCustomizedPipeline(input),
     }),

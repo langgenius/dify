@@ -88,8 +88,6 @@ const mockFetchWorkflowToolDetail = vi.fn().mockResolvedValue({
   workflow_tool_id: 'wt-456',
   tool: { parameters: [], labels: [] },
 })
-const mockUpdateBuiltInToolCredential = vi.fn().mockResolvedValue({})
-const mockRemoveBuiltInToolCredential = vi.fn().mockResolvedValue({})
 const mockUpdateCustomCollection = vi.fn().mockResolvedValue({})
 const mockRemoveCustomCollection = vi.fn().mockResolvedValue({})
 const mockDeleteWorkflowTool = vi.fn().mockResolvedValue({})
@@ -100,8 +98,6 @@ vi.mock('@/service/tools', () => ({
   fetchCustomToolList: (...args: unknown[]) => mockFetchCustomToolList(...args),
   fetchCustomCollection: (...args: unknown[]) => mockFetchCustomCollection(...args),
   fetchWorkflowToolDetail: (...args: unknown[]) => mockFetchWorkflowToolDetail(...args),
-  updateBuiltInToolCredential: (...args: unknown[]) => mockUpdateBuiltInToolCredential(...args),
-  removeBuiltInToolCredential: (...args: unknown[]) => mockRemoveBuiltInToolCredential(...args),
   updateCustomCollection: (...args: unknown[]) => mockUpdateCustomCollection(...args),
   removeCustomCollection: (...args: unknown[]) => mockRemoveCustomCollection(...args),
   deleteWorkflowTool: (...args: unknown[]) => mockDeleteWorkflowTool(...args),
@@ -162,36 +158,6 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
       </button>
       <button data-testid="edit-close" onClick={onHide}>
         Close
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/tools/setting/build-in/config-credentials', () => ({
-  default: ({
-    onCancel,
-    onSaved,
-    onRemove,
-    readonly,
-  }: {
-    onCancel: () => void
-    onSaved: (val: Record<string, string>) => Promise<void>
-    onRemove: () => Promise<void>
-    readonly?: boolean
-  }) => (
-    <div data-testid="config-credential" data-readonly={readonly ? 'true' : 'false'}>
-      <button
-        data-testid="credential-save"
-        disabled={readonly}
-        onClick={() => onSaved({ key: 'val' })}
-      >
-        Save
-      </button>
-      <button data-testid="credential-remove" disabled={readonly} onClick={onRemove}>
-        Remove
-      </button>
-      <button data-testid="credential-cancel" onClick={onCancel}>
-        Cancel
       </button>
     </div>
   ),
@@ -637,22 +603,7 @@ describe('ProviderDetail', () => {
   })
 
   describe('BuiltIn Auth Flow', () => {
-    it('opens ConfigCredential when clicking auth button for builtIn type', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
-    })
-
-    it('does not open setup credential drawer without credential.create', async () => {
+    it('disables the setup button without credential.create', async () => {
       mockConsoleState.workspacePermissionKeys = [
         'tool.manage',
         'credential.use',
@@ -670,89 +621,7 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
 
-      const setupButton = screen.getByText('tools.auth.unauthorized').closest('button')!
-      expect(setupButton).toBeDisabled()
-      fireEvent.click(setupButton)
-      expect(screen.queryByTestId('config-credential')).not.toBeInTheDocument()
-    })
-
-    it('opens authorized credential drawer as readonly with credential.use only', async () => {
-      mockConsoleState.workspacePermissionKeys = ['tool.manage', 'credential.use']
-
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: true })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText('tools.auth.authorized'))
-      expect(screen.getByTestId('config-credential'))!.toHaveAttribute('data-readonly', 'true')
-      expect(screen.getByTestId('credential-save'))!.toBeDisabled()
-      expect(screen.getByTestId('credential-remove'))!.toBeDisabled()
-    })
-
-    it('saves credentials and refreshes data', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('credential-save'))
-      })
-      await waitFor(() => {
-        expect(mockUpdateBuiltInToolCredential).toHaveBeenCalledWith('test-collection', {
-          key: 'val',
-        })
-        expect(mockOnRefreshData).toHaveBeenCalled()
-      })
-    })
-
-    it('removes credentials and refreshes data', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('credential-remove'))
-      })
-      await waitFor(() => {
-        expect(mockRemoveBuiltInToolCredential).toHaveBeenCalledWith('test-collection')
-        expect(mockOnRefreshData).toHaveBeenCalled()
-      })
-    })
-
-    it('opens auth modal from Authorized button for builtIn type', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: true })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.authorized'))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText('tools.auth.authorized'))
-      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
+      expect(screen.getByText('tools.auth.unauthorized').closest('button')).toBeDisabled()
     })
   })
 
@@ -947,23 +816,6 @@ describe('ProviderDetail', () => {
   })
 
   describe('Overlay Close Actions', () => {
-    it('closes ConfigCredential when cancel is clicked', async () => {
-      render(
-        <ProviderDetail
-          collection={createMockCollection({ allow_delete: true, is_team_authorization: false })}
-          onHide={mockOnHide}
-          onRefreshData={mockOnRefreshData}
-        />,
-      )
-      await waitFor(() => {
-        expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
-      })
-      fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(screen.getByTestId('config-credential'))!.toBeInTheDocument()
-      fireEvent.click(screen.getByTestId('credential-cancel'))
-      expect(screen.queryByTestId('config-credential')).not.toBeInTheDocument()
-    })
-
     it('closes EditCustomToolModal via onHide', async () => {
       mockFetchCustomCollection.mockResolvedValue({
         credentials: { auth_type: 'none' },

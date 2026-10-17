@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { WorkflowRunDetailResponse } from '@/models/log'
-import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 import { useEffect } from 'react'
 import { fn } from 'storybook/test'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
@@ -15,11 +15,9 @@ const mockRunDetail: WorkflowRunDetailResponse = {
     nodes: [],
     edges: [],
   },
-  inputs: JSON.stringify({ question: 'How do I reset my password?' }, null, 2),
-  inputs_truncated: false,
+  inputs: { question: 'How do I reset my password?' },
   status: 'succeeded',
-  outputs: JSON.stringify({ answer: 'Follow the reset link we just emailed you.' }, null, 2),
-  outputs_truncated: false,
+  outputs: { answer: 'Follow the reset link we just emailed you.' },
   total_steps: 3,
   created_by_role: 'account',
   created_by_account: {
@@ -65,7 +63,7 @@ const buildNode = (override: Partial<NodeTracing>): NodeTracing => ({
   ...override,
 })
 
-const mockTracingList: NodeTracingListResponse = {
+const mockTracingList: { data: NodeTracing[] } = {
   data: [
     buildNode({}),
     buildNode({

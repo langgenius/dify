@@ -9,10 +9,6 @@ describe('hooks-store store', () => {
 
     expect(store.getState().availableNodesMetaData).toEqual({ nodes: [] })
     expect(store.getState().hasNodeInspectVars('node-1')).toBe(false)
-    expect(store.getState().getWorkflowRunAndTraceUrl('run-1')).toEqual({
-      runUrl: '',
-      traceUrl: '',
-    })
 
     store.getState().refreshAll({ handleBackupDraft })
 

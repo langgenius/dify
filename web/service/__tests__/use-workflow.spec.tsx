@@ -22,7 +22,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
-import { usePublishWorkflow, useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
+import { useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryKey,
@@ -30,16 +30,18 @@ import {
 } from '../workflow-queries'
 
 const mockPatch = vi.hoisted(() => vi.fn())
-const mockPost = vi.hoisted(() => vi.fn())
 const mockRequest = vi.hoisted(() => vi.fn())
 
+// Route the version mutations by method so each test can assert the console path and body.
 vi.mock('../base', () => ({
-  request: (...args: unknown[]) => mockRequest(...args),
-  del: vi.fn(),
+  request: async (url: string, init: RequestInit, options: { request: Request }) => {
+    const { method } = options.request
+    const path = new URL(options.request.url).pathname.replace(/^\/console\/api/, '')
+    if (method === 'PATCH')
+      return Response.json(await mockPatch(path, { body: await options.request.json() }))
+    return mockRequest(url, init, options)
+  },
   get: vi.fn(),
-  patch: (...args: unknown[]) => mockPatch(...args),
-  post: (...args: unknown[]) => mockPost(...args),
-  put: vi.fn(),
 }))
 
 const createWrapper = (queryClient: QueryClient) =>
@@ -112,42 +114,6 @@ const createEnvironmentDeployment = ({
   },
 })
 
-describe('usePublishWorkflow', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('returns the server warning with the publish result', async () => {
-    const published = {
-      result: 'success',
-      created_at: 1_710_000_100,
-      warning: '"Answer" ← "Producer"',
-    }
-    mockPost.mockResolvedValue(published)
-    const queryClient = createQueryClient()
-    const { result } = renderHook(() => usePublishWorkflow(), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    let response: unknown
-    await act(async () => {
-      response = await result.current.mutateAsync({
-        url: '/apps/app-1/workflows/publish',
-        title: 'Release 1',
-        releaseNotes: 'Notes',
-      })
-    })
-
-    expect(response).toEqual(published)
-    expect(mockPost).toHaveBeenCalledWith('/apps/app-1/workflows/publish', {
-      body: {
-        marked_name: 'Release 1',
-        marked_comment: 'Notes',
-      },
-    })
-  })
-})
-
 describe('useUpdateWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -163,7 +129,8 @@ describe('useUpdateWorkflow', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        url: '/apps/app-1/workflows/workflow-1',
+        owner: { kind: 'app', appId: 'app-1' },
+        workflowId: 'workflow-1',
         title: 'Release 1',
         releaseNotes: 'Notes',
       })
@@ -261,9 +228,8 @@ describe('useUpdateWorkflow', () => {
 
       await act(async () => {
         await result.current.mutateAsync({
-          appId: 'app-1',
-          appMode,
-          url: '/apps/app-1/workflows/workflow-1',
+          owner: { kind: 'app', appId: 'app-1', mode: appMode },
+          workflowId: 'workflow-1',
           title: '',
           releaseNotes: '',
         })
@@ -338,8 +304,8 @@ describe('useUpdateWorkflow', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        appId: 'app-1',
-        url: '/apps/app-1/workflows/workflow-1',
+        owner: { kind: 'app', appId: 'app-1' },
+        workflowId: 'workflow-1',
         title: 'Updated release',
         releaseNotes: 'Updated notes',
       })
@@ -385,9 +351,8 @@ describe('useUpdateWorkflow', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        appId: 'app-1',
-        appMode: 'chat' as const,
-        url: '/apps/app-1/workflows/workflow-1',
+        owner: { kind: 'app', appId: 'app-1', mode: 'chat' },
+        workflowId: 'workflow-1',
         title: 'New release',
         releaseNotes: 'New notes',
       })
@@ -428,7 +393,8 @@ describe('useUpdateWorkflow', () => {
 
     await act(async () => {
       await result.current.mutateAsync({
-        url: '/snippets/snippet-1/workflows/workflow-1',
+        owner: { kind: 'snippet', snippetId: 'snippet-1' },
+        workflowId: 'workflow-1',
         title: 'New release',
         releaseNotes: 'New notes',
       })
