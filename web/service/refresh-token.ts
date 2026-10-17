@@ -8,7 +8,6 @@ import {
   sendRefreshTokenRequest,
 } from './refresh-token-request'
 
-const REFRESH_KEY = `refresh-token:${API_PREFIX}`
 let refreshPromise: Promise<void> | undefined
 
 async function getNewAccessToken(): Promise<void> {
@@ -35,7 +34,7 @@ async function getNewAccessToken(): Promise<void> {
     if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
   }
 
-  if (navigator.locks) await navigator.locks.request(REFRESH_KEY, refresh)
+  if (navigator.locks) await navigator.locks.request(`refresh-token:${API_PREFIX}`, refresh)
   else await refresh()
 }
 

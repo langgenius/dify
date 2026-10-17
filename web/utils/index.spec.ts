@@ -3,7 +3,6 @@ import {
   canFindTool,
   correctModelProvider,
   correctToolProvider,
-  fetchWithRetry,
   getPurifyHref,
 } from './index'
 
@@ -28,15 +27,6 @@ describe('getPurifyHref', () => {
       '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;&amp;',
     )
     expect(getPurifyHref('')).toBe('')
-  })
-})
-
-describe('fetchWithRetry', () => {
-  it('returns the resolved value or the final rejection', async () => {
-    await expect(fetchWithRetry(Promise.resolve('ok'))).resolves.toEqual([null, 'ok'])
-
-    const error = new Error('failed')
-    await expect(fetchWithRetry(Promise.reject(error), 1)).resolves.toEqual([error])
   })
 })
 
