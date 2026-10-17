@@ -1215,11 +1215,6 @@ export type WorkflowToolCreatePayload = {
   workflow_app_id: string
 }
 
-export type WorkflowToolHumanInputNotSupportedError = ErrorResponse & {
-  code: 'workflow_tool_human_input_not_supported'
-  status: 400
-}
-
 export type WorkflowToolDeletePayload = {
   workflow_tool_id: string
 }
@@ -7962,7 +7957,6 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8052,7 +8046,6 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 

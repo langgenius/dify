@@ -37,11 +37,11 @@ function PublisherPanelHarness({
         builtInPublisher={{
           actions: {
             appId: 'app-1',
-            appMode: 'chat' as const,
             appURL: 'https://example.com/app',
             canViewAccessPoint: false,
             disabledFunctionButton: false,
             publishedAt: 1_710_000_000_000,
+            showWorkflowTool: false,
             workflowToolIsLoading: false,
             onConfigureWorkflowTool: vi.fn(),
           },
