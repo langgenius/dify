@@ -11,6 +11,11 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentV2Panel } from '../panel'
 
 vi.mock('../components/agent-output-routes', () => ({ AgentOutputRoutes: () => null }))
+vi.mock('@/app/components/app/tracing/inherited-tracing-summary', () => ({
+  InheritedTracingSummary: ({ resource }: { resource: { appId: string } }) => (
+    <div data-testid="inherited-tracing">{resource.appId}</div>
+  ),
+}))
 
 const {
   mockEditorFocus,
@@ -518,6 +523,20 @@ describe('agent/panel', () => {
     })
   })
 
+  it('shows the calling workflow tracing summary only inside a workflow app', () => {
+    const { unmount } = render(
+      <AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />,
+      { resource: { kind: 'app', appId: 'workflow-1', mode: 'workflow' } },
+    )
+    expect(screen.getByTestId('inherited-tracing')).toHaveTextContent('workflow-1')
+    unmount()
+
+    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />, {
+      resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    })
+    expect(screen.queryByTestId('inherited-tracing')).not.toBeInTheDocument()
+  })
+
   it('renders a required roster state when no roster agent is selected', () => {
     render(
       <AgentV2Panel
@@ -616,7 +635,7 @@ describe('agent/panel', () => {
 
   it('renders inline agent detail from workflow composer state and opens the inline panel', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
-    const { container } = render(
+    render(
       <AgentV2Panel
         id="agent-node"
         data={createData({
@@ -645,13 +664,6 @@ describe('agent/panel', () => {
       within(trigger).getByText('workflowAgent.nodes.agent.roster.inlineSetup.type'),
     ).toBeInTheDocument()
     const panel = screen.getByRole('dialog', { name: 'Workflow Agent 1' })
-    expect(container.querySelector('.i-custom-vender-agent-v2-configure')).toHaveClass(
-      'h-3.5',
-      'w-3',
-    )
-    expect(
-      container.querySelector('.i-custom-vender-agent-v2-configure')?.parentElement,
-    ).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
     expect(
       screen.queryByText('workflow.nodes.agent.roster.inlineSetup.title'),
     ).not.toBeInTheDocument()

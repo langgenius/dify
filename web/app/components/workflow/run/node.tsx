@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { ExternalTraceRun } from './external-trace-row'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
@@ -21,6 +22,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
+import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { hasRetryNode } from '@/app/components/workflow/utils'
@@ -29,6 +31,7 @@ import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { AgentLogTrigger } from './agent-log/agent-log-trigger'
+import { ExternalTraceRow } from './external-trace-row'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
@@ -53,6 +56,7 @@ type Props = {
   readonly onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   readonly notShowIterationNav?: boolean
   readonly notShowLoopNav?: boolean
+  externalTraceRun?: ExternalTraceRun
 }
 
 const NodePanel: FC<Props> = ({
@@ -68,6 +72,7 @@ const NodePanel: FC<Props> = ({
   onShowAgentOrToolLog,
   notShowIterationNav,
   notShowLoopNav,
+  externalTraceRun,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback(
@@ -259,6 +264,18 @@ const NodePanel: FC<Props> = ({
                     nodeInfo={nodeInfo}
                     onShowAgentOrToolLog={onShowAgentOrToolLog}
                   />
+                )}
+                {isBoundAgentV2Execution(nodeInfo) && externalTraceRun && (
+                  <dl>
+                    <ExternalTraceRow
+                      source={{
+                        ...externalTraceRun,
+                        kind: 'workflow',
+                        nodeExecutionId: nodeInfo.id,
+                      }}
+                      subject={nodeInfo.title}
+                    />
+                  </dl>
                 )}
                 <div className={cn('mb-1', hideInfo && 'px-2! py-0.5!')}>
                   {nodeInfo.status === 'stopped' && (

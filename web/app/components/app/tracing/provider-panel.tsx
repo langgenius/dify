@@ -1,12 +1,16 @@
 'use client'
 import type { TraceAppConfigResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { FC } from 'react'
+import type { ConfigurableTracingProvider } from './providers'
+import type { TracingResource } from './resource'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
-import * as React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { TracingProvider } from './type'
+import { consoleQuery } from '@/service/console'
+import { ProviderCapabilities } from './provider-capabilities'
+import { tracingProviders } from './providers'
+import { usesAgentTracePipeline } from './resource'
 
 const I18N_PREFIX = 'tracing'
 
@@ -15,33 +19,34 @@ export type ProviderConfigError = {
   isRetrying: boolean
 }
 
-type Props = Readonly<{
-  type: TracingProvider
+type ProviderPanelProps = {
+  resource: TracingResource
+  type: ConfigurableTracingProvider
   readOnly: boolean
+  pending: boolean
   isChosen: boolean
   config: TraceAppConfigResponse['tracing_config']
   configError?: ProviderConfigError
   onChoose: () => void
-}>
-
-const getIconClassName = (type: TracingProvider) => {
-  return {
-    [TracingProvider.arize]: 'i-custom-public-tracing-arize-icon-big w-27.75',
-    [TracingProvider.phoenix]: 'i-custom-public-tracing-phoenix-icon-big w-27.75',
-    [TracingProvider.langSmith]: 'i-custom-public-tracing-langsmith-icon-big w-31',
-    [TracingProvider.langfuse]: 'i-custom-public-tracing-langfuse-icon-big w-27.75',
-    [TracingProvider.opik]: 'i-custom-public-tracing-opik-icon-big w-[70.700851px]',
-    [TracingProvider.weave]: 'i-custom-public-tracing-weave-icon-big w-31',
-    [TracingProvider.aliyun]: 'i-custom-public-tracing-aliyun-icon-big w-24',
-    [TracingProvider.mlflow]: 'i-custom-public-tracing-mlflow-icon-big w-16.25',
-    [TracingProvider.databricks]: 'i-custom-public-tracing-databricks-icon-big w-37.5',
-    [TracingProvider.tencent]: 'i-custom-public-tracing-tencent-icon-big w-30',
-  }[type]
 }
 
-const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configError, onChoose }) => {
+export function ProviderPanel({
+  resource,
+  type,
+  readOnly,
+  pending,
+  isChosen,
+  config,
+  configError,
+  onChoose,
+}: ProviderPanelProps) {
   const { t } = useTranslation(['app', 'common'])
-  const iconClassName = getIconClassName(type)
+  const { data: agentTracingEnabled } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.agent_tracing_api_collection_enabled,
+    }),
+  )
+  const iconClassName = tracingProviders[type].panelIcon
   const hasConfigured = !!config
 
   return (
@@ -58,6 +63,7 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configErro
       {hasConfigured && !configError && !readOnly && (
         <button
           type="button"
+          disabled={pending}
           aria-label={t(($) => $[`${I18N_PREFIX}.${type}.title`], { ns: 'app' })}
           aria-pressed={isChosen}
           className="absolute inset-0 cursor-pointer rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
@@ -70,7 +76,7 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configErro
         <div className="flex items-center">
           <span aria-hidden className={cn(iconClassName, 'h-6')} />
           {isChosen && (
-            <div className="ml-1 flex h-4 items-center rounded-sm border border-text-accent-secondary px-1 system-2xs-medium-uppercase text-text-accent-secondary">
+            <div className="ml-1 flex min-w-4.5 items-center justify-center rounded-[5px] bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent inset-ring-1 inset-ring-text-accent">
               {t(($) => $[`${I18N_PREFIX}.inUse`], { ns: 'app' })}
             </div>
           )}
@@ -95,8 +101,8 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configErro
                   {t(($) => $[`${I18N_PREFIX}.view`], { ns: 'app' })}
                 </a>
               )}
-              <DialogTrigger payload={type} render={<Button size="small" />}>
-                <span aria-hidden className="i-ri-equalizer-2-line size-3" />
+              <DialogTrigger payload={type} render={<Button size="small" disabled={pending} />}>
+                <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
                 {t(($) => $[`${I18N_PREFIX}.config`], { ns: 'app' })}
               </DialogTrigger>
             </div>
@@ -106,7 +112,12 @@ const ProviderPanel: FC<Props> = ({ type, readOnly, isChosen, config, configErro
       <div className="mt-2 system-xs-regular text-text-tertiary">
         {t(($) => $[`${I18N_PREFIX}.${type}.description`], { ns: 'app' })}
       </div>
+      {isChosen && usesAgentTracePipeline(resource) && agentTracingEnabled && (
+        // Sits above the card-wide selection button, like the card actions.
+        <div className="relative">
+          <ProviderCapabilities resource={resource} provider={type} />
+        </div>
+      )}
     </div>
   )
 }
-export default React.memo(ProviderPanel)

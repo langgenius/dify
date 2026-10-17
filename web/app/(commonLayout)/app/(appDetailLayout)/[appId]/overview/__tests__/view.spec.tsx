@@ -44,8 +44,8 @@ vi.mock('../chart-view', () => ({
   ),
 }))
 
-vi.mock('../tracing/panel', () => ({
-  default: () => <button type="button">tracing</button>,
+vi.mock('@/app/components/app/tracing/configuration', () => ({
+  TracingConfiguration: () => <button type="button">tracing</button>,
 }))
 
 vi.mock('@/context/permission-state', async () => {
