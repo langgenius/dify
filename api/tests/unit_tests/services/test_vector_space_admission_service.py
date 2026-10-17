@@ -433,6 +433,85 @@ def test_independent_services_use_watermark_without_double_counting_fresh_usage(
     assert redis.ttls["tenant:tenant-1:vector_space_estimate_watermark"] == 1800
 
 
+@pytest.mark.parametrize(
+    "raw_state",
+    [
+        pytest.param("{", id="malformed-json"),
+        pytest.param("null", id="null-state"),
+        pytest.param("[]", id="array-state"),
+        pytest.param("1", id="scalar-state"),
+        pytest.param("{}", id="missing-fields"),
+        pytest.param('{"document_ids": []}', id="missing-usage"),
+        pytest.param('{"projected_usage_bytes": 0}', id="missing-document-ids"),
+        pytest.param('{"projected_usage_bytes": -1, "document_ids": []}', id="negative-usage"),
+        pytest.param('{"projected_usage_bytes": true, "document_ids": []}', id="boolean-usage"),
+        pytest.param('{"projected_usage_bytes": "1", "document_ids": []}', id="string-usage"),
+        pytest.param('{"projected_usage_bytes": 1.0, "document_ids": []}', id="float-usage"),
+        pytest.param('{"projected_usage_bytes": null, "document_ids": []}', id="null-usage"),
+        pytest.param('{"projected_usage_bytes": 0, "document_ids": null}', id="null-document-ids"),
+        pytest.param('{"projected_usage_bytes": 0, "document_ids": "document-1"}', id="string-document-ids"),
+        pytest.param('{"projected_usage_bytes": 0, "document_ids": {}}', id="object-document-ids"),
+        pytest.param('{"projected_usage_bytes": 0, "document_ids": ["document-1", 1]}', id="numeric-document-id"),
+        pytest.param('{"projected_usage_bytes": 0, "document_ids": [null]}', id="null-document-id"),
+    ],
+)
+def test_invalid_watermark_rejects_admission_without_overwriting_cache(sqlite_session: Session, raw_state: str) -> None:
+    redis = _FakeRedis()
+    watermark_key = "tenant:tenant-1:vector_space_estimate_watermark"
+    redis.setex(watermark_key, 123, raw_state)
+
+    with pytest.raises(VectorSpaceAdmissionError) as exc_info:
+        _check_estimate(sqlite_session, CloudPlan.SANDBOX, 10, redis=redis)
+
+    message = "Unable to reserve estimated vector storage right now. Please try again later."
+    assert str(exc_info.value) == message
+    assert exc_info.value.description == message
+    assert redis.values == {watermark_key: raw_state}
+    assert redis.ttls == {watermark_key: 123}
+
+
+@pytest.mark.parametrize(
+    ("watermark", "expected_mb", "expected_document_ids"),
+    [
+        pytest.param(
+            {"projected_usage_bytes": 0, "document_ids": []},
+            10,
+            ["文档-1"],
+            id="zero-usage",
+        ),
+        pytest.param(
+            {"projected_usage_bytes": 40 * _MEBIBYTE, "document_ids": ["document-0"], "extra": "ignored"},
+            50,
+            ["document-0", "文档-1"],
+            id="extra-fields",
+        ),
+        pytest.param(
+            {"projected_usage_bytes": 50 * _MEBIBYTE, "document_ids": ["文档-1", "文档-1"]},
+            50,
+            ["文档-1"],
+            id="duplicate-unicode-document-ids",
+        ),
+    ],
+)
+def test_valid_watermark_preserves_usage_and_document_ids(
+    sqlite_session: Session,
+    watermark: dict[str, object],
+    expected_mb: int,
+    expected_document_ids: list[str],
+) -> None:
+    redis = _FakeRedis()
+    watermark_key = "tenant:tenant-1:vector_space_estimate_watermark"
+    redis.setex(watermark_key, 123, json.dumps(watermark, ensure_ascii=False))
+
+    _check_estimate(sqlite_session, CloudPlan.SANDBOX, 10, document_id="文档-1", redis=redis)
+
+    assert json.loads(redis.values[watermark_key]) == {
+        "projected_usage_bytes": expected_mb * _MEBIBYTE,
+        "document_ids": expected_document_ids,
+    }
+    assert redis.ttls[watermark_key] == 1800
+
+
 def test_fresh_usage_above_watermark_becomes_next_projection_base(sqlite_session: Session) -> None:
     redis = _FakeRedis()
     _check_estimate(
