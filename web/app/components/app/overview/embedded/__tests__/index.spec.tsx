@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react'
 import type { SiteInfo } from '@/models/share'
 import { gunzipSync } from 'node:zlib'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -172,15 +172,18 @@ describe('EmbeddedDialog', () => {
     expect(screen.queryByLabelText('Secret')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /hiddenInputs.title/ }))
-    await user.type(await screen.findByLabelText('Secret'), 'top-secret')
+    const secretInput = await screen.findByLabelText('Secret')
+    await act(async () => user.type(secretInput, 'top-secret'))
+    expect(secretInput).toHaveValue('top-secret')
 
     expect(document.querySelector('pre')?.textContent ?? '').toContain('/chatbot/token')
 
     await waitFor(() => {
       const codeBlock = document.querySelector('pre')
-      const snippet = new DOMParser().parseFromString(codeBlock?.textContent ?? '', 'text/html')
-      const iframe = snippet.querySelector('iframe')!
-      const secret = new URL(iframe.src).searchParams.get('secret')!
+      // Inspect the snippet as text: parsing iframe markup in Happy DOM starts a network load.
+      const src = codeBlock?.textContent?.match(/src="([^"]+)"/)?.[1]
+      expect(src).toBeDefined()
+      const secret = new URL(src!).searchParams.get('secret')!
       expect(
         gunzipSync(Uint8Array.from(atob(secret), (char) => char.charCodeAt(0))).toString('utf8'),
       ).toBe('top-secret')

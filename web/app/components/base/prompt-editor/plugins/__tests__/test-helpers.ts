@@ -11,7 +11,6 @@ import {
   getNearestEditorFromDOMNode,
 } from 'lexical'
 import { createElement } from 'react'
-import { expect } from 'vite-plus/test'
 import { CaptureEditorPlugin } from './test-utils'
 
 type RenderLexicalEditorProps = {
@@ -152,17 +151,6 @@ export const createLexicalTestEditor = (namespace: string, nodes: Array<Klass<Le
       throw error
     },
     nodes,
-  })
-}
-
-export const expectInlineWrapperDom = (dom: HTMLElement, extraClasses: string[] = []) => {
-  expect(dom.tagName).toBe('DIV')
-  expect(dom).toHaveClass('inline-flex')
-  expect(dom).toHaveClass('items-center')
-  expect(dom).toHaveClass('align-middle')
-
-  extraClasses.forEach((className) => {
-    expect(dom).toHaveClass(className)
   })
 }
 

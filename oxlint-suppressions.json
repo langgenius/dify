@@ -964,7 +964,7 @@
   },
   "web/app/components/datasets/common/image-uploader/store.tsx": {
     "react/only-export-components": {
-      "count": 3
+      "count": 2
     }
   },
   "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/index.tsx": {
@@ -1451,11 +1451,6 @@
   "web/app/components/plugins/install-plugin/hooks.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/plugins/install-plugin/install-bundle/index.tsx": {
-    "react/only-export-components": {
-      "count": 1
     }
   },
   "web/app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
