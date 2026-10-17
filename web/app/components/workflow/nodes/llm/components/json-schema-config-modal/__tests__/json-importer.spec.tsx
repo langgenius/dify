@@ -6,7 +6,6 @@ import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import JsonImporter from '../json-importer'
 
 const mockEmit = vi.fn()
-const mockCheckJsonDepth = vi.fn()
 const visualEditorState = {
   advancedEditing: false,
   isAddingNewField: false,
@@ -22,10 +21,6 @@ vi.mock('../visual-editor/store', () => ({
     selector(visualEditorState),
 }))
 
-vi.mock('../../../utils', () => ({
-  checkJsonDepth: (...args: unknown[]) => mockCheckJsonDepth(...args),
-}))
-
 vi.mock('../code-editor', () => ({
   default: ({ value, onUpdate }: { value: string; onUpdate: (value: string) => void }) => (
     <textarea aria-label="json-editor" value={value} onChange={(e) => onUpdate(e.target.value)} />
@@ -35,6 +30,18 @@ vi.mock('../code-editor', () => ({
 vi.mock('../error-message', () => ({
   default: ({ message }: { message: string }) => <div data-testid="error-message">{message}</div>,
 }))
+
+const buildNestedObject = (levels: number): Record<string, unknown> => {
+  let node: Record<string, unknown> = { value: 'leaf' }
+  for (let i = 1; i < levels; i += 1) node = { child: node }
+  return node
+}
+
+const buildArrayWrappedExample = (schemaDepth: number): Record<string, unknown> => {
+  let node: Record<string, unknown> = { value: 'leaf' }
+  for (let i = 1; i < schemaDepth - 2; i += 1) node = { child: node }
+  return { rows: [node] }
+}
 
 describe('JsonImporter', () => {
   const mockOnSubmit = vi.fn()
@@ -47,7 +54,6 @@ describe('JsonImporter', () => {
     vi.clearAllMocks()
     visualEditorState.advancedEditing = false
     visualEditorState.isAddingNewField = false
-    mockCheckJsonDepth.mockReturnValue(1)
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       width: 88,
       height: 32,
@@ -110,8 +116,7 @@ describe('JsonImporter', () => {
     expect(mockOnSubmit).not.toHaveBeenCalled()
   })
 
-  it('shows a depth error when the schema exceeds the configured maximum', async () => {
-    mockCheckJsonDepth.mockReturnValue(JSON_SCHEMA_MAX_DEPTH + 1)
+  it('shows a depth error when the converted schema exceeds the configured maximum', async () => {
     const user = userEvent.setup()
 
     render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
@@ -120,7 +125,7 @@ describe('JsonImporter', () => {
       screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
     )
     fireEvent.change(screen.getByLabelText('json-editor'), {
-      target: { value: '{"foo":{"bar":1}}' },
+      target: { value: JSON.stringify(buildNestedObject(JSON_SCHEMA_MAX_DEPTH + 1)) },
     })
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
 
@@ -128,6 +133,42 @@ describe('JsonImporter', () => {
       `Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`,
     )
     expect(mockOnSubmit).not.toHaveBeenCalled()
+  })
+
+  it('rejects an example whose generated schema exceeds the maximum depth even though the raw example passes a shallow check', async () => {
+    const user = userEvent.setup()
+
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
+
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
+    fireEvent.change(screen.getByLabelText('json-editor'), {
+      target: { value: JSON.stringify(buildArrayWrappedExample(JSON_SCHEMA_MAX_DEPTH + 1)) },
+    })
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
+
+    expect(screen.getByTestId('error-message')).toHaveTextContent(
+      `Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`,
+    )
+    expect(mockOnSubmit).not.toHaveBeenCalled()
+  })
+
+  it('accepts an example whose generated schema is exactly at the maximum depth', async () => {
+    const user = userEvent.setup()
+
+    render(<JsonImporter onSubmit={mockOnSubmit} updateBtnWidth={mockUpdateBtnWidth} />)
+
+    await user.click(
+      screen.getByRole('button', { name: /(?:^|\.)nodes\.llm\.jsonSchema\.import(?=$|:)/ }),
+    )
+    fireEvent.change(screen.getByLabelText('json-editor'), {
+      target: { value: JSON.stringify(buildNestedObject(JSON_SCHEMA_MAX_DEPTH)) },
+    })
+    await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.submit(?=$|:)/ }))
+
+    expect(screen.queryByTestId('error-message')).not.toBeInTheDocument()
+    expect(mockOnSubmit).toHaveBeenCalledTimes(1)
   })
 
   it('shows the parser error when JSON.parse throws an Error', async () => {
