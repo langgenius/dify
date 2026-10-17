@@ -1,11 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import CandidateNodeMain from '../candidate-node-main'
 import { CUSTOM_NODE } from '../constants'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { BlockEnum } from '../types'
 import { createNode } from './fixtures'
 
-const mockUseEventListener = vi.hoisted(() => vi.fn())
 const mockUseStoreApi = vi.hoisted(() => vi.fn())
 const mockUseReactFlow = vi.hoisted(() => vi.fn())
 const mockUseViewport = vi.hoisted(() => vi.fn())
@@ -14,14 +13,8 @@ const mockUseWorkflowStore = vi.hoisted(() => vi.fn())
 const mockUseHooks = vi.hoisted(() => vi.fn())
 const mockCustomNode = vi.hoisted(() => vi.fn())
 const mockCustomNoteNode = vi.hoisted(() => vi.fn())
-const mockGetIterationStartNode = vi.hoisted(() => vi.fn())
-const mockGetLoopStartNode = vi.hoisted(() => vi.fn())
 const mockCreateInlineAgentBinding = vi.hoisted(() => vi.fn())
 const mockSetOpenInlineAgentPanelNodeId = vi.hoisted(() => vi.fn())
-
-vi.mock('ahooks', () => ({
-  useEventListener: (...args: unknown[]) => mockUseEventListener(...args),
-}))
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => mockUseStoreApi(),
@@ -89,11 +82,6 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  getIterationStartNode: (...args: unknown[]) => mockGetIterationStartNode(...args),
-  getLoopStartNode: (...args: unknown[]) => mockGetLoopStartNode(...args),
-}))
-
 describe('CandidateNodeMain', () => {
   const mockSetNodes = vi.fn()
   const mockHandleNodeSelect = vi.fn()
@@ -111,25 +99,12 @@ describe('CandidateNodeMain', () => {
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   })
   const createAutoGenerateWebhookUrl = () => mockAutoGenerateWebhookUrl
-  const eventHandlers: Partial<
-    Record<'click' | 'contextmenu', (event: { preventDefault: () => void }) => void>
-  > = {}
   let nodes = [createNode({ id: 'existing-node' })]
 
   beforeEach(() => {
     vi.clearAllMocks()
     nodes = [createNode({ id: 'existing-node' })]
-    eventHandlers.click = undefined
-    eventHandlers.contextmenu = undefined
 
-    mockUseEventListener.mockImplementation(
-      (
-        event: 'click' | 'contextmenu',
-        handler: (event: { preventDefault: () => void }) => void,
-      ) => {
-        eventHandlers[event] = handler
-      },
-    )
     mockSetNodes.mockImplementation((nextNodes) => {
       nodes = nextNodes
     })
@@ -198,8 +173,6 @@ describe('CandidateNodeMain', () => {
         })
       },
     )
-    mockGetIterationStartNode.mockReturnValue(createNode({ id: 'iteration-start' }))
-    mockGetLoopStartNode.mockReturnValue(createNode({ id: 'loop-start' }))
   })
 
   it('should render the candidate node and commit a webhook node on click', () => {
@@ -222,7 +195,7 @@ describe('CandidateNodeMain', () => {
       transform: 'scale(1.5)',
     })
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    fireEvent.click(window)
 
     expect(mockSetNodes).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -262,7 +235,7 @@ describe('CandidateNodeMain', () => {
 
     expect(screen.getByTestId('candidate-note-node'))!.toHaveTextContent('candidate-note')
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    fireEvent.click(window)
 
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('NoteAdd', { nodeId: 'candidate-note' })
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('candidate-note')
@@ -287,7 +260,7 @@ describe('CandidateNodeMain', () => {
 
     render(<CandidateNodeMain candidateNode={candidateNode} />)
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    fireEvent.click(window)
 
     expect(mockSetNodes).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -326,7 +299,7 @@ describe('CandidateNodeMain', () => {
 
     render(<CandidateNodeMain candidateNode={candidateNode} />)
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    fireEvent.click(window)
 
     expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(
       'candidate-inline-agent-v2',
@@ -394,23 +367,27 @@ describe('CandidateNodeMain', () => {
 
     const { rerender } = render(<CandidateNodeMain candidateNode={iterationNode} />)
 
-    eventHandlers.click?.({ preventDefault: vi.fn() })
-    expect(mockGetIterationStartNode).toHaveBeenCalledWith('candidate-iteration')
+    fireEvent.click(window)
     expect(mockSetNodes.mock.calls[0]![0]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'candidate-iteration' }),
-        expect.objectContaining({ id: 'iteration-start' }),
+        expect.objectContaining({
+          parentId: 'candidate-iteration',
+          data: expect.objectContaining({ type: BlockEnum.IterationStart, isInIteration: true }),
+        }),
       ]),
     )
 
     rerender(<CandidateNodeMain candidateNode={loopNode} />)
-    eventHandlers.click?.({ preventDefault: vi.fn() })
+    fireEvent.click(window)
 
-    expect(mockGetLoopStartNode).toHaveBeenCalledWith('candidate-loop')
     expect(mockSetNodes.mock.calls[1]![0]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'candidate-loop' }),
-        expect.objectContaining({ id: 'loop-start' }),
+        expect.objectContaining({
+          parentId: 'candidate-loop',
+          data: expect.objectContaining({ type: BlockEnum.LoopStart, isInLoop: true }),
+        }),
       ]),
     )
   })
@@ -428,7 +405,7 @@ describe('CandidateNodeMain', () => {
 
     render(<CandidateNodeMain candidateNode={candidateNode} />)
 
-    eventHandlers.contextmenu?.({ preventDefault: vi.fn() })
+    fireEvent.contextMenu(window)
 
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ candidateNode: undefined })
   })

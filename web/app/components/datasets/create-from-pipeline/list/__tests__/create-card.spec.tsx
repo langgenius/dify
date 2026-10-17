@@ -32,11 +32,15 @@ vi.mock('@/app/notifications', async (importOriginal) => {
 
 const mockCreateEmptyDataset = vi.fn()
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipeline.emptyDataset.post': () => ({ mutateAsync: mockCreateEmptyDataset }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipeline.emptyDataset.post': (input) => mockCreateEmptyDataset(input),
+    }),
+  }
 })
 
 // CreateCard Component Tests

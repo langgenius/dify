@@ -18,14 +18,6 @@ import EditCustomCollectionModal from '../index'
 
 const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
-vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
-  return {
-    ...actual,
-    useDebounce: (value: unknown) => value,
-  }
-})
-
 vi.mock('@/service/tools', () => ({
   parseParamsSchema: vi.fn(),
 }))

@@ -70,9 +70,6 @@ const mockDownloadBlob = vi.fn()
 vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
-vi.mock('@/app/components/workflow/constants', () => ({
-  DSL_EXPORT_CHECK: 'DSL_EXPORT_CHECK',
-}))
 
 let queryClient: QueryClient
 const wrapper = ({ children }: { children: ReactNode }) =>

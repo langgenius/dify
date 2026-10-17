@@ -60,7 +60,6 @@ let mockDatasetMaintainer: string | undefined
 let mockCurrentUserId = 'user-1'
 let mockIsLoadingWorkspacePermissionKeys = false
 let mockWorkspacePermissionKeys: string[] = []
-const mockUseBoolean = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
 }))
@@ -68,18 +67,6 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/next/link', () => ({
   default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
-
-vi.mock('ahooks', () => ({
-  useBoolean: (initial: boolean) => mockUseBoolean(initial),
-}))
-
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: vi.fn(),
-  }
-})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
@@ -154,31 +141,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.byPipelineId.customized.publish.post': () => ({
-      mutateAsync: mockPublishAsCustomizedPipeline,
-    }),
-  })
-})
-
-vi.mock('@/service/console/browser', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console/browser')>()
-  return {
-    consoleBrowserLink: {
-      call: (path: readonly string[], input: unknown, options: unknown) =>
-        path.join('.') === 'rag.pipelines.byPipelineId.workflows.publish.post'
-          ? mockPublishWorkflow(input)
-          : actual.consoleBrowserLink.call(path as never, input, options as never),
-    },
-  }
-})
-
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: string[]) => args.filter(Boolean).join(' '),
-}))
-
 vi.mock('../../../publish-as-knowledge-pipeline-modal', () => ({
   default: ({
     onConfirm,
@@ -213,6 +175,19 @@ function render(...args: Parameters<typeof renderWithoutPricing>) {
   return renderWithoutPricing(...args)
 }
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.publish.post': (input) => mockPublishWorkflow(input),
+      'rag.pipelines.byPipelineId.customized.publish.post': (input) =>
+        mockPublishAsCustomizedPipeline(input),
+    }),
+  }
+})
+
 describe('Popup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -225,13 +200,6 @@ describe('Popup', () => {
     mockCurrentUserId = 'user-1'
     mockIsLoadingWorkspacePermissionKeys = false
     mockWorkspacePermissionKeys = []
-    mockUseBoolean.mockImplementation((initial: boolean) => [
-      initial,
-      {
-        setFalse: vi.fn(),
-        setTrue: vi.fn(),
-      },
-    ])
   })
 
   afterEach(() => {
@@ -362,28 +330,14 @@ describe('Popup', () => {
   })
 
   describe('Overlay cleanup', () => {
-    it('should close confirm dialog when alert dialog requests close', () => {
-      const hideConfirm = vi.fn()
-      mockUseBoolean
-        .mockImplementationOnce(() => [true, { setFalse: hideConfirm, setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [
-          initial,
-          { setFalse: vi.fn(), setTrue: vi.fn() },
-        ])
-        .mockImplementationOnce((initial: boolean) => [
-          initial,
-          { setFalse: vi.fn(), setTrue: vi.fn() },
-        ])
-        .mockImplementationOnce((initial: boolean) => [
-          initial,
-          { setFalse: vi.fn(), setTrue: vi.fn() },
-        ])
-
+    it('closes the publish confirmation without publishing when cancelled', async () => {
+      mockPublishedAt = undefined
       render(<Popup />)
-
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-      expect(hideConfirm).toHaveBeenCalledTimes(1)
+      fireEvent.click(screen.getByRole('button', { name: /^workflow\.common\.publishUpdate/ }))
+      const cancel = await screen.findByRole('button', { name: 'common.operation.cancel' })
+      fireEvent.click(cancel)
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(mockSetPublishedAt).not.toHaveBeenCalled()
     })
   })
 

@@ -25,10 +25,6 @@ vi.mock('lexical', async (importOriginal) => {
   }
 })
 
-vi.mock('./plugins/custom-text/node', () => ({
-  CustomTextNode: class MockCustomTextNode {},
-}))
-
 describe('prompt-editor/utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()

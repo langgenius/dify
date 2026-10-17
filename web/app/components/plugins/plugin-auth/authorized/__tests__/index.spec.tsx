@@ -102,20 +102,7 @@ vi.mock('@/service/use-triggers', () => ({
     data: { options: [] },
     isLoading: false,
   }),
-  useTriggerPluginDynamicOptionsInfo: () => ({
-    data: null,
-    isLoading: false,
-  }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
-
-vi.mock('@/service/use-common', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-common')>()
-  return {
-    ...actual,
-    useMembers: () => ({ data: { accounts: [] } }),
-  }
-})
 
 // ==================== Test Utilities ====================
 

@@ -2,20 +2,33 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CollectionType } from '@/app/components/tools/types'
-import { createQueryClientWrapper } from '@/test/console/query-client'
-import { createTestQueryClient } from '@/test/query-client'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { useToolSelector } from '../use-tool-selector'
 
-const queryClient = createTestQueryClient()
-const queryClientWrapper = createQueryClientWrapper(queryClient)
+let queryClient = createConsoleQueryClient()
+let queryClientWrapper = createConsoleQueryWrapper({ queryClient }).wrapper
 
 const mockToolParams = [
-  { name: 'param1', form: 'llm', type: 'string', required: true, label: { en_US: 'Param 1' } },
-  { name: 'param2', form: 'form', type: 'number', required: false, label: { en_US: 'Param 2' } },
+  {
+    name: 'param1',
+    form: 'llm' as const,
+    type: 'string' as const,
+    required: true,
+    label: { en_US: 'Param 1' },
+  },
+  {
+    name: 'param2',
+    form: 'form' as const,
+    type: 'number' as const,
+    required: false,
+    label: { en_US: 'Param 2' },
+  },
 ]
 
 const mockTools = [
-  {
+  createToolProviderFixture({
     id: 'test-provider',
     name: 'Test Provider',
     plugin_id: 'org/test-plugin',
@@ -23,27 +36,14 @@ const mockTools = [
     tools: [
       {
         name: 'test-tool',
+        author: 'Dify',
         label: { en_US: 'Test Tool' },
         description: { en_US: 'A test tool' },
         parameters: mockToolParams,
       },
     ],
-  },
+  }),
 ]
-let areToolQueriesFetched = true
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({
-      data: mockTools,
-      isFetched: areToolQueriesFetched,
-    }),
-    'workspaces.current.tools.api.get': () => ({ data: [], isFetched: areToolQueriesFetched }),
-    'workspaces.current.tools.workflow.get': () => ({ data: [], isFetched: areToolQueriesFetched }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [], isFetched: areToolQueriesFetched }),
-  })
-})
 
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateInstalledPluginList: () => vi.fn().mockResolvedValue(undefined),
@@ -57,17 +57,6 @@ vi.mock('../use-plugin-installed-check', () => ({
 
 vi.mock('@/utils/get-icon', () => ({
   getIconFromMarketPlace: () => '',
-}))
-
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolParametersToFormSchemas: (params: unknown[]) =>
-    (params as Record<string, unknown>[]).map((p) => ({
-      ...p,
-      variable: p.name,
-    })),
-  generateFormValue: (value: Record<string, unknown>) => value || {},
-  getPlainValue: (value: Record<string, unknown>) => value || {},
-  getStructureValue: (value: Record<string, unknown>) => value || {},
 }))
 
 describe('useToolSelector', () => {
@@ -89,7 +78,14 @@ describe('useToolSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    areToolQueriesFetched = true
+    queryClient = createConsoleQueryClient()
+    queryClientWrapper = createConsoleQueryWrapper({ queryClient }).wrapper
+    seedToolProviders(queryClient, {
+      builtInTools: mockTools,
+      customTools: [],
+      workflowTools: [],
+      mcpTools: [],
+    })
     mockUsePluginInstalledCheck.mockReturnValue({
       inMarketPlace: false,
       manifest: null,
@@ -135,11 +131,13 @@ describe('useToolSelector', () => {
 
     // param2 has form='form' (not 'llm'), so it goes to settings
     expect(result.current.currentToolSettings).toHaveLength(1)
-    expect(result.current.currentToolSettings[0]!.name).toBe('param2')
+    expect(result.current.settingsFormSchemas[0]!.variable).toBe('param2')
 
     // param1 has form='llm', so it goes to params
     expect(result.current.currentToolParams).toHaveLength(1)
-    expect(result.current.currentToolParams[0]!.name).toBe('param1')
+    expect(result.current.paramsFormSchemas[0]).toEqual(
+      expect.objectContaining({ variable: 'param1', type: 'text-input', required: true }),
+    )
   })
 
   it('should show tab slider when both settings and params exist', () => {
@@ -306,7 +304,7 @@ describe('useToolSelector', () => {
   })
 
   it('should keep marketplace fallback enabled when legacy provider lists are still pending but plugin id is known', () => {
-    areToolQueriesFetched = false
+    queryClient.clear()
 
     renderHook(
       () =>
@@ -347,4 +345,19 @@ describe('useToolSelector', () => {
       enabled: true,
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const pending = () => new Promise(() => {})
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': pending,
+      'workspaces.current.tools.api.get': pending,
+      'workspaces.current.tools.workflow.get': pending,
+      'workspaces.current.tools.mcp.get': pending,
+    }),
+  }
 })

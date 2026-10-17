@@ -3,10 +3,6 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
-}))
-
 const mockCategories = [
   { name: 'tool', label: 'Tool' },
   { name: 'model', label: 'Model' },

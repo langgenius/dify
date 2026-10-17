@@ -1,5 +1,6 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { DataType } from '../../types'
 import useMetadataDocument from '../use-metadata-document'
 
@@ -16,30 +17,26 @@ type DocDetail = {
 const mockMutateAsync = vi.fn().mockResolvedValue({})
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.metadata.post': () => ({
-      mutateAsync: mockMutateAsync,
-    }),
-    'datasets.byDatasetId.metadata.post': () => ({
-      mutateAsync: mockDoAddMetaData,
-    }),
-    'datasets.byDatasetId.documents.byDocumentId.get': () => ({
-      data: {
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.metadata.post': (input) => mockMutateAsync(input),
+      'datasets.byDatasetId.metadata.post': (input) => mockDoAddMetaData(input),
+      'datasets.byDatasetId.documents.byDocumentId.get': async () => ({
         doc_metadata: [
           { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
           { id: '2', name: 'field_two', type: DataType.number, value: 42 },
           { id: 'built-in', name: 'created_at', type: DataType.time, value: 1609459200 },
         ],
-      },
-    }),
-    'datasets.byDatasetId.metadata.get': () => ({
-      data: {
+      }),
+      'datasets.byDatasetId.metadata.get': async () => ({
         built_in_field_enabled: true,
-      },
+      }),
     }),
-  })
+  }
 })
 
 // Mock useDatasetDetailContext
@@ -97,13 +94,6 @@ vi.mock('@/app/notifications', () => ({
 }))
 
 // Mock useCheckMetadataName
-vi.mock('../use-check-metadata-name', () => ({
-  default: () => ({
-    checkName: (name: string) => ({
-      errorMsg: name && /^[a-z][a-z0-9_]*$/.test(name) ? '' : 'Invalid name',
-    }),
-  }),
-}))
 
 describe('useMetadataDocument', () => {
   const mockDocDetail: DocDetail = {
@@ -169,9 +159,9 @@ describe('useMetadataDocument', () => {
       expect(result.current.hasData).toBe(result.current.list.length > 0)
     })
 
-    it('should return builtInEnabled', () => {
+    it('should return builtInEnabled after loading', async () => {
       const { result } = renderHook(() => useMetadataDocument(defaultProps))
-      expect(typeof result.current.builtInEnabled).toBe('boolean')
+      await waitFor(() => expect(typeof result.current.builtInEnabled).toBe('boolean'))
     })
 
     it('should return originInfo', () => {

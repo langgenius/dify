@@ -200,19 +200,8 @@ vi.mock('@/app/components/app/app-publisher', () => ({
   },
 }))
 
-vi.mock('@/service/console/browser', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console/browser')>()
-  return {
-    consoleBrowserLink: {
-      call: (path: readonly string[], input: unknown, options: unknown) =>
-        path.join('.') === 'apps.byAppId.workflows.publish.post'
-          ? mockPublishWorkflow(input)
-          : actual.consoleBrowserLink.call(path as never, input, options as never),
-    },
-  }
-})
-
-vi.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useInvalidateAppWorkflow: () => mockUpdatePublishedWorkflow,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
@@ -247,6 +236,17 @@ const renderWithToast = (
     }),
   }
 }
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflows.publish.post': (input) => mockPublishWorkflow(input),
+    }),
+  }
+})
 
 describe('FeaturesTrigger', () => {
   beforeEach(() => {

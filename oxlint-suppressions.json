@@ -1752,16 +1752,6 @@
       "count": 1
     }
   },
-  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
-    "eslint-react/static-components": {
-      "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/show-all-settings.spec.tsx": {
-    "eslint-react/static-components": {
-      "count": 4
-    }
-  },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/hidden-fields.tsx": {
     "eslint-react/static-components": {
       "count": 2

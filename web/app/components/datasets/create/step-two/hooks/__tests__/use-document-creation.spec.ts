@@ -15,7 +15,6 @@ const datasetListKey = consoleQuery.datasets.get.key()
 const mocks = vi.hoisted(() => ({
   toastNotify: vi.fn(),
   mutateAsync: vi.fn(),
-  isReRankModelSelected: vi.fn(() => true),
   trackEvent: vi.fn(),
   invalidDatasetList: vi.fn(),
 }))
@@ -34,19 +33,16 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mocks.trackEvent,
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
-  isReRankModelSelected: mocks.isReRankModelSelected,
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.init.post': () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
-    'datasets.byDatasetId.documents.post': () => ({
-      mutateAsync: mocks.mutateAsync,
-      isPending: false,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.init.post': (input) => mocks.mutateAsync(input),
+      'datasets.byDatasetId.documents.post': (input) => mocks.mutateAsync(input),
     }),
-  })
+  }
 })
 
 const { useDocumentCreation } = await import('../use-document-creation')
@@ -81,7 +77,6 @@ describe('useDocumentCreation', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.isReRankModelSelected.mockReturnValue(true)
   })
 
   describe('validateParams', () => {
@@ -118,13 +113,16 @@ describe('useDocumentCreation', () => {
     })
 
     it('should return false when rerank model not selected', () => {
-      mocks.isReRankModelSelected.mockReturnValue(false)
       const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
-      expect(result.current.validateParams(defaultValidationParams)).toBe(false)
+      expect(
+        result.current.validateParams({
+          ...defaultValidationParams,
+          retrievalConfig: { ...defaultValidationParams.retrievalConfig, reranking_enable: true },
+        }),
+      ).toBe(false)
     })
 
     it('should skip embedding/rerank checks when isSetting is true', () => {
-      mocks.isReRankModelSelected.mockReturnValue(false)
       const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({ ...defaultOptions, isSetting: true }),
       )

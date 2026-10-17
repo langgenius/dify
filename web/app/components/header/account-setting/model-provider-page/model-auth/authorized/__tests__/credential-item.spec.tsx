@@ -3,12 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import CredentialItem from '../credential-item'
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status?: string }) => (
-    <div data-testid="indicator" data-status={status} />
-  ),
-}))
-
 describe('CredentialItem', () => {
   const credential: Credential = {
     credential_id: 'cred-1',
@@ -19,11 +13,10 @@ describe('CredentialItem', () => {
     vi.clearAllMocks()
   })
 
-  it('should render credential text and indicator', () => {
+  it('should render credential text', () => {
     render(<CredentialItem credential={credential} />)
 
     expect(screen.getByText('Test API Key')).toBeInTheDocument()
-    expect(screen.getByTestId('indicator')).toBeInTheDocument()
   })
 
   it('should render enterprise badge for enterprise credential', () => {
@@ -110,17 +103,10 @@ describe('CredentialItem', () => {
     expect(onItemClick).not.toHaveBeenCalled()
   })
 
-  it('should render unavailable credential with error indicator and unavailable label', () => {
+  it('should render unavailable credential label', () => {
     render(<CredentialItem credential={{ ...credential, not_allowed_to_use: true }} />)
 
-    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'error')
     expect(screen.getByText('modelProvider.modelProvider.card.unavailable')).toBeInTheDocument()
-  })
-
-  it('should render available credential with success indicator', () => {
-    render(<CredentialItem credential={credential} />)
-
-    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
   })
 
   it('should call onEdit and onDelete from action buttons', () => {

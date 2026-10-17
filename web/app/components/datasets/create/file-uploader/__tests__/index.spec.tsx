@@ -18,42 +18,18 @@ const render = (ui: React.ReactElement) => {
   })
 }
 
-const mockNotify = vi.fn()
-vi.mock('use-context-selector', async () => {
-  const actual =
-    await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: vi.fn(() => ({ notify: mockNotify })),
-  }
-})
-
 // Mock services
 vi.mock('@/service/base', () => ({
   upload: vi.fn().mockResolvedValue({ id: 'uploaded-id' }),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: { file_size_limit: 15, batch_count_limit: 5, file_upload_limit: 10 },
-  }),
-}))
 vi.mock('@/i18n/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
-}))
-
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getFileUploadErrorMessage: () => 'Upload error',
 }))
 
 // Mock theme
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
-}))
-
-vi.mock('@/types/app', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/types/app')>()),
-  Theme: { dark: 'dark', light: 'light' },
 }))
 
 // Mock DocumentFileIcon - uses relative path from file-list-item.tsx

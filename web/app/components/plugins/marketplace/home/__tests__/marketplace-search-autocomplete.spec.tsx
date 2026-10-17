@@ -10,23 +10,11 @@ import {
   MarketplaceSearchForm,
 } from '../marketplace-search-autocomplete'
 
-const { debounceState, mockAssign, mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
-  // Most tests bypass the debounce for simplicity; the debounce-window test
-  // flips this on to exercise the real 300ms lag.
-  debounceState: { useRealDebounce: false },
+const { mockAssign, mockPluginSearch, mockTemplateSearch } = vi.hoisted(() => ({
   mockAssign: vi.fn(),
   mockPluginSearch: vi.fn(),
   mockTemplateSearch: vi.fn(),
 }))
-
-vi.mock('foxact/use-debounced-value', async (importOriginal) => {
-  const original = await importOriginal<typeof import('foxact/use-debounced-value')>()
-
-  return {
-    useDebouncedValue: (value: string, wait: number) =>
-      debounceState.useRealDebounce ? original.useDebouncedValue(value, wait) : value,
-  }
-})
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -70,7 +58,6 @@ describe('MarketplaceSearchAutocomplete', () => {
     vi.clearAllMocks()
     mockAssign.mockReset()
     vi.spyOn(window.location, 'assign').mockImplementation(mockAssign)
-    debounceState.useRealDebounce = false
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -674,7 +661,6 @@ describe('MarketplaceSearchAutocomplete', () => {
   })
 
   it('keeps the previous suggestions listed while the edited value is still debouncing', async () => {
-    debounceState.useRealDebounce = true
     mockPluginSearch.mockResolvedValue({
       data: {
         plugins: [

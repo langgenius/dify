@@ -3,9 +3,10 @@ import type {
   TriggerProviderApiEntity,
   TriggerSubscription,
 } from '@/app/components/workflow/block-selector/types'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { CreateSubscriptionButton } from '../index'
 import { CreateButtonType } from '../types'
 
@@ -31,13 +32,25 @@ vi.mock('../../use-subscription-list', () => ({
 let mockProviderInfo: TriggerProviderApiEntity | undefined
 let mockOAuthConfig: TriggerOAuthConfig | undefined
 const mockRefetchOAuthConfig = vi.fn()
-const mockInitiateOAuth = vi.fn()
+const { mockInitiateOAuth } = vi.hoisted(() => ({ mockInitiateOAuth: vi.fn() }))
 
-vi.mock('@/service/use-triggers', () => ({
+vi.mock('@/service/use-triggers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-triggers')>()),
   useTriggerProviderInfo: () => ({ data: mockProviderInfo }),
   useTriggerOAuthConfig: () => ({ data: mockOAuthConfig, refetch: mockRefetchOAuthConfig }),
-  useInitiateTriggerOAuth: () => ({ mutate: mockInitiateOAuth }),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get':
+        mockInitiateOAuth,
+    }),
+  }
+})
 
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
@@ -175,13 +188,19 @@ describe('CreateSubscriptionButton', () => {
     const user = userEvent.setup()
     mockProviderInfo = providerInfo([SupportedCreationMethods.OAUTH])
     mockOAuthConfig = oauthConfig(true)
-    mockInitiateOAuth.mockImplementationOnce(
-      (_provider: string, { onSuccess }: { onSuccess: (response: unknown) => void }) =>
-        onSuccess({
-          authorization_url: 'https://example.com/oauth',
-          subscription_builder: { id: 'builder-1' },
-        }),
-    )
+    mockInitiateOAuth.mockResolvedValueOnce({
+      authorization_url: 'https://example.com/oauth',
+      subscription_builder: {
+        id: 'builder-1',
+        provider: 'test-provider',
+        name: '',
+        credential_type: 'oauth2',
+        credentials: {},
+        endpoint: 'https://example.com/callback',
+        parameters: {},
+        properties: {},
+      },
+    })
     mockOpenOAuthPopup.mockImplementationOnce((_url: string, callback: (data: unknown) => void) =>
       callback({ success: true }),
     )

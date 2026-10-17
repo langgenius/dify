@@ -46,7 +46,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
       select: selectPipelineTemplate,
     }),
   )
-  const { mutateAsync: createDataset } = useMutation(
+  const { mutate: createDataset } = useMutation(
     consoleQuery.rag.pipeline.dataset.post.mutationOptions(),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
@@ -63,7 +63,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
     }
-    await createDataset(
+    createDataset(
       { body: request },
       {
         onSuccess: async (newDataset) => {
@@ -103,13 +103,13 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowEditModal(false)
   }, [])
 
-  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useMutation(
+  const { mutate: exportPipelineDSL, isPending: isExporting } = useMutation(
     consoleQuery.rag.pipeline.customized.templates.byTemplateId.post.mutationOptions(),
   )
 
-  const handleExportDSL = useCallback(async () => {
+  const handleExportDSL = useCallback(() => {
     if (isExporting) return
-    await exportPipelineDSL(
+    exportPipelineDSL(
       { params: { template_id: pipeline.id } },
       {
         onSuccess: (res) => {
@@ -132,12 +132,12 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowConfirmDelete(false)
   }, [])
 
-  const { mutateAsync: deletePipeline } = useMutation(
+  const { mutate: deletePipeline } = useMutation(
     consoleQuery.rag.pipeline.customized.templates.byTemplateId.delete.mutationOptions(),
   )
 
-  const onConfirmDelete = useCallback(async () => {
-    await deletePipeline(
+  const onConfirmDelete = useCallback(() => {
+    deletePipeline(
       { params: { template_id: pipeline.id } },
       {
         onSuccess: () => {

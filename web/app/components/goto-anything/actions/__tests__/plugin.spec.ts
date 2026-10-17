@@ -6,17 +6,7 @@ vi.mock('@/service/marketplace', () => ({
   marketplaceQuery: { searchAdvanced: { queryOptions: serviceMocks.queryOptions } },
 }))
 
-vi.mock('@/i18n/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
-  renderI18nObject: vi.fn((value: Record<string, string> | string, locale: string) =>
-    typeof value === 'string' ? value : value[locale] || value.en_US || '',
-  ),
-}))
-
 vi.mock('../../../plugins/card/base/card-icon', () => ({ default: () => null }))
-vi.mock('../../../plugins/marketplace/utils', () => ({
-  getFormattedPlugin: vi.fn((plugin) => ({ ...plugin, icon: 'icon-url' })),
-}))
 
 describe('plugin search query', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -47,6 +37,8 @@ describe('plugin search query', () => {
         plugins: [
           {
             name: 'plugin-1',
+            org: 'dify',
+            type: 'plugin',
             label: { en_US: 'My Plugin' },
             brief: { en_US: 'A plugin' },
             icon: 'icon.png',

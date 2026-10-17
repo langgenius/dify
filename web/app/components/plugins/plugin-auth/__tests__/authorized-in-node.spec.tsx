@@ -48,8 +48,6 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: { options: [] }, isLoading: false }),
-  useTriggerPluginDynamicOptionsInfo: () => ({ data: null, isLoading: false }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
 // ==================== Test Utilities ====================

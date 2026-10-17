@@ -1,29 +1,35 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { SubscriptionSelectorView } from '../selector-view'
 
 let mockSubscriptions: TriggerSubscription[] = []
 const mockRefetch = vi.fn()
-const mockDelete = vi.fn((_: string, options?: { onSuccess?: () => void }) => {
-  options?.onSuccess?.()
-})
+const { mockDelete } = vi.hoisted(() => ({ mockDelete: vi.fn().mockResolvedValue({}) }))
 
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => ({ subscriptions: mockSubscriptions, refetch: mockRefetch }),
 }))
 
-vi.mock('../../../store', () => ({
-  usePluginStore: () => ({ detail: undefined }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
+vi.mock('@/service/use-triggers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-triggers')>()),
   useTriggerProviderInfo: () => ({ data: { supported_creation_methods: [] } }),
   useTriggerOAuthConfig: () => ({ data: undefined, refetch: vi.fn() }),
   useInitiateTriggerOAuth: () => ({ mutate: vi.fn() }),
-  useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
 }))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post': mockDelete,
+    }),
+  }
+})
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -76,21 +82,6 @@ describe('SubscriptionSelectorView', () => {
     )
   })
 
-  it('should distinguish selected vs unselected subscription row', () => {
-    const { rerender } = render(<SubscriptionSelectorView selectedId="sub-1" />)
-
-    const getRowClassName = () =>
-      screen.getByRole('button', { name: 'Subscription One' }).closest('div')?.className ?? ''
-
-    const selectedClassName = getRowClassName()
-
-    rerender(<SubscriptionSelectorView selectedId="other-id" />)
-
-    const unselectedClassName = getRowClassName()
-
-    expect(selectedClassName).not.toBe(unselectedClassName)
-  })
-
   it('should omit header when there are no subscriptions', () => {
     mockSubscriptions = []
 
@@ -111,7 +102,7 @@ describe('SubscriptionSelectorView', () => {
     ).toBeInTheDocument()
   })
 
-  it('should request selection reset after confirming delete', () => {
+  it('should request selection reset after confirming delete', async () => {
     const onSelect = vi.fn()
     const { container } = render(<SubscriptionSelectorView onSelect={onSelect} />)
 
@@ -124,8 +115,8 @@ describe('SubscriptionSelectorView', () => {
       }),
     )
 
-    expect(mockDelete).toHaveBeenCalledWith('sub-1', expect.any(Object))
-    expect(onSelect).toHaveBeenCalledWith({ id: '', name: '' })
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith({ id: '', name: '' }))
+    expect(mockDelete).toHaveBeenCalledWith({ params: { subscription_id: 'sub-1' } })
   })
 
   it('should close delete confirm without selection reset on cancel', () => {

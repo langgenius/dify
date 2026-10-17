@@ -79,13 +79,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   ),
 }))
 
-vi.mock('@/service/use-common', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/use-common')>()
-  return {
-    ...actual,
-  }
-})
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   return {

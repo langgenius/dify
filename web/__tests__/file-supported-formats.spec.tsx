@@ -8,15 +8,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({
-      data: { file_size_limit: 15, batch_count_limit: 5, file_upload_limit: 10 },
-    }),
-  })
-})
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 
 let mockLocale = 'en-US'
 const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
@@ -74,6 +66,10 @@ beforeEach(() => {
 describe('file supported formats across upload and document extraction', () => {
   it('shares the raw supported-formats response with the uploader across locale changes', async () => {
     const queryClient = createConsoleQueryClient()
+    queryClient.setQueryData(
+      consoleQuery.files.upload.get.queryKey(),
+      createFileUploadConfigFixture({ file_upload_limit: 10 }),
+    )
     const response = { allowed_extensions: ['PDF', 'pdf', 'md', 'md', 'DOCX', 'docx'] }
     request.mockImplementation(async () => Response.json(response))
     const consumers = () => (

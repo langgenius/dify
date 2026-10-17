@@ -89,13 +89,13 @@ type MockVersionHistoryItemProps = {
 
 vi.mock('@/app/notifications', () => ({ toast: mockToast }))
 
-vi.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
   useDeleteWorkflow: () => ({ mutateAsync: mockDeleteWorkflow }),
   useInvalidateAppWorkflow: () => mockInvalidateAppWorkflow,
   useInvalidateAllLastRun: () => vi.fn(),
   useResetWorkflowVersionHistory: () => vi.fn(),
   useRestoreWorkflow: () => ({ mutateAsync: mockRestoreWorkflow }),
-  useUpdateWorkflow: () => ({ mutateAsync: mockUpdateWorkflow }),
   useWorkflowVersionHistory: () => ({
     data: {
       pages: [
@@ -286,6 +286,18 @@ vi.mock('../version-history-item', () => ({
   },
 }))
 
+vi.mock('@/service/console/browser', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console/browser')>()
+  return {
+    consoleBrowserLink: {
+      call: (path: readonly string[], input: unknown, options: unknown) =>
+        path.join('.') === 'apps.byAppId.workflows.byWorkflowId.patch'
+          ? mockUpdateWorkflow(input)
+          : actual.consoleBrowserLink.call(path as never, input, options as never),
+    },
+  }
+})
+
 describe('VersionHistoryPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -463,18 +475,11 @@ describe('VersionHistoryPanel', () => {
   })
 
   it('should refresh the published workflow after editing the latest app version', async () => {
-    mockUpdateWorkflow.mockImplementation(
-      async (
-        _params,
-        options?: {
-          onSuccess?: () => void
-          onSettled?: () => void
-        },
-      ) => {
-        options?.onSuccess?.()
-        options?.onSettled?.()
-      },
-    )
+    mockUpdateWorkflow.mockResolvedValue({
+      id: 'published-version-id',
+      marked_name: 'Updated release',
+      marked_comment: 'Updated notes',
+    })
     const { VersionHistoryPanel } = await import('../index')
 
     render(<VersionHistoryPanel latestVersionId="published-version-id" />)
@@ -483,15 +488,10 @@ describe('VersionHistoryPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submit version info' }))
 
     await waitFor(() => {
-      expect(mockUpdateWorkflow).toHaveBeenCalledWith(
-        {
-          owner: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-          workflowId: 'published-version-id',
-          releaseNotes: 'Updated notes',
-          title: 'Updated release',
-        },
-        expect.any(Object),
-      )
+      expect(mockUpdateWorkflow).toHaveBeenCalledWith({
+        params: { app_id: 'app-1', workflow_id: 'published-version-id' },
+        body: { marked_name: 'Updated release', marked_comment: 'Updated notes' },
+      })
       expect(mockInvalidateAppWorkflow).toHaveBeenCalledWith('app-1')
     })
   })

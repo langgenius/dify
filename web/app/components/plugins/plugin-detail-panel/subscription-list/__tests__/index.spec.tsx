@@ -24,19 +24,11 @@ let mockSubscriptionListState: {
   subscriptions?: TriggerSubscription[]
 }
 
-let mockPluginDetail: PluginDetail | undefined
-
 vi.mock('../use-subscription-list', () => ({
   useSubscriptionList: () => {
     if (mockSubscriptionListError) throw mockSubscriptionListError
     return mockSubscriptionListState
   },
-}))
-
-vi.mock('../../../store', () => ({
-  usePluginStore: (
-    selector: (state: { detail: PluginDetail | undefined }) => PluginDetail | undefined,
-  ) => selector({ detail: mockPluginDetail }),
 }))
 
 const mockInitiateOAuth = vi.fn()
@@ -89,7 +81,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockRefetch.mockReset()
   mockSubscriptionListError = null
-  mockPluginDetail = undefined
   mockSubscriptionListState = {
     isLoading: false,
     refetch: mockRefetch,

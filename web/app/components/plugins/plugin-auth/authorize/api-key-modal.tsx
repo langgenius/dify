@@ -28,7 +28,7 @@ import {
 import { CredentialTypeEnum } from '../types'
 import PermissionSelector from './permission-selector'
 
-export type ApiKeyModalProps = {
+type ApiKeyModalProps = {
   pluginPayload: PluginPayload
   open?: boolean
   onOpenChange?: (open: boolean) => void

@@ -14,10 +14,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
-vi.mock('ahooks', () => ({
-  useDebounce: <T,>(value: T) => value,
-}))
-
 const mocks = vi.hoisted(() => ({
   addAnnotation: vi.fn(),
   delAnnotation: vi.fn(),

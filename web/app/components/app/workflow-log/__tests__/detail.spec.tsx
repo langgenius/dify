@@ -39,18 +39,6 @@ vi.mock('@/app/components/workflow/context', () => ({
   ),
 }))
 
-// Mock ahooks for useBoolean (used by TooltipPlus)
-vi.mock('ahooks', () => ({
-  useBoolean: (initial: boolean) => {
-    const setters = {
-      setTrue: vi.fn(),
-      setFalse: vi.fn(),
-      toggle: vi.fn(),
-    }
-    return [initial, setters] as const
-  },
-}))
-
 describe('DetailPanel', () => {
   const defaultOnClose = vi.fn()
   let appId = 'test-app-id'

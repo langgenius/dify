@@ -77,13 +77,6 @@ vi.mock('@/app/components/snippets/store', () => ({
     selector(snippetDetailStoreState),
 }))
 
-vi.mock('@/service/use-snippet-workflows', () => ({
-  usePublishSnippetWorkflowMutation: () => ({
-    mutateAsync: mockPublishSnippetMutateAsync,
-    isPending: false,
-  }),
-}))
-
 vi.mock('../../hooks/use-file-settings', () => ({ useFileSettings: () => ({ enabled: true }) }))
 
 vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () => ({
@@ -259,6 +252,18 @@ const createDraftNode = (id = 'draft-node') =>
     position: { x: 10, y: 20 },
     data: { type: BlockEnum.Code, title: 'Draft node' },
   }) as WorkflowProps['nodes'][number]
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'snippets.bySnippetId.workflows.publish.post': (...args: unknown[]) =>
+        mockPublishSnippetMutateAsync(...args),
+    }),
+  }
+})
 
 describe('SnippetMain', () => {
   beforeEach(() => {
@@ -485,7 +490,8 @@ describe('SnippetMain', () => {
 
       await waitFor(() => {
         expect(mockPublishSnippetMutateAsync).toHaveBeenCalledWith({
-          params: { snippetId: 'snippet-1' },
+          params: { snippet_id: 'snippet-1' },
+          body: {},
         })
       })
     })

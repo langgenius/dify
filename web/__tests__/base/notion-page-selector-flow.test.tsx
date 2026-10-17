@@ -1,14 +1,14 @@
 import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { DataSourceNotionWorkspace } from '@/models/common'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import NotionPageSelector from '@/app/components/base/notion-page-selector/base'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { consoleQuery } from '@/service/console'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 
 const mockInvalidPreImportNotionPages = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 const mockUsePreImportNotionPages = vi.fn()
 
 vi.mock('@tanstack/react-virtual', () => ({
@@ -41,11 +41,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     },
     useQueryClient: () => ({ invalidateQueries: mockInvalidPreImportNotionPages }),
   }
-})
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
 })
 
 const buildCredential = (
@@ -121,6 +116,9 @@ const workspacePagesByCredential: Record<string, DataSourceNotionWorkspace[]> = 
     },
   ],
 }
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 describe('Base Notion Page Selector Flow', () => {
   beforeEach(() => {
@@ -209,6 +207,8 @@ describe('Base Notion Page Selector Flow', () => {
     await user.click(
       screen.getByRole('button', { name: 'common.dataSource.notion.selector.configure' }),
     )
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+    )
   })
 })

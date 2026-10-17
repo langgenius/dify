@@ -12,7 +12,6 @@ import Node from '../node'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
 const mockModelListQuery = vi.hoisted(() => vi.fn())
-const mockUseSettingsDisplay = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
 
 vi.mock(
@@ -28,10 +27,6 @@ vi.mock(
     }
   },
 )
-
-vi.mock('../hooks/use-settings-display', () => ({
-  useSettingsDisplay: mockUseSettingsDisplay,
-}))
 
 vi.mock('../hooks/use-embedding-model-status', () => ({
   useEmbeddingModelStatus: mockUseEmbeddingModelStatus,
@@ -73,10 +68,7 @@ describe('KnowledgeBaseNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelListQuery.mockReturnValue({ data: [] })
-    mockUseSettingsDisplay.mockReturnValue({
-      [IndexMethodEnum.QUALIFIED]: 'High Quality',
-      [RetrievalSearchMethodEnum.semantic]: 'Vector Search',
-    })
+
     mockUseEmbeddingModelStatus.mockReturnValue({
       providerMeta: undefined,
       modelProvider: undefined,

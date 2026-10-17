@@ -2,13 +2,6 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { fireEvent, render, screen } from '@testing-library/react'
 import MessageLogModal from '../index'
 
-let clickAwayHandler: (() => void) | null = null
-vi.mock('ahooks', () => ({
-  useClickAway: (fn: () => void) => {
-    clickAwayHandler = fn
-  },
-}))
-
 vi.mock('@/app/components/workflow/run', () => ({
   default: ({
     activeTab,
@@ -40,7 +33,6 @@ describe('MessageLogModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    clickAwayHandler = null
   })
 
   describe('Render', () => {
@@ -141,17 +133,15 @@ describe('MessageLogModal', () => {
           fixedWidth
         />,
       )
-      expect(clickAwayHandler).toBeTruthy()
-      clickAwayHandler!()
+      fireEvent.click(document.body)
       expect(onCancel).toHaveBeenCalledTimes(1)
     })
 
-    it('does not use click away to close the floating dialog', () => {
+    it('keeps the floating dialog open when its content is clicked', () => {
       render(
         <MessageLogModal appId="app-1" width={800} onCancel={onCancel} currentLogItem={mockLog} />,
       )
-      expect(clickAwayHandler).toBeTruthy()
-      clickAwayHandler!()
+      fireEvent.click(screen.getByRole('dialog'))
       expect(onCancel).not.toHaveBeenCalled()
     })
   })

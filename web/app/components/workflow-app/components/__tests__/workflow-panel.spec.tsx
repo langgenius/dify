@@ -10,7 +10,7 @@ import WorkflowPanel from '../workflow-panel'
 
 type WorkflowStoreState = Partial<Shape>
 
-const mockUseIsChatMode = vi.fn()
+let chatflowMode = false
 
 let workflowStoreState: WorkflowStoreState
 
@@ -32,7 +32,7 @@ const renderPanel = (initialStoreState: WorkflowStoreState) => {
   return renderWorkflowComponent(<WorkflowPanel />, {
     initialStoreState,
     queryClient,
-    resource: { kind: 'app', appId: 'app-123', mode: 'workflow' },
+    resource: { kind: 'app', appId: 'app-123', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
   })
 }
 
@@ -101,13 +101,6 @@ vi.mock('@/app/components/workflow/panel/global-variable-panel', () => ({
   default: () => <div data-testid="global-variable-panel">global-variable</div>,
 }))
 
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
-})
-
 describe('WorkflowPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -117,7 +110,7 @@ describe('WorkflowPanel', () => {
       showChatVariablePanel: false,
       showGlobalVariablePanel: false,
     }
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   it('should pass the latest version id to the panel shell', async () => {
@@ -164,7 +157,7 @@ describe('WorkflowPanel', () => {
       showChatVariablePanel: true,
       showGlobalVariablePanel: true,
     }
-    mockUseIsChatMode.mockReturnValue(true)
+    chatflowMode = true
 
     const { unmount } = renderPanel(workflowStoreState)
 
@@ -176,7 +169,7 @@ describe('WorkflowPanel', () => {
     expect(screen.queryByTestId('workflow-preview-panel')).not.toBeInTheDocument()
 
     unmount()
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
     renderPanel(workflowStoreState)
 
     expect(await screen.findByTestId('record-panel')).toBeInTheDocument()

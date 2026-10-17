@@ -68,7 +68,7 @@ import type {
 } from '@testing-library/react'
 import type { EditorResource } from '../editor-resource/resource'
 import type { Shape as HooksStoreShape } from '../hooks-store/store'
-import type { Shape } from '../store/workflow'
+import type { InjectWorkflowStoreSliceFn, Shape } from '../store/workflow'
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import type { Edge, Node, WorkflowRunningData } from '../types'
 import { QueryClient } from '@tanstack/react-query'
@@ -115,8 +115,11 @@ export function baseRunningData(overrides: Record<string, unknown> = {}) {
 type WorkflowStore = ReturnType<typeof createWorkflowStore>
 type HooksStore = ReturnType<typeof createHooksStore>
 
-export function createTestWorkflowStore(initialState?: Partial<Shape>): WorkflowStore {
-  const store = createWorkflowStore({})
+export function createTestWorkflowStore(
+  initialState?: Partial<Shape>,
+  injectWorkflowStoreSliceFn?: InjectWorkflowStoreSliceFn,
+): WorkflowStore {
+  const store = createWorkflowStore({ injectWorkflowStoreSliceFn })
   if (initialState) store.setState(initialState)
   return store
 }
@@ -137,6 +140,7 @@ type HistoryStoreConfig = {
 }
 
 type WorkflowProviderOptions = {
+  injectWorkflowStoreSliceFn?: InjectWorkflowStoreSliceFn
   resource?: EditorResource
   initialStoreState?: Partial<Shape>
   hooksStoreProps?: Partial<HooksStoreShape>
@@ -150,7 +154,10 @@ type StoreInstances = {
 }
 
 function createStoresFromOptions(options: WorkflowProviderOptions): StoreInstances {
-  const store = createTestWorkflowStore(options.initialStoreState)
+  const store = createTestWorkflowStore(
+    options.initialStoreState,
+    options.injectWorkflowStoreSliceFn,
+  )
   const hooksStore = createTestHooksStore(options.hooksStoreProps)
   return { store, hooksStore }
 }
@@ -243,6 +250,7 @@ export function renderWorkflowHook<R, P = undefined>(
 ): WorkflowHookTestResult<R, P> {
   const {
     initialStoreState,
+    injectWorkflowStoreSliceFn,
     hooksStoreProps,
     historyStore: historyConfig,
     queryClient,
@@ -250,7 +258,11 @@ export function renderWorkflowHook<R, P = undefined>(
     ...rest
   } = options ?? {}
 
-  const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
+  const stores = createStoresFromOptions({
+    initialStoreState,
+    hooksStoreProps,
+    injectWorkflowStoreSliceFn,
+  })
   const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient, resource)
 
   const renderResult = renderHook(hook, { wrapper, ...rest })
@@ -279,6 +291,7 @@ export function renderWorkflowComponent(
 ): WorkflowComponentTestResult {
   const {
     initialStoreState,
+    injectWorkflowStoreSliceFn,
     hooksStoreProps,
     historyStore: historyConfig,
     queryClient,
@@ -286,7 +299,11 @@ export function renderWorkflowComponent(
     ...renderOptions
   } = options ?? {}
 
-  const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
+  const stores = createStoresFromOptions({
+    initialStoreState,
+    hooksStoreProps,
+    injectWorkflowStoreSliceFn,
+  })
   const wrapper = createWorkflowWrapper(stores, historyConfig, queryClient, resource)
 
   const renderResult = render(ui, { wrapper, ...renderOptions })
@@ -344,6 +361,7 @@ export function renderWorkflowFlowComponent(
 ): WorkflowComponentTestResult {
   const {
     initialStoreState,
+    injectWorkflowStoreSliceFn,
     hooksStoreProps,
     historyStore,
     nodes,
@@ -355,7 +373,11 @@ export function renderWorkflowFlowComponent(
     ...renderOptions
   } = options ?? {}
 
-  const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
+  const stores = createStoresFromOptions({
+    initialStoreState,
+    hooksStoreProps,
+    injectWorkflowStoreSliceFn,
+  })
   const wrapper = createWorkflowFlowWrapper(stores, {
     historyStore,
     nodes,
@@ -376,6 +398,7 @@ export function renderWorkflowFlowHook<R, P = undefined>(
 ): WorkflowHookTestResult<R, P> {
   const {
     initialStoreState,
+    injectWorkflowStoreSliceFn,
     hooksStoreProps,
     historyStore,
     nodes,
@@ -387,7 +410,11 @@ export function renderWorkflowFlowHook<R, P = undefined>(
     ...rest
   } = options ?? {}
 
-  const stores = createStoresFromOptions({ initialStoreState, hooksStoreProps })
+  const stores = createStoresFromOptions({
+    initialStoreState,
+    hooksStoreProps,
+    injectWorkflowStoreSliceFn,
+  })
   const wrapper = createWorkflowFlowWrapper(stores, {
     historyStore,
     nodes,

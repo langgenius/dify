@@ -1,6 +1,8 @@
-import { render, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { waitFor } from '@testing-library/react'
 import { REGISTRATION_SUCCESS_STORAGE_KEY } from '@/app/components/base/amplitude/registration-session-state'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AmplitudeIdentitySync } from '../external-service-sync'
 
 const { mockSetUserId, mockSetUserProperties, mockTrackEvent } = vi.hoisted(() => ({
@@ -9,38 +11,6 @@ const { mockSetUserId, mockSetUserProperties, mockTrackEvent } = vi.hoisted(() =
   mockTrackEvent: vi.fn((..._args: unknown[]) => ({
     promise: Promise.resolve({ code: 200 }),
   })),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...original,
-    useSuspenseQuery: () => ({
-      data: {
-        id: 'account-id',
-        email: 'person@example.com',
-        name: 'Person',
-        is_password_set: true,
-      },
-    }),
-  }
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const original = await importOriginal<typeof import('jotai')>()
-  return {
-    ...original,
-    useAtomValue: () => ({
-      id: 'workspace-id',
-      name: 'Workspace',
-      plan: 'professional',
-      role: 'owner',
-    }),
-  }
-})
-
-vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({}),
 }))
 
 vi.mock('@/app/components/base/amplitude', () => ({
@@ -64,6 +34,22 @@ vi.mock('@/app/components/base/analytics-consent/consent-store', async (importOr
     getAnalyticsConsent: () => 'granted',
   }
 })
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, {
+    accountProfile: {
+      id: 'account-id',
+      email: 'person@example.com',
+      name: 'Person',
+      is_password_set: true,
+    },
+    currentWorkspace: {
+      id: 'workspace-id',
+      name: 'Workspace',
+      plan: 'professional',
+      role: 'owner',
+    },
+  })
 
 describe('AmplitudeIdentitySync', () => {
   beforeEach(() => {

@@ -21,13 +21,6 @@ const providerSummaryFixture = {
   },
 } satisfies ModelProviderSummaryResponse
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-  }
-})
-
 vi.mock('../hooks', () => ({
   useDefaultModel: () => ({ data: null, isLoading: false }),
   useLanguage: () => 'en_US',

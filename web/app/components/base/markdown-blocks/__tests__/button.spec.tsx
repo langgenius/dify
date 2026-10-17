@@ -8,12 +8,6 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import MarkdownButton from '../button'
 
-// Only mock the URL utility so behavior is deterministic
-const isValidUrlSpy = vi.fn()
-vi.mock('../utils', () => ({
-  isValidUrl: (u: string) => isValidUrlSpy(u),
-})) // test subject
-
 type TestNode = NonNullable<ExtraProps['node']>
 
 function createButtonNode(properties: TestNode['properties'], label?: string): TestNode {
@@ -53,14 +47,11 @@ describe('MarkdownButton (integration)', () => {
   })
 
   it('renders a native link when the URL is valid', () => {
-    isValidUrlSpy.mockReturnValue(true)
-
     const node = createButtonNode({ dataLink: 'https://example.com' }, 'Go')
 
     renderWithCtx(node)
     const link = screen.getByRole('link', { name: 'Go' })
 
-    expect(isValidUrlSpy).toHaveBeenCalledWith('https://example.com')
     expect(link).toHaveAttribute('href', 'https://example.com')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
@@ -68,7 +59,6 @@ describe('MarkdownButton (integration)', () => {
   })
 
   it('calls onSend when link is invalid but message exists', async () => {
-    isValidUrlSpy.mockReturnValue(false)
     const user = userEvent.setup()
 
     const node = createButtonNode({ dataLink: 'not-a-url', dataMessage: 'hello!' }, 'Send')
@@ -76,20 +66,17 @@ describe('MarkdownButton (integration)', () => {
     renderWithCtx(node)
     await user.click(screen.getByRole('button'))
 
-    expect(isValidUrlSpy).toHaveBeenCalledWith('not-a-url')
     expect(onSendSpy).toHaveBeenCalledTimes(1)
     expect(onSendSpy).toHaveBeenCalledWith('hello!')
   })
 
   it('does nothing when no link and no message', async () => {
-    isValidUrlSpy.mockReturnValue(false)
     const user = userEvent.setup()
 
     const node = createButtonNode({}, 'Empty')
     renderWithCtx(node)
     await user.click(screen.getByRole('button'))
 
-    expect(isValidUrlSpy).not.toHaveBeenCalled()
     expect(onSendSpy).not.toHaveBeenCalled()
   })
 

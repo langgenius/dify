@@ -83,6 +83,7 @@ const renderVarList = (props: Partial<ComponentProps<typeof VarList>> = {}) => {
       {...props}
     />,
     {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       nodes: [sourceNode, currentNode],
       edges: [],
       hooksStoreProps: {},
@@ -172,11 +173,4 @@ describe('assigner/var-list', () => {
 
     expect(handleChange).toHaveBeenLastCalledWith([])
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
 })

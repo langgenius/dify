@@ -7,7 +7,6 @@ import { useNodeIterationInteractions } from '../use-interactions'
 
 const mockGetNodes = vi.hoisted(() => vi.fn())
 const mockSetNodes = vi.hoisted(() => vi.fn())
-const mockGenerateNewNode = vi.hoisted(() => vi.fn())
 
 vi.mock('reactflow', async () => {
   const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
@@ -38,11 +37,6 @@ vi.mock('../../../hooks/use-nodes-meta-data', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: (...args: unknown[]) => mockGenerateNewNode(...args),
-  getNodeCustomTypeByNodeDataType: () => 'custom',
-}))
 
 describe('useNodeIterationInteractions', () => {
   beforeEach(() => {
@@ -154,19 +148,6 @@ describe('useNodeIterationInteractions', () => {
         data: { type: BlockEnum.Code, title: 'Code', desc: '' },
       }),
     ])
-    mockGenerateNewNode.mockReturnValue({
-      newNode: createNode({
-        id: 'generated',
-        parentId: 'new-iteration',
-        data: {
-          type: BlockEnum.Code,
-          title: 'blocks.code 3',
-          desc: '',
-          iteration_id: 'new-iteration',
-        },
-      }),
-    })
-
     const { result } = renderHook(() => useNodeIterationInteractions())
     const copyResult = result.current.handleNodeIterationChildrenCopy(
       'iteration-node',
@@ -174,16 +155,17 @@ describe('useNodeIterationInteractions', () => {
       { existing: 'mapped' },
     )
 
-    expect(mockGenerateNewNode).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'custom',
+    expect(copyResult.copyChildren).toMatchObject([
+      {
         parentId: 'new-iteration',
-      }),
-    )
-    expect(copyResult.copyChildren).toHaveLength(1)
+        type: 'custom',
+        data: { type: BlockEnum.Code, iteration_id: 'new-iteration' },
+      },
+    ])
+    expect(copyResult.copyChildren[0]!.id).not.toBe('child-node')
     expect(copyResult.newIdMapping).toEqual({
       existing: 'mapped',
-      'child-node': 'new-iterationgenerated0',
+      'child-node': copyResult.copyChildren[0]!.id,
     })
   })
 })

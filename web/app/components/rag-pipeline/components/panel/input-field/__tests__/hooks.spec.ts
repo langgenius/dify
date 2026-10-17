@@ -11,10 +11,6 @@ vi.mock('reactflow', () => ({
   },
 }))
 
-vi.mock('zustand/react/shallow', () => ({
-  useShallow: (fn: (...args: unknown[]) => unknown) => fn,
-}))
-
 let mockNodePanelWidth = 400
 let mockWorkflowCanvasWidth: number | undefined = 1200
 let mockOtherPanelWidth = 0
