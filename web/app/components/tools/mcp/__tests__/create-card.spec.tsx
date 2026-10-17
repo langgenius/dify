@@ -21,13 +21,15 @@ const mockCreateMCP = vi.fn().mockResolvedValue({
 } satisfies ToolProviderApiEntityResponse)
 
 // Mock the service
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.toolProvider.mcp.post': () => ({
-      mutateAsync: mockCreateMCP,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.mcp.post': (input) => mockCreateMCP(input),
     }),
-  })
+  }
 })
 
 // Mock the MCP Modal

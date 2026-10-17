@@ -42,12 +42,6 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
   ),
 }))
 
-vi.mock('@/app/components/workflow/types', () => ({
-  SupportUploadFileTypes: {
-    image: 'image',
-  },
-}))
-
 const defaultFeatures: Features = {
   moreLikeThis: { enabled: false },
   opening: { enabled: false },

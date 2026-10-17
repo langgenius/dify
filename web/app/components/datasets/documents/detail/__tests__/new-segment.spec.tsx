@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { AppToastHost } from '@/app/notifications/host'
 import { ChunkingMode } from '@/models/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { IndexingType } from '../../../create/step-two'
 import NewSegmentModal from '../new-segment'
 
@@ -43,13 +44,15 @@ vi.mock('../completed', () => ({
 
 // Mock useAddSegment
 const mockAddSegment = vi.fn()
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.byDocumentId.segment.post': () => ({
-      mutateAsync: mockAddSegment,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.byDocumentId.segment.post': (input) => mockAddSegment(input),
     }),
-  })
+  }
 })
 
 vi.mock('../completed/common/action-buttons', () => ({
@@ -322,11 +325,7 @@ describe('NewSegmentModal', () => {
   // Successful save
   describe('Successful Save', () => {
     it('should call addSegment when valid content is provided for text mode', async () => {
-      mockAddSegment.mockImplementation((_params, options) => {
-        options.onSuccess()
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.text} />)
       fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Valid content' } })
@@ -341,17 +340,12 @@ describe('NewSegmentModal', () => {
               content: 'Valid content',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
 
     it('should show success notification after save', async () => {
-      mockAddSegment.mockImplementation((_params, options) => {
-        options.onSuccess()
-        options.onSettled()
-        return Promise.resolve()
-      })
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.text} />)
       fireEvent.change(screen.getByTestId('question-input'), { target: { value: 'Valid content' } })
@@ -452,13 +446,7 @@ describe('NewSegmentModal', () => {
     it('should call viewNewlyAddedChunk when the toast action is clicked', async () => {
       const mockViewNewlyAddedChunk = vi.fn()
 
-      mockAddSegment.mockImplementation(
-        (_params: unknown, options: { onSuccess: () => void; onSettled: () => void }) => {
-          options.onSuccess()
-          options.onSettled()
-          return Promise.resolve()
-        },
-      )
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(
         <>
@@ -485,13 +473,7 @@ describe('NewSegmentModal', () => {
 
   describe('QA mode save with content', () => {
     it('should save with both question and answer in QA mode', async () => {
-      mockAddSegment.mockImplementation(
-        (_params: unknown, options: { onSuccess: () => void; onSettled: () => void }) => {
-          options.onSuccess()
-          options.onSettled()
-          return Promise.resolve()
-        },
-      )
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.qa} />)
 
@@ -511,7 +493,6 @@ describe('NewSegmentModal', () => {
               answer: 'My Answer',
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -520,13 +501,7 @@ describe('NewSegmentModal', () => {
   describe('Keywords in save params', () => {
     it('should include keywords in save params when keywords are provided', async () => {
       mockIndexingTechnique = IndexingType.ECONOMICAL
-      mockAddSegment.mockImplementation(
-        (_params: unknown, options: { onSuccess: () => void; onSettled: () => void }) => {
-          options.onSuccess()
-          options.onSettled()
-          return Promise.resolve()
-        },
-      )
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.text} />)
 
@@ -548,7 +523,6 @@ describe('NewSegmentModal', () => {
               keywords: ['kw1', 'kw2'],
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -556,13 +530,7 @@ describe('NewSegmentModal', () => {
 
   describe('Save with attachments', () => {
     it('should include attachment_ids in save params when images are uploaded', async () => {
-      mockAddSegment.mockImplementation(
-        (_params: unknown, options: { onSuccess: () => void; onSettled: () => void }) => {
-          options.onSuccess()
-          options.onSettled()
-          return Promise.resolve()
-        },
-      )
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(<NewSegmentModal {...defaultProps} docForm={ChunkingMode.text} />)
 
@@ -584,7 +552,6 @@ describe('NewSegmentModal', () => {
               attachment_ids: ['img-1'],
             }),
           }),
-          expect.any(Object),
         )
       })
     })
@@ -593,13 +560,7 @@ describe('NewSegmentModal', () => {
   describe('handleCancel with addAnother unchecked', () => {
     it('should call onCancel when addAnother is unchecked and save succeeds', async () => {
       const mockOnCancel = vi.fn()
-      mockAddSegment.mockImplementation(
-        (_params: unknown, options: { onSuccess: () => void; onSettled: () => void }) => {
-          options.onSuccess()
-          options.onSettled()
-          return Promise.resolve()
-        },
-      )
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(
         <NewSegmentModal {...defaultProps} onCancel={mockOnCancel} docForm={ChunkingMode.text} />,
@@ -622,13 +583,7 @@ describe('NewSegmentModal', () => {
   describe('onSave after success', () => {
     it('should call onSave immediately after save succeeds', async () => {
       const mockOnSave = vi.fn()
-      mockAddSegment.mockImplementation(
-        (_params: unknown, options: { onSuccess: () => void; onSettled: () => void }) => {
-          options.onSuccess()
-          options.onSettled()
-          return Promise.resolve()
-        },
-      )
+      mockAddSegment.mockResolvedValue(undefined)
 
       render(<NewSegmentModal {...defaultProps} onSave={mockOnSave} docForm={ChunkingMode.text} />)
 

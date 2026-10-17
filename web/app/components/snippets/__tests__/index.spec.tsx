@@ -59,16 +59,6 @@ vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-
-  return {
-    ...actual,
-    initialNodes: (nodes: unknown[]) => nodes,
-    initialEdges: (edges: unknown[]) => edges,
-  }
-})
-
 vi.mock('@/app/components/app-sidebar', () => ({
   default: ({
     renderHeader,
@@ -112,7 +102,7 @@ const createSnippetDetailPayload = (nodeId: string, edgeId: string): SnippetDeta
       {
         id: nodeId,
         position: { x: 0, y: 0 },
-        data: { title: nodeId },
+        data: { title: nodeId, type: 'code' },
       },
     ] as SnippetDetailPayload['graph']['nodes'],
     edges: [
@@ -167,10 +157,10 @@ describe('SnippetPage', () => {
   it('should initialize workflow context with published graph data when the published workflow exists', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(
+    expect(capturedWorkflowDefaultContextProps?.nodes).toMatchObject(
       mockPublishedSnippetDetail.graph.nodes,
     )
-    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(
+    expect(capturedWorkflowDefaultContextProps?.edges).toMatchObject(
       mockPublishedSnippetDetail.graph.edges,
     )
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('true')
@@ -193,8 +183,12 @@ describe('SnippetPage', () => {
 
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(mockDraftSnippetDetail.graph.nodes)
-    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(mockDraftSnippetDetail.graph.edges)
+    expect(capturedWorkflowDefaultContextProps?.nodes).toMatchObject(
+      mockDraftSnippetDetail.graph.nodes,
+    )
+    expect(capturedWorkflowDefaultContextProps?.edges).toMatchObject(
+      mockDraftSnippetDetail.graph.edges,
+    )
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('false')
   })
 

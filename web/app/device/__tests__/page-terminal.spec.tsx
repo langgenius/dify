@@ -40,10 +40,6 @@ vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({ queryKey: ['profile'], queryFn: async () => null }),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  commonQueryKeys: { currentWorkspace: ['currentWorkspace'] },
-}))
-
 const mockUseQuery = vi.mocked(useQuery)
 
 const VALID_CODE = 'ABCD-3456'

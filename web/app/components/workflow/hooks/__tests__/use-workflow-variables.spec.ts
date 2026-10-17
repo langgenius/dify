@@ -1,153 +1,142 @@
-import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
-import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import type { ConversationVariable, EnvironmentVariable } from '../../types'
+import { act, waitFor } from '@testing-library/react'
+import { useNodes, useStoreApi } from 'reactflow'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook, renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import { BlockEnum, VarType } from '../../types'
 import { useWorkflowVariables, useWorkflowVariableType } from '../use-workflow-variables'
 
-vi.mock('reactflow', async () =>
-  (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
-)
-
+// Provider catalogs are external input; variable discovery and type inference remain real.
 vi.mock('@tanstack/react-query', async (importOriginal) =>
   (await import('@/test/console/operation-hooks')).mockConsoleOperationHooks(
     await importOriginal(),
     (await import('../../__tests__/service-mock-factory')).createToolOperationRoutes(),
   ),
 )
-
-const { mockToNodeAvailableVars, mockGetVarType } = vi.hoisted(() => ({
-  mockToNodeAvailableVars: vi.fn((_args: Record<string, unknown>) => [] as unknown[]),
-  mockGetVarType: vi.fn((_args: Record<string, unknown>) => 'string' as string),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  toNodeAvailableVars: mockToNodeAvailableVars,
-  getVarType: mockGetVarType,
-}))
-
 vi.mock('../../nodes/_base/components/variable/use-match-schema-type', () => ({
   default: () => ({ schemaTypeDefinitions: [] }),
 }))
 
-let mockIsChatMode = false
-vi.mock('../use-workflow', () => ({}))
-
-describe('useWorkflowVariables', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('getNodeAvailableVars', () => {
-    it('should call toNodeAvailableVars with store data', () => {
-      const { result } = renderWorkflowHook(() => useWorkflowVariables(), {
-        initialStoreState: {
-          conversationVariables: [{ id: 'cv1' }] as never[],
-          environmentVariables: [{ id: 'ev1' }] as never[],
-        },
-      })
-
-      result.current.getNodeAvailableVars({
-        beforeNodes: [],
-        isChatflow: true,
-        filterVar: () => true,
-      })
-
-      expect(mockToNodeAvailableVars).toHaveBeenCalledOnce()
-      const args = mockToNodeAvailableVars.mock.calls[0]![0]
-      expect(args.isChatflow).toBe(true)
-      expect(args.conversationVariables).toHaveLength(1)
-      expect(args.environmentVariables).toHaveLength(1)
-    })
-
-    it('should hide env variables when hideEnv is true', () => {
-      const { result } = renderWorkflowHook(() => useWorkflowVariables(), {
-        initialStoreState: {
-          environmentVariables: [{ id: 'ev1' }] as never[],
-        },
-      })
-
-      result.current.getNodeAvailableVars({
-        beforeNodes: [],
-        isChatflow: false,
-        filterVar: () => true,
-        hideEnv: true,
-      })
-
-      const args = mockToNodeAvailableVars.mock.calls[0]![0]
-      expect(args.environmentVariables).toEqual([])
-    })
-
-    it('should hide chat variables when not in chat mode', () => {
-      const { result } = renderWorkflowHook(() => useWorkflowVariables(), {
-        initialStoreState: {
-          conversationVariables: [{ id: 'cv1' }] as never[],
-        },
-      })
-
-      result.current.getNodeAvailableVars({
-        beforeNodes: [],
-        isChatflow: false,
-        filterVar: () => true,
-      })
-
-      const args = mockToNodeAvailableVars.mock.calls[0]![0]
-      expect(args.conversationVariables).toEqual([])
-    })
-  })
-
-  describe('getCurrentVariableType', () => {
-    it('should call getVarType with store data and return the result', () => {
-      mockGetVarType.mockReturnValue('number')
-
-      const { result } = renderWorkflowHook(() => useWorkflowVariables())
-
-      const type = result.current.getCurrentVariableType({
-        valueSelector: ['node-1', 'output'],
-        availableNodes: [],
-        isChatflow: false,
-      })
-
-      expect(mockGetVarType).toHaveBeenCalledOnce()
-      expect(type).toBe('number')
-    })
-  })
+const environmentVariables: EnvironmentVariable[] = [
+  { id: 'env-1', name: 'limit', value_type: VarType.number, value: 5, description: '' },
+]
+const conversationVariables: ConversationVariable[] = [
+  {
+    id: 'conversation-1',
+    name: 'topic',
+    value_type: VarType.string,
+    value: 'hello',
+    description: '',
+  },
+]
+const codeNode = createNode({
+  id: 'code',
+  data: { outputs: { count: { type: VarType.number }, text: { type: VarType.string } } },
 })
 
-describe('useWorkflowVariableType', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    resetReactFlowMockState()
-    mockIsChatMode = false
-    rfState.nodes = [
-      { id: 'n1', position: { x: 0, y: 0 }, data: { isInIteration: false } },
-      { id: 'n2', position: { x: 300, y: 0 }, data: { isInIteration: true }, parentId: 'iter-1' },
-      { id: 'iter-1', position: { x: 0, y: 200 }, data: {} },
-    ]
+it('discovers real node, environment and conversation variables and applies visibility/filtering', () => {
+  const { result } = renderWorkflowHook(() => useWorkflowVariables(), {
+    initialStoreState: { environmentVariables, conversationVariables },
   })
-
-  it('should call getCurrentVariableType with the correct node', () => {
-    mockGetVarType.mockReturnValue('string')
-
-    const { result } = renderWorkflowHook(() => useWorkflowVariableType())
-    const type = result.current({ nodeId: 'n1', valueSelector: ['n1', 'output'] })
-
-    expect(mockGetVarType).toHaveBeenCalledOnce()
-    expect(type).toBe('string')
-  })
-
-  it('should pass iterationNode as parentNode when node is in iteration', () => {
-    mockGetVarType.mockReturnValue('array')
-
-    const { result } = renderWorkflowHook(() => useWorkflowVariableType())
-    result.current({ nodeId: 'n2', valueSelector: ['n2', 'item'] })
-
-    const args = mockGetVarType.mock.calls[0]![0]
-    expect(args.parentNode).toBeDefined()
-    expect((args.parentNode as { id: string }).id).toBe('iter-1')
-  })
+  const options = { beforeNodes: [codeNode], isChatflow: true, filterVar: () => true }
+  const vars = result.current.getNodeAvailableVars(options)
+  expect(vars).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        nodeId: 'env',
+        vars: [expect.objectContaining({ variable: 'env.limit', type: VarType.number })],
+      }),
+      expect.objectContaining({
+        nodeId: 'conversation',
+        vars: [expect.objectContaining({ variable: 'conversation.topic', type: VarType.string })],
+      }),
+      expect.objectContaining({
+        nodeId: 'code',
+        vars: expect.arrayContaining([
+          expect.objectContaining({ variable: 'count', type: VarType.number }),
+        ]),
+      }),
+    ]),
+  )
+  for (const flags of [{ isChatflow: false }, { hideChatVar: true }]) {
+    expect(result.current.getNodeAvailableVars({ ...options, ...flags })).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ nodeId: 'conversation' })]),
+    )
+  }
+  expect(result.current.getNodeAvailableVars({ ...options, hideEnv: true })).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ nodeId: 'env' })]),
+  )
+  expect(
+    result.current
+      .getNodeAvailableVars({ ...options, filterVar: (value) => value.type === VarType.number })
+      .flatMap((group) => group.vars),
+  ).toEqual(expect.arrayContaining([expect.objectContaining({ variable: 'count' })]))
+  expect(
+    result.current
+      .getNodeAvailableVars({ ...options, filterVar: (value) => value.type === VarType.number })
+      .flatMap((group) => group.vars)
+      .every((value) => value.type === VarType.number),
+  ).toBe(true)
 })
 
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
+it('derives variable types from actual outputs and reads updated store values', () => {
+  const { result, store } = renderWorkflowHook(() => useWorkflowVariables(), {
+    initialStoreState: { environmentVariables, conversationVariables },
+  })
+  const typeOf = (valueSelector: string[]) =>
+    result.current.getCurrentVariableType({
+      valueSelector,
+      availableNodes: [codeNode],
+      isChatflow: true,
+    })
+  expect(typeOf(['code', 'count'])).toBe(VarType.number)
+  expect(typeOf(['code', 'text'])).toBe(VarType.string)
+  expect(typeOf(['env', 'limit'])).toBe(VarType.number)
+  expect(typeOf(['conversation', 'topic'])).toBe(VarType.string)
+  act(() =>
+    store.setState({
+      environmentVariables: [
+        { ...environmentVariables[0]!, value_type: VarType.string, value: 'five' },
+      ],
+    }),
+  )
+  expect(typeOf(['env', 'limit'])).toBe(VarType.string)
+})
+
+it('reads live graph output types and resolves iteration index from its actual parent', async () => {
+  const iteration = createNode({
+    id: 'iteration',
+    data: { type: BlockEnum.Iteration, iterator_selector: ['code', 'items'] },
+  })
+  const child = createNode({ id: 'child', parentId: 'iteration', data: { isInIteration: true } })
+  const { result } = renderWorkflowFlowHook(
+    () => ({ nodes: useNodes(), typeOf: useWorkflowVariableType(), flow: useStoreApi() }),
+    { nodes: [codeNode, iteration, child] },
+  )
+  expect(result.current.typeOf({ nodeId: 'code', valueSelector: ['code', 'count'] })).toBe(
+    VarType.number,
+  )
+  expect(result.current.typeOf({ nodeId: 'child', valueSelector: ['iteration', 'index'] })).toBe(
+    VarType.number,
+  )
+  await act(async () =>
+    result.current.flow.getState().setNodes(
+      result.current.flow
+        .getState()
+        .getNodes()
+        .map((node) =>
+          node.id === 'code'
+            ? { ...node, data: { ...node.data, outputs: { count: { type: VarType.string } } } }
+            : node,
+        ),
+    ),
+  )
+  await waitFor(() =>
+    expect(result.current.nodes.find((node) => node.id === 'code')?.data).toMatchObject({
+      outputs: { count: { type: VarType.string } },
+    }),
+  )
+  expect(result.current.typeOf({ nodeId: 'code', valueSelector: ['code', 'count'] })).toBe(
+    VarType.string,
+  )
 })

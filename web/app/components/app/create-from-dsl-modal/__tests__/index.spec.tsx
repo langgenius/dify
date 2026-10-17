@@ -26,11 +26,6 @@ let appCount = 0
 let appLimit = 10
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 const mockUserProfile = { id: 'user-1' }
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: unknown[]) => unknown) => ({
-    run: fn,
-  }),
-}))
 
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),

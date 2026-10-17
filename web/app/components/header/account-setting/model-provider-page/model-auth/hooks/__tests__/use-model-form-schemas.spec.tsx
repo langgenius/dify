@@ -1,23 +1,8 @@
 import type { Credential, CustomModelCredential, ModelProvider } from '../../../declarations'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useModelFormSchemas } from '../use-model-form-schemas'
-
-vi.mock('../../../utils', () => ({
-  genModelNameFormSchema: vi.fn(() => ({
-    type: FormTypeEnum.textInput,
-    variable: '__model_name',
-    label: 'Model Name',
-    required: true,
-  })),
-  genModelTypeFormSchema: vi.fn(() => ({
-    type: FormTypeEnum.select,
-    variable: '__model_type',
-    label: 'Model Type',
-    required: true,
-  })),
-}))
 
 describe('useModelFormSchemas', () => {
   const mockProvider = {

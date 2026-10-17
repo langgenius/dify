@@ -58,3 +58,19 @@ export const renderHookWithNuqs = <Result, Props = void>(
     onUrlUpdate,
   }
 }
+
+/** Compose URL state with a suite's existing Query or application providers. */
+export const createNuqsTestRenderer = <
+  Options extends unknown[],
+  Result extends { rerender: (ui: ReactElement) => void },
+>(
+  renderOwner: (ui: ReactElement, ...options: Options) => Result,
+  getOptions: () => NuqsTestOptions = () => ({}),
+) => {
+  return (ui: ReactNode, ...options: Options): Result => {
+    const { wrapper: UrlState } = createNuqsTestWrapper(getOptions())
+    const wrap = (element: ReactNode) => <UrlState>{element}</UrlState>
+    const rendered = renderOwner(wrap(ui), ...options)
+    return { ...rendered, rerender: (element) => rendered.rerender(wrap(element)) }
+  }
+}

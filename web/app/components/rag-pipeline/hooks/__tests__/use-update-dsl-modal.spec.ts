@@ -64,27 +64,22 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  initialNodes: (nodes: unknown[]) => nodes,
-  initialEdges: (edges: unknown[]) => edges,
-}))
-
-vi.mock('@/app/components/workflow/constants', () => ({
-  WORKFLOW_DATA_UPDATE: 'WORKFLOW_DATA_UPDATE',
-}))
-
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
     handleCheckPluginDependencies: mockHandleCheckPluginDependencies,
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.imports.post': () => ({ mutateAsync: mockImportDSL }),
-    'rag.pipelines.imports.byImportId.confirm.post': () => ({ mutateAsync: mockImportDSLConfirm }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
+    }),
+  }
 })
 
 vi.mock('@/service/workflow', () => ({

@@ -6,14 +6,6 @@ import Snippets from '../index'
 const mockUseInfiniteSnippetList = vi.fn()
 const mockHandleInsertSnippet = vi.fn()
 
-vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
-  return {
-    ...actual,
-    useInfiniteScroll: vi.fn(),
-  }
-})
-
 vi.mock('@/service/use-snippets', () => ({
   useInfiniteSnippetList: (...args: unknown[]) => mockUseInfiniteSnippetList(...args),
 }))

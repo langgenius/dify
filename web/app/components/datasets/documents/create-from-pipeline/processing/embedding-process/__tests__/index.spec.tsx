@@ -59,9 +59,6 @@ let mockIndexingStatusData: DocumentStatusResponse[] = []
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.batch.byBatch.indexingStatus.get': () => ({
-      mutateAsync: (...args: unknown[]) => mockFetchIndexingStatus(...args),
-    }),
     'datasets.processRule.get': () => ({
       data: {
         mode: 'custom',
@@ -101,7 +98,7 @@ const createMockDocument = (overrides: Partial<PipelineDocument> = {}): Pipeline
 const createMockIndexingStatus = (
   overrides: Partial<DocumentStatusResponse> = {},
 ): DocumentStatusResponse => ({
-  id: `doc-${Math.random().toString(36).slice(2, 9)}`,
+  id: `status-${++documentIdCounter}`,
   indexing_status: 'waiting' as DocumentStatusResponse['indexing_status'],
   processing_started_at: Date.now(),
   parsing_completed_at: 0,
@@ -165,11 +162,9 @@ describe('EmbeddingProcess', () => {
     mockIndexingStatusData = []
 
     // Setup default mock for fetchIndexingStatus
-    mockFetchIndexingStatus = vi.fn().mockImplementation((_, options) => {
-      options?.onSuccess?.({ data: mockIndexingStatusData })
-      options?.onSettled?.()
-      return Promise.resolve({ data: mockIndexingStatusData })
-    })
+    mockFetchIndexingStatus = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve({ data: mockIndexingStatusData }))
   })
 
   afterEach(() => {
@@ -1087,4 +1082,16 @@ describe('EmbeddingProcess', () => {
       ).not.toBeInTheDocument()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.batch.byBatch.indexingStatus.get': (input) =>
+        mockFetchIndexingStatus(input),
+    }),
+  }
 })

@@ -1,4 +1,5 @@
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
+import type { ToolWithProvider } from '../../types'
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
@@ -11,7 +12,6 @@ const mockFetchAllInspectVars = vi.hoisted(() => vi.fn())
 const mockInvalidateConversationVarValues = vi.hoisted(() => vi.fn())
 const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
 const mockHandleCancelAllNodeSuccessStatus = vi.hoisted(() => vi.fn())
-const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 
 const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   {
@@ -49,15 +49,17 @@ vi.mock('../use-nodes-interactions-without-sync', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type', () => ({
-  default: () => ({
-    schemaTypeDefinitions,
+vi.mock(
+  '@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/app/components/workflow/nodes/_base/components/variable/use-match-schema-type')
+    >()),
+    default: () => ({
+      schemaTypeDefinitions,
+    }),
   }),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  toNodeOutputVars: (...args: unknown[]) => mockToNodeOutputVars(...args),
-}))
+)
 
 const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
   id: 'var-1',
@@ -88,23 +90,13 @@ describe('use-fetch-workflow-inspect-vars', () => {
           type: BlockEnum.Code,
           title: 'Code',
           desc: '',
+          outputs: { answer: { type: VarType.string } },
         },
       }),
     ]
-    mockToNodeOutputVars.mockReturnValue([
-      {
-        nodeId: 'node-1',
-        vars: [
-          {
-            variable: 'answer',
-            schemaType: 'simple',
-          },
-        ],
-      },
-    ])
   })
 
-  it('fetches inspect vars, invalidates cached values, and stores schema-enriched node vars', async () => {
+  it('fetches inspect vars, invalidates cached values, and stores node vars with their real output metadata', async () => {
     mockFetchAllInspectVars.mockResolvedValue([
       createInspectVar(),
       createInspectVar({
@@ -140,7 +132,7 @@ describe('use-fetch-workflow-inspect-vars', () => {
           expect.objectContaining({
             id: 'var-1',
             selector: ['node-1', 'answer'],
-            schemaType: 'simple',
+            schemaType: undefined,
             value: 'hello',
           }),
         ],
@@ -183,8 +175,76 @@ describe('use-fetch-workflow-inspect-vars', () => {
       expect(store.getState().nodesWithInspectVars[0]?.vars[0]).toMatchObject({
         id: 'var-2',
         value: 'passed-in',
-        schemaType: 'simple',
+        schemaType: undefined,
       })
     })
+  })
+})
+
+it('derives schema enrichment from the passed-in tool catalog and schema definition', async () => {
+  rfState.nodes = [
+    createNode({
+      id: 'node-1',
+      data: {
+        type: BlockEnum.Tool,
+        provider_type: 'builtin',
+        provider_id: 'provider-1',
+        tool_name: 'answer-tool',
+      },
+    }),
+  ]
+  const localized = { en_US: 'Answer', zh_Hans: 'Answer' }
+  const provider: ToolWithProvider = {
+    id: 'provider-1',
+    name: 'provider',
+    type: 'builtin',
+    author: 'Dify',
+    description: localized,
+    label: localized,
+    icon: '',
+    team_credentials: {},
+    is_team_authorization: true,
+    allow_delete: false,
+    labels: [],
+    tools: [
+      {
+        name: 'answer-tool',
+        author: 'Dify',
+        label: localized,
+        description: localized,
+        parameters: [],
+        labels: [],
+        output_schema: {
+          type: 'object',
+          properties: { answer: { type: 'object', properties: { text: { type: 'string' } } } },
+        },
+      },
+    ],
+  }
+  const { result, store } = renderWorkflowHook(() => useSetWorkflowVarsWithValue())
+  await act(async () =>
+    result.current.fetchInspectVars({
+      passInVars: true,
+      vars: [createInspectVar({ value_type: VarType.object, value: { text: 'hello' } })],
+      passedInAllPluginInfoList: {
+        buildInTools: [provider],
+        customTools: [],
+        workflowTools: [],
+        mcpTools: [],
+        dataSourceList: [],
+      },
+      passedInSchemaTypeDefinitions: [
+        {
+          name: 'answer-schema',
+          label: 'Answer',
+          schema: { type: 'object', properties: { text: { type: 'string' } } },
+        },
+      ],
+    }),
+  )
+  expect(store.getState().nodesWithInspectVars[0]?.vars[0]).toMatchObject({
+    name: 'answer',
+    value: { text: 'hello' },
+    schemaType: 'answer-schema',
   })
 })

@@ -1,40 +1,24 @@
-import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({ data: {} }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'files.upload.get': async () => ({
+        image_file_size_limit: 10,
+        file_size_limit: 15,
+        audio_file_size_limit: 50,
+        video_file_size_limit: 100,
+      }),
+    }),
+  }
 })
-
-vi.mock('@/app/components/base/file-uploader/hooks', () => ({
-  getFileSizeLimit: () => ({
-    imgSizeLimit: 10 * 1024 * 1024,
-    docSizeLimit: 15 * 1024 * 1024,
-    audioSizeLimit: 50 * 1024 * 1024,
-    videoSizeLimit: 100 * 1024 * 1024,
-  }),
-}))
-
-vi.mock('@/app/components/workflow/constants', () => ({
-  DEFAULT_FILE_UPLOAD_SETTING: {
-    allowed_file_upload_methods: ['local_file', 'remote_url'],
-    allowed_file_types: ['image', 'document'],
-    allowed_file_extensions: ['.jpg', '.png', '.pdf'],
-    max_length: 5,
-  },
-}))
-
-vi.mock('../schema', () => ({
-  TEXT_MAX_LENGTH: 256,
-}))
-
-vi.mock('@/utils/format', () => ({
-  formatFileSize: (size: number) => `${Math.round(size / 1024 / 1024)}MB`,
-}))
 
 describe('useHiddenFieldNames', () => {
   afterEach(() => {
@@ -202,13 +186,13 @@ describe('useConfigurations', () => {
       fieldApi: {} as never,
     })
 
-    expect(mockSetFieldValue).toHaveBeenCalledWith('allowedFileUploadMethods', [
-      'local_file',
-      'remote_url',
-    ])
+    expect(mockSetFieldValue).toHaveBeenCalledWith(
+      'allowedFileUploadMethods',
+      DEFAULT_FILE_UPLOAD_SETTING.allowed_file_upload_methods,
+    )
     expect(mockSetFieldValue).toHaveBeenCalledWith('allowedTypesAndExtensions', {
-      allowedFileTypes: ['image', 'document'],
-      allowedFileExtensions: ['.jpg', '.png', '.pdf'],
+      allowedFileTypes: DEFAULT_FILE_UPLOAD_SETTING.allowed_file_types,
+      allowedFileExtensions: DEFAULT_FILE_UPLOAD_SETTING.allowed_file_extensions,
     })
   })
 
@@ -227,7 +211,10 @@ describe('useConfigurations', () => {
       fieldApi: {} as never,
     })
 
-    expect(mockSetFieldValue).toHaveBeenCalledWith('maxLength', 5)
+    expect(mockSetFieldValue).toHaveBeenCalledWith(
+      'maxLength',
+      DEFAULT_FILE_UPLOAD_SETTING.max_length,
+    )
   })
 
   it('should not set file defaults when type changes to text', () => {

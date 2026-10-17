@@ -26,13 +26,6 @@ const renderActionMenu = (ui: React.ReactElement, pipelineId?: string) => {
   })
 }
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-  }
-})
-
 describe('ActionMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()

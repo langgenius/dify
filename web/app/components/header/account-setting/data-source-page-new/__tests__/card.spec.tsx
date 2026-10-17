@@ -7,7 +7,7 @@ import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Card from '../card'
 import { useDataSourceAuthUpdate } from '../hooks'
 
@@ -95,13 +95,16 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 const { mockGetPluginOAuthUrl } = vi.hoisted(() => ({ mockGetPluginOAuthUrl: vi.fn() }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': () => ({
-      mutateAsync: mockGetPluginOAuthUrl,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'oauth.plugin.byProviderId.datasource.getAuthorizationUrl.get': (input) =>
+        mockGetPluginOAuthUrl(input),
     }),
-  })
+  }
 })
 
 vi.mock('../hooks', () => ({

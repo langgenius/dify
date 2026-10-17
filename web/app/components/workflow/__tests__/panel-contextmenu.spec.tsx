@@ -19,7 +19,7 @@ const mockUseDSL = vi.hoisted(() => vi.fn())
 const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseAvailableBlocks = vi.hoisted(() => vi.fn())
 const mockUseNodesMetaData = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
@@ -150,7 +150,7 @@ describe('PanelContextmenu', () => {
     mockUseNodesMetaData.mockReturnValue({
       nodesMap: defaultNodesMetaDataMap,
     })
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   const renderPanelContextmenu = (options?: Parameters<typeof renderWorkflowFlowComponent>[1]) => {
@@ -158,7 +158,14 @@ describe('PanelContextmenu', () => {
       <ContextMenu open>
         <PanelContextmenu onClose={mockClose} />
       </ContextMenu>,
-      options,
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+        ...options,
+      },
     )
   }
 
@@ -247,7 +254,7 @@ describe('PanelContextmenu', () => {
   })
 
   it('should render preview action in chat mode', async () => {
-    mockUseIsChatMode.mockReturnValue(true)
+    chatflowMode = true
 
     renderPanelContextmenu({
       initialStoreState: {
@@ -288,11 +295,4 @@ describe('PanelContextmenu', () => {
     expect(await screen.findByText('comments.actions.addComment')).toBeInTheDocument()
     expect(screen.queryByText('nodes.note.addNote')).not.toBeInTheDocument()
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

@@ -5,11 +5,15 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { FeaturesProvider } from '../../context'
 import NewFeaturePanel from '../index'
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'codeBasedExtension.get': () => ({ data: undefined }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'codeBasedExtension.get': async () => undefined,
+    }),
+  }
 })
 
 vi.mock('@/next/navigation', () => ({
@@ -30,39 +34,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
     currentModel: true,
   }),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ConfigurationMethodEnum: {
-    predefinedModel: 'predefined-model',
-    customizableModel: 'customizable-model',
-    fetchFromRemote: 'fetch-from-remote',
-  },
-  ModelFeatureEnum: {
-    toolCall: 'tool-call',
-    multiToolCall: 'multi-tool-call',
-    agentThought: 'agent-thought',
-    streamToolCall: 'stream-tool-call',
-    vision: 'vision',
-    video: 'video',
-    document: 'document',
-    audio: 'audio',
-    polling: 'polling',
-    StructuredOutput: 'structured-output',
-  },
-  ModelStatusEnum: {
-    active: 'active',
-    noConfigure: 'no-configure',
-    quotaExceeded: 'quota-exceeded',
-    noPermission: 'no-permission',
-    disabled: 'disabled',
-    credentialRemoved: 'credential-removed',
-  },
-  ModelTypeEnum: {
-    speech2text: 'speech2text',
-    tts: 'tts',
-    textEmbedding: 'text-embedding',
-  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({

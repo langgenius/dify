@@ -14,9 +14,10 @@ import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
@@ -53,7 +54,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
 }))
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetSettingsDestination = vi.fn()
 
 const mockModelListQuery = vi.fn()
 const mockModelListQueryAndDefaultModel = vi.fn()
@@ -79,16 +79,6 @@ vi.mock('@/service/datasets', () => ({
   updateDatasetSetting: vi.fn(),
 }))
 
-vi.mock('@/service/use-common', async () => ({
-  ...(await vi.importActual('@/service/use-common')),
-  mockMembersQuery: vi.fn(),
-}))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs${path}`,
 }))
@@ -106,10 +96,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
       {value ? `${value.provider}/${value.model}` : 'no-model'}
     </div>
   ),
-}))
-
-vi.mock('@/app/components/datasets/settings/utils', () => ({
-  checkShowMultiModalTip: (...args: unknown[]) => mockCheckShowMultiModalTip(...args),
 }))
 
 const mockUpdateDatasetSetting = updateDatasetSetting as MockedFunction<typeof updateDatasetSetting>
@@ -188,6 +174,9 @@ const createDataset = (
     },
   }
 }
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 const renderWithProviders = (dataset: DatasetDetailWithPartialMembersResponse) => {
   const queryClient = new QueryClient({
@@ -385,7 +374,9 @@ describe('SettingsModal', () => {
       )
 
       // Assert
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+      )
     })
   })
 

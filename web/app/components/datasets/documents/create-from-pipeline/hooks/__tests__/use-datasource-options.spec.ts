@@ -1,19 +1,8 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
-
-vi.mock('@/app/components/workflow/types', async () => {
-  const actual = await vi.importActual<Record<string, unknown>>('@/app/components/workflow/types')
-  const blockEnum = actual.BlockEnum as Record<string, string>
-  return {
-    ...actual,
-    BlockEnum: {
-      ...blockEnum,
-      DataSource: 'data-source',
-    },
-  }
-})
+import { describe, expect, it } from 'vite-plus/test'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 const { useDatasourceOptions } = await import('../use-datasource-options')
 
@@ -37,8 +26,8 @@ describe('useDatasourceOptions', () => {
 
   it('should return options for datasource nodes', () => {
     const nodes = [
-      createNode('n1', 'File Upload', 'data-source'),
-      createNode('n2', 'Web Crawl', 'data-source'),
+      createNode('n1', 'File Upload', BlockEnum.DataSource),
+      createNode('n2', 'Web Crawl', BlockEnum.DataSource),
       createNode('n3', 'LLM Node', 'llm'),
     ]
     const { result } = renderHook(() => useDatasourceOptions(nodes))

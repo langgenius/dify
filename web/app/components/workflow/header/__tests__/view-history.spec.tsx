@@ -15,7 +15,7 @@ const mockFormatWorkflowRunIdentifier = vi.fn(
   (finishedAt?: number, status?: string) => ` (${status || finishedAt || 'unknown'})`,
 )
 
-let mockIsChatMode = false
+let chatflowMode = false
 
 vi.mock('../../hooks/use-workflow', () => ({}))
 
@@ -102,7 +102,7 @@ const createHistoryItem = (overrides: Partial<WorkflowRunHistory> = {}): Workflo
 describe('ViewHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsChatMode = false
+    chatflowMode = false
     mockUseWorkflowRunHistory.mockReturnValue({
       data: { data: [] } satisfies WorkflowRunHistoryResponse,
       isLoading: false,
@@ -111,6 +111,7 @@ describe('ViewHistory', () => {
 
   it('defers fetching until the history popup is opened and renders the empty state', () => {
     renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       hooksStoreProps: {
         handleBackupDraft: vi.fn(),
       },
@@ -136,6 +137,11 @@ describe('ViewHistory', () => {
     renderWorkflowComponent(
       <ViewHistory historyUrl="/history" onClearLogAndMessageModal={onClearLogAndMessageModal} />,
       {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
         hooksStoreProps: {
           handleBackupDraft: vi.fn(),
         },
@@ -176,6 +182,7 @@ describe('ViewHistory', () => {
     })
 
     const { store } = renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       initialStoreState: {
         historyWorkflowData: failedRun,
         showInputsPanel: true,
@@ -203,7 +210,7 @@ describe('ViewHistory', () => {
   })
 
   it('renders chat history labels without workflow status icons in chat mode', () => {
-    mockIsChatMode = true
+    chatflowMode = true
     const chatRun = createHistoryItem({
       id: 'chat-run',
       status: WorkflowRunningStatus.Failed,
@@ -217,6 +224,7 @@ describe('ViewHistory', () => {
     })
 
     renderWorkflowComponent(<ViewHistory historyUrl="/history" withText />, {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
       hooksStoreProps: {
         handleBackupDraft: vi.fn(),
       },
@@ -241,6 +249,11 @@ describe('ViewHistory', () => {
         onClearLogAndMessageModal={onClearLogAndMessageModal}
       />,
       {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
         hooksStoreProps: {
           handleBackupDraft: vi.fn(),
         },
@@ -253,11 +266,4 @@ describe('ViewHistory', () => {
     expect(onClearLogAndMessageModal).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

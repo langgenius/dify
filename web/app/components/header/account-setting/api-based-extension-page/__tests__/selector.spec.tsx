@@ -1,19 +1,16 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { ApiBasedExtensionSelector } from '../selector'
 
-const { mockApiBasedExtensionsQuery, mockCreateApiBasedExtension, mockUpdateApiBasedExtension } =
-  vi.hoisted(() => ({
-    mockApiBasedExtensionsQuery: vi.fn(),
+const { listExtensions, mockCreateApiBasedExtension, mockUpdateApiBasedExtension } = vi.hoisted(
+  () => ({
+    listExtensions: vi.fn(),
     mockCreateApiBasedExtension: vi.fn(),
     mockUpdateApiBasedExtension: vi.fn(),
-  }))
-
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
+  }),
+)
 
 vi.mock('@/context/i18n', () => ({
   useDocLink:
@@ -22,33 +19,21 @@ vi.mock('@/context/i18n', () => ({
       `https://docs.dify.ai${path}`,
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apiBasedExtension: {
-      get: {
-        queryOptions: () => ({}),
-      },
-      post: {
-        mutationOptions: () => ({ mutationFn: mockCreateApiBasedExtension }),
-      },
-      byId: {
-        post: {
-          mutationOptions: () => ({ mutationFn: mockUpdateApiBasedExtension }),
-        },
-      },
-    },
-  },
-}))
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(() => mockApiBasedExtensionsQuery()),
-  useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
-    isPending: false,
-    mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
-    },
-  })),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apiBasedExtension.get': listExtensions,
+      'apiBasedExtension.post': mockCreateApiBasedExtension,
+      'apiBasedExtension.byId.post': mockUpdateApiBasedExtension,
+    }),
+  }
+})
 
 describe('ApiBasedExtensionSelector', () => {
   const mockOnChange = vi.fn()
@@ -60,11 +45,7 @@ describe('ApiBasedExtensionSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockApiBasedExtensionsQuery.mockReturnValue({
-      data: mockData,
-      isPending: false,
-      isError: false,
-    })
+    listExtensions.mockResolvedValue(mockData)
   })
 
   describe('Rendering', () => {
@@ -83,7 +64,7 @@ describe('ApiBasedExtensionSelector', () => {
 
       // Assert
       // Assert
-      expect(screen.getByText('Extension 1'))!.toBeInTheDocument()
+      expect(await screen.findByText('Extension 1'))!.toBeInTheDocument()
     })
   })
 
@@ -125,7 +106,9 @@ describe('ApiBasedExtensionSelector', () => {
       fireEvent.click(manageButton)
 
       // Assert
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('custom-endpoint')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('custom-endpoint'),
+      )
     })
 
     it('should open add modal when clicking add button and close it after save', async () => {

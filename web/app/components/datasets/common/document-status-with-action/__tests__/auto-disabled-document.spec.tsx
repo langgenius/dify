@@ -11,13 +11,16 @@ const { mockToastSuccess, mockEnableDocuments } = vi.hoisted(() => ({
   mockEnableDocuments: vi.fn(),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.documents.status.byAction.batch.patch': () => ({
-      mutateAsync: mockEnableDocuments,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input) =>
+        mockEnableDocuments(input),
     }),
-  })
+  }
 })
 
 vi.mock('@/app/notifications', () => ({

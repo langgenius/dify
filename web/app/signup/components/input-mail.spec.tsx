@@ -7,17 +7,6 @@ import { useSearchParams } from '@/next/navigation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import SignupEmailForm from './input-mail'
 
-const { mockSendMailHook } = vi.hoisted(() => ({
-  mockSendMailHook: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'emailRegister.sendEmail.post': (options: unknown) => mockSendMailHook(options),
-  })
-})
-
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
 
@@ -50,24 +39,15 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-type UseSendMailResult = ReturnType<typeof mockSendMailHook>
-
 const mockUseLocale = useLocale as MockedFunction<typeof useLocale>
 const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
-const mockUseSendMail = mockSendMailHook
 
 const renderForm = ({
   brandingEnabled = false,
-  isPending = false,
 }: {
   brandingEnabled?: boolean
-  isPending?: boolean
 } = {}) => {
   mockUseLocale.mockReturnValue('en-US')
-  mockUseSendMail.mockReturnValue({
-    mutateAsync: mockSubmitMail,
-    isPending,
-  } as unknown as UseSendMailResult)
   return renderWithConsoleQuery(<SignupEmailForm onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
@@ -190,4 +170,15 @@ describe('InputMail Form', () => {
       expect(mockOnSuccess).not.toHaveBeenCalled()
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'emailRegister.sendEmail.post': (input) => mockSubmitMail(input),
+    }),
+  }
 })

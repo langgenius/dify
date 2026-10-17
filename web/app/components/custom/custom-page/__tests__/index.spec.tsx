@@ -19,13 +19,6 @@ let deploymentEdition: GetSystemFeaturesResponse['deployment_edition'] = 'COMMUN
 let canReplaceLogo = true
 let plan: CloudPlan = 'professional'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-  }
-})
-
 function renderWithData(ui: ReactElement) {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(consoleQuery.workspaces.customConfig.get.queryKey(), {

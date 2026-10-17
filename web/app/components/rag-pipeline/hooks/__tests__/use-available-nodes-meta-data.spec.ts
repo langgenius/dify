@@ -1,4 +1,6 @@
 import { renderHook } from '@testing-library/react'
+import { createStore, Provider } from 'jotai'
+import { createElement } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
@@ -6,13 +8,10 @@ import { useAvailableNodesMetaData } from '../use-available-nodes-meta-data'
 const mockIsAgentV2Enabled = vi.hoisted(() => vi.fn(() => true))
 const mockKnowledgeFsEnabled = vi.hoisted(() => vi.fn(() => true))
 
-vi.mock('jotai', () => ({
-  useAtomValue: () => mockKnowledgeFsEnabled(),
-}))
-
-vi.mock('@/features/knowledge-fs-availability/state', () => ({
-  knowledgeFsEnabledAtom: {},
-}))
+vi.mock('@/features/knowledge-fs-availability/state', async () => {
+  const { atom } = await import('jotai')
+  return { knowledgeFsEnabledAtom: atom(() => mockKnowledgeFsEnabled()) }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai${path || ''}`,
@@ -20,56 +19,6 @@ vi.mock('@/context/i18n', () => ({
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
-}))
-
-vi.mock('@/app/components/workflow/constants/node', () => ({
-  WORKFLOW_COMMON_NODES: [
-    {
-      metaData: { type: BlockEnum.LLM },
-      defaultValue: { title: 'LLM' },
-    },
-    {
-      metaData: { type: BlockEnum.HumanInput },
-      defaultValue: { title: 'Human Input' },
-    },
-    {
-      metaData: { type: BlockEnum.HttpRequest },
-      defaultValue: { title: 'HTTP Request' },
-    },
-    {
-      metaData: { type: BlockEnum.Agent },
-      defaultValue: { title: 'Agent' },
-    },
-    {
-      metaData: { type: BlockEnum.AgentV2 },
-      defaultValue: { title: 'Agent' },
-    },
-    {
-      metaData: { type: BlockEnum.KnowledgeRetrievalV2 },
-      defaultValue: { title: 'Knowledge Retrieval V2' },
-    },
-  ],
-}))
-
-vi.mock('@/app/components/workflow/nodes/data-source-empty/default', () => ({
-  default: {
-    metaData: { type: BlockEnum.DataSourceEmpty },
-    defaultValue: { title: 'Data Source Empty' },
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/data-source/default', () => ({
-  default: {
-    metaData: { type: BlockEnum.DataSource },
-    defaultValue: { title: 'Data Source' },
-  },
-}))
-
-vi.mock('@/app/components/workflow/nodes/knowledge-base/default', () => ({
-  default: {
-    metaData: { type: BlockEnum.KnowledgeBase },
-    defaultValue: { title: 'Knowledge Base' },
-  },
 }))
 
 describe('useAvailableNodesMetaData', () => {
@@ -188,8 +137,11 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should hide Knowledge Retrieval V2 when KnowledgeFS is unavailable', () => {
     mockKnowledgeFsEnabled.mockReturnValue(false)
-
-    const { result } = renderHook(() => useAvailableNodesMetaData())
+    // A fresh store re-reads the flag instead of reusing the default store's cached value.
+    const store = createStore()
+    const { result } = renderHook(() => useAvailableNodesMetaData(), {
+      wrapper: ({ children }) => createElement(Provider, { store }, children),
+    })
     const nodeTypes = result.current.nodes.map((node) => node.metaData.type)
 
     expect(nodeTypes).not.toContain(BlockEnum.KnowledgeRetrievalV2)

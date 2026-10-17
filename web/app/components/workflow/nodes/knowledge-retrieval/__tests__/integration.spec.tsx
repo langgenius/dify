@@ -17,7 +17,7 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
+import { DatasetACLPermission } from '@/utils/permission'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
 import { BlockEnum, VarType } from '../../../types'
@@ -48,20 +48,12 @@ const renderWithAccountProfile = (ui: ReactElement) =>
     wrapper: createAccountProfileQueryWrapper(),
   })
 
-const mockHasEditPermissionForDataset = vi.fn(
-  (
-    _userId: string,
-    _datasetConfig: {
-      createdBy: string
-      partialMemberList: string[]
-      permission: PermissionLevel
-    },
-  ) => true,
-)
 const createDataset = (
   overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
 ): DatasetDetailWithPartialMembersResponse => ({
-  ...createDatasetFixture(),
+  ...createDatasetFixture({
+    permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.Use],
+  }),
   id: 'dataset-1',
   name: 'Dataset Name',
   icon_info: {
@@ -146,35 +138,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-
-vi.mock('@/utils/permission', () => ({
-  DatasetACLPermission: {
-    Readonly: 'dataset.acl.readonly',
-    Edit: 'dataset.acl.edit',
-    Use: 'dataset.acl.use',
-  },
-  getDatasetACLCapabilities: vi.fn(() => ({
-    canReadonly: false,
-    canEdit: true,
-    canImportExportDSL: false,
-    canPipelineTest: false,
-    canDocumentDownload: false,
-    canRetrievalRecall: false,
-    canUse: true,
-    canDeleteFile: false,
-    canPipelineRelease: false,
-    canDelete: false,
-    canAccessConfig: false,
-  })),
-  hasEditPermissionForDataset: (
-    userId: string,
-    datasetConfig: {
-      createdBy: string
-      partialMemberList: string[]
-      permission: PermissionLevel
-    },
-  ) => mockHasEditPermissionForDataset(userId, datasetConfig),
-}))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
@@ -347,20 +310,6 @@ describe('knowledge-retrieval path', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHasEditPermissionForDataset.mockReturnValue(true)
-    vi.mocked(getDatasetACLCapabilities).mockReturnValue({
-      canReadonly: false,
-      canEdit: true,
-      canImportExportDSL: false,
-      canPipelineTest: false,
-      canDocumentDownload: false,
-      canRetrievalRecall: false,
-      canUse: true,
-      canDeleteFile: false,
-      canPipelineRelease: false,
-      canDelete: false,
-      canAccessConfig: false,
-    })
   })
 
   describe('Dataset controls', () => {
@@ -441,20 +390,6 @@ describe('knowledge-retrieval path', () => {
         permission: PermissionLevel.allTeamMembers,
         permission_keys: [DatasetACLPermission.Use],
       })
-      mockHasEditPermissionForDataset.mockReturnValue(true)
-      vi.mocked(getDatasetACLCapabilities).mockReturnValue({
-        canReadonly: false,
-        canEdit: false,
-        canImportExportDSL: false,
-        canPipelineTest: false,
-        canDocumentDownload: false,
-        canRetrievalRecall: false,
-        canUse: true,
-        canDeleteFile: false,
-        canPipelineRelease: false,
-        canDelete: false,
-        canAccessConfig: false,
-      })
 
       renderWithAccountProfile(<DatasetList list={[dataset]} onChange={vi.fn()} />)
 
@@ -463,13 +398,6 @@ describe('knowledge-retrieval path', () => {
       expect(
         within(datasetItem).queryByRole('button', { name: 'common.operation.edit' }),
       ).not.toBeInTheDocument()
-      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(
-        dataset.permission_keys,
-        expect.objectContaining({
-          currentUserId: 'user-1',
-          resourceMaintainer: dataset.maintainer,
-        }),
-      )
     })
   })
 

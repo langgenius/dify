@@ -90,13 +90,8 @@ const render = (ui: ReactElement) => {
 }
 
 // Mock service hooks
-vi.mock('@/service/use-plugins', () => ({
-  useInstallPackageFromMarketPlace: () => ({
-    mutateAsync: mockInstallPackageFromMarketPlace,
-  }),
-  useUpdatePackageFromMarketPlace: () => ({
-    mutateAsync: mockUpdatePackageFromMarketPlace,
-  }),
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   usePluginDeclarationFromMarketPlace: () => ({
     data: mockPluginDeclaration,
   }),
@@ -166,13 +161,20 @@ vi.mock('../../../base/version', () => ({
 }))
 
 // Mock utils
-vi.mock('../../../utils', () => ({
-  pluginManifestInMarketToPluginProps: (payload: PluginManifestInMarket) => ({
-    name: payload.name,
-    icon: payload.icon,
-    category: payload.category,
-  }),
-}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.install.marketplace.post': (...args: unknown[]) =>
+        mockInstallPackageFromMarketPlace(...args),
+      'workspaces.current.plugin.upgrade.marketplace.post': (...args: unknown[]) =>
+        mockUpdatePackageFromMarketPlace(...args),
+    }),
+  }
+})
 
 describe('Install Component (steps/install.tsx)', () => {
   const defaultProps = {
@@ -411,7 +413,9 @@ describe('Install Component (steps/install.tsx)', () => {
       })
 
       await waitFor(() => {
-        expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledWith('test-unique-identifier')
+        expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledWith({
+          body: { plugin_unique_identifiers: ['test-unique-identifier'] },
+        })
       })
     })
 
@@ -547,8 +551,10 @@ describe('Install Component (steps/install.tsx)', () => {
 
       await waitFor(() => {
         expect(mockUpdatePackageFromMarketPlace).toHaveBeenCalledWith({
-          original_plugin_unique_identifier: 'old-unique-id',
-          new_plugin_unique_identifier: 'test-unique-identifier',
+          body: {
+            original_plugin_unique_identifier: 'old-unique-id',
+            new_plugin_unique_identifier: 'test-unique-identifier',
+          },
         })
       })
     })
@@ -748,7 +754,9 @@ describe('Install Component (steps/install.tsx)', () => {
       })
 
       await waitFor(() => {
-        expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledWith('custom-id-123')
+        expect(mockInstallPackageFromMarketPlace).toHaveBeenCalledWith({
+          body: { plugin_unique_identifiers: ['custom-id-123'] },
+        })
       })
     })
   })

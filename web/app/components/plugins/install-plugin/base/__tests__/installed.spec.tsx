@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
 import { PluginCategoryEnum } from '../../../types'
 
 vi.mock('../../../card', () => ({
@@ -17,11 +18,6 @@ vi.mock('../../../card', () => ({
       {titleLeft}
     </div>
   ),
-}))
-
-vi.mock('../../utils', () => ({
-  pluginManifestInMarketToPluginProps: (p: unknown) => p,
-  pluginManifestToCardPluginProps: (p: unknown) => p,
 }))
 
 describe('Installed', () => {
@@ -52,7 +48,7 @@ describe('Installed', () => {
   })
 
   it('should render card with payload', () => {
-    const payload = { version: '1.0.0', name: 'test-plugin' } as never
+    const payload = createPluginDeclarationFixture()
     render(<Installed payload={payload} isFailed={false} onCancel={vi.fn()} />)
 
     const card = screen.getByTestId('card')
@@ -61,7 +57,7 @@ describe('Installed', () => {
   })
 
   it('should render card as failed when isFailed', () => {
-    const payload = { version: '1.0.0', name: 'test-plugin' } as never
+    const payload = createPluginDeclarationFixture()
     render(<Installed payload={payload} isFailed={true} onCancel={vi.fn()} />)
 
     const card = screen.getByTestId('card')
@@ -79,11 +75,11 @@ describe('Installed', () => {
 
   it('should keep close action when installed category matches integrations context', () => {
     const mockOnCancel = vi.fn()
-    const payload = {
+    const payload = createPluginDeclarationFixture({
       category: PluginCategoryEnum.extension,
       name: 'test-plugin',
       version: '1.0.0',
-    } as never
+    })
     render(
       <Installed
         payload={payload}
@@ -101,11 +97,11 @@ describe('Installed', () => {
 
   it('should navigate to the installed category when integrations context differs', () => {
     const mockOnCancel = vi.fn()
-    const payload = {
+    const payload = createPluginDeclarationFixture({
       category: PluginCategoryEnum.extension,
       name: 'test-plugin',
       version: '1.0.0',
-    } as never
+    })
     render(
       <Installed
         payload={payload}
@@ -130,7 +126,7 @@ describe('Installed', () => {
   })
 
   it('should show version badge in card', () => {
-    const payload = { version: '1.0.0', name: 'test-plugin' } as never
+    const payload = createPluginDeclarationFixture()
     render(<Installed payload={payload} isFailed={false} onCancel={vi.fn()} />)
 
     expect(screen.getByText('1.0.0')).toBeInTheDocument()

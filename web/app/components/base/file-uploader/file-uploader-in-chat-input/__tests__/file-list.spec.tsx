@@ -12,10 +12,6 @@ vi.mock('../../hooks', () => ({
   }),
 }))
 
-vi.mock('@/utils/format', () => ({
-  formatFileSize: (size: number) => `${size}B`,
-}))
-
 vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))

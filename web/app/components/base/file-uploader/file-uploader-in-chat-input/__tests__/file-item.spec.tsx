@@ -8,10 +8,6 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: vi.fn(),
 }))
 
-vi.mock('@/utils/format', () => ({
-  formatFileSize: (size: number) => `${size}B`,
-}))
-
 vi.mock('../../pdf-highlighter-adapter', () => ({
   PdfLoader: ({ url, children }: { url: string; children: (doc: unknown) => ReactNode }) => (
     <div data-testid="pdf-preview" data-url={url}>
@@ -50,7 +46,7 @@ describe('FileItem (chat-input)', () => {
 
     // Extension and size are rendered as text nodes in the metadata div
     expect(container.textContent).toContain('pdf')
-    expect(container.textContent).toContain('2048B')
+    expect(container.textContent).toContain('2.00 KB')
   })
 
   it('should render FileTypeIcon', () => {

@@ -1,8 +1,8 @@
 import type { DocPathMap } from './i18n'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import { renderHook } from '@testing-library/react'
 import { useLocale } from '#i18n'
 import { getDocLanguage } from '@/i18n/language'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { defaultDocBaseUrl, enterpriseDocBaseUrl, useDocLink } from './i18n'
 
 const mockDeploymentEdition = vi.hoisted(() => ({
@@ -12,11 +12,6 @@ const mockDeploymentEdition = vi.hoisted(() => ({
 // Mock dependencies
 vi.mock('#i18n', () => ({
   useLocale: vi.fn(() => 'en-US'),
-}))
-
-vi.mock('jotai', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('jotai')>()),
-  useAtomValue: () => mockDeploymentEdition.value,
 }))
 
 vi.mock('@/i18n/language', () => ({
@@ -34,6 +29,11 @@ vi.mock('@/i18n/metadata', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/i18n/metadata')>()),
   getPluginLanguage: vi.fn(),
 }))
+
+const renderHook = (callback: () => ReturnType<typeof useDocLink>) =>
+  renderHookWithConsoleQuery(callback, {
+    systemFeatures: { deployment_edition: mockDeploymentEdition.value },
+  })
 
 describe('useDocLink', () => {
   beforeEach(() => {

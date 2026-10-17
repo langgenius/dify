@@ -7,7 +7,6 @@ import FormContentPreview from '../form-content-preview'
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseStore = vi.hoisted(() => vi.fn())
 const mockUseNodes = vi.hoisted(() => vi.fn())
-const mockGetButtonStyle = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
@@ -25,10 +24,6 @@ vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
 vi.mock('@/app/components/base/badge', () => ({
   __esModule: true,
   default: ({ children }: { children?: ReactNode }) => <div data-testid="badge">{children}</div>,
-}))
-
-vi.mock('@/app/components/base/chat/chat/answer/human-input-content/utils', () => ({
-  getButtonStyle: (...args: unknown[]) => mockGetButtonStyle(...args),
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
@@ -88,7 +83,6 @@ describe('FormContentPreview', () => {
         data: { title: 'Classifier' },
       },
     ])
-    mockGetButtonStyle.mockImplementation((style: UserActionButtonType) => style.toLowerCase())
   })
 
   it('should render preview content with resolved node names, note fallbacks, and action buttons', () => {

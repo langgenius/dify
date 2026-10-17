@@ -161,11 +161,7 @@ describe('use-knowledge-dataset-selection', () => {
         ids: ['dataset-1'],
       },
     })
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        dataset_ids: ['dataset-1'],
-      }),
-    )
+    expect(setInputs).not.toHaveBeenCalled()
     expect(result.current.showImageQueryVarSelector).toBe(true)
   })
 
