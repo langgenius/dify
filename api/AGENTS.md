@@ -24,7 +24,7 @@ The backend uses layered application services with ports and adapters. Read the 
 - Each repository operation is its own transaction. When a business rule must hold under concurrency, such as uniqueness, enforce it inside the write or with a database constraint, not only with a check before the write.
 - The composition root is the only place that chooses implementations and reads configuration. Everything else receives its dependencies.
 - Encode each new or migrated slice's boundaries as import contracts in the same change. The legacy layering baseline only shrinks.
-- For now, persistence models describe tables only, with no session access, queries, or application behavior. Making them the temporary domain model is a planned next step; do not add behavior to them before a slice adopts it.
+- Persistence models describe tables only, with no session access, queries, or application behavior; they never become the domain model. The planned next step moves business-model rules into aggregates that live next to their services and whose names end with the suffix Agg. See the [backend architecture][architecture] before introducing one.
 - When a change touches legacy code that mixes these concerns, migrate the touched use cases into a slice, delete what the slice replaces, and preserve the public wire contract.
 - Treat `api/core/` as a migration-only area: do not add files or move implementations into it. Move responsibilities out; limit changes to existing callers to the adaptations needed for that migration.
 - Keep `libs/` business-agnostic and reuse existing owners before adding abstractions.

@@ -2,7 +2,7 @@
 
 The backend uses layered application services with ports and adapters. Each business capability is a slice. Application services own the use cases and business rules and declare ports for everything they need from outside. Adapters implement those ports, and a thin transport layer admits requests and translates them. One composition root connects the parts. The [API agent guide][api-guide] states the condensed rules; this document explains the architecture and how to review it. The legacy execution kernel is migration-only: never propose new files or extracted implementations there.
 
-This document describes the architecture as it is today. Business rules live in application services that work with plain records; there is no separate domain model yet. The [next step](#next-step) section describes the planned move toward one.
+This document describes the architecture as it is today. Business rules live in application services that work with plain records, and there are no aggregates yet. The [next step](#next-step) section describes how aggregates are introduced.
 
 ## Layers
 
@@ -101,20 +101,22 @@ Flag each finding with the rule it violates:
 - A business rule enforced in a repository that its port does not document.
 - Dependencies chosen outside the composition root.
 - A new or migrated slice without boundary contracts, a weakened contract, or a new baseline exception.
-- Persistence models that gain behavior before the next step adopts them.
+- Persistence models that gain behavior. They never become the domain model.
+- An aggregate whose name does not end with Agg, or that depends on sessions, persistence models, configuration, or infrastructure.
 - New code in the legacy execution kernel, or product policy in shared libraries.
 - Tests that replace ports with mock doubles.
 
 ## Next step
 
-Records carry no behavior today, so business rules collect in application services and sometimes in repositories. The next step makes the SQLAlchemy models the temporary domain model:
+Records carry no behavior today, so business rules collect in application services, and sometimes in repositories. Some of those services already act as aggregates. The next step introduces aggregates for specific business models. SQLAlchemy models never become the domain model; they stay table mappings.
 
-- Rules that belong to one entity move onto its SQLAlchemy model as behavior over the model's own state. Models still never open sessions, run queries, or call infrastructure.
-- Application services load models through repository ports, call their behavior, and save them through the same ports.
-- How a session spans a use case is decided with the first slice that adopts this step.
-- The boundary contracts that keep models out of application code are relaxed slice by slice, in the changes that adopt this step.
+- **Aggregates**: an aggregate represents one business model and its consistency boundary. It holds the model's state and enforces its invariants and state transitions. It depends only on plain values, never on sessions, persistence models, configuration, or infrastructure.
+- **Placement and naming**: aggregates live in the same directory as the services of their business area. Names tell them apart: every unit that represents an aggregate ends with the suffix Agg.
+- **Services**: services keep orchestration and hand entity rules to aggregates. A use case loads an aggregate through a repository port, calls its behavior, saves it through the same port, and triggers side effects after the save commits. Use cases still return records, so aggregates never leave the application layer.
+- **Repositories**: repositories load and save whole aggregates and map them to and from SQLAlchemy models. Rules that repositories enforce today move into aggregates. Rules that span aggregates, such as uniqueness, stay inside the write or in a database constraint.
+- **Consistency**: how a load and a later save stay consistent, for example with a version check on save, is decided with the first slice that adopts aggregates.
 
-Until a slice adopts this step, follow the rules above. The longer-term goal is a domain model that does not depend on persistence.
+Adopt this slice by slice, starting with services that already act as aggregates. Aggregates belong to the application layer, so the existing boundary contracts stay as they are.
 
 [api-guide]: ../../../../api/AGENTS.md
 [repositories]: repositories-rule.md
