@@ -19,6 +19,7 @@ def _persisted_message(
     parent_message_id: str,
     answer: str,
     created_at: datetime,
+    answer_tokens: int = 0,
 ) -> Message:
     message = Message(
         id=message_id,
@@ -34,16 +35,19 @@ def _persisted_message(
         parent_message_id=parent_message_id,
         created_at=created_at,
         updated_at=created_at,
+        message_tokens=0,
+        answer_tokens=answer_tokens,
     )
     message._inputs = {}
     return message
 
 
 class MockMessage:
-    def __init__(self, id, parent_message_id, answer="answer"):
+    def __init__(self, id, parent_message_id, answer="answer", answer_tokens=1):
         self.id = id
         self.parent_message_id = parent_message_id
         self.answer = answer
+        self.answer_tokens = answer_tokens
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -170,6 +174,37 @@ def test_get_thread_messages_length_excludes_newly_created_empty_answer(sqlite_s
     length = get_thread_messages_length("conversation-1", session=sqlite_session)
 
     assert length == 1
+
+
+@pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
+def test_get_thread_messages_length_keeps_in_progress_message_with_tokens(sqlite_session: Session):
+    # Regression for #37880: a streaming/in-progress message has an empty answer
+    # but answer_tokens > 0, so it must not be excluded from the thread length.
+    id1, id2 = str(uuid4()), str(uuid4())
+    now = datetime.now()
+    messages = [
+        _persisted_message(
+            message_id=id2,
+            conversation_id="conversation-in-progress",
+            parent_message_id=id1,
+            answer="",
+            created_at=now,
+            answer_tokens=5,
+        ),
+        _persisted_message(
+            message_id=id1,
+            conversation_id="conversation-in-progress",
+            parent_message_id=UUID_NIL,
+            answer="ok",
+            created_at=now - timedelta(seconds=1),
+        ),
+    ]
+    sqlite_session.add_all(messages)
+    sqlite_session.commit()
+
+    length = get_thread_messages_length("conversation-in-progress", session=sqlite_session)
+
+    assert length == 2
 
 
 @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
