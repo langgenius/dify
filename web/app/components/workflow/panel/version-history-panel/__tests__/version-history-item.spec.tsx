@@ -11,7 +11,9 @@ vi.mock('@/app/components/workflow/store', () => ({
     selector({ pipelineId: undefined }),
 }))
 
-const createVersionHistory = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
+const createVersionHistory = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'version-1',
     graph: {

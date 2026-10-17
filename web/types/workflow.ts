@@ -144,7 +144,6 @@ export type FetchWorkflowDraftResponse = Omit<
   environments?: VersionEnvironment[]
 }
 
-
 export type FetchWorkflowDraftPageResponse = {
   items: FetchWorkflowDraftResponse[]
   has_more: boolean

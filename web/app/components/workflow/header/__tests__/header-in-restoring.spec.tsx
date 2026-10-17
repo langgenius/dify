@@ -59,7 +59,9 @@ vi.mock('../../hooks/use-workflow-refresh-draft', () => ({
   }),
 }))
 
-const createVersion = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
+const createVersion = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'version-1',
     graph: {

@@ -27,7 +27,9 @@ vi.mock('../publish-with-multiple-model', () => ({
   ),
 }))
 
-const createVersionInfo = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'workflow-version-1',
     graph: {

@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { createWorkflowDraftFixture } from '@/test/fixtures/workflow'
 import RestoreConfirmModal from '../restore-confirm-modal'
 
-const createVersionInfo = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
+const createVersionInfo = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'version-1',
     graph: {

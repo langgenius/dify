@@ -36,7 +36,9 @@ let mockPublishedEnvironments: FetchWorkflowDraftResponse['environments']
 let mockHasNextPage = false
 let mockIsFetching = false
 
-const createVersionHistory = (overrides: Partial<FetchWorkflowDraftResponse> = {}): FetchWorkflowDraftResponse =>
+const createVersionHistory = (
+  overrides: Partial<FetchWorkflowDraftResponse> = {},
+): FetchWorkflowDraftResponse =>
   createWorkflowDraftFixture({
     id: 'version-id',
     version: WorkflowVersion.Draft,
