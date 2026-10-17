@@ -51,6 +51,7 @@ from .dataset import (
 )
 from .dataset.rag_pipeline import rag_pipeline_workflow
 from .end_user import end_user
+from .knowledge_fs import resources as knowledge_fs_resources
 from .workspace import models
 
 __all__ = [
@@ -67,6 +68,7 @@ __all__ = [
     "hit_testing",
     "human_input_form",
     "index",
+    "knowledge_fs_resources",
     "message",
     "metadata",
     "models",

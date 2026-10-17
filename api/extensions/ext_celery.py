@@ -27,6 +27,7 @@ class CelerySentinelTransportDict(TypedDict, total=False):
     master_name: str | None
     sentinel_kwargs: _CelerySentinelKwargsDict
     global_keyprefix: str
+    visibility_timeout: int
 
 
 class CelerySSLOptionsDict(TypedDict):
@@ -39,6 +40,7 @@ class CelerySSLOptionsDict(TypedDict):
 class CeleryBeatScheduleEntry(TypedDict):
     task: str
     schedule: crontab | timedelta
+    kwargs: NotRequired[dict[str, str]]
     options: NotRequired[dict[str, Any]]
 
 
@@ -104,6 +106,19 @@ def get_celery_broker_transport_options() -> CelerySentinelTransportDict | dict[
     if global_keyprefix:
         transport_options["global_keyprefix"] = global_keyprefix
 
+    visibility = dify_config.CELERY_BROKER_VISIBILITY_TIMEOUT
+    if isinstance(visibility, int) and not isinstance(visibility, bool):
+        transport_options["visibility_timeout"] = visibility
+    if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
+        broker = dify_config.CELERY_BROKER_URL or ""
+        if not broker:
+            raise ValueError("KnowledgeFS workers require an explicit CELERY_BROKER_URL")
+        if broker.startswith(("redis://", "rediss://", "sentinel://")) and (
+            not isinstance(visibility, int)
+            or visibility <= dify_config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS + 30
+        ):
+            raise ValueError("KnowledgeFS workers require CELERY_BROKER_VISIBILITY_TIMEOUT above their hard task limit")
+
     return transport_options
 
 
@@ -151,6 +166,9 @@ def init_app(app: DifyApp) -> Celery:
             result_backend_transport_options=broker_transport_options,
         )
 
+    if "visibility_timeout" in broker_transport_options:
+        celery_app.conf.visibility_timeout = broker_transport_options["visibility_timeout"]
+
     # Apply SSL configuration if enabled
     ssl_options = get_celery_ssl_options()
     if ssl_options:
@@ -182,12 +200,52 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.knowledge_fs_initial_source_preview_tasks",  # datasource previews use the standard dataset queue
+        "tasks.knowledge_fs_agent_investigation_tasks",
+        "tasks.knowledge_fs_failed_retrieval_tasks",  # best-effort Workflow quality capture uses dataset workers
+        "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
+        "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
+        from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
+
+        interval = dify_config.KNOWLEDGE_FS_BACKGROUND_POLL_INTERVAL_SECONDS
+        for operation, queue in OPERATION_QUEUES.items():
+            beat_schedule[f"knowledge_fs_background_{operation}"] = {
+                "task": OPERATION_TASK,
+                "schedule": timedelta(seconds=interval),
+                "kwargs": {"operation": operation},
+                # These are recoverable database sweeps, not document messages. Expired wakeups
+                # must not replay a backlog of timer ticks after an extended worker outage.
+                "options": {"queue": queue, "expires": max(30, interval * 2)},
+            }
+    from services.knowledge_fs.lifecycle_readiness import get_configured_knowledge_fs_lifecycle_worker_readiness
+
+    if get_configured_knowledge_fs_lifecycle_worker_readiness().ready:
+        imports.extend(
+            [
+                "tasks.knowledge_fs_initial_source_tasks",
+                "tasks.knowledge_fs_lifecycle_tasks",
+                "tasks.knowledge_fs_source_import_tasks",
+            ]
+        )
+        beat_schedule["knowledge_fs_lifecycle_worker"] = {
+            "task": "tasks.knowledge_fs_lifecycle_tasks.run_knowledge_fs_lifecycle_worker",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+        beat_schedule["knowledge_fs_staged_upload_cleanup"] = {
+            "task": "tasks.knowledge_fs_lifecycle_tasks.cleanup_knowledge_fs_staged_uploads",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+        beat_schedule["knowledge_fs_upgrade_file_cleanup"] = {
+            "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
+            "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
     if dify_config.AGENT_SANDBOX_METERING_ENABLED:
         try:
             interval = int(dify_config.AGENT_SANDBOX_METERING_INTERVAL_SECONDS)

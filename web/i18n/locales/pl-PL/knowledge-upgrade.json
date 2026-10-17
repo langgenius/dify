@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "„{{name}}” jest teraz bazą wiedzy Agent",
+  "upgrade.completeTitle": "Aktualizacja zakończona",
+  "upgrade.contactSupport": "Skontaktuj się z pomocą",
+  "upgrade.dialogAvailability": "Po aktualizacji <strong>zarówno klasyczna baza wiedzy, jak i baza wiedzy Agent pozostają dostępne</strong>",
+  "upgrade.dialogDescription": "Zaktualizuj tę <legacy>klasyczną bazę wiedzy</legacy> do <new>bazy wiedzy Agent</new>, zachowując wszystkie dokumenty, ustawienia i połączenia aplikacji. Następnie nastąpi automatyczne przekierowanie do bazy wiedzy Agent.",
+  "upgrade.dialogDuration": "Trwa od kilku minut do kilku godzin, zależnie od rozmiaru. Postęp jest widoczny na karcie bazy wiedzy",
+  "upgrade.dialogLinkedApps": "Połączone aplikacje nadal pobierają dane podczas aktualizacji",
+  "upgrade.dialogTitle": "Zaktualizować do bazy wiedzy Agent?",
+  "upgrade.failedDescription": "Aktualizacja nie powiodła się — niczego nie zmieniono. Klasyczna baza wiedzy jest nadal dostępna.",
+  "upgrade.failedTitle": "Aktualizacja nie powiodła się",
+  "upgrade.failedToastDescription": "„{{name}}” pozostaje klasyczną bazą wiedzy; dane nie zostały zmienione",
+  "upgrade.guideDescription": "Aktualizacja przenosi tę klasyczną bazę wiedzy do bazy wiedzy Agent. Połącz źródło, a dokumenty będą automatycznie synchronizowane i indeksowane. Dokumenty, ustawienia i połączenia aplikacji zostaną przeniesione, a połączone aplikacje będą nadal działać.",
+  "upgrade.guideTitle": "Aktualizacja klasycznej bazy wiedzy do bazy wiedzy Agent",
+  "upgrade.justNow": "Przed chwilą",
+  "upgrade.menuLabel": "Zaktualizuj do bazy wiedzy Agent",
+  "upgrade.migratingDocuments": "Migracja dokumentów…",
+  "upgrade.start": "Rozpocznij aktualizację",
+  "upgrade.startFailed": "Nie udało się rozpocząć aktualizacji. Spróbuj ponownie.",
+  "upgrade.statusFailed": "Aktualizacja nie powiodła się",
+  "upgrade.statusUpgrading": "Aktualizowanie",
+  "upgrade.upgradedJustNow": "Zaktualizowano przed chwilą"
+}

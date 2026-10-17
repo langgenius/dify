@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” เป็นฐานความรู้ Agent แล้ว",
+  "upgrade.completeTitle": "อัปเกรดเสร็จสมบูรณ์",
+  "upgrade.contactSupport": "ติดต่อฝ่ายสนับสนุน",
+  "upgrade.dialogAvailability": "หลังอัปเกรด <strong>ฐานความรู้แบบดั้งเดิมและฐานความรู้ Agent ยังคงใช้งานได้ทั้งคู่</strong>",
+  "upgrade.dialogDescription": "การดำเนินการนี้จะอัปเกรด<legacy>ฐานความรู้แบบดั้งเดิม</legacy>เป็น<new>ฐานความรู้ Agent</new> พร้อมย้ายเอกสาร การตั้งค่า และการเชื่อมต่อแอปทั้งหมด แล้วพาคุณไปยังฐานความรู้ Agent โดยอัตโนมัติ",
+  "upgrade.dialogDuration": "ใช้เวลาตั้งแต่ไม่กี่นาทีถึงหลายชั่วโมงตามขนาด ความคืบหน้าจะแสดงบนการ์ดฐานความรู้",
+  "upgrade.dialogLinkedApps": "แอปที่เชื่อมโยงยังคงค้นคืนข้อมูลได้ระหว่างการอัปเกรด",
+  "upgrade.dialogTitle": "อัปเกรดฐานความรู้นี้เป็นฐานความรู้ Agent หรือไม่?",
+  "upgrade.failedDescription": "อัปเกรดไม่สำเร็จ — ไม่มีสิ่งใดเปลี่ยนแปลง ฐานความรู้แบบดั้งเดิมยังใช้งานได้",
+  "upgrade.failedTitle": "อัปเกรดไม่สำเร็จ",
+  "upgrade.failedToastDescription": "“{{name}}” ยังคงเป็นฐานความรู้แบบดั้งเดิม และไม่มีข้อมูลเปลี่ยนแปลง",
+  "upgrade.guideDescription": "การอัปเกรดจะย้ายฐานความรู้แบบดั้งเดิมนี้ไปยังฐานความรู้ Agent เชื่อมต่อแหล่งข้อมูลเพื่อให้เอกสารซิงค์และจัดทำดัชนีอัตโนมัติ ทุกอย่างจะถูกย้ายและแอปที่เชื่อมโยงยังคงทำงานต่อไป",
+  "upgrade.guideTitle": "อัปเกรดจากฐานความรู้แบบดั้งเดิมเป็นฐานความรู้ Agent",
+  "upgrade.justNow": "เมื่อสักครู่",
+  "upgrade.menuLabel": "อัปเกรดเป็นฐานความรู้ Agent",
+  "upgrade.migratingDocuments": "กำลังย้ายเอกสาร…",
+  "upgrade.start": "เริ่มอัปเกรด",
+  "upgrade.startFailed": "เริ่มอัปเกรดไม่ได้ โปรดลองอีกครั้ง",
+  "upgrade.statusFailed": "อัปเกรดไม่สำเร็จ",
+  "upgrade.statusUpgrading": "กำลังอัปเกรด",
+  "upgrade.upgradedJustNow": "อัปเกรดเมื่อสักครู่"
+}

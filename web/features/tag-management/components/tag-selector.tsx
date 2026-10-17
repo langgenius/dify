@@ -1,5 +1,11 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxProps, ComboboxTriggerProps } from '@langgenius/dify-ui/combobox'
+import type {
+  ComboboxPopupProps,
+  ComboboxPortalProps,
+  ComboboxPositionerProps,
+  ComboboxProps,
+  ComboboxTriggerProps,
+} from '@langgenius/dify-ui/combobox'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -49,15 +55,31 @@ type TagSelectorRootProps = Omit<
   | 'onOpenChangeComplete'
   | 'children'
 >
+type TagSelectorContentProps = {
+  placement?: ComboboxPositionerProps['placement']
+  sideOffset?: ComboboxPositionerProps['sideOffset']
+  alignOffset?: ComboboxPositionerProps['alignOffset']
+  portalProps?: Omit<ComboboxPortalProps, 'children'>
+  positionerProps?: Omit<
+    ComboboxPositionerProps,
+    'alignOffset' | 'children' | 'placement' | 'sideOffset'
+  >
+  popupProps?: Omit<ComboboxPopupProps, 'children' | 'className'>
+  popupClassName?: string
+}
 export type TagSelectorProps = TagSelectorRootProps &
+  TagSelectorContentProps &
   Pick<ComboboxTriggerProps, 'className' | 'onClick'> & {
     targetId: string
     contextLabel?: string
     type: TagType
     value: Tag[]
     canBindOrUnbindTags?: boolean
+    requiresTargetEditPermission?: boolean
+    showProvidedTagNames?: boolean
     onOpenTagManagement?: () => void
     onTagsChange?: () => void
+    onApplyTags?: (tagIds: string[]) => void
   }
 
 export const TagSelector = ({
@@ -66,10 +88,20 @@ export const TagSelector = ({
   type,
   value,
   canBindOrUnbindTags,
+  requiresTargetEditPermission = false,
+  showProvidedTagNames = false,
   className,
   onClick,
   onOpenTagManagement = () => {},
   onTagsChange,
+  onApplyTags,
+  placement = 'bottom-start',
+  sideOffset = 4,
+  alignOffset = 0,
+  portalProps,
+  positionerProps,
+  popupProps,
+  popupClassName,
   ...rootProps
 }: TagSelectorProps) => {
   const { t } = useTranslation(['common'])
@@ -78,6 +110,9 @@ export const TagSelector = ({
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  const canChangeBindings = requiresTargetEditPermission
+    ? !!canBindOrUnbindTags
+    : !!canBindOrUnbindTags || canManageTags
 
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutate: createTag } = useMutation(
@@ -99,10 +134,10 @@ export const TagSelector = ({
 
     const tagNameById = new Map(tagList.map((tag) => [tag.id, tag.name]))
     return value.flatMap((tag) => {
-      const tagName = tagNameById.get(tag.id)
+      const tagName = tagNameById.get(tag.id) ?? (showProvidedTagNames ? tag.name : undefined)
       return tagName ? [tagName] : []
     })
-  }, [tagList, value])
+  }, [showProvidedTagNames, tagList, value])
   const emptyTriggerLabel = canBindOrUnbindTags
     ? t(($) => $['tag.addTag'], { ns: 'common' })
     : t(($) => $['tag.noTag'], { ns: 'common' })
@@ -163,6 +198,11 @@ export const TagSelector = ({
 
     if (!tagSelectionChanged) return
 
+    if (onApplyTags) {
+      onApplyTags(draftTagIds)
+      return
+    }
+
     const toastId = `tag-bindings-${type}-${targetId}`
 
     applyTagBindingsMutation.mutate(
@@ -194,7 +234,16 @@ export const TagSelector = ({
         },
       },
     )
-  }, [applyTagBindingsMutation, draftTagIds, onTagsChange, selectedTagIds, t, targetId, type])
+  }, [
+    applyTagBindingsMutation,
+    draftTagIds,
+    onApplyTags,
+    onTagsChange,
+    selectedTagIds,
+    t,
+    targetId,
+    type,
+  ])
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -265,7 +314,7 @@ export const TagSelector = ({
       filter={TAG_COMBOBOX_FILTER}
     >
       <ComboboxTrigger
-        disabled={!canManageTags && !canBindOrUnbindTags}
+        disabled={!canChangeBindings}
         aria-label={accessibleTriggerLabel}
         className={cn(
           'group/tag-area relative flex w-full min-w-0 cursor-pointer items-center gap-0.5 rounded-lg p-1 text-start transition-colors hover:bg-state-base-hover data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover motion-reduce:transition-none',
@@ -279,16 +328,26 @@ export const TagSelector = ({
           className="pointer-events-none absolute top-0 right-0 h-full w-20 bg-tag-selector-mask-bg group-hover/tag-area:hidden group-focus-visible/tag-area:hidden group-data-popup-open/tag-area:hidden"
         />
       </ComboboxTrigger>
-      <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+      <ComboboxPortal {...portalProps}>
+        <ComboboxPositioner
+          placement={placement}
+          sideOffset={sideOffset}
+          alignOffset={alignOffset}
+          {...positionerProps}
+        >
           <ComboboxPopup
             onClick={(event) => event.stopPropagation()}
             aria-label={accessibleTriggerLabel}
-            className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+            {...popupProps}
+            className={cn(
+              'w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]',
+              popupClassName,
+            )}
           >
             <TagSearchContent
               type={type}
               canBindOrUnbindTags={canBindOrUnbindTags}
+              requiresTargetEditPermission={requiresTargetEditPermission}
               onOpenTagManagement={onOpenTagManagement}
               onClose={() => handleOpenChange(false)}
             />

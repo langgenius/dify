@@ -167,6 +167,7 @@
   "operation.create": "Creează",
   "operation.deSelectAll": "Deselectați tot",
   "operation.delete": "Șterge",
+  "operation.deleteConfirmTitle": "Ștergere?",
   "operation.download": "Descarcă",
   "operation.downloadFailed": "Descărcarea a eșuat. Vă rugăm să încercați din nou mai târziu.",
   "operation.downloadSuccess": "Descărcarea a fost finalizată.",

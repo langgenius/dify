@@ -167,6 +167,7 @@
   "operation.create": "Erstellen",
   "operation.deSelectAll": "Alle abwählen",
   "operation.delete": "Löschen",
+  "operation.deleteConfirmTitle": "Löschen?",
   "operation.download": "Herunterladen",
   "operation.downloadFailed": "Download fehlgeschlagen. Bitte versuchen Sie es später erneut.",
   "operation.downloadSuccess": "Download abgeschlossen.",

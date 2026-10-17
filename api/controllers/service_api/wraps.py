@@ -1,6 +1,5 @@
 import inspect
 import logging
-import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
@@ -12,7 +11,7 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
 from configs import dify_config
@@ -26,16 +25,16 @@ from controllers.service_api.schema import (
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
-from models.dataset import Dataset, RateLimitLog
+from models.dataset import Dataset
 from models.model import ApiToken
 from repositories.knowledge import dataset_api_key_bindings
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.app_service import AppService
 from services.auth.resource_access_token_contracts import is_resource_access_token
 from services.feature_service import FeatureService
+from services.knowledge_rate_limit_service import KnowledgeRateLimitExceededError, enforce_knowledge_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -283,6 +282,21 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
+def check_knowledge_rate_limit(api_token: ApiToken) -> None:
+    """Enforce the cloud knowledge base request rate limit for a dataset API key's workspace.
+
+    Shared by the ``cloud_edition_billing_rate_limit_check`` decorator and the KnowledgeFS
+    service routes, which authenticate inside their own profile helper rather than through
+    a decorator. No-op unless the workspace has a knowledge rate limit (cloud billing).
+    """
+    if api_token.tenant_id is None:
+        raise Unauthorized("Tenant id is required for this token.")
+    try:
+        enforce_knowledge_rate_limit(api_token.tenant_id)
+    except KnowledgeRateLimitExceededError as error:
+        raise Forbidden(str(error)) from error
+
+
 def cloud_edition_billing_rate_limit_check[**P, R](
     resource: str,
     api_token_type: str,
@@ -293,32 +307,7 @@ def cloud_edition_billing_rate_limit_check[**P, R](
             api_token = validate_and_get_api_token(api_token_type)
 
             if resource == "knowledge":
-                tenant_id = api_token.tenant_id
-                if tenant_id is None:
-                    raise Unauthorized("Tenant id is required for this token.")
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(tenant_id)
-                if knowledge_rate_limit.enabled:
-                    current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{tenant_id}"
-
-                    redis_client.zadd(key, {current_time: current_time})
-
-                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
-
-                    request_count = redis_client.zcard(key)
-
-                    if request_count > knowledge_rate_limit.limit:
-                        # add ratelimit record
-                        rate_limit_log = RateLimitLog(
-                            tenant_id=tenant_id,
-                            subscription_plan=knowledge_rate_limit.subscription_plan,
-                            operation="knowledge",
-                        )
-                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-                            session.add(rate_limit_log)
-                        raise Forbidden(
-                            "Sorry, you have reached the knowledge base request rate limit of your subscription."
-                        )
+                check_knowledge_rate_limit(api_token)
             return view(*args, **kwargs)
 
         return decorated
@@ -361,14 +350,16 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
 
             # Per-knowledge-base scoping is expressed by DatasetApiTokenBinding rows:
             #   no rows  -> the key can reach every dataset in its tenant (default / back-compat)
-            #   N rows   -> the key is limited to exactly those datasets
-            # A bound key may only call endpoints carrying one of its dataset ids; endpoints
-            # without a dataset id (e.g. list/create datasets) are rejected. The set is queried
-            # per request (not cached) so scope changes take effect immediately.
+            #   N rows   -> the key is limited to exactly those resources
+            # Only legacy-dataset bindings count here: a key bound solely to KnowledgeFS spaces
+            # is restricted but has no reachable legacy dataset, so it is rejected. A bound key
+            # may only call endpoints carrying one of its dataset ids; endpoints without a
+            # dataset id (e.g. list/create datasets) are rejected. The scope is queried per
+            # request (not cached) so changes take effect immediately.
             # db.session is Flask-SQLAlchemy's scoped_session proxy; cast so the plain-Session
             # typed helper accepts it (runtime proxies every Session method through unchanged).
-            bound_dataset_ids = dataset_api_key_bindings.get_bound_dataset_ids(cast(Session, db.session), api_token.id)
-            if bound_dataset_ids and (not dataset_id or str(dataset_id) not in bound_dataset_ids):
+            scope = dataset_api_key_bindings.get_key_scope(cast(Session, db.session), api_token.id)
+            if not scope.allows_dataset(str(dataset_id) if dataset_id else None):
                 raise Forbidden("The API key is not authorized to access this knowledge base.")
 
         if dataset_id:

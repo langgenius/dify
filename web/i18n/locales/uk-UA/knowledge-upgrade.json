@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "«{{name}}» тепер є базою знань Agent",
+  "upgrade.completeTitle": "Оновлення завершено",
+  "upgrade.contactSupport": "Звернутися до підтримки",
+  "upgrade.dialogAvailability": "Після оновлення <strong>класична база знань і база знань Agent залишаються доступними</strong>",
+  "upgrade.dialogDescription": "Оновіть цю <legacy>класичну базу знань</legacy> до <new>бази знань Agent</new>, зберігши всі документи, налаштування та підключення застосунків. Після цього вас буде автоматично перенаправлено до бази знань Agent.",
+  "upgrade.dialogDuration": "Триває від кількох хвилин до кількох годин залежно від розміру. Перебіг показано на картці бази знань",
+  "upgrade.dialogLinkedApps": "Пов’язані застосунки продовжують пошук під час оновлення",
+  "upgrade.dialogTitle": "Оновити до бази знань Agent?",
+  "upgrade.failedDescription": "Оновлення не вдалося — нічого не змінилося. Класична база знань і надалі доступна.",
+  "upgrade.failedTitle": "Помилка оновлення",
+  "upgrade.failedToastDescription": "«{{name}}» залишається класичною базою знань; дані не змінено",
+  "upgrade.guideDescription": "Оновлення переносить цю класичну базу знань до бази знань Agent. Підключіть джерело, і документи автоматично синхронізуватимуться та індексуватимуться. Документи, налаштування та підключення застосунків буде перенесено, а пов’язані застосунки продовжать працювати.",
+  "upgrade.guideTitle": "Оновлення класичної бази знань до бази знань Agent",
+  "upgrade.justNow": "Щойно",
+  "upgrade.menuLabel": "Оновити до бази знань Agent",
+  "upgrade.migratingDocuments": "Перенесення документів…",
+  "upgrade.start": "Почати оновлення",
+  "upgrade.startFailed": "Не вдалося почати оновлення. Спробуйте ще раз.",
+  "upgrade.statusFailed": "Помилка оновлення",
+  "upgrade.statusUpgrading": "Оновлення",
+  "upgrade.upgradedJustNow": "Щойно оновлено"
+}

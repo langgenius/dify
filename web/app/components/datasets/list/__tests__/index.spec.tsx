@@ -1,17 +1,139 @@
-import type { ReactNode } from 'react'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import type { QueryClient } from '@tanstack/react-query'
+import type { ReactElement, ReactNode } from 'react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/list/storage'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import List from '../index'
+
+const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const knowledgeFsUpgradeMutationMock = vi.hoisted(() => vi.fn())
+// Set to make every KnowledgeFS availability request fail, including refetches on mount.
+const knowledgeFsFeaturesFailure = vi.hoisted(() => ({ error: undefined as Error | undefined }))
+const systemFeaturesQueryKey = ['console', 'systemFeatures', 'get'] as const
+const useInfiniteQueryMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    data: { pageParams: [null], pages: [{ data: [] }] },
+    error: null,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    isPending: false,
+    refetch: vi.fn(),
+  })),
+)
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useInfiniteQuery: useInfiniteQueryMock,
+  }
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/console')>()
+  return {
+    ...original,
+    consoleQuery: {
+      ...original.consoleQuery,
+      systemFeatures: {
+        get: {
+          queryKey: () => systemFeaturesQueryKey,
+          queryOptions: (options: Record<string, unknown> = {}) => ({
+            queryKey: systemFeaturesQueryKey,
+            queryFn: () => new Promise(() => {}),
+            ...options,
+          }),
+        },
+      },
+      knowledgeFs: {
+        ...original.consoleQuery.knowledgeFs,
+        features: {
+          get: {
+            queryKey: original.consoleQuery.knowledgeFs.features.get.queryKey,
+            queryOptions: (
+              options?: Parameters<
+                typeof original.consoleQuery.knowledgeFs.features.get.queryOptions
+              >[0],
+            ) => {
+              const queryOptions =
+                original.consoleQuery.knowledgeFs.features.get.queryOptions(options)
+              const error = knowledgeFsFeaturesFailure.error
+              if (!error) return queryOptions
+              return { ...queryOptions, queryFn: () => Promise.reject(error), retry: false }
+            },
+          },
+        },
+        spaces: {
+          ...original.consoleQuery.knowledgeFs.spaces,
+          get: {
+            infiniteOptions: knowledgeFsInfiniteOptionsMock,
+          },
+        },
+      },
+      datasets: {
+        ...original.consoleQuery.datasets,
+        apiBaseInfo: {
+          get: {
+            queryOptions: () => ({
+              initialData: { api_base_url: 'https://api.example.com' },
+              queryKey: ['console', 'datasets', 'api-base-info', 'get'],
+              queryFn: async () => ({ api_base_url: 'https://api.example.com' }),
+            }),
+          },
+        },
+        knowledgeFsUpgradeJobs: {
+          get: {
+            queryOptions: () => ({
+              initialData: { data: [] },
+              queryKey: ['console', 'datasets', 'knowledge-fs-upgrade-jobs', 'get'],
+              queryFn: async () => ({ data: [] }),
+            }),
+          },
+        },
+        byDatasetId: {
+          ...original.consoleQuery.datasets.byDatasetId,
+          knowledgeFsUpgrades: {
+            get: {
+              queryOptions: () => ({
+                initialData: { can_retry: false, can_upgrade: false, job: null },
+                queryKey: ['console', 'datasets', 'by-dataset-id', 'knowledge-fs-upgrades', 'get'],
+                queryFn: async () => ({ can_retry: false, can_upgrade: false, job: null }),
+              }),
+            },
+            post: {
+              mutationOptions: () => ({ mutationFn: knowledgeFsUpgradeMutationMock }),
+            },
+          },
+        },
+      },
+    },
+  }
+})
+
+function NewKnowledgeGuideDismissedProbe() {
+  const dismissed = useNewKnowledgeGuideDismissedValue()
+
+  return <output aria-label="new knowledge guide dismissed">{String(dismissed)}</output>
+}
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
 let mockConsoleState = {
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
+  knowledgeFsEnabled: false,
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
 }
 vi.mock('@/next/navigation', () => ({
@@ -34,6 +156,35 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
+const renderList = (
+  ui: ReactElement,
+  options: Parameters<typeof createNuqsTestWrapper>[0] = {},
+  queryClient?: QueryClient,
+) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    queryClient,
+    knowledgeFsFeatures: queryClient
+      ? undefined
+      : {
+          enabled: mockConsoleState.knowledgeFsEnabled,
+        },
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper(options)
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return {
+    ...renderWithConsoleState(ui, { wrapper }),
+    onUrlUpdate,
+  }
+}
+
+const render = (ui: ReactElement) => renderList(ui)
+const renderWithNuqs = renderList
+
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
@@ -53,26 +204,16 @@ vi.mock('@/hooks/use-knowledge', () => ({
   }),
 }))
 
-const { getDatasets } = vi.hoisted(() => ({ getDatasets: vi.fn() }))
-const datasetPage = (total = 1) => ({
-  data: total ? [createDatasetFixture()] : [],
-  total,
-  page: 1,
-  limit: 30,
-  has_more: false,
-})
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'datasets.get': getDatasets,
-      'datasets.apiBaseInfo.get': () =>
-        Promise.resolve({ api_base_url: 'https://api.example.com' }),
-    }),
-  }
-})
+vi.mock('../use-dataset-list', () => ({
+  useInvalidDatasetList: () => vi.fn(),
+  useDatasetList: vi.fn(() => ({
+    data: { pages: [{ data: [], total: 1 }] },
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    isFetching: false,
+    isFetchingNextPage: false,
+  })),
+}))
 
 // Mock Datasets component
 vi.mock('../datasets', () => ({
@@ -130,29 +271,40 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
     onOpenTagManagement: () => void
   }) => (
     <div data-testid="tag-filter">
-      <button onClick={() => onChange(['tag-1', 'tag-2'])}>Select Tags</button>
-      <button onClick={onOpenTagManagement}>Manage Tags</button>
+      <button type="button" onClick={() => onChange(['tag-1', 'tag-2'])}>
+        Select Tags
+      </button>
+      <button type="button" onClick={onOpenTagManagement}>
+        Manage Tags
+      </button>
     </div>
   ),
 }))
 
-// Mock CheckboxWithLabel
+vi.mock('@/app/components/datasets/creator-filter', () => ({
+  CreatorFilter: ({ onChange }: { onChange: (value: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(['creator-1', 'creator-2'])}>
+      Select Creators
+    </button>
+  ),
+}))
+
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
   default: ({
     isChecked,
-    onChange,
     label,
+    onChange,
   }: {
     isChecked: boolean
-    onChange: () => void
     label: string
+    onChange: () => void
   }) => (
     <label>
       <input
         type="checkbox"
         checked={isChecked}
-        onChange={onChange}
         data-testid="include-all-checkbox"
+        onChange={onChange}
       />
       {label}
     </label>
@@ -163,12 +315,21 @@ describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     localStorage.clear()
+    knowledgeFsFeaturesFailure.error = undefined
     mockConsoleState = {
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
+      knowledgeFsEnabled: false,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     }
-    getDatasets.mockResolvedValue(datasetPage(1))
+    const { useDatasetList } = await import('../use-dataset-list')
+    vi.mocked(useDatasetList).mockReturnValue({
+      data: { pages: [{ data: [], total: 1 }] },
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+      isFetching: false,
+      isFetchingNextPage: false,
+    } as unknown as ReturnType<typeof useDatasetList>)
   })
 
   describe('Rendering', () => {
@@ -187,10 +348,189 @@ describe('List', () => {
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
     })
 
+    it('should default to Classic when KnowledgeFS is enabled', () => {
+      mockConsoleState.knowledgeFsEnabled = true
+
+      renderWithNuqs(<List />)
+
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' })).toBeInTheDocument()
+    })
+
+    it('should keep the legacy query active without requesting KnowledgeFS when disabled', async () => {
+      renderWithNuqs(<List />, { searchParams: '?view=agent' })
+
+      expect(
+        screen.queryByRole('radio', { name: 'knowledgeSpace.view.agent' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'knowledgeSpace.new' })).not.toBeInTheDocument()
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
+      expect(useInfiniteQueryMock).not.toHaveBeenCalled()
+
+      const { useDatasetList } = await import('../use-dataset-list')
+      expect(useDatasetList).toHaveBeenCalled()
+    })
+
+    it('should keep the legacy list when KnowledgeFS availability cannot be loaded', async () => {
+      knowledgeFsFeaturesFailure.error = new Error('KnowledgeFS availability unavailable')
+      const queryClient = createConsoleQueryClient()
+      const featuresQueryKey = consoleQuery.knowledgeFs.features.get.queryKey()
+
+      renderWithNuqs(<List />, { searchParams: '?view=agent' }, queryClient)
+
+      await waitFor(() => expect(queryClient.getQueryState(featuresQueryKey)?.status).toBe('error'))
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('radio', { name: 'knowledgeSpace.view.agent' }),
+      ).not.toBeInTheDocument()
+      expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
+    })
+
+    it('should switch to Agent and persist the selected view in the URL', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const { onUrlUpdate } = renderWithNuqs(<List />)
+
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' }))
+
+      expect(await screen.findByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
+      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('agent')
+    })
+
+    it('should return to Classic without a view parameter and preserve other filters', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const { onUrlUpdate } = renderWithNuqs(<List />, {
+        searchParams: '?view=agent&creator_ids=creator-1',
+      })
+
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' }))
+
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const searchParams = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams
+      expect(searchParams?.has('view')).toBe(false)
+      expect(searchParams?.get('creator_ids')).toBe('creator-1')
+    })
+
+    it('should reset each view panel when its owning list unmounts', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      renderWithNuqs(<List />)
+
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' }))
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIPanelTitle' }))
+      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('radio', { name: 'knowledgeSpace.view.classic' }))
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
+    })
+
+    it('should restore the Agent view from the URL', () => {
+      mockConsoleState.knowledgeFsEnabled = true
+
+      renderWithNuqs(<List />, { searchParams: '?view=agent' })
+
+      expect(screen.getByRole('region', { name: 'knowledgeSpace.new' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'knowledgeSpace.view.agent' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
+    })
+
+    it('should show the first-visit guide once and remember dismissal', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const firstRender = renderWithNuqs(<List />)
+
+      const guide = await screen.findByRole('dialog', {
+        name: 'knowledgeSpace.guideTitle',
+      })
+      await user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
+      firstRender.unmount()
+
+      renderWithNuqs(<List />)
+
+      expect(
+        screen.queryByRole('dialog', { name: 'knowledgeSpace.guideTitle' }),
+      ).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' }))
+      expect(
+        await screen.findByRole('dialog', { name: 'knowledgeSpace.guideTitle' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should keep a dismissed guide closed after hydrating a full page reload', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const firstRender = renderWithNuqs(<List />)
+      const guide = await screen.findByRole('dialog', {
+        name: 'knowledgeSpace.guideTitle',
+      })
+      await user.click(within(guide).getByRole('button', { name: 'knowledgeSpace.gotIt' }))
+      firstRender.unmount()
+
+      const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+      const { queryClient, wrapper: QueryWrapper } = createConsoleQueryWrapper({
+        knowledgeFsFeatures: {
+          enabled: mockConsoleState.knowledgeFsEnabled,
+        },
+      })
+      const store = createStore()
+      store.set(queryClientAtom, queryClient)
+      seedRegisteredConsoleStateFixture(store)
+      const app = (
+        <QueryWrapper>
+          <Provider store={store}>
+            <NuqsWrapper>
+              <>
+                <List />
+                <NewKnowledgeGuideDismissedProbe />
+              </>
+            </NuqsWrapper>
+          </Provider>
+        </QueryWrapper>
+      )
+      const container = document.createElement('div')
+      document.body.append(container)
+      container.innerHTML = renderToString(app)
+      const root = hydrateRoot(container, app)
+
+      try {
+        await waitFor(() => {
+          expect(
+            screen.getByRole('status', { name: 'new knowledge guide dismissed' }),
+          ).toHaveTextContent('true')
+        })
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: 'knowledgeSpace.guideTitle' })).toHaveAttribute(
+            'aria-expanded',
+            'false',
+          )
+        })
+      } finally {
+        act(() => root.unmount())
+        container.remove()
+      }
+    })
+
     it('should hide external API panel button without dataset.external.connect', () => {
       mockConsoleState = {
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
 
@@ -202,34 +542,52 @@ describe('List', () => {
   })
 
   describe('Props', () => {
-    it('should query datasets with includeAll disabled initially', async () => {
+    it('should query datasets with empty creators initially', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
+
       render(<List />)
 
-      expect(getDatasets).toHaveBeenCalledWith({
-        query: expect.objectContaining({
-          include_all: false,
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          creatorIds: [],
         }),
-      })
+      )
     })
 
     it('should query datasets with empty keywords initially', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
+
       render(<List />)
 
-      expect(getDatasets).toHaveBeenCalledWith({
-        query: expect.objectContaining({
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
           keyword: '',
         }),
-      })
+      )
     })
 
     it('should query datasets with empty tags initially', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
+
       render(<List />)
 
-      expect(getDatasets).toHaveBeenCalledWith({
-        query: expect.objectContaining({
-          tag_ids: [],
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tagIds: [],
         }),
-      })
+      )
+    })
+
+    it('should restore creators from the URL', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
+
+      renderWithNuqs(<List />, { searchParams: '?creator_ids=creator-1;creator-2' })
+
+      expect(useDatasetList).toHaveBeenCalledWith(
+        expect.objectContaining({
+          creatorIds: ['creator-1', 'creator-2'],
+        }),
+      )
     })
   })
 
@@ -252,20 +610,59 @@ describe('List', () => {
       expect(input).toHaveValue('test search')
     })
 
-    it('should trigger tag filter change', () => {
+    it('should combine creator, tag, and search filters in the dataset query', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
+
+      renderWithNuqs(<List />, { searchParams: '?creator_ids=creator-1;creator-2' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Select Tags' }))
+      fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'handbook' } })
+
+      await waitFor(() => {
+        expect(useDatasetList).toHaveBeenLastCalledWith({
+          tagIds: ['tag-1', 'tag-2'],
+          creatorIds: ['creator-1', 'creator-2'],
+          includeAll: false,
+          keyword: 'handbook',
+        })
+      })
+    })
+
+    it('should persist creator selections in the URL', async () => {
+      const { onUrlUpdate } = renderWithNuqs(<List />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Select Creators' }))
+
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('creator_ids')).toBe(
+        'creator-1;creator-2',
+      )
+    })
+
+    it('should include all accessible datasets when an owner enables all knowledge', async () => {
+      const { useDatasetList } = await import('../use-dataset-list')
       render(<List />)
-      // Tag filter is rendered and interactive
-      const selectTagsBtn = screen.getByText('Select Tags')
-      expect(selectTagsBtn).toBeInTheDocument()
-      fireEvent.click(selectTagsBtn)
-      // The onChange callback was triggered (debounced)
+
+      fireEvent.click(screen.getByTestId('include-all-checkbox'))
+
+      expect(useDatasetList).toHaveBeenLastCalledWith(expect.objectContaining({ includeAll: true }))
     })
   })
 
   describe('Conditional Rendering', () => {
-    it('should show include all checkbox for workspace owner', () => {
+    it('should render creator and all-knowledge filters for workspace owners', () => {
       render(<List />)
+      expect(screen.getByRole('button', { name: 'Select Creators' })).toBeInTheDocument()
       expect(screen.getByTestId('include-all-checkbox')).toBeInTheDocument()
+    })
+
+    it('should hide only the all-knowledge filter from non-owners', () => {
+      mockConsoleState.isCurrentWorkspaceOwner = false
+
+      render(<List />)
+
+      expect(screen.getByRole('button', { name: 'Select Creators' })).toBeInTheDocument()
+      expect(screen.queryByTestId('include-all-checkbox')).not.toBeInTheDocument()
     })
   })
 
@@ -277,11 +674,18 @@ describe('List', () => {
     })
 
     it('should render first empty state when there are no datasets and no active filters', async () => {
-      getDatasets.mockResolvedValue(datasetPage(0))
+      const { useDatasetList } = await import('../use-dataset-list')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
       render(<List />)
 
-      expect(await screen.findByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
@@ -289,13 +693,21 @@ describe('List', () => {
       mockConsoleState = {
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
-      getDatasets.mockResolvedValue(datasetPage(0))
+      const { useDatasetList } = await import('../use-dataset-list')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
       render(<List />)
 
-      expect(await screen.findByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
       expect(
         screen.getByRole('link', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
       ).toHaveAttribute('href', '/datasets/create-from-pipeline')
@@ -305,19 +717,34 @@ describe('List', () => {
       mockConsoleState = {
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: [],
       }
-      getDatasets.mockResolvedValue(datasetPage(0))
+      const { useDatasetList } = await import('../use-dataset-list')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
       render(<List />)
 
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
-      expect(await screen.findByText('dataset.firstEmpty.noCreatePermission')).toBeInTheDocument()
+      expect(screen.getByText('dataset.firstEmpty.noCreatePermission')).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first dataset page resolves', async () => {
-      getDatasets.mockReturnValue(new Promise(() => {}))
+      const { useDatasetList } = await import('../use-dataset-list')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
 
       render(<List />)
 
@@ -326,42 +753,71 @@ describe('List', () => {
     })
 
     it('should keep the regular list for empty filtered results', async () => {
-      getDatasets.mockImplementation(({ query }) =>
-        Promise.resolve(datasetPage(query.include_all ? 0 : 1)),
+      const { useDatasetList } = await import('../use-dataset-list')
+      vi.mocked(useDatasetList).mockImplementation(
+        (params) =>
+          ({
+            data: { pages: [{ data: [], total: params.creatorIds.length ? 0 : 1 }] },
+            fetchNextPage: vi.fn(),
+            hasNextPage: false,
+            isFetching: false,
+            isFetchingNextPage: false,
+          }) as unknown as ReturnType<typeof useDatasetList>,
       )
 
       render(<List />)
 
-      fireEvent.click(screen.getByTestId('include-all-checkbox'))
+      fireEvent.click(screen.getByRole('button', { name: 'Select Creators' }))
 
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
-      await waitFor(() =>
-        expect(screen.getByRole('status')).toHaveTextContent('dataset.filterEmpty.noKnowledge'),
-      )
+      expect(screen.getByRole('status')).toHaveTextContent('dataset.filterEmpty.noKnowledge')
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
     })
 
     it('announces empty search results only after the current filters finish loading', async () => {
       const user = userEvent.setup()
-      const response = createDeferred<ReturnType<typeof datasetPage>>()
-      getDatasets.mockResolvedValueOnce(datasetPage()).mockReturnValue(response.promise)
-      render(<List />)
-      await waitFor(() => expect(screen.getByTestId('dataset-total')).toHaveTextContent('1'))
+      const { useDatasetList } = await import('../use-dataset-list')
+      const result = {
+        data: { pages: [{ data: [], total: 1 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+        isPlaceholderData: false,
+        isError: false,
+      }
+      vi.mocked(useDatasetList).mockImplementation(
+        () => result as unknown as ReturnType<typeof useDatasetList>,
+      )
+      const { rerender } = render(<List />)
       const status = screen.getByRole('status')
       const search = screen.getByRole('searchbox')
+      expect(status).toBeEmptyDOMElement()
+
       await user.type(search, 'missing')
       expect(status).toBeEmptyDOMElement()
       await waitFor(() =>
-        expect(getDatasets).toHaveBeenLastCalledWith({
-          query: expect.objectContaining({ keyword: 'missing' }),
-        }),
+        expect(useDatasetList).toHaveBeenLastCalledWith(
+          expect.objectContaining({ keyword: 'missing' }),
+        ),
       )
-      expect(screen.getByTestId('dataset-total')).toHaveTextContent('1')
+
+      result.data.pages = [{ data: [], total: 0 }]
+      result.isFetching = true
+      result.isPlaceholderData = true
+      rerender(<List />)
       expect(status).toBeEmptyDOMElement()
-      await act(async () => response.resolve(datasetPage(0)))
-      await waitFor(() => expect(status).toHaveTextContent('dataset.filterEmpty.noKnowledge'))
+
+      result.isPlaceholderData = false
+      rerender(<List />)
+      expect(status).toBeEmptyDOMElement()
+
+      result.isFetching = false
+      rerender(<List />)
       expect(screen.getByRole('status')).toBe(status)
+      expect(status).toHaveTextContent('dataset.filterEmpty.noKnowledge')
       expect(search).toHaveFocus()
+
       await user.type(search, ' again')
       expect(status).toBeEmptyDOMElement()
     })
@@ -412,21 +868,6 @@ describe('List', () => {
       fireEvent.click(screen.getByText('Manage Tags'))
 
       expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
-    })
-
-    it('should not show include all checkbox when not workspace owner', async () => {
-      mockConsoleState = {
-        isCurrentWorkspaceManager: true,
-        isCurrentWorkspaceOwner: false,
-        workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
-      }
-
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
-
-      expect(screen.queryByTestId('include-all-checkbox')).not.toBeInTheDocument()
     })
   })
 })

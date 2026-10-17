@@ -109,15 +109,17 @@ describe('ParamItem', () => {
       expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0.8)
     })
 
-    it('should reset the textbox and slider when users clear the input', async () => {
+    it('should allow users to replace the minimum value with a multi-digit value', async () => {
       const user = userEvent.setup()
       const StatefulParamItem = () => {
-        const [value, setValue] = useState(defaultProps.value)
+        const [value, setValue] = useState(1)
 
         return (
           <ParamItem
             {...defaultProps}
             value={value}
+            min={1}
+            max={100}
             onChange={(key: string, nextValue: number) => {
               defaultProps.onChange(key, nextValue)
               setValue(nextValue)
@@ -131,12 +133,14 @@ describe('ParamItem', () => {
       const input = screen.getByRole('textbox')
       await user.clear(input)
 
-      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 0)
-      expect(getSlider()).toHaveAttribute('aria-valuenow', '0')
+      expect(input).toHaveValue('')
+      expect(defaultProps.onChange).not.toHaveBeenCalled()
 
-      await user.tab()
+      await user.type(input, '20')
 
-      expect(input).toHaveValue('0')
+      expect(input).toHaveValue('20')
+      expect(defaultProps.onChange).toHaveBeenLastCalledWith('test_param', 20)
+      expect(getSlider()).toHaveAttribute('aria-valuenow', '20')
     })
 
     it('should clamp out-of-range text edits before updating state', async () => {

@@ -34,6 +34,7 @@ from dify_agent.layers.shell import (
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import OperationalError
@@ -69,6 +70,7 @@ from models.agent_config_entities import (
     WorkflowPreviousNodeOutputRef,
 )
 from models.provider_ids import ModelProviderID
+from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
@@ -216,7 +218,10 @@ class WorkflowAgentRuntimeRequestBuilder:
             runtime_config_skills=runtime_config_skills,
         )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        try:
+            knowledge_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+        except KnowledgeFsError as exc:
+            raise WorkflowAgentRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -257,6 +262,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    trace_id=context.dify_context.trace_session_id,
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,
@@ -267,7 +273,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 ),
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=knowledge_config,
+                knowledge_fs=knowledge_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),

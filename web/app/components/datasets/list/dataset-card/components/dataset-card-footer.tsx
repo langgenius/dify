@@ -1,4 +1,4 @@
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DatasetCardItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -16,7 +16,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardFooterProps = {
-  dataset: DatasetDetailWithPartialMembersResponse
+  dataset: DatasetCardItem
 }
 
 const DatasetCardFooter = ({ dataset }: DatasetCardFooterProps) => {

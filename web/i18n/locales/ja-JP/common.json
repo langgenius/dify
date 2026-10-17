@@ -167,6 +167,7 @@
   "operation.create": "作成",
   "operation.deSelectAll": "すべて選択解除",
   "operation.delete": "削除",
+  "operation.deleteConfirmTitle": "削除しますか？",
   "operation.download": "ダウンロード",
   "operation.downloadFailed": "ダウンロードに失敗しました、後で再試行してください。",
   "operation.downloadSuccess": "ダウンロード完了",

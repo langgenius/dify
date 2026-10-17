@@ -167,6 +167,7 @@
   "operation.create": "Créer",
   "operation.deSelectAll": "Désélectionner tout",
   "operation.delete": "Supprimer",
+  "operation.deleteConfirmTitle": "Supprimer ?",
   "operation.download": "Télécharger",
   "operation.downloadFailed": "Échec du téléchargement. Veuillez réessayer plus tard.",
   "operation.downloadSuccess": "Téléchargement terminé.",

@@ -499,3 +499,36 @@ async def test_empty_current_user_content_fails_before_model_io(monkeypatch, use
         with pytest.raises(ValueError, match="run.user_prompts must not be empty"):
             await runner.run()
         assert isinstance(sink.events["test"][-1], RunFailedEvent)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("failed", [False, True])
+async def test_quality_report_follows_final_run_event(monkeypatch, failed):
+    from dataclasses import dataclass
+    from unittest.mock import AsyncMock
+
+    from dify_agent.runtime.runner import RunSuccessOutcome
+
+    @dataclass(frozen=True)
+    class QualityReportModule:
+        publish_investigation: AsyncMock
+
+    module = QualityReportModule(publish_investigation=AsyncMock())
+    async with httpx.AsyncClient() as client:
+        services = Services(client, client)
+        runner = AgentRunRunner(sink=InMemoryRunEventSink(), request=request(), run_id="quality-run", services=services)
+
+        async def execute():
+            runner._knowledge_modules = [module]
+            if failed:
+                raise RuntimeError("model failed")
+            return RunSuccessOutcome(output="answer", session_snapshot=SessionSnapshot(layers={}), usage=None)
+
+        monkeypatch.setattr(runner, "_run_agent", execute)
+        if failed:
+            with pytest.raises(RuntimeError):
+                await runner.run()
+            module.publish_investigation.assert_awaited_once_with(services, status="interrupted")
+        else:
+            await runner.run()
+            module.publish_investigation.assert_awaited_once_with(services, status="completed", answer="answer")

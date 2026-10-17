@@ -10,6 +10,30 @@ vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
 }))
 
 describe('WorkflowProcessItem', () => {
+  it('localizes a KnowledgeFS permissions rejection in the collapsed and expanded states', async () => {
+    const user = userEvent.setup()
+    render(
+      <WorkflowProcessItem
+        data={
+          {
+            error:
+              '[knowledge_fs_authorization_not_ready] KnowledgeFS Space space-a permissions are not ready',
+            status: WorkflowRunningStatus.Failed,
+            tracing: [],
+          } as WorkflowProcess
+        }
+        expand={false}
+      />,
+    )
+
+    const localized = 'workflow.nodes.knowledgeRetrievalV2.errors.permissionsNotReady'
+    expect(screen.getByText(localized)).toBeInTheDocument()
+    expect(screen.queryByText(/KnowledgeFS Space space-a/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button'))
+    expect(screen.getByRole('alert')).toHaveTextContent(localized)
+  })
+
   const mockData = {
     status: WorkflowRunningStatus.Succeeded,
     tracing: [

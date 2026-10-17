@@ -4,13 +4,14 @@ import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { seedToolProviders } from '@/test/console/tool-providers'
@@ -283,8 +284,23 @@ const promptEditorDraft = {
   tools: [duckDuckGoProviderTool],
 } satisfies typeof defaultAgentSoulConfigFormState
 
-const render = (ui: React.ReactElement) => {
-  const { wrapper, queryClient } = createConsoleQueryWrapper({ features: { enable_skill: true } })
+const render = (
+  ui: React.ReactElement,
+  options: Pick<
+    NonNullable<Parameters<typeof createConsoleQueryWrapper>[0]>,
+    'knowledgeFsFeatures' | 'queryClient'
+  > = {},
+) => {
+  const { wrapper, queryClient } = createConsoleQueryWrapper({
+    features: { enable_skill: true },
+    queryClient: options.queryClient,
+    knowledgeFsFeatures: {
+      enabled: false,
+      upload_enabled: false,
+      agent_enabled: false,
+      ...options.knowledgeFsFeatures,
+    },
+  })
   seedToolProviders(queryClient, {
     builtInTools: mockBuiltInTools,
     customTools: [],
@@ -299,6 +315,8 @@ const renderAgentPromptEditor = (
   draftOverrides: Partial<typeof defaultAgentSoulConfigFormState> = {},
 ) => {
   const store = createStore()
+  const queryClient = createConsoleQueryClient()
+  store.set(queryClientAtom, queryClient)
   seedRegisteredConsoleStateFixture(store)
   store.set(agentComposerDraftAtom, {
     ...promptEditorDraft,
@@ -310,6 +328,7 @@ const renderAgentPromptEditor = (
     <JotaiProvider store={store}>
       <AgentPromptEditor />
     </JotaiProvider>,
+    { queryClient, knowledgeFsFeatures: { agent_enabled: false } },
   )
 
   return {

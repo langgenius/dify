@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}”现已成为 Agent 知识库",
+  "upgrade.completeTitle": "升级完成",
+  "upgrade.contactSupport": "联系支持",
+  "upgrade.dialogAvailability": "升级完成后，<strong>经典知识库和 Agent 知识库均可继续使用</strong>",
+  "upgrade.dialogDescription": "此操作会将<legacy>经典知识库</legacy>升级为 <new>Agent 知识库</new>，并完整迁移文档、设置和应用连接。完成后会自动带你前往 Agent 知识库。",
+  "upgrade.dialogDuration": "根据知识库大小，升级可能需要几分钟到几小时。进度会显示在知识库卡片上",
+  "upgrade.dialogLinkedApps": "升级期间，已连接的应用仍可继续检索",
+  "upgrade.dialogTitle": "升级为 Agent 知识库？",
+  "upgrade.failedDescription": "升级失败，未进行任何更改。经典知识库仍可继续使用。",
+  "upgrade.failedTitle": "升级失败",
+  "upgrade.failedToastDescription": "“{{name}}”仍保留为经典知识库，数据未发生变化",
+  "upgrade.guideDescription": "升级会将此经典知识库迁移为 Agent 知识库。连接数据源后，文档会保持同步并自动建立索引。文档、设置和应用连接都会迁移，已连接的应用也会继续工作。",
+  "upgrade.guideTitle": "从经典知识库升级到 Agent 知识库",
+  "upgrade.justNow": "刚刚",
+  "upgrade.menuLabel": "升级为 Agent 知识库",
+  "upgrade.migratingDocuments": "正在迁移文档…",
+  "upgrade.start": "开始升级",
+  "upgrade.startFailed": "无法开始升级，请重试。",
+  "upgrade.statusFailed": "升级失败",
+  "upgrade.statusUpgrading": "正在升级",
+  "upgrade.upgradedJustNow": "刚刚升级"
+}

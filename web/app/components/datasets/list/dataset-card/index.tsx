@@ -1,6 +1,6 @@
 'use client'
 
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { DatasetCardItem } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -27,7 +27,7 @@ import { useDatasetCardState as useDatasetCardController } from './hooks/use-dat
 const EXTERNAL_PROVIDER = 'external'
 
 type DatasetCardProps = {
-  dataset: DatasetDetailWithPartialMembersResponse
+  dataset: DatasetCardItem
   onSuccess?: () => void
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuHighlightPart?: string
@@ -73,7 +73,7 @@ const DatasetCard = ({
     () =>
       getDatasetACLCapabilities(dataset.permission_keys, {
         currentUserId,
-        resourceMaintainer: dataset.maintainer,
+        resourceMaintainer: dataset.maintainer ?? undefined,
         workspacePermissionKeys,
       }),
     [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys],

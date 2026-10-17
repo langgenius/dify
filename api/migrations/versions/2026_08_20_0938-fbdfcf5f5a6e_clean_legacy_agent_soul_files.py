@@ -1,7 +1,7 @@
 """clean legacy agent soul files
 
 Revision ID: fbdfcf5f5a6e
-Revises: 89919253ca7a
+Revises: c4d8e2f7a1b6
 Create Date: 2026-08-20 09:38:36.827807
 
 """
@@ -10,7 +10,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "fbdfcf5f5a6e"
-down_revision = "89919253ca7a"
+down_revision = "c4d8e2f7a1b6"
 branch_labels = None
 depends_on = None
 

@@ -69,6 +69,10 @@ class AgentStubControlPlaneService:
     config_request_handler: AgentStubConfigRequestHandler | None = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
 
+    def authenticate(self, *, authorization: str | None) -> AgentStubPrincipal:
+        """Shared authentication boundary for additional typed read-only bridges."""
+        return self._authenticate(authorization, expose_expiration=True)
+
     async def connect(self, *, authorization: str | None) -> AgentStubConnectResponse:
         """Authenticate and handle one connect request."""
         _ = self._authenticate(authorization, expose_expiration=True)

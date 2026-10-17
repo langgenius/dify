@@ -5,6 +5,7 @@ from importlib import import_module
 from unittest.mock import MagicMock, patch
 
 from enums import DeploymentEdition
+from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
 
 
 class TestCelerySSLConfiguration:
@@ -183,7 +184,13 @@ class TestCelerySSLConfiguration:
         mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
         mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
 
-        with patch("extensions.ext_celery.dify_config", mock_config):
+        with (
+            patch("extensions.ext_celery.dify_config", mock_config),
+            patch(
+                "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
+                return_value=KnowledgeFSLifecycleWorkerReadiness(ready=False, blockers=()),
+            ),
+        ):
             from dify_app import DifyApp
             from extensions.ext_celery import init_app
 
@@ -238,7 +245,13 @@ class TestCelerySSLConfiguration:
         mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
         mock_config.ENTERPRISE_TELEMETRY_ENABLED = False
 
-        with patch("extensions.ext_celery.dify_config", mock_config):
+        with (
+            patch("extensions.ext_celery.dify_config", mock_config),
+            patch(
+                "services.knowledge_fs.lifecycle_readiness.get_configured_knowledge_fs_lifecycle_worker_readiness",
+                return_value=KnowledgeFSLifecycleWorkerReadiness(ready=False, blockers=()),
+            ),
+        ):
             from dify_app import DifyApp
             from extensions.ext_celery import init_app
 

@@ -226,6 +226,7 @@ class DatasourceProviderService:
         provider: str,
         plugin_id: str,
         credential_id: str | None = None,
+        current_user: Any | None = None,
     ) -> dict[str, Any]:
         """
         Return decrypted datasource credentials.
@@ -238,9 +239,11 @@ class DatasourceProviderService:
         )
         if record is None:
             return {}
-        return self._resolve_provider_credentials(record)
+        return self._resolve_provider_credentials(record, current_user=current_user)
 
-    def _resolve_provider_credentials(self, record: DatasourceCredentialRecord) -> dict[str, Any]:
+    def _resolve_provider_credentials(
+        self, record: DatasourceCredentialRecord, *, current_user: Any | None = None
+    ) -> dict[str, Any]:
         """Refresh a snapshot; the store owns each read and conditional write transaction."""
         if self._should_refresh_credentials(record):
             encrypted, expires_at = self._refresh_datasource_credentials(
@@ -248,7 +251,7 @@ class DatasourceProviderService:
                 provider=record.provider,
                 plugin_id=record.plugin_id,
                 datasource_provider=record,
-                current_user=get_current_user(),
+                current_user=current_user if current_user is not None else get_current_user(),
             )
             saved = self._credentials.update_if_unchanged(
                 record=record, encrypted_credentials=encrypted, expires_at=expires_at

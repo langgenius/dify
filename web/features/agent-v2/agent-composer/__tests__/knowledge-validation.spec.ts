@@ -7,7 +7,7 @@ import { RETRIEVE_TYPE } from '@/types/app'
 import { validateKnowledgeRetrievals } from '../knowledge-validation'
 
 describe('validateKnowledgeRetrievals', () => {
-  it('should accept a valid generated-query knowledge retrieval', () => {
+  it('should require explicit migration of historical datasets', () => {
     const result = validateKnowledgeRetrievals([
       {
         id: 'retrieval-1',
@@ -19,9 +19,8 @@ describe('validateKnowledgeRetrievals', () => {
     ])
 
     expect(result).toMatchObject({
-      isValid: true,
-      byId: {},
-      firstIssue: undefined,
+      isValid: false,
+      firstIssue: { code: 'legacy_rebind_required' },
     })
   })
 

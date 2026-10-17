@@ -26,6 +26,10 @@ const getModelProviderPluginId = (provider: string) => {
 }
 
 type ModelSelectorBaseProps = {
+  ariaDescribedBy?: string
+  ariaInvalid?: boolean
+  ariaLabelledBy?: string
+  ariaRequired?: boolean
   'aria-labelledby'?: string
   value?: ModelSelectorValue
   models: ModelSelectorProvider[]
@@ -55,6 +59,10 @@ type SplitModelSelectorProps = ModelSelectorBaseProps & {
 }
 
 function ModelSelectorRoot({
+  ariaDescribedBy,
+  ariaInvalid,
+  ariaLabelledBy,
+  ariaRequired,
   'aria-labelledby': labelledBy,
   value,
   models,
@@ -145,7 +153,10 @@ function ModelSelectorRoot({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <ModelSelectorTrigger
-        aria-labelledby={labelledBy}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid || undefined}
+        aria-labelledby={ariaLabelledBy || labelledBy}
+        aria-required={ariaRequired}
         currentProvider={currentProvider}
         currentModel={currentModel}
         defaultModel={value}

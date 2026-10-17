@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   permissionQueryOptions: vi.fn(),
   featuresQueryFn: vi.fn(),
   featuresQueryOptions: vi.fn(),
+  knowledgeFsFeaturesQueryFn: vi.fn(),
+  knowledgeFsFeaturesQueryOptions: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
@@ -59,6 +61,13 @@ vi.mock('@/service/console', () => ({
     features: {
       get: {
         queryOptions: (...args: unknown[]) => mocks.featuresQueryOptions(...args),
+      },
+    },
+    knowledgeFs: {
+      features: {
+        get: {
+          queryOptions: (...args: unknown[]) => mocks.knowledgeFsFeaturesQueryOptions(...args),
+        },
       },
     },
     workspaces: {
@@ -139,6 +148,16 @@ describe('CommonLayoutHydrationBoundary', () => {
       queryFn: mocks.featuresQueryFn,
       retry: false,
     })
+    mocks.knowledgeFsFeaturesQueryFn.mockResolvedValue({
+      enabled: true,
+      upload_enabled: true,
+      agent_enabled: false,
+    })
+    mocks.knowledgeFsFeaturesQueryOptions.mockReturnValue({
+      queryKey: ['console', 'knowledgeFs', 'features', 'get'],
+      queryFn: mocks.knowledgeFsFeaturesQueryFn,
+      retry: false,
+    })
   })
 
   it('should prefetch common layout queries', async () => {
@@ -167,6 +186,10 @@ describe('CommonLayoutHydrationBoundary', () => {
       retry: false,
     })
     expect(mocks.featuresQueryFn).toHaveBeenCalledTimes(1)
+    expect(mocks.knowledgeFsFeaturesQueryOptions).toHaveBeenCalledWith({
+      retry: false,
+    })
+    expect(mocks.knowledgeFsFeaturesQueryFn).toHaveBeenCalledTimes(1)
   })
 
   it.each([true, false])('hydrates the initial skill flag as %s', async (enableSkill) => {
@@ -217,13 +240,14 @@ describe('CommonLayoutHydrationBoundary', () => {
     const state = (element as ReactElement<{ state: DehydratedState }>).props.state
     const queryKeys = state.queries.map((query) => query.queryKey)
 
-    expect(queryKeys).toHaveLength(4)
+    expect(queryKeys).toHaveLength(5)
     expect(queryKeys).toEqual(
       expect.arrayContaining([
         ['common', 'user-profile'],
         ['console', 'workspaces', 'current', 'summary', 'get'],
         [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
         ['console', 'features', 'get'],
+        ['console', 'knowledgeFs', 'features', 'get'],
       ]),
     )
   })
@@ -244,11 +268,16 @@ describe('CommonLayoutHydrationBoundary', () => {
       queryKey: ['console', 'features', 'get'],
       target: 'features' as const,
     },
+    {
+      queryKey: ['console', 'knowledgeFs', 'features', 'get'],
+      target: 'knowledgeFsFeatures' as const,
+    },
   ])(
     'should keep the Common shell recoverable when the $target query fails',
     async ({ queryKey, target }) => {
       const failedQueryFn = {
         features: mocks.featuresQueryFn,
+        knowledgeFsFeatures: mocks.knowledgeFsFeaturesQueryFn,
         permissions: mocks.permissionQueryFn,
         workspace: mocks.workspaceQueryFn,
       }[target]

@@ -368,6 +368,37 @@ describe('consoleQuery transport context', () => {
     )
   })
 
+  it('should not report query cancellation as a transport error', async () => {
+    const request = vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError'))
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: { query: { limit: 30, page: 1 } },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  it('should continue reporting non-cancellation transport errors', async () => {
+    const networkError = new TypeError('Network failed')
+    const request = vi.fn().mockRejectedValue(networkError)
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: { query: { limit: 30, page: 1 } },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(errorSpy).toHaveBeenCalledWith(networkError)
+  })
+
   it('should serialize trial app dataset ids as repeated query params', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
@@ -407,6 +438,98 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.has('ids[0]')).toBe(false)
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
   })
+
+  it('should serialize KnowledgeFS creator ids as repeated query params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1 }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.knowledgeFs.spaces.get.queryOptions({
+      input: {
+        query: {
+          creator_ids: ['creator-1', 'creator-2'],
+          limit: 30,
+          page: 1,
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('creator_ids')).toEqual(['creator-1', 'creator-2'])
+    expect(requestURL.searchParams.has('creator_ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('creator_ids[1]')).toBe(false)
+  })
+
+  it('should serialize dataset filters as repeated query params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [], has_more: false, limit: 30, page: 1, total: 0 }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.datasets.get.queryOptions({
+      input: {
+        query: {
+          creator_ids: ['creator-1', 'creator-2'],
+          limit: 30,
+          page: 1,
+          tag_ids: ['tag-1', 'tag-2'],
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('creator_ids')).toEqual(['creator-1', 'creator-2'])
+    expect(requestURL.searchParams.getAll('tag_ids')).toEqual(['tag-1', 'tag-2'])
+    expect(requestURL.searchParams.has('creator_ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('tag_ids[0]')).toBe(false)
+  })
+
+  it('should request KnowledgeFS documents through the control-space contract', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [], next_cursor: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.queryOptions({
+        input: {
+          params: {
+            control_space_id: 'space-1',
+          },
+          query: { cursor: 'cursor-1' },
+        },
+      })
+
+    const result = await queryOptions.queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expect(result).toEqual({ data: [], next_cursor: null })
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/knowledge-fs/spaces/space-1/documents?cursor=cursor-1'),
+      expect.any(Object),
+      expect.objectContaining({ fetchCompat: true }),
+    )
+  })
 })
 
 // Scenario: console OpenAPI query arrays follow backend parser expectations.
@@ -427,6 +550,30 @@ describe('normalizeConsoleOpenAPIURL', () => {
   it('should serialize app list query arrays as repeated params', () => {
     const url = normalizeConsoleOpenAPIURL(
       'https://example.com/console/api/apps?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creator_ids[0]')).toBe(false)
+  })
+
+  it('should serialize KnowledgeFS list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/knowledge-fs/spaces?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creator_ids[0]')).toBe(false)
+  })
+
+  it('should serialize dataset list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/datasets?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
     )
     const searchParams = new URL(url).searchParams
 
@@ -952,6 +1099,7 @@ describe('consoleQuery app mutation defaults', () => {
           token: 'app-token',
           type: 'app',
           dataset_ids: [],
+          knowledge_space_ids: [],
         },
         { params: { resource_id: 'app-1' } },
         undefined,
@@ -963,6 +1111,7 @@ describe('consoleQuery app mutation defaults', () => {
           token: 'dataset-token',
           type: 'dataset',
           dataset_ids: [],
+          knowledge_space_ids: [],
         },
         { body: {} },
         undefined,
@@ -1012,14 +1161,18 @@ describe('consoleQuery agent mutation defaults', () => {
       const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const context = createMutationContext(queryClient)
       if (operation === 'creation') {
-        await consoleQuery.agent.byAgentId.apiKeys.post
-          .mutationOptions()
-          .onSuccess?.(
-            { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
-            { params: { agent_id: 'agent-1' } },
-            undefined,
-            context,
-          )
+        await consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions().onSuccess?.(
+          {
+            id: 'key-1',
+            token: 'app-secret',
+            type: 'app',
+            dataset_ids: [],
+            knowledge_space_ids: [],
+          },
+          { params: { agent_id: 'agent-1' } },
+          undefined,
+          context,
+        )
       } else {
         await consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
           .mutationOptions()

@@ -148,7 +148,15 @@ function isSkillDetailPathname(pathname: string) {
 }
 
 export function shouldHideMainNavigation(pathname: string) {
-  return isSkillDetailPathname(pathname)
+  const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
+
+  return (
+    (section === 'datasets' &&
+      namespace === 'new' &&
+      !!knowledgeSpaceId &&
+      knowledgeSpaceId !== 'create') ||
+    isSkillDetailPathname(pathname)
+  )
 }
 
 function isAgentDetailPathname(pathname: string) {

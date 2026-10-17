@@ -1,10 +1,17 @@
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { createEvent, fireEvent, screen } from '@testing-library/react'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  KnowledgeFsUpgradeDiscoveryResponse,
+  KnowledgeFsUpgradeJobResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import OperationsDropdown from '../operations-dropdown'
 
@@ -16,12 +23,25 @@ const mockConsoleState = vi.hoisted(() => ({
 let mockIsRbacEnabled = true
 const noopKeyboardHandler = () => {}
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const discoveryOptions = consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.get.queryOptions({
+    input: { params: { dataset_id: 'dataset-1' } },
+  })
+  queryClient.setQueryDefaults(discoveryOptions.queryKey, { staleTime: Infinity })
+  queryClient.setQueryData(discoveryOptions.queryKey, {
+    can_retry: false,
+    can_upgrade: true,
+    job: null,
+  })
+
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
       rbac_enabled: mockIsRbacEnabled,
     },
   })
+}
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -35,8 +55,12 @@ vi.mock('@/context/permission-state', async () => {
 })
 describe('OperationsDropdown', () => {
   const createMockDataset = (
-    overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
-  ): DatasetDetailWithPartialMembersResponse =>
+    overrides: Partial<DatasetDetailWithPartialMembersResponse> & {
+      knowledge_fs_upgrade?: KnowledgeFsUpgradeDiscoveryResponse
+    } = {},
+  ): DatasetDetailWithPartialMembersResponse & {
+    knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
+  } =>
     ({
       id: 'dataset-1',
       name: 'Test Dataset',
@@ -62,8 +86,15 @@ describe('OperationsDropdown', () => {
         DatasetACLPermission.ImportExportDSL,
         DatasetACLPermission.AccessConfig,
       ],
+      knowledge_fs_upgrade: {
+        can_retry: false,
+        can_upgrade: true,
+        job: null,
+      },
       ...overrides,
-    }) as DatasetDetailWithPartialMembersResponse
+    }) as DatasetDetailWithPartialMembersResponse & {
+      knowledge_fs_upgrade: KnowledgeFsUpgradeDiscoveryResponse
+    }
 
   const defaultProps = {
     dataset: createMockDataset(),
@@ -75,6 +106,7 @@ describe('OperationsDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = []
     mockIsRbacEnabled = true
@@ -169,6 +201,14 @@ describe('OperationsDropdown', () => {
       expect(trigger).toBeInTheDocument()
     })
 
+    it('should preserve the Figma menu width through the tour prop adapter', () => {
+      render(<OperationsDropdown {...defaultProps} />)
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByRole('menu')).toHaveClass('min-w-44')
+    })
+
     it('should use a solid trigger background without backdrop blur on hover states', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const trigger = container.querySelector('[aria-label="Dataset operations"]')
@@ -178,6 +218,114 @@ describe('OperationsDropdown', () => {
   })
 
   describe('User Interactions', () => {
+    it('exposes upgrade and its help as separate keyboard-addressable menu items', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown {...defaultProps} />
+        </KnowledgeUpgradeProvider>,
+      )
+
+      await user.click(screen.getByLabelText('Dataset operations'))
+
+      const upgradeItem = await screen.findByRole('menuitem', {
+        name: 'knowledgeUpgrade.upgrade.menuLabel',
+      })
+      const guideItem = screen.getByRole('menuitem', {
+        name: 'knowledgeUpgrade.upgrade.guideTitle',
+      })
+      expect(upgradeItem).not.toContainElement(guideItem)
+
+      await user.click(guideItem)
+      expect(
+        await screen.findByText('knowledgeUpgrade.upgrade.guideDescription'),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'knowledgeSpace.learnMore' })).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/en/guides/knowledge-base',
+      )
+    })
+
+    it('opens the knowledge upgrade confirmation from an editable legacy card', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown {...defaultProps} />
+        </KnowledgeUpgradeProvider>,
+      )
+
+      await user.click(screen.getByLabelText('Dataset operations'))
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'knowledgeUpgrade.upgrade.menuLabel' }),
+      )
+
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: 'knowledgeUpgrade.upgrade.dialogTitle',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'knowledgeUpgrade.upgrade.start' }),
+      ).toBeInTheDocument()
+    })
+
+    it('returns focus to dataset operations after cancelling the upgrade confirmation', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown {...defaultProps} />
+        </KnowledgeUpgradeProvider>,
+      )
+
+      const operationsTrigger = screen.getByLabelText('Dataset operations')
+      await user.click(operationsTrigger)
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'knowledgeUpgrade.upgrade.menuLabel' }),
+      )
+      await user.click(await screen.findByRole('button', { name: 'common.operation.cancel' }))
+
+      await waitFor(() => expect(operationsTrigger).toHaveFocus())
+    })
+
+    it('does not offer another upgrade when the dataset summary reports completion', async () => {
+      const completedJob: KnowledgeFsUpgradeJobResponse = {
+        completed_documents: 10,
+        completed_sources: 1,
+        id: 'upgrade-1',
+        new_control_space_id: 'space-1',
+        old_dataset_id: defaultProps.dataset.id,
+        snapshot_at: '2026-08-18T00:00:00Z',
+        stage: 'completed',
+        status: 'succeeded',
+        total_documents: 10,
+        total_sources: 1,
+      }
+      const user = userEvent.setup()
+      render(
+        <KnowledgeUpgradeProvider onUpgradeStarted={vi.fn()}>
+          <OperationsDropdown
+            {...defaultProps}
+            dataset={createMockDataset({
+              knowledge_fs_upgrade: {
+                block_reason: 'already_upgraded',
+                can_retry: false,
+                can_upgrade: false,
+                job: completedJob,
+              },
+            })}
+          />
+        </KnowledgeUpgradeProvider>,
+      )
+      await user.click(screen.getByLabelText('Dataset operations'))
+
+      expect(
+        screen.queryByRole('menuitem', { name: 'knowledgeUpgrade.upgrade.menuLabel' }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should keep outside interactions available when the menu is open', () => {
       const onOutsideClick = vi.fn()
 

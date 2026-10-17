@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "« {{name}} » est désormais une base de connaissances Agent",
+  "upgrade.completeTitle": "Mise à niveau terminée",
+  "upgrade.contactSupport": "Contacter le support",
+  "upgrade.dialogAvailability": "Après la mise à niveau, <strong>les bases de connaissances classique et Agent restent toutes deux disponibles</strong>",
+  "upgrade.dialogDescription": "Cette opération met à niveau la <legacy>base de connaissances classique</legacy> vers une <new>base de connaissances Agent</new> en conservant tous les documents, paramètres et connexions aux applications. Vous serez ensuite redirigé automatiquement vers la base de connaissances Agent.",
+  "upgrade.dialogDuration": "Prend de quelques minutes à quelques heures selon la taille. La progression apparaît sur la carte de la base de connaissances",
+  "upgrade.dialogLinkedApps": "Les applications liées continuent de rechercher des données pendant la mise à niveau",
+  "upgrade.dialogTitle": "Mettre cette base de connaissances à niveau vers une base de connaissances Agent ?",
+  "upgrade.failedDescription": "Échec de la mise à niveau — rien n’a été modifié. Votre base de connaissances classique reste disponible.",
+  "upgrade.failedTitle": "Échec de la mise à niveau",
+  "upgrade.failedToastDescription": "« {{name}} » reste une base de connaissances classique ; aucune donnée n’a été modifiée",
+  "upgrade.guideDescription": "La mise à niveau fait passer cette base de connaissances classique à une base de connaissances Agent. Connectez une source : ses documents restent synchronisés et sont indexés automatiquement. Les documents, paramètres et connexions aux applications sont conservés et les applications liées continuent de fonctionner.",
+  "upgrade.guideTitle": "Mise à niveau d’une base de connaissances classique vers une base de connaissances Agent",
+  "upgrade.justNow": "À l’instant",
+  "upgrade.menuLabel": "Mettre à niveau vers une base de connaissances Agent",
+  "upgrade.migratingDocuments": "Migration des documents…",
+  "upgrade.start": "Démarrer la mise à niveau",
+  "upgrade.startFailed": "Impossible de démarrer la mise à niveau. Réessayez.",
+  "upgrade.statusFailed": "Échec de la mise à niveau",
+  "upgrade.statusUpgrading": "Mise à niveau en cours",
+  "upgrade.upgradedJustNow": "Mise à niveau effectuée à l’instant"
+}

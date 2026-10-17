@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "«{{name}}» ahora es una base de conocimientos Agent",
+  "upgrade.completeTitle": "Actualización completada",
+  "upgrade.contactSupport": "Contactar con soporte",
+  "upgrade.dialogAvailability": "Después de la actualización, <strong>tanto la base de conocimientos clásica como la de Agent siguen disponibles</strong>",
+  "upgrade.dialogDescription": "Actualiza esta <legacy>base de conocimientos clásica</legacy> a una <new>base de conocimientos Agent</new>, conservando todos los documentos, ajustes y conexiones de aplicaciones. Se te llevará a la base de conocimientos Agent automáticamente.",
+  "upgrade.dialogDuration": "Tarda de unos minutos a varias horas, según el tamaño. El progreso aparece en la tarjeta de la base de conocimientos",
+  "upgrade.dialogLinkedApps": "Las aplicaciones vinculadas siguen recuperando datos durante la actualización",
+  "upgrade.dialogTitle": "¿Actualizar a una base de conocimientos Agent?",
+  "upgrade.failedDescription": "La actualización falló; no se cambió nada. Tu base de conocimientos clásica sigue disponible.",
+  "upgrade.failedTitle": "Error en la actualización",
+  "upgrade.failedToastDescription": "«{{name}}» sigue siendo una base de conocimientos clásica; no se modificaron datos",
+  "upgrade.guideDescription": "La actualización lleva esta base de conocimientos clásica a una base de conocimientos Agent. Conecta una fuente y sus documentos se mantendrán sincronizados e indexados automáticamente. Los documentos, ajustes y conexiones de aplicaciones se transfieren, y las aplicaciones vinculadas siguen funcionando.",
+  "upgrade.guideTitle": "Actualizar de una base de conocimientos clásica a una base de conocimientos Agent",
+  "upgrade.justNow": "Ahora mismo",
+  "upgrade.menuLabel": "Actualizar a una base de conocimientos Agent",
+  "upgrade.migratingDocuments": "Migrando documentos…",
+  "upgrade.start": "Iniciar actualización",
+  "upgrade.startFailed": "No se pudo iniciar la actualización. Inténtalo de nuevo.",
+  "upgrade.statusFailed": "Error en la actualización",
+  "upgrade.statusUpgrading": "Actualizando",
+  "upgrade.upgradedJustNow": "Actualizada ahora mismo"
+}

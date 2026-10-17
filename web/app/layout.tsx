@@ -22,6 +22,7 @@ import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import { TanStackQueryProvider } from './query-provider'
+import { QueryStateProvider } from './query-state-provider'
 import '@/service/console/server'
 import './styles/globals.css'
 import './styles/markdown.css'
@@ -77,18 +78,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <JotaiProvider>
             <ThemeProvider {...themeProviderProps}>
               <NuqsAdapter>
-                <TanStackQueryProvider>
-                  <HydrationBoundary state={dehydratedState}>
-                    <I18nServerProvider>
-                      <AppToastHost timeout={5000} limit={3} />
-                      <SystemFeaturesBootstrapBoundary>
-                        <TooltipProvider delay={300} closeDelay={200}>
-                          {children}
-                        </TooltipProvider>
-                      </SystemFeaturesBootstrapBoundary>
-                    </I18nServerProvider>
-                  </HydrationBoundary>
-                </TanStackQueryProvider>
+                <QueryStateProvider>
+                  <TanStackQueryProvider>
+                    <HydrationBoundary state={dehydratedState}>
+                      <I18nServerProvider>
+                        <AppToastHost timeout={5000} limit={3} />
+                        <SystemFeaturesBootstrapBoundary>
+                          <TooltipProvider delay={300} closeDelay={200}>
+                            {children}
+                          </TooltipProvider>
+                        </SystemFeaturesBootstrapBoundary>
+                      </I18nServerProvider>
+                    </HydrationBoundary>
+                  </TanStackQueryProvider>
+                </QueryStateProvider>
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>

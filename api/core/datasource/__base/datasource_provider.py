@@ -38,6 +38,11 @@ class DatasourcePluginProviderController(ABC):
         ):
             raise ToolProviderCredentialValidationError("Invalid credentials")
 
+    def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+        """Validate credential shape and value against this installed provider declaration."""
+        self.validate_credentials_format(credentials)
+        self._validate_credentials(user_id, credentials)
+
     @property
     def provider_type(self) -> DatasourceProviderType:
         """

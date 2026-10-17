@@ -168,6 +168,9 @@ type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
 }
 type DropdownMenuItemVariant = MenuItemVariant
 
+const DropdownMenuArrow = Menu.Arrow
+type DropdownMenuArrowProps = Menu.Arrow.Props
+
 function DropdownMenuRadioGroup<Value = unknown>(
   props: DropdownMenuRadioGroupProps<Value>,
 ): React.JSX.Element {
@@ -433,6 +436,7 @@ function DropdownMenuSeparator({ className, ...props }: DropdownMenuSeparatorPro
 export {
   createDropdownMenuHandle,
   DropdownMenu,
+  DropdownMenuArrow,
   DropdownMenuCheckboxItem,
   DropdownMenuCheckboxItemIndicator,
   DropdownMenuClear,
@@ -462,6 +466,7 @@ export {
 
 export type {
   DropdownMenuActions,
+  DropdownMenuArrowProps,
   DropdownMenuChangeEventDetails,
   DropdownMenuChangeEventReason,
   DropdownMenuCheckboxItemChangeEventDetails,

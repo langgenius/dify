@@ -5,6 +5,7 @@ from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsL
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.shell import DifyShellEnvVarConfig, DifyShellLayerConfig
 from dify_agent.layers.user_prompt import DifyUserPromptDownloadConfig, DifyUserPromptImageConfig
@@ -453,3 +454,44 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured() -> Non
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config["execution_context"] == DIFY_EXECUTION_CONTEXT_LAYER_ID
     knowledge_config = DifyKnowledgeBaseLayerConfig.model_validate(layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
     assert knowledge_config.sets[0].dataset_ids == ["dataset-1", "dataset-2"]
+
+
+@pytest.mark.parametrize("mode", ["agent_app", "workflow"])
+def test_knowledge_fs_uses_only_the_shared_cli_layer_and_requires_shell(mode: str) -> None:
+    config = DifyKnowledgeFsLayerConfig.model_validate(
+        {"spaces": [{"id": "docs", "name": "Docs", "control_space_id": "00000000-0000-4000-8000-000000000001"}]}
+    )
+    run_input = _agent_app_input() if mode == "agent_app" else _run_input()
+    run_input.knowledge_fs = config
+    builder = AgentBackendRunRequestBuilder()
+
+    def build() -> CreateRunRequest:
+        if isinstance(run_input, AgentBackendAgentAppRunInput):
+            return builder.build_for_agent_app(run_input)
+        return builder.build_for_workflow_node(run_input)
+
+    with pytest.raises(ValueError, match="requires shell"):
+        build()
+    run_input.include_shell = True
+    layers = {layer.name: layer for layer in build().composition.layers}
+    knowledge_fs = DifyKnowledgeFsLayerConfig.model_validate(layers["knowledge_fs"].config)
+    assert knowledge_fs == config
+    assert knowledge_fs.execution_context == DIFY_EXECUTION_CONTEXT_LAYER_ID
+    assert knowledge_fs.shell == DIFY_SHELL_LAYER_ID
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID not in layers
+    assert not any("search" in layer.name or "retriev" in layer.name for layer in layers.values())
+    run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
+        {
+            "sets": [
+                {
+                    "id": "legacy",
+                    "name": "Legacy",
+                    "datasets": [{"id": "dataset-1"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 2},
+                }
+            ]
+        }
+    )
+    with pytest.raises(ValueError, match="cannot be combined"):
+        build()

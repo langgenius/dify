@@ -17,6 +17,7 @@ from models.dataset import DatasetPermission, DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from repositories.knowledge.dataset_repository import _get_dataset
 from services.app.query_service import RelatedApps
+from services.dataset_knowledge_fs_upgrade_service import KnowledgeFSUpgradeSnapshotService, upgrade_discovery_response
 from services.enterprise import rbac_service
 from services.errors.base import NoPermissionError
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -141,6 +142,7 @@ class SQLAlchemyDatasetOperations:
                     query.keyword,
                     list(query.tag_ids),
                     query.include_all,
+                    creator_ids=list(query.creator_ids),
                     tags=self._tags,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
@@ -156,9 +158,19 @@ class SQLAlchemyDatasetOperations:
                     )
                 ):
                     members.setdefault(dataset_id, []).append(account_id)
+            upgrade_jobs = KnowledgeFSUpgradeSnapshotService(self._sessions).get_latest_by_dataset_ids(
+                tenant_id=context.active_workspace_id,
+                dataset_ids=[item["id"] for item in data],
+                session=session,
+            )
             for item in data:
                 _normalize_provider(item)
                 item["partial_member_list"] = members.get(item["id"], [])
+                item["knowledge_fs_upgrade"] = upgrade_discovery_response(
+                    upgrade_jobs.get(item["id"]),
+                    feature_enabled=dify_config.KNOWLEDGE_FS_ENABLED,
+                    dataset_provider=str(item["provider"]),
+                ).model_dump(mode="json")
             return {
                 "data": data,
                 "has_more": not query.ids and page * limit < total,

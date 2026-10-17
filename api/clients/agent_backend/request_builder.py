@@ -24,6 +24,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
 )
 from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
 from dify_agent.layers.output import DifyOutputLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.runtime import DifyRuntimeLayerConfig
@@ -53,8 +54,18 @@ DIFY_CONFIG_LAYER_ID = "config"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 DIFY_CORE_TOOLS_LAYER_ID = "core_tools"
 DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
+DIFY_KNOWLEDGE_FS_LAYER_ID = "knowledge_fs"
 DIFY_SHELL_LAYER_ID = "shell"
 type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
+
+
+def _knowledge_fs_spec(run_input: AgentBackendWorkflowNodeRunInput | AgentBackendAgentAppRunInput) -> RunLayerSpec:
+    if not run_input.include_shell or run_input.knowledge is not None or run_input.knowledge_fs is None:
+        raise ValueError("KnowledgeFS requires shell and cannot be combined with legacy knowledge retrieval")
+    return RunLayerSpec(
+        name=DIFY_KNOWLEDGE_FS_LAYER_ID,
+        config=run_input.knowledge_fs.model_dump(mode="json"),
+    )
 
 
 def _markdown_backtick_fence(text: str) -> str:
@@ -190,6 +201,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
@@ -228,6 +240,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     tools: DifyPluginToolsLayerConfig | None = None
     core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
+    knowledge_fs: DifyKnowledgeFsLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
@@ -353,6 +366,8 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge_fs is not None:
+            layers.append(_knowledge_fs_spec(run_input))
         if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(
@@ -489,6 +504,8 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge_fs is not None:
+            layers.append(_knowledge_fs_spec(run_input))
         if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(

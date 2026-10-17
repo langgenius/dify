@@ -1,10 +1,12 @@
 import concurrent.futures
+import functools
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, NotRequired, TypedDict
 
 from flask import Flask, current_app
+from opentelemetry import context as otel_context
 from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session, load_only
 
@@ -24,7 +26,7 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.signature import sign_upload_file_preview_url
 from extensions.ext_database import db
-from extensions.otel import propagate_context, trace_span
+from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import (
     ChildChunk,
@@ -90,6 +92,20 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 logger = logging.getLogger(__name__)
 
 
+def _propagate_otel_context[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    captured_context = otel_context.get_current()
+
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        token = otel_context.attach(captured_context)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            otel_context.detach(token)
+
+    return wrapper
+
+
 class RetrievalService:
     # Cache precompiled regular expressions to avoid repeated compilation
     @classmethod
@@ -123,7 +139,7 @@ class RetrievalService:
             if query:
                 futures.append(
                     executor.submit(
-                        propagate_context(retrieval_service._retrieve),
+                        _propagate_otel_context(retrieval_service._retrieve),
                         flask_app=current_app._get_current_object(),  # type: ignore
                         retrieval_method=retrieval_method,
                         dataset=dataset,
@@ -143,7 +159,7 @@ class RetrievalService:
                 for attachment_id in attachment_ids:
                     futures.append(
                         executor.submit(
-                            propagate_context(retrieval_service._retrieve),
+                            _propagate_otel_context(retrieval_service._retrieve),
                             flask_app=current_app._get_current_object(),  # type: ignore
                             retrieval_method=retrieval_method,
                             dataset=dataset,
@@ -815,7 +831,7 @@ class RetrievalService:
                 if retrieval_method == RetrievalMethod.KEYWORD_SEARCH and query:
                     futures.append(
                         executor.submit(
-                            propagate_context(self.keyword_search),
+                            _propagate_otel_context(self.keyword_search),
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
@@ -829,7 +845,7 @@ class RetrievalService:
                     if query:
                         futures.append(
                             executor.submit(
-                                propagate_context(self.embedding_search),
+                                _propagate_otel_context(self.embedding_search),
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=query,
@@ -846,7 +862,7 @@ class RetrievalService:
                     if attachment_id:
                         futures.append(
                             executor.submit(
-                                propagate_context(self.embedding_search),
+                                _propagate_otel_context(self.embedding_search),
                                 flask_app=current_app._get_current_object(),  # type: ignore
                                 dataset_id=dataset.id,
                                 query=attachment_id,
@@ -863,7 +879,7 @@ class RetrievalService:
                 if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
                     futures.append(
                         executor.submit(
-                            propagate_context(self.full_text_index_search),
+                            _propagate_otel_context(self.full_text_index_search),
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,

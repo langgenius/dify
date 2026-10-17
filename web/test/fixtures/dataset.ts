@@ -5,6 +5,7 @@ export const createDatasetFixture = (
   overrides: Partial<DatasetListItemResponse> = {},
 ): DatasetListItemResponse => ({
   id: 'dataset-1',
+  knowledge_fs_upgrade: { can_retry: false, can_upgrade: false },
   name: 'Test Dataset',
   description: 'Test description',
   provider: 'vendor',

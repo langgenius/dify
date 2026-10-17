@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "»{{name}}« je zdaj zbirka znanja Agent",
+  "upgrade.completeTitle": "Nadgradnja je končana",
+  "upgrade.contactSupport": "Obrnite se na podporo",
+  "upgrade.dialogAvailability": "Po nadgradnji <strong>ostaneta na voljo tako klasična zbirka znanja kot zbirka znanja Agent</strong>",
+  "upgrade.dialogDescription": "Nadgradite to <legacy>klasično zbirko znanja</legacy> v <new>zbirko znanja Agent</new> skupaj z vsemi dokumenti, nastavitvami in povezavami aplikacij. Nato boste samodejno preusmerjeni v zbirko znanja Agent.",
+  "upgrade.dialogDuration": "Traja od nekaj minut do nekaj ur, odvisno od velikosti. Napredek je prikazan na kartici zbirke znanja",
+  "upgrade.dialogLinkedApps": "Povezane aplikacije med nadgradnjo še naprej pridobivajo podatke",
+  "upgrade.dialogTitle": "Nadgradim v zbirko znanja Agent?",
+  "upgrade.failedDescription": "Nadgradnja ni uspela — nič se ni spremenilo. Klasična zbirka znanja je še vedno na voljo.",
+  "upgrade.failedTitle": "Nadgradnja ni uspela",
+  "upgrade.failedToastDescription": "»{{name}}« ostane klasična zbirka znanja; podatki niso bili spremenjeni",
+  "upgrade.guideDescription": "Nadgradnja premakne to klasično zbirko znanja v zbirko znanja Agent. Povežite vir in dokumenti bodo samodejno sinhronizirani ter indeksirani. Dokumenti, nastavitve in povezave aplikacij se prenesejo, povezane aplikacije pa delujejo naprej.",
+  "upgrade.guideTitle": "Nadgradnja klasične zbirke znanja v zbirko znanja Agent",
+  "upgrade.justNow": "Pravkar",
+  "upgrade.menuLabel": "Nadgradi v zbirko znanja Agent",
+  "upgrade.migratingDocuments": "Selitev dokumentov…",
+  "upgrade.start": "Začni nadgradnjo",
+  "upgrade.startFailed": "Nadgradnje ni bilo mogoče začeti. Poskusite znova.",
+  "upgrade.statusFailed": "Nadgradnja ni uspela",
+  "upgrade.statusUpgrading": "Nadgrajevanje",
+  "upgrade.upgradedJustNow": "Pravkar nadgrajeno"
+}

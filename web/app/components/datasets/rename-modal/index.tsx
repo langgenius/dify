@@ -1,8 +1,5 @@
 'use client'
-import type {
-  DatasetDetailWithPartialMembersResponse,
-  DatasetUpdatePayload,
-} from '@dify/contracts/api/console/datasets/types.gen'
+import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -30,7 +27,21 @@ import { updateDatasetSetting } from '@/service/datasets'
 
 type RenameDatasetModalProps = {
   show: boolean
-  dataset: DatasetDetailWithPartialMembersResponse
+  dataset: {
+    description?: string | null
+    external_knowledge_info?: {
+      external_knowledge_api_id?: string | null
+      external_knowledge_id?: string | null
+    } | null
+    icon_info?: {
+      icon?: string | null
+      icon_background?: string | null
+      icon_type?: string | null
+      icon_url?: string | null
+    } | null
+    id: string
+    name: string
+  }
   onSuccess?: () => void
   onClose: () => void
 }
@@ -38,7 +49,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const { t } = useTranslation(['common', 'datasetSettings'])
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
-  const [description, setDescription] = useState<string>(dataset.description ?? '')
+  const [description, setDescription] = useState(dataset.description ?? '')
   const externalKnowledgeId = dataset.external_knowledge_info?.external_knowledge_id
   const externalKnowledgeApiId = dataset.external_knowledge_info?.external_knowledge_api_id
   const [appIcon, setAppIcon] = useState<IconPickerValue>(

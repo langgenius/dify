@@ -3,13 +3,12 @@
 import type { DatasetListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { consoleQuery } from '@/service/console'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
+import { useInvalidDatasetList } from './use-dataset-list'
 
 type DatasetListQuery = UseInfiniteQueryResult<InfiniteData<DatasetListResponse, number>>
 
@@ -43,10 +42,7 @@ const Datasets = ({
   stepByStepTourCardTarget,
 }: Props) => {
   const { t } = useTranslation(['common'])
-  const queryClient = useQueryClient()
-  const invalidDatasetList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-  }, [queryClient])
+  const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
   const pages = datasetList?.pages ?? []

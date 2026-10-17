@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "„{{name}}“ ist jetzt eine Agent-Wissensdatenbank",
+  "upgrade.completeTitle": "Upgrade abgeschlossen",
+  "upgrade.contactSupport": "Support kontaktieren",
+  "upgrade.dialogAvailability": "Nach dem Upgrade <strong>bleiben sowohl die klassische als auch die Agent-Wissensdatenbank verfügbar</strong>",
+  "upgrade.dialogDescription": "Dieses Upgrade überführt die <legacy>klassische Wissensdatenbank</legacy> samt Dokumenten, Einstellungen und App-Verknüpfungen in eine <new>Agent-Wissensdatenbank</new>. Sie werden automatisch zur Agent-Wissensdatenbank weitergeleitet.",
+  "upgrade.dialogDuration": "Dauert je nach Größe einige Minuten bis mehrere Stunden. Der Fortschritt wird auf der Karte der Wissensdatenbank angezeigt",
+  "upgrade.dialogLinkedApps": "Verknüpfte Apps können während des Upgrades weiterhin Inhalte abrufen",
+  "upgrade.dialogTitle": "Upgrade auf eine Agent-Wissensdatenbank durchführen?",
+  "upgrade.failedDescription": "Upgrade fehlgeschlagen – es wurde nichts geändert. Ihre klassische Wissensdatenbank ist weiterhin verfügbar.",
+  "upgrade.failedTitle": "Upgrade fehlgeschlagen",
+  "upgrade.failedToastDescription": "„{{name}}“ bleibt eine klassische Wissensdatenbank; keine Daten wurden geändert",
+  "upgrade.guideDescription": "Das Upgrade überführt diese klassische Wissensdatenbank in eine Agent-Wissensdatenbank. Dokumente aus verbundenen Quellen bleiben synchron und werden automatisch indiziert. Dokumente, Einstellungen und App-Verknüpfungen werden übernommen. Verknüpfte Apps funktionieren weiter.",
+  "upgrade.guideTitle": "Upgrade von einer klassischen Wissensdatenbank auf eine Agent-Wissensdatenbank",
+  "upgrade.justNow": "Gerade eben",
+  "upgrade.menuLabel": "Upgrade auf Agent-Wissensdatenbank",
+  "upgrade.migratingDocuments": "Dokumente werden migriert…",
+  "upgrade.start": "Upgrade starten",
+  "upgrade.startFailed": "Das Upgrade konnte nicht gestartet werden. Versuchen Sie es erneut.",
+  "upgrade.statusFailed": "Upgrade fehlgeschlagen",
+  "upgrade.statusUpgrading": "Upgrade läuft",
+  "upgrade.upgradedJustNow": "Upgrade gerade abgeschlossen"
+}

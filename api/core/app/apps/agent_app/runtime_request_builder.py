@@ -25,6 +25,7 @@ from dify_agent.layers.user_prompt import (
     DifyUserPromptImageConfig,
 )
 from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol.knowledge_fs import KnowledgeFsError
 from dify_agent.protocol.snapshot import SessionSnapshot
 
 from clients.agent_backend import (
@@ -48,7 +49,6 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
     build_config_aware_soul_mention_resolver,
     build_config_layer_config,
-    build_knowledge_layer_config,
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
@@ -56,6 +56,7 @@ from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
+from services.agent.knowledge_runtime_config import build_knowledge_fs_layer_config
 from services.agent.prompt_mentions import expand_prompt_mentions
 
 
@@ -149,7 +150,10 @@ class AgentAppRuntimeRequestBuilder:
             agent_soul,
             runtime_config_skills=runtime_config_skills,
         )
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        try:
+            knowledge_config = build_knowledge_fs_layer_config(agent_soul, run_context=context.dify_context)
+        except KnowledgeFsError as exc:
+            raise AgentAppRuntimeRequestBuildError(exc.code, exc.message) from exc
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -165,6 +169,7 @@ class AgentAppRuntimeRequestBuilder:
             provider_name=agent_soul.model.model_provider,
             model_name=agent_soul.model.model,
             image_detail_config=context.image_detail_config,
+            include_image_references=knowledge_config is not None,
         )
 
         request = self._request_builder.build_for_agent_app(
@@ -188,6 +193,7 @@ class AgentAppRuntimeRequestBuilder:
                     user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
+                    trace_id=context.dify_context.trace_session_id,
                 ),
                 backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
@@ -199,7 +205,7 @@ class AgentAppRuntimeRequestBuilder:
                 user_files=user_files,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
-                knowledge=knowledge_config,
+                knowledge_fs=knowledge_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
@@ -224,18 +230,23 @@ class AgentAppRuntimeRequestBuilder:
         provider_name: str,
         model_name: str,
         image_detail_config: ImagePromptMessageContent.DETAIL | None,
+        include_image_references: bool,
     ) -> list[DifyUserPromptFileConfig]:
         supports_vision = any(file.type == FileType.IMAGE for file in files) and resolve_model_supports_vision(
             run_context=run_context,
             provider_name=provider_name,
             model_name=model_name,
         )
-        return [
-            _build_user_image(file, image_detail_config=image_detail_config)
-            if supports_vision and file.type == FileType.IMAGE
-            else _build_user_download(file)
-            for file in files
-        ]
+        user_files: list[DifyUserPromptFileConfig] = []
+        for file in files:
+            if supports_vision and file.type == FileType.IMAGE:
+                user_files.append(_build_user_image(file, image_detail_config=image_detail_config))
+                # KnowledgeFS image search needs the upload reference even when
+                # the model also receives the image as native vision content.
+                if not include_image_references or file.transfer_method != FileTransferMethod.LOCAL_FILE:
+                    continue
+            user_files.append(_build_user_download(file))
+        return user_files
 
     def _build_tool_layers(
         self,
@@ -295,7 +306,9 @@ def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
     if file.transfer_method == FileTransferMethod.REMOTE_URL:
         if file.remote_url is None:
             raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "Remote user file is missing its URL.")
-        return DifyUserPromptDownloadConfig(type=file_type, transfer_method="remote_url", url=file.remote_url)
+        return DifyUserPromptDownloadConfig(
+            type=file_type, filename=file.filename or None, transfer_method="remote_url", url=file.remote_url
+        )
     if file.reference is None:
         raise AgentAppRuntimeRequestBuildError("agent_user_file_invalid", "User file is missing its reference.")
     reference = file.reference
@@ -316,7 +329,9 @@ def _build_user_download(file: File) -> DifyUserPromptDownloadConfig:
                 "agent_user_file_invalid",
                 f"User file transfer method '{file.transfer_method.value}' is unsupported.",
             )
-    return DifyUserPromptDownloadConfig(type=file_type, transfer_method=transfer_method, reference=reference)
+    return DifyUserPromptDownloadConfig(
+        type=file_type, filename=file.filename or None, transfer_method=transfer_method, reference=reference
+    )
 
 
 __all__ = [

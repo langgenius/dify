@@ -1,12 +1,13 @@
 import type { ApiKeyList as AppApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ApiKeyList as DatasetApiKeyList } from '@dify/contracts/api/console/datasets/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiSecretKeyButton } from '@/app/components/app/access-point/built-in-access-points/api-secret-key-button'
 import { EnvironmentApiKeyButton } from '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createTestQueryClient } from '@/test/query-client'
@@ -107,9 +108,10 @@ async function renderDialog(
   scope: typeof appScope | typeof datasetScope | typeof environmentScope,
 ) {
   const queryClient = createTestQueryClient()
+  seedSystemFeatures(queryClient)
   const user = userEvent.setup()
   render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       {scope.type === 'dataset' ? (
         <ServiceApi apiBaseUrl="https://api.example.com" />
       ) : scope.type === 'environment' ? (
@@ -121,7 +123,7 @@ async function renderDialog(
       ) : (
         <ApiSecretKeyButton appId={scope.appId} canManage />
       )}
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
   if (scope.type === 'dataset') {
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
@@ -235,7 +237,9 @@ describe('API key management', () => {
     const result = await screen.findByRole('dialog', {
       name: 'appApi.apiKeyModal.createdTitle',
     })
-    expect(apiMocks.createDataset).toHaveBeenCalledWith({ body: { dataset_ids: [] } })
+    expect(apiMocks.createDataset).toHaveBeenCalledWith({
+      body: { dataset_ids: [], knowledge_space_ids: [] },
+    })
     expect(result).toHaveAccessibleDescription('appApi.apiKeyModal.revealOnceTips')
     const secret = within(result).getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })
     expect(secret).toHaveValue('new-dataset-token-123')
@@ -280,7 +284,7 @@ describe('API key management', () => {
 
     await waitFor(() => {
       expect(apiMocks.createDataset).toHaveBeenCalledWith({
-        body: { dataset_ids: ['engineering'] },
+        body: { dataset_ids: ['engineering'], knowledge_space_ids: [] },
       })
     })
     expect(

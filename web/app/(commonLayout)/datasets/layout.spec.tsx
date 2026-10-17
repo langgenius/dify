@@ -125,7 +125,7 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it.each(['/datasets/create', '/datasets/create-from-pipeline'])(
+  it.each(['/datasets/create', '/datasets/create-from-pipeline', '/datasets/new/create'])(
     'should redirect direct dataset creation route to /datasets without dataset.create_and_management: %s',
     async (pathname) => {
       mockPathname = pathname
@@ -162,8 +162,24 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it.each(['/datasets/connect', '/datasets/connect/'])(
-    'should redirect direct external source route to /datasets without dataset.external.connect: %s',
+  it('should render direct new knowledge creation route when workspace has dataset.create_and_management', () => {
+    mockPathname = '/datasets/new/create'
+    setConsoleState({
+      workspacePermissionKeys: ['dataset.create_and_management'],
+    })
+
+    render(
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>,
+    )
+
+    expect(screen.getByText('datasets')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it.each(['/datasets/connect', '/datasets/connect/provider'])(
+    'should redirect legacy external source route to /datasets without dataset.external.connect: %s',
     async (pathname) => {
       mockPathname = pathname
       setConsoleState({
@@ -183,8 +199,8 @@ describe('DatasetsLayout', () => {
     },
   )
 
-  it.each(['/datasets/connect', '/datasets/connect/'])(
-    'should render direct external source route with dataset.external.connect: %s',
+  it.each(['/datasets/connect', '/datasets/connect/provider'])(
+    'should render legacy external source route with dataset.external.connect: %s',
     (pathname) => {
       mockPathname = pathname
       setConsoleState({
@@ -201,4 +217,18 @@ describe('DatasetsLayout', () => {
       expect(mockReplace).not.toHaveBeenCalled()
     },
   )
+
+  it('should leave New RAG source authorization to the knowledge-space route', () => {
+    mockPathname = '/datasets/new/space-1/sources/new'
+    setConsoleState({ workspacePermissionKeys: [] })
+
+    render(
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>,
+    )
+
+    expect(screen.getByText('datasets')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
 })

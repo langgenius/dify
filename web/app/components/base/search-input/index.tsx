@@ -36,7 +36,7 @@ type SearchInputProps = {
   className?: string
 } & Pick<
   InputGroupInputProps,
-  'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled' | 'name'
+  'aria-describedby' | 'aria-label' | 'autoFocus' | 'disabled' | 'name' | 'onKeyDown'
 >
 
 export function SearchInput({
@@ -48,6 +48,7 @@ export function SearchInput({
   name = 'query',
   autoFocus,
   disabled,
+  onKeyDown,
   'aria-describedby': ariaDescribedBy,
   'aria-label': ariaLabel,
 }: SearchInputProps) {
@@ -67,6 +68,11 @@ export function SearchInput({
         // oxlint-disable-next-line jsx-a11y/no-autofocus -- The caller owns initial focus for its search surface.
         autoFocus={autoFocus}
         enterKeyHint="search"
+        onKeyDown={(event) => {
+          // The caller's handler runs after the searchbox has owned Escape.
+          inputProps.onKeyDown(event)
+          onKeyDown?.(event)
+        }}
       />
       <InputGroupAddon className="ps-1.75 pe-1.25">
         <span

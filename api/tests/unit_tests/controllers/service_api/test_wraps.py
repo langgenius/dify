@@ -30,7 +30,7 @@ from extensions.application_services.resource_access_token import build_resource
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
-from models.enums import ApiTokenType, EndUserType
+from models.enums import ApiTokenBindingResourceType, ApiTokenType, EndUserType
 from models.model import ApiToken, App, AppMode, DatasetApiTokenBinding, EndUser, IconType
 from models.resource_access_token import (
     ResourceAccessToken,
@@ -745,7 +745,7 @@ class TestCloudEditionBillingRateLimitCheck:
         return app
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
+    @patch("services.knowledge_rate_limit_service.FeatureService.get_knowledge_rate_limit")
     def test_allows_within_rate_limit(self, mock_get_rate_limit, mock_validate_token, app: Flask):
         """Test that request is allowed when within rate limit."""
         # Arrange
@@ -757,7 +757,7 @@ class TestCloudEditionBillingRateLimitCheck:
         mock_get_rate_limit.return_value = mock_rate_limit
 
         # Mock redis operations
-        with patch("controllers.service_api.wraps.redis_client") as mock_redis:
+        with patch("services.knowledge_rate_limit_service.redis_client") as mock_redis:
             mock_redis.zcard.return_value = 50  # Under limit
 
             @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
@@ -774,7 +774,7 @@ class TestCloudEditionBillingRateLimitCheck:
             mock_redis.zremrangebyscore.assert_called_once()
 
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
-    @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
+    @patch("services.knowledge_rate_limit_service.FeatureService.get_knowledge_rate_limit")
     @pytest.mark.parametrize("sqlite_session", [(RateLimitLog,)], indirect=True)
     def test_rejects_over_rate_limit(
         self,
@@ -798,9 +798,9 @@ class TestCloudEditionBillingRateLimitCheck:
         mock_get_rate_limit.return_value = mock_rate_limit
 
         with (
-            patch("controllers.service_api.wraps.redis_client") as mock_redis,
+            patch("services.knowledge_rate_limit_service.redis_client") as mock_redis,
             patch(
-                "controllers.service_api.wraps.db",
+                "services.knowledge_rate_limit_service.db",
                 SimpleNamespace(engine=sqlite_session.get_bind()),
             ),
         ):
@@ -986,6 +986,34 @@ class TestValidateDatasetToken:
         api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
         mock_validate_token.return_value = api_token
         sqlite_session.add(DatasetApiTokenBinding(api_token_id=api_token.id, dataset_id=str(uuid.uuid4())))
+        sqlite_session.commit()
+
+        @validate_dataset_token
+        def protected_view(**kwargs):
+            return {"success": True}
+
+        with (
+            app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
+        ):
+            with pytest.raises(Forbidden) as exc_info:
+                protected_view(dataset_id=str(uuid.uuid4()))
+            assert "not authorized to access this knowledge base" in str(exc_info.value)
+
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_key_bound_only_to_knowledge_space_rejects_legacy_dataset(
+        self, mock_validate_token, app: Flask, sqlite_session: Session
+    ):
+        """KnowledgeFS space bindings restrict the key but never grant legacy dataset access."""
+        api_token = _api_token(tenant_id=str(uuid.uuid4()), token_type=ApiTokenType.DATASET)
+        mock_validate_token.return_value = api_token
+        sqlite_session.add(
+            DatasetApiTokenBinding(
+                api_token_id=api_token.id,
+                resource_type=ApiTokenBindingResourceType.KNOWLEDGE_FS_SPACE,
+                control_space_id=str(uuid.uuid4()),
+            )
+        )
         sqlite_session.commit()
 
         @validate_dataset_token

@@ -1,6 +1,7 @@
 @import '../app/styles/tailwind-core.css';
 
 @source '../app';
+@source '../features';
 @source '../context';
 @source '../hooks';
 @source '.';

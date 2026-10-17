@@ -239,6 +239,25 @@ describe('MainNavLayout', () => {
     },
   )
 
+  it('ignores a retained legacy detail sidebar on New Knowledge routes', () => {
+    ;(usePathname as Mock).mockReturnValue('/datasets/new/knowledge-1/sources')
+
+    render(
+      <MainNavLayout
+        initialDetailSidebarMode="expand"
+        detailSidebar={<aside aria-label="Legacy dataset sidebar">Legacy dataset sidebar</aside>}
+      >
+        <div>new knowledge detail</div>
+      </MainNavLayout>,
+    )
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
+  })
+
   it('hides the global main nav on a skill detail route', () => {
     ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
 
@@ -264,26 +283,26 @@ describe('MainNavLayout', () => {
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
   })
 
-  it.each(['/datasets/create', '/datasets/dataset-1/documents/create', '/deployments/create'])(
-    'keeps the global main nav on collection and creation route %s',
-    (pathname) => {
-      ;(usePathname as Mock).mockReturnValue(pathname)
+  it.each([
+    '/datasets/create',
+    '/datasets/new/create',
+    '/datasets/dataset-1/documents/create',
+    '/deployments/create',
+  ])('keeps the global main nav on collection and creation route %s', (pathname) => {
+    ;(usePathname as Mock).mockReturnValue(pathname)
 
-      render(
-        <MainNavLayout
-          initialDetailSidebarMode="expand"
-          detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}
-        >
-          <div>content</div>
-        </MainNavLayout>,
-      )
+    render(
+      <MainNavLayout
+        initialDetailSidebarMode="expand"
+        detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}
+      >
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
-      expect(screen.getByTestId('main-nav')).toBeInTheDocument()
-      expect(
-        screen.queryByRole('complementary', { name: 'Detail sidebar' }),
-      ).not.toBeInTheDocument()
-    },
-  )
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
+  })
 
   it.each([
     {

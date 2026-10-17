@@ -707,6 +707,15 @@ class WorkflowService:
 
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
+        from services.knowledge_fs.knowledge_retrieval_v2.validation import (
+            validate_control_space_references,
+        )
+
+        validate_control_space_references(
+            session=session,
+            tenant_id=app_model.tenant_id,
+            graph=draft_workflow.graph_dict,
+        )
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -756,7 +765,11 @@ class WorkflowService:
         )
 
         # trigger app workflow events
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(
+            app_model,
+            published_workflow=workflow,
+            session=session,
+        )
 
         # return new workflow
         return workflow

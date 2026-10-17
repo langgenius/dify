@@ -7,8 +7,25 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
   TagFilter: () => <div />,
 }))
 
+vi.mock('@/app/components/datasets/creator-filter', () => ({
+  CreatorFilter: () => <button type="button">creators</button>,
+}))
+
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
-  default: () => <span>include all</span>,
+  default: ({
+    isChecked,
+    label,
+    onChange,
+  }: {
+    isChecked: boolean
+    label: string
+    onChange: () => void
+  }) => (
+    <label>
+      <input type="checkbox" checked={isChecked} onChange={onChange} />
+      {label}
+    </label>
+  ),
 }))
 
 vi.mock('../../extra-info/service-api', () => ({
@@ -19,6 +36,7 @@ const defaultProps = {
   apiBaseUrl: 'https://api.example.com',
   canConnectExternalDataset: true,
   canCreateDataset: true,
+  creatorFilterValue: [],
   includeAll: false,
   isCurrentWorkspaceOwner: true,
   keywords: '',
@@ -27,6 +45,7 @@ const defaultProps = {
   onCreateFromPipeline: vi.fn(),
   onConnectDataset: vi.fn(),
   onExternalApiClick: vi.fn(),
+  onCreatorsChange: vi.fn(),
   onIncludeAllChange: vi.fn(),
   onKeywordsChange: vi.fn(),
   onOpenTagManagement: vi.fn(),
@@ -87,6 +106,25 @@ describe('DatasetListHeader', () => {
     expect(
       screen.queryByRole('button', { name: /common\.operation\.create/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows the all-knowledge control only to workspace owners', () => {
+    const { rerender } = render(<DatasetListHeader {...defaultProps} />)
+
+    expect(screen.getByRole('checkbox', { name: 'dataset.allKnowledge' })).toBeInTheDocument()
+
+    rerender(<DatasetListHeader {...defaultProps} isCurrentWorkspaceOwner={false} />)
+
+    expect(screen.queryByRole('checkbox', { name: 'dataset.allKnowledge' })).not.toBeInTheDocument()
+  })
+
+  it('updates the all-knowledge control', async () => {
+    const user = userEvent.setup()
+    render(<DatasetListHeader {...defaultProps} />)
+
+    await user.click(screen.getByRole('checkbox', { name: 'dataset.allKnowledge' }))
+
+    expect(defaultProps.onIncludeAllChange).toHaveBeenCalledOnce()
   })
 
   it('exposes step-by-step tour targets for the create menu walkthrough', () => {

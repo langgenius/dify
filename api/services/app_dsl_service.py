@@ -83,6 +83,7 @@ from services.icon_configuration import (
     DEFAULT_ICON_TYPE,
     is_valid_image_icon,
 )
+from services.knowledge_fs.knowledge_retrieval_v2.validation import missing_control_space_ids
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow.graph_diff import draft_token
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
@@ -769,6 +770,23 @@ class AppDslService:
                                 )
                             )
                         ]
+                missing_knowledge_fs_spaces = missing_control_space_ids(
+                    session=self._session,
+                    tenant_id=app.tenant_id,
+                    graph=graph,
+                )
+                for control_space_id in missing_knowledge_fs_spaces:
+                    self._warnings.append(
+                        DslImportWarning(
+                            code="knowledge_fs_space_unresolved",
+                            path="workflow.graph.nodes",
+                            message=(
+                                "A KnowledgeFS Space reference is unavailable in the target workspace "
+                                "and must be reselected before publishing."
+                            ),
+                            details={"control_space_id": control_space_id},
+                        )
+                    )
                 raw_agent_packages = data.get("agent_packages") or {}
                 if not isinstance(raw_agent_packages, Mapping):
                     raise ValueError("agent_packages must be a mapping")

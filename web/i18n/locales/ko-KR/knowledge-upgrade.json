@@ -1,0 +1,23 @@
+{
+  "upgrade.completeDescription": "“{{name}}” 지식 베이스가 Agent 지식 베이스로 업그레이드되었습니다",
+  "upgrade.completeTitle": "업그레이드 완료",
+  "upgrade.contactSupport": "지원팀에 문의",
+  "upgrade.dialogAvailability": "업그레이드 후에도 <strong>기본형 지식 베이스와 Agent 지식 베이스를 모두 계속 사용할 수 있습니다</strong>",
+  "upgrade.dialogDescription": "모든 문서, 설정, 앱 연결을 유지하면서 <legacy>기본형 지식 베이스</legacy>를 <new>Agent 지식 베이스</new>로 업그레이드합니다. 완료되면 자동으로 Agent 지식 베이스 화면으로 이동합니다.",
+  "upgrade.dialogDuration": "크기에 따라 몇 분에서 몇 시간이 걸립니다. 진행 상황은 지식 베이스 카드에 표시됩니다",
+  "upgrade.dialogLinkedApps": "업그레이드 중에도 연결된 앱은 계속 검색합니다",
+  "upgrade.dialogTitle": "이 지식 베이스를 Agent 지식 베이스로 업그레이드할까요?",
+  "upgrade.failedDescription": "업그레이드 실패 — 변경된 내용이 없습니다. 기본형 지식 베이스는 계속 사용할 수 있습니다.",
+  "upgrade.failedTitle": "업그레이드 실패",
+  "upgrade.failedToastDescription": "“{{name}}”은(는) 기본형 지식 베이스로 유지되며 데이터가 변경되지 않았습니다",
+  "upgrade.guideDescription": "업그레이드하면 이 기본형 지식 베이스가 Agent 지식 베이스로 이동합니다. 소스를 연결하면 문서가 동기화되고 자동으로 인덱싱됩니다. 모든 항목이 이전되며 연결된 앱도 계속 작동합니다.",
+  "upgrade.guideTitle": "기본형 지식 베이스에서 Agent 지식 베이스로 업그레이드",
+  "upgrade.justNow": "방금",
+  "upgrade.menuLabel": "Agent 지식 베이스로 업그레이드",
+  "upgrade.migratingDocuments": "문서 마이그레이션 중…",
+  "upgrade.start": "업그레이드 시작",
+  "upgrade.startFailed": "업그레이드를 시작할 수 없습니다. 다시 시도하세요.",
+  "upgrade.statusFailed": "업그레이드 실패",
+  "upgrade.statusUpgrading": "업그레이드 중",
+  "upgrade.upgradedJustNow": "방금 업그레이드됨"
+}

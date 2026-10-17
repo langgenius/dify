@@ -45,10 +45,8 @@ import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import {
-  ENABLE_AGENT_CLI_TOOLS,
-  ENABLE_AGENT_KNOWLEDGE_RETRIEVAL,
-} from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import { agentKnowledgeFsEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { consoleQuery } from '@/service/console'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
@@ -449,6 +447,7 @@ export function AgentPromptEditor() {
   const addProviderTools = useSetAtom(addProviderToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
+  const knowledgeEnabled = useAtomValue(agentKnowledgeFsEnabledAtom)
   const addActions = useAgentOrchestrateAddActions()
 
   const promptPlaceholder = (
@@ -1018,7 +1017,7 @@ export function AgentPromptEditor() {
       label: t(($) => $['agentDetail.configure.tools.label']),
       icon: 'i-ri-box-3-line',
     },
-    ...(ENABLE_AGENT_KNOWLEDGE_RETRIEVAL
+    ...(knowledgeEnabled
       ? [
           {
             key: 'knowledge' as const,

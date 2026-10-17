@@ -8,7 +8,7 @@ import DocumentList from '../list'
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({
-    'dataset.newKnowledge.documentsSelected': '{{count}} documents selected',
+    'knowledgeSpace.documentsSelected': '{{count}} documents selected',
   })
 })
 

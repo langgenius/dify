@@ -18,6 +18,7 @@ from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
 from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLease
 
 if TYPE_CHECKING:
+    from dify_agent.layers.knowledge_fs.session import KnowledgeFsSessionStore
     from dify_agent.layers.shell.layer import ShellSession
 
 
@@ -40,6 +41,7 @@ class Services:
     shell_redact_patterns: list[str] = field(default_factory=list)
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    knowledge_session_store: KnowledgeFsSessionStore | None = None
 
 
 @dataclass

@@ -166,6 +166,33 @@ describe('Citation', () => {
   })
 
   describe('Resource Grouping', () => {
+    it('keeps KnowledgeFS spaces and document versions separate while exposing receipt anchors', () => {
+      mockClientWidths({ container: 840, item: 50 })
+      setupContainer()
+      const data = ['space-a', 'space-b', 'space-a'].map((space, index) =>
+        makeCitationItem({
+          data_source_type: 'knowledge_fs',
+          dataset_id: space,
+          document_id: 'shared',
+          document_version: index === 2 ? 2 : 1,
+          knowledge_fs_citation: {
+            id: `kfs_${String(index).repeat(32)}`,
+            control_space_id: '00000000-0000-4000-8000-000000000001',
+            space_name: space,
+            node_id: `node-${index}`,
+            document_asset_id: 'shared',
+            artifact_hash: `hash-${index}`,
+          },
+        }),
+      )
+      const { container } = render(<Citation data={data} />)
+      expect(screen.getAllByTestId('popup')).toHaveLength(3)
+      for (const source of data)
+        expect(
+          container.querySelector(`[id="${source.knowledge_fs_citation!.id}"]`),
+        ).toBeInTheDocument()
+    })
+
     it('should merge citations with the same document_id into one resource', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()

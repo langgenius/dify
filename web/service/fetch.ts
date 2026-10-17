@@ -171,7 +171,7 @@ async function base<T>(
     },
   })
 
-  const res = await client(request || fetchPathname, {
+  const res = await client(request ? request.clone() : fetchPathname, {
     ...init,
     headers,
     credentials: isMarketplaceAPI ? 'omit' : options.credentials || 'include',

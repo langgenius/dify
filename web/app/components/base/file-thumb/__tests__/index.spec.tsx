@@ -63,5 +63,16 @@ describe('FileThumb Component', () => {
       expect(onClick).toHaveBeenCalledTimes(1)
       expect(onClick).toHaveBeenCalledWith(mockImageFile)
     })
+
+    it('calls onError with file when the image fails to load', () => {
+      const onError = vi.fn()
+
+      render(<FileThumb file={mockImageFile} onError={onError} />)
+
+      fireEvent.error(screen.getByAltText(mockImageFile.name))
+
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(onError).toHaveBeenCalledWith(mockImageFile)
+    })
   })
 })

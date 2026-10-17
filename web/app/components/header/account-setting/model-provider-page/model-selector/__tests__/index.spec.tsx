@@ -132,6 +132,36 @@ describe('ModelSelector', () => {
     mockModelProviders.current = [makeModel()]
   })
 
+  it('uses the visible field label as its accessible name', () => {
+    renderWithQueryClient(
+      <>
+        <span id="reasoning-model-label">System reasoning model</span>
+        <ModelSelector ariaLabelledBy="reasoning-model-label" models={[makeModel()]} />
+      </>,
+    )
+
+    expect(screen.getByRole('button', { name: /System reasoning model/ })).toBeInTheDocument()
+  })
+
+  it('exposes required and invalid field guidance on the popover trigger', () => {
+    renderWithQueryClient(
+      <>
+        <span id="embedding-model-label">Embedding model</span>
+        <span id="embedding-model-error">Select an embedding model.</span>
+        <ModelSelector
+          ariaDescribedBy="embedding-model-error"
+          ariaInvalid
+          ariaLabelledBy="embedding-model-label"
+          ariaRequired
+          models={[makeModel()]}
+        />
+      </>,
+    )
+
+    const trigger = screen.getByRole('button', { name: /Embedding model/ })
+    expect(trigger).toHaveAccessibleDescription('Select an embedding model.')
+    expect(trigger).toHaveAccessibleName(/common\.errorMsg\.fieldRequired/)
+  })
   it.each([
     { value: { provider: 'openai', model: 'gpt-4' }, name: 'Embedding Model GPT-4' },
     { value: undefined, name: 'Embedding Model plugin.detailPanel.configureModel' },

@@ -670,6 +670,7 @@ export type AgentSoulHumanConfig = {
 
 export type AgentSoulKnowledgeConfig = {
   sets?: Array<AgentKnowledgeSetConfig>
+  spaces?: Array<AgentKnowledgeSpaceConfig>
 }
 
 export type AgentSoulMemoryConfig = {
@@ -829,9 +830,11 @@ export type AgentComposerDifyToolCandidateResponse = {
 }
 
 export type AgentComposerKnowledgeSetCandidateResponse = {
+  control_space_id?: string | null
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
+  missing?: boolean
   missing_dataset_ids?: Array<string>
   name: string
 }
@@ -935,6 +938,14 @@ export type AgentKnowledgeSetConfig = {
   name: string
   query: AgentKnowledgeQueryConfig
   retrieval: AgentKnowledgeRetrievalConfig
+}
+
+export type AgentKnowledgeSpaceConfig = {
+  control_space_id: string
+  description?: string | null
+  id: string
+  is_missing?: boolean
+  name: string
 }
 
 export type AgentMemoryArtifactConfig = {

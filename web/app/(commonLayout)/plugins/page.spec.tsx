@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -40,6 +41,41 @@ describe('PluginList', () => {
 
     expect(mocks.redirect).toHaveBeenCalledWith(
       '/integrations/tools/built-in?package-ids=%5B%22langgenius%2Fexample-tool%22%5D',
+    )
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      `${MARKETPLACE_API_PREFIX}/plugins/langgenius/example-tool`,
+      { cache: 'no-store' },
+    )
+  })
+
+  it('resolves a full package identifier through the identifier endpoint', async () => {
+    const packageId = 'langgenius/example-tool:1.0.0@checksum'
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        data: {
+          plugin: {
+            category: 'tool',
+          },
+        },
+      }),
+    })
+    const { default: PluginList } = await import('./page')
+
+    await expect(
+      PluginList({
+        searchParams: Promise.resolve({
+          'package-ids': JSON.stringify([packageId]),
+        }),
+      }),
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      `${MARKETPLACE_API_PREFIX}/plugins/identifier?unique_identifier=${encodeURIComponent(packageId)}`,
+      { cache: 'no-store' },
+    )
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      `/integrations/tools/built-in?package-ids=${encodeURIComponent(JSON.stringify([packageId]))}`,
     )
   })
 
