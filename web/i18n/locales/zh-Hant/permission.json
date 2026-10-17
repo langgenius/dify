@@ -44,7 +44,7 @@
   "group.dataset": "知識庫",
   "group.dataset_acl": "知識庫訪問權限",
   "group.integration": "整合",
-  "group.plugin": "插件",
+  "group.plugin": "外掛",
   "group.tool_mcp": "工具與MCP",
   "group.workspace": "工作空間",
   "permissionList.clearAll": "清除全部",

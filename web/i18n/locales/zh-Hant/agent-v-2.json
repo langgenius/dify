@@ -243,7 +243,7 @@
   "agentDetail.configure.tools.addMenu.tool.label": "工具",
   "agentDetail.configure.tools.cliDialog.description": "從任意套件登錄安裝 CLI 工具。Agent 會獲得執行該二進位檔案的 shell 存取能力。",
   "agentDetail.configure.tools.cliDialog.editTitle": "編輯 CLI 工具",
-  "agentDetail.configure.tools.cliDialog.env.description": "儲存此 CLI 工具所需的 API Key、Token 或密鑰。值會靜態加密，並在 Agent 呼叫工具時作為環境變數注入。",
+  "agentDetail.configure.tools.cliDialog.env.description": "儲存此 CLI 工具所需的 API Key、Token 或金鑰。值會靜態加密，並在 Agent 呼叫工具時作為環境變數注入。",
   "agentDetail.configure.tools.cliDialog.env.label": "環境變數",
   "agentDetail.configure.tools.cliDialog.env.optional": "（選用）",
   "agentDetail.configure.tools.cliDialog.installCommand.description": "沙箱中執行 · 首次呼叫時執行一次",
