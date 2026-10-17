@@ -223,6 +223,7 @@ services:
     image: langgenius/dify-api:1.17.1
     environment:
       MODE: api
+      CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:?Set a unique SANDBOX_API_KEY in docker/.env}
       # The bundled Nginx supplies a verified client IP; keep direct API callers trusted.
       RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -275,6 +276,7 @@ services:
       - collaboration
     environment:
       MODE: api
+      CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:?Set a unique SANDBOX_API_KEY in docker/.env}
       RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
       SERVER_WORKER_AMOUNT: ${API_WEBSOCKET_WORKER_AMOUNT:-1}
       SERVER_WORKER_CLASS: ${API_WEBSOCKET_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker}
@@ -305,6 +307,7 @@ services:
     image: langgenius/dify-api:1.17.1
     environment:
       MODE: worker
+      CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:?Set a unique SANDBOX_API_KEY in docker/.env}
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
@@ -352,6 +355,7 @@ services:
     image: langgenius/dify-api:1.17.1
     environment:
       MODE: beat
+      CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:?Set a unique SANDBOX_API_KEY in docker/.env}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -506,6 +510,15 @@ services:
   # The DifySandbox
   sandbox:
     image: langgenius/dify-sandbox:0.2.15
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        if [ -z "$$API_KEY" ] || [ "$$API_KEY" = "dify-sandbox" ]; then
+          echo "Set a unique SANDBOX_API_KEY; the published default is rejected." >&2
+          exit 1
+        fi
+        exec /entrypoint.sh
     restart: always
     env_file:
       - path: ./envs/core-services/sandbox.env
@@ -517,7 +530,7 @@ services:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
       # You can generate a strong key using `openssl rand -base64 42`.
-      API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+      API_KEY: ${SANDBOX_API_KEY:?Set a unique SANDBOX_API_KEY in docker/.env}
       GIN_MODE: ${SANDBOX_GIN_MODE:-release}
       WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
       ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}

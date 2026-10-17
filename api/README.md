@@ -56,6 +56,8 @@
 
 Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage directory. To manage it explicitly, generate a value with `openssl rand -base64 42` and set `SECRET_KEY` in `api/.env`.
 
+`./dev/setup` generates a sandbox key and writes the same value to `api/.env` and `docker/middleware.env`. `./dev/start-docker-compose` publishes the sandbox on `127.0.0.1:8194` for the local API.
+
 ## Testing
 
 Run from the repository root:

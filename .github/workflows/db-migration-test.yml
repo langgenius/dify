@@ -38,6 +38,7 @@ jobs:
         run: |
           cd docker
           cp envs/middleware.env.example middleware.env
+          echo "SANDBOX_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
 
       - name: Set up Middlewares
         uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
@@ -88,6 +89,7 @@ jobs:
         run: |
           cd docker
           cp envs/middleware.env.example middleware.env
+          echo "SANDBOX_API_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
           sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' middleware.env
           sed -i 's/DB_HOST=db_postgres/DB_HOST=db_mysql/' middleware.env
           sed -i 's/DB_PORT=5432/DB_PORT=3306/' middleware.env
