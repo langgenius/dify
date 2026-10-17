@@ -108,6 +108,7 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
     }
 
     if (fileInputTypes.includes(type)) {
+      if (!fileInputTypes.includes(payload.type)) draft.default = undefined
       draft.hide = false
       const fileUploadSettingKeys = Object.keys(DEFAULT_FILE_UPLOAD_SETTING) as Array<
         keyof typeof DEFAULT_FILE_UPLOAD_SETTING
