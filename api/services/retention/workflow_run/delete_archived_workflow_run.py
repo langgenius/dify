@@ -9,7 +9,6 @@ are removed from the primary database.
 """
 
 import io
-import json
 import logging
 import time
 import zipfile
@@ -18,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TypedDict
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
@@ -44,6 +44,8 @@ class _ArchiveManifest(TypedDict):
     workflow_id: str
     tables: dict[str, _TableManifestEntry]
 
+
+_ARCHIVE_MANIFEST_ADAPTER = TypeAdapter(_ArchiveManifest)
 
 _ARCHIVED_TABLES = [
     "workflow_runs",
@@ -276,22 +278,10 @@ class ArchivedWorkflowRunDeletion:
                     manifest_data = archive.read("manifest.json")
                 except KeyError as e:
                     raise ValueError("manifest.json missing from archive bundle") from e
-                loaded = json.loads(manifest_data)
-                if not isinstance(loaded, dict):
-                    raise ValueError("manifest.json must be an object")
-                manifest = loaded
-
-                required_fields = {
-                    "schema_version",
-                    "workflow_run_id",
-                    "tenant_id",
-                    "app_id",
-                    "workflow_id",
-                    "tables",
-                }
-                missing_fields = sorted(required_fields - set(manifest))
-                if missing_fields:
-                    raise ValueError(f"manifest missing required fields: {', '.join(missing_fields)}")
+                try:
+                    manifest = _ARCHIVE_MANIFEST_ADAPTER.validate_json(manifest_data)
+                except ValidationError as e:
+                    raise ValueError(f"manifest.json is not a valid archive manifest: {e}") from e
                 if manifest["schema_version"] != ARCHIVE_SCHEMA_VERSION:
                     raise ValueError(
                         f"unsupported archive schema_version: {manifest['schema_version']} "
@@ -307,19 +297,12 @@ class ArchivedWorkflowRunDeletion:
                     raise ValueError("manifest workflow_id does not match delete target")
 
                 tables = manifest["tables"]
-                if not isinstance(tables, dict):
-                    raise ValueError("manifest tables must be an object")
                 missing_tables = [table_name for table_name in _ARCHIVED_TABLES if table_name not in tables]
                 if missing_tables:
                     raise ValueError(f"manifest missing tables: {', '.join(missing_tables)}")
 
                 for table_name in _ARCHIVED_TABLES:
                     info = tables[table_name]
-                    if not isinstance(info, dict):
-                        raise ValueError(f"manifest table entry must be an object: {table_name}")
-                    for key in ("row_count", "checksum", "size_bytes"):
-                        if key not in info:
-                            raise ValueError(f"manifest table {table_name} missing {key}")
                     member_path = f"{table_name}.jsonl"
                     try:
                         payload = archive.read(member_path)
@@ -343,7 +326,7 @@ class ArchivedWorkflowRunDeletion:
                             f"expected={info['row_count']}, actual={row_count}"
                         )
 
-                return manifest  # type: ignore[return-value]
+                return manifest
         except zipfile.BadZipFile as e:
             raise ValueError("archive bundle is not a valid zip file") from e
 
