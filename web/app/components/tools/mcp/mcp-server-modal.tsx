@@ -1,4 +1,5 @@
 'use client'
+import type { MCPServerParam } from './mcp-server-param-item'
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -29,12 +30,6 @@ type ModalProps = {
   }
 }
 
-type MCPServerParam = {
-  variable?: string
-  label?: string
-  type?: string
-}
-
 const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
   const { t } = useTranslation(['common', 'tools'])
   const queryClient = useQueryClient()
@@ -54,6 +49,7 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
   const defaultDescription = data?.description || appInfo?.description || ''
   const [description, setDescription] = React.useState(defaultDescription)
   const [params, setParams] = React.useState<Record<string, string>>(data?.parameters || {})
+  const descriptionId = React.useId()
 
   const handleParamChange = (variable: string, value: string) => {
     setParams((prev) => ({
@@ -109,79 +105,92 @@ const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo 
       }}
     >
       <DialogContent className="w-130">
-        <DialogHeader>
-          <DialogTitle>
-            {!data
-              ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
-              : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
-          </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
-        </DialogHeader>
-        <DialogBody className="space-y-5">
-          <div className="space-y-0.5">
-            <div className="flex h-6 items-center gap-1">
-              <div className="system-sm-medium text-text-secondary">
-                {t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
+        <form
+          className="contents"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!description || creating || updating) return
+            void submit()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {!data
+                ? t(($) => $['mcp.server.modal.addTitle'], { ns: 'tools' })
+                : t(($) => $['mcp.server.modal.editTitle'], { ns: 'tools' })}
+            </DialogTitle>
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
+          <DialogBody className="min-w-0 space-y-5">
+            <div className="space-y-0.5">
+              <div className="flex h-6 items-center gap-1">
+                <label htmlFor={descriptionId} className="system-sm-medium text-text-secondary">
+                  {t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
+                </label>
+                <span aria-hidden className="system-xs-regular text-text-destructive-secondary">
+                  *
+                </span>
               </div>
-              <div className="system-xs-regular text-text-destructive-secondary">*</div>
-            </div>
-            <Textarea
-              aria-label={t(($) => $['mcp.server.modal.description'], { ns: 'tools' })}
-              className="h-24 resize-none"
-              value={description}
-              placeholder={t(($) => $['mcp.server.modal.descriptionPlaceholder'], {
-                ns: 'tools',
-              })}
-              onValueChange={(value) => setDescription(value)}
-            />
-          </div>
-
-          {latestParams.length > 0 && (
-            <div className="min-w-0">
-              <div className="mb-1 flex items-center gap-2">
-                <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
-                  {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
-                </div>
-                <Separator
-                  decorative
-                  orientation="horizontal"
-                  className="m-0 grow bg-divider-subtle"
-                />
-              </div>
-              <div className="mb-2 body-xs-regular text-text-tertiary">
-                {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}
-              </div>
-              <div className="min-w-0 space-y-3">
-                {latestParams.map((paramItem) => {
-                  if (!paramItem.variable) return null
-
-                  const { variable } = paramItem
-
-                  return (
-                    <MCPServerParamItem
-                      key={variable}
-                      data={paramItem}
-                      value={params[variable] || ''}
-                      onChange={(value) => handleParamChange(variable, value)}
-                    />
-                  )
+              <Textarea
+                id={descriptionId}
+                required
+                className="h-24 resize-none"
+                value={description}
+                placeholder={t(($) => $['mcp.server.modal.descriptionPlaceholder'], {
+                  ns: 'tools',
                 })}
-              </div>
+                onValueChange={(value) => setDescription(value)}
+              />
             </div>
-          )}
-        </DialogBody>
-        <DialogFooter>
-          <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
-          <Button
-            disabled={!description || creating || updating}
-            variant="primary"
-            onClick={submit}
-          >
-            {data
-              ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
-              : t(($) => $['mcp.server.modal.confirm'], { ns: 'tools' })}
-          </Button>
-        </DialogFooter>
+
+            {latestParams.length > 0 && (
+              <div className="min-w-0">
+                <div className="mb-1 flex items-center gap-2">
+                  <div className="shrink-0 system-xs-medium-uppercase text-text-primary">
+                    {t(($) => $['mcp.server.modal.parameters'], { ns: 'tools' })}
+                  </div>
+                  <Separator
+                    decorative
+                    orientation="horizontal"
+                    className="m-0 grow bg-divider-subtle"
+                  />
+                </div>
+                <div className="mb-2 body-xs-regular text-text-tertiary">
+                  {t(($) => $['mcp.server.modal.parametersTip'], { ns: 'tools' })}
+                </div>
+                <div className="min-w-0 space-y-3">
+                  {latestParams.map((paramItem) => {
+                    if (!paramItem.variable) return null
+
+                    const { variable } = paramItem
+
+                    return (
+                      <MCPServerParamItem
+                        key={variable}
+                        data={paramItem}
+                        value={params[variable] || ''}
+                        onChange={(value) => handleParamChange(variable, value)}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
+            <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
+            <Button
+              type="submit"
+              disabled={!description}
+              loading={creating || updating}
+              variant="primary"
+            >
+              {data
+                ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
+                : t(($) => $['mcp.server.modal.confirm'], { ns: 'tools' })}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

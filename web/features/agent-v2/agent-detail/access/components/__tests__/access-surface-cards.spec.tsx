@@ -1465,9 +1465,11 @@ describe('Agent access surface cards', () => {
     render(<ServiceApiAccessCard agentId="agent-1" />, {
       wrapper: createAccessCardWrapper(client),
     })
-    expect(
-      await screen.findByRole('button', { name: 'agentV2.agentDetail.access.copyServiceEndpoint' }),
-    ).toBeEnabled()
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.copyServiceEndpoint' }),
+      ).toBeEnabled()
+    })
     expect(
       screen.getByRole('link', {
         name: 'agentV2.agentDetail.access.serviceApi.actions.apiReference',

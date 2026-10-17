@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { MCPServerDetail } from '@/app/components/tools/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MCPServerModal from '../mcp-server-modal'
@@ -46,7 +47,7 @@ describe('MCPServerModal', () => {
   describe('Rendering', () => {
     it('should render add title when no data is provided', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.addTitle'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'tools.mcp.server.modal.addTitle' })).toBeVisible()
     })
 
     it('should render edit title when data is provided', () => {
@@ -57,7 +58,7 @@ describe('MCPServerModal', () => {
       } as unknown as MCPServerDetail
 
       render(<MCPServerModal {...defaultProps} data={mockData} />, { wrapper: createWrapper() })
-      expect(screen.getByText('tools.mcp.server.modal.editTitle'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'tools.mcp.server.modal.editTitle' })).toBeVisible()
     })
 
     it('should render description label', () => {
@@ -139,6 +140,24 @@ describe('MCPServerModal', () => {
   })
 
   describe('Form Interactions', () => {
+    it('focuses description and parameter fields through their visible labels', async () => {
+      const user = userEvent.setup()
+      render(
+        <MCPServerModal
+          {...defaultProps}
+          latestParams={[{ variable: 'param1', label: 'Parameter 1', type: 'string' }]}
+        />,
+        { wrapper: createWrapper() },
+      )
+
+      await user.click(screen.getByText('tools.mcp.server.modal.description'))
+      expect(
+        screen.getByRole('textbox', { name: 'tools.mcp.server.modal.description' }),
+      ).toHaveFocus()
+      await user.click(screen.getByText('Parameter 1'))
+      expect(screen.getByRole('textbox', { name: 'Parameter 1' })).toHaveFocus()
+    })
+
     it('should update description when typing', () => {
       render(<MCPServerModal {...defaultProps} />, { wrapper: createWrapper() })
 
