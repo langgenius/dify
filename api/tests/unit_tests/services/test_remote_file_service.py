@@ -7,7 +7,6 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.file.remote_file_metadata import FileInfo, InvalidRemoteFileMetadataError
 from core.helper.ssrf_proxy import MaxRetriesExceededError
 from core.tools.errors import ToolSSRFError
@@ -380,11 +379,14 @@ def test_upload_applies_media_limit_before_downloading(
     remote_file_service: RemoteFileService,
     storage: Storage,
     sqlite_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(dify_config, "UPLOAD_FILE_SIZE_LIMIT", 1)
-    for setting in ("UPLOAD_VIDEO_FILE_SIZE_LIMIT", "UPLOAD_AUDIO_FILE_SIZE_LIMIT", "UPLOAD_IMAGE_FILE_SIZE_LIMIT"):
-        monkeypatch.setattr(dify_config, setting, 3)
+    config_overrides(
+        UPLOAD_FILE_SIZE_LIMIT=1,
+        UPLOAD_VIDEO_FILE_SIZE_LIMIT=3,
+        UPLOAD_AUDIO_FILE_SIZE_LIMIT=3,
+        UPLOAD_IMAGE_FILE_SIZE_LIMIT=3,
+    )
     content = b"a" * (2 * 1024 * 1024)
     url = f"https://example.com/{filename}"
     head_response = httpx.Response(
@@ -409,10 +411,9 @@ def test_upload_applies_media_limit_before_downloading(
 
 def test_upload_rejects_oversized_media_before_get(
     remote_file_service: RemoteFileService,
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr(dify_config, "UPLOAD_FILE_SIZE_LIMIT", 3)
-    monkeypatch.setattr(dify_config, "UPLOAD_VIDEO_FILE_SIZE_LIMIT", 1)
+    config_overrides(UPLOAD_FILE_SIZE_LIMIT=3, UPLOAD_VIDEO_FILE_SIZE_LIMIT=1)
     content = b"a" * (2 * 1024 * 1024)
     url = "https://example.com/clip.mp4"
     head_response = httpx.Response(
