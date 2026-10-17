@@ -2682,11 +2682,9 @@ export const zKnowledgeFsSourceUpdatePayload = z.object({
     .nullish(),
   selection: z
     .discriminatedUnion('kind', [
-      zKnowledgeFsSourceEditWebsiteSelectionPayload.extend({ kind: z.literal('website_crawl') }),
-      zKnowledgeFsSourceEditOnlineDocumentSelectionPayload.extend({
-        kind: z.literal('online_document'),
-      }),
-      zKnowledgeFsSourceEditOnlineDriveSelectionPayload.extend({ kind: z.literal('online_drive') }),
+      zKnowledgeFsSourceEditWebsiteSelectionPayload,
+      zKnowledgeFsSourceEditOnlineDocumentSelectionPayload,
+      zKnowledgeFsSourceEditOnlineDriveSelectionPayload,
     ])
     .nullish(),
   status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
@@ -2709,10 +2707,8 @@ export const zKnowledgeFsOnlineDriveWorkflowImportPayload = z.object({
  * KnowledgeFSSourceWorkflowImportPayload
  */
 export const zKnowledgeFsSourceWorkflowImportPayload = z.discriminatedUnion('kind', [
-  zKnowledgeFsOnlineDocumentWorkflowImportPayload.extend({
-    kind: z.literal('online-document-import'),
-  }),
-  zKnowledgeFsOnlineDriveWorkflowImportPayload.extend({ kind: z.literal('online-drive-import') }),
+  zKnowledgeFsOnlineDocumentWorkflowImportPayload,
+  zKnowledgeFsOnlineDriveWorkflowImportPayload,
 ])
 
 /**
@@ -2757,9 +2753,9 @@ export const zKnowledgeFsSpaceCreatePayload = z.object({
   idempotency_key: z.string().min(1).max(255).nullish(),
   initial_source: z
     .discriminatedUnion('kind', [
-      zKnowledgeFsInitialWebsiteSourcePayload.extend({ kind: z.literal('website_crawl') }),
-      zKnowledgeFsInitialOnlineDocumentSourcePayload.extend({ kind: z.literal('online_document') }),
-      zKnowledgeFsInitialOnlineDriveSourcePayload.extend({ kind: z.literal('online_drive') }),
+      zKnowledgeFsInitialWebsiteSourcePayload,
+      zKnowledgeFsInitialOnlineDocumentSourcePayload,
+      zKnowledgeFsInitialOnlineDriveSourcePayload,
     ])
     .nullish(),
   members: z.array(zKnowledgeFsSpaceCreateMemberPayload).max(1000).optional(),
@@ -3280,12 +3276,10 @@ export const zKnowledgeFsAsyncOnlineDriveImportPayload = z.object({
  * KnowledgeFSAsyncSourceImportPayload
  */
 export const zKnowledgeFsAsyncSourceImportPayload = z.discriminatedUnion('kind', [
-  zKnowledgeFsAsyncCrawlPreviewImportPayload.extend({ kind: z.literal('crawl-preview-selection') }),
-  zKnowledgeFsAsyncWebsiteCrawlImportPayload.extend({ kind: z.literal('website-crawl-import') }),
-  zKnowledgeFsAsyncOnlineDocumentImportPayload.extend({
-    kind: z.literal('online-document-import'),
-  }),
-  zKnowledgeFsAsyncOnlineDriveImportPayload.extend({ kind: z.literal('online-drive-import') }),
+  zKnowledgeFsAsyncCrawlPreviewImportPayload,
+  zKnowledgeFsAsyncWebsiteCrawlImportPayload,
+  zKnowledgeFsAsyncOnlineDocumentImportPayload,
+  zKnowledgeFsAsyncOnlineDriveImportPayload,
 ])
 
 /**

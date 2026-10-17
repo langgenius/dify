@@ -4077,7 +4077,7 @@ export const get57 = oc
     path: '/knowledge-fs/spaces',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetKnowledgeFsSpacesQuery.optional() }))
+  .input(z.object({ query: zGetKnowledgeFsSpacesQuery.optional() }).optional())
   .output(zGetKnowledgeFsSpacesResponse)
   .errors({
     knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },

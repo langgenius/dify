@@ -488,7 +488,7 @@ export const get2 = oc
     summary: 'List App Feedbacks',
     tags: ['Feedback'],
   })
-  .input(z.object({ query: zGetAppFeedbacksQuery.optional() }))
+  .input(z.object({ query: zGetAppFeedbacksQuery.optional() }).optional())
   .output(zGetAppFeedbacksResponse)
 
 export const feedbacks = {
@@ -622,7 +622,7 @@ export const get4 = oc
     summary: 'List Annotations',
     tags: ['Annotations'],
   })
-  .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }))
+  .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }).optional())
   .output(zGetAppsAnnotationsResponse)
 
 /**
@@ -959,7 +959,7 @@ export const get6 = oc
     summary: 'List Conversations',
     tags: ['Conversations'],
   })
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
   .errors({ not_chat_app: { status: 400, data: zNotChatAppError } })
 
@@ -2316,7 +2316,7 @@ export const get20 = oc
     summary: 'List Knowledge Bases',
     tags: ['Knowledge Bases'],
   })
-  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsQuery.optional() }).optional())
   .output(zGetDatasetsResponse)
 
 /**
@@ -4936,7 +4936,7 @@ export const get67 = oc
     summary: 'List Workflow Logs',
     tags: ['Chatflows', 'Workflows'],
   })
-  .input(z.object({ query: zGetWorkflowsLogsQuery.optional() }))
+  .input(z.object({ query: zGetWorkflowsLogsQuery.optional() }).optional())
   .output(zGetWorkflowsLogsResponse)
 
 export const logs = {

@@ -3283,11 +3283,9 @@ export const zKnowledgeFsSourceUpdatePayload = z.object({
     .nullish(),
   selection: z
     .discriminatedUnion('kind', [
-      zKnowledgeFsSourceEditWebsiteSelectionPayload.extend({ kind: z.literal('website_crawl') }),
-      zKnowledgeFsSourceEditOnlineDocumentSelectionPayload.extend({
-        kind: z.literal('online_document'),
-      }),
-      zKnowledgeFsSourceEditOnlineDriveSelectionPayload.extend({ kind: z.literal('online_drive') }),
+      zKnowledgeFsSourceEditWebsiteSelectionPayload,
+      zKnowledgeFsSourceEditOnlineDocumentSelectionPayload,
+      zKnowledgeFsSourceEditOnlineDriveSelectionPayload,
     ])
     .nullish(),
   status: z.enum(['active', 'disabled', 'error', 'syncing']).nullish(),
@@ -3307,10 +3305,8 @@ export const zKnowledgeFsSourceWorkflowCancelPayload = z.object({
  * KnowledgeFSSourceWorkflowImportPayload
  */
 export const zKnowledgeFsSourceWorkflowImportPayload = z.discriminatedUnion('kind', [
-  zKnowledgeFsOnlineDocumentWorkflowImportPayload.extend({
-    kind: z.literal('online-document-import'),
-  }),
-  zKnowledgeFsOnlineDriveWorkflowImportPayload.extend({ kind: z.literal('online-drive-import') }),
+  zKnowledgeFsOnlineDocumentWorkflowImportPayload,
+  zKnowledgeFsOnlineDriveWorkflowImportPayload,
 ])
 
 /**
@@ -3747,8 +3743,8 @@ export const zChatPausedBlockingResponse = z.object({
  * Blocking chat response for a completed message or paused Chatflow.
  */
 export const zChatBlockingResponse = z.discriminatedUnion('event', [
-  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
-  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
+  zChatMessageBlockingResponse,
+  zChatPausedBlockingResponse,
 ])
 
 /**
@@ -5325,10 +5321,10 @@ export const zParagraphInputConfig = z.object({
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
+  zParagraphInputConfig,
+  zSelectInputConfig,
+  zFileInputConfig,
+  zFileListInputConfig,
 ])
 
 /**
