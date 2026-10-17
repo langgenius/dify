@@ -102,11 +102,10 @@ class ToolTransformService:
                             provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
                         )
             case PluginDatasourceProviderEntity():
-                if provider.plugin_id:
-                    if isinstance(provider.declaration.identity.icon, str):
-                        provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
-                            tenant_id=tenant_id, filename=provider.declaration.identity.icon
-                        )
+                if provider.plugin_id and isinstance(provider.declaration.identity.icon, str):
+                    provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
+                        tenant_id=tenant_id, filename=provider.declaration.identity.icon
+                    )
 
     @classmethod
     def builtin_provider_to_user_provider(

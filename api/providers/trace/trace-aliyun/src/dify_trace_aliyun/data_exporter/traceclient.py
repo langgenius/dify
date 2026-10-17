@@ -98,10 +98,9 @@ class TraceClient:
 
         span: ReadableSpan = self.span_builder.build_span(span_data)
         with self.condition:
-            if len(self.queue) == self.max_queue_size:
-                if not self._spans_dropped:
-                    logger.warning("Queue is full, likely spans will be dropped.")
-                    self._spans_dropped = True
+            if len(self.queue) == self.max_queue_size and not self._spans_dropped:
+                logger.warning("Queue is full, likely spans will be dropped.")
+                self._spans_dropped = True
 
             self.queue.appendleft(span)
             if len(self.queue) >= self.max_export_batch_size:

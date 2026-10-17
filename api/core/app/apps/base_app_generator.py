@@ -218,14 +218,13 @@ class BaseAppGenerator:
                 return None
 
         # Treat empty placeholders for optional file inputs as unset
+        # Treat empty string (frontend default) as unset
+        # For FILE_LIST, allow empty list [] to pass through
         if (
             variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
             and not variable_entity.required
-        ):
-            # Treat empty string (frontend default) as unset
-            # For FILE_LIST, allow empty list [] to pass through
-            if isinstance(value, str) and not value:
-                return None
+        ) and (isinstance(value, str) and not value):
+            return None
 
         if variable_entity.type in {
             VariableEntityType.TEXT_INPUT,

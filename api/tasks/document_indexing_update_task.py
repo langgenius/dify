@@ -195,23 +195,26 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             summary_index_setting = dataset.summary_index_setting
-            if summary_index_setting and summary_index_setting.get("enable"):
-                if (
+            if (
+                summary_index_setting
+                and summary_index_setting.get("enable")
+                and (
                     document
                     and document.indexing_status == IndexingStatus.COMPLETED
                     and document.doc_form != IndexStructureType.QA_INDEX
                     and document.need_summary is True
-                ):
-                    try:
-                        generate_summary_index_task.delay(dataset.id, document.id, None)
-                        logger.info(
-                            "Queued summary index generation task for document %s in dataset %s "
-                            "after update indexing completed",
-                            document.id,
-                            dataset.id,
-                        )
-                    except Exception:
-                        logger.exception(
-                            "Failed to queue summary index generation task for document %s after update",
-                            document.id,
-                        )
+                )
+            ):
+                try:
+                    generate_summary_index_task.delay(dataset.id, document.id, None)
+                    logger.info(
+                        "Queued summary index generation task for document %s in dataset %s "
+                        "after update indexing completed",
+                        document.id,
+                        dataset.id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to queue summary index generation task for document %s after update",
+                        document.id,
+                    )

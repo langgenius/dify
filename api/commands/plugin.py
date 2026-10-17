@@ -219,10 +219,9 @@ def transform_datasource_credentials(environment: str):
                     # check notion plugin is installed
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                    if notion_plugin_id not in installed_plugins_ids:
-                        if notion_package_identifier:
-                            # install notion plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [notion_package_identifier])
+                    if notion_plugin_id not in installed_plugins_ids and notion_package_identifier:
+                        # install notion plugin
+                        PluginService.install_from_marketplace_pkg(tenant_id, [notion_package_identifier])
                     for auth_count, notion_tenant_credential in enumerate(notion_tenant_credentials, start=1):
                         # get credential oauth params
                         access_token = notion_tenant_credential.access_token
@@ -277,10 +276,9 @@ def transform_datasource_credentials(environment: str):
                     # check firecrawl plugin is installed
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                    if firecrawl_plugin_id not in installed_plugins_ids:
-                        if firecrawl_package_identifier:
-                            # install firecrawl plugin
-                            PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_package_identifier])
+                    if (firecrawl_plugin_id not in installed_plugins_ids) and (firecrawl_package_identifier):
+                        # install firecrawl plugin
+                        PluginService.install_from_marketplace_pkg(tenant_id, [firecrawl_package_identifier])
 
                     auth_count = 0
                     for firecrawl_tenant_credential in firecrawl_tenant_credentials:
@@ -341,11 +339,10 @@ def transform_datasource_credentials(environment: str):
                     # check jina plugin is installed
                     installed_plugins = installer_manager.list_plugins(tenant_id)
                     installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                    if jina_plugin_id not in installed_plugins_ids:
-                        if jina_package_identifier:
-                            # install jina plugin
-                            logger.debug("Installing Jina plugin %s", jina_package_identifier)
-                            PluginService.install_from_marketplace_pkg(tenant_id, [jina_package_identifier])
+                    if jina_plugin_id not in installed_plugins_ids and jina_package_identifier:
+                        # install jina plugin
+                        logger.debug("Installing Jina plugin %s", jina_package_identifier)
+                        PluginService.install_from_marketplace_pkg(tenant_id, [jina_package_identifier])
 
                     auth_count = 0
                     for jina_tenant_credential in jina_tenant_credentials:

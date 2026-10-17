@@ -238,9 +238,8 @@ def test_chat_parameter_extractor(monkeypatch: pytest.MonkeyPatch) -> None:
     prompts = result.process_data.get("prompts", [])
 
     for prompt in prompts:
-        if prompt.get("role") == "user":
-            if "<structure>" in prompt.get("text"):
-                assert '<structure>\n{"type": "object"' in prompt.get("text")
+        if prompt.get("role") == "user" and "<structure>" in prompt.get("text"):
+            assert '<structure>\n{"type": "object"' in prompt.get("text")
 
 
 @pytest.mark.usefixtures("setup_model_mock")

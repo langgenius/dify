@@ -178,12 +178,11 @@ def clean_dataset_task(
             if documents:
                 file_ids = []
                 for document in documents:
-                    if document.data_source_type == "upload_file":
-                        if document.data_source_info:
-                            data_source_info = document.data_source_info_dict
-                            if data_source_info and "upload_file_id" in data_source_info:
-                                file_id = data_source_info["upload_file_id"]
-                                file_ids.append(file_id)
+                    if document.data_source_type == "upload_file" and document.data_source_info:
+                        data_source_info = document.data_source_info_dict
+                        if data_source_info and "upload_file_id" in data_source_info:
+                            file_id = data_source_info["upload_file_id"]
+                            file_ids.append(file_id)
                 files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
                 for file in files:
                     storage.delete(file.key)

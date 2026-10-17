@@ -1534,9 +1534,8 @@ class PublishedAllWorkflowApi(Resource):
         user_id = args.user_id
         named_only = args.named_only
 
-        if user_id:
-            if user_id != current_user.id:
-                raise Forbidden()
+        if user_id and user_id != current_user.id:
+            raise Forbidden()
 
         workflow_service = WorkflowService()
         workflows, has_more = workflow_service.get_all_published_workflow(

@@ -700,14 +700,15 @@ class AgentAppRunner:
                 usage=terminal_usage,
             )
 
-        if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
-            # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
-            if terminal.session_snapshot is not None:
-                self._save_session(
-                    scope=scope,
-                    binding_id=runtime.binding_id,
-                    snapshot=terminal.session_snapshot,
-                )
+        # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
+        if (isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent)) and (
+            terminal.session_snapshot is not None
+        ):
+            self._save_session(
+                scope=scope,
+                binding_id=runtime.binding_id,
+                snapshot=terminal.session_snapshot,
+            )
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):

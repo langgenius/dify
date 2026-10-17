@@ -465,9 +465,8 @@ class DatasetRetrieval:
 
         planning_strategy = PlanningStrategy.REACT_ROUTER
         features = model_schema.features
-        if features:
-            if ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features:
-                planning_strategy = PlanningStrategy.ROUTER
+        if features and (ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features):
+            planning_strategy = PlanningStrategy.ROUTER
         available_datasets = self._get_available_datasets(tenant_id, dataset_ids)
 
         inputs = {key: str(value) for key, value in inputs.items()} if inputs else {}
@@ -571,25 +570,24 @@ class DatasetRetrieval:
                             score=record.score,
                         )
                     )
-                    if vision_enabled:
-                        if attachments:
-                            for upload_file in attachments:
-                                attachment_info = File(
-                                    file_id=upload_file.id,
-                                    filename=upload_file.name,
-                                    extension="." + upload_file.extension,
-                                    mime_type=upload_file.mime_type,
-                                    file_type=FileType.IMAGE,
-                                    transfer_method=FileTransferMethod.LOCAL_FILE,
-                                    remote_url=upload_file.source_url,
-                                    reference=build_file_reference(
-                                        record_id=str(upload_file.id),
-                                    ),
-                                    size=upload_file.size,
-                                    storage_key=upload_file.key,
-                                    url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
-                                )
-                                context_files.append(attachment_info)
+                    if vision_enabled and attachments:
+                        for upload_file in attachments:
+                            attachment_info = File(
+                                file_id=upload_file.id,
+                                filename=upload_file.name,
+                                extension="." + upload_file.extension,
+                                mime_type=upload_file.mime_type,
+                                file_type=FileType.IMAGE,
+                                transfer_method=FileTransferMethod.LOCAL_FILE,
+                                remote_url=upload_file.source_url,
+                                reference=build_file_reference(
+                                    record_id=str(upload_file.id),
+                                ),
+                                size=upload_file.size,
+                                storage_key=upload_file.key,
+                                url=sign_upload_file_preview_url(upload_file.id, upload_file.extension),
+                            )
+                            context_files.append(attachment_info)
                 if show_retrieve_source:
                     dataset_ids = [record.segment.dataset_id for record in authorized_records]
                     document_ids = [record.segment.document_id for record in authorized_records]
@@ -836,12 +834,9 @@ class DatasetRetrieval:
                 raise ValueError(
                     "The configured knowledge base list have different embedding model, please set reranking model."
                 )
-            if reranking_enable and reranking_mode == RerankMode.WEIGHTED_SCORE:
-                if weights is not None:
-                    weights["vector_setting"]["embedding_provider_name"] = available_datasets[
-                        0
-                    ].embedding_model_provider
-                    weights["vector_setting"]["embedding_model_name"] = available_datasets[0].embedding_model
+            if reranking_enable and reranking_mode == RerankMode.WEIGHTED_SCORE and weights is not None:
+                weights["vector_setting"]["embedding_provider_name"] = available_datasets[0].embedding_model_provider
+                weights["vector_setting"]["embedding_model_name"] = available_datasets[0].embedding_model
         dataset_count = len(available_datasets)
         with measure_time() as timer:
             cancel_event = threading.Event()
@@ -1561,9 +1556,10 @@ class DatasetRetrieval:
                 for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore
                     metadata_name = condition.name
                     expected_value = condition.value
-                    if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
-                        if isinstance(expected_value, str):
-                            expected_value = self._replace_metadata_filter_value(expected_value, inputs)
+                    if (
+                        expected_value is not None and condition.comparison_operator not in ("empty", "not empty")
+                    ) and (isinstance(expected_value, str)):
+                        expected_value = self._replace_metadata_filter_value(expected_value, inputs)
                     conditions.append(
                         Condition(
                             name=metadata_name,
