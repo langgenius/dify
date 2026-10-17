@@ -8,6 +8,7 @@ from models.api_based_extension import APIBasedExtension
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_application_service import (
     APIBasedExtensionInput,
+    APIBasedExtensionNameConflictError,
     APIBasedExtensionNotFoundError,
 )
 
@@ -96,6 +97,33 @@ def test_create_extension_persists_the_given_ciphertext(sqlite_session_factory: 
         assert stored.api_key == "cipher-text"
 
 
+def test_create_extension_rejects_a_name_taken_in_the_workspace(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(_extension("ext-1", workspace_id="workspace-1", name="taken", created_at=datetime(2024, 1, 1)))
+
+    repository = APIBasedExtensionRepository(session_factory=sqlite_session_factory)
+
+    # The write itself rejects the name, as when a concurrent create passed the service's pre-check.
+    with pytest.raises(APIBasedExtensionNameConflictError):
+        repository.create_extension(
+            "workspace-1",
+            APIBasedExtensionInput(name="taken", api_endpoint="https://late.example.com", api_key="late-cipher"),
+        )
+
+    other_workspace = repository.create_extension(
+        "workspace-2",
+        APIBasedExtensionInput(name="taken", api_endpoint="https://other.example.com", api_key="other-cipher"),
+    )
+    assert other_workspace.name == "taken"
+    with sqlite_session_factory() as session:
+        stored_ids = session.scalars(
+            select(APIBasedExtension.id).where(APIBasedExtension.tenant_id == "workspace-1")
+        ).all()
+        assert stored_ids == ["ext-1"]
+
+
 def test_update_extension_overwrites_fields_within_the_workspace(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -122,6 +150,39 @@ def test_update_extension_overwrites_fields_within_the_workspace(
             "ext-1",
             APIBasedExtensionInput(name="x", api_endpoint="https://x.example.com", api_key="x"),
         )
+
+
+def test_update_extension_rejects_a_name_taken_by_another_extension(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _extension("ext-1", workspace_id="workspace-1", name="taken", created_at=datetime(2024, 1, 1)),
+                _extension("ext-2", workspace_id="workspace-1", name="mine", created_at=datetime(2024, 1, 2)),
+            ]
+        )
+
+    repository = APIBasedExtensionRepository(session_factory=sqlite_session_factory)
+
+    with pytest.raises(APIBasedExtensionNameConflictError):
+        repository.update_extension(
+            "workspace-1",
+            "ext-2",
+            APIBasedExtensionInput(name="taken", api_endpoint="https://renamed.example.com", api_key="new-cipher"),
+        )
+
+    with sqlite_session_factory() as session:
+        stored = session.get(APIBasedExtension, "ext-2")
+        assert stored is not None
+        assert (stored.name, stored.api_endpoint, stored.api_key) == ("mine", "https://mine.example.com", "cipher-text")
+
+    kept = repository.update_extension(
+        "workspace-1",
+        "ext-1",
+        APIBasedExtensionInput(name="taken", api_endpoint="https://kept.example.com", api_key="kept-cipher"),
+    )
+    assert (kept.name, kept.api_endpoint) == ("taken", "https://kept.example.com")
 
 
 def test_delete_extension_requires_a_scoped_match(sqlite_session_factory: sessionmaker[Session]) -> None:
