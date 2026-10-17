@@ -15439,7 +15439,7 @@ default (the config form sends the full desired feature state on save).
 | author_name | string |  | No |
 | availability | [AppAvailabilityStatus](#appavailabilitystatus) | Dependency configuration availability, not a live execution probe. Null when not evaluated. | No |
 | availability_reasons | [ [AppAvailabilityIssueResponse](#appavailabilityissueresponse) ] |  | No |
-| availability_source | string, <br>**Available values:** "configuration", "draft" | Published definition when present, otherwise draft; configuration for legacy apps. | No |
+| availability_source | string, <br>**Available values:** "configuration", "draft" | Editable draft for workflow and Agent apps; current configuration for legacy apps. | No |
 | backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
@@ -18467,7 +18467,7 @@ The app preview owner is unavailable.
 | author_name | string |  | No |
 | availability | [AppAvailabilityStatus](#appavailabilitystatus) | Dependency configuration availability, not a live execution probe. Null when not evaluated. | No |
 | availability_reasons | [ [AppAvailabilityIssueResponse](#appavailabilityissueresponse) ] |  | No |
-| availability_source | string, <br>**Available values:** "configuration", "draft" | Published definition when present, otherwise draft; configuration for legacy apps. | No |
+| availability_source | string, <br>**Available values:** "configuration", "draft" | Editable draft for workflow and Agent apps; current configuration for legacy apps. | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |

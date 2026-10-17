@@ -153,7 +153,7 @@ class AppPartial(ResponseModel):
     )
     availability_source: AppAvailabilitySource | None = Field(
         default=None,
-        description="Published definition when present, otherwise draft; configuration for legacy apps.",
+        description="Editable draft for workflow and Agent apps; current configuration for legacy apps.",
     )
     availability_reasons: list[AppAvailabilityIssueResponse] = Field(default_factory=list)
 

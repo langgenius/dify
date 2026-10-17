@@ -41,7 +41,7 @@ it.each([AppCard, StarredAppCard])(
       name: 'Repairable customer-support workflow with a long name',
       mode: 'workflow',
       icon_url: null,
-      permission_keys: ['app.edit'],
+      permission_keys: ['app.acl.edit'],
       author_name: 'Workspace owner',
       updated_at: 1792000000,
       availability: 'unavailable',
