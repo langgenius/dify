@@ -12,6 +12,7 @@ from core.model_manager import ModelManager
 from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.entities import Rule
+from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
@@ -79,6 +80,17 @@ class SegmentIndexingGateway:
             },
         )
 
+    def _build_graph(self, snapshot: SegmentIndexingSnapshot, documents: list[Document]) -> None:
+        """Extract the knowledge graph for chunks added outside document indexing.
+
+        These chunks used to pass through the index processors' ``load``, which
+        ran the extraction; this gateway indexes them itself, so it owns the step.
+        Model calls finish before the session issues any SQL.
+        """
+        with self._new_session() as session:
+            GraphIndexService.build_for_documents(snapshot.dataset, documents, session=session)
+            session.commit()
+
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def create_many(
         self,
@@ -114,6 +126,7 @@ class SegmentIndexingGateway:
             ]
             if attachments and first.dataset.indexing_technique == "high_quality":
                 self._vector(first).create_multimodal(attachments, upload_files=files)
+        self._build_graph(first, documents)
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def create(self, segment_ref: SegmentRef, *, keywords: Sequence[str] | None, attachment_ids: Sequence[str]) -> None:
@@ -130,6 +143,7 @@ class SegmentIndexingGateway:
             self._vector(snapshot).create_multimodal(
                 self._attachment_documents(snapshot, files.values()), upload_files=files
             )
+        self._build_graph(snapshot, [self._document(snapshot)])
 
     @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def update(self, segment_ref: SegmentRef, *, keywords: Sequence[str] | None, regenerate_children: bool) -> None:

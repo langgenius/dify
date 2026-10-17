@@ -81,6 +81,7 @@
   "datasetMenus.documents": "Sənədlər",
   "datasetMenus.emptyTip": "Bu bilik bazası heç bir tətbiqə inteqrasiya edilməyib. Təlimat üçün sənədə baxın.",
   "datasetMenus.hitTesting": "Axtarış sınağı",
+  "datasetMenus.knowledgeGraph": "Bilik qrafı",
   "datasetMenus.pipeline": "Emal xətti",
   "datasetMenus.relatedApp": "Əlaqəli tətbiqlər",
   "datasetMenus.settings": "Parametrlər",

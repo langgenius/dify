@@ -1,6 +1,7 @@
 import {
   toChunkingMode,
   toCreationDataSourceType,
+  toGraphIndexSetting,
   toIconInfo,
   toRetrievalConfig,
   toSummaryIndexSetting,
@@ -33,6 +34,54 @@ describe('dataset fields', () => {
       model_name: undefined,
       model_provider_name: undefined,
       summary_prompt: undefined,
+    })
+  })
+
+  it('keeps every stored graph setting', () => {
+    const setting = {
+      enabled: true,
+      model_provider_name: 'langgenius/openai/openai',
+      model_name: 'gpt-4o-mini',
+      entity_types: ['PERSON'],
+      max_entities_per_chunk: 8,
+      extract_prompt: 'Extract.',
+      max_depth: 3,
+      max_seed_entities: 4,
+      max_neighbors_per_hop: 32,
+      hop_decay: 0.7,
+      llm_query_fallback: false,
+    }
+
+    expect(toGraphIndexSetting(setting)).toEqual(setting)
+  })
+
+  it('leaves unset graph settings unset so saving never writes null over a default', () => {
+    expect(
+      toGraphIndexSetting({
+        enabled: null,
+        model_provider_name: null,
+        model_name: null,
+        entity_types: null,
+        max_entities_per_chunk: null,
+        extract_prompt: null,
+        max_depth: null,
+        max_seed_entities: null,
+        max_neighbors_per_hop: null,
+        hop_decay: null,
+        llm_query_fallback: null,
+      }),
+    ).toEqual({
+      enabled: undefined,
+      model_provider_name: undefined,
+      model_name: undefined,
+      entity_types: undefined,
+      max_entities_per_chunk: undefined,
+      extract_prompt: undefined,
+      max_depth: undefined,
+      max_seed_entities: undefined,
+      max_neighbors_per_hop: undefined,
+      hop_decay: undefined,
+      llm_query_fallback: undefined,
     })
   })
 

@@ -59,6 +59,10 @@ const DatasetSettingsForm = ({
     summaryIndexSetting,
     handleSummaryIndexSettingChange,
 
+    // Knowledge graph index
+    graphIndexSetting,
+    handleGraphIndexSettingChange,
+
     // Computed
     showMultiModalTip,
 
@@ -110,6 +114,8 @@ const DatasetSettingsForm = ({
           setRetrievalConfig={setRetrievalConfig}
           summaryIndexSetting={summaryIndexSetting}
           handleSummaryIndexSettingChange={handleSummaryIndexSettingChange}
+          graphIndexSetting={graphIndexSetting}
+          handleGraphIndexSettingChange={handleGraphIndexSettingChange}
           showMultiModalTip={showMultiModalTip}
           readonly={readonly}
         />

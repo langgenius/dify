@@ -80,6 +80,11 @@ import {
   zGetDatasetsByDatasetIdDocumentsResponse,
   zGetDatasetsByDatasetIdErrorDocsPath,
   zGetDatasetsByDatasetIdErrorDocsResponse,
+  zGetDatasetsByDatasetIdGraphPath,
+  zGetDatasetsByDatasetIdGraphQuery,
+  zGetDatasetsByDatasetIdGraphResponse,
+  zGetDatasetsByDatasetIdGraphStatsPath,
+  zGetDatasetsByDatasetIdGraphStatsResponse,
   zGetDatasetsByDatasetIdIndexingStatusPath,
   zGetDatasetsByDatasetIdIndexingStatusResponse,
   zGetDatasetsByDatasetIdMetadataPath,
@@ -175,6 +180,8 @@ import {
   zPostDatasetsByDatasetIdExternalHitTestingBody,
   zPostDatasetsByDatasetIdExternalHitTestingPath,
   zPostDatasetsByDatasetIdExternalHitTestingResponse,
+  zPostDatasetsByDatasetIdGraphRetryPath,
+  zPostDatasetsByDatasetIdGraphRetryResponse,
   zPostDatasetsByDatasetIdHitTestingBody,
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
@@ -1444,9 +1451,73 @@ export const externalHitTesting = {
 }
 
 /**
- * Test dataset knowledge retrieval
+ * Retry knowledge graph extraction for the chunks that failed
  */
 export const post17 = oc
+  .route({
+    description: 'Retry knowledge graph extraction for the chunks that failed',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdGraphRetry',
+    path: '/datasets/{dataset_id}/graph/retry',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostDatasetsByDatasetIdGraphRetryPath }))
+  .output(zPostDatasetsByDatasetIdGraphRetryResponse)
+
+export const retry = {
+  post: post17,
+}
+
+/**
+ * Get knowledge graph statistics for a dataset
+ */
+export const get26 = oc
+  .route({
+    description: 'Get knowledge graph statistics for a dataset',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdGraphStats',
+    path: '/datasets/{dataset_id}/graph/stats',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdGraphStatsPath }))
+  .output(zGetDatasetsByDatasetIdGraphStatsResponse)
+
+export const stats = {
+  get: get26,
+}
+
+/**
+ * Inspect the knowledge graph extracted from a dataset's documents
+ */
+export const get27 = oc
+  .route({
+    description: "Inspect the knowledge graph extracted from a dataset's documents",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdGraph',
+    path: '/datasets/{dataset_id}/graph',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetDatasetsByDatasetIdGraphPath,
+      query: zGetDatasetsByDatasetIdGraphQuery.optional(),
+    }),
+  )
+  .output(zGetDatasetsByDatasetIdGraphResponse)
+
+export const graph = {
+  get: get27,
+  retry,
+  stats,
+}
+
+/**
+ * Test dataset knowledge retrieval
+ */
+export const post18 = oc
   .route({
     description: 'Test dataset knowledge retrieval',
     inputStructure: 'detailed',
@@ -1470,13 +1541,13 @@ export const post17 = oc
   })
 
 export const hitTesting = {
-  post: post17,
+  post: post18,
 }
 
 /**
  * Get dataset indexing status
  */
-export const get26 = oc
+export const get28 = oc
   .route({
     description: 'Get dataset indexing status',
     inputStructure: 'detailed',
@@ -1489,10 +1560,10 @@ export const get26 = oc
   .output(zGetDatasetsByDatasetIdIndexingStatusResponse)
 
 export const indexingStatus3 = {
-  get: get26,
+  get: get28,
 }
 
-export const post18 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1505,7 +1576,7 @@ export const post18 = oc
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction4 = {
-  post: post18,
+  post: post19,
 }
 
 export const builtIn2 = {
@@ -1545,7 +1616,7 @@ export const byMetadataId = {
   patch: patch10,
 }
 
-export const get27 = oc
+export const get29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1556,7 +1627,7 @@ export const get27 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
 
-export const post19 = oc
+export const post20 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1574,13 +1645,13 @@ export const post19 = oc
   .output(zPostDatasetsByDatasetIdMetadataResponse)
 
 export const metadata4 = {
-  get: get27,
-  post: post19,
+  get: get29,
+  post: post20,
   builtIn: builtIn2,
   byMetadataId,
 }
 
-export const get28 = oc
+export const get30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1593,7 +1664,7 @@ export const get28 = oc
   .errors({ dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError } })
 
 export const sync2 = {
-  get: get28,
+  get: get30,
 }
 
 export const notion2 = {
@@ -1603,7 +1674,7 @@ export const notion2 = {
 /**
  * Get dataset permission user list
  */
-export const get29 = oc
+export const get31 = oc
   .route({
     description: 'Get dataset permission user list',
     inputStructure: 'detailed',
@@ -1616,13 +1687,13 @@ export const get29 = oc
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
 
 export const permissionPartUsers = {
-  get: get29,
+  get: get31,
 }
 
 /**
  * Get dataset query history
  */
-export const get30 = oc
+export const get32 = oc
   .route({
     description: 'Get dataset query history',
     inputStructure: 'detailed',
@@ -1640,13 +1711,13 @@ export const get30 = oc
   .output(zGetDatasetsByDatasetIdQueriesResponse)
 
 export const queries = {
-  get: get30,
+  get: get32,
 }
 
 /**
  * Get applications related to dataset
  */
-export const get31 = oc
+export const get33 = oc
   .route({
     description: 'Get applications related to dataset',
     inputStructure: 'detailed',
@@ -1659,13 +1730,13 @@ export const get31 = oc
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
 
 export const relatedApps = {
-  get: get31,
+  get: get33,
 }
 
 /**
  * retry document
  */
-export const post20 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1683,14 +1754,14 @@ export const post20 = oc
   )
   .output(zPostDatasetsByDatasetIdRetryResponse)
 
-export const retry = {
-  post: post20,
+export const retry2 = {
+  post: post21,
 }
 
 /**
  * Check if dataset is in use
  */
-export const get32 = oc
+export const get34 = oc
   .route({
     description: 'Check if dataset is in use',
     inputStructure: 'detailed',
@@ -1703,7 +1774,7 @@ export const get32 = oc
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
 
 export const useCheck2 = {
-  get: get32,
+  get: get34,
 }
 
 export const delete9 = oc
@@ -1721,7 +1792,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get33 = oc
+export const get35 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -1750,7 +1821,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get33,
+  get: get35,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -1758,6 +1829,7 @@ export const byDatasetId = {
   documents,
   errorDocs,
   externalHitTesting,
+  graph,
   hitTesting,
   indexingStatus: indexingStatus3,
   metadata: metadata4,
@@ -1765,7 +1837,7 @@ export const byDatasetId = {
   permissionPartUsers,
   queries,
   relatedApps,
-  retry,
+  retry: retry2,
   useCheck: useCheck2,
 }
 
@@ -1792,7 +1864,7 @@ export const byApiKeyId2 = {
 /**
  * Get all API keys for a dataset
  */
-export const get34 = oc
+export const get36 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
@@ -1807,7 +1879,7 @@ export const get34 = oc
 /**
  * Create a new API key for a dataset
  */
-export const post21 = oc
+export const post22 = oc
   .route({
     description: 'Create a new API key for a dataset',
     inputStructure: 'detailed',
@@ -1822,8 +1894,8 @@ export const post21 = oc
   .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
 export const apiKeys3 = {
-  get: get34,
-  post: post21,
+  get: get36,
+  post: post22,
   byApiKeyId: byApiKeyId2,
 }
 
@@ -1834,7 +1906,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get35 = oc
+export const get37 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1849,7 +1921,7 @@ export const get35 = oc
 /**
  * Create a new dataset
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     description: 'Create a new dataset',
     inputStructure: 'detailed',
@@ -1864,8 +1936,8 @@ export const post22 = oc
   .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const datasets = {
-  get: get35,
-  post: post22,
+  get: get37,
+  post: post23,
   apiBaseInfo,
   apiKeys,
   batchImportStatus,

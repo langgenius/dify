@@ -6744,6 +6744,59 @@ Test external knowledge retrieval for dataset
 | 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /datasets/{dataset_id}/graph
+Inspect the knowledge graph extracted from a dataset's documents
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| limit | query | Maximum number of seed entities to return | No | integer, <br>**Default:** 50 |
+| query | query | Entity mention to centre the returned subgraph on | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Graph retrieved successfully | **application/json**: [DatasetGraphResponse](#datasetgraphresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/graph/retry
+Retry knowledge graph extraction for the chunks that failed
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Retry queued | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/graph/stats
+Get knowledge graph statistics for a dataset
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Graph statistics retrieved successfully | **application/json**: [DatasetGraphStatsResponse](#datasetgraphstatsresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /datasets/{dataset_id}/hit-testing
 Test dataset knowledge retrieval
 
@@ -20066,6 +20119,7 @@ Dataset access denied.
 | enable_api | boolean |  | Yes |
 | external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| graph_index_setting | [DatasetGraphIndexSettingResponse](#datasetgraphindexsettingresponse) |  | No |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | [IndexTechniqueType](#indextechniquetype) |  | Yes |
@@ -20109,6 +20163,7 @@ Dataset access denied.
 | enable_api | boolean |  | Yes |
 | external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| graph_index_setting | [DatasetGraphIndexSettingResponse](#datasetgraphindexsettingresponse) |  | No |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | [IndexTechniqueType](#indextechniquetype) |  | Yes |
@@ -20157,6 +20212,50 @@ Dataset access denied.
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | Yes |
 
+#### DatasetGraphIndexSettingResponse
+
+Knowledge-graph configuration of a dataset.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| entity_types | [ string ] |  | No |
+| extract_prompt | string |  | No |
+| hop_decay | number |  | No |
+| llm_query_fallback | boolean |  | No |
+| max_depth | integer |  | No |
+| max_entities_per_chunk | integer |  | No |
+| max_neighbors_per_hop | integer |  | No |
+| max_seed_entities | integer |  | No |
+| model_name | string |  | No |
+| model_provider_name | string |  | No |
+
+#### DatasetGraphQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 50 | Maximum number of seed entities to return | No |
+| query | string | Entity mention to centre the returned subgraph on | No |
+
+#### DatasetGraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entities | [ [GraphEntityResponse](#graphentityresponse) ] |  | Yes |
+| relations | [ [GraphRelationResponse](#graphrelationresponse) ] |  | Yes |
+
+#### DatasetGraphStatsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| building | boolean |  | Yes |
+| entity_count | integer |  | Yes |
+| entity_types | object |  | Yes |
+| failed_chunk_count | integer |  | Yes |
+| last_error | string |  | Yes |
+| last_failed_at | integer |  | Yes |
+| relation_count | integer |  | Yes |
+
 #### DatasetIconInfoResponse
 
 | Name | Type | Description | Required |
@@ -20193,6 +20292,7 @@ Dataset access denied.
 | enable_api | boolean |  | Yes |
 | external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| graph_index_setting | [DatasetGraphIndexSettingResponse](#datasetgraphindexsettingresponse) |  | No |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | [IndexTechniqueType](#indextechniquetype) |  | Yes |
@@ -20380,6 +20480,7 @@ Dataset query source
 | external_knowledge_api_id | string |  | No |
 | external_knowledge_id | string |  | No |
 | external_retrieval_model | object |  | No |
+| graph_index_setting | object |  | No |
 | icon_info | object |  | No |
 | indexing_technique | string |  | No |
 | is_multimodal | boolean |  | No |
@@ -22037,6 +22138,28 @@ Enum class for form type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | GeneratorResponse |  |  |  |
+
+#### GraphEntityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| entity_type | string |  | Yes |
+| frequency | integer |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### GraphRelationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| id | string |  | Yes |
+| predicate | string |  | Yes |
+| source_entity_id | string |  | Yes |
+| target_entity_id | string |  | Yes |
+| weight | number |  | Yes |
 
 #### HitTestingChildChunk
 
