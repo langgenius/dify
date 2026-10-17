@@ -12,7 +12,7 @@ from typing import Any, Literal, TypedDict, cast
 
 import sqlalchemy as sa
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import ColumnElement, case, delete, exists, func, select, tuple_, update
+from sqlalchemy import ColumnElement, case, delete, event, exists, func, select, tuple_, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -728,19 +728,32 @@ class DatasetService:
         # Reload dataset to get updated values
         session.refresh(dataset)
 
+        if action:
+            # The UPDATE above was only flushed: the session is owned by the
+            # caller, and committing here closed the caller's context manager
+            # early (#39191). Dispatching the re-index tasks directly would let
+            # the Celery worker read the pre-commit row and re-embed every
+            # chunk with the *previous* embedding model (#40961). Defer the
+            # dispatch to the session's after_commit event instead:
+            # - RAG-pipeline datasets commit inside
+            #   _update_pipeline_knowledge_base_node_data, which fires the hook
+            #   with the flushed UPDATE already included;
+            # - every other dataset dispatches on the caller's commit;
+            # - a rollback never dispatches.
+            def dispatch_reindex_tasks(_session: Session) -> None:
+                deal_dataset_vector_index_task.delay(dataset.id, action)
+                # If embedding_model changed, also regenerate summary vectors
+                if action == "update":
+                    regenerate_summary_index_task.delay(
+                        dataset.id,
+                        regenerate_reason="embedding_model_changed",
+                        regenerate_vectors_only=True,
+                    )
+
+            event.listen(session, "after_commit", dispatch_reindex_tasks, once=True)
+
         # update pipeline knowledge base node data
         DatasetService._update_pipeline_knowledge_base_node_data(dataset, user.id, session)
-
-        # Trigger vector index task if indexing technique changed
-        if action:
-            deal_dataset_vector_index_task.delay(dataset.id, action)
-            # If embedding_model changed, also regenerate summary vectors
-            if action == "update":
-                regenerate_summary_index_task.delay(
-                    dataset.id,
-                    regenerate_reason="embedding_model_changed",
-                    regenerate_vectors_only=True,
-                )
 
         # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
         # The new setting will only apply to:
