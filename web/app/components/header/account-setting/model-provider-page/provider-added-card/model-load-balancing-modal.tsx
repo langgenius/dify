@@ -297,6 +297,19 @@ const ModelLoadBalancingModal = ({
     const available_credentials = result.data?.available_credentials || []
     if (!available_credentials.length) onClose?.()
   }, [refetch, onClose])
+  const handleRemoveCredential = useCallback(
+    (credentialId: string) => {
+      setDraftConfig(
+        (previous) =>
+          previous && {
+            ...previous,
+            configs: previous.configs.filter((config) => config.credential_id !== credentialId),
+          },
+      )
+      return handleUpdateWhenSwitchCredential()
+    },
+    [handleUpdateWhenSwitchCredential],
+  )
   return (
     <>
       <Dialog
@@ -390,7 +403,7 @@ const ModelLoadBalancingModal = ({
                           model={model}
                           credentials={available_credentials}
                           onUpdate={handleUpdateWhenSwitchCredential}
-                          onRemove={handleUpdateWhenSwitchCredential}
+                          onRemove={handleRemoveCredential}
                         />
                       </div>
                     )}
@@ -410,7 +423,7 @@ const ModelLoadBalancingModal = ({
                       className: 'mt-2',
                       modelCredential,
                       onUpdate: handleUpdate,
-                      onRemove: handleUpdateWhenSwitchCredential,
+                      onRemove: handleRemoveCredential,
                       model: {
                         model: model.model,
                         model_type: model.model_type,

@@ -143,6 +143,55 @@ function main(name, age, city) {
 }
 
 describe('extractReturnType', () => {
+  it('preserves JavaScript regex literals containing comment markers', () => {
+    const code = String.raw`function main(url) {
+      return {
+        result: /https?:\/\//.test(url), // URL scheme
+        status: /[/*]/.test(url) /* slash or star */
+      }
+    }`
+    expect(extractReturnType(code, CodeLanguage.javascript)).toEqual({
+      result: { type: VarType.string, children: null },
+      status: { type: VarType.string, children: null },
+    })
+  })
+
+  it.each([
+    [
+      CodeLanguage.python3,
+      `
+# return {"ignored": "comment"}
+def main():
+    return {
+        # The result's nested data: { ignored: 1 },
+        "result": {"url": "https://example.com/#fragment"}, # keep the next field
+        # Status metadata
+        "status": "ok"
+    }`,
+    ],
+    [
+      CodeLanguage.javascript,
+      `
+// return { ignored: "comment" }
+function main() {
+    return {
+        /* The result's nested data: { ignored: 1 }, */
+        result: { url: "https://example.com/*literal*/" }, // keep the next field
+        // Status metadata
+        status: "ok"
+    }
+}`,
+    ],
+  ] as const)(
+    'ignores %s comments without dropping outputs or parsing nested keys',
+    (language, code) => {
+      expect(extractReturnType(code, language)).toEqual({
+        result: { type: VarType.string, children: null },
+        status: { type: VarType.string, children: null },
+      })
+    },
+  )
+
   it.each([
     [CodeLanguage.python3, RETURN_TYPE_SAMPLES.python3.singleReturn, ['result']],
     [CodeLanguage.python3, RETURN_TYPE_SAMPLES.python3.multipleReturns, ['result', 'status']],

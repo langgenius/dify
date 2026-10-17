@@ -25,7 +25,15 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
   return params
 }
 export const extractReturnType = (code: string, language: CodeLanguage): OutputVar => {
-  const codeWithoutComments = code.replace(/\/\*\*[\s\S]*?\*\//, '')
+  // Preserve quoted values and JavaScript regex literals before removing comments.
+  const commentsAndStrings =
+    language === CodeLanguage.python3
+      ? /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|#[^\r\n]*/g
+      : /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\/(?![/*])(?:\\.|\[(?:\\.|[^\]\\])*\]|[^/\\[\r\n])+\/[dgimsuvy]*(?![/*]))|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g
+  const codeWithoutComments = code.replace(
+    commentsAndStrings,
+    (_match, literal: string | undefined) => literal ?? ' ',
+  )
 
   const returnIndex = codeWithoutComments.indexOf('return')
   if (returnIndex === -1) return {}

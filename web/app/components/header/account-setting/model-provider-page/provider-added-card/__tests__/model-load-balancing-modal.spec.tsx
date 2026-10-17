@@ -1,5 +1,5 @@
 import type { Credential, ModelItem, ModelProvider } from '../../declarations'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -9,6 +9,7 @@ import ModelLoadBalancingModal from '../model-load-balancing-modal'
 
 const saveConfig = vi.fn()
 const getCredentials = vi.fn()
+const deleteCredential = vi.fn()
 const refreshModels = vi.fn()
 const notifyError = vi.fn()
 let credentialData: {
@@ -30,65 +31,55 @@ let credentialData: {
 vi.mock('@/app/notifications', () => ({
   toast: { success: vi.fn(), error: (...args: unknown[]) => notifyError(...args) },
 }))
-vi.mock('../../model-auth/hooks/use-auth', () => ({
-  useAuth: () => ({
-    doingAction: false,
-    deleteModel: null,
-    openConfirmDelete: vi.fn(),
-    closeConfirmDelete: vi.fn(),
-    handleConfirmDelete: vi.fn(),
-  }),
-}))
 vi.mock('../../hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../hooks')>()),
   useRefreshModel: () => ({ handleRefreshModel: refreshModels }),
+  useModelModalHandler: () => vi.fn(),
 }))
 
-// Credential authorization has its own integration tests. Keep the draft editor real.
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
-  AddCredentialInLoadBalancing: ({
-    onSelectCredential,
-    onUpdate,
-  }: {
-    onSelectCredential: (credential: Credential) => void
-    onUpdate: (
-      payload?: { credential: { credential_id: string } },
-      values?: Record<string, string>,
-    ) => void
-  }) => (
-    <>
-      <button
-        onClick={() => onSelectCredential({ credential_id: 'cred-3', credential_name: 'New Key' })}
-      >
-        Select another credential
-      </button>
-      <button onClick={() => onUpdate(undefined, { __authorization_name__: 'New Key' })}>
-        Create credential
-      </button>
-      <button onClick={() => onUpdate({ credential: { credential_id: 'cred-1' } })}>
-        Rename credential
-      </button>
-    </>
-  ),
-  SwitchCredentialInLoadBalancing: ({
-    setCustomModelCredential,
-  }: {
-    setCustomModelCredential: (credential: Credential) => void
-  }) => (
-    <button
-      onClick={() =>
-        setCustomModelCredential({ credential_id: 'cred-2', credential_name: 'Backup' })
-      }
-    >
-      Choose Backup
-    </button>
-  ),
-}))
+// Isolate credential creation/editing; keep the selection and deletion flow real.
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-auth',
+  async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../model-auth')>()),
+    AddCredentialInLoadBalancing: ({
+      onSelectCredential,
+      onUpdate,
+    }: {
+      onSelectCredential: (credential: Credential) => void
+      onUpdate: (
+        payload?: { credential: { credential_id: string } },
+        values?: Record<string, string>,
+      ) => void
+    }) => (
+      <>
+        <button
+          onClick={() =>
+            onSelectCredential({ credential_id: 'cred-3', credential_name: 'New Key' })
+          }
+        >
+          Select another credential
+        </button>
+        <button onClick={() => onUpdate(undefined, { __authorization_name__: 'New Key' })}>
+          Create credential
+        </button>
+        <button onClick={() => onUpdate({ credential: { credential_id: 'cred-1' } })}>
+          Rename credential
+        </button>
+      </>
+    ),
+  }),
+)
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.modelProviders.byProvider.models.credentials.delete': ({ query }) =>
+        deleteCredential(query),
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.modelProviders.byProvider.models.credentials.get': (...args) =>
         getCredentials(...args),
@@ -130,7 +121,10 @@ const renderModal = (
       onSave={onSave}
       onClose={onClose}
     />,
-    { features: { model_load_balancing_enabled: true } },
+    {
+      features: { model_load_balancing_enabled: true },
+      workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+    },
   )
   return { ...rendered, user: userEvent.setup(), onSave, onClose }
 }
@@ -168,6 +162,15 @@ beforeEach(() => {
 
   getCredentials.mockImplementation(async () => structuredClone(credentialData))
   saveConfig.mockResolvedValue({ result: 'success' })
+  deleteCredential.mockImplementation(async ({ credential_id }: { credential_id: string }) => {
+    credentialData.available_credentials = credentialData.available_credentials.filter(
+      (credential) => credential.credential_id !== credential_id,
+    )
+    credentialData.load_balancing.configs = credentialData.load_balancing.configs.filter(
+      (config) => config.credential_id !== credential_id,
+    )
+    return { result: 'success' }
+  })
 })
 
 describe('ModelLoadBalancingModal', () => {
@@ -281,10 +284,42 @@ describe('ModelLoadBalancingModal', () => {
     },
   )
 
+  it('removes deleted model credentials from the draft while retaining local edits', async () => {
+    const { user } = renderModal(ConfigurationMethodEnum.customizableModel)
+    await screen.findByRole('switch', { name: 'Default' })
+    await user.click(screen.getByRole('switch', { name: 'Default' }))
+    await user.click(screen.getByRole('button', { name: 'Default' }))
+    await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[1]!)
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'common.operation.confirm',
+      }),
+    )
+    await waitFor(() =>
+      expect(deleteCredential).toHaveBeenCalledExactlyOnceWith({
+        credential_id: 'cred-2',
+        model: 'gpt-4',
+        model_type: 'llm',
+      }),
+    )
+    await waitFor(() =>
+      expect(screen.queryByRole('switch', { name: 'Backup' })).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('switch', { name: 'Default' })).not.toBeChecked()
+    await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
+    await user.click(saveButton())
+    await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(1))
+    expect(saveConfig.mock.calls[0]![0].load_balancing).toMatchObject({
+      enabled: false,
+      configs: [{ credential_id: 'cred-1', enabled: false }],
+    })
+  })
+
   it('saves the selected custom-model credential and provider-managed mode', async () => {
     const { user } = renderModal(ConfigurationMethodEnum.customizableModel)
     await screen.findByRole('switch', { name: 'Default' })
-    await user.click(screen.getByRole('button', { name: 'Choose Backup' }))
+    await user.click(screen.getByRole('button', { name: 'Default' }))
+    await user.click(screen.getByRole('button', { name: 'Backup' }))
     await user.click(screen.getByRole('button', { name: /specifyModelCredential$/ }))
     await user.click(saveButton())
     await waitFor(() => expect(saveConfig).toHaveBeenCalledTimes(1))
