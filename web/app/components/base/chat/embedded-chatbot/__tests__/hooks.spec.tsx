@@ -581,9 +581,7 @@ describe('useEmbeddedChatbot', () => {
       })
       const onStart = vi.fn()
       act(() => {
-        ;(
-          result.current as unknown as { handleStartChat: (cb?: () => void) => void }
-        ).handleStartChat(onStart)
+        ;(result.current as { handleStartChat: (cb?: () => void) => void }).handleStartChat(onStart)
       })
 
       expect(onStart).not.toHaveBeenCalled()
@@ -600,9 +598,9 @@ describe('useEmbeddedChatbot', () => {
       const callback = vi.fn()
 
       act(() => {
-        ;(
-          result.current as unknown as { handleStartChat: (cb?: () => void) => void }
-        ).handleStartChat(callback)
+        ;(result.current as { handleStartChat: (cb?: () => void) => void }).handleStartChat(
+          callback,
+        )
       })
 
       expect(callback).toHaveBeenCalled()
@@ -620,9 +618,7 @@ describe('useEmbeddedChatbot', () => {
       })
       const onStart = vi.fn()
       act(() => {
-        ;(
-          result.current as unknown as { handleStartChat: (cb?: () => void) => void }
-        ).handleStartChat(onStart)
+        ;(result.current as { handleStartChat: (cb?: () => void) => void }).handleStartChat(onStart)
       })
 
       expect(onStart).toHaveBeenCalled()

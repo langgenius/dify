@@ -1,6 +1,7 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import StatusItem from '../index'
 
 const toastMocks = vi.hoisted(() => {
@@ -29,13 +30,6 @@ const toastMocks = vi.hoisted(() => {
     }),
   }
 })
-vi.mock('use-context-selector', () => ({
-  createContext: (defaultValue: unknown) => React.createContext(defaultValue),
-  useContext: () => ({
-    notify: toastMocks.api,
-  }),
-  useContextSelector: (context: unknown, selector: (state: unknown) => unknown) => selector({}),
-}))
 
 vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
@@ -59,11 +53,23 @@ const mockEnable = vi.fn()
 const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-}))
+const statusMocks: Record<string, (input: unknown) => unknown> = {
+  enable: (input) => mockEnable(input),
+  disable: (input) => mockDisable(input),
+}
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input: {
+        params: { action: string }
+      }) => statusMocks[input.params.action]!(input),
+      'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
+    }),
+  }
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -274,7 +280,10 @@ describe('StatusItem', () => {
       await act(async () => {
         vi.advanceTimersByTime(600)
       })
-      expect(mockEnable).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+      expect(mockEnable).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', action: 'enable' },
+        query: { document_id: ['doc-1'] },
+      })
       vi.useRealTimers()
     })
 
@@ -302,7 +311,10 @@ describe('StatusItem', () => {
       await act(async () => {
         vi.advanceTimersByTime(600)
       })
-      expect(mockDisable).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+      expect(mockDisable).toHaveBeenCalledWith({
+        params: { dataset_id: 'dataset-1', action: 'disable' },
+        query: { document_id: ['doc-1'] },
+      })
       vi.useRealTimers()
     })
 

@@ -1,5 +1,6 @@
 import type { VarInInspect } from '@/types/workflow'
 import { VarType } from '@/app/components/workflow/types'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { VarInInspectType } from '@/types/workflow'
 import {
   formatInspectFileValue,
@@ -71,7 +72,16 @@ describe('value-content helpers', () => {
         createVar({
           name: 'file',
           value_type: VarType.file,
-          value: { id: 'file-1' },
+          value: {
+            id: 'file-1',
+            filename: 'report.pdf',
+            mime_type: 'application/pdf',
+            type: 'document',
+            transfer_method: 'remote_url',
+            related_id: null,
+            remote_url: 'https://example.com/report.pdf',
+            size: 12,
+          },
         }),
       ),
     ).toHaveLength(1)
@@ -84,7 +94,16 @@ describe('value-content helpers', () => {
           type: VarInInspectType.system,
           name: 'files',
           value_type: VarType.arrayFile,
-          value: [{ id: 'file-2' }],
+          value: [
+            {
+              id: 'file-2',
+              filename: 'photo.png',
+              type: 'image',
+              transfer_method: 'local_file',
+              related_id: 'upload-2',
+              size: 20,
+            },
+          ],
         }),
       ),
     ).toHaveLength(1)
@@ -97,5 +116,34 @@ describe('value-content helpers', () => {
       success: false,
       parseError: expect.any(Error),
     })
+  })
+})
+
+it('rejects arrays with values of the wrong type', () => {
+  expect(validateInspectJsonValue('[1, 2]', 'array[string]')).toMatchObject({
+    success: false,
+    validationError: expect.stringContaining('string'),
+    parseError: null,
+  })
+})
+
+it('rejects deeply nested schemas through the real depth checker', () => {
+  let schema: Record<string, unknown> = { type: 'string' }
+  for (let depth = 0; depth <= JSON_SCHEMA_MAX_DEPTH; depth++)
+    schema = { type: 'object', properties: { nested: schema } }
+  expect(validateInspectJsonValue(JSON.stringify(schema), 'object')).toMatchObject({
+    success: false,
+    validationError: `Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`,
+    parseError: null,
+  })
+})
+
+it('reports Draft 7 violations instead of accepting a malformed schema', () => {
+  expect(
+    validateInspectJsonValue(JSON.stringify({ type: 'not-a-schema-type' }), 'object'),
+  ).toMatchObject({
+    success: false,
+    validationError: expect.stringContaining('type'),
+    parseError: null,
   })
 })

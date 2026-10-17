@@ -1,8 +1,9 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { CrawlResultItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { CrawlStep } from '@/models/datasets'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import WebsiteCrawl from '../index'
 
 // Mock useDocLink - context hook requires mocking
@@ -19,12 +20,6 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
 // Mock ssePost - API service requires mocking
 const { mockSsePost } = vi.hoisted(() => ({
   mockSsePost: vi.fn(),
@@ -39,21 +34,45 @@ const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
   mockUseGetDataSourceAuth: vi.fn(),
 }))
 
-vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: mockUseGetDataSourceAuth,
-}))
-
-// Mock usePipeline hooks - API service hooks require mocking
 const { mockUseDraftPipelinePreProcessingParams, mockUsePublishedPipelinePreProcessingParams } =
   vi.hoisted(() => ({
     mockUseDraftPipelinePreProcessingParams: vi.fn(),
     mockUsePublishedPipelinePreProcessingParams: vi.fn(),
   }))
 
-vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelinePreProcessingParams: mockUseDraftPipelinePreProcessingParams,
-  usePublishedPipelinePreProcessingParams: mockUsePublishedPipelinePreProcessingParams,
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUseDraftPipelinePreProcessingParams(
+        { pipeline_id: o.input.params.pipeline_id, node_id: o.input.query.node_id },
+        o.enabled,
+      ),
+    'rag.pipelines.byPipelineId.workflows.published.preProcessing.parameters.get': (o: {
+      input: { params: { pipeline_id: string }; query: { node_id: string } }
+      enabled?: boolean
+    }) =>
+      mockUsePublishedPipelinePreProcessingParams(
+        { pipeline_id: o.input.params.pipeline_id, node_id: o.input.query.node_id },
+        o.enabled,
+      ),
+    // The credential query is keyed by `${pluginId}/${provider}`; report it as the two ids.
+    'auth.plugin.datasource.byProviderId.get': (options: { queryKey: unknown[] }) => {
+      const { input } = options.queryKey[1] as { input: { params: { provider_id: string } } }
+      const providerId = input.params.provider_id
+      const separator = providerId.lastIndexOf('/')
+      return mockUseGetDataSourceAuth({
+        pluginId: providerId.slice(0, separator),
+        provider: providerId.slice(separator + 1),
+      })
+    },
+  })
+})
+
+// Mock usePipeline hooks - API service hooks require mocking
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
 
@@ -244,6 +263,9 @@ const createDefaultProps = (overrides?: Partial<WebsiteCrawlProps>): WebsiteCraw
   ...overrides,
 })
 
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
+
 describe('WebsiteCrawl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -262,7 +284,7 @@ describe('WebsiteCrawl', () => {
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
-    mockSetSettingsDestination.mockClear()
+    onUrlUpdate.mockClear()
 
     // Default mock return values
     mockUseGetDataSourceAuth.mockReturnValue({
@@ -615,13 +637,15 @@ describe('WebsiteCrawl', () => {
       expect(mockStoreState.setPreviewIndex).toHaveBeenCalledWith(0)
     })
 
-    it('should have stable handleSetting callback', () => {
+    it('should have stable handleSetting callback', async () => {
       const props = createDefaultProps()
       render(<WebsiteCrawl {...props} />)
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
     })
 
     it('should have stable handleCredentialChange that resets state', () => {
@@ -650,13 +674,15 @@ describe('WebsiteCrawl', () => {
       })
     })
 
-    it('should handle configuration button click', () => {
+    it('should handle configuration button click', async () => {
       const props = createDefaultProps()
       render(<WebsiteCrawl {...props} />)
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
     })
 
     it('should handle credential change', () => {

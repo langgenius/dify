@@ -87,13 +87,13 @@ switching backends does not strand rows forever.)
   a confidence gate, so a crafted document can plant edges that later act as
   false multi-hop bridges. Facts never cross knowledge bases, and each one is
   traceable to its source chunk, so a suspect bridge can be followed back.
-- **Re-indexing is the only rebuild.** A chunk whose extraction failed (model
-  unavailable, unparsable answer) is skipped with a warning and has no graph
-  facts until its document is indexed again.
-- **`graph_search` is not offered as a standalone retrieval mode in the
-  console.** The value is a merged result set, so the graph runs as one leg of
-  hybrid and keyword search rather than on its own. The enum member exists for
-  callers that build a retrieval config directly.
+- **Failed chunks are retried by hand.** A chunk whose extraction failed (model
+  unavailable, unparsable answer) is recorded with the provider's reason and has
+  no graph facts until it is retried from the graph page or its document is
+  indexed again.
+- **There is no graph-only retrieval mode.** The value is a merged result set,
+  so the graph runs as one leg of hybrid and keyword search rather than on its
+  own.
 - **Entity name lookup is a substring scan.** Seed matching uses
   `LIKE '%term%'`, which no btree index can serve; a trigram index would need
   the `pg_trgm` extension, which cannot be assumed. Large graphs pay for this at

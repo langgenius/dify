@@ -1,18 +1,22 @@
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
-import {
-  fetchInitValidateStatus,
-  fetchSetupStatus,
-  sendForgotPasswordEmail,
-} from '@/service/common'
+import { consoleClient } from '@/service/console'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
-vi.mock('@/service/common', () => ({
-  fetchSetupStatus: vi.fn(),
-  fetchInitValidateStatus: vi.fn(),
-  sendForgotPasswordEmail: vi.fn(),
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    setup: {
+      get: vi.fn(),
+    },
+    init: {
+      get: vi.fn(),
+    },
+    forgotPassword: {
+      post: vi.fn(),
+    },
+  },
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -20,16 +24,16 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
-const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
-const mockSendForgotPasswordEmail = vi.mocked(sendForgotPasswordEmail)
+const mockFetchSetupStatus = vi.mocked(consoleClient.setup.get)
+const mockFetchInitValidateStatus = vi.mocked(consoleClient.init.get)
+const mockSendForgotPasswordEmail = vi.mocked(consoleClient.forgotPassword.post)
 const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const prepareLoadedState = () => {
-  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
+  mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' })
   mockFetchInitValidateStatus.mockResolvedValue({
     status: 'finished',
-  } as InitValidateStatusResponse)
+  })
 }
 
 describe('ForgotPasswordForm', () => {
@@ -79,7 +83,7 @@ describe('ForgotPasswordForm', () => {
 
   it('should send the reset email and show a sign-in link after confirmation', async () => {
     const user = userEvent.setup()
-    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' } as any)
+    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' })
 
     render(<ForgotPasswordForm />)
 
@@ -90,7 +94,6 @@ describe('ForgotPasswordForm', () => {
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
-        url: '/forgot-password',
         body: { email: 'test@example.com' },
       })
     })
@@ -106,7 +109,7 @@ describe('ForgotPasswordForm', () => {
 
   it('should submit when form is submitted', async () => {
     const user = userEvent.setup()
-    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' } as any)
+    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'success', data: 'ok' })
 
     render(<ForgotPasswordForm />)
 
@@ -115,7 +118,6 @@ describe('ForgotPasswordForm', () => {
 
     await waitFor(() => {
       expect(mockSendForgotPasswordEmail).toHaveBeenCalledWith({
-        url: '/forgot-password',
         body: { email: 'test@example.com' },
       })
     })
@@ -123,11 +125,15 @@ describe('ForgotPasswordForm', () => {
 
   it('should disable submit while request is in flight', async () => {
     const user = userEvent.setup()
-    let resolveRequest: ((value: any) => void) | undefined
-    const requestPromise = new Promise((resolve) => {
+    let resolveRequest:
+      | ((value: Awaited<ReturnType<typeof consoleClient.forgotPassword.post>>) => void)
+      | undefined
+    const requestPromise = new Promise<
+      Awaited<ReturnType<typeof consoleClient.forgotPassword.post>>
+    >((resolve) => {
       resolveRequest = resolve
     })
-    mockSendForgotPasswordEmail.mockReturnValue(requestPromise as any)
+    mockSendForgotPasswordEmail.mockReturnValue(requestPromise)
 
     render(<ForgotPasswordForm />)
 
@@ -153,7 +159,7 @@ describe('ForgotPasswordForm', () => {
   it('should keep form state when request fails', async () => {
     const user = userEvent.setup()
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'fail', data: 'error' } as any)
+    mockSendForgotPasswordEmail.mockResolvedValue({ result: 'fail', data: 'error' })
 
     render(<ForgotPasswordForm />)
 
@@ -177,7 +183,7 @@ describe('ForgotPasswordForm', () => {
     })
     mockFetchInitValidateStatus.mockResolvedValue({
       status: 'not_started',
-    } as InitValidateStatusResponse)
+    })
 
     render(<ForgotPasswordForm />)
 

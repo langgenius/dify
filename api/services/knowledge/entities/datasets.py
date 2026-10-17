@@ -25,6 +25,7 @@ class DatasetDetailRecord(TypedDict):
     permission: str
     data_source_type: str | None
     indexing_technique: str | None
+    keyword_number: int | None
     app_count: int
     document_count: int
     word_count: int

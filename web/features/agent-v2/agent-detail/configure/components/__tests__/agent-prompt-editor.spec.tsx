@@ -1,3 +1,4 @@
+import type { ToolProviderApiEntityResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -12,13 +13,9 @@ import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { AgentPromptEditor, AgentTemplatePromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
-
-const render = (ui: React.ReactElement) => {
-  const { wrapper } = createConsoleQueryWrapper({ features: { enable_skill: true } })
-  return renderWithState(ui, { wrapper })
-}
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
@@ -70,7 +67,7 @@ const mockLexical = vi.hoisted(() => ({
   }>,
   rootSelectEnd: vi.fn(),
 }))
-const mockBuiltInTools = vi.hoisted(() => [
+const mockBuiltInTools = vi.hoisted((): ToolProviderApiEntityResponse[] => [
   {
     id: 'duckduckgo',
     name: 'DuckDuckGo',
@@ -84,7 +81,6 @@ const mockBuiltInTools = vi.hoisted(() => [
     is_team_authorization: true,
     allow_delete: false,
     labels: [],
-    meta: {},
     tools: [
       {
         name: 'ddg_search',
@@ -109,9 +105,9 @@ const mockBuiltInTools = vi.hoisted(() => [
 ])
 
 const mockMCPTools = vi.hoisted(() => ({
-  current: [] as Array<Record<string, unknown>>,
+  current: [] as ToolProviderApiEntityResponse[],
 }))
-const mondayMCPProvider = {
+const mondayMCPProvider: ToolProviderApiEntityResponse = {
   id: '1e9b5c9c-0a3f-4a2b-8f6f-2f7a0d3c4b51',
   server_identifier: 'monday_mcp',
   name: 'Monday MCP',
@@ -124,7 +120,6 @@ const mondayMCPProvider = {
   is_team_authorization: true,
   allow_delete: true,
   labels: [],
-  meta: {},
   tools: [
     {
       name: 'list_boards',
@@ -138,7 +133,7 @@ const mondayMCPProvider = {
   ],
 }
 
-const wikipediaProvider = {
+const wikipediaProvider: ToolProviderApiEntityResponse = {
   id: 'wikipedia',
   name: 'Wikipedia',
   author: 'Dify',
@@ -151,7 +146,6 @@ const wikipediaProvider = {
   is_team_authorization: true,
   allow_delete: false,
   labels: [],
-  meta: {},
   tools: [
     {
       name: 'wikipedia_search',
@@ -230,12 +224,19 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: mockMCPTools.current }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => mockBuiltInTools,
+      'workspaces.current.tools.api.get': async () => [],
+      'workspaces.current.tools.workflow.get': async () => [],
+      'workspaces.current.tools.mcp.get': async () => mockMCPTools.current,
+    }),
+  }
+})
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -281,6 +282,17 @@ const promptEditorDraft = {
   ...defaultAgentSoulConfigFormState,
   tools: [duckDuckGoProviderTool],
 } satisfies typeof defaultAgentSoulConfigFormState
+
+const render = (ui: React.ReactElement) => {
+  const { wrapper, queryClient } = createConsoleQueryWrapper({ features: { enable_skill: true } })
+  seedToolProviders(queryClient, {
+    builtInTools: mockBuiltInTools,
+    customTools: [],
+    workflowTools: [],
+    mcpTools: mockMCPTools.current,
+  })
+  return renderWithState(ui, { wrapper })
+}
 
 const renderAgentPromptEditor = (
   value: string,

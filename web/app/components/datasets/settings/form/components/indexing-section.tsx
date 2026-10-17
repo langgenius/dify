@@ -1,8 +1,8 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
-  DataSet,
   GraphIndexSetting as GraphIndexSettingType,
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
@@ -22,6 +22,7 @@ import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
+import { toChunkingMode } from '../../../dataset-fields'
 import ChunkStructure from '../../chunk-structure'
 import GraphIndexSetting from '../../graph-index-setting'
 import IndexMethod from '../../index-method'
@@ -31,7 +32,7 @@ const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settin
 const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type IndexingSectionProps = {
-  currentDataset: DataSet | undefined
+  currentDataset: DatasetDetailWithPartialMembersResponse | undefined
   indexMethod: IndexingType | undefined
   setIndexMethod: (value: IndexingType | undefined) => void
   keywordNumber: number
@@ -80,6 +81,7 @@ const IndexingSection = ({
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
+  const chunkingMode = toChunkingMode(currentDataset?.doc_form)
 
   const isShowIndexMethod =
     currentDataset &&
@@ -93,13 +95,14 @@ const IndexingSection = ({
 
   const showSummaryIndexSetting =
     indexMethod === IndexingType.QUALIFIED &&
-    embeddingChunkingModes.includes(currentDataset?.doc_form as ChunkingMode) &&
+    !!chunkingMode &&
+    embeddingChunkingModes.includes(chunkingMode) &&
     isNonCloudEdition
 
   return (
     <>
       {/* Chunk Structure */}
-      {!!currentDataset?.doc_form && (
+      {!!chunkingMode && (
         <>
           <Separator orientation="horizontal" className="my-1 bg-divider-subtle" />
           <div className={rowClass}>
@@ -120,7 +123,7 @@ const IndexingSection = ({
               </div>
             </div>
             <div className="min-w-0 grow">
-              <ChunkStructure chunkStructure={currentDataset?.doc_form} />
+              <ChunkStructure chunkStructure={chunkingMode} />
             </div>
           </div>
         </>
@@ -143,7 +146,7 @@ const IndexingSection = ({
               value={indexMethod!}
               disabled={!currentDataset?.embedding_available || readonly}
               onChange={setIndexMethod}
-              currentValue={currentDataset.indexing_technique}
+              currentValue={currentDataset.indexing_technique ?? undefined}
               keywordNumber={keywordNumber}
               onKeywordNumberChange={setKeywordNumber}
             />

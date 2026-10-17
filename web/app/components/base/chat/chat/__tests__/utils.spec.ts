@@ -2,10 +2,6 @@ import type { InputForm } from '../type'
 import { InputVarType } from '@/app/components/workflow/types'
 import { getProcessedInputs, processInputFileFromServer, processOpeningStatement } from '../utils'
 
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getProcessedFiles: vi.fn((files: File[]) => files.map((f: File) => ({ ...f, processed: true }))),
-}))
-
 describe('chat/chat/utils.ts', () => {
   describe('processOpeningStatement', () => {
     it('returns empty string if openingStatement is falsy', () => {
@@ -69,7 +65,13 @@ describe('chat/chat/utils.ts', () => {
     it('processes singleFile using transfer_method logic', () => {
       const inputs = {
         file1: { transfer_method: 'local_file', url: '1' },
-        file2: { id: 'file2' },
+        file2: {
+          id: 'file2',
+          uploadedId: 'upload-2',
+          progress: 100,
+          supportFileType: 'document',
+          transferMethod: 'local_file',
+        },
       }
       const inputsForm = [
         { variable: 'file1', type: InputVarType.singleFile as string },
@@ -77,13 +79,26 @@ describe('chat/chat/utils.ts', () => {
       ]
       const result = getProcessedInputs(inputs, inputsForm as InputForm[])
       expect(result.file1).toHaveProperty('transfer_method', 'local_file')
-      expect(result.file2).toHaveProperty('processed', true)
+      expect(result.file2).toEqual({
+        type: 'document',
+        transfer_method: 'local_file',
+        url: '',
+        upload_file_id: 'upload-2',
+      })
     })
 
     it('processes multiFiles using transfer_method logic', () => {
       const inputs = {
         files1: [{ transfer_method: 'local_file', url: '1' }],
-        files2: [{ id: 'file2' }],
+        files2: [
+          {
+            id: 'file2',
+            uploadedId: 'upload-2',
+            progress: 100,
+            supportFileType: 'document',
+            transferMethod: 'local_file',
+          },
+        ],
       }
       const inputsForm = [
         { variable: 'files1', type: InputVarType.multiFiles as string },
@@ -91,7 +106,12 @@ describe('chat/chat/utils.ts', () => {
       ]
       const result = getProcessedInputs(inputs, inputsForm as InputForm[])
       expect(result.files1[0]).toHaveProperty('transfer_method', 'local_file')
-      expect(result.files2[0]).toHaveProperty('processed', true)
+      expect(result.files2[0]).toEqual({
+        type: 'document',
+        transfer_method: 'local_file',
+        url: '',
+        upload_file_id: 'upload-2',
+      })
     })
 
     it('processes jsonObject parsing correct json', () => {

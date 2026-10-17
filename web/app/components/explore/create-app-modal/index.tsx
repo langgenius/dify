@@ -1,4 +1,5 @@
 'use client'
+
 import type {
   AppDetailWithSite,
   UpdateAppPayload,
@@ -6,8 +7,15 @@ import type {
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { IconPickerInputValue, IconPickerValue } from '@/app/components/base/icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogBody,
+  DialogCloseButton,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -29,7 +37,6 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { toast } from '@/app/notifications'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -200,30 +207,17 @@ const CreateAppModal = ({
             handleSubmit()
           }}
           backdropProps={{ forceRender: true }}
-          className="px-8"
         >
-          <DialogClose
-            render={
-              <IconButton
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                size="lg"
-                className="absolute inset-e-6 top-6"
-              >
-                <span aria-hidden className="i-ri-close-line size-4" />
-              </IconButton>
-            }
-          />
-          {isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
-              {t(($) => $.editAppTitle, { ns: 'app' })}
-            </DialogTitle>
-          )}
-          {!isEditModal && (
-            <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
-              {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
-            </DialogTitle>
-          )}
-          <div className="mb-9">
+          <DialogHeader>
+            {isEditModal && <DialogTitle>{t(($) => $.editAppTitle, { ns: 'app' })}</DialogTitle>}
+            {!isEditModal && (
+              <DialogTitle>
+                {t(($) => $['appCustomize.title'], { ns: 'explore', name: appName })}
+              </DialogTitle>
+            )}
+            <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          </DialogHeader>
+          <DialogBody>
             {/* icon & name */}
             <div className="pt-2">
               <label
@@ -269,9 +263,7 @@ const CreateAppModal = ({
             </div>
             {/* answer icon */}
             {isEditModal &&
-              (appMode === AppModeEnum.CHAT ||
-                appMode === AppModeEnum.ADVANCED_CHAT ||
-                appMode === AppModeEnum.AGENT_CHAT) && (
+              (appMode === 'chat' || appMode === 'advanced-chat' || appMode === 'agent-chat') && (
                 <div className="pt-2">
                   <div className="flex items-center justify-between">
                     <div className="py-2 text-sm leading-5 font-medium text-text-primary">
@@ -312,12 +304,15 @@ const CreateAppModal = ({
               </div>
             )}
             {!isEditModal && isAppsFull && <AppsFull className="mt-4" loc="app-explore-create" />}
-          </div>
-          <div className="flex flex-row-reverse">
+          </DialogBody>
+          <DialogFooter>
+            <Button className="w-24" onClick={onHide}>
+              {t(($) => $['operation.cancel'], { ns: 'common' })}
+            </Button>
             <Button
               loading={confirmLoading}
               disabled={submitDisabled}
-              className="ml-2 w-24"
+              className="w-24"
               variant="primary"
               onClick={handleSubmit}
             >
@@ -334,10 +329,7 @@ const CreateAppModal = ({
                 ))}
               </KbdGroup>
             </Button>
-            <Button className="w-24" onClick={onHide}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

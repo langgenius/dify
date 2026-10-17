@@ -143,7 +143,6 @@
   "retrieval.full_text_search.title": "Recherche en Texte Intégral",
   "retrieval.hybrid_search.description": "Exécutez une recherche en texte intégral et des recherches vectorielles en même temps, réorganisez pour sélectionner la meilleure correspondance pour la requête de l'utilisateur. La configuration de l'API du modèle de réorganisation est nécessaire.",
   "retrieval.hybrid_search.title": "Recherche Hybride",
-  "retrieval.invertedIndex.title": "Index inversé",
   "retrieval.keyword_search.description": "L’indice inversé est une structure utilisée pour une récupération efficace. Organisé par termes, chaque terme pointe vers des documents ou des pages web qui le contiennent.",
   "retrieval.keyword_search.title": "Index inversé",
   "retrieval.semantic_search.description": "Générez des embeddings de requête et recherchez le morceau de texte le plus similaire à sa représentation vectorielle.",

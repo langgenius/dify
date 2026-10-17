@@ -15,14 +15,17 @@ vi.mock('@/next/navigation', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 
-vi.mock('@/service/use-pipeline', () => ({
-  useImportPipelineDSL: () => ({
-    mutateAsync: mockImportDSL,
-  }),
-  useImportPipelineDSLConfirm: () => ({
-    mutateAsync: mockImportDSLConfirm,
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
+    }),
+  }
+})
 
 // Mock plugin dependencies hook
 const mockHandleCheckPluginDependencies = vi.fn()
@@ -63,15 +66,6 @@ const toastMocks = vi.hoisted(() => {
 vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
-
-vi.mock('use-context-selector', async () => {
-  const actual =
-    await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: vi.fn(() => ({ notify: toastMocks.api })),
-  }
-})
 
 const createImportDSLResponse = (overrides = {}) => ({
   id: 'import-123',
@@ -277,8 +271,10 @@ describe('useDSLImport', () => {
 
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalledWith({
-          mode: 'yaml-url',
-          yaml_url: 'https://example.com/test.pipeline',
+          body: {
+            mode: 'yaml-url',
+            yaml_url: 'https://example.com/test.pipeline',
+          },
         })
       })
 
@@ -625,8 +621,10 @@ describe('useDSLImport', () => {
 
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalledWith({
-          mode: 'yaml-content',
-          yaml_content: fileContent,
+          body: {
+            mode: 'yaml-content',
+            yaml_content: fileContent,
+          },
         })
       })
 
@@ -706,7 +704,7 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-123')
+        expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-123' } })
         expect(onSuccess).toHaveBeenCalled()
         expect(result.current.showConfirmModal).toBe(false)
       })

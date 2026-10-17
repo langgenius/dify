@@ -2,12 +2,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import AuthorizedInDataSourceNode from '../authorized-in-data-source-node'
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: ({ status }: { status: string }) => (
-    <span data-testid="indicator" data-status={status} />
-  ),
-}))
-
 describe('AuthorizedInDataSourceNode', () => {
   const mockOnJump = vi.fn()
 
@@ -17,11 +11,6 @@ describe('AuthorizedInDataSourceNode', () => {
 
   afterEach(() => {
     cleanup()
-  })
-
-  it('renders with green indicator', () => {
-    render(<AuthorizedInDataSourceNode authorizationsNum={1} onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByTestId('indicator')).toHaveAttribute('data-status', 'success')
   })
 
   it('renders singular text for 1 authorization', () => {

@@ -12,10 +12,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('../../header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ modelName }: { modelName: string }) => <span>{modelName}</span>,
-}))
-
 describe('PublishWithMultipleModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()

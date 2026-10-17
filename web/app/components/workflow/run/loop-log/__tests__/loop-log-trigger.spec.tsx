@@ -50,7 +50,8 @@ describe('LoopLogTrigger', () => {
   describe('Structured Detail Handling', () => {
     it('should pass existing loop details, durations, and variables to the callback', async () => {
       const user = userEvent.setup()
-      const onShowLoopResultList = vi.fn()
+      const onShowLoopResultList =
+        vi.fn<NonNullable<React.ComponentProps<typeof LoopLogTrigger>['onShowLoopResultList']>>()
       const detailList = [
         [createNodeTracing({ id: 'loop-1-step-1', status: 'succeeded' })],
         [createNodeTracing({ id: 'loop-2-step-1', status: 'failed' })],
@@ -91,7 +92,8 @@ describe('LoopLogTrigger', () => {
 
     it('should reconstruct loop detail groups from execution metadata when details are absent', async () => {
       const user = userEvent.setup()
-      const onShowLoopResultList = vi.fn()
+      const onShowLoopResultList =
+        vi.fn<NonNullable<React.ComponentProps<typeof LoopLogTrigger>['onShowLoopResultList']>>()
       const loopDurationMap: LoopDurationMap = {
         'parallel-1': 1.5,
         '2': 2.2,
@@ -138,8 +140,7 @@ describe('LoopLogTrigger', () => {
       await user.click(screen.getByRole('button'))
 
       expect(onShowLoopResultList).toHaveBeenCalledTimes(1)
-      const [structuredList, durations, variableMap] = (onShowLoopResultList.mock.calls[0] ??
-        []) as [any, any, any]
+      const [structuredList, durations, variableMap] = onShowLoopResultList.mock.calls[0]!
       expect(structuredList).toHaveLength(2)
       expect(structuredList).toEqual(
         expect.arrayContaining([[allExecutions[0]], [allExecutions[1]]]),

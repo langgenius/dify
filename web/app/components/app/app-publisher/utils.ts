@@ -1,10 +1,9 @@
 import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
-import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
 
 export const getPublisherAppMode = (mode?: AppMode) => {
-  if (mode !== AppModeEnum.COMPLETION && mode !== AppModeEnum.WORKFLOW) return AppModeEnum.CHAT
+  if (mode !== 'completion' && mode !== 'workflow') return 'chat'
 
   return mode
 }

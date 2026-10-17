@@ -1,11 +1,13 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import datasetSettings from '@/i18n/locales/en-US/dataset-settings.json'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import ExternalKnowledgeSection from '../external-knowledge-section'
@@ -54,11 +56,12 @@ const mockRetrievalConfig: RetrievalConfig = {
   score_threshold: 0.5,
 }
 
-const mockDataset: DataSet = {
+const mockDataset: DatasetDetailWithPartialMembersResponse = {
+  ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   icon_info: {
     icon_type: 'emoji',
     icon: '📚',
@@ -66,7 +69,6 @@ const mockDataset: DataSet = {
     icon_url: '',
   },
   indexing_technique: IndexingType.ECONOMICAL,
-  indexing_status: 'completed',
   data_source_type: DataSourceType.FILE,
   doc_form: ChunkingMode.text,
   embedding_model: 'text-embedding-ada-002',
@@ -74,7 +76,6 @@ const mockDataset: DataSet = {
   embedding_available: true,
   app_count: 0,
   document_count: 5,
-  total_document_count: 5,
   word_count: 1000,
   provider: 'vendor',
   tags: [],
@@ -91,7 +92,6 @@ const mockDataset: DataSet = {
     score_threshold_enabled: true,
   },
   retrieval_model_dict: mockRetrievalConfig,
-  retrieval_model: mockRetrievalConfig,
   built_in_field_enabled: false,
   keyword_number: 10,
   created_by: 'user-1',

@@ -1,8 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import DatasetCardFooter from '../dataset-card-footer'
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -11,13 +12,15 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-1',
     name: 'Test Dataset',
     description: 'Test description',
     provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     embedding_available: true,
@@ -33,7 +36,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
     doc_form: ChunkingMode.text,
     total_available_documents: 10,
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('DatasetCardFooter', () => {
   it.each([

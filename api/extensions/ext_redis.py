@@ -5,7 +5,7 @@ import ssl
 import sys
 from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Protocol, Union, cast, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 import redis
 from redis import RedisError
@@ -67,12 +67,12 @@ class RedisClientWrapper:
                            if the client is not initialized.
     """
 
-    _client: Union[redis.Redis, RedisCluster, None]
+    _client: redis.Redis | RedisCluster | None
 
     def __init__(self) -> None:
         self._client = None
 
-    def initialize(self, client: Union[redis.Redis, RedisCluster]) -> None:
+    def initialize(self, client: redis.Redis | RedisCluster) -> None:
         if self._client is None:
             self._client = client
 
@@ -148,6 +148,9 @@ class RedisClientWrapper:
 
     def ttl(self, name: str | bytes) -> Any:
         return self._require_client().ttl(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def pttl(self, name: str | bytes) -> Any:
+        return self._require_client().pttl(_serialize_redis_name_arg(name, self._get_prefix()))
 
     def getdel(self, name: str | bytes) -> Any:
         return self._require_client().getdel(_serialize_redis_name_arg(name, self._get_prefix()))
@@ -296,7 +299,7 @@ class RedisBaseParamsDict(TypedDict):
     socket_keepalive_options: dict[int, int]
 
 
-def _get_ssl_configuration() -> tuple[type[Union[Connection, SSLConnection]], dict[str, Any]]:
+def _get_ssl_configuration() -> tuple[type[Connection | SSLConnection], dict[str, Any]]:
     """Get SSL configuration for Redis connection."""
     if not dify_config.REDIS_USE_SSL:
         return Connection, {}
@@ -413,7 +416,7 @@ def _parse_redis_nodes(value: str) -> list[tuple[str, int]]:
     return nodes
 
 
-def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
+def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> redis.Redis | RedisCluster:
     """Create Redis client using Sentinel configuration."""
     if not dify_config.REDIS_SENTINELS:
         raise ValueError("REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True")
@@ -446,7 +449,7 @@ def _create_sentinel_client(redis_params: RedisBaseParamsDict) -> Union[redis.Re
     return master
 
 
-def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
+def _create_cluster_client() -> redis.Redis | RedisCluster:
     """Create Redis cluster client."""
     if not dify_config.REDIS_CLUSTERS:
         raise ValueError("REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True")
@@ -466,7 +469,7 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     return cluster
 
 
-def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
+def _create_standalone_client(redis_params: RedisBaseParamsDict) -> redis.Redis | RedisCluster:
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
 

@@ -1,13 +1,10 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderEditorHook as renderHookWithConsoleQuery } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
-import {
-  createConsoleQueryClient,
-  renderHookWithConsoleQuery,
-  seedAppDetail,
-} from '@/test/console/query-data'
+import { createConsoleQueryClient, seedAppDetail } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { AppModeEnum } from '@/types/app'
 import { useWorkflowRefreshDraft } from '../use-workflow-refresh-draft'
 
 const mockHandleUpdateWorkflowCanvas = vi.fn()
@@ -18,7 +15,7 @@ const mockSetEnvSecrets = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetIsWorkflowDataLoaded = vi.fn()
 const mockCancel = vi.fn()
-let appMode: AppModeEnum
+let appMode: AppMode
 
 let workflowStoreState: {
   appId: string
@@ -79,7 +76,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
       setConversationVariables: mockSetConversationVariables,
       setIsWorkflowDataLoaded: mockSetIsWorkflowDataLoaded,
     }
-    appMode = AppModeEnum.ADVANCED_CHAT
+    appMode = 'advanced-chat'
     mockFetchWorkflowDraft.mockResolvedValue(draftResponse)
   })
 
@@ -236,7 +233,7 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
   })
 
   it('should restore a local start placeholder for workflow drafts without an entry node', async () => {
-    appMode = AppModeEnum.WORKFLOW
+    appMode = 'workflow'
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'server-hash',
       graph: {

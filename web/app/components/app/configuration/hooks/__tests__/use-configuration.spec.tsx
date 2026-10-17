@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import Cookies from 'js-cookie'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
@@ -12,9 +13,18 @@ import { seedAppDetail } from '@/test/console/query-data'
 import { renderHook as renderHookWithConsoleState } from '@/test/console/render'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { useConfiguration } from '../use-configuration'
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'files.upload.get': () => ({
+      data: undefined,
+    }),
+  })
+})
 
 let mockAppPermissionKeys: string[] = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
 
@@ -24,7 +34,7 @@ const createRouteAppDetail = (overrides: Partial<AppDetailWithSite> = {}) =>
     model_config: createAppModelConfigFixture({
       updated_at: 1710000000,
     }),
-    mode: AppModeEnum.CHAT,
+    mode: 'chat' as const,
     permission_keys: mockAppPermissionKeys,
     ...overrides,
   })
@@ -36,20 +46,26 @@ const createSeededQueryClient = (appDetail: Partial<AppDetailWithSite> = {}) => 
   return queryClient
 }
 
+const onUrlUpdate = vi.fn()
+
 const renderHook = (
   callback: () => ReturnType<typeof useConfiguration>,
   appDetail?: Partial<AppDetailWithSite>,
 ) => {
   const queryClient = createSeededQueryClient(appDetail)
+  const QueryWrapper = createQueryClientWrapper(queryClient)
   return {
     ...renderHookWithConsoleState(callback, {
-      wrapper: createQueryClientWrapper(queryClient),
+      wrapper: ({ children }) => (
+        <NuqsTestingAdapter onUrlUpdate={onUrlUpdate}>
+          <QueryWrapper>{children}</QueryWrapper>
+        </NuqsTestingAdapter>
+      ),
     }),
     queryClient,
   }
 }
 
-const mockSetSettingsDestination = vi.fn()
 const mockHandleMultipleModelConfigsChange = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
@@ -68,23 +84,8 @@ type AdvancedPromptConfigOptions = {
 }
 
 let latestAdvancedPromptConfigOptions: AdvancedPromptConfigOptions | undefined
-let mockTempStopState: string[] = []
 let mockCurrentModelFeatures = ['vision']
 let mockCurrentModelMode = ModelModeType.chat
-vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<any>('ahooks')
-
-  return {
-    ...actual,
-    useGetState: () => [
-      mockTempStopState,
-      (value: string[]) => {
-        mockTempStopState = value
-      },
-      () => mockTempStopState,
-    ],
-  }
-})
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
@@ -104,17 +105,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: ['app.create_and_management'],
   }))
 })
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({
-    data: undefined,
-  }),
-}))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
@@ -191,6 +181,7 @@ vi.mock('@/service/console', async () => {
     ...actual,
     consoleQuery: {
       ...actual.consoleQuery,
+      files: actual.consoleQuery.files,
       account: actual.consoleQuery.account,
       apps: {
         byAppId: {
@@ -239,7 +230,6 @@ describe('useConfiguration', () => {
     vi.clearAllMocks()
     Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     latestAdvancedPromptConfigOptions = undefined
-    mockTempStopState = []
     mockCurrentModelFeatures = ['vision']
     mockCurrentModelMode = ModelModeType.chat
     mockAppPermissionKeys = [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion]
@@ -252,7 +242,7 @@ describe('useConfiguration', () => {
     vi.mocked(consoleClient.apps.byAppId.modelConfig.post).mockResolvedValue(undefined as never)
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'advanced',
         chat_prompt_config: {
@@ -312,11 +302,13 @@ describe('useConfiguration', () => {
     try {
       renderHookWithConsoleState(() => useConfiguration(), {
         wrapper: ({ children }) => (
-          <QueryWrapper>
-            <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
-              {children}
-            </ErrorBoundary>
-          </QueryWrapper>
+          <NuqsTestingAdapter>
+            <QueryWrapper>
+              <ErrorBoundary fallback={(error) => <div role="alert">{error.message}</div>}>
+                {children}
+              </ErrorBoundary>
+            </QueryWrapper>
+          </NuqsTestingAdapter>
         ),
       })
       expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -337,14 +329,16 @@ describe('useConfiguration', () => {
     try {
       renderHookWithConsoleState(() => useConfiguration(), {
         wrapper: ({ children }) => (
-          <QueryWrapper>
-            <ErrorBoundary
-              onError={onError}
-              fallback={(error) => <CommonLayoutError error={error} retry={vi.fn()} />}
-            >
-              {children}
-            </ErrorBoundary>
-          </QueryWrapper>
+          <NuqsTestingAdapter>
+            <QueryWrapper>
+              <ErrorBoundary
+                onError={onError}
+                fallback={(error) => <CommonLayoutError error={error} retry={vi.fn()} />}
+              >
+                {children}
+              </ErrorBoundary>
+            </QueryWrapper>
+          </NuqsTestingAdapter>
         ),
       })
       await waitFor(() => expect(onError).toHaveBeenCalledWith(response, expect.anything()))
@@ -675,7 +669,7 @@ describe('useConfiguration', () => {
     mockCurrentModelFeatures = ['vision', 'document', 'audio', 'video']
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
@@ -738,7 +732,7 @@ describe('useConfiguration', () => {
     expect(result.current.contextValue.isAllowVideoUpload).toBe(true)
 
     await act(async () => {
-      await result.current.contextValue.setPromptMode('advanced' as any)
+      await result.current.contextValue.setPromptMode('advanced')
     })
     expect(mockMigrateToDefaultPrompt).toHaveBeenCalled()
 
@@ -768,7 +762,9 @@ describe('useConfiguration', () => {
     expect(mockFormattingChangedDispatcher).toHaveBeenCalled()
     expect(mockHandleMultipleModelConfigsChange).toHaveBeenCalled()
     expect(Cookies.get(DETAIL_SIDEBAR_COOKIE_NAME)).toBe('collapse')
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
+    await waitFor(() =>
+      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+    )
     expect(mockSetConversationHistoriesRole).toHaveBeenCalledWith({
       assistant_prefix: 'bot',
       user_prefix: 'user',
@@ -788,7 +784,7 @@ describe('useConfiguration', () => {
     })
     mockFetchAppDetailDirect.mockResolvedValueOnce({
       deleted_tools: [],
-      mode: AppModeEnum.CHAT,
+      mode: 'chat' as const,
       model_config: createAppModelConfigFixture({
         prompt_type: 'simple',
         chat_prompt_config: { prompt: [] },
@@ -847,6 +843,8 @@ describe('useConfiguration', () => {
     act(() => {
       latestAdvancedPromptConfigOptions?.onUserChangedPrompt?.()
       latestAdvancedPromptConfigOptions?.setStop?.(['END'])
+    })
+    act(() => {
       result.current.contextValue.setAnnotationConfig({
         id: 'annotation-1',
         enabled: true,
@@ -861,7 +859,7 @@ describe('useConfiguration', () => {
         number_limits: 2,
         detail: 'high',
         transfer_methods: ['local_file'],
-      } as any)
+      })
       result.current.contextValue.setCompletionParams({ temperature: 0.2 })
       result.current.onCloseFeaturePanel()
     })

@@ -1,18 +1,23 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetDocMetadataResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactElement } from 'react'
 import type { ComparisonOperator, MetadataFilteringCondition, MetadataShape } from '../types'
-import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEffect, useRef } from 'react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import {
   createAccountProfileQueryClient,
   createAccountProfileQueryWrapper,
 } from '@/test/console/account-profile'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
+import { DatasetACLPermission } from '@/utils/permission'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
 import { BlockEnum, VarType } from '../../../types'
@@ -43,20 +48,14 @@ const renderWithAccountProfile = (ui: ReactElement) =>
     wrapper: createAccountProfileQueryWrapper(),
   })
 
-const mockHasEditPermissionForDataset = vi.fn(
-  (
-    _userId: string,
-    _datasetConfig: {
-      createdBy: string
-      partialMemberList: string[]
-      permission: DatasetPermission
-    },
-  ) => true,
-)
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
+  ...createDatasetFixture({
+    permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.Use],
+  }),
   id: 'dataset-1',
   name: 'Dataset Name',
-  indexing_status: 'completed',
   icon_info: {
     icon: '📙',
     icon_background: '#FFF4ED',
@@ -64,9 +63,10 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     icon_url: '',
   },
   description: 'Dataset description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   data_source_type: DataSourceType.FILE,
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+  indexing_technique:
+    'high_quality' as DatasetDetailWithPartialMembersResponse['indexing_technique'],
   created_by: 'user-1',
   maintainer: 'user-1',
   updated_by: 'user-1',
@@ -74,24 +74,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   app_count: 0,
   doc_form: ChunkingMode.text,
   document_count: 1,
-  total_document_count: 1,
   word_count: 1000,
   provider: 'internal',
   embedding_model: 'text-embedding-3',
   embedding_model_provider: 'openai',
   embedding_available: true,
   retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
@@ -121,11 +109,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc => ({
+const createMetadata = (
+  overrides: Partial<DatasetDocMetadataResponse> = {},
+): DatasetDocMetadataResponse => ({
   id: 'meta-1',
   name: 'topic',
   type: MetadataFilteringVariableType.string,
-  value: 'topic',
   ...overrides,
 })
 
@@ -150,35 +139,6 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
 
-vi.mock('@/utils/permission', () => ({
-  DatasetACLPermission: {
-    Readonly: 'dataset.acl.readonly',
-    Edit: 'dataset.acl.edit',
-    Use: 'dataset.acl.use',
-  },
-  getDatasetACLCapabilities: vi.fn(() => ({
-    canReadonly: false,
-    canEdit: true,
-    canImportExportDSL: false,
-    canPipelineTest: false,
-    canDocumentDownload: false,
-    canRetrievalRecall: false,
-    canUse: true,
-    canDeleteFile: false,
-    canPipelineRelease: false,
-    canDelete: false,
-    canAccessConfig: false,
-  })),
-  hasEditPermissionForDataset: (
-    userId: string,
-    datasetConfig: {
-      createdBy: string
-      partialMemberList: string[]
-      permission: DatasetPermission
-    },
-  ) => mockHasEditPermissionForDataset(userId, datasetConfig),
-}))
-
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   default: () => 'desktop',
@@ -200,7 +160,7 @@ vi.mock('@/app/components/app/configuration/dataset-config/select-dataset', () =
     onSelect,
     onClose,
   }: {
-    onSelect: (datasets: DataSet[]) => void
+    onSelect: (datasets: DatasetDetailWithPartialMembersResponse[]) => void
     onClose: () => void
   }) => (
     <div>
@@ -224,8 +184,8 @@ vi.mock('@/app/components/app/configuration/dataset-config/settings-modal', () =
     onSave,
     onCancel,
   }: {
-    currentDataset: DataSet
-    onSave: (dataset: DataSet) => void
+    currentDataset: DatasetDetailWithPartialMembersResponse
+    onSave: (dataset: DatasetDetailWithPartialMembersResponse) => void
     onCancel: () => void
   }) {
     const hasSavedRef = useRef(false)
@@ -350,20 +310,6 @@ describe('knowledge-retrieval path', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockHasEditPermissionForDataset.mockReturnValue(true)
-    vi.mocked(getDatasetACLCapabilities).mockReturnValue({
-      canReadonly: false,
-      canEdit: true,
-      canImportExportDSL: false,
-      canPipelineTest: false,
-      canDocumentDownload: false,
-      canRetrievalRecall: false,
-      canUse: true,
-      canDeleteFile: false,
-      canPipelineRelease: false,
-      canDelete: false,
-      canAccessConfig: false,
-    })
   })
 
   describe('Dataset controls', () => {
@@ -441,22 +387,8 @@ describe('knowledge-retrieval path', () => {
 
     it('should hide dataset settings when ACL does not grant edit even if legacy dataset permission allows it', () => {
       const dataset = createDataset({
-        permission: DatasetPermission.allTeamMembers,
+        permission: PermissionLevel.allTeamMembers,
         permission_keys: [DatasetACLPermission.Use],
-      })
-      mockHasEditPermissionForDataset.mockReturnValue(true)
-      vi.mocked(getDatasetACLCapabilities).mockReturnValue({
-        canReadonly: false,
-        canEdit: false,
-        canImportExportDSL: false,
-        canPipelineTest: false,
-        canDocumentDownload: false,
-        canRetrievalRecall: false,
-        canUse: true,
-        canDeleteFile: false,
-        canPipelineRelease: false,
-        canDelete: false,
-        canAccessConfig: false,
       })
 
       renderWithAccountProfile(<DatasetList list={[dataset]} onChange={vi.fn()} />)
@@ -466,13 +398,6 @@ describe('knowledge-retrieval path', () => {
       expect(
         within(datasetItem).queryByRole('button', { name: 'common.operation.edit' }),
       ).not.toBeInTheDocument()
-      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(
-        dataset.permission_keys,
-        expect.objectContaining({
-          currentUserId: 'user-1',
-          resourceMaintainer: dataset.maintainer,
-        }),
-      )
     })
   })
 

@@ -32,8 +32,9 @@ vi.mock('@/context/modal-context', () => ({
   }),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  addAnnotation: mockAddAnnotation,
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: { apps: { byAppId: { annotations: { post: mockAddAnnotation } } } },
 }))
 
 vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
@@ -242,7 +243,7 @@ describe('Operation', () => {
     mockContextValue.showRegenerate = false
     mockContextValue.onOpenLog = undefined
 
-    mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
+    mockAddAnnotation.mockResolvedValue({ id: 'ann-new' })
   })
 
   describe('feedback submission sessions', () => {

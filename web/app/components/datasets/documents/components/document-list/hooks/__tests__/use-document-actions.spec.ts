@@ -1,6 +1,7 @@
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DocumentActionType } from '@/models/datasets'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { useDocumentActions } from '../use-document-actions'
 
 const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
@@ -15,17 +16,12 @@ const mockDisable = vi.fn()
 const mockDelete = vi.fn()
 const mockRetryIndex = vi.fn()
 const mockDownloadZip = vi.fn()
-let mockIsDownloadingZip = false
 
-vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentArchive: () => ({ mutateAsync: mockArchive }),
-  useDocumentSummary: () => ({ mutateAsync: mockSummary }),
-  useDocumentEnable: () => ({ mutateAsync: mockEnable }),
-  useDocumentDisable: () => ({ mutateAsync: mockDisable }),
-  useDocumentDelete: () => ({ mutateAsync: mockDelete }),
-  useDocumentBatchRetryIndex: () => ({ mutateAsync: mockRetryIndex }),
-  useDocumentDownloadZip: () => ({ mutateAsync: mockDownloadZip, isPending: mockIsDownloadingZip }),
-}))
+const statusMocks: Record<string, (input: unknown) => unknown> = {
+  archive: (input) => mockArchive(input),
+  enable: (input) => mockEnable(input),
+  disable: (input) => mockDisable(input),
+}
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -39,6 +35,22 @@ vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.documents.status.byAction.batch.patch': (input: {
+        params: { action: string }
+      }) => statusMocks[input.params.action]!(input),
+      'datasets.byDatasetId.documents.generateSummary.post': (input) => mockSummary(input),
+      'datasets.byDatasetId.documents.delete': (input) => mockDelete(input),
+      'datasets.byDatasetId.retry.post': (input) => mockRetryIndex(input),
+    }),
+  }
+})
+
 describe('useDocumentActions', () => {
   const defaultOptions = {
     datasetId: 'ds-1',
@@ -50,7 +62,6 @@ describe('useDocumentActions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsDownloadingZip = false
   })
 
   it('should return expected functions and state', () => {
@@ -71,8 +82,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockArchive).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1', action: 'archive' },
+        query: { document_id: ['doc-1', 'doc-2'] },
       })
       expect(mockToastSuccess).toHaveBeenCalledWith(expect.any(String))
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
@@ -87,8 +98,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockEnable).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1', action: 'enable' },
+        query: { document_id: ['doc-1', 'doc-2'] },
       })
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
     })
@@ -162,8 +173,8 @@ describe('useDocumentActions', () => {
       })
 
       expect(mockRetryIndex).toHaveBeenCalledWith({
-        datasetId: 'ds-1',
-        documentIds: ['doc-1', 'doc-2'],
+        params: { dataset_id: 'ds-1' },
+        body: { document_ids: ['doc-1', 'doc-2'] },
       })
       expect(defaultOptions.onClearSelection).toHaveBeenCalled()
       expect(defaultOptions.onUpdate).toHaveBeenCalled()
@@ -226,3 +237,8 @@ describe('useDocumentActions', () => {
     })
   })
 })
+
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  downloadDocumentsZip: (...args: unknown[]) => mockDownloadZip(...args),
+}))

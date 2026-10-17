@@ -6,7 +6,6 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
-import { AppModeEnum } from '@/types/app'
 import CreateAppModal from '../index'
 
 let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'COMMUNITY'
@@ -29,7 +28,7 @@ const setup = async (overrides: Partial<CreateAppModalProps> = {}) => {
     appIcon: '🤖',
     appIconBackground: '#FFEAD5',
     appIconUrl: null,
-    appMode: AppModeEnum.CHAT,
+    appMode: 'chat' as const,
     appUseIconAsAnswerIcon: false,
     max_active_requests: null,
     onConfirm,
@@ -124,7 +123,7 @@ describe('CreateAppModal', () => {
     })
 
     it('should render edit-only fields when editing a chat app', async () => {
-      await setup({ isEditModal: true, appMode: AppModeEnum.CHAT, max_active_requests: 5 })
+      await setup({ isEditModal: true, appMode: 'chat' as const, max_active_requests: 5 })
 
       expect(screen.getByText('app.editAppTitle'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: /common\.operation\.save/ }))!.toBeInTheDocument()
@@ -132,7 +131,7 @@ describe('CreateAppModal', () => {
       expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('5')
     })
 
-    it.each([AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT])(
+    it.each(['advanced-chat', 'agent-chat'] as const)(
       'should render answer icon switch when editing %s app',
       async (mode) => {
         await setup({ isEditModal: true, appMode: mode })
@@ -142,7 +141,7 @@ describe('CreateAppModal', () => {
     )
 
     it('should not render answer icon switch when editing a non-chat app', async () => {
-      await setup({ isEditModal: true, appMode: AppModeEnum.COMPLETION })
+      await setup({ isEditModal: true, appMode: 'completion' as const })
 
       expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     })
@@ -587,7 +586,7 @@ describe('CreateAppModal', () => {
     it('should include max_active_requests and updated answer icon when saving', async () => {
       const { onConfirm } = await setup({
         isEditModal: true,
-        appMode: AppModeEnum.CHAT,
+        appMode: 'chat' as const,
         appUseIconAsAnswerIcon: false,
         max_active_requests: 3,
       })

@@ -1,5 +1,5 @@
 import type { AssignerNodeOperation, AssignerNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
 import { AssignerNodeInputType, WriteMode, writeModeTypesNum } from '../types'
@@ -15,7 +15,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
   return {
     ...actual,
     useNodesReadOnly: () => ({ nodesReadOnly: false }),
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getBeforeNodesInSameBranchIncludeParent: () => [
         { id: 'start-node', data: { title: 'Start', type: BlockEnum.Start } },
@@ -85,7 +85,9 @@ describe('useConfig', () => {
   })
 
   it('should normalize legacy payloads, expose write mode groups and derive assigned variable types', () => {
-    const { result } = renderHook(() => useConfig('assigner-node', createPayload()))
+    const { result } = renderHook(() => useConfig('assigner-node', createPayload()), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(result.current.readOnly).toBe(false)
     expect(result.current.writeModeTypes).toEqual([
@@ -102,7 +104,9 @@ describe('useConfig', () => {
   })
 
   it('should update operation lists with version 2 payloads and apply assignment filters', () => {
-    const { result } = renderHook(() => useConfig('assigner-node', createPayload()))
+    const { result } = renderHook(() => useConfig('assigner-node', createPayload()), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
     const nextItems = [createOperation({ operation: WriteMode.append })]
 
     result.current.handleOperationListChanges(nextItems)
@@ -145,7 +149,9 @@ describe('useConfig', () => {
       ],
     })
 
-    const { result } = renderHook(() => useConfig('assigner-node', dirtyPayload))
+    const { result } = renderHook(() => useConfig('assigner-node', dirtyPayload), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    })
 
     expect(result.current.inputs.items).toEqual([
       expect.objectContaining({

@@ -19,11 +19,12 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { editorResourceKindAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { FlowType } from '@/types/common'
 import TipPopup from '../operator/tip-popup'
 import { useStore } from '../store'
 import { BlockEnum, isTriggerNode } from '../types'
@@ -252,7 +253,7 @@ export function BlockSelectorContent({
   standalonePanel,
 }: BlockSelectorContentProps) {
   const nodes = useNodes()
-  const flowType = useHooksStore((state) => state.configsMap?.flowType)
+  const resourceKind = useAtomValue(editorResourceKindAtom)
   const availableNodesMetaData = useHooksStore((state) => state.availableNodesMetaData)
   const fallbackDataSources = useStore((state) => state.dataSourceList)
   const blocks = useMemo(() => {
@@ -296,12 +297,12 @@ export function BlockSelectorContent({
 
     return result
   }, [filteredNodes])
-  const disableStartTab = flowType === FlowType.snippet
+  const disableStartTab = resourceKind === 'snippet'
   const { initialTab, tabs } = useTabs({
     noBlocks,
     noSources: !dataSources.length,
     noTools,
-    noSnippets: flowType === FlowType.snippet,
+    noSnippets: resourceKind === 'snippet',
     noStart: !showStartTab,
     defaultActiveTab,
     hasStartPlaceholderNode,

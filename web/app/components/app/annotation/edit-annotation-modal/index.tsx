@@ -7,6 +7,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -26,14 +27,13 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
-import { editAnnotation } from '@/service/annotation'
+import { consoleClient } from '@/service/console'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   appId: string
-  messageId?: string
   annotationId: string
   query: string
   answer: string
@@ -50,7 +50,6 @@ const EditAnnotationModal: FC<Props> = ({
   answer,
   onEdited,
   appId,
-  messageId,
   annotationId,
   createdAt,
   onRemove,
@@ -64,10 +63,9 @@ const EditAnnotationModal: FC<Props> = ({
     if (type === EditItemType.Query) postQuery = editedContent
     else postAnswer = editedContent
     try {
-      await editAnnotation(appId, annotationId, {
-        message_id: messageId,
-        question: postQuery,
-        answer: postAnswer,
+      await consoleClient.apps.byAppId.annotations.byAnnotationId.post({
+        params: { app_id: appId, annotation_id: annotationId },
+        body: { question: postQuery, answer: postAnswer },
       })
       onEdited(postQuery, postAnswer)
 
@@ -144,22 +142,16 @@ const EditAnnotationModal: FC<Props> = ({
                         </span>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                          <AlertDialogTitle
-                            title={t(($) => $['feature.annotation.removeConfirm'], {
-                              ns: 'appDebug',
-                            })}
-                            className="w-full truncate title-2xl-semi-bold text-text-primary"
-                          >
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
-                        </div>
+                        </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancelButton>
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
-                            tone="destructive"
                             onClick={() => {
                               onRemove()
                               removeActionsRef.current?.close()

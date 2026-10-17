@@ -7,6 +7,7 @@ import type { IOtherOptions } from '@/service/base'
 import type { ReasoningChunkResponse } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -18,9 +19,10 @@ import {
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { sseGet } from '@/service/base'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useInvalidateAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
@@ -54,9 +56,9 @@ export const useChat = (
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
@@ -739,7 +741,7 @@ export const useChat = (
         onData: (
           message: string,
           _isFirstMessage: boolean,
-          { conversationId: newConversationId, messageId: msgId, taskId }: any,
+          { conversationId: newConversationId, messageId: msgId, taskId },
         ) => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.content = responseItem.content + message
@@ -906,7 +908,7 @@ export const useChat = (
               )
             })
             if (currentIndex > -1)
-              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
+              responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData
           })
         },
         onLoopStart: ({ data: loopStartedData }) => {

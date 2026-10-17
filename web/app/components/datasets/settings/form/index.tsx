@@ -1,17 +1,21 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
 import { useFormState } from './hooks/use-form-state'
 
-const Form = () => {
+const DatasetSettingsForm = ({
+  currentDataset,
+}: {
+  currentDataset: DatasetDetailWithPartialMembersResponse
+}) => {
   const { t } = useTranslation(['datasetSettings'])
   const {
-    // Context values
-    currentDataset,
     canEditSettings,
 
     // Loading state
@@ -64,7 +68,7 @@ const Form = () => {
 
     // Actions
     handleSave,
-  } = useFormState()
+  } = useFormState(currentDataset)
 
   const isExternalProvider = currentDataset?.provider === 'external'
   const readonly = !canEditSettings
@@ -136,6 +140,12 @@ const Form = () => {
       </div>
     </div>
   )
+}
+
+const Form = () => {
+  const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
+  if (!currentDataset) return null
+  return <DatasetSettingsForm key={currentDataset.id} currentDataset={currentDataset} />
 }
 
 export default Form

@@ -1,6 +1,7 @@
 import type { StartNodeType } from '../types'
 import type { InputVar, ValueSelector } from '@/app/components/workflow/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, ChangeType, InputVarType } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import useConfig from '../use-config'
@@ -8,7 +9,7 @@ import useConfig from '../use-config'
 const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockUseNodesReadOnly = vi.hoisted(() => vi.fn())
 const mockUseWorkflow = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 const mockUseNodeCrud = vi.hoisted(() => vi.fn())
 const mockUseInspectVarsCrud = vi.hoisted(() => vi.fn())
 const mockNotify = vi.hoisted(() => vi.fn())
@@ -24,7 +25,6 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
     ...actual,
     useNodesReadOnly: () => mockUseNodesReadOnly(),
     useWorkflow: () => mockUseWorkflow(),
-    useIsChatMode: () => mockUseIsChatMode(),
   }
 })
 
@@ -93,7 +93,7 @@ describe('start/use-config', () => {
       isVarUsedInNodes: mockIsVarUsedInNodes,
       removeUsedVarInNodes: mockRemoveUsedVarInNodes,
     })
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
     mockUseNodeCrud.mockImplementation(() => ({
       inputs: currentInputs,
       setInputs: mockSetInputs,
@@ -113,7 +113,9 @@ describe('start/use-config', () => {
   })
 
   it('should rename variables and sync downstream variable references', () => {
-    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
     const renamedList = [
       createInputVar({
         label: 'Question',
@@ -151,12 +153,14 @@ describe('start/use-config', () => {
     )
     expect(mockRenameInspectVarName).toHaveBeenCalledWith('start-node', 'query', 'prompt')
     expect(result.current.readOnly).toBe(false)
-    expect(result.current.isChatMode).toBe(false)
+    expect(result.current.isChatflow).toBe(false)
   })
 
   it('should block removal when the variable is still in use and confirm the deletion later', () => {
     mockIsVarUsedInNodes.mockReturnValue(true)
-    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
     const nextList = [currentInputs.variables[1]!]
 
     act(() => {
@@ -189,7 +193,9 @@ describe('start/use-config', () => {
   })
 
   it('should validate duplicate variables and labels before adding a new variable', () => {
-    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
 
     let added = true
     act(() => {
@@ -230,7 +236,9 @@ describe('start/use-config', () => {
   })
 
   it('should clear inspector vars for non-remove list updates and reject duplicate labels', () => {
-    const { result } = renderHook(() => useConfig('start-node', currentInputs))
+    const { result } = renderHook(() => useConfig('start-node', currentInputs), {
+      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    })
     const typeEditedList = [
       createInputVar({
         label: 'Question',

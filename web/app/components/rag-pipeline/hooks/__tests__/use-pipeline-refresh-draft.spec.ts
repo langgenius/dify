@@ -1,6 +1,9 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { usePipelineRefreshDraft } from '../use-pipeline-refresh-draft'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -20,13 +23,6 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
-}))
-
-vi.mock('../../utils', () => ({
-  processNodesWithoutDataSource: (nodes: unknown[], viewport: unknown) => ({
-    nodes,
-    viewport,
-  }),
 }))
 
 describe('usePipelineRefreshDraft', () => {
@@ -50,8 +46,8 @@ describe('usePipelineRefreshDraft', () => {
 
     mockFetchWorkflowDraft.mockResolvedValue({
       graph: {
-        nodes: [{ id: 'node-1' }],
-        edges: [{ id: 'edge-1' }],
+        nodes: [createNode({ id: 'node-1', data: { type: BlockEnum.DataSource } })],
+        edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
       },
       hash: 'new-hash',
@@ -66,7 +62,9 @@ describe('usePipelineRefreshDraft', () => {
 
   describe('hook initialization', () => {
     it('should return handleRefreshWorkflowDraft function', () => {
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       expect(result.current.handleRefreshWorkflowDraft).toBeDefined()
       expect(typeof result.current.handleRefreshWorkflowDraft).toBe('function')
@@ -75,7 +73,9 @@ describe('usePipelineRefreshDraft', () => {
 
   describe('handleRefreshWorkflowDraft', () => {
     it('should set syncing state to true at start', async () => {
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -85,7 +85,9 @@ describe('usePipelineRefreshDraft', () => {
     })
 
     it('should fetch workflow draft with correct URL', async () => {
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -97,7 +99,9 @@ describe('usePipelineRefreshDraft', () => {
     })
 
     it('should update workflow canvas with response data', async () => {
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -109,7 +113,9 @@ describe('usePipelineRefreshDraft', () => {
     })
 
     it('should update sync hash after fetch', async () => {
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -132,7 +138,9 @@ describe('usePipelineRefreshDraft', () => {
         rag_pipeline_variables: [{ variable: 'query', type: 'text-input' }],
       })
 
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -146,7 +154,9 @@ describe('usePipelineRefreshDraft', () => {
     })
 
     it('should set syncing state to false after completion', async () => {
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -171,7 +181,9 @@ describe('usePipelineRefreshDraft', () => {
         ],
       })
 
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -196,7 +208,9 @@ describe('usePipelineRefreshDraft', () => {
         ],
       })
 
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -221,7 +235,9 @@ describe('usePipelineRefreshDraft', () => {
         environment_variables: [],
       })
 
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()
@@ -244,7 +260,9 @@ describe('usePipelineRefreshDraft', () => {
         environment_variables: undefined,
       })
 
-      const { result } = renderHook(() => usePipelineRefreshDraft())
+      const { result } = renderHook(() => usePipelineRefreshDraft(), {
+        resource: { kind: 'knowledge-pipeline', pipelineId: 'test-pipeline-id' },
+      })
 
       act(() => {
         result.current.handleRefreshWorkflowDraft()

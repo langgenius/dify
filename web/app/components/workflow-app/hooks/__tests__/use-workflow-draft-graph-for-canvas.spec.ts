@@ -1,40 +1,15 @@
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { useWorkflowDraftGraphForCanvas } from '../use-workflow-draft-graph-for-canvas'
-
-let generateNewNodeCalls: Array<Record<string, unknown>> = []
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-  return {
-    ...actual,
-    generateNewNode: (args: {
-      data: Record<string, unknown>
-      position: Record<string, unknown>
-    }) => {
-      generateNewNodeCalls.push(args)
-      return {
-        newNode: {
-          id: `generated-${generateNewNodeCalls.length}`,
-          type: 'custom',
-          data: args.data,
-          position: args.position,
-        },
-      }
-    },
-  }
-})
 
 describe('useWorkflowDraftGraphForCanvas', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    generateNewNodeCalls = []
   })
 
   it('should restore a local start placeholder for workflow graphs without an entry node', () => {
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
       nodes: [],
@@ -64,7 +39,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     BlockEnum.StartPlaceholder,
   ])('should preserve existing %s entry nodes', (type) => {
     const node = { id: 'entry', data: { type } }
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
       nodes: [node] as never,
@@ -72,11 +47,10 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     })
 
     expect(graph.nodes).toEqual([node])
-    expect(generateNewNodeCalls).toHaveLength(0)
   })
 
   it('should not restore a start placeholder for non-workflow app modes', () => {
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.ADVANCED_CHAT))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('advanced-chat'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({
       nodes: [],
@@ -84,7 +58,6 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     })
 
     expect(graph.nodes).toEqual([])
-    expect(generateNewNodeCalls).toHaveLength(0)
   })
 
   it('should reuse the provided local start placeholder template when available', () => {
@@ -93,7 +66,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
       data: { type: BlockEnum.StartPlaceholder },
     }
     const draftNode = { id: 'llm', data: { type: BlockEnum.LLM } }
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas(
       {
@@ -108,7 +81,6 @@ describe('useWorkflowDraftGraphForCanvas', () => {
 
     expect(graph.nodes).toEqual([localStartPlaceholder, draftNode])
     expect(graph.viewport).toEqual({ x: 1, y: 2, zoom: 0.5 })
-    expect(generateNewNodeCalls).toHaveLength(0)
   })
 
   it('removes residual LLM memory from workflow drafts, including container children', () => {
@@ -141,7 +113,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
       },
     ]
     const originalNodes = structuredClone(nodes)
-    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas('workflow'))
 
     const graph = result.current.getWorkflowDraftGraphForCanvas({ nodes, edges: [] })
 
@@ -159,7 +131,7 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     expect(nodes).toEqual(originalNodes)
   })
 
-  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+  it.each(['advanced-chat', undefined] as const)(
     'preserves memory when app mode is %s',
     (appMode) => {
       const nodes: Node<{ memory: { window: { enabled: boolean; size: number } } }>[] = [

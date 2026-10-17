@@ -47,7 +47,7 @@ type PopoverBackdropProps = BasePopover.Backdrop.Props
 function PopoverBackdrop({ className, ...props }: PopoverBackdropProps) {
   return (
     <BasePopover.Backdrop
-      className={(state) => cn('fixed inset-0 z-50', resolveClassName(className, state))}
+      className={(state) => cn('fixed inset-0', resolveClassName(className, state))}
       {...props}
     />
   )

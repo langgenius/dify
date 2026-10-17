@@ -133,7 +133,7 @@ function Form<
     if (isEditMode && (key === '__model_type' || key === '__model_name')) return
 
     setChangeKey(key)
-    const shouldClearVariable: Record<string, string | undefined> = {}
+    const shouldClearVariable: FormValue = {}
     if (showOnVariableMap[key]?.length) {
       showOnVariableMap[key].forEach((clearVariable) => {
         const schema = formSchemas.find((it) => it.variable === clearVariable)

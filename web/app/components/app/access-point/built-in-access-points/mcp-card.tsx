@@ -9,24 +9,20 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
+import { selectMCPServerDetail } from '@/app/components/tools/utils/query-select'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import {
-  useInvalidateMCPServerDetail,
-  useMCPServerDetail,
-  useRefreshMCPServerCode,
-} from '@/service/use-tools'
-import { AppModeEnum } from '@/types/app'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
@@ -50,28 +46,34 @@ export function MCPAccessPointCard({
   const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
-  const workflowApp = appInfo.mode === AppModeEnum.WORKFLOW
+  const workflowApp = appInfo.mode === 'workflow'
   const [showServerModal, setShowServerModal] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const basicConfig = appInfo.model_config
   const basicAppInputForm = basicConfig?.user_input_form
-  const { data: detail, isPending: serverDetailLoading } = useMCPServerDetail(
-    appInfo.id,
-    Boolean(appInfo.id),
-  )
-  const invalidateServerDetail = useInvalidateMCPServerDetail()
+  const queryClient = useQueryClient()
+  const serverDetailQueryOptions = consoleQuery.apps.byAppId.server.get.queryOptions({
+    input: { params: { app_id: appInfo.id } },
+    enabled: Boolean(appInfo.id),
+    select: selectMCPServerDetail,
+  })
+  const { data: detail, isPending: serverDetailLoading } = useQuery(serverDetailQueryOptions)
+  const invalidateServerDetail = () =>
+    queryClient.invalidateQueries({ queryKey: serverDetailQueryOptions.queryKey })
   const updateServerMutation = useMutation(
     consoleQuery.apps.byAppId.server.put.mutationOptions({
       scope: {
         id: `app-mcp-toggle:${appInfo.id}`,
       },
-      onSuccess: () => invalidateServerDetail(appInfo.id),
+      onSuccess: () => invalidateServerDetail(),
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
       },
     }),
   )
-  const { mutateAsync: refreshServerCode, isPending: regenerating } = useRefreshMCPServerCode()
+  const { mutateAsync: refreshServerCode, isPending: regenerating } = useMutation(
+    consoleQuery.apps.byAppId.server.refresh.post.mutationOptions(),
+  )
 
   const serverPublished = Boolean(detail?.id)
   const serverActivated = detail?.status === 'active'
@@ -137,8 +139,8 @@ export function MCPAccessPointCard({
 
   const handleRegenerate = async () => {
     if (!canManageAccessPoint || !detail?.id) return
-    await refreshServerCode(appInfo.id)
-    invalidateServerDetail(appInfo.id)
+    await refreshServerCode({ params: { app_id: appInfo.id } })
+    invalidateServerDetail()
     setShowRegenerate(false)
   }
 
@@ -207,7 +209,7 @@ export function MCPAccessPointCard({
           latestParams={latestParams}
           onHide={() => {
             setShowServerModal(false)
-            invalidateServerDetail(appInfo.id)
+            invalidateServerDetail()
           }}
           appInfo={appInfo}
         />
@@ -215,14 +217,14 @@ export function MCPAccessPointCard({
 
       <AlertDialog open={showRegenerate} onOpenChange={(open) => !open && setShowRegenerate(false)}>
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['overview.appInfo.regenerate'], { ns: 'appOverview' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="system-md-regular text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['mcp.server.reGen'], { ns: 'tools' })}
             </AlertDialogDescription>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

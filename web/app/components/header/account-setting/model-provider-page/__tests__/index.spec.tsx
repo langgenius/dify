@@ -8,7 +8,11 @@ import {
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState,
+} from '@/test/console/query-data'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -45,8 +49,7 @@ type MockReferenceSetting = {
   }
 }
 
-const { mockSetSettingsDestination, mockSaveAutoUpgrade } = vi.hoisted(() => ({
-  mockSetSettingsDestination: vi.fn(),
+const { mockSaveAutoUpgrade } = vi.hoisted(() => ({
   mockSaveAutoUpgrade: vi.fn(),
 }))
 
@@ -215,6 +218,12 @@ const mockProviders: MockProvider[] = [
   },
 ]
 
+const onUrlUpdate = vi.fn()
+const renderWithConsoleQuery = createNuqsTestRenderer(
+  renderWithConsoleQueryWithoutUrlState,
+  () => ({ onUrlUpdate }),
+)
+
 const renderModelProviderPage = (
   props: {
     enableMarketplace?: boolean
@@ -356,11 +365,6 @@ vi.mock('@/service/use-plugins', () => ({
     isPending: false,
   }),
 }))
-
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()

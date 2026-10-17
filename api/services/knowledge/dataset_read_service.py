@@ -52,6 +52,7 @@ def _dataset_detail_values(dataset: Dataset, prefetch: DatasetDetailPrefetch) ->
         "permission": dataset.permission,
         "data_source_type": dataset.data_source_type,
         "indexing_technique": dataset.indexing_technique,
+        "keyword_number": dataset.keyword_number,
         "app_count": prefetch.app_counts.get(dataset.id, 0),
         "document_count": prefetch.document_counts.get(dataset.id, 0),
         "word_count": prefetch.word_counts.get(dataset.id, 0),

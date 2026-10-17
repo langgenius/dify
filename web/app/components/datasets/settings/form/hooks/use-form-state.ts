@@ -1,14 +1,15 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Member } from '@/models/common'
 import type {
   GraphIndexSetting as GraphIndexSettingType,
   IconInfo,
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,12 +22,16 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { DatasetPermission } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useMembers } from '@/service/use-common'
 import { getDatasetACLCapabilities } from '@/utils/permission'
+import {
+  toGraphIndexSetting,
+  toIconInfo,
+  toRetrievalConfig,
+  toSummaryIndexSetting,
+} from '../../../dataset-fields'
 import { checkShowMultiModalTip } from '../../utils'
 
 const DEFAULT_APP_ICON: IconInfo = {
@@ -36,9 +41,8 @@ const DEFAULT_APP_ICON: IconInfo = {
   icon_url: '',
 }
 
-export const useFormState = () => {
+export const useFormState = (currentDataset: DatasetDetailWithPartialMembersResponse) => {
   const { t } = useTranslation(['appDebug', 'common', 'datasetSettings'])
-  const currentDataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -67,33 +71,37 @@ export const useFormState = () => {
   const [description, setDescription] = useState(currentDataset?.description ?? '')
 
   // Icon state
-  const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)
+  const [iconInfo, setIconInfo] = useState(
+    toIconInfo(currentDataset?.icon_info) ?? DEFAULT_APP_ICON,
+  )
 
   // Permission state
-  const [permission, setPermission] = useState(currentDataset?.permission)
+  const [permission, setPermission] = useState<PermissionLevel | undefined>(
+    currentDataset.permission,
+  )
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
     currentDataset?.partial_member_list || [],
   )
 
   // External retrieval state
-  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
+  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model?.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(
-    currentDataset?.external_retrieval_model.score_threshold ?? 0.5,
+    currentDataset?.external_retrieval_model?.score_threshold ?? 0.5,
   )
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(
-    currentDataset?.external_retrieval_model.score_threshold_enabled ?? false,
+    currentDataset?.external_retrieval_model?.score_threshold_enabled ?? false,
   )
 
   // Indexing and retrieval state
-  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
+  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique ?? undefined)
   const [keywordNumber, setKeywordNumber] = useState(currentDataset?.keyword_number ?? 10)
-  const [retrievalConfig, setRetrievalConfig] = useState(
-    currentDataset?.retrieval_model_dict as RetrievalConfig,
+  const [retrievalConfig, setRetrievalConfig] = useState<RetrievalConfig>(() =>
+    toRetrievalConfig(currentDataset.retrieval_model_dict),
   )
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
     currentDataset?.embedding_model
       ? {
-          provider: currentDataset.embedding_model_provider,
+          provider: currentDataset.embedding_model_provider ?? '',
           model: currentDataset.embedding_model,
         }
       : {
@@ -103,12 +111,19 @@ export const useFormState = () => {
   )
 
   // Summary index state
-  const [summaryIndexSetting, setSummaryIndexSetting] = useState(
-    currentDataset?.summary_index_setting,
+  const [summaryIndexSetting, setSummaryIndexSetting] = useState<
+    SummaryIndexSettingType | undefined
+  >(
+    () =>
+      currentDataset.summary_index_setting &&
+      toSummaryIndexSetting(currentDataset.summary_index_setting),
   )
 
   // Knowledge graph index state
-  const [graphIndexSetting, setGraphIndexSetting] = useState(currentDataset?.graph_index_setting)
+  const [graphIndexSetting, setGraphIndexSetting] = useState<GraphIndexSettingType | undefined>(
+    () =>
+      currentDataset.graph_index_setting && toGraphIndexSetting(currentDataset.graph_index_setting),
+  )
 
   // Model lists
   const { data: rerankModelList = [] } = useQuery(
@@ -123,11 +138,16 @@ export const useFormState = () => {
       select: (response) => response.data,
     }),
   )
-  const { data: membersData } = useMembers()
-  const invalidDatasetList = useInvalidDatasetList()
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
+  const queryClient = useQueryClient()
+  const invalidDatasetList = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+  }, [queryClient])
 
   // Derive member list from API data
-  const memberList = useMemo<Member[]>(() => {
+  const memberList = useMemo<AccountWithRoleResponse[]>(() => {
     return membersData?.accounts ?? []
   }, [membersData])
 
@@ -225,10 +245,10 @@ export const useFormState = () => {
 
       if (supportsGraphIndex) body.graph_index_setting = graphIndexSetting
 
-      if (currentDataset!.provider === 'external') {
-        body.external_knowledge_id = currentDataset!.external_knowledge_info.external_knowledge_id
+      if (currentDataset.provider === 'external') {
+        body.external_knowledge_id = currentDataset.external_knowledge_info?.external_knowledge_id
         body.external_knowledge_api_id =
-          currentDataset!.external_knowledge_info.external_knowledge_api_id
+          currentDataset.external_knowledge_info?.external_knowledge_api_id
         body.external_retrieval_model = {
           top_k: topK,
           score_threshold: scoreThreshold,
@@ -236,7 +256,7 @@ export const useFormState = () => {
         }
       }
 
-      if (permission === DatasetPermission.partialMembers) {
+      if (permission === PermissionLevel.partialMembers) {
         body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,
@@ -245,7 +265,7 @@ export const useFormState = () => {
         })
       }
 
-      await updateDatasetSetting({ datasetId: currentDataset!.id, body })
+      await updateDatasetSetting({ datasetId: currentDataset.id, body })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
 
       if (mutateDatasets) {

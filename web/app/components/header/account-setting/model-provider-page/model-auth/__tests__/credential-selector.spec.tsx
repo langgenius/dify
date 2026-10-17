@@ -16,10 +16,6 @@ vi.mock('../authorized/credential-item', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: () => <div data-testid="indicator" />,
-}))
-
 vi.mock('@remixicon/react', () => ({
   RiAddLine: () => <div data-testid="add-icon" />,
   RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
@@ -46,7 +42,6 @@ describe('CredentialSelector', () => {
     )
 
     expect(screen.getByText('Key 1')).toBeInTheDocument()
-    expect(screen.getByTestId('indicator')).toBeInTheDocument()
   })
 
   it('should render placeholder when selectedCredential is missing', () => {

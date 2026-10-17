@@ -8,7 +8,7 @@ from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from models.model import IconType
 
-type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
+type ShallowJSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
 type JSONObject = dict[str, Any]
 URLString = Annotated[str, WithJsonSchema({"format": "url", "type": "string"})]
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
@@ -335,8 +335,8 @@ class SimpleResultResponse(ResponseModel):
     result: str = Field(description="Operation result.")
 
 
-class GeneratedAppResponse(RootModel[JSONValue]):
-    root: JSONValue
+class GeneratedAppResponse(RootModel[ShallowJSONValue]):
+    root: ShallowJSONValue
 
 
 class EventStreamResponse(RootModel[str]):
@@ -360,7 +360,7 @@ class AudioBinaryResponse(RootModel[bytes]):
 
 
 class AudioTranscriptResponse(ResponseModel):
-    text: str
+    text: str = Field(description="Transcribed text from audio")
 
 
 class ValidationResultResponse(ResponseModel):

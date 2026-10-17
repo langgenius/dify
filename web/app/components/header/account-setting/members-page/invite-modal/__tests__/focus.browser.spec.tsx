@@ -3,23 +3,28 @@ import type { QueryClient } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
-import { commonQueryKeys } from '@/service/use-common'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import MembersPage from '../../index'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
+  return mockConsoleOperationHooks(await importOriginal(), {
+    'workspaces.current.rbac.roles.get': () => ({
+      data: {
+        pages: [{ data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }] }],
+      },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    }),
+  })
+})
+
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
 vi.mock('#i18n', () => ({ useLocale: () => 'en-US' }))
-vi.mock('@/service/access-control/use-workspace-roles', () => ({
-  useWorkspaceRoleList: () => ({
-    data: { pages: [{ data: [{ id: 'admin', name: 'Admin', description: 'Manage members' }] }] },
-    isLoading: false,
-    error: null,
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-  }),
-}))
 
 let queryClient: QueryClient
 
@@ -31,7 +36,12 @@ beforeEach(() => {
     workspacePermissionKeys: ['workspace.member.manage'],
     features: { workspace_members: { enabled: true, size: 1, limit: 10 } },
   }).queryClient
-  queryClient.setQueryData([...commonQueryKeys.members, 'en'], { accounts: [] })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.members.get.queryOptions({
+      input: { query: { language: 'en' } },
+    }).queryKey,
+    { accounts: [] },
+  )
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {

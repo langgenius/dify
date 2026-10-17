@@ -1,12 +1,14 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type * as React from 'react'
 import type { MockedFunction } from 'vite-plus/test'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Item from '../index'
 
@@ -16,9 +18,9 @@ vi.mock('../../settings-modal', () => ({
     onCancel,
     currentDataset,
   }: {
-    currentDataset: DataSet
+    currentDataset: DatasetDetailWithPartialMembersResponse
     onCancel: () => void
-    onSave: (newDataset: DataSet) => void
+    onSave: (newDataset: DatasetDetailWithPartialMembersResponse) => void
   }) => (
     <div>
       <div>Mock settings modal</div>
@@ -54,16 +56,14 @@ const baseRetrievalConfig: RetrievalConfig = {
 
 const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
-  const { retrieval_model, retrieval_model_dict, icon_info, ...restOverrides } = overrides
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => {
+  const { retrieval_model_dict, icon_info, ...restOverrides } = overrides
 
   const resolvedRetrievalModelDict = {
     ...baseRetrievalConfig,
     ...retrieval_model_dict,
-  }
-  const resolvedRetrievalModel = {
-    ...baseRetrievalConfig,
-    ...(retrieval_model ?? retrieval_model_dict),
   }
 
   const defaultIconInfo = {
@@ -76,12 +76,12 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const resolvedIconInfo = 'icon_info' in overrides ? icon_info : defaultIconInfo
 
   return {
+    ...createDatasetFixture(),
     id: 'dataset-id',
     name: 'Dataset Name',
-    indexing_status: 'completed',
-    icon_info: resolvedIconInfo as DataSet['icon_info'],
+    icon_info: resolvedIconInfo,
     description: 'A test dataset',
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: defaultIndexingTechnique,
     author_name: 'author',
@@ -91,7 +91,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     app_count: 0,
     doc_form: ChunkingMode.text,
     document_count: 0,
-    total_document_count: 0,
     total_available_documents: 0,
     word_count: 0,
     provider: 'dify',
@@ -99,7 +98,6 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     embedding_model_provider: 'openai',
     embedding_available: true,
     retrieval_model_dict: resolvedRetrievalModelDict,
-    retrieval_model: resolvedRetrievalModel,
     tags: [],
     external_knowledge_info: {
       external_knowledge_id: 'external-id',
@@ -124,7 +122,10 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   }
 }
 
-const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof Item>>) => {
+const renderItem = (
+  config: DatasetDetailWithPartialMembersResponse,
+  props?: Partial<React.ComponentProps<typeof Item>>,
+) => {
   const onSave = vi.fn()
   const onRemove = vi.fn()
 

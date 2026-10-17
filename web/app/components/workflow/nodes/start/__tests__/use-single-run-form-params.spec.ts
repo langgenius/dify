@@ -1,24 +1,15 @@
 import type { StartNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useIsChatMode: () => mockUseIsChatMode(),
-  }
-})
 
 const createPayload = (overrides: Partial<StartNodeType> = {}): StartNodeType => ({
   title: 'Start',
@@ -46,18 +37,26 @@ describe('start/use-single-run-form-params', () => {
   })
 
   it('should include sys.query and sys.files dependencies for chat mode', () => {
-    mockUseIsChatMode.mockReturnValue(true)
+    chatflowMode = true
 
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'start-node',
-        payload: createPayload(),
-        runInputData: { query: 'hello' },
-        runInputDataRef: { current: {} },
-        getInputVars: () => [],
-        setRunInputData,
-        toVarInputs: () => [],
-      }),
+    const { result } = renderHook(
+      () =>
+        useSingleRunFormParams({
+          id: 'start-node',
+          payload: createPayload(),
+          runInputData: { query: 'hello' },
+          runInputDataRef: { current: {} },
+          getInputVars: () => [],
+          setRunInputData,
+          toVarInputs: () => [],
+        }),
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      },
     )
 
     expect(result.current.forms).toHaveLength(1)
@@ -82,18 +81,26 @@ describe('start/use-single-run-form-params', () => {
   })
 
   it('should omit sys.query when the workflow is not in chat mode', () => {
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
 
-    const { result } = renderHook(() =>
-      useSingleRunFormParams({
-        id: 'start-node',
-        payload: createPayload(),
-        runInputData: {},
-        runInputDataRef: { current: {} },
-        getInputVars: () => [],
-        setRunInputData,
-        toVarInputs: () => [],
-      }),
+    const { result } = renderHook(
+      () =>
+        useSingleRunFormParams({
+          id: 'start-node',
+          payload: createPayload(),
+          runInputData: {},
+          runInputDataRef: { current: {} },
+          getInputVars: () => [],
+          setRunInputData,
+          toVarInputs: () => [],
+        }),
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      },
     )
 
     expect(result.current.forms[0]!.inputs).toEqual(

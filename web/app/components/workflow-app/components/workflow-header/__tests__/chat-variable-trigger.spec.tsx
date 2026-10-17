@@ -1,15 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import ChatVariableTrigger from '../chat-variable-trigger'
 
 const mockUseNodesReadOnly = vi.fn()
-const mockUseIsChatMode = vi.fn()
+let chatflowMode = false
 
 vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
   useNodesReadOnly: () => mockUseNodesReadOnly(),
-}))
-
-vi.mock('../../../hooks/use-is-chat-mode', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/header/chat-variable-button', () => ({
@@ -29,11 +26,17 @@ describe('ChatVariableTrigger', () => {
   describe('Rendering', () => {
     it('should not render when not in chat mode', () => {
       // Arrange
-      mockUseIsChatMode.mockReturnValue(false)
+      chatflowMode = false
       mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
 
       // Act
-      render(<ChatVariableTrigger />)
+      render(<ChatVariableTrigger />, {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      })
 
       // Assert
       expect(screen.queryByRole('button', { name: 'ChatVariableButton' })).not.toBeInTheDocument()
@@ -44,11 +47,17 @@ describe('ChatVariableTrigger', () => {
   describe('Props', () => {
     it('should render enabled ChatVariableButton when nodes are editable', () => {
       // Arrange
-      mockUseIsChatMode.mockReturnValue(true)
+      chatflowMode = true
       mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false })
 
       // Act
-      render(<ChatVariableTrigger />)
+      render(<ChatVariableTrigger />, {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      })
 
       // Assert
       expect(screen.getByRole('button', { name: 'ChatVariableButton' })).toBeEnabled()
@@ -56,11 +65,17 @@ describe('ChatVariableTrigger', () => {
 
     it('should render disabled ChatVariableButton when nodes are read-only', () => {
       // Arrange
-      mockUseIsChatMode.mockReturnValue(true)
+      chatflowMode = true
       mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
 
       // Act
-      render(<ChatVariableTrigger />)
+      render(<ChatVariableTrigger />, {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      })
 
       // Assert
       expect(screen.getByRole('button', { name: 'ChatVariableButton' })).toBeDisabled()

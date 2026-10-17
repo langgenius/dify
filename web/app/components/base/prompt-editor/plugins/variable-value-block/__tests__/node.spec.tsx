@@ -8,7 +8,7 @@ describe('VariableValueBlockNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     editor = createEditor({
-      nodes: [VariableValueBlockNode as unknown as Klass<LexicalNode>],
+      nodes: [VariableValueBlockNode as Klass<LexicalNode>],
     })
   })
 

@@ -1,4 +1,6 @@
+import type { MessageDetailResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
   applyAnnotationAdded,
   applyAnnotationEdited,
@@ -22,11 +24,30 @@ const createChatItems = (): IChatItem[] =>
     { id: 'answer-2', content: 'reply', isAnswer: true, parentMessageId: 'question-2' },
   ] as IChatItem[]
 
+const createMessage = (overrides: Partial<MessageDetailResponse>): MessageDetailResponse => ({
+  id: 'message',
+  conversation_id: 'conversation',
+  inputs: {},
+  query: '',
+  answer: '',
+  answer_tokens: 0,
+  message_tokens: 0,
+  message: [],
+  message_files: [],
+  agent_thoughts: [],
+  feedbacks: [],
+  metadata: {},
+  from_source: 'console',
+  provider_response_latency: 0,
+  status: 'normal',
+  ...overrides,
+})
+
 describe('log list utils', () => {
   it('should format chat messages into paired question and answer items', () => {
     const items = getFormattedChatList(
       [
-        {
+        createMessage({
           id: 'message-1',
           inputs: { query: 'hello' },
           query: 'hello',
@@ -36,11 +57,23 @@ describe('log list utils', () => {
           message_tokens: 2,
           message: [{ role: 'user', text: 'hello' }],
           message_files: [
-            { belongs_to: 'assistant', id: 'file-1' },
-            { belongs_to: 'user', id: 'file-2' },
+            {
+              belongs_to: 'assistant',
+              id: 'file-1',
+              filename: '',
+              transfer_method: 'local_file',
+              type: 'image',
+            },
+            {
+              belongs_to: 'user',
+              id: 'file-2',
+              filename: '',
+              transfer_method: 'local_file',
+              type: 'image',
+            },
           ],
-        },
-      ] as any,
+        }),
+      ],
       'conversation-1',
       'UTC',
       'YYYY-MM-DD',
@@ -67,7 +100,7 @@ describe('log list utils', () => {
   it('should preserve feedback and annotation hit history when formatting chat items', () => {
     const items = getFormattedChatList(
       [
-        {
+        createMessage({
           id: 'message-2',
           inputs: { default_input: 'fallback prompt' },
           query: '',
@@ -82,11 +115,11 @@ describe('log list utils', () => {
           ],
           annotation_hit_history: {
             annotation_id: 'annotation-1',
-            annotation_create_account: {},
+            annotation_create_account: null,
             created_at: 123,
           },
-        },
-      ] as any,
+        }),
+      ],
       'conversation-2',
       'UTC',
       'YYYY-MM-DD',
@@ -257,6 +290,55 @@ describe('log list utils', () => {
         false,
       ),
     ).toEqual(['https://example.com/file-1'])
+  })
+
+  it('keeps agent thought files raw so the agent renderer converts them once', () => {
+    const [, answer] = getFormattedChatList(
+      [
+        createMessage({
+          id: 'message-1',
+          agent_thoughts: [
+            {
+              id: 'thought-1',
+              message_id: 'message-1',
+              position: 1,
+              files: ['file-1'],
+              tool: 'image_generator',
+              tool_labels: {},
+            },
+          ],
+          message_files: [
+            {
+              belongs_to: 'assistant',
+              id: 'file-1',
+              filename: 'image.png',
+              transfer_method: 'tool_file',
+              type: 'image',
+              url: 'https://example.com/image.png',
+            },
+          ],
+        }),
+      ],
+      'conversation-1',
+      'UTC',
+      'YYYY-MM-DD',
+    )
+
+    const thoughtFiles = answer!.agent_thoughts![0]!.message_files!
+    expect(thoughtFiles).toEqual([
+      expect.objectContaining({
+        id: 'file-1',
+        type: 'image',
+        url: 'https://example.com/image.png',
+      }),
+    ])
+    // Mirrors AgentContent, which converts thought files for FileList.
+    const [rendered] = getProcessedFilesFromResponse(
+      thoughtFiles.map((file) => ({ ...file, related_id: file.id }) as never),
+    )
+    expect(rendered).toEqual(
+      expect.objectContaining({ supportFileType: 'image', url: 'https://example.com/image.png' }),
+    )
   })
 
   it('should handle default inputs', () => {

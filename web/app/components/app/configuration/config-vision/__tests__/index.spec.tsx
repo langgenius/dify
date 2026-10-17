@@ -1,23 +1,19 @@
 import type { Mock } from 'vite-plus/test'
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import type { FileUpload } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { renderWithDebugConfiguration } from '@/test/debug-configuration'
 import { Resolution, TransferMethod } from '@/types/app'
 import ConfigVision from '../index'
 import ParamConfig from '../param-config'
 import ParamConfigContent from '../param-config-content'
 
-const mockUseContext = vi.fn()
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('use-context-selector')>()
-  return {
-    ...actual,
-    useContext: (context: unknown) => mockUseContext(context),
-  }
-})
+let configuration: Parameters<typeof renderWithDebugConfiguration>[1] = {}
+const render = (ui: Parameters<typeof renderWithDebugConfiguration>[0]) =>
+  renderWithDebugConfiguration(ui, configuration)
 
 const mockUseFeatures = vi.fn()
 const mockUseFeaturesStore = vi.fn()
@@ -76,20 +72,20 @@ const getLatestFileConfig = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockUseContext.mockReturnValue({
+  configuration = {
     isShowVisionConfig: true,
     isAllowVideoUpload: false,
-  })
+  }
   setupFeatureStore()
 })
 
 // ConfigVision handles toggling file upload types + visibility rules.
 describe('ConfigVision', () => {
   it('should not render when vision configuration is hidden', () => {
-    mockUseContext.mockReturnValue({
+    configuration = {
       isShowVisionConfig: false,
       isAllowVideoUpload: false,
-    })
+    }
 
     render(<ConfigVision />)
 
@@ -110,10 +106,10 @@ describe('ConfigVision', () => {
 
   it('should enable both image and video uploads when toggled on with video support', async () => {
     const user = userEvent.setup()
-    mockUseContext.mockReturnValue({
+    configuration = {
       isShowVisionConfig: true,
       isAllowVideoUpload: true,
-    })
+    }
     setupFeatureStore({
       allowed_file_types: [],
     })
@@ -132,10 +128,10 @@ describe('ConfigVision', () => {
 
   it('should disable image and video uploads when toggled off and no other types remain', async () => {
     const user = userEvent.setup()
-    mockUseContext.mockReturnValue({
+    configuration = {
       isShowVisionConfig: true,
       isAllowVideoUpload: true,
-    })
+    }
     setupFeatureStore({
       allowed_file_types: [SupportUploadFileTypes.image, SupportUploadFileTypes.video],
       enabled: true,
@@ -155,10 +151,10 @@ describe('ConfigVision', () => {
 
   it('should keep file uploads enabled when other file types remain after disabling vision', async () => {
     const user = userEvent.setup()
-    mockUseContext.mockReturnValue({
+    configuration = {
       isShowVisionConfig: true,
       isAllowVideoUpload: false,
-    })
+    }
     setupFeatureStore({
       allowed_file_types: [SupportUploadFileTypes.image, SupportUploadFileTypes.document],
       enabled: true,

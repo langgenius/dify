@@ -33,10 +33,6 @@ vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialSchema: () => ({ data: undefined, isLoading: false }),
 }))
 
-vi.mock('@/service/use-tools', () => ({
-  useInvalidToolsByType: () => vi.fn(),
-}))
-
 const mockIsCurrentWorkspaceManager = vi.fn()
 const mockUserProfile = {
   id: 'test-user',
@@ -68,8 +64,6 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({ data: { options: [] }, isLoading: false }),
-  useTriggerPluginDynamicOptionsInfo: () => ({ data: null, isLoading: false }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
 // ==================== Test Utilities ====================

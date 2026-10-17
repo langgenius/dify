@@ -10,7 +10,6 @@ import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { useMCPServerDetail } from '@/service/use-tools'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { AccessPointIcon } from '../shared/access-point-icon'
 import { RuntimeStateIndicator } from '../shared/runtime-state'
@@ -30,7 +29,11 @@ export const BuiltInEnvironmentCard = memo(
       consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
     )
     const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId))
-    const { data: mcpServerDetail } = useMCPServerDetail(appId)
+    const { data: mcpServerDetail } = useQuery(
+      consoleQuery.apps.byAppId.server.get.queryOptions({
+        input: { params: { app_id: appId } },
+      }),
+    )
     const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
       ? (publishedWorkflow.graph.nodes as Node[])
       : []

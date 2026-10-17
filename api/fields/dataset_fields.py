@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from services.data_source.entities.notion_import import NotionPageType
@@ -18,16 +21,26 @@ class NotionEstimateWorkspacePayload(BaseModel):
     pages: list[NotionEstimatePagePayload] = Field(min_length=1)
 
 
+MetadataValueType = Literal["string", "number", "time"]
+# Mirror models.enums.PermissionEnum / DataSourceType / DatasetRuntimeMode; response schemas do not
+# import models.
+DatasetPermission = Literal["only_me", "all_team_members", "partial_members"]
+DatasetDataSourceType = Literal[
+    "upload_file", "notion_import", "website_crawl", "local_file", "online_document", "online_drive"
+]
+DatasetRuntimeMode = Literal["general", "rag_pipeline"]
+
+
 class DatasetMetadataResponse(ResponseModel):
     id: str
-    type: str
+    type: MetadataValueType
     name: str
 
 
 class DatasetMetadataListItemResponse(ResponseModel):
     id: str
     name: str
-    type: str
+    type: MetadataValueType
     count: int = 0
 
 
@@ -38,7 +51,7 @@ class DatasetMetadataListResponse(ResponseModel):
 
 class DatasetMetadataBuiltInFieldResponse(ResponseModel):
     name: str
-    type: str
+    type: MetadataValueType
 
 
 class DatasetMetadataBuiltInFieldsResponse(ResponseModel):
@@ -82,7 +95,7 @@ class DatasetWeightedScoreResponse(ResponseModel):
 
 
 class DatasetRetrievalModelResponse(ResponseModel):
-    search_method: str
+    search_method: RetrievalMethod
     reranking_enable: bool
     reranking_mode: str | None = None
     reranking_model: DatasetRerankingModelResponse = Field(
@@ -149,7 +162,7 @@ class DatasetExternalRetrievalModelResponse(ResponseModel):
 class DatasetDocMetadataResponse(ResponseModel):
     id: str
     name: str
-    type: str
+    type: MetadataValueType
 
 
 class DatasetIconInfoResponse(ResponseModel):
@@ -164,9 +177,10 @@ class DatasetDetailResponse(ResponseModel):
     name: str
     description: str | None
     provider: str
-    permission: str
-    data_source_type: str | None
-    indexing_technique: str | None
+    permission: DatasetPermission
+    data_source_type: DatasetDataSourceType | None
+    indexing_technique: IndexTechniqueType | None
+    keyword_number: int | None = Field(default=None, description="Keywords extracted per chunk by the economy index.")
     app_count: int
     document_count: int
     word_count: int
@@ -199,7 +213,7 @@ class DatasetDetailResponse(ResponseModel):
     doc_metadata: list[DatasetDocMetadataResponse]
     built_in_field_enabled: bool
     pipeline_id: str | None
-    runtime_mode: str | None
+    runtime_mode: DatasetRuntimeMode | None
     chunk_structure: str | None
     icon_info: DatasetIconInfoResponse = Field(
         default_factory=DatasetIconInfoResponse,

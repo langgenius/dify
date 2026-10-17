@@ -6,7 +6,6 @@ class RetrievalMethod(StrEnum):
     FULL_TEXT_SEARCH = "full_text_search"
     HYBRID_SEARCH = "hybrid_search"
     KEYWORD_SEARCH = "keyword_search"
-    GRAPH_SEARCH = "graph_search"
 
     @staticmethod
     def is_support_semantic_search(retrieval_method: str) -> bool:
@@ -26,11 +25,8 @@ class RetrievalMethod(StrEnum):
         would otherwise never reach their graph, even though a graph walk needs
         no embeddings.
 
-        The graph leg is gated on the dataset opting in, so it never runs for a
-        knowledge base that has no graph index.
+        The graph has no standalone mode: its hits are only useful merged with
+        the other legs. The leg is gated on the dataset opting in, so it never
+        runs for a knowledge base that has no graph index.
         """
-        return retrieval_method in {
-            RetrievalMethod.GRAPH_SEARCH,
-            RetrievalMethod.HYBRID_SEARCH,
-            RetrievalMethod.KEYWORD_SEARCH,
-        }
+        return retrieval_method in {RetrievalMethod.HYBRID_SEARCH, RetrievalMethod.KEYWORD_SEARCH}

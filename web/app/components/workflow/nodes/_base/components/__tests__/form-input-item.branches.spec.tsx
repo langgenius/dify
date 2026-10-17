@@ -39,7 +39,7 @@ vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
 
   return {
     ...actual,
-    useIsChatMode: () => false,
+
     useWorkflow: () => ({
       getTreeLeafNodes: () => [],
       getNodeById: () => undefined,
@@ -142,6 +142,7 @@ const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>
       {...props}
     />,
     {
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       edges: [],
       hooksStoreProps: {},
       nodes: [],

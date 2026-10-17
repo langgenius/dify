@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import List from '../index'
 
 const mockPush = vi.fn()
@@ -51,19 +53,26 @@ vi.mock('@/hooks/use-knowledge', () => ({
   }),
 }))
 
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useDatasetList: vi.fn(() => ({
-    data: { pages: [{ data: [], total: 1 }] },
-    fetchNextPage: vi.fn(),
-    hasNextPage: false,
-    isFetching: false,
-    isFetchingNextPage: false,
-  })),
-  useInvalidDatasetList: () => vi.fn(),
-  useDatasetApiBaseUrl: () => ({
-    data: { api_base_url: 'https://api.example.com' },
-  }),
-}))
+const { getDatasets } = vi.hoisted(() => ({ getDatasets: vi.fn() }))
+const datasetPage = (total = 1) => ({
+  data: total ? [createDatasetFixture()] : [],
+  total,
+  page: 1,
+  limit: 30,
+  has_more: false,
+})
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.get': getDatasets,
+      'datasets.apiBaseInfo.get': () =>
+        Promise.resolve({ api_base_url: 'https://api.example.com' }),
+    }),
+  }
+})
 
 // Mock Datasets component
 vi.mock('../datasets', () => ({
@@ -159,14 +168,7 @@ describe('List', () => {
       isCurrentWorkspaceOwner: true,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     }
-    const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-    vi.mocked(useDatasetList).mockReturnValue({
-      data: { pages: [{ data: [], total: 1 }] },
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isFetching: false,
-      isFetchingNextPage: false,
-    } as unknown as ReturnType<typeof useDatasetList>)
+    getDatasets.mockResolvedValue(datasetPage(1))
   })
 
   describe('Rendering', () => {
@@ -201,39 +203,33 @@ describe('List', () => {
 
   describe('Props', () => {
     it('should query datasets with includeAll disabled initially', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-
       render(<List />)
 
-      expect(useDatasetList).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(getDatasets).toHaveBeenCalledWith({
+        query: expect.objectContaining({
           include_all: false,
         }),
-      )
+      })
     })
 
     it('should query datasets with empty keywords initially', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-
       render(<List />)
 
-      expect(useDatasetList).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(getDatasets).toHaveBeenCalledWith({
+        query: expect.objectContaining({
           keyword: '',
         }),
-      )
+      })
     })
 
     it('should query datasets with empty tags initially', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-
       render(<List />)
 
-      expect(useDatasetList).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(getDatasets).toHaveBeenCalledWith({
+        query: expect.objectContaining({
           tag_ids: [],
         }),
-      )
+      })
     })
   })
 
@@ -281,18 +277,11 @@ describe('List', () => {
     })
 
     it('should render first empty state when there are no datasets and no active filters', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      vi.mocked(useDatasetList).mockReturnValue({
-        data: { pages: [{ data: [], total: 0 }] },
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-      } as unknown as ReturnType<typeof useDatasetList>)
+      getDatasets.mockResolvedValue(datasetPage(0))
 
       render(<List />)
 
-      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(await screen.findByText('dataset.firstEmpty.title')).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
@@ -302,18 +291,11 @@ describe('List', () => {
         isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      vi.mocked(useDatasetList).mockReturnValue({
-        data: { pages: [{ data: [], total: 0 }] },
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-      } as unknown as ReturnType<typeof useDatasetList>)
+      getDatasets.mockResolvedValue(datasetPage(0))
 
       render(<List />)
 
-      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(await screen.findByText('dataset.firstEmpty.title')).toBeInTheDocument()
       expect(
         screen.getByRole('link', { name: /dataset\.firstEmpty\.pipelineTitle/ }),
       ).toHaveAttribute('href', '/datasets/create-from-pipeline')
@@ -325,31 +307,17 @@ describe('List', () => {
         isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: [],
       }
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      vi.mocked(useDatasetList).mockReturnValue({
-        data: { pages: [{ data: [], total: 0 }] },
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-      } as unknown as ReturnType<typeof useDatasetList>)
+      getDatasets.mockResolvedValue(datasetPage(0))
 
       render(<List />)
 
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByText('dataset.firstEmpty.noCreatePermission')).toBeInTheDocument()
+      expect(await screen.findByText('dataset.firstEmpty.noCreatePermission')).toBeInTheDocument()
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first dataset page resolves', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      vi.mocked(useDatasetList).mockReturnValue({
-        data: { pages: [] },
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-      } as unknown as ReturnType<typeof useDatasetList>)
+      getDatasets.mockReturnValue(new Promise(() => {}))
 
       render(<List />)
 
@@ -358,16 +326,8 @@ describe('List', () => {
     })
 
     it('should keep the regular list for empty filtered results', async () => {
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      vi.mocked(useDatasetList).mockImplementation(
-        (params) =>
-          ({
-            data: { pages: [{ data: [], total: params.include_all ? 0 : 1 }] },
-            fetchNextPage: vi.fn(),
-            hasNextPage: false,
-            isFetching: false,
-            isFetchingNextPage: false,
-          }) as unknown as ReturnType<typeof useDatasetList>,
+      getDatasets.mockImplementation(({ query }) =>
+        Promise.resolve(datasetPage(query.include_all ? 0 : 1)),
       )
 
       render(<List />)
@@ -375,54 +335,33 @@ describe('List', () => {
       fireEvent.click(screen.getByTestId('include-all-checkbox'))
 
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
-      expect(screen.getByRole('status')).toHaveTextContent('dataset.filterEmpty.noKnowledge')
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent('dataset.filterEmpty.noKnowledge'),
+      )
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
     })
 
     it('announces empty search results only after the current filters finish loading', async () => {
       const user = userEvent.setup()
-      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
-      const result = {
-        data: { pages: [{ data: [], total: 1 }] },
-        fetchNextPage: vi.fn(),
-        hasNextPage: false,
-        isFetching: false,
-        isFetchingNextPage: false,
-        isPlaceholderData: false,
-        isError: false,
-      }
-      vi.mocked(useDatasetList).mockImplementation(
-        () => result as unknown as ReturnType<typeof useDatasetList>,
-      )
-      const { rerender } = render(<List />)
+      const response = createDeferred<ReturnType<typeof datasetPage>>()
+      getDatasets.mockResolvedValueOnce(datasetPage()).mockReturnValue(response.promise)
+      render(<List />)
+      await waitFor(() => expect(screen.getByTestId('dataset-total')).toHaveTextContent('1'))
       const status = screen.getByRole('status')
       const search = screen.getByRole('searchbox')
-      expect(status).toBeEmptyDOMElement()
-
       await user.type(search, 'missing')
       expect(status).toBeEmptyDOMElement()
       await waitFor(() =>
-        expect(useDatasetList).toHaveBeenLastCalledWith(
-          expect.objectContaining({ keyword: 'missing' }),
-        ),
+        expect(getDatasets).toHaveBeenLastCalledWith({
+          query: expect.objectContaining({ keyword: 'missing' }),
+        }),
       )
-
-      result.data.pages = [{ data: [], total: 0 }]
-      result.isFetching = true
-      result.isPlaceholderData = true
-      rerender(<List />)
+      expect(screen.getByTestId('dataset-total')).toHaveTextContent('1')
       expect(status).toBeEmptyDOMElement()
-
-      result.isPlaceholderData = false
-      rerender(<List />)
-      expect(status).toBeEmptyDOMElement()
-
-      result.isFetching = false
-      rerender(<List />)
+      await act(async () => response.resolve(datasetPage(0)))
+      await waitFor(() => expect(status).toHaveTextContent('dataset.filterEmpty.noKnowledge'))
       expect(screen.getByRole('status')).toBe(status)
-      expect(status).toHaveTextContent('dataset.filterEmpty.noKnowledge')
       expect(search).toHaveFocus()
-
       await user.type(search, ' again')
       expect(status).toBeEmptyDOMElement()
     })

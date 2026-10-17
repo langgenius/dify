@@ -15,13 +15,9 @@ vi.mock('../hooks/use-snippet-init', () => ({
 }))
 
 vi.mock('../components/snippet-main', () => ({
-  default: ({
-    hasPublishedWorkflow,
-    snippetId,
-  }: {
-    hasPublishedWorkflow: boolean
-    snippetId: string
-  }) => <div data-testid="snippet-main">{`${snippetId}:${String(hasPublishedWorkflow)}`}</div>,
+  default: ({ hasPublishedWorkflow }: { hasPublishedWorkflow: boolean }) => (
+    <div data-testid="snippet-main">{String(hasPublishedWorkflow)}</div>
+  ),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -62,16 +58,6 @@ vi.mock('@/app/components/workflow', () => ({
 vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
-
-vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/workflow/utils')>()
-
-  return {
-    ...actual,
-    initialNodes: (nodes: unknown[]) => nodes,
-    initialEdges: (edges: unknown[]) => edges,
-  }
-})
 
 vi.mock('@/app/components/app-sidebar', () => ({
   default: ({
@@ -116,7 +102,7 @@ const createSnippetDetailPayload = (nodeId: string, edgeId: string): SnippetDeta
       {
         id: nodeId,
         position: { x: 0, y: 0 },
-        data: { title: nodeId },
+        data: { title: nodeId, type: 'code' },
       },
     ] as SnippetDetailPayload['graph']['nodes'],
     edges: [
@@ -163,20 +149,21 @@ describe('SnippetPage', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
     expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
-    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
+    expect(mockUseSnippetInit).toHaveBeenCalledWith('snippet-1')
+    expect(screen.getByTestId('snippet-main')).toHaveTextContent('true')
     expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
   it('should initialize workflow context with published graph data when the published workflow exists', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(
+    expect(capturedWorkflowDefaultContextProps?.nodes).toMatchObject(
       mockPublishedSnippetDetail.graph.nodes,
     )
-    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(
+    expect(capturedWorkflowDefaultContextProps?.edges).toMatchObject(
       mockPublishedSnippetDetail.graph.edges,
     )
-    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1:true')
+    expect(screen.getByTestId('snippet-main')).toHaveTextContent('true')
   })
 
   it('should initialize workflow context with draft graph data when the published workflow is empty', () => {
@@ -196,9 +183,13 @@ describe('SnippetPage', () => {
 
     render(<SnippetPage snippetId="snippet-1" />)
 
-    expect(capturedWorkflowDefaultContextProps?.nodes).toEqual(mockDraftSnippetDetail.graph.nodes)
-    expect(capturedWorkflowDefaultContextProps?.edges).toEqual(mockDraftSnippetDetail.graph.edges)
-    expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1:false')
+    expect(capturedWorkflowDefaultContextProps?.nodes).toMatchObject(
+      mockDraftSnippetDetail.graph.nodes,
+    )
+    expect(capturedWorkflowDefaultContextProps?.edges).toMatchObject(
+      mockDraftSnippetDetail.graph.edges,
+    )
+    expect(screen.getByTestId('snippet-main')).toHaveTextContent('false')
   })
 
   it('should render loading fallback when orchestrate data is unavailable', () => {
