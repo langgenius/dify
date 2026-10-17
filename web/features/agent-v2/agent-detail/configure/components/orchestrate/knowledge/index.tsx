@@ -2,6 +2,7 @@
 
 import type { TFunction } from 'i18next'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useRef, useState } from 'react'
@@ -61,7 +62,15 @@ function AgentKnowledgeRetrievalRow({
   )
 }
 
-export function AgentKnowledgeRetrieval() {
+type WorkflowMetadataVariables = Pick<
+  MetadataShape,
+  | 'availableStringVars'
+  | 'availableStringNodesWithParent'
+  | 'availableNumberVars'
+  | 'availableNumberNodesWithParent'
+>
+
+export function AgentKnowledgeRetrieval(variables: WorkflowMetadataVariables = {}) {
   const { t } = useTranslation(['agentV2'])
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addKnowledgeRetrieval = useSetAtom(addKnowledgeRetrievalAtom)
@@ -130,6 +139,7 @@ export function AgentKnowledgeRetrieval() {
         )}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
+        {...variables}
         item={editingRetrieval ?? undefined}
         initialName={
           editingRetrieval ? getKnowledgeRetrievalName(editingRetrieval, t) : addDialogName

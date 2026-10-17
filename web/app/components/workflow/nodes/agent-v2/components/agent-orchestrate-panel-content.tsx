@@ -135,6 +135,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(
     >
       <WorkflowRosterAgentOrchestratePanelContentInner
         agentId={agentId}
+        nodeId={nodeId}
         agentSoulConfig={initialAgentSoulConfig}
         composerState={composerState}
       />
@@ -144,10 +145,12 @@ export function WorkflowRosterAgentOrchestratePanelContent(
 
 function WorkflowRosterAgentOrchestratePanelContentInner({
   agentId,
+  nodeId,
   agentSoulConfig,
   composerState,
 }: {
   agentId: string
+  nodeId: string
   agentSoulConfig: AgentSoulConfig
   composerState?: {
     agent?: {
@@ -160,6 +163,7 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
   return (
     <AgentOrchestratePanel
       agentId={agentId}
+      nodeId={nodeId}
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}

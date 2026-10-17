@@ -161,6 +161,8 @@ class FakeVariablePool:
     def get(self, selector):
         if list(selector) == ["sys", "query"]:
             return StringSegment(value="Summarize the report.")
+        if list(selector) == ["previous_node", "text"]:
+            return StringSegment(value="Previous result")
         if list(selector) == ["previous-node", "text"]:
             return StringSegment(value="Previous result")
         return None
@@ -769,8 +771,15 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                                             "metadata_id": "meta-1",
                                             "name": "category",
                                             "comparison_operator": "contains",
-                                            "value": "auth",
-                                        }
+                                            "value": "{{#previous_node.text#}}",
+                                        },
+                                        {
+                                            "id": "cond-2",
+                                            "metadata_id": "meta-2",
+                                            "name": "labels",
+                                            "comparison_operator": "contains",
+                                            "value": ["{{#previous_node.text#}}", "static"],
+                                        },
                                     ],
                                 },
                             },
@@ -840,7 +849,18 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                 "metadata_model_config": None,
                 "conditions": {
                     "logical_operator": "and",
-                    "conditions": [{"name": "category", "comparison_operator": "contains", "value": "auth"}],
+                    "conditions": [
+                        {
+                            "name": "category",
+                            "comparison_operator": "contains",
+                            "value": "Previous result",
+                        },
+                        {
+                            "name": "labels",
+                            "comparison_operator": "contains",
+                            "value": ["Previous result", "static"],
+                        },
+                    ],
                 },
             },
         },

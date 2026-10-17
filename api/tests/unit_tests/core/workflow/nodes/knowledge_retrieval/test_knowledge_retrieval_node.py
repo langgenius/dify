@@ -18,8 +18,6 @@ from core.workflow.nodes.knowledge_retrieval.entities import (
 from core.workflow.nodes.knowledge_retrieval.exc import RateLimitExceededError
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import (
     KnowledgeRetrievalNode,
-    _normalize_metadata_filter_scalar,
-    _normalize_metadata_filter_sequence_item,
 )
 from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
 from core.workflow.system_variables import build_system_variables
@@ -27,6 +25,10 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables import ArrayObjectSegment, StringSegment
+from services.knowledge.metadata.metadata_filtering import (
+    _normalize_metadata_filter_scalar,
+    _normalize_metadata_filter_sequence_item,
+)
 from tests.workflow_test_utils import build_test_graph_init_params
 
 

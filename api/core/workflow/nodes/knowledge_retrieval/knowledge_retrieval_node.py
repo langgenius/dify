@@ -33,7 +33,9 @@ from graphon.variables import (
     StringSegment,
 )
 from graphon.variables.segments import ArrayObjectSegment
-from graphon.variables.template_resolution import convert_template
+from services.knowledge.metadata.metadata_filtering import (
+    resolve_metadata_filter_value,
+)
 
 from .entities import (
     Condition,
@@ -51,18 +53,6 @@ if TYPE_CHECKING:
     from graphon.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_metadata_filter_scalar(value: object) -> str | int | float | None:
-    if value is None or isinstance(value, (str, float)):
-        return value
-    if isinstance(value, int) and not isinstance(value, bool):
-        return value
-    return str(value)
-
-
-def _normalize_metadata_filter_sequence_item(value: object) -> str:
-    return value if isinstance(value, str) else str(value)
 
 
 class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
@@ -310,37 +300,14 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
             )
 
         variable_pool = self.graph_runtime_state.variable_pool
-        resolved_conditions: list[Condition] = []
-        for cond in conditions.conditions or []:
-            value = cond.value
-            resolved_value: str | Sequence[str] | int | float | None
-            match value:
-                case str():
-                    segment_group = convert_template(variable_pool, value)
-                    if len(segment_group.value) == 1:
-                        resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
-                    else:
-                        resolved_value = segment_group.text
-                case _ if isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
-                    resolved_values: list[str] = []
-                    for v in value:
-                        segment_group = convert_template(variable_pool, v)
-                        if len(segment_group.value) == 1:
-                            resolved_values.append(
-                                _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
-                            )
-                        else:
-                            resolved_values.append(segment_group.text)
-                    resolved_value = resolved_values
-                case _:
-                    resolved_value = value
-            resolved_conditions.append(
-                Condition(
-                    name=cond.name,
-                    comparison_operator=cond.comparison_operator,
-                    value=resolved_value,
-                )
+        resolved_conditions = [
+            Condition(
+                name=cond.name,
+                comparison_operator=cond.comparison_operator,
+                value=resolve_metadata_filter_value(cond.value, variable_pool),
             )
+            for cond in conditions.conditions
+        ]
         return MetadataFilteringCondition(
             logical_operator=conditions.logical_operator or "and",
             conditions=resolved_conditions,

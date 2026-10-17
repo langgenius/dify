@@ -79,6 +79,7 @@ from services.agent.prompt_mentions import (
     parse_prompt_mentions,
     workflow_previous_node_output_refs_from_selectors,
 )
+from services.knowledge.metadata.metadata_filtering import resolve_metadata_filter_value
 
 from .dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
@@ -216,7 +217,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             runtime_config_skills=runtime_config_skills,
         )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
-        knowledge_config = build_knowledge_layer_config(agent_soul)
+        knowledge_config = build_knowledge_layer_config(agent_soul, context.variable_pool)
         context_window_tokens = resolve_model_context_window(
             run_context=context.dify_context,
             provider_name=agent_soul.model.model_provider,
@@ -742,7 +743,9 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
     )
 
 
-def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
+def build_knowledge_layer_config(
+    agent_soul: AgentSoulConfig, variable_pool: VariablePoolReader
+) -> DifyKnowledgeBaseLayerConfig | None:
     """Map Agent Soul knowledge sets into one Dify knowledge-base layer.
 
     Agent Soul DTO validation owns malformed set rejection. Runtime mapping is
@@ -773,7 +776,9 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
                     value=knowledge_set.query.value,
                 ),
                 retrieval=_knowledge_retrieval_config(knowledge_set.retrieval),
-                metadata_filtering=_knowledge_metadata_filtering_config(knowledge_set.metadata_filtering),
+                metadata_filtering=_knowledge_metadata_filtering_config(
+                    knowledge_set.metadata_filtering, variable_pool
+                ),
             )
             for knowledge_set in agent_soul.knowledge.sets
         ],
@@ -820,17 +825,29 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
 
 def _knowledge_metadata_filtering_config(
     metadata_filtering: AgentKnowledgeMetadataFilteringConfig,
+    variable_pool: VariablePoolReader,
 ) -> DifyKnowledgeMetadataFilteringConfig:
+    conditions = metadata_filtering.conditions
+    if conditions is not None:
+        conditions = conditions.model_copy(
+            update={
+                "conditions": [
+                    condition.model_copy(
+                        update={"value": resolve_metadata_filter_value(condition.value, variable_pool)}
+                    )
+                    for condition in conditions.conditions
+                ]
+            }
+        )
+
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
         conditions=cast(
             Any,
-            metadata_filtering.conditions.model_dump(
-                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
-            ),
+            conditions.model_dump(mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}),
         )
-        if metadata_filtering.conditions is not None
+        if conditions is not None
         else None,
     )
 

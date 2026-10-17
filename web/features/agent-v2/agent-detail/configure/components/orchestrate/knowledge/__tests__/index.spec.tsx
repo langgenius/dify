@@ -1,9 +1,17 @@
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import type { DataSet } from '@/models/datasets'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
+import { ReactFlowProvider } from 'reactflow'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  MetadataFilteringModeEnum,
+  MetadataFilteringVariableType,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { VarType } from '@/app/components/workflow/types'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -100,6 +108,14 @@ const agentKnowledgeDraft = {
   ],
 } satisfies AgentSoulConfigFormState
 
+type WorkflowMetadataVariables = Pick<
+  MetadataShape,
+  | 'availableStringVars'
+  | 'availableStringNodesWithParent'
+  | 'availableNumberVars'
+  | 'availableNumberNodesWithParent'
+>
+
 function ConfigSnapshotPreview() {
   const draft = useAtomValue(agentComposerDraftAtom)
   const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
@@ -112,21 +128,25 @@ function renderKnowledgeRetrieval({
   readOnly = false,
   viewingVersion = false,
   showConfigSnapshot = false,
+  workflowVariables = {},
 }: {
   initialDraft?: AgentSoulConfigFormState
   readOnly?: boolean
   viewingVersion?: boolean
   showConfigSnapshot?: boolean
+  workflowVariables?: WorkflowMetadataVariables
 } = {}) {
   return render(
-    <AgentComposerProvider initialDraft={initialDraft}>
-      <AgentOrchestrateViewingVersionContext value={viewingVersion}>
-        <AgentOrchestrateReadOnlyContext value={readOnly}>
-          <AgentKnowledgeRetrieval />
-        </AgentOrchestrateReadOnlyContext>
-      </AgentOrchestrateViewingVersionContext>
-      {showConfigSnapshot && <ConfigSnapshotPreview />}
-    </AgentComposerProvider>,
+    <ReactFlowProvider>
+      <AgentComposerProvider initialDraft={initialDraft}>
+        <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+          <AgentOrchestrateReadOnlyContext value={readOnly}>
+            <AgentKnowledgeRetrieval {...workflowVariables} />
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
+        {showConfigSnapshot && <ConfigSnapshotPreview />}
+      </AgentComposerProvider>
+    </ReactFlowProvider>,
   )
 }
 
@@ -196,6 +216,105 @@ describe('AgentKnowledgeRetrieval', () => {
   })
 
   describe('User Interactions', () => {
+    it('shows upstream string and number variables in manual metadata conditions', async () => {
+      const user = userEvent.setup()
+      const dataset = {
+        id: 'dataset-1',
+        name: 'Guides',
+        doc_metadata: [
+          {
+            id: 'program-id',
+            name: 'guide_program_id',
+            type: MetadataFilteringVariableType.string,
+            value: '',
+          },
+          {
+            id: 'item-id',
+            name: 'guide_item_id',
+            type: MetadataFilteringVariableType.number,
+            value: '',
+          },
+        ],
+      } as DataSet
+      const workflowVariables: WorkflowMetadataVariables = {
+        availableStringVars: [
+          {
+            nodeId: 'start',
+            title: 'Start',
+            isStartNode: true,
+            vars: [{ variable: 'guide_program_id', type: VarType.string }],
+          } as NodeOutPutVar,
+        ],
+        availableStringNodesWithParent: [
+          { id: 'start', data: { type: 'start', title: 'Start' } } as unknown as Node,
+        ],
+        availableNumberVars: [
+          {
+            nodeId: 'start',
+            title: 'Start',
+            isStartNode: true,
+            vars: [{ variable: 'guide_item_id', type: VarType.number }],
+          } as NodeOutPutVar,
+        ],
+        availableNumberNodesWithParent: [
+          { id: 'start', data: { type: 'start', title: 'Start' } } as unknown as Node,
+        ],
+      }
+
+      renderKnowledgeRetrieval({
+        initialDraft: {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            {
+              id: 'retrieval-1',
+              name: 'Guides',
+              selectedDatasets: [dataset],
+              metadataFilterMode: MetadataFilteringModeEnum.manual,
+              metadataFilteringConditions: {
+                logical_operator: 'and',
+                conditions: [
+                  {
+                    id: 'condition-program',
+                    metadata_id: 'program-id',
+                    name: 'guide_program_id',
+                    comparison_operator: 'is',
+                    value: '{{#start.guide_program_id#}}',
+                  },
+                  {
+                    id: 'condition-item',
+                    metadata_id: 'item-id',
+                    name: 'guide_item_id',
+                    comparison_operator: '=',
+                    value: '{{#start.guide_item_id#}}',
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        workflowVariables,
+      })
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"Guides"}',
+        }),
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name: /workflowModels\.nodes\.knowledgeRetrieval\.metadata\.panel\.conditions/,
+        }),
+      )
+
+      const stringVariable = screen.getAllByText('guide_program_id').at(-1)!
+      await user.click(stringVariable)
+      expect(screen.getAllByText('guide_program_id')).toHaveLength(3)
+
+      await user.click(screen.getAllByText('guide_program_id').at(-1)!)
+      await user.click(screen.getAllByText('guide_item_id').at(-1)!)
+      expect(screen.getAllByText('guide_item_id')).toHaveLength(3)
+    })
+
     it('should open the knowledge retrieval dialog from the add button', async () => {
       const user = userEvent.setup()
       renderKnowledgeRetrieval()
