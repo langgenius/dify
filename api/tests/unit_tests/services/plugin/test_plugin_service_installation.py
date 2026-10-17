@@ -268,6 +268,7 @@ class TestUpgradePluginWithMarketplace:
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()
+        installer.decode_plugin_from_identifier.return_value.manifest.meta.minimum_dify_version = None
         installer.upgrade_plugin.return_value = MagicMock()
 
         PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
@@ -285,6 +286,7 @@ class TestUpgradePluginWithMarketplace:
         mock_download.return_value = b"pkg-bytes"
         upload_resp = MagicMock()
         upload_resp.verification = None
+        upload_resp.manifest.meta.minimum_dify_version = None
         installer.upload_pkg.return_value = upload_resp
         installer.upgrade_plugin.return_value = MagicMock()
 
@@ -343,6 +345,7 @@ class TestUpgradePluginWithMarketplace:
         installer.fetch_plugin_manifest.return_value = MagicMock()
         decode_resp = MagicMock()
         decode_resp.verification.authorized_category = PluginVerification.AuthorizedCategory.Langgenius
+        decode_resp.manifest.meta.minimum_dify_version = None
         installer.decode_plugin_from_identifier.return_value = decode_resp
 
         PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
@@ -357,6 +360,8 @@ class TestUpgradePluginWithGithub:
     def test_checks_marketplace_permission_and_delegates(self, mock_installer_cls: MagicMock, mock_fs: MagicMock):
         mock_fs.get_plugin_installation_permission.return_value = _make_permission()
         installer = mock_installer_cls.return_value
+        installer.decode_plugin_from_identifier.return_value.verification = None
+        installer.decode_plugin_from_identifier.return_value.manifest.meta.minimum_dify_version = None
         installer.upgrade_plugin.return_value = MagicMock()
 
         PluginService.upgrade_plugin_with_github("t1", "old-uid", "new-uid", "org/repo", "v1", "pkg.difypkg")
@@ -398,6 +403,7 @@ class TestInstallFromMarketplacePkg:
         upload_resp = MagicMock()
         upload_resp.verification = None
         upload_resp.unique_identifier = "resolved-uid"
+        upload_resp.manifest.meta.minimum_dify_version = None
         installer.upload_pkg.return_value = upload_resp
         installer.install_from_identifiers.return_value = "task-id"
 
@@ -416,6 +422,7 @@ class TestInstallFromMarketplacePkg:
         installer.fetch_plugin_manifest.return_value = MagicMock()
         decode_resp = MagicMock()
         decode_resp.verification = None
+        decode_resp.manifest.meta.minimum_dify_version = None
         installer.decode_plugin_from_identifier.return_value = decode_resp
         installer.install_from_identifiers.return_value = "task-id"
 
@@ -445,6 +452,111 @@ class TestInstallFromMarketplacePkg:
         # the rejection must not fall through to the download branch and cache the pkg again
         mock_download.assert_not_called()
         installer.upload_pkg.assert_not_called()
+
+
+class TestPluginCompatibilityAdmission:
+    @staticmethod
+    def _incompatible_decode_response():
+        response = MagicMock()
+        response.verification = None
+        response.manifest.meta.minimum_dify_version = "999.0.0"
+        response.unique_identifier = "incompatible-uid"
+        return response
+
+    @pytest.mark.parametrize(
+        ("install_method", "install_args"),
+        [
+            ("install_from_local_pkg", ("t1", ["incompatible-uid"])),
+            ("install_from_github", ("t1", "incompatible-uid", "org/repo", "v1", "plugin.difypkg")),
+        ],
+    )
+    @patch("core.plugin.plugin_service.SystemFeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_rejects_incompatible_decoded_packages_before_install_dispatch(
+        self, mock_installer_cls, mock_fs, install_method, install_args
+    ):
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission()
+        installer = mock_installer_cls.return_value
+        installer.decode_plugin_from_identifier.return_value = self._incompatible_decode_response()
+
+        with pytest.raises(PluginInstallationForbiddenError, match="requires Dify"):
+            getattr(PluginService, install_method)(*install_args)
+
+        installer.install_from_identifiers.assert_not_called()
+
+    @pytest.mark.parametrize("cached", [False, True])
+    @patch("core.plugin.plugin_service.download_plugin_pkg", return_value=b"pkg")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_rejects_incompatible_marketplace_packages_before_install_dispatch(
+        self, mock_installer_cls, mock_fs, mock_download, cached
+    ):
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission()
+        installer = mock_installer_cls.return_value
+        incompatible = self._incompatible_decode_response()
+        if cached:
+            installer.fetch_plugin_manifest.return_value = MagicMock()
+            installer.decode_plugin_from_identifier.return_value = incompatible
+        else:
+            installer.fetch_plugin_manifest.side_effect = RuntimeError("not cached")
+            installer.upload_pkg.return_value = incompatible
+
+        with pytest.raises(PluginInstallationForbiddenError, match="requires Dify"):
+            PluginService.install_from_marketplace_pkg("t1", ["incompatible-uid"])
+
+        if cached:
+            mock_download.assert_not_called()
+        else:
+            mock_download.assert_called_once_with("incompatible-uid")
+        installer.install_from_identifiers.assert_not_called()
+
+    @patch("core.plugin.plugin_service.SystemFeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_rejects_incompatible_github_upgrade_before_upgrade_dispatch(self, mock_installer_cls, mock_fs):
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission()
+        installer = mock_installer_cls.return_value
+        installer.decode_plugin_from_identifier.return_value = self._incompatible_decode_response()
+
+        with pytest.raises(PluginInstallationForbiddenError, match="requires Dify"):
+            PluginService.upgrade_plugin_with_github(
+                "t1", "old-uid", "incompatible-uid", "org/repo", "v1", "plugin.difypkg"
+            )
+
+        installer.upgrade_plugin.assert_not_called()
+
+    @patch("core.plugin.plugin_service.marketplace")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_rejects_incompatible_marketplace_upgrade_before_upgrade_dispatch(
+        self, mock_installer_cls, mock_fs, mock_marketplace
+    ):
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission()
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        installer.decode_plugin_from_identifier.return_value = self._incompatible_decode_response()
+
+        with pytest.raises(PluginInstallationForbiddenError, match="requires Dify"):
+            PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "incompatible-uid")
+
+        installer.upgrade_plugin.assert_not_called()
+        mock_marketplace.record_install_plugin_event.assert_not_called()
+
+    @patch("core.plugin.plugin_service.download_plugin_pkg", return_value=b"pkg")
+    @patch("core.plugin.plugin_service.SystemFeatureService")
+    @patch("core.plugin.plugin_service.PluginInstaller")
+    def test_rejects_incompatible_downloaded_marketplace_upgrade_before_upgrade_dispatch(
+        self, mock_installer_cls, mock_fs, mock_download
+    ):
+        mock_fs.get_plugin_installation_permission.return_value = _make_permission()
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.side_effect = RuntimeError("not cached")
+        installer.upload_pkg.return_value = self._incompatible_decode_response()
+
+        with pytest.raises(PluginInstallationForbiddenError, match="requires Dify"):
+            PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "incompatible-uid")
+
+        mock_download.assert_called_once_with("incompatible-uid")
+        installer.upgrade_plugin.assert_not_called()
 
 
 class TestUninstall:
