@@ -24,20 +24,44 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     chatList,
     config,
     onFeedback,
+    onOpenLog,
   }: {
     chatList: IChatItem[]
     config?: { supportFeedback?: boolean }
     onFeedback?: OnFeedback
+    onOpenLog?: (item: IChatItem) => void
   }) => {
-    mocks.chatProps({ chatList, config, onFeedback })
+    mocks.chatProps({ chatList, config, onFeedback, onOpenLog })
+    const loggable = chatList.find((item) => item.conversationId)
     return (
-      <button
-        onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
-      >
-        submit-feedback
-      </button>
+      <div>
+        <button
+          onClick={() => void onFeedback?.('message-1', { rating: 'like' }).catch(() => undefined)}
+        >
+          submit-feedback
+        </button>
+        {onOpenLog && loggable && (
+          <button
+            onClick={() => onOpenLog(loggable)}
+          >
+            open-log
+          </button>
+        )}
+      </div>
     )
   },
+}))
+
+vi.mock('@/app/components/base/agent-log-modal', () => ({
+  default: ({ currentLogItem, onCancel }: { currentLogItem?: IChatItem; onCancel: () => void }) =>
+    currentLogItem
+      ? (
+          <div>
+            <span>agent-log-modal</span>
+            <button onClick={onCancel}>close-modal</button>
+          </div>
+        )
+      : null,
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -57,6 +81,12 @@ vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
+        get: {
+          queryOptions: ({ input }: { input: unknown }) => ({
+            queryFn: () => Promise.resolve({ backing_app_id: 'backing-app-1' }),
+            queryKey: ['agent', input],
+          }),
+        },
         feedbacks: {
           post: {
             mutationOptions: () => ({ mutationFn: mocks.feedbackMutationFn }),
@@ -234,5 +264,21 @@ describe('AgentLogDetailPanel', () => {
         ]),
       }),
     )
+  })
+
+  it('opens the per-message agent log modal when the log icon is clicked', async () => {
+    const user = userEvent.setup()
+    renderPanel(webappLog, webappMessages)
+
+    const openButton = await screen.findByRole('button', { name: 'open-log' })
+    expect(mocks.chatProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ onOpenLog: expect.any(Function) }),
+    )
+
+    await user.click(openButton)
+    expect(await screen.findByText('agent-log-modal')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'close-modal' }))
+    await waitFor(() => expect(screen.queryByText('agent-log-modal')).not.toBeInTheDocument())
   })
 })
