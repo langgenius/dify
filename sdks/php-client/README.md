@@ -91,6 +91,35 @@ $response = $difyClient->message_feedback($message_id, $rating, "user_id");
 
 Replace 'your-api-key-here' with your actual Dify API key.
 
+## Workflow streaming
+
+Pass `streaming` as the response mode to receive a Guzzle response without waiting for
+all workflow events to arrive. Read its body incrementally; individual reads may split
+an SSE event across chunks.
+
+```php
+$workflowClient = new WorkflowClient($apiKey);
+$response = $workflowClient->run(array("query" => "hello"), "streaming", "user_id");
+$body = $response->getBody();
+while (!$body->eof()) {
+    echo $body->read(1024);
+}
+```
+
+Use `blocking` for the complete JSON response.
+
+## Tests
+
+After installing the dependencies, run the workflow request regression test:
+
+```sh
+composer install
+php tests/workflow_stream_test.php
+```
+
+The test uses the SDK's real Guzzle request preparation and replaces only the HTTP
+transport. It checks streaming and blocking options, endpoint, payload, and authentication.
+
 ## License
 
 This SDK is released under the MIT License.
