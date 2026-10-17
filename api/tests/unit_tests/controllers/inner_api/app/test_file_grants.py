@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import patch
 
 import jwt
@@ -78,7 +79,7 @@ def _mint(app: Flask, payload: dict[str, object]) -> dict[str, object]:
     with app.test_request_context("/", method="POST", json=payload):
         with patch(f"{CONTROLLER_MODULE}.inner_api_ns") as mock_ns:
             mock_ns.payload = payload
-            return inspect.unwrap(handler.post)(handler)
+            return inspect.unwrap(cast(Callable[..., object], handler.post))(handler)
 
 
 def _subject_of(response: dict[str, object]) -> str:

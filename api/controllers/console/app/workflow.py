@@ -12,7 +12,6 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
-    ValidationError,
     field_validator,
     model_validator,
 )
@@ -660,7 +659,7 @@ class DraftWorkflowApi(Resource):
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError):
+            except ValueError:
                 raise InvalidArgumentError("Invalid JSON data")
         else:
             abort(415)

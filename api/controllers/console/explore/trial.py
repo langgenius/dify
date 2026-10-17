@@ -81,7 +81,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file
 from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
+from core.app.apps.agent_app.errors import AgentAppGeneratorError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     AppInvokeQuotaExceededError,
@@ -668,7 +668,7 @@ class TrialChatApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
-        except (AgentAppGeneratorError, AgentAppNotPublishedError):
+        except AgentAppGeneratorError:
             raise AppUnavailableError() from None
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)

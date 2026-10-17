@@ -1,5 +1,4 @@
 import base64
-import binascii
 import json
 import logging
 import urllib.parse
@@ -99,7 +98,7 @@ def decode_oauth_state(state: str | None) -> OAuthState:
         padded_state = state + "=" * (-len(state) % 4)
         raw_state = base64.urlsafe_b64decode(padded_state.encode("ascii")).decode("utf-8")
         return OAUTH_STATE_ADAPTER.validate_python(json.loads(raw_state))
-    except (binascii.Error, ValueError, UnicodeDecodeError, json.JSONDecodeError, ValidationError):
+    except ValueError:  # Covers binascii.Error, UnicodeDecodeError, JSONDecodeError and ValidationError.
         return {}
 
 

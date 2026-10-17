@@ -5,7 +5,7 @@ from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, ValidationError
+from pydantic import BaseModel, Field, RootModel
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -276,7 +276,7 @@ class DraftRagPipelineApi(Resource):
         elif "text/plain" in content_type:
             try:
                 payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
-            except (ValueError, ValidationError):
+            except ValueError:
                 raise InvalidArgumentError("Invalid JSON data")
         else:
             abort(415)
