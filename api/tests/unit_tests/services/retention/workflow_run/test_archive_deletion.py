@@ -205,8 +205,6 @@ def test_failed_cleanup_reaches_celery_retry_instead_of_success(
     month_lease: WorkflowRunArchiveMonthLease,
 ) -> None:
     """The entry point must surface FAILED so autoretry engages (#44059)."""
-    from celery import current_app
-
     from tasks import workflow_run_archive_deletion_tasks as deletion_tasks
 
     archive, downloads = MemoryStorage(), MemoryStorage()
@@ -221,24 +219,18 @@ def test_failed_cleanup_reaches_celery_retry_instead_of_success(
     repository.request_deletion(TENANT_ID, year=2025, month=3)
 
     task = deletion_tasks.delete_workflow_run_archive_task
-    current_app.conf.task_always_eager = True
-    try:
-        with (
-            patch.object(deletion_tasks, "get_session_maker", return_value=sqlite_session_factory),
-            patch.object(deletion_tasks, "get_archive_storage", return_value=archive),
-            patch.object(deletion_tasks, "get_export_storage", return_value=downloads),
-            patch.object(
-                deletion_tasks,
-                "RedisWorkflowRunArchiveMonthLock",
-                lambda **_kwargs: lambda **_kw: nullcontext(month_lease),
-            ),
-        ):
-            result = task.apply(args=(TENANT_ID, 2025, 3))
-    finally:
-        try:
-            del current_app.conf.task_always_eager
-        except AttributeError:
-            pass
+    # apply() executes eagerly without changing process-global Celery settings.
+    with (
+        patch.object(deletion_tasks, "get_session_maker", return_value=sqlite_session_factory),
+        patch.object(deletion_tasks, "get_archive_storage", return_value=archive),
+        patch.object(deletion_tasks, "get_export_storage", return_value=downloads),
+        patch.object(
+            deletion_tasks,
+            "RedisWorkflowRunArchiveMonthLock",
+            lambda **_kwargs: lambda **_kw: nullcontext(month_lease),
+        ),
+    ):
+        result = task.apply(args=(TENANT_ID, 2025, 3))
 
     assert result.failed()
     records = repository.list_for_tenant_month(TENANT_ID, year=2025, month=3)
@@ -251,8 +243,6 @@ def test_completed_cleanup_returns_success(
     month_lease: WorkflowRunArchiveMonthLease,
 ) -> None:
     """A clean run still reports success with no retry."""
-    from celery import current_app
-
     from tasks import workflow_run_archive_deletion_tasks as deletion_tasks
 
     archive, downloads = MemoryStorage(), MemoryStorage()
@@ -264,24 +254,17 @@ def test_completed_cleanup_returns_success(
     repository.request_deletion(TENANT_ID, year=2025, month=3)
 
     task = deletion_tasks.delete_workflow_run_archive_task
-    current_app.conf.task_always_eager = True
-    try:
-        with (
-            patch.object(deletion_tasks, "get_session_maker", return_value=sqlite_session_factory),
-            patch.object(deletion_tasks, "get_archive_storage", return_value=archive),
-            patch.object(deletion_tasks, "get_export_storage", return_value=downloads),
-            patch.object(
-                deletion_tasks,
-                "RedisWorkflowRunArchiveMonthLock",
-                lambda **_kwargs: lambda **_kw: nullcontext(month_lease),
-            ),
-        ):
-            result = task.apply(args=(TENANT_ID, 2025, 3))
-    finally:
-        try:
-            del current_app.conf.task_always_eager
-        except AttributeError:
-            pass
+    with (
+        patch.object(deletion_tasks, "get_session_maker", return_value=sqlite_session_factory),
+        patch.object(deletion_tasks, "get_archive_storage", return_value=archive),
+        patch.object(deletion_tasks, "get_export_storage", return_value=downloads),
+        patch.object(
+            deletion_tasks,
+            "RedisWorkflowRunArchiveMonthLock",
+            lambda **_kwargs: lambda **_kw: nullcontext(month_lease),
+        ),
+    ):
+        result = task.apply(args=(TENANT_ID, 2025, 3))
 
     assert result.successful()
     assert not repository.list_for_tenant_month(TENANT_ID, year=2025, month=3)
