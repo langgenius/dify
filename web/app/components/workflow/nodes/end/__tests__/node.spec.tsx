@@ -27,7 +27,7 @@ vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
 
 const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseWorkflowVariables = vi.mocked(useWorkflowVariables)
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 
 const createNodeData = (overrides: Partial<EndNodeType> = {}): EndNodeType => ({
   title: 'End',
@@ -61,13 +61,19 @@ describe('EndNode', () => {
       getNodeAvailableVars: () => [],
       getCurrentVariableType: () => 'string',
     } as unknown as ReturnType<typeof useWorkflowVariables>)
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   // The node should surface only resolved outputs and ignore empty selectors.
   describe('Rendering', () => {
     it('should render resolved output labels for referenced nodes', () => {
-      renderNodeComponent(Node, createNodeData())
+      renderNodeComponent(Node, createNodeData(), {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      })
 
       expect(screen.getByText('Source Node')).toBeInTheDocument()
       expect(screen.getByText('answer')).toBeInTheDocument()
@@ -85,6 +91,13 @@ describe('EndNode', () => {
             },
           ],
         }),
+        {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: chatflowMode ? 'advanced-chat' : 'workflow',
+          },
+        },
       )
 
       expect(screen.getByText('Start')).toBeInTheDocument()
@@ -102,16 +115,16 @@ describe('EndNode', () => {
             },
           ],
         }),
+        {
+          resource: {
+            kind: 'app',
+            appId: 'app-1',
+            mode: chatflowMode ? 'advanced-chat' : 'workflow',
+          },
+        },
       )
 
       expect(container).toBeEmptyDOMElement()
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

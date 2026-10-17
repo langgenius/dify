@@ -91,7 +91,8 @@ describe('UpdateDSLModal', () => {
   const defaultProps = {
     appId: 'app-1',
     appMode: 'workflow' as const,
-    onCancel: vi.fn(),
+    open: true,
+    onOpenChange: vi.fn(),
     onBackup: vi.fn(),
     onImport: vi.fn(),
   }
@@ -145,7 +146,7 @@ describe('UpdateDSLModal', () => {
     fireEvent.change(screen.getByTestId('dsl-file-input'), { target: { files: [file] } })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
     await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file, app_id: 'app-1' }))
-    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalled())
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalled())
   })
 
   it('should keep import disabled until a file is selected', () => {
@@ -165,21 +166,21 @@ describe('UpdateDSLModal', () => {
   })
 
   it('should call cancel handler when the import dialog requests close', () => {
-    const onCancel = vi.fn()
-    renderModal({ ...defaultProps, onCancel })
+    const onOpenChange = vi.fn()
+    renderModal({ ...defaultProps, onOpenChange })
 
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
-    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledTimes(1)
   })
 
   it('should call cancel handler when the close button is clicked', () => {
-    const onCancel = vi.fn()
-    renderModal({ ...defaultProps, onCancel })
+    const onOpenChange = vi.fn()
+    renderModal({ ...defaultProps, onOpenChange })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
-    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledTimes(1)
   })
 
   it('should import a valid file and emit workflow update payload', async () => {
@@ -207,7 +208,7 @@ describe('UpdateDSLModal', () => {
     )
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
-    expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+    expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1)
   })
 
   it('commits the imported graph to collaboration before updating the canvas or other clients', async () => {
@@ -231,7 +232,7 @@ describe('UpdateDSLModal', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
-    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
     const [appId, nodes, edges] = mockReplaceGraphFromCommittedDraft.mock.calls[0]!
     expect(appId).toBe('app-1')
     expect(nodes).toEqual([expect.objectContaining({ id: 'imported-start' })])
@@ -259,7 +260,7 @@ describe('UpdateDSLModal', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
-    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
     expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
     expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'WORKFLOW_DATA_UPDATE' }))
   })
@@ -276,7 +277,7 @@ describe('UpdateDSLModal', () => {
 
     await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
     expect(mockEmit).not.toHaveBeenCalled()
-    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
     reload.mockRestore()
   })
 
@@ -403,7 +404,7 @@ describe('UpdateDSLModal', () => {
     })
   })
 
-  it('should close the owner when cancelling a pending import', async () => {
+  it('returns to the selected file when cancelling version confirmation', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'import-5',
       status: DSLImportStatus.PENDING,
@@ -432,11 +433,15 @@ describe('UpdateDSLModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
     await waitFor(() => {
-      expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
     })
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+    ).not.toBeDisabled()
   })
 
-  it('should close the pending modal when dialog requests close', async () => {
+  it('returns to the selected file when escaping version confirmation', async () => {
     mockImportDSL.mockResolvedValue({
       id: 'import-8',
       status: DSLImportStatus.PENDING,
@@ -458,8 +463,12 @@ describe('UpdateDSLModal', () => {
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
     await waitFor(() => {
-      expect(defaultProps.onCancel).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('button', { name: 'app.newApp.Confirm' })).not.toBeInTheDocument()
     })
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }),
+    ).not.toBeDisabled()
   })
 
   it('keeps a successful import successful when refreshing the draft fails', async () => {
@@ -476,7 +485,7 @@ describe('UpdateDSLModal', () => {
       }),
     )
     expect(toast.success).toHaveBeenCalledWith('workflow.common.importSuccess', undefined)
-    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
@@ -501,12 +510,12 @@ describe('UpdateDSLModal', () => {
     await user.click(submit)
     await user.keyboard('{Escape}')
     expect(mockImportDSL).toHaveBeenCalledTimes(1)
-    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
 
     await act(async () =>
       resolveDraft({ graph: { nodes: [], edges: [], viewport: {} }, features: {} }),
     )
-    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
     expect(mockEmit).toHaveBeenCalled()
   })
 
@@ -528,14 +537,14 @@ describe('UpdateDSLModal', () => {
     await user.click(confirm)
     await user.keyboard('{Escape}')
     expect(mockImportDSLConfirm).toHaveBeenCalledTimes(1)
-    expect(defaultProps.onCancel).not.toHaveBeenCalled()
+    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
 
     await act(async () => resolveRequest({ status: DSLImportStatus.FAILED, error: 'Retry import' }))
     await waitFor(() => expect(confirm).not.toHaveAttribute('aria-disabled', 'true'))
     await user.click(confirm)
     await waitFor(() => expect(mockImportDSLConfirm).toHaveBeenCalledTimes(2))
     expect(mockImportDSLConfirm).toHaveBeenLastCalledWith({ import_id: 'pending-1' })
-    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
   })
 
   it('imports the submitted file snapshot even when selection changes while reading', async () => {

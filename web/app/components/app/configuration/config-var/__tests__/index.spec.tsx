@@ -135,7 +135,8 @@ describe('ConfigVar', () => {
     })
 
     it('should render variable items and allow reordering via sortable list', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({ key: 'first', name: 'First' })
       const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
@@ -159,7 +160,8 @@ describe('ConfigVar', () => {
 
     it('commits variable keyboard sorting only after confirmation', async () => {
       const user = userEvent.setup()
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const first = createPromptVariable({ key: 'first', name: 'First' })
       const second = createPromptVariable({ key: 'second', name: 'Second' })
       renderConfigVar({ promptVariables: [first, second], onPromptVariablesChange })
@@ -181,7 +183,8 @@ describe('ConfigVar', () => {
     })
 
     it('should ignore sortable updates when the variable order is unchanged', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({ key: 'first', name: 'First' })
       const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
@@ -212,20 +215,22 @@ describe('ConfigVar', () => {
     })
 
     it('should add a text variable when selecting the string option', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       renderConfigVar({ promptVariables: [], onPromptVariablesChange })
 
       fireEvent.click(screen.getByText('common.operation.add'))
       fireEvent.click(await screen.findByText('appDebug.variableConfig.string'))
 
       expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
-      const [nextVariables] = (onPromptVariablesChange.mock.calls[0] ?? []) as [any]
+      const [nextVariables] = onPromptVariablesChange.mock.calls[0]!
       expect(nextVariables).toHaveLength(1)
-      expect(nextVariables[0].type).toBe('string')
+      expect(nextVariables[0]!.type).toBe('string')
     })
 
     it('should open the external data tool modal when adding an api variable', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       renderConfigVar({ promptVariables: [], onPromptVariablesChange })
 
       fireEvent.click(screen.getByText('common.operation.add'))
@@ -245,7 +250,8 @@ describe('ConfigVar', () => {
     })
 
     it('should restore previous variables when cancelling api variable with existing items', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const existingVar = createPromptVariable({ key: 'existing', name: 'Existing' })
 
       renderConfigVar({ promptVariables: [existingVar], onPromptVariablesChange })
@@ -259,10 +265,10 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenCalledTimes(2)
-      const [addedVariables] = (onPromptVariablesChange.mock.calls[0] ?? []) as [any]
+      const [addedVariables] = onPromptVariablesChange.mock.calls[0]!
       expect(addedVariables).toHaveLength(2)
       expect(addedVariables[0]).toBe(existingVar)
-      expect(addedVariables[1].type).toBe('api')
+      expect(addedVariables[1]!.type).toBe('api')
       expect(onPromptVariablesChange).toHaveBeenLastCalledWith([existingVar])
     })
   })
@@ -278,7 +284,8 @@ describe('ConfigVar', () => {
     })
 
     it('should save updates when editing a basic variable', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const variable = createPromptVariable({ key: 'name', name: 'Name' })
 
       renderConfigVar({
@@ -303,7 +310,8 @@ describe('ConfigVar', () => {
     })
 
     it('should show error when variable key is duplicated', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({ key: 'first', name: 'First' })
       const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
@@ -331,7 +339,8 @@ describe('ConfigVar', () => {
     })
 
     it('should show error when variable label is duplicated', async () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({ key: 'first', name: 'First' })
       const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
@@ -370,7 +379,8 @@ describe('ConfigVar', () => {
     })
 
     it('should remove variable directly when context confirmation is not required', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const variable = createPromptVariable({ key: 'name', name: 'Name' })
 
       renderConfigVar({
@@ -385,7 +395,8 @@ describe('ConfigVar', () => {
     })
 
     it('should require confirmation when removing context variable with datasets in completion mode', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const variable = createPromptVariable({
         key: 'context',
         name: 'Context',
@@ -423,7 +434,8 @@ describe('ConfigVar', () => {
     })
 
     it('should append external data tool variables from event emitter', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       renderConfigVar({
         promptVariables: [],
         onPromptVariablesChange,
@@ -455,7 +467,8 @@ describe('ConfigVar', () => {
     })
 
     it('should update an api variable with the modal save callback', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const apiVar = createPromptVariable({
         key: 'api_var',
         name: 'API Var',
@@ -500,7 +513,8 @@ describe('ConfigVar', () => {
     })
 
     it('should ignore empty external tool saves and reject duplicate variable names during validation', () => {
-      const onPromptVariablesChange = vi.fn()
+      const onPromptVariablesChange =
+        vi.fn<NonNullable<React.ComponentProps<typeof ConfigVar>['onPromptVariablesChange']>>()
       const firstVar = createPromptVariable({
         key: 'api_var',
         name: 'API Var',

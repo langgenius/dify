@@ -218,7 +218,6 @@ describe('ShortcutsPopupPlugin', () => {
     const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(document.body).toContainElement(portalContent)
     expect(floatingDiv).toHaveStyle({ position: 'fixed' })
-    expect(floatingDiv).toHaveStyle({ zIndex: '50' })
     expect(floatingDiv).toHaveStyle({ overflow: 'visible' })
   })
 

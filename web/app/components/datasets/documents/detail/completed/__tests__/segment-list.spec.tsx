@@ -1,4 +1,4 @@
-import type { SegmentDetailModel } from '@/models/datasets'
+import type { SegmentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
@@ -59,7 +59,7 @@ vi.mock('../segment-card', () => ({
     embeddingAvailable,
     focused,
   }: {
-    detail: SegmentDetailModel
+    detail: SegmentResponse
     onClick: () => void
     onChangeSwitch: (enabled: boolean, segId?: string) => Promise<void>
     onClickEdit: () => void
@@ -122,7 +122,7 @@ describe('SegmentList', () => {
     mockCurrChildChunk = null
   })
 
-  const createMockSegment = (id: string, content: string): SegmentDetailModel =>
+  const createMockSegment = (id: string, content: string): SegmentResponse =>
     ({
       id,
       content,
@@ -143,7 +143,7 @@ describe('SegmentList', () => {
       error: null,
       disabled_at: null,
       disabled_by: null,
-    }) as unknown as SegmentDetailModel
+    }) as unknown as SegmentResponse
 
   const defaultProps = {
     ref: null,

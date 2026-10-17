@@ -1,4 +1,4 @@
-import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { VarInInspect } from '@/types/workflow'
 import { act, waitFor } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
@@ -16,9 +16,8 @@ const mockInvalidateConversationVarValues = vi.hoisted(() => vi.fn())
 const mockInvalidateSysVarValues = vi.hoisted(() => vi.fn())
 const mockHandleCancelNodeSuccessStatus = vi.hoisted(() => vi.fn())
 const mockHandleEdgeCancelRunningStatus = vi.hoisted(() => vi.fn())
-const mockToNodeOutputVars = vi.hoisted(() => vi.fn())
 
-const schemaTypeDefinitions: SchemaTypeDefinition[] = [
+const schemaTypeDefinitions: SchemaDefinitionItemResponse[] = [
   {
     name: 'simple',
     label: 'Simple',
@@ -65,16 +64,6 @@ vi.mock('../use-edges-interactions-without-sync', () => ({
   }),
 }))
 
-vi.mock(
-  '@/app/components/workflow/nodes/_base/components/variable/utils',
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import('@/app/components/workflow/nodes/_base/components/variable/utils')
-    >()),
-    toNodeOutputVars: (...args: unknown[]) => mockToNodeOutputVars(...args),
-  }),
-)
-
 const createInspectVar = (overrides: Partial<VarInInspect> = {}): VarInInspect => ({
   id: 'var-1',
   type: 'node',
@@ -104,20 +93,10 @@ describe('useInspectVarsCrudCommon', () => {
           type: BlockEnum.Code,
           title: 'Code',
           desc: '',
+          outputs: { answer: { type: VarType.string } },
         },
       }),
     ]
-    mockToNodeOutputVars.mockReturnValue([
-      {
-        nodeId: 'node-1',
-        vars: [
-          {
-            variable: 'answer',
-            schemaType: 'simple',
-          },
-        ],
-      },
-    ])
   })
 
   it('invalidates cached system vars without refetching node values for system selectors', async () => {
@@ -135,7 +114,7 @@ describe('useInspectVarsCrudCommon', () => {
     expect(mockFetchNodeInspectVars).not.toHaveBeenCalled()
   })
 
-  it('fetches node inspect vars, adds schema types, and marks the node as fetched', async () => {
+  it('fetches node inspect vars, preserves output values, and marks the node as fetched', async () => {
     mockFetchNodeInspectVars.mockResolvedValue([createInspectVar()])
 
     const { result, store } = renderWorkflowHook(() => useInspectVarsCrudCommon(), {
@@ -172,7 +151,7 @@ describe('useInspectVarsCrudCommon', () => {
         vars: [
           expect.objectContaining({
             id: 'var-1',
-            schemaType: 'simple',
+            schemaType: '',
           }),
         ],
       })
@@ -242,7 +221,7 @@ describe('useInspectVarsCrudCommon', () => {
 
   it('removes a variable reset with no historical value and preserves neighboring schemas', async () => {
     const { result, store } = renderWorkflowHook(() => useInspectVarsCrudCommon())
-    const neighbor = createInspectVar({ id: 'var-2', name: 'other', schemaType: 'simple' })
+    const neighbor = createInspectVar({ id: 'var-2', name: 'other', schemaType: '' })
     act(() =>
       result.current.appendNodeInspectVars(
         'node-1',

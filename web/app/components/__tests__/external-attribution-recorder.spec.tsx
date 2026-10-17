@@ -23,7 +23,7 @@ const mockUseSearchParams = vi.mocked(useSearchParams)
 
 const setSearchParams = (search = '') => {
   mockUseSearchParams.mockReturnValue(
-    new URLSearchParams(search) as unknown as ReturnType<typeof useSearchParams>,
+    new URLSearchParams(search) as ReturnType<typeof useSearchParams>,
   )
 }
 

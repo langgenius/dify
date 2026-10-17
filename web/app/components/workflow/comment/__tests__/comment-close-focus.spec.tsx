@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from '../types'
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Fragment } from 'react'
@@ -52,7 +52,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const comment: WorkflowCommentList = {
+const comment: WorkflowCommentBasic = {
   id: 'comment-1',
   position_x: 10,
   position_y: 20,
@@ -242,7 +242,7 @@ describe('Comment keyboard focus lifecycle', () => {
 
   it('restores the last viewed comment marker after navigating to another thread', async () => {
     const user = userEvent.setup()
-    const otherComment: WorkflowCommentList = {
+    const otherComment: WorkflowCommentBasic = {
       ...comment,
       id: 'comment-2',
       content: 'Another comment',

@@ -1,10 +1,14 @@
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { InfiniteData } from '@tanstack/react-query'
-import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import { screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import Datasets from '../datasets'
@@ -25,7 +29,7 @@ vi.mock('@/hooks/use-knowledge', () => ({
   }),
 }))
 
-type DatasetListItem = DataSetListResponse['data'][number]
+type DatasetListItem = DatasetListResponse['data'][number]
 
 const mockFetchNextPage = vi.fn()
 
@@ -56,7 +60,7 @@ vi.mock('../dataset-card', () => ({
     stepByStepTourActionMenuOpen,
     stepByStepTourCardTarget,
   }: {
-    dataset: DataSet
+    dataset: DatasetDetailWithPartialMembersResponse
     stepByStepTourActionMenuHighlightPart?: string
     stepByStepTourActionMenuOpen?: boolean
     stepByStepTourCardTarget?: string
@@ -81,7 +85,7 @@ function createMockDataset(overrides: Partial<DatasetListItem> = {}): DatasetLis
     name: 'Test Dataset',
     description: 'Test description',
     provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
+    permission: PermissionLevel.allTeamMembers,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     embedding_available: true,
@@ -130,7 +134,7 @@ class MockIntersectionObserver {
 
 describe('Datasets', () => {
   const createDatasetListData = (
-    pages: Array<Pick<DataSetListResponse, 'data'> & Partial<Omit<DataSetListResponse, 'data'>>> = [
+    pages: Array<Pick<DatasetListResponse, 'data'> & Partial<Omit<DatasetListResponse, 'data'>>> = [
       {
         data: [
           createMockDataset({ id: 'dataset-1', name: 'Dataset 1' }),
@@ -148,7 +152,7 @@ describe('Datasets', () => {
         ...page,
       })),
       pageParams: pages.map((_, index) => index + 1),
-    }) satisfies InfiniteData<DataSetListResponse, number>
+    }) satisfies InfiniteData<DatasetListResponse, number>
 
   const defaultProps = {
     datasetList: createDatasetListData(),

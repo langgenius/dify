@@ -1,5 +1,4 @@
 import type { Node } from 'reactflow'
-import type { ReasoningConfigValue as ReasoningConfigValueShape } from './reasoning-config-form.helpers'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
 import type { NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -42,7 +41,17 @@ import {
 } from './reasoning-config-form.helpers'
 import { SchemaDialog } from './schema-dialog'
 
-export type ReasoningConfigValue = ReasoningConfigValueShape
+export type ReasoningConfigValue = Record<
+  string,
+  {
+    value: {
+      type?: VarKindType
+      value?: unknown
+      [key: string]: unknown
+    } | null
+    auto?: 0 | 1
+  }
+>
 
 type Props = Readonly<{
   value: ReasoningConfigValue

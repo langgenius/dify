@@ -1,5 +1,5 @@
 import type { ErrorEnvelope } from './base'
-import type { Style } from '@/sys/io/color'
+import type { ColorScheme } from '@/sys/io/color'
 import { redactBearer } from '@/errors/sanitize'
 
 const RAW_RESPONSE_HINT = 'run again with --verbose to see the raw server response'
@@ -15,7 +15,11 @@ function resolveHint(e: ErrorEnvelope['error'], opts: RenderOptions): string | u
   return rawHiddenAndUnparsed ? RAW_RESPONSE_HINT : undefined
 }
 
-export function renderEnvelope(env: ErrorEnvelope, style: Style, opts: RenderOptions): string {
+export function renderEnvelope(
+  env: ErrorEnvelope,
+  style: ColorScheme,
+  opts: RenderOptions,
+): string {
   const e = env.error
   const server = e.server
   const headerCode = server?.code ?? e.code

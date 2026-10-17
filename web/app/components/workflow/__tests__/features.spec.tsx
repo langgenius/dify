@@ -28,7 +28,7 @@ const mockFeaturesStore = {
   }),
 }
 
-let mockIsChatMode = true
+let chatflowMode = true
 let mockNodesReadOnly = false
 
 vi.mock('../hooks/use-workflow', async (importOriginal) => {
@@ -151,6 +151,7 @@ const renderFeatures = (
   }
 
   return renderWorkflowFlowComponent(<DelayedFeatures />, {
+    resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     nodes: [startNode],
     edges: [],
     ...options,
@@ -161,7 +162,7 @@ const renderFeatures = (
 describe('Features', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsChatMode = true
+    chatflowMode = true
     mockNodesReadOnly = false
     mockUpdateFeatures.mockResolvedValue(undefined)
   })
@@ -229,11 +230,4 @@ describe('Features', () => {
       })
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockIsChatMode) }
 })

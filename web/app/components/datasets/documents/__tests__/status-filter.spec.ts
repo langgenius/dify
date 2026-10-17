@@ -1,19 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { normalizeStatusForQuery, sanitizeStatusValue } from '../status-filter'
 
-vi.mock('@/models/datasets', () => ({
-  DisplayStatusList: [
-    'queuing',
-    'indexing',
-    'paused',
-    'error',
-    'available',
-    'enabled',
-    'disabled',
-    'archived',
-  ],
-}))
-
 describe('status-filter', () => {
   beforeEach(() => {
     vi.clearAllMocks()

@@ -568,7 +568,7 @@ export const useTestEmailSender = () => {
       appID: string
       nodeID: string
       deliveryID: string
-      inputs: Record<string, any>
+      inputs: Record<string, unknown>
     }) => {
       const { appID, nodeID, deliveryID, inputs } = data
       return consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.deliveryTest.post(

@@ -76,14 +76,6 @@ vi.mock('../chat-input-area', () => ({
   ),
 }))
 
-vi.mock('es-toolkit/compat', () => ({
-  debounce: (fn: (...args: unknown[]) => void) => {
-    const debounced = (...args: unknown[]) => fn(...args)
-    debounced.cancel = vi.fn()
-    return debounced
-  },
-}))
-
 // ─── ResizeObserver capture ───────────────────────────────────────────────────
 
 type ResizeCallback = (entries: ResizeObserverEntry[], observer: ResizeObserver) => void

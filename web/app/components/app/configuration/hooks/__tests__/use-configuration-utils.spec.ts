@@ -3,6 +3,12 @@ import type { VisionSettings } from '@/types/app'
 import { zAppModelConfigPayload } from '@dify/contracts/api/console/apps/zod.gen'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixtures/app'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import {
+  createDatasetConfigsFixture,
+  createModelConfigFixture,
+} from '@/test/fixtures/debug-configuration'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { withSelectorKey } from '@/test/i18n-mock'
 import {
   AgentStrategy,
@@ -25,7 +31,6 @@ const mockFetchAppDetailDirect = vi.fn()
 const mockFetchDatasets = vi.fn()
 const mockFetchCollectionList = vi.fn()
 const mockFetchAndMergeValidCompletionParams = vi.fn()
-const mockGetSelectedDatasetsMode = vi.fn()
 const mockToastError = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastWarning = vi.fn()
@@ -59,17 +64,6 @@ vi.mock('@/utils/completion-params', () => ({
     mockFetchAndMergeValidCompletionParams(...args),
 }))
 
-vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', async () => {
-  const actual = await vi.importActual<any>(
-    '@/app/components/workflow/nodes/knowledge-retrieval/utils',
-  )
-
-  return {
-    ...actual,
-    getSelectedDatasetsMode: (...args: unknown[]) => mockGetSelectedDatasetsMode(...args),
-  }
-})
-
 vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
@@ -81,13 +75,6 @@ vi.mock('@/app/components/app/configuration/toast', () => ({
 describe('useConfiguration utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockGetSelectedDatasetsMode.mockReturnValue({
-      allExternal: false,
-      allInternal: false,
-      inconsistentEmbeddingModel: false,
-      mixtureHighQualityAndEconomic: false,
-      mixtureInternalAndExternal: false,
-    })
   })
 
   it('should preserve persisted settings when loading and publishing without edits', async () => {
@@ -267,17 +254,26 @@ describe('useConfiguration utils', () => {
       collectionList: [
         {
           id: 'tool-1',
+          name: 'Search',
+          author: 'Dify',
+          description: { en_US: 'Search', zh_Hans: 'Search' },
+          icon: '',
+          label: { en_US: 'Search', zh_Hans: 'Search' },
+          type: 'builtin',
+          team_credentials: {},
+          allow_delete: false,
+          labels: [],
           is_team_authorization: false,
         },
-      ] as any,
-      datasetConfigs: {
+      ],
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
         top_k: 4,
-      } as any,
+      }),
       deletedTools: [{ type: 'tool', provider_id: 'tool-1', tool_name: 'search' }],
       mode: 'agent-chat' as const,
-      nextDataSets: [{ id: 'dataset-1' }] as any,
+      nextDataSets: [createDatasetFixture({ id: 'dataset-1' })],
     })
 
     expect(publishedConfig.completionParams).toEqual({ temperature: 0.7 })
@@ -286,7 +282,7 @@ describe('useConfiguration utils', () => {
     expect(publishedConfig.externalDataToolsConfig).toHaveLength(1)
     expect(publishedConfig.modelConfig).toEqual(
       expect.objectContaining({
-        dataSets: [{ id: 'dataset-1' }],
+        dataSets: [createDatasetFixture({ id: 'dataset-1' })],
         mode: ModelModeType.chat,
         model_id: 'gpt-4o',
         more_like_this: { enabled: true },
@@ -331,10 +327,10 @@ describe('useConfiguration utils', () => {
         user_input_form: [],
       }),
       collectionList: [],
-      datasetConfigs: {
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
-      } as any,
+      }),
       mode: 'completion' as const,
       nextDataSets: [],
     })
@@ -364,10 +360,10 @@ describe('useConfiguration utils', () => {
         user_input_form: [],
       }),
       collectionList: [],
-      datasetConfigs: {
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
-      } as any,
+      }),
       mode: 'chat',
       nextDataSets: [],
     })
@@ -405,7 +401,7 @@ describe('useConfiguration utils', () => {
 
   it('should build a publish body for advanced prompts and dataset selections', () => {
     const body = buildPublishBody({
-      chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] } as any,
+      chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
       completionParams: { temperature: 0.7 },
       completionPromptConfig: {
         prompt: { text: 'completion' },
@@ -413,13 +409,13 @@ describe('useConfiguration utils', () => {
           assistant_prefix: 'assistant',
           user_prefix: 'user',
         },
-      } as any,
+      },
       contextVar: 'context',
-      dataSets: [{ id: 'dataset-1' }] as any,
-      datasetConfigs: {
+      dataSets: [createDatasetFixture({ id: 'dataset-1' })],
+      datasetConfigs: createDatasetConfigsFixture({
         retrieval_model: RETRIEVE_TYPE.multiWay,
         datasets: { datasets: [] },
-      } as any,
+      }),
       externalDataToolsConfig: [],
       features: {
         moreLikeThis: { enabled: true },
@@ -433,32 +429,32 @@ describe('useConfiguration utils', () => {
         text2speech: { enabled: false, voice: '', language: '' },
         file: {
           enabled: true,
-          fileUploadConfig: { image: {} },
+          fileUploadConfig: createFileUploadConfigFixture(),
           image: {
             enabled: true,
             detail: 'high',
             number_limits: 2,
             transfer_methods: ['local_file'],
           },
-        } as any,
+        },
         suggested: { enabled: false },
         citation: { enabled: true },
-      } as any,
+      },
       isAdvancedMode: true,
       isFunctionCall: true,
-      modelConfig: {
+      modelConfig: createModelConfigFixture({
         agentConfig: {
           enabled: true,
           max_iteration: 3,
           strategy: AgentStrategy.react,
           tools: [],
         },
-      } as any,
+      }),
       modelId: 'gpt-4o',
       modelProvider: 'langgenius/openai/openai',
-      promptMode: 'advanced' as any,
+      promptMode: 'advanced',
       promptTemplate: 'hello {{name}}',
-      promptVariables: [{ key: 'name', name: 'Name', required: true, type: 'string' }] as any,
+      promptVariables: [{ key: 'name', name: 'Name', required: true, type: 'string' }],
       resolvedModelModeType: ModelModeType.chat,
     })
 
@@ -542,7 +538,7 @@ describe('useConfiguration utils', () => {
       }),
     })
     mockFetchDatasets.mockResolvedValue({
-      data: [{ id: 'dataset-1', name: 'Dataset One' }],
+      data: [createDatasetFixture({ id: 'dataset-1', name: 'Dataset One' })],
     })
 
     const state = await loadConfigurationState({
@@ -560,7 +556,9 @@ describe('useConfiguration utils', () => {
     })
     expect(state.collectionList[0]!.icon).toBe('/console/tool.svg')
     expect(state.promptMode).toBe('advanced')
-    expect(state.nextDataSets).toEqual([{ id: 'dataset-1', name: 'Dataset One' }])
+    expect(state.nextDataSets).toEqual([
+      createDatasetFixture({ id: 'dataset-1', name: 'Dataset One' }),
+    ])
     expect(state.annotationConfig).toEqual(
       expect.objectContaining({
         enabled: true,
@@ -575,7 +573,7 @@ describe('useConfiguration utils', () => {
   it('should load dataset tools from agent mode and keep disabled annotation config unchanged', async () => {
     mockFetchCollectionList.mockResolvedValue([])
     mockFetchDatasets.mockResolvedValue({
-      data: [{ id: 'dataset-from-tool', name: 'Dataset From Tool' }],
+      data: [createDatasetFixture({ id: 'dataset-from-tool', name: 'Dataset From Tool' })],
     })
     mockFetchAppDetailDirect.mockResolvedValue({
       deleted_tools: [],
@@ -626,7 +624,9 @@ describe('useConfiguration utils', () => {
         ids: ['dataset-from-tool'],
       },
     })
-    expect(state.nextDataSets).toEqual([{ id: 'dataset-from-tool', name: 'Dataset From Tool' }])
+    expect(state.nextDataSets).toEqual([
+      createDatasetFixture({ id: 'dataset-from-tool', name: 'Dataset From Tool' }),
+    ])
     expect(state.annotationConfig).toEqual(
       expect.objectContaining({
         enabled: false,
@@ -681,8 +681,8 @@ describe('useConfiguration utils', () => {
     const handleSelect = createDatasetSelectHandler({
       currentRerankModel: 'rerank-1',
       currentRerankProvider: 'langgenius/cohere/cohere',
-      dataSets: [{ id: 'dataset-1', name: 'Dataset One' }] as any,
-      datasetConfigs: {
+      dataSets: [createDatasetFixture({ id: 'dataset-1', name: 'Dataset One' })],
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         reranking_enable: false,
         reranking_model: {
@@ -693,9 +693,9 @@ describe('useConfiguration utils', () => {
         score_threshold: 0.5,
         score_threshold_enabled: false,
         top_k: 3,
-      } as any,
+      }),
       datasetConfigsRef: {
-        current: {
+        current: createDatasetConfigsFixture({
           datasets: { datasets: [] },
           reranking_model: {
             reranking_model_name: '',
@@ -703,7 +703,7 @@ describe('useConfiguration utils', () => {
           },
           retrieval_model: RETRIEVE_TYPE.multiWay,
           score_threshold_enabled: false,
-        } as any,
+        }),
       },
       formattingChangedDispatcher,
       hideSelectDataSet,
@@ -712,10 +712,10 @@ describe('useConfiguration utils', () => {
       setRerankSettingModalOpen,
     })
 
-    handleSelect([{ id: 'dataset-2' }] as any)
+    handleSelect([createDatasetFixture({ id: 'dataset-2' })])
 
     expect(formattingChangedDispatcher).toHaveBeenCalledTimes(1)
-    expect(setDataSets).toHaveBeenCalledWith([{ id: 'dataset-2' }])
+    expect(setDataSets).toHaveBeenCalledWith([createDatasetFixture({ id: 'dataset-2' })])
     expect(hideSelectDataSet).toHaveBeenCalledTimes(1)
     expect(setDatasetConfigs).toHaveBeenCalledTimes(1)
   })
@@ -727,18 +727,18 @@ describe('useConfiguration utils', () => {
     const handleSelect = createDatasetSelectHandler({
       currentRerankModel: 'rerank-1',
       currentRerankProvider: 'langgenius/cohere/cohere',
-      dataSets: [{ id: 'dataset-1', name: 'Dataset One' }] as any,
-      datasetConfigs: {
+      dataSets: [createDatasetFixture({ id: 'dataset-1', name: 'Dataset One' })],
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
         score_threshold_enabled: false,
-      } as any,
+      }),
       datasetConfigsRef: {
-        current: {
+        current: createDatasetConfigsFixture({
           datasets: { datasets: [] },
           retrieval_model: RETRIEVE_TYPE.multiWay,
           score_threshold_enabled: false,
-        } as any,
+        }),
       },
       formattingChangedDispatcher: vi.fn(),
       hideSelectDataSet: vi.fn(),
@@ -747,11 +747,14 @@ describe('useConfiguration utils', () => {
       setRerankSettingModalOpen: vi.fn(),
     })
 
-    handleSelect([{ id: 'dataset-1' }, { id: 'dataset-2', name: 'Dataset Two' }] as any)
+    handleSelect([
+      { id: 'dataset-1' } as any,
+      createDatasetFixture({ id: 'dataset-2', name: 'Dataset Two' }),
+    ])
 
     expect(setDataSets).toHaveBeenCalledWith([
-      { id: 'dataset-1', name: 'Dataset One' },
-      { id: 'dataset-2', name: 'Dataset Two' },
+      createDatasetFixture({ id: 'dataset-1', name: 'Dataset One' }),
+      createDatasetFixture({ id: 'dataset-2', name: 'Dataset Two' }),
     ])
   })
 
@@ -763,13 +766,13 @@ describe('useConfiguration utils', () => {
     const handleSelect = createDatasetSelectHandler({
       currentRerankModel: 'rerank-1',
       currentRerankProvider: 'langgenius/cohere/cohere',
-      dataSets: [{ id: 'dataset-1', name: 'Dataset One' }] as any,
-      datasetConfigs: {
+      dataSets: [createDatasetFixture({ id: 'dataset-1', name: 'Dataset One' })],
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
         score_threshold_enabled: false,
-      } as any,
-      datasetConfigsRef: { current: {} as any },
+      }),
+      datasetConfigsRef: { current: createDatasetConfigsFixture({}) },
       formattingChangedDispatcher,
       hideSelectDataSet,
       setDataSets,
@@ -777,7 +780,7 @@ describe('useConfiguration utils', () => {
       setRerankSettingModalOpen: vi.fn(),
     })
 
-    handleSelect([{ id: 'dataset-1', name: 'Dataset One' }] as any)
+    handleSelect([createDatasetFixture({ id: 'dataset-1', name: 'Dataset One' })])
 
     expect(hideSelectDataSet).toHaveBeenCalledTimes(1)
     expect(formattingChangedDispatcher).not.toHaveBeenCalled()
@@ -788,30 +791,25 @@ describe('useConfiguration utils', () => {
   it('should keep named datasets and open rerank settings when the selection mode requires it', () => {
     const setDataSets = vi.fn()
     const setRerankSettingModalOpen = vi.fn()
-    const nextDataSets = [{ id: 'dataset-2', name: 'Dataset Two' }]
-    mockGetSelectedDatasetsMode.mockReturnValue({
-      allExternal: true,
-      allInternal: false,
-      inconsistentEmbeddingModel: false,
-      mixtureHighQualityAndEconomic: false,
-      mixtureInternalAndExternal: false,
-    })
+    const nextDataSets = [
+      createDatasetFixture({ id: 'dataset-2', name: 'Dataset Two', provider: 'external' }),
+    ]
 
     const handleSelect = createDatasetSelectHandler({
       currentRerankModel: 'rerank-1',
       currentRerankProvider: 'langgenius/cohere/cohere',
-      dataSets: [] as any,
-      datasetConfigs: {
+      dataSets: [],
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
         score_threshold_enabled: false,
-      } as any,
+      }),
       datasetConfigsRef: {
-        current: {
+        current: createDatasetConfigsFixture({
           datasets: { datasets: [] },
           retrieval_model: RETRIEVE_TYPE.multiWay,
           score_threshold_enabled: false,
-        } as any,
+        }),
       },
       formattingChangedDispatcher: vi.fn(),
       hideSelectDataSet: vi.fn(),
@@ -820,7 +818,7 @@ describe('useConfiguration utils', () => {
       setRerankSettingModalOpen,
     })
 
-    handleSelect(nextDataSets as any)
+    handleSelect(nextDataSets)
 
     expect(setDataSets).toHaveBeenCalledWith(nextDataSets)
     expect(setRerankSettingModalOpen).toHaveBeenCalledWith(true)
@@ -884,7 +882,7 @@ describe('useConfiguration utils', () => {
 
     const onPublish = createPublishHandler({
       appId: 'app-1',
-      chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] } as any,
+      chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
       completionParamsState: { temperature: 0.7 },
       completionPromptConfig: {
         prompt: { text: 'completion' },
@@ -892,16 +890,16 @@ describe('useConfiguration utils', () => {
           assistant_prefix: 'assistant',
           user_prefix: 'user',
         },
-      } as any,
+      },
       contextVar: 'context',
       contextVarEmpty: false,
-      dataSets: [{ id: 'dataset-1' }] as any,
-      datasetConfigs: {
+      dataSets: [createDatasetFixture({ id: 'dataset-1' })],
+      datasetConfigs: createDatasetConfigsFixture({
         datasets: { datasets: [] },
         retrieval_model: RETRIEVE_TYPE.multiWay,
         top_k: 7,
-      } as any,
-      externalDataToolsConfig: [{ enabled: true, variable: 'external' }] as any,
+      }),
+      externalDataToolsConfig: [{ enabled: true, variable: 'external' }],
       hasSetBlockStatus: {
         history: true,
         query: true,
@@ -909,7 +907,7 @@ describe('useConfiguration utils', () => {
       isAdvancedMode: true,
       isFunctionCall: true,
       mode: 'chat',
-      modelConfig: {
+      modelConfig: createModelConfigFixture({
         agentConfig: {
           enabled: true,
           max_iteration: 3,
@@ -922,9 +920,9 @@ describe('useConfiguration utils', () => {
         },
         model_id: 'gpt-4o',
         provider: 'langgenius/openai/openai',
-      } as any,
+      }),
       promptEmpty: false,
-      promptMode: 'advanced' as any,
+      promptMode: 'advanced',
       resolvedModelModeType: ModelModeType.chat,
       setCanReturnToSimpleMode,
       setPublishedConfig,
@@ -952,10 +950,10 @@ describe('useConfiguration utils', () => {
             number_limits: 1,
             transfer_methods: ['local_file'],
           },
-        } as any,
+        },
         suggested: { enabled: false },
         citation: { enabled: true },
-      } as any,
+      },
     )
 
     expect(result).toBe(true)
@@ -996,7 +994,7 @@ describe('useConfiguration utils', () => {
     const createBasePublishHandler = (overrides: Record<string, unknown>) =>
       createPublishHandler({
         appId: 'app-1',
-        chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] } as any,
+        chatPromptConfig: { prompt: [{ role: 'system', text: 'hi' }] },
         completionParamsState: { temperature: 0.7 },
         completionPromptConfig: {
           prompt: { text: 'completion' },
@@ -1004,11 +1002,11 @@ describe('useConfiguration utils', () => {
             assistant_prefix: 'assistant',
             user_prefix: 'user',
           },
-        } as any,
+        },
         contextVar: 'context',
         contextVarEmpty: false,
-        dataSets: [] as any,
-        datasetConfigs: { datasets: { datasets: [] } } as any,
+        dataSets: [],
+        datasetConfigs: createDatasetConfigsFixture({ datasets: { datasets: [] } }),
         externalDataToolsConfig: [],
         hasSetBlockStatus: {
           history: true,
@@ -1017,16 +1015,16 @@ describe('useConfiguration utils', () => {
         isAdvancedMode: true,
         isFunctionCall: false,
         mode: 'chat',
-        modelConfig: {
+        modelConfig: createModelConfigFixture({
           configs: {
             prompt_template: 'hello',
             prompt_variables: [],
           },
           model_id: 'gpt-4o',
           provider: 'langgenius/openai/openai',
-        } as any,
+        }),
         promptEmpty: false,
-        promptMode: 'advanced' as any,
+        promptMode: 'advanced',
         resolvedModelModeType: ModelModeType.completion,
         setCanReturnToSimpleMode: vi.fn(),
         setPublishedConfig: vi.fn(),
@@ -1078,10 +1076,10 @@ describe('useConfiguration utils', () => {
       isAdvancedMode: true,
       migrateToDefaultPrompt,
       mode: 'chat',
-      modelConfig: {
+      modelConfig: createModelConfigFixture({
         model_id: 'gpt-4o-mini',
         provider: 'langgenius/openai/openai',
-      } as any,
+      }),
       resolvedModelModeType: ModelModeType.chat,
       setCompletionParams,
       setModelConfig,
@@ -1135,10 +1133,10 @@ describe('useConfiguration utils', () => {
       isAdvancedMode: true,
       migrateToDefaultPrompt,
       mode: 'completion' as const,
-      modelConfig: {
+      modelConfig: createModelConfigFixture({
         model_id: 'gpt-4o-mini',
         provider: 'langgenius/openai/openai',
-      } as any,
+      }),
       resolvedModelModeType: ModelModeType.chat,
       setCompletionParams,
       setModelConfig,

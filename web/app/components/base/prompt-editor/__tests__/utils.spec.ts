@@ -25,10 +25,6 @@ vi.mock('lexical', async (importOriginal) => {
   }
 })
 
-vi.mock('./plugins/custom-text/node', () => ({
-  CustomTextNode: class MockCustomTextNode {},
-}))
-
 describe('prompt-editor/utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -67,7 +63,7 @@ describe('prompt-editor/utils', () => {
       mockState.createTextNode.mockReturnValue(createdTextNode)
       const getMatch = vi.fn(() => null)
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((node: TextNode) => node as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -97,7 +93,7 @@ describe('prompt-editor/utils', () => {
       // match.start = 2 (non-zero) → replaceWithSimpleText
       const getMatch = vi.fn(() => ({ start: 2, end: 4 }))
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -122,7 +118,7 @@ describe('prompt-editor/utils', () => {
       const { editor, registerNodeTransform } = makeEditor()
       const getMatch = vi.fn(() => ({ start: 0, end: 4 }))
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -156,7 +152,7 @@ describe('prompt-editor/utils', () => {
       mockState.createTextNode.mockReturnValue(createdTextNode)
       const getMatch = vi.fn(() => ({ start: 0, end: 4 }))
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -191,7 +187,7 @@ describe('prompt-editor/utils', () => {
       mockState.createTextNode.mockReturnValue(createdTextNode)
       const getMatch = vi.fn(() => ({ start: 0, end: 4 }))
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -246,7 +242,7 @@ describe('prompt-editor/utils', () => {
       const createdTextNode = { setFormat: vi.fn() }
       mockState.createTextNode.mockReturnValue(createdTextNode)
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -283,7 +279,7 @@ describe('prompt-editor/utils', () => {
       const createdTextNode = { setFormat: vi.fn() }
       mockState.createTextNode.mockReturnValue(createdTextNode)
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -319,7 +315,7 @@ describe('prompt-editor/utils', () => {
       const { editor, registerNodeTransform } = makeEditor()
       mockState.createTextNode.mockReturnValue({ setFormat: vi.fn() })
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -354,7 +350,7 @@ describe('prompt-editor/utils', () => {
       const { editor, registerNodeTransform } = makeEditor()
       mockState.createTextNode.mockReturnValue({ setFormat: vi.fn() })
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn(() => replacementNode as unknown as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -686,7 +682,7 @@ describe('prompt-editor/utils', () => {
       // getMatch always returns null → while loop: nextSibling found, nextMatch=null, isTargetNode=true
       const getMatch = vi.fn(() => null)
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -725,7 +721,7 @@ describe('prompt-editor/utils', () => {
       // first: null (match===null → nextText=''); combined nextMatch.start !== 0
       const getMatch = vi.fn(() => (n++ === 1 ? { start: 3, end: 7 } : null))
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((node: TextNode) => node as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -769,7 +765,7 @@ describe('prompt-editor/utils', () => {
       const replacementNode = { setFormat: vi.fn(), replace: vi.fn() }
 
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn(() => replacementNode as unknown as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -823,7 +819,7 @@ describe('prompt-editor/utils', () => {
       })
 
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((node: TextNode) => node as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -919,7 +915,7 @@ describe('prompt-editor/utils', () => {
       const getMatch = vi.fn()
       const { editor, registerNodeTransform } = makeEditor()
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -960,7 +956,7 @@ describe('prompt-editor/utils', () => {
       })
 
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       // Need text='cd' node
@@ -1033,7 +1029,7 @@ describe('prompt-editor/utils', () => {
       const { editor, registerNodeTransform } = makeEditor()
       mockState.createTextNode.mockReturnValue({ setFormat: vi.fn() })
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)
@@ -1073,7 +1069,7 @@ describe('prompt-editor/utils', () => {
       const { editor, registerNodeTransform } = makeEditor()
       mockState.createTextNode.mockReturnValue({ setFormat: vi.fn() })
       type TN = InstanceType<typeof TargetNode> & TextNode
-      const targetNodeClass = TargetNode as unknown as Klass<TN>
+      const targetNodeClass = TargetNode as Klass<TN>
       const createNode = vi.fn((n: TextNode) => n as TN)
 
       registerLexicalTextEntity(editor, getMatch, targetNodeClass, createNode)

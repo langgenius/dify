@@ -1,8 +1,9 @@
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import { AgentModelField } from '../field'
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -18,11 +19,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 const providerSummary = vi.hoisted(() => vi.fn())
 
 const modelList = vi.hoisted(() => vi.fn<() => Promise<{ data: ProviderWithModelsResponse[] }>>())
-
-vi.mock('nuqs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('nuqs')>()),
-  useQueryState: () => [null, vi.fn()],
-}))
 
 vi.mock(
   '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
@@ -76,6 +72,9 @@ vi.mock('@/service/console', async () => {
     },
   }
 })
+
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
 
 function renderField(currentModel?: AgentComposerModel) {
   const queryClient = new QueryClient({

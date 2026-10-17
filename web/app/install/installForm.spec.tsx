@@ -140,8 +140,8 @@ describe('InstallForm', () => {
   })
 
   it('should submit and redirect to the console root on successful login', async () => {
-    mockSetup.mockResolvedValue({ result: 'success' } as any)
-    mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
+    mockSetup.mockResolvedValue({ result: 'success' })
+    mockLogin.mockResolvedValue({ result: 'success', data: 'token' })
 
     render(<InstallForm />)
 
@@ -182,13 +182,11 @@ describe('InstallForm', () => {
   })
 
   it('should redirect to sign in when login fails', async () => {
-    mockSetup.mockResolvedValue({ result: 'success' } as any)
+    mockSetup.mockResolvedValue({ result: 'success' })
     mockLogin.mockResolvedValue({
       result: 'fail',
       data: 'error',
-      code: 'login_failed',
-      message: 'login failed',
-    } as any)
+    })
 
     render(<InstallForm />)
 
@@ -206,12 +204,16 @@ describe('InstallForm', () => {
   })
 
   it('should disable submit while request is in flight', async () => {
-    let resolveSetup: ((value: any) => void) | undefined
-    const setupPromise = new Promise((resolve) => {
-      resolveSetup = resolve
-    })
-    mockSetup.mockReturnValue(setupPromise as any)
-    mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
+    let resolveSetup:
+      | ((value: Awaited<ReturnType<typeof consoleClient.setup.post>>) => void)
+      | undefined
+    const setupPromise = new Promise<Awaited<ReturnType<typeof consoleClient.setup.post>>>(
+      (resolve) => {
+        resolveSetup = resolve
+      },
+    )
+    mockSetup.mockReturnValue(setupPromise)
+    mockLogin.mockResolvedValue({ result: 'success', data: 'token' })
 
     render(<InstallForm />)
 

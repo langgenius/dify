@@ -69,23 +69,35 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    apps: {
-      byAppId: {
-        export: { get: (...args: unknown[]) => mockExportAppConfig(...args) },
-        workflows: {
-          draft: {
-            environmentVariables: {
-              get: (...args: unknown[]) => mockFetchEnvironmentVariables(...args),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  return {
+    consoleQuery: new Proxy(actual.consoleQuery, {
+      get(target, property) {
+        if (property !== 'apps') return Reflect.get(target, property)
+        return createTanstackQueryUtils(
+          {
+            apps: {
+              byAppId: {
+                get: () => new Promise(() => {}),
+                export: { get: (...args: unknown[]) => mockExportAppConfig(...args) },
+                workflows: {
+                  draft: {
+                    environmentVariables: {
+                      get: (...args: unknown[]) => mockFetchEnvironmentVariables(...args),
+                    },
+                  },
+                },
+              },
             },
           },
-        },
+          { path: ['console'] },
+        ).apps
       },
-    },
-  },
-}))
+    }),
+  }
+})
 
 vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
@@ -166,7 +178,7 @@ describe('useDSLByCanEdit', () => {
     expect(mockExportAppConfig).not.toHaveBeenCalled()
     expect(mockDownloadBlob).not.toHaveBeenCalled()
     expect(toastMocks.call).toHaveBeenCalledTimes(1)
-    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportAppFailed' })
+    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
   })
 
   it('allows export when draft synchronization is skipped for read-only access', async () => {
@@ -196,7 +208,7 @@ describe('useDSLByCanEdit', () => {
         params: { app_id: 'app-1' },
         query: { include_secret: true, workflow_id: 'revision-1' },
       },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockDownloadBlob).toHaveBeenCalledWith({ data: file, fileName: 'workflow.ifpkg' })
@@ -214,7 +226,7 @@ describe('useDSLByCanEdit', () => {
 
     expect(mockFetchEnvironmentVariables).toHaveBeenCalledWith(
       { params: { app_id: 'app-1' } },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
     expect(mockExportAppConfig).toHaveBeenCalledWith(
@@ -222,7 +234,7 @@ describe('useDSLByCanEdit', () => {
         params: { app_id: 'app-1' },
         query: { include_secret: false, workflow_id: undefined },
       },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
     expect(mockDownloadBlob).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -279,7 +291,7 @@ workflow:
         params: { app_id: 'app-1' },
         query: { include_secret: true, workflow_id: 'workflow-1' },
       },
-      { context: { silent: true } },
+      expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
     )
   })
 
@@ -326,7 +338,7 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportAppFailed',
+        message: 'app.exportFailed',
         description: 'Package contains unusable Skill',
       })
     })
@@ -347,7 +359,7 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportAppFailed',
+        message: 'app.exportFailed',
         description: 'draft fetch failed',
       })
     })

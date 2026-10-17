@@ -1,10 +1,11 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { GetWorkspacesCurrentModelsModelTypesByModelTypeData } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { OperationKey } from '@orpc/tanstack-query'
 import type { ReactElement } from 'react'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { expectLoadingButton } from '@/test/button'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
@@ -54,12 +55,14 @@ function render(ui: ReactElement) {
   return renderWithConsoleState(ui, { wrapper })
 }
 
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+const createMockDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse => ({
   ...createDatasetFixture(),
   id: 'dataset-1',
   name: 'Test Dataset',
   description: 'Test description',
-  permission: DatasetPermission.onlyMe,
+  permission: PermissionLevel.onlyMe,
   icon_info: {
     icon_type: 'emoji',
     icon: '📚',
@@ -112,11 +115,14 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-let mockDataset: DataSet = createMockDataset()
+let mockDataset: DatasetDetailWithPartialMembersResponse = createMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
+    selector: (state: {
+      dataset: DatasetDetailWithPartialMembersResponse | null
+      mutateDatasetRes: () => void
+    }) => unknown,
   ) => {
     const state = {
       dataset: mockDataset,
@@ -157,11 +163,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useModelModalHandler: () => vi.fn(),
 }))
 
-vi.mock('@/app/components/datasets/common/check-rerank-model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/app/components/datasets/common/check-rerank-model')>()),
-  isReRankModelSelected: () => true,
-}))
-
 vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
@@ -174,7 +175,7 @@ vi.mock('../components/indexing-section', () => ({
     currentDataset,
     indexMethod,
   }: {
-    currentDataset?: DataSet
+    currentDataset?: DatasetDetailWithPartialMembersResponse
     indexMethod?: IndexingType
   }) => (
     <div data-testid="indexing-section">

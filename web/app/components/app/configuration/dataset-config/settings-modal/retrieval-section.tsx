@@ -1,6 +1,6 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -28,7 +28,7 @@ type ExternalRetrievalSectionProps = CommonSectionProps & {
     score_threshold?: number
     score_threshold_enabled?: boolean
   }) => void
-  currentDataset: DataSet
+  currentDataset: DatasetDetailWithPartialMembersResponse
 }
 
 const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({

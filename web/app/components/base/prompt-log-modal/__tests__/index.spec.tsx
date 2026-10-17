@@ -1,17 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useClickAway } from 'ahooks'
 import PromptLogModal from '..'
-
-let clickAwayHandlers: (() => void)[] = []
-vi.mock('ahooks', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('ahooks')>()
-  return {
-    ...actual,
-    useClickAway: vi.fn((fn: () => void) => {
-      clickAwayHandlers.push(fn)
-    }),
-  }
-})
 
 describe('PromptLogModal', () => {
   const defaultProps = {
@@ -26,7 +14,6 @@ describe('PromptLogModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    clickAwayHandlers = []
   })
 
   describe('Render', () => {
@@ -89,23 +76,15 @@ describe('PromptLogModal', () => {
       const onCancel = vi.fn()
       render(<PromptLogModal {...defaultProps} onCancel={onCancel} />)
 
-      expect(useClickAway).toHaveBeenCalled()
-      expect(clickAwayHandlers.length).toBeGreaterThan(0)
-
-      // Call the last registered handler (simulating click away)
-      // Call the last registered handler (simulating click away)
-      clickAwayHandlers[clickAwayHandlers.length - 1]!()
-      expect(onCancel).toHaveBeenCalled()
+      fireEvent.click(document.body)
+      expect(onCancel).toHaveBeenCalledOnce()
     })
 
-    it('does not call onCancel when clicking outside if not mounted', () => {
+    it('does not close when clicking log content', () => {
       const onCancel = vi.fn()
       render(<PromptLogModal {...defaultProps} onCancel={onCancel} />)
 
-      expect(clickAwayHandlers.length).toBeGreaterThan(0)
-      // The first handler in the array is captured during the initial render before useEffect runs
-      // The first handler in the array is captured during the initial render before useEffect runs
-      clickAwayHandlers[0]!()
+      fireEvent.click(screen.getByText('Hello'))
       expect(onCancel).not.toHaveBeenCalled()
     })
   })

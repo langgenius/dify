@@ -6,17 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import OneMoreStep from '../one-more-step'
 
-const { mockOneMoreStepHook } = vi.hoisted(() => ({
-  mockOneMoreStepHook: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'account.init.post': (options: unknown) => mockOneMoreStepHook(options),
-  })
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
@@ -25,9 +14,8 @@ vi.mock('@/next/navigation', () => ({
 const mockReplace = vi.fn()
 const mockSubmitOneMoreStep = vi.fn()
 
-const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
-const mockUseOneMoreStep = mockOneMoreStepHook
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>
+const mockUseSearchParams = useSearchParams as MockedFunction<typeof useSearchParams>
 
 describe('OneMoreStep', () => {
   beforeEach(() => {
@@ -38,12 +26,8 @@ describe('OneMoreStep', () => {
     mockUseSearchParams.mockReturnValue(
       new URLSearchParams(
         'invitation_code=invite-code&redirect_url=%2Fapps%3Ftag%3Dworkflow',
-      ) as unknown as ReturnType<typeof useSearchParams>,
+      ) as ReturnType<typeof useSearchParams>,
     )
-    mockUseOneMoreStep.mockReturnValue({
-      mutateAsync: mockSubmitOneMoreStep,
-      isPending: false,
-    })
     mockSubmitOneMoreStep.mockResolvedValue({ result: 'success' })
   })
 
@@ -77,4 +61,15 @@ describe('OneMoreStep', () => {
       })
     })
   })
+})
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'account.init.post': (input) => mockSubmitOneMoreStep(input),
+    }),
+  }
 })

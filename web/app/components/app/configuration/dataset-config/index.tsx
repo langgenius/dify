@@ -1,5 +1,6 @@
 'use client'
 
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
 import type {
   HandleAddCondition,
@@ -8,7 +9,6 @@ import type {
   HandleUpdateCondition,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { intersectionBy } from 'es-toolkit/compat'
@@ -133,7 +133,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     formattingChangedDispatcher()
   }
 
-  const handleSave = (newDataset: DataSet) => {
+  const handleSave = (newDataset: DatasetDetailWithPartialMembersResponse) => {
     const index = dataSet.findIndex((item) => item.id === newDataset.id)
 
     const newDatasets = [...dataSet.slice(0, index), newDataset, ...dataSet.slice(index + 1)]

@@ -18,12 +18,10 @@ const mockShowPluginInfo = vi.fn()
 const mockShowDeleteConfirm = vi.fn()
 const mockSetTargetVersion = vi.fn()
 const mockSetVersionPickerOpen = vi.fn()
-const { mockNormalizeInstalledPluginDetail, mockUninstallPlugin, mockUseVersionListOfPlugin } =
-  vi.hoisted(() => ({
-    mockNormalizeInstalledPluginDetail: vi.fn(),
-    mockUninstallPlugin: vi.fn(),
-    mockUseVersionListOfPlugin: vi.fn(),
-  }))
+const { mockUninstallPlugin, mockUseVersionListOfPlugin } = vi.hoisted(() => ({
+  mockUninstallPlugin: vi.fn(),
+  mockUseVersionListOfPlugin: vi.fn(),
+}))
 const mockPluginSettingsAccess = vi.hoisted(() => ({
   canDeletePlugin: true,
   canUpdatePlugin: true,
@@ -110,8 +108,8 @@ vi.mock('@/service/plugins', () => ({
   uninstallPlugin: mockUninstallPlugin,
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  normalizeInstalledPluginDetail: mockNormalizeInstalledPluginDetail,
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   useVersionListOfPlugin: mockUseVersionListOfPlugin,
 }))
 
@@ -177,11 +175,27 @@ const pluginInstallationsResponse = zPostWorkspacesCurrentPluginListInstallation
   ],
 })
 
+let detailResponse = structuredClone(pluginInstallationsResponse)
+const setPluginDetail = (detail: PluginDetail) => {
+  const original = pluginInstallationsResponse.plugins[0]!
+  detailResponse = {
+    plugins: [
+      {
+        ...original,
+        source: detail.source,
+        version: detail.version,
+        meta: detail.meta ?? {},
+        declaration: { ...original.declaration, version: detail.version },
+      },
+    ],
+  }
+}
+
 const seedPluginDetail = (queryClient: QueryClient) => {
   const options = consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
     input: { body: { plugin_ids: ['langgenius/provider-plugin'] } },
   })
-  queryClient.setQueryData(options.queryKey, pluginInstallationsResponse)
+  queryClient.setQueryData(options.queryKey, detailResponse)
 }
 
 describe('ProviderCardActions', () => {
@@ -208,7 +222,7 @@ describe('ProviderCardActions', () => {
     mockGetMarketplaceUrl.mockReturnValue(
       'https://marketplace.example.com/plugins/langgenius/provider-plugin',
     )
-    mockNormalizeInstalledPluginDetail.mockReturnValue(
+    setPluginDetail(
       createDetail({
         source: PluginSource.github,
         meta: {
@@ -255,7 +269,6 @@ describe('ProviderCardActions', () => {
     await waitFor(() => {
       expect(mockShowPluginInfo).toHaveBeenCalledTimes(1)
     })
-    expect(mockNormalizeInstalledPluginDetail).toHaveBeenCalledTimes(1)
   })
 
   it('should remove from summary without loading plugin detail', async () => {
@@ -271,7 +284,6 @@ describe('ProviderCardActions', () => {
     await waitFor(() => {
       expect(mockUninstallPlugin).toHaveBeenCalledWith('installation-id')
     })
-    expect(mockNormalizeInstalledPluginDetail).not.toHaveBeenCalled()
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
     })
@@ -319,7 +331,7 @@ describe('ProviderCardActions', () => {
   })
 
   it('should use the summary latest version when updating a marketplace plugin', async () => {
-    mockNormalizeInstalledPluginDetail.mockReturnValue(
+    setPluginDetail(
       createDetail({
         latest_version: '1.0.0',
         latest_unique_identifier: 'plugin-id@1.0.0',
@@ -359,7 +371,7 @@ describe('ProviderCardActions', () => {
         resolveRefresh = resolve
       })
       const onUpdate = vi.fn(() => refreshPromise)
-      mockNormalizeInstalledPluginDetail.mockReturnValue(createDetail({ version: current }))
+      setPluginDetail(createDetail({ version: current }))
 
       const rendered = render(
         <ProviderCardActions
@@ -403,7 +415,7 @@ describe('ProviderCardActions', () => {
     const user = userEvent.setup()
     const refreshError = new Error('refresh failed')
     const onUpdate = vi.fn().mockRejectedValue(refreshError)
-    mockNormalizeInstalledPluginDetail.mockReturnValue(createDetail({ version: '1.0.0' }))
+    setPluginDetail(createDetail({ version: '1.0.0' }))
     const rendered = render(
       <ProviderCardActions
         summary={createSummary({ source: 'marketplace', version: '1.0.0' })}

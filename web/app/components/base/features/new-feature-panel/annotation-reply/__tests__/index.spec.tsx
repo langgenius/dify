@@ -72,12 +72,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ModelTypeEnum: {
-    textEmbedding: 'text-embedding',
-  },
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: () => <div data-testid="model-selector">Model Selector</div>,
 }))

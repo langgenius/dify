@@ -1,13 +1,9 @@
 import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
-import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
-import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { I18nText } from '@/i18n/language'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
 }
-
-export type Member = AccountWithRoleResponse
 
 export type DataSourceNotionPage = {
   page_icon: null | {
@@ -45,8 +41,6 @@ export const DataSourceProvider = {
   waterCrawl: 'watercrawl',
 } as const
 export type DataSourceProvider = (typeof DataSourceProvider)[keyof typeof DataSourceProvider]
-
-export type FileUploadConfigResponse = UploadConfig
 
 export type CodeBasedExtensionForm = {
   type: string

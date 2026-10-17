@@ -1,54 +1,9 @@
 import type { DocExtractorNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
-import { useStoreApi } from 'reactflow'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
-import { useWorkflowVariables } from '../../../hooks/use-workflow-variables'
+import { act } from '@testing-library/react'
+import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig from '../use-config'
-
-const mockUseStoreApi = vi.mocked(useStoreApi)
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
-const mockUseWorkflow = vi.mocked(useWorkflow)
-const mockUseWorkflowVariables = vi.mocked(useWorkflowVariables)
-
-vi.mock('reactflow', async () => {
-  const actual = await vi.importActual<typeof import('reactflow')>('reactflow')
-  return {
-    ...actual,
-    useStoreApi: vi.fn(),
-  }
-})
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-
-    useNodesReadOnly: vi.fn(),
-    useWorkflow: vi.fn(),
-  }
-})
-
-vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
-
-  return {
-    ...actual,
-    useWorkflowVariables: vi.fn(),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-const setInputs = vi.fn()
-const getCurrentVariableType = vi.fn()
 
 const createData = (overrides: Partial<DocExtractorNodeType> = {}): DocExtractorNodeType => ({
   title: 'Document Extractor',
@@ -60,59 +15,49 @@ const createData = (overrides: Partial<DocExtractorNodeType> = {}): DocExtractor
 })
 
 describe('document-extractor/use-config', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
-    mockUseIsChatMode.mockReturnValue(false)
-    mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranch: vi.fn(() => [{ id: 'start-node' }]),
-    } as unknown as ReturnType<typeof useWorkflow>)
-    mockUseWorkflowVariables.mockReturnValue({
-      getCurrentVariableType,
-    } as unknown as ReturnType<typeof useWorkflowVariables>)
-    mockUseStoreApi.mockReturnValue({
-      getState: () => ({
-        getNodes: () => [
-          { id: 'doc-node', parentId: 'loop-1', data: { type: BlockEnum.DocExtractor } },
-          { id: 'loop-1', data: { type: BlockEnum.Loop } },
+  it('derives single and multiple file selection from real upstream outputs', () => {
+    const data = createData()
+    const source = createNode({
+      id: 'source',
+      data: {
+        type: BlockEnum.Start,
+        variables: [
+          {
+            variable: 'attachment',
+            label: 'Attachment',
+            type: InputVarType.singleFile,
+            required: false,
+          },
+          {
+            variable: 'attachments',
+            label: 'Attachments',
+            type: InputVarType.multiFiles,
+            required: false,
+          },
         ],
-      }),
-    } as ReturnType<typeof useStoreApi>)
-    mockUseNodeCrud.mockReturnValue({
-      inputs: createData(),
-      setInputs,
-    } as ReturnType<typeof useNodeCrud>)
+      },
+    })
+    const { result } = renderNodeConfig(useConfig, data, {
+      nodes: [source, createNode({ id: 'node', data })],
+      edges: [createEdge({ source: 'source', target: 'node' })],
+    })
+    act(() => result.current.config.handleVarChanges(['source', 'attachments']))
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      variable_selector: ['source', 'attachments'],
+      is_array_file: true,
+    })
+    act(() => result.current.config.handleVarChanges(['source', 'attachment']))
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      variable_selector: ['source', 'attachment'],
+      is_array_file: false,
+    })
   })
-
-  it('updates the selected variable and tracks array file output types', () => {
-    getCurrentVariableType.mockReturnValue(VarType.arrayFile)
-
-    const { result } = renderHook(() => useConfig('doc-node', createData()))
-
-    result.current.handleVarChanges(['node-2', 'files'])
-
-    expect(getCurrentVariableType).toHaveBeenCalled()
-    expect(setInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        variable_selector: ['node-2', 'files'],
-        is_array_file: true,
-      }),
+  it('only accepts files and file arrays', () => {
+    const { result } = renderNodeConfig(useConfig, createData())
+    expect(result.current.config.filterVar({ variable: 'file', type: VarType.file })).toBe(true)
+    expect(result.current.config.filterVar({ variable: 'files', type: VarType.arrayFile })).toBe(
+      true,
     )
+    expect(result.current.config.filterVar({ variable: 'text', type: VarType.string })).toBe(false)
   })
-
-  it('only accepts file variables in the picker filter', () => {
-    const { result } = renderHook(() => useConfig('doc-node', createData()))
-
-    expect(result.current.readOnly).toBe(false)
-    expect(result.current.filterVar({ type: VarType.file } as never)).toBe(true)
-    expect(result.current.filterVar({ type: VarType.arrayFile } as never)).toBe(true)
-    expect(result.current.filterVar({ type: VarType.string } as never)).toBe(false)
-  })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

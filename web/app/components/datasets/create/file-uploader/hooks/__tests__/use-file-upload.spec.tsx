@@ -8,6 +8,7 @@ import {
   createConsoleQueryWrapper,
   renderWithConsoleQuery,
 } from '@/test/console/query-data'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
 // Import after mocks
 import { useFileUpload } from '../use-file-upload'
@@ -30,12 +31,12 @@ vi.mock('@/service/base', () => ({
 }))
 
 // Mock file upload config
-const mockFileUploadConfig = {
+const fileUploadConfig = createFileUploadConfigFixture({
   file_size_limit: 15,
   knowledge_file_size_limit: 50,
   batch_count_limit: 5,
   file_upload_limit: 10,
-}
+})
 
 const supportedFormats = {
   allowed_extensions: ['pdf', 'docx', 'txt', 'md'],
@@ -46,12 +47,10 @@ vi.mock('@/i18n/language', () => ({
 }))
 
 // Mock file upload error message
-vi.mock('@/app/components/base/file-uploader/utils', () => ({
-  getFileUploadErrorMessage: (_e: unknown, defaultMsg: string) => defaultMsg,
-}))
 
 const createQueryClient = () => {
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.files.upload.get.queryKey(), fileUploadConfig)
   queryClient.setQueryData(
     consoleQuery.files.supportType.get.queryOptions().queryKey,
     supportedFormats,
@@ -68,13 +67,6 @@ const render = (ui: ReactElement) =>
     queryClient: createQueryClient(),
     systemFeatures: { deployment_edition: 'CLOUD' },
   })
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'files.upload.get': () => ({ data: mockFileUploadConfig }),
-  })
-})
 
 describe('useFileUpload', () => {
   const defaultOptions = {
@@ -164,6 +156,7 @@ describe('useFileUpload', () => {
     'keeps the explicit $allowedExtensions override while subscribing to supported formats',
     async ({ allowedExtensions, expectedAccept, uploadCount }) => {
       const queryClient = createConsoleQueryClient()
+      queryClient.setQueryData(consoleQuery.files.upload.get.queryKey(), fileUploadConfig)
       request.mockImplementation(async () => Response.json(supportedFormats))
       const Uploader = () => {
         const { fileUploaderRef, fileChangeHandle, acceptTypes } = useFileUpload({
@@ -387,7 +380,7 @@ describe('useFileUpload', () => {
       // Should be called with at most batch_count_limit files
       if (prepareFileList.mock.calls.length > 0) {
         const calledFiles = prepareFileList.mock.calls[0]![0]
-        expect(calledFiles.length).toBeLessThanOrEqual(mockFileUploadConfig.batch_count_limit)
+        expect(calledFiles.length).toBeLessThanOrEqual(fileUploadConfig.batch_count_limit)
       }
     })
 

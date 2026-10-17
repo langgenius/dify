@@ -76,11 +76,6 @@ vi.mock('@/service/use-triggers', () => ({
     data: { options: [] },
     isLoading: false,
   }),
-  useTriggerPluginDynamicOptionsInfo: () => ({
-    data: null,
-    isLoading: false,
-  }),
-  useInvalidTriggerDynamicOptions: () => vi.fn(),
 }))
 
 // Factory function for creating test PluginPayload

@@ -15,8 +15,7 @@ import {
 type FormArg = Parameters<typeof buildSubmitData>[0][number]
 
 describe('before-run-form helpers', () => {
-  const createValues = (values: Record<string, unknown>) =>
-    values as unknown as Record<string, string>
+  const createValues = (values: Record<string, unknown>) => values as Record<string, string>
   const createInput = (input: Partial<InputVar>): InputVar => ({
     variable: 'field',
     label: 'Field',

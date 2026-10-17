@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { consoleQuery } from '@/service/console'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
@@ -53,7 +53,7 @@ const FileUploadSetting: FC<Props> = ({
   } = payload
   const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit, maxFileUploadLimit } =
-    useFileSizeLimit(fileUploadConfigResponse)
+    getFileSizeLimit(fileUploadConfigResponse)
 
   const handleSupportFileTypeChange = useCallback(
     (type: SupportUploadFileTypes) => {

@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
-import { render } from '@/test/console/render'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '../../types'
 import DowngradeWarningModal from '../downgrade-warning'
 import FromGitHub from '../from-github'
@@ -54,12 +54,10 @@ vi.mock('@/service/plugins', () => ({
 const mockHandleInstallTaskStart = vi.fn()
 const mockMutateAsync = vi.fn()
 
-vi.mock('@/service/use-plugins', () => ({
+vi.mock('@/service/use-plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-plugins')>()),
   usePluginTaskList: () => ({
     handleInstallTaskStart: mockHandleInstallTaskStart,
-  }),
-  useRemoveAutoUpgrade: () => ({
-    mutateAsync: mockMutateAsync,
   }),
   useVersionListOfPlugin: () => ({
     data: {
@@ -217,6 +215,18 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 // ================================
 // Test Suites
 // ================================
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.autoUpgrade.exclude.post': (...args: unknown[]) =>
+        mockMutateAsync(...args),
+    }),
+  }
+})
 
 describe('update-plugin', () => {
   beforeEach(() => {
@@ -746,8 +756,10 @@ describe('update-plugin', () => {
         // Assert
         await waitFor(() => {
           expect(mockMutateAsync).toHaveBeenCalledWith({
-            plugin_id: 'test-plugin-id',
-            category: PluginCategoryEnum.tool,
+            body: {
+              plugin_id: 'test-plugin-id',
+              category: PluginCategoryEnum.tool,
+            },
           })
         })
         await waitFor(() => {

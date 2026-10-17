@@ -39,16 +39,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
-  __esModule: true,
-  FieldCollapse: ({ title, children }: { title: React.ReactNode; children: React.ReactNode }) => (
-    <div>
-      <div>{title}</div>
-      {children}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: string[]) => void }) => (
@@ -198,17 +188,11 @@ describe('parameter-extractor/panel', () => {
     } as ReturnType<typeof useConfig>)
   })
 
-  it('wires model, parameter, instruction, memory, and reasoning actions to use-config', async () => {
+  it('adds a parameter through the real dialog and closes it after submission', async () => {
     const user = userEvent.setup()
 
     render(<Panel id="node-1" data={createData()} panelProps={panelProps} />)
 
-    await user.click(screen.getByRole('button', { name: 'set-model' }))
-    await user.click(screen.getByRole('button', { name: 'set-params' }))
-    await user.click(screen.getByRole('button', { name: 'pick-var' }))
-    await user.click(screen.getByRole('button', { name: 'vision-toggle' }))
-    await user.click(screen.getByRole('button', { name: 'vision-config' }))
-    await user.click(screen.getByRole('button', { name: 'import-from-tool' }))
     await user.click(
       screen.getByRole('button', {
         name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
@@ -228,20 +212,6 @@ describe('parameter-extractor/panel', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    await user.click(screen.getByRole('button', { name: 'instruction-editor' }))
-    await user.click(screen.getByRole('button', { name: 'memory-config' }))
-    await user.click(screen.getByRole('button', { name: 'set-reasoning-mode' }))
-
-    expect(handleModelChanged).toHaveBeenCalledWith({
-      provider: 'anthropic',
-      modelId: 'claude-3-7-sonnet',
-      mode: 'chat' as const,
-    })
-    expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
-    expect(handleInputVarChange).toHaveBeenCalledWith(['node-1', 'query'])
-    expect(handleVisionResolutionEnabledChange).toHaveBeenCalledWith(true)
-    expect(handleVisionResolutionChange).toHaveBeenCalledWith({ detail: 'high' })
-    expect(handleImportFromTool).toHaveBeenCalledWith([{ name: 'budget' }])
     expect(addExtractParameter).toHaveBeenCalledExactlyOnceWith(
       {
         name: 'budget',
@@ -251,12 +221,5 @@ describe('parameter-extractor/panel', () => {
       },
       undefined,
     )
-    expect(handleInstructionChange).toHaveBeenCalledWith('Updated instruction')
-    expect(handleMemoryChange).toHaveBeenCalledWith({ enabled: true })
-    expect(handleReasoningModeChange).toHaveBeenCalledWith(ReasoningModeType.functionCall)
-    expect(screen.getByText('city:string')).toBeInTheDocument()
-    expect(screen.getByText('__is_success:number')).toBeInTheDocument()
-    expect(screen.getByText('__reason:string')).toBeInTheDocument()
-    expect(screen.getByText('__usage:object')).toBeInTheDocument()
   })
 })

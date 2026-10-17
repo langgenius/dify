@@ -1,8 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import RenameDatasetModal from '../index'
@@ -33,7 +34,9 @@ vi.mock('@/service/datasets', () => ({
 
 describe('RenameDatasetModal', () => {
   // Create a base dataset with emoji icon
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
+  const createMockDataset = (
+    overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+  ): DatasetDetailWithPartialMembersResponse => ({
     ...createDatasetFixture(),
     id: 'dataset-1',
     name: 'Test Dataset',
@@ -44,7 +47,7 @@ describe('RenameDatasetModal', () => {
       icon_background: '#FFEAD5',
       icon_url: undefined,
     },
-    permission: DatasetPermission.onlyMe,
+    permission: PermissionLevel.onlyMe,
     data_source_type: DataSourceType.FILE,
     indexing_technique: IndexingType.QUALIFIED,
     created_by: 'user-1',
@@ -58,7 +61,7 @@ describe('RenameDatasetModal', () => {
     embedding_model: 'text-embedding-ada-002',
     embedding_model_provider: 'openai',
     embedding_available: true,
-    retrieval_model_dict: {} as DataSet['retrieval_model_dict'],
+    retrieval_model_dict: {} as DatasetDetailWithPartialMembersResponse['retrieval_model_dict'],
     tags: [],
     external_knowledge_info: {
       external_knowledge_id: '',
@@ -79,7 +82,7 @@ describe('RenameDatasetModal', () => {
   })
 
   // Create a dataset with image icon
-  const createMockDatasetWithImageIcon = (): DataSet =>
+  const createMockDatasetWithImageIcon = (): DatasetDetailWithPartialMembersResponse =>
     createMockDataset({
       icon_info: {
         icon: 'file-id-123',
@@ -90,7 +93,7 @@ describe('RenameDatasetModal', () => {
     })
 
   // Create a dataset with external knowledge info
-  const createMockExternalDataset = (): DataSet =>
+  const createMockExternalDataset = (): DatasetDetailWithPartialMembersResponse =>
     createMockDataset({
       external_knowledge_info: {
         external_knowledge_id: 'ext-knowledge-1',
@@ -321,7 +324,7 @@ describe('RenameDatasetModal', () => {
 
     it('should disable save button while loading', async () => {
       // Create a promise that we can control
-      let resolvePromise: (value: DataSet) => void
+      let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -1062,7 +1065,7 @@ describe('RenameDatasetModal', () => {
 
     it('should handle double click on save button', async () => {
       // Use a promise we can control to ensure the first click is still "loading"
-      let resolvePromise: (value: DataSet) => void
+      let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
@@ -1182,7 +1185,7 @@ describe('RenameDatasetModal', () => {
 
   describe('Loading State', () => {
     it('should show loading state during API call', async () => {
-      let resolvePromise: (value: DataSet) => void
+      let resolvePromise: (value: DatasetDetailWithPartialMembersResponse) => void
       mockUpdateDatasetSetting.mockImplementation(
         () =>
           new Promise((resolve) => {

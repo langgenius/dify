@@ -1,8 +1,9 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { CrawlResultItem } from '@/models/datasets'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render as renderWithoutUrlState, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { CrawlStep } from '@/models/datasets'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import WebsiteCrawl from '../index'
 
 // Mock useDocLink - context hook requires mocking
@@ -18,12 +19,6 @@ vi.mock('@/context/dataset-detail', () => ({
     selector: (s: { dataset: { pipeline_id: string | undefined } }) => unknown,
   ) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
-
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
 
 // Mock ssePost - API service requires mocking
 const { mockSsePost } = vi.hoisted(() => ({
@@ -268,6 +263,9 @@ const createDefaultProps = (overrides?: Partial<WebsiteCrawlProps>): WebsiteCraw
   ...overrides,
 })
 
+const onUrlUpdate = vi.fn()
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({ onUrlUpdate }))
+
 describe('WebsiteCrawl', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -286,7 +284,7 @@ describe('WebsiteCrawl', () => {
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
-    mockSetSettingsDestination.mockClear()
+    onUrlUpdate.mockClear()
 
     // Default mock return values
     mockUseGetDataSourceAuth.mockReturnValue({
@@ -639,13 +637,15 @@ describe('WebsiteCrawl', () => {
       expect(mockStoreState.setPreviewIndex).toHaveBeenCalledWith(0)
     })
 
-    it('should have stable handleSetting callback', () => {
+    it('should have stable handleSetting callback', async () => {
       const props = createDefaultProps()
       render(<WebsiteCrawl {...props} />)
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
     })
 
     it('should have stable handleCredentialChange that resets state', () => {
@@ -674,13 +674,15 @@ describe('WebsiteCrawl', () => {
       })
     })
 
-    it('should handle configuration button click', () => {
+    it('should handle configuration button click', async () => {
       const props = createDefaultProps()
       render(<WebsiteCrawl {...props} />)
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+      )
     })
 
     it('should handle credential change', () => {

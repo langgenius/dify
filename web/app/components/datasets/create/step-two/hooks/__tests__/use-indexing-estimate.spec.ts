@@ -1,27 +1,23 @@
 import type { IndexingType } from '../use-indexing-config'
 import type { NotionPage } from '@/models/common'
 import type { ChunkingMode, CrawlResultItem, CustomFile, ProcessRule } from '@/models/datasets'
-import { renderHook } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 
-const mocks = vi.hoisted(() => ({
-  mutate: vi.fn(),
-  reset: vi.fn(),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.indexingEstimate.post': () => ({
-      mutate: mocks.mutate,
-      reset: mocks.reset,
-      data: { tokens: 100, total_segments: 5 },
-      isIdle: true,
-      isPending: false,
+const estimate = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.indexingEstimate.post': estimate,
     }),
-  })
+  }
 })
 
 const { useIndexingEstimate } = await import('../use-indexing-estimate')
@@ -48,21 +44,32 @@ describe('useIndexingEstimate', () => {
     processRule: { mode: 'custom', rules: {} } as unknown as ProcessRule,
   }
 
-  const sentBody = () => mocks.mutate.mock.calls.at(-1)?.[0].body
+  const sentBody = () => estimate.mock.calls.at(-1)?.[0].body
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    estimate.mockReset().mockResolvedValue({ tokens: 100, total_segments: 5 })
   })
 
-  it('exposes the estimate', () => {
+  it('moves from idle through pending to the estimate and clears the result on reset', async () => {
+    const request = createDeferred<{ tokens: number; total_segments: number }>()
+    estimate.mockReturnValue(request.promise)
     const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-    expect(result.current.estimate).toEqual({ tokens: 100, total_segments: 5 })
+    expect(result.current.isIdle).toBe(true)
+    expect(result.current.estimate).toBeUndefined()
+    act(() => result.current.fetchEstimate())
+    await waitFor(() => expect(result.current.isPending).toBe(true))
+    await act(async () => request.resolve({ tokens: 100, total_segments: 5 }))
+    await waitFor(() => expect(result.current.estimate).toEqual({ tokens: 100, total_segments: 5 }))
+    expect(result.current.isPending).toBe(false)
+    act(() => result.current.reset())
+    await waitFor(() => expect(result.current.isIdle).toBe(true))
+    expect(result.current.estimate).toBeUndefined()
   })
 
   describe('fetchEstimate', () => {
-    it('estimates the uploaded files', () => {
+    it('estimates the uploaded files', async () => {
       const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      result.current.fetchEstimate()
+      await act(async () => result.current.fetchEstimate())
 
       expect(sentBody()).toMatchObject({
         info_list: { data_source_type: 'upload_file', file_info_list: { file_ids: ['f-1'] } },
@@ -71,11 +78,11 @@ describe('useIndexingEstimate', () => {
       })
     })
 
-    it('estimates the previewed Notion page', () => {
+    it('estimates the previewed Notion page', async () => {
       const { result } = renderHook(() =>
         useIndexingEstimate({ ...defaultOptions, dataSourceType: DataSourceType.NOTION }),
       )
-      result.current.fetchEstimate()
+      await act(async () => result.current.fetchEstimate())
 
       expect(sentBody()).toMatchObject({
         info_list: {
@@ -91,11 +98,11 @@ describe('useIndexingEstimate', () => {
       })
     })
 
-    it('estimates the previewed website page', () => {
+    it('estimates the previewed website page', async () => {
       const { result } = renderHook(() =>
         useIndexingEstimate({ ...defaultOptions, dataSourceType: DataSourceType.WEB }),
       )
-      result.current.fetchEstimate()
+      await act(async () => result.current.fetchEstimate())
 
       expect(sentBody()).toMatchObject({
         info_list: {
@@ -107,24 +114,6 @@ describe('useIndexingEstimate', () => {
           },
         },
       })
-    })
-  })
-
-  describe('state properties', () => {
-    it('should expose isIdle', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      expect(result.current.isIdle).toBe(true)
-    })
-
-    it('should expose isPending', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      expect(result.current.isPending).toBe(false)
-    })
-
-    it('should expose reset function', () => {
-      const { result } = renderHook(() => useIndexingEstimate(defaultOptions))
-      result.current.reset()
-      expect(mocks.reset).toHaveBeenCalledOnce()
     })
   })
 })

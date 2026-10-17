@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppSourceType } from '@/service/share'
+import { createEmbeddedChatbotContextFixture } from '@/test/fixtures/embedded-chatbot'
 import { useEmbeddedChatbotContext } from '../../context'
+import { createTheme } from '../../theme/theme'
 import InputsFormNode from '../index'
 
 vi.mock('../../context', () => ({
@@ -13,15 +15,15 @@ vi.mock('../content', () => ({
   default: () => <div data-testid="mock-inputs-form-content" />,
 }))
 
-const mockContextValue = {
+const mockContextValue = createEmbeddedChatbotContextFixture({
   appSourceType: AppSourceType.webApp,
   isMobile: false,
-  currentConversationId: null,
+  currentConversationId: '',
   theme: undefined,
   handleStartChat: vi.fn(),
   allInputsHidden: false,
   inputsForms: [{ variable: 'test' }],
-}
+})
 
 describe('InputsFormNode', () => {
   const user = userEvent.setup()
@@ -30,14 +32,14 @@ describe('InputsFormNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue as unknown as any)
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(mockContextValue)
   })
 
   it('should return null if allInputsHidden is true', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       allInputsHidden: true,
-    } as unknown as any)
+    })
     const { container } = render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     expect(container.firstChild).toBeNull()
   })
@@ -46,7 +48,7 @@ describe('InputsFormNode', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       inputsForms: [],
-    } as unknown as any)
+    })
     const { container } = render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     expect(container.firstChild).toBeNull()
   })
@@ -75,7 +77,7 @@ describe('InputsFormNode', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       currentConversationId: 'conv-123',
-    } as unknown as any)
+    })
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(setCollapsed).toHaveBeenCalledWith(true)
@@ -87,7 +89,7 @@ describe('InputsFormNode', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
       handleStartChat,
-    } as unknown as any)
+    })
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     await user.click(screen.getByRole('button', { name: 'share.chat.startChat' }))
     expect(handleStartChat).toHaveBeenCalled()
@@ -97,10 +99,8 @@ describe('InputsFormNode', () => {
   it('should apply theme primary color to start chat button', () => {
     vi.mocked(useEmbeddedChatbotContext).mockReturnValue({
       ...mockContextValue,
-      theme: {
-        primaryColor: '#ff0000',
-      },
-    } as unknown as any)
+      theme: createTheme('#ff0000'),
+    })
     render(<InputsFormNode collapsed={false} setCollapsed={setCollapsed} />)
     const button = screen.getByRole('button', { name: 'share.chat.startChat' })
     expect(button).toHaveStyle({ backgroundColor: '#ff0000' })

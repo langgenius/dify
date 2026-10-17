@@ -14,16 +14,6 @@ vi.mock('@/service/tools', () => ({
   fetchBuiltInToolCredential: (...args: unknown[]) => mockFetchCredentialValue(...args),
 }))
 
-vi.mock('../../../utils/to-form-schema', () => ({
-  toolCredentialToFormSchemas: (schemas: unknown[]) =>
-    (schemas as Record<string, unknown>[]).map((s) => ({
-      ...s,
-      variable: s.name,
-      show_on: [],
-    })),
-  addDefaultValue: (value: Record<string, unknown>, _schemas: unknown[]) => ({ ...value }),
-}))
-
 vi.mock('@/app/notifications', () => ({
   default: { notify: vi.fn() },
 }))

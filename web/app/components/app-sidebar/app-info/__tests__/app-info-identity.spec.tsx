@@ -47,19 +47,10 @@ vi.mock('../app-info-modals', () => ({
   default: ({
     appDetail,
     activeModal,
-    secretEnvList,
-    setSecretEnvList,
   }: {
     appDetail: { name: string }
     activeModal: string | null
-    secretEnvList: unknown[]
-    setSecretEnvList: (list: unknown[]) => void
-  }) => (
-    <div>
-      <p>{`${appDetail.name}: ${activeModal ?? 'closed'}; secrets: ${secretEnvList.length}`}</p>
-      <button onClick={() => setSecretEnvList([{}])}>Add secret</button>
-    </div>
-  ),
+  }) => <p>{`${appDetail.name}: ${activeModal ?? 'closed'}`}</p>,
 }))
 
 describe('AppInfoView identity in the app detail sidebar', () => {
@@ -82,8 +73,7 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     })
 
     await user.click(screen.getByRole('button', { name: 'Open First app' }))
-    await user.click(screen.getByRole('button', { name: 'Add secret' }))
-    expect(screen.getByText('First app: edit; secrets: 1')).toBeInTheDocument()
+    expect(screen.getByText('First app: edit')).toBeInTheDocument()
     screen.getByRole('button', { name: 'Open First app' }).focus()
 
     currentApp = createAppDetailFixture({ name: 'Renamed app' })
@@ -91,7 +81,7 @@ describe('AppInfoView identity in the app detail sidebar', () => {
       seed()
     })
     view.rerender(<AppDetailSection />)
-    expect(screen.getByText('Renamed app: edit; secrets: 1')).toBeInTheDocument()
+    expect(screen.getByText('Renamed app: edit')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Renamed app' })).toHaveFocus()
 
     currentApp = createAppDetailFixture({ id: 'app-2', name: 'Second app' })
@@ -99,6 +89,6 @@ describe('AppInfoView identity in the app detail sidebar', () => {
     seed()
     view.rerender(<AppDetailSection />)
     expect(screen.getByRole('button', { name: 'Open Second app' })).toBeInTheDocument()
-    expect(screen.getByText('Second app: closed; secrets: 0')).toBeInTheDocument()
+    expect(screen.getByText('Second app: closed')).toBeInTheDocument()
   })
 })

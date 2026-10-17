@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { UserActionButtonType } from '../../types'
 import UserActionItem from '../user-action'
@@ -10,22 +11,6 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@langgenius/dify-ui/input', () => ({
-  Input: (props: {
-    value: string
-    placeholder?: string
-    disabled?: boolean
-    onChange: (event: { target: { value: string } }) => void
-  }) => (
-    <input
-      data-testid={props.placeholder}
-      value={props.value}
-      disabled={props.disabled}
-      onChange={(e) => props.onChange({ target: { value: e.target.value } })}
-    />
-  ),
-}))
-
 vi.mock('@/app/notifications', () => ({
   __esModule: true,
   toast: {
@@ -34,15 +19,6 @@ vi.mock('@/app/notifications', () => ({
     warning: (message: string) => mockNotify({ type: 'warning', message }),
     info: (message: string) => mockNotify({ type: 'info', message }),
   },
-}))
-
-vi.mock('../button-style-dropdown', () => ({
-  __esModule: true,
-  default: (props: { onChange: (type: UserActionButtonType) => void }) => (
-    <button type="button" onClick={() => props.onChange(UserActionButtonType.Ghost)}>
-      change-style
-    </button>
-  ),
 }))
 
 describe('UserActionItem', () => {
@@ -64,18 +40,30 @@ describe('UserActionItem', () => {
   it('should sanitize ids, enforce length limits, and update the button text', () => {
     render(<UserActionItem data={action} onChange={onChange} onDelete={onDelete} />)
 
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: 'Approve action' },
-    })
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: '1invalid' },
-    })
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: 'averyveryveryverylongidentifier' },
-    })
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'), {
-      target: { value: 'card_visa_enterprise_001' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'nodes.humanInput.userActions.actionNamePlaceholder' }),
+      {
+        target: { value: 'Approve action' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'nodes.humanInput.userActions.actionNamePlaceholder' }),
+      {
+        target: { value: '1invalid' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'nodes.humanInput.userActions.actionNamePlaceholder' }),
+      {
+        target: { value: 'averyveryveryverylongidentifier' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'nodes.humanInput.userActions.buttonTextPlaceholder' }),
+      {
+        target: { value: 'card_visa_enterprise_001' },
+      },
+    )
 
     expect(onChange).toHaveBeenNthCalledWith(
       1,
@@ -112,15 +100,27 @@ describe('UserActionItem', () => {
     expect(mockNotify).toHaveBeenCalledTimes(2)
   })
 
-  it('should support clearing ids, updating button style, deleting, and readonly mode', () => {
+  it('should support clearing ids, updating button style, deleting, and readonly mode', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(
       <UserActionItem data={action} onChange={onChange} onDelete={onDelete} />,
     )
 
-    fireEvent.change(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'), {
-      target: { value: '   ' },
-    })
-    fireEvent.click(screen.getByText('change-style'))
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'nodes.humanInput.userActions.actionNamePlaceholder' }),
+      {
+        target: { value: '   ' },
+      },
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'Approve: nodes.humanInput.userActions.chooseStyle' }),
+    )
+    await user.click(
+      await screen.findByRole('radio', {
+        name: 'Approve, nodes.humanInput.userActions.buttonStyle.ghost',
+      }),
+    )
+    await user.keyboard('{Escape}')
     fireEvent.click(screen.getByRole('button', { name: 'operation.delete' }))
 
     expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: '' }))
@@ -132,8 +132,15 @@ describe('UserActionItem', () => {
 
     rerender(<UserActionItem data={action} onChange={onChange} onDelete={onDelete} readonly />)
 
-    expect(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'))!.toBeDisabled()
-    expect(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'))!.toBeDisabled()
+    expect(
+      screen.getByRole('textbox', { name: 'nodes.humanInput.userActions.actionNamePlaceholder' }),
+    )!.toBeDisabled()
+    expect(
+      screen.getByRole('textbox', { name: 'nodes.humanInput.userActions.buttonTextPlaceholder' }),
+    )!.toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Approve: nodes.humanInput.userActions.chooseStyle' }),
+    ).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'operation.delete' })).not.toBeInTheDocument()
   })
 })

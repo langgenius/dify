@@ -4,19 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import { useDocumentListQueryState } from '../use-document-list-query-state'
 
-vi.mock('@/models/datasets', () => ({
-  DisplayStatusList: [
-    'queuing',
-    'indexing',
-    'paused',
-    'error',
-    'available',
-    'enabled',
-    'disabled',
-    'archived',
-  ],
-}))
-
 const renderWithAdapter = (searchParams = '') => {
   return renderHookWithNuqs(() => useDocumentListQueryState(), { searchParams })
 }

@@ -18,10 +18,6 @@ const { mockTemplateSearch } = vi.hoisted(() => ({
   mockTemplateSearch: vi.fn(),
 }))
 
-vi.mock('foxact/use-debounced-value', () => ({
-  useDebouncedValue: <T,>(value: T) => value,
-}))
-
 vi.mock('react-i18next', async (importOriginal) => {
   const original = await importOriginal<typeof import('react-i18next')>()
   const { createReactI18nextMock } = await import('@/test/i18n-mock')

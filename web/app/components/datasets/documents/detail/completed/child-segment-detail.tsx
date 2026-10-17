@@ -1,5 +1,6 @@
+import type { ChildChunkResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, ChunkingMode } from '@/models/datasets'
+import type { ChunkingMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiCollapseDiagonalLine, RiExpandDiagonalLine } from '@remixicon/react'
@@ -18,7 +19,7 @@ import { useSegmentListContext } from './index'
 
 type IChildSegmentDetailProps = {
   chunkId: string
-  childChunkInfo?: Partial<ChildChunkDetail> & { id: string }
+  childChunkInfo?: Partial<ChildChunkResponse> & { id: string }
   onUpdate: (segmentId: string, childChunkId: string, content: string) => void
   onCancel: () => void
   docForm: ChunkingMode

@@ -1,8 +1,9 @@
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { render, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAvailableBlocks } from '../../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
@@ -39,7 +40,7 @@ vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
 const mockUseAvailableBlocks = vi.mocked(useAvailableBlocks)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 
 const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> => ({
   getAvailableBlocks: vi.fn(() => ({
@@ -54,6 +55,7 @@ const FlowNode = (props: NodeProps<CommonNodeType>) => <LoopStartNode {...props}
 
 const renderFlowNode = () =>
   renderWorkflowFlowComponent(<div />, {
+    resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
     nodes: [
       createNode({
         id: 'loop-start-node',
@@ -85,7 +87,7 @@ describe('LoopStartNode', () => {
     mockUseNodesReadOnly.mockReturnValue({
       getNodesReadOnly: () => false,
     } as unknown as ReturnType<typeof useNodesReadOnly>)
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
   })
 
   // The loop start marker should match iteration start behavior in both real and dumb render paths.
@@ -99,16 +101,15 @@ describe('LoopStartNode', () => {
     })
 
     it('should render the dumb variant without any source handle', () => {
-      const { container } = render(<LoopStartNodeDumb />)
+      const { container } = render(<LoopStartNodeDumb />, {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      })
 
       expect(container.querySelector('[data-handleid="source"]')).not.toBeInTheDocument()
     })
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => mockUseIsChatMode()) }
 })

@@ -3,12 +3,12 @@ import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogHeader,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { QueryErrorResetBoundary } from '@tanstack/react-query'
 import { Suspense, useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,28 +28,18 @@ export function ApiKeyDialogContent({
 }: ApiKeyDialogContentProps) {
   const { t } = useTranslation(['appApi', 'common'])
   return (
-    <DialogContent finalFocus={finalFocus} className="flex w-200 flex-col overflow-hidden p-0">
-      <div className="flex shrink-0 flex-col gap-1 px-6 pt-6 pr-14 pb-4">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['apiKeyModal.apiSecretKey'])}
-        </DialogTitle>
-        <DialogDescription className="system-sm-regular text-text-tertiary">
+    <DialogContent finalFocus={finalFocus} className="w-200">
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['apiKeyModal.apiSecretKey'])}</DialogTitle>
+        <DialogDescription>
           {t(($) => $['apiKeyModal.apiSecretKeyTips'])}
           {limitDescription && <span className="block">{limitDescription}</span>}
         </DialogDescription>
-      </div>
-      <DialogClose
-        render={
-          <IconButton
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            disabled={closeDisabled}
-            size="lg"
-            className="absolute inset-e-6 top-6"
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </IconButton>
-        }
-      />
+        <DialogCloseButton
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+          disabled={closeDisabled}
+        />
+      </DialogHeader>
       <QueryErrorResetBoundary>
         {({ reset }) => (
           <ErrorBoundary

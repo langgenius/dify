@@ -1,13 +1,14 @@
 'use client'
+import type { Annotation, AnnotationHitHistory } from '@dify/contracts/api/console/apps/types.gen'
 import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
-import type { AnnotationItem, HitHistoryItem } from '../type'
 import {
   AlertDialog,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -38,7 +39,7 @@ type Props = Readonly<{
   appId: string
   isShow: boolean
   onHide: () => void
-  item: AnnotationItem
+  item: Annotation
   onSave: (editedQuery: string, editedAnswer: string) => Promise<void>
   onRemove: () => void
 }>
@@ -61,7 +62,7 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
   const totalPages = total ? Math.max(Math.ceil(total / APP_PAGE_LIMIT), 1) : 1
-  const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
+  const [hitHistoryList, setHitHistoryList] = useState<AnnotationHitHistory[]>([])
 
   // Update local state when item prop changes (e.g., when modal is reopened with updated data)
   useEffect(() => {
@@ -280,22 +281,16 @@ const ViewAnnotationModal: FC<Props> = ({ appId, isShow, onHide, item, onSave, o
                         </span>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                          <AlertDialogTitle
-                            title={t(($) => $['feature.annotation.removeConfirm'], {
-                              ns: 'appDebug',
-                            })}
-                            className="w-full truncate title-2xl-semi-bold text-text-primary"
-                          >
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
                             {t(($) => $['feature.annotation.removeConfirm'], { ns: 'appDebug' })}
                           </AlertDialogTitle>
-                        </div>
+                        </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancelButton>
                             {t(($) => $['operation.cancel'], { ns: 'common' })}
                           </AlertDialogCancelButton>
                           <AlertDialogConfirmButton
-                            tone="destructive"
                             onClick={async () => {
                               await onRemove()
                               removeActionsRef.current?.close()

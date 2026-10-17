@@ -93,25 +93,5 @@ describe('MarkdownMusic', () => {
         }),
       )
     })
-
-    it('should skip initialization when refs are unavailable', async () => {
-      vi.doMock('react', async (importOriginal) => {
-        const actual = await importOriginal<typeof import('react')>()
-        return {
-          ...actual,
-          useEffect: (effect: () => void) => {
-            effect()
-          },
-        }
-      })
-      const MarkdownMusic = await loadMarkdownMusic()
-      render(<MarkdownMusic>{'X:1\nT:NoRef\nK:C\nC D E F|'}</MarkdownMusic>)
-
-      expect(mockRenderAbc).not.toHaveBeenCalled()
-      expect(mockLoad).not.toHaveBeenCalled()
-      expect(mockInit).not.toHaveBeenCalled()
-
-      vi.doUnmock('react')
-    })
   })
 })

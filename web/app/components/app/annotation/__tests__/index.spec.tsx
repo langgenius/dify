@@ -1,5 +1,5 @@
-import type { ReactElement } from 'react'
-import type { AnnotationItem } from '../type'
+import type { Annotation as AnnotationData } from '@dify/contracts/api/console/apps/types.gen'
+import type { ComponentProps, ReactElement } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
@@ -12,10 +12,6 @@ let annotationQuota = { size: 0, limit: 10 }
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
-}))
-
-vi.mock('ahooks', () => ({
-  useDebounce: (value: any) => value,
 }))
 
 const mocks = vi.hoisted(() => ({
@@ -66,7 +62,7 @@ vi.mock('../empty-element', () => ({
 }))
 
 vi.mock('../header-opts', () => ({
-  default: (props: any) => (
+  default: (props: ComponentProps<typeof import('../header-opts').default>) => (
     <div data-testid="header-opts">
       <button
         data-testid="trigger-add"
@@ -81,15 +77,15 @@ vi.mock('../header-opts', () => ({
   ),
 }))
 
-let latestListProps: any
+let latestListProps: ComponentProps<typeof import('../list').List> | undefined
 
 vi.mock('../list', () => ({
-  List: (props: any) => {
+  List: (props: ComponentProps<typeof import('../list').List>) => {
     latestListProps = props
     if (!props.list.length) return <div data-testid="list-empty" />
     return (
       <div data-testid="list">
-        <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>
+        <button data-testid="list-view" onClick={() => props.onView(props.list[0]!)}>
           view
         </button>
         <button data-testid="list-remove" onClick={() => props.onRemoved()}>
@@ -104,7 +100,7 @@ vi.mock('../list', () => ({
 }))
 
 vi.mock('../view-annotation-modal', () => ({
-  default: (props: any) => {
+  default: (props: ComponentProps<typeof import('../view-annotation-modal').default>) => {
     if (!props.isShow) return null
     return (
       <div data-testid="view-modal">
@@ -129,7 +125,11 @@ vi.mock('../view-annotation-modal', () => ({
 vi.mock(
   '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal',
   () => ({
-    default: (props: any) =>
+    default: (
+      props: ComponentProps<
+        typeof import('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal').default
+      >,
+    ) =>
       props.isShow ? (
         <div data-testid="config-modal">
           <button
@@ -154,7 +154,9 @@ vi.mock(
   }),
 )
 vi.mock('@/app/components/billing/annotation-full/modal', () => ({
-  default: (props: any) =>
+  default: (
+    props: ComponentProps<typeof import('@/app/components/billing/annotation-full/modal').default>,
+  ) =>
     props.show ? (
       <div data-testid="annotation-full-modal">
         <button data-testid="hide-annotation-full-modal" onClick={props.onHide}>
@@ -196,7 +198,7 @@ const appDetail = createAppDetailFixture({
   mode: 'chat' as const,
 })
 
-const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
+const createAnnotation = (overrides: Partial<AnnotationData> = {}): AnnotationData => ({
   id: overrides.id ?? 'annotation-1',
   question: overrides.question ?? 'Question 1',
   answer: overrides.answer ?? 'Answer 1',
@@ -299,14 +301,14 @@ describe('Annotation', () => {
     await screen.findByTestId('list')
 
     await act(async () => {
-      latestListProps.onSelectedIdsChange([annotation.id])
+      latestListProps!.onSelectedIdsChange([annotation.id])
     })
     await waitFor(() => {
-      expect(latestListProps.selectedIds).toEqual([annotation.id])
+      expect(latestListProps!.selectedIds).toEqual([annotation.id])
     })
 
     await act(async () => {
-      await latestListProps.onBatchDelete()
+      await latestListProps!.onBatchDelete()
     })
     await waitFor(() => {
       expect(delAnnotationsMock).toHaveBeenCalledWith({
@@ -318,7 +320,7 @@ describe('Annotation', () => {
           type: 'success',
         }),
       )
-      expect(latestListProps.selectedIds).toEqual([])
+      expect(latestListProps!.selectedIds).toEqual([])
     })
 
     fireEvent.click(screen.getByTestId('list-view'))
@@ -344,14 +346,14 @@ describe('Annotation', () => {
     await screen.findByTestId('list')
 
     await act(async () => {
-      latestListProps.onSelectedIdsChange([annotation.id])
+      latestListProps!.onSelectedIdsChange([annotation.id])
     })
     await waitFor(() => {
-      expect(latestListProps.selectedIds).toEqual([annotation.id])
+      expect(latestListProps!.selectedIds).toEqual([annotation.id])
     })
 
     await act(async () => {
-      await expect(latestListProps.onBatchDelete()).rejects.toThrow(error.message)
+      await expect(latestListProps!.onBatchDelete()).rejects.toThrow(error.message)
     })
 
     await waitFor(() => {
@@ -359,7 +361,7 @@ describe('Annotation', () => {
         type: 'error',
         message: error.message,
       })
-      expect(latestListProps.selectedIds).toEqual([annotation.id])
+      expect(latestListProps!.selectedIds).toEqual([annotation.id])
     })
   })
 
@@ -509,13 +511,13 @@ describe('Annotation', () => {
     await screen.findByTestId('list')
 
     await act(async () => {
-      latestListProps.onSelectedIdsChange([annotation.id])
+      latestListProps!.onSelectedIdsChange([annotation.id])
     })
     await act(async () => {
-      latestListProps.onSelectedIdsChange([])
+      latestListProps!.onSelectedIdsChange([])
     })
 
-    expect(latestListProps.selectedIds).toEqual([])
+    expect(latestListProps!.selectedIds).toEqual([])
 
     const configButton = screen.getByRole('button', {
       name: 'appAnnotation.initSetup.configTitle',

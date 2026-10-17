@@ -1,4 +1,4 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Item from '../item'
@@ -13,7 +13,7 @@ describe('CredentialSelectorItem', () => {
       id: 'cred-1',
       name: 'My Account',
       avatar_url: 'https://example.com/avatar.png',
-    } as DataSourceCredential,
+    } as DatasourceCredentialResponse,
     isSelected: false,
     onCredentialChange: vi.fn(),
   }

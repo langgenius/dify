@@ -9,10 +9,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useLanguage: () => 'en_US',
 }))
 
-vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: (string | undefined | false | null)[]) => args.filter(Boolean).join(' '),
-}))
-
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: () => <span data-testid="card-icon" />,
 }))
@@ -23,16 +19,6 @@ vi.mock('@/app/components/plugins/card/base/description', () => ({
 
 vi.mock('@/app/components/plugins/card/base/org-info', () => ({
   default: ({ orgName }: { orgName: string }) => <div data-testid="org-info">{orgName}</div>,
-}))
-
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  triggerEventParametersToFormSchemas: (params: Array<Record<string, unknown>>) =>
-    params.map((p) => ({
-      label: (p.label as Record<string, string>) || { en_US: p.name as string },
-      type: (p.type as string) || 'text-input',
-      required: (p.required as boolean) || false,
-      description: p.description as Record<string, string> | undefined,
-    })),
 }))
 
 vi.mock(

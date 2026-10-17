@@ -121,10 +121,6 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/status-dot', () => ({
-  StatusDot: () => <span data-testid="indicator" />,
-}))
-
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
   default: () => <span data-testid="card-icon" />,
 }))
@@ -295,9 +291,7 @@ describe('ProviderDetail', () => {
 
       const dialog = screen.getByRole('dialog')
 
-      expect(
-        document.querySelector('.absolute.inset-0.z-50.bg-transparent'),
-      ).not.toBeInTheDocument()
+      expect(document.querySelector('.absolute.inset-0.bg-transparent')).not.toBeInTheDocument()
       expect(dialog.closest('.pointer-events-none')).toBeInTheDocument()
       expect(dialog).toHaveClass(
         'pointer-events-auto',

@@ -4,10 +4,6 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
 import ChangePasswordForm from '../page'
 
-vi.mock('ahooks', () => ({
-  useCountDown: () => [5000],
-}))
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
@@ -30,9 +26,7 @@ describe('Webapp Reset Password Set Password Page', () => {
       typeof useRouter
     >)
     vi.mocked(useSearchParams).mockReturnValue(
-      new URLSearchParams({ token: 'reset-token' }) as unknown as ReturnType<
-        typeof useSearchParams
-      >,
+      new URLSearchParams({ token: 'reset-token' }) as ReturnType<typeof useSearchParams>,
     )
     vi.mocked(changeWebAppPasswordWithToken).mockResolvedValue({ result: 'success' })
   })
