@@ -115,13 +115,7 @@ def test_encrypt_tool_parameters():
 def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch: pytest.MonkeyPatch):
     manager = _build_manager()
 
-    with (
-        patch.object(ToolParameterCache, "get", return_value={"secret": "cached"}),
-        patch.object(ToolParameterCache, "set") as mock_set,
-    ):
-        assert manager.decrypt_tool_parameters({"secret": "enc"}) == {"secret": "cached"}
-        mock_set.assert_not_called()
-
+    # cache miss: parameters are decrypted and cached
     with (
         patch.object(ToolParameterCache, "get", return_value=None),
         patch.object(ToolParameterCache, "set") as mock_set,
@@ -130,6 +124,19 @@ def test_decrypt_tool_parameters_cache_hit_and_miss(monkeypatch: pytest.MonkeyPa
         decrypted = manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"})
         assert decrypted["secret"] == "dec"
         mock_set.assert_called_once()
+
+    # cache hit with a matching fingerprint: the cached value is served as-is
+    fingerprint = manager._fingerprint_of_secret_inputs({"secret": "enc", "plain": "x"})
+    with (
+        patch.object(
+            ToolParameterCache,
+            "get",
+            return_value={"secret": "cached", "plain": "x", "__cache_fingerprint": fingerprint},
+        ),
+        patch.object(ToolParameterCache, "set") as mock_set,
+    ):
+        assert manager.decrypt_tool_parameters({"secret": "enc", "plain": "x"}) == {"secret": "cached", "plain": "x"}
+        mock_set.assert_not_called()
 
 
 def test_delete_tool_parameters_cache():
@@ -150,3 +157,76 @@ def test_configuration_manager_decrypt_suppresses_errors(monkeypatch: pytest.Mon
         decrypted = manager.decrypt_tool_parameters({"secret": "enc"})
     # decryption failure is suppressed, original value is retained.
     assert decrypted["secret"] == "enc"
+
+
+def test_decrypt_tool_parameters_must_not_leak_stale_values_across_loop_iterations():
+    """Regression test for https://github.com/langgenius/dify/issues/40920.
+
+    Inside a loop/iteration node the cache identity is ``WORKFLOW.{app_id}.{node_id}``,
+    which stays constant across iterations. A cache hit used to return the entire
+    cached parameter dict, silently discarding the freshly rendered values of the
+    current iteration (e.g. a dynamically bound ``secret-input`` such as a webhook key).
+    """
+    manager = _build_manager()
+
+    # Iteration 1: cache miss -> decrypt and cache the parameters.
+    with (
+        patch.object(ToolParameterCache, "get", return_value=None),
+        patch.object(ToolParameterCache, "set") as mock_set,
+        patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="secret-A"),
+    ):
+        first = manager.decrypt_tool_parameters({"secret": "enc-A", "plain": "one"})
+        assert first == {"secret": "secret-A", "plain": "one"}
+        mock_set.assert_called_once()
+
+    # Iteration 2: cache hit, but the freshly rendered values are different.
+    with (
+        patch.object(ToolParameterCache, "get", return_value={"secret": "secret-A", "plain": "one"}),
+        patch.object(ToolParameterCache, "set") as mock_set,
+        patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="secret-B"),
+    ):
+        second = manager.decrypt_tool_parameters({"secret": "enc-B", "plain": "two"})
+        # The stale cached secret must not overwrite the current iteration's value...
+        assert second["secret"] == "secret-B"
+        # ...and non-secret parameters must not be clobbered by the cached dict either.
+        assert second["plain"] == "two"
+        # the legacy (fingerprint-less) cache entry is stale, so it is refreshed
+        mock_set.assert_called_once()
+
+
+def test_decrypt_tool_parameters_cache_hit_still_serves_static_secret():
+    """A statically configured secret (same ciphertext on every call) must keep
+    benefiting from the decrypt cache instead of being decrypted again."""
+    manager = _build_manager()
+
+    fingerprint = manager._fingerprint_of_secret_inputs({"secret": "enc-A", "plain": "one"})
+    with (
+        patch.object(
+            ToolParameterCache,
+            "get",
+            return_value={"secret": "cached-plain", "plain": "one", "__cache_fingerprint": fingerprint},
+        ),
+        patch.object(ToolParameterCache, "set") as mock_set,
+        patch("core.tools.utils.configuration.encrypter.decrypt_token") as mock_decrypt,
+    ):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc-A", "plain": "one"})
+
+    assert decrypted["secret"] == "cached-plain"
+    mock_decrypt.assert_not_called()
+    mock_set.assert_not_called()
+
+
+def test_decrypt_tool_parameters_legacy_cache_without_fingerprint_is_stale():
+    """Cache entries written before the fingerprint existed (or by an older
+    version) must be treated as stale so deployments self-heal within the TTL."""
+    manager = _build_manager()
+
+    with (
+        patch.object(ToolParameterCache, "get", return_value={"secret": "stale-plain", "plain": "one"}),
+        patch.object(ToolParameterCache, "set") as mock_set,
+        patch("core.tools.utils.configuration.encrypter.decrypt_token", return_value="fresh-plain"),
+    ):
+        decrypted = manager.decrypt_tool_parameters({"secret": "enc-A", "plain": "one"})
+
+    assert decrypted["secret"] == "fresh-plain"
+    mock_set.assert_called_once()
