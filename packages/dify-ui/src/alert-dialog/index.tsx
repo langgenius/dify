@@ -65,7 +65,7 @@ function AlertDialogContent({
       <BaseAlertDialog.Popup
         className={(state) =>
           cn(
-            'fixed top-1/2 left-1/2 flex max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto overscroll-contain',
+            'fixed top-1/2 left-1/2 flex max-h-[calc(100dvh-2rem)] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto overscroll-none',
             modalSurfaceClassName,
             modalStackClassName,
             modalPopupAnimationClassName,
