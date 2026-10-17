@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 import yaml
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1013,11 +1014,13 @@ def test_export_dsl_preserves_envelope_and_mode_specific_content(
         (AppMode.ADVANCED_CHAT, "trigger-plugin"),
     ],
 )
-def test_overwrite_rejects_incompatible_nodes_before_mutation(mode: AppMode, node_type: str) -> None:
+def test_overwrite_rejects_incompatible_nodes_before_mutation(
+    mode: AppMode, node_type: str, mocker: MockerFixture
+) -> None:
     session = Mock()
     target = App(id="target", tenant_id="tenant", mode=mode, name="Original")
     service = AppDslService(session)
-    service._load_app_for_overwrite = Mock(return_value=target)
+    mocker.patch.object(service, "_load_app_for_overwrite", return_value=target)
     result = service.import_app(
         account=_account(),
         import_mode="yaml-content",
