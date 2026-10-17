@@ -1026,12 +1026,12 @@ services:
 
   # Chroma vector database
   chroma:
-    image: ghcr.io/chroma-core/chroma:0.5.20
+    image: ghcr.io/chroma-core/chroma:1.5.9
     profiles:
       - chroma
     restart: always
     volumes:
-      - ./volumes/chroma:/chroma/chroma
+      - ./volumes/chroma:/data
     environment:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
