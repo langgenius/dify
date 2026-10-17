@@ -39,7 +39,12 @@ const ResultPanel: FC<ResultPanelProps> = ({
   return (
     <div className="bg-components-panel-bg py-2">
       <div className="px-4 py-2">
-        <StatusPanel status={status} time={elapsed_time} tokens={total_tokens} error={error} />
+        <StatusPanel
+          status={status === 'success' ? 'succeeded' : status}
+          time={elapsed_time}
+          tokens={total_tokens}
+          error={error}
+        />
       </div>
       <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor

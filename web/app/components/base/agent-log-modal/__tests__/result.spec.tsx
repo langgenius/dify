@@ -1,34 +1,14 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import * as React from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import ResultPanel from '../result'
 
-// Code editing and the status widget are independently covered; this owner formats log data.
+// Code editing is independently covered; keep the status widget real to verify API status mapping.
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       <div data-testid="code-editor-title">{title}</div>
       <div data-testid="code-editor-value">{JSON.stringify(value)}</div>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({
-    status,
-    time,
-    tokens,
-    error,
-  }: {
-    status: string
-    time?: number
-    tokens?: number
-    error?: string
-  }) => (
-    <div data-testid="status-panel">
-      <span>{status}</span>
-      <span>{time}</span>
-      <span>{tokens}</span>
-      <span>{error}</span>
     </div>
   ),
 }))
@@ -40,7 +20,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 const mockProps = {
-  status: 'succeeded',
+  status: 'success',
   elapsed_time: 1.23456,
   total_tokens: 150,
   error: '',
@@ -62,8 +42,9 @@ describe('ResultPanel', () => {
     expect(screen.getByText(JSON.stringify(mockProps.inputs))).toBeInTheDocument()
     expect(screen.getByText(JSON.stringify(mockProps.outputs))).toBeInTheDocument()
     expect(screen.getByText('User Name')).toBeInTheDocument()
-    expect(screen.getByText('1.235s')).toBeInTheDocument() // toFixed(3)
-    expect(screen.getByText('150 Tokens')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('appLog.status.succeeded')
+    expect(screen.getByRole('status')).toHaveTextContent('1.235s')
+    expect(screen.getByRole('status')).toHaveTextContent('150 Tokens')
     expect(screen.getByText('appDebug.agent.agentModeType.functionCall')).toBeInTheDocument()
     expect(screen.getByText('tool1, tool2')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
@@ -85,7 +66,7 @@ describe('ResultPanel', () => {
 
     expect(screen.getByText('N/A')).toBeInTheDocument()
     expect(screen.getByText('Null')).toBeInTheDocument()
-    expect(screen.getByText('0 Tokens')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('0 Tokens')
     expect(screen.getByText('appDebug.agent.agentModeType.ReACT')).toBeInTheDocument()
   })
 })
