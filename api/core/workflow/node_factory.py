@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast, final, override, runtime_
 from configs import dify_config
 from extensions.application_services.data_sources import build_data_source_credentials
 from models.model import Conversation
+from services.dify_builder.effect_mock import mocked_node_class
 from services.dify_builder.json_tool_execution import admit_json_workflow
 from services.dify_builder.json_tool_runtime import QualifiedJsonToolNodeRuntime
 from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
@@ -776,6 +777,10 @@ class DifyNodeFactory(NodeFactory):
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
         constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
+        if node_id in self._dify_context.builder_mocked_node_ids:
+            # Builder confirmed Test Run: an unconfirmed side effect returns a
+            # mocked result. Ordinary runs never carry mocked IDs.
+            node_class = mocked_node_class(node_class)
         node = node_class(
             node_id=node_id,
             data=constructor_node_data,

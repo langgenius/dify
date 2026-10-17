@@ -26,6 +26,8 @@ _PARAMETERS: dict[BuilderCopyId, frozenset[str]] = {
     BuilderCopyId.EDIT_INEFFECTIVE_PROPOSAL: frozenset(["value"]),
     BuilderCopyId.EDIT_INSPECTED: frozenset(["connections", "nodes", "targets"]),
     BuilderCopyId.EDIT_INSPECTED_WITHOUT_TARGETS: frozenset(["connections", "nodes"]),
+    BuilderCopyId.FORMS_TEST_DATA_CONFIRM_EFFECT: frozenset(["node", "target"]),
+    BuilderCopyId.FORMS_TEST_DATA_EFFECT_ACCOUNT: frozenset(["account"]),
     BuilderCopyId.MODEL_CHANGED: frozenset(["name"]),
     BuilderCopyId.MODEL_CONFIGURATION_UNAVAILABLE: frozenset(["error"]),
     BuilderCopyId.PUBLISH_BUILD_COMPLETE: frozenset(["status", "version"]),
@@ -39,7 +41,10 @@ _PARAMETERS: dict[BuilderCopyId, frozenset[str]] = {
     BuilderCopyId.REPAIR_REASON: frozenset(["reason"]),
     BuilderCopyId.REPAIR_RISK_NOTE: frozenset(["reason"]),
     BuilderCopyId.REPAIR_STALE_PROPOSAL: frozenset(["value"]),
+    BuilderCopyId.TEST_EFFECT_ALWAYS_MOCKED: frozenset(["node", "target"]),
+    BuilderCopyId.TEST_EFFECT_CALLS: frozenset(["node", "target"]),
     BuilderCopyId.TEST_INVALID_INPUTS: frozenset(["reason"]),
+    BuilderCopyId.TEST_MOCKED_NOTE: frozenset(["nodes"]),
 }
 
 CopyParameter = str | int | float

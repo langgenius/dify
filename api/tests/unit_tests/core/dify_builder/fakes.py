@@ -64,6 +64,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from graphon.enums import BuiltinNodeTypes
+from services.dify_builder.effect_disclosure import EffectDisclosure
 from services.dify_builder.graph_ops import (
     apply_connect,
     apply_create_node,
@@ -319,9 +320,15 @@ class FakeDifyPort:
         # result card) to show. Empty by default -- most tests don't care.
         self.run_outputs: Inputs = {}
         self.workflow_events: list[dict[str, object]] = []
+        # Settable Test Run effect disclosure; empty means nothing to confirm.
+        self.effect_disclosure = EffectDisclosure()
+        self.run_draft_effect_confirmation: dict[str, str] = {}
 
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
+
+    def disclose_effects(self, _app_id: str, _actor: Actor) -> EffectDisclosure:
+        return self.effect_disclosure
 
     def stamp_http_fixtures(
         self, _app_id: str, _actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
@@ -370,9 +377,11 @@ class FakeDifyPort:
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
         self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
+        self.run_draft_effect_confirmation = dict(effect_confirmation or {})
         if on_workflow_event is not None:
             for event in self.workflow_events:
                 on_workflow_event(event)
@@ -553,9 +562,14 @@ class FakeBuildDifyPort:
         self.verify_pass: bool = True
         self.run_draft_inputs: Inputs = {}
         self.fail_error: str = "boom"
+        self.effect_disclosure = EffectDisclosure()
+        self.run_draft_effect_confirmation: dict[str, str] = {}
 
     def get_app_mode(self, _app_id: str, _actor: Actor) -> str:
         return self.app_mode
+
+    def disclose_effects(self, _app_id: str, _actor: Actor) -> EffectDisclosure:
+        return self.effect_disclosure
 
     def stamp_http_fixtures(
         self, _app_id: str, _actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
@@ -622,9 +636,11 @@ class FakeBuildDifyPort:
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
         self.run_draft_identity = (session_id, test_input_id)
         self.run_draft_inputs = copy.deepcopy(inputs)
+        self.run_draft_effect_confirmation = dict(effect_confirmation or {})
         if on_workflow_event is not None:
             for event in self.workflow_events:
                 on_workflow_event(event)

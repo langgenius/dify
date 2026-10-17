@@ -48,6 +48,7 @@ from core.dify_builder.models import (
     TestInput,
 )
 from core.dify_builder.state import PcState
+from services.dify_builder.effect_disclosure import EffectDisclosure
 from services.dify_builder.plan import WorkflowPlan
 
 __all__ = [
@@ -208,12 +209,25 @@ class DifyPort(Protocol):
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
         """Run the saved draft test. Both confirmed IDs ``None``: the default restricted run.
 
         Both set: launch the server-reserved confirmed command for this
         invocation only; the adapter reloads the reservation and refuses a
         mismatch. Supplying exactly one is a refusal, never a fallback.
+
+        ``effect_confirmation`` (node ID -> effect signature, see
+        ``disclose_effects``) applies only when the draft takes the confirmed
+        full run: a side effect runs for real only while its signature still
+        matches, and every other side effect or destructive node is mocked.
+        """
+        ...
+
+    def disclose_effects(self, app_id: str, actor: Actor) -> EffectDisclosure:
+        """What a Test Run of the current draft would reach outside Dify (PRD §9.1).
+
+        Empty when the run touches nothing that needs disclosing.
         """
         ...
 

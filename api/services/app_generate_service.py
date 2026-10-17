@@ -128,6 +128,7 @@ class AppGenerateService:
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ):
         """
         App Content Generate
@@ -140,6 +141,14 @@ class AppGenerateService:
             inside a worker task, avoiding a synchronous wait for another Celery slot.
         :return:
         """
+        if builder_mocked_node_ids and (
+            builder_execution is not None
+            or app_model.mode not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}
+            or workflow_execution_mode != "in_process"
+            or invoke_from != InvokeFrom.DEBUGGER
+            or not isinstance(user, Account)
+        ):
+            raise BuilderExecutionPolicyError("unsupported_execution_transport")
         try:
             if builder_execution is not None:
                 if (
@@ -174,6 +183,7 @@ class AppGenerateService:
                 workflow_execution_mode=workflow_execution_mode,
                 builder_execution=builder_execution,
                 builder_execution_admit=builder_execution_admit,
+                builder_mocked_node_ids=builder_mocked_node_ids,
             ),
         )
 
@@ -315,6 +325,7 @@ class AppGenerateService:
         | JsonToolExecutionContext
         | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ):
         effective_mode = (
             AppMode.AGENT_CHAT
@@ -441,6 +452,7 @@ class AppGenerateService:
                             streaming=streaming,
                             pause_state_config=pause_config,
                             session=session,
+                            builder_mocked_node_ids=builder_mocked_node_ids,
                         )
                     ),
                     request_id=request_id,
@@ -508,6 +520,7 @@ class AppGenerateService:
                             pause_state_config=pause_config if builder_execution is None else None,
                             builder_execution=builder_execution,
                             builder_execution_admit=builder_execution_admit,
+                            builder_mocked_node_ids=builder_mocked_node_ids,
                         ),
                     ),
                     request_id,

@@ -173,6 +173,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
         native_host: NativeHostLaunch | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
@@ -200,6 +201,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
         native_host: NativeHostLaunch | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -227,6 +229,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
         native_host: NativeHostLaunch | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
@@ -253,6 +256,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
         native_host: NativeHostLaunch | None = None,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         from services.dify_builder.native_testing.generation_wiring import validate_native_host
 
@@ -300,6 +304,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 ):
                     guard.fail()
                 native_inputs = native_runtime.prepare_inputs(native_context)
+        if builder_mocked_node_ids and (
+            builder_execution is not None or native_context is not None or invoke_from != InvokeFrom.DEBUGGER
+        ):
+            raise BuilderExecutionPolicyError("unsupported_execution_policy")
         try:
             if builder_execution is not None and (
                 builder_execution_admit is None
@@ -392,6 +400,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 builder_execution=builder_execution,
                 native_test_required=native_test_required,
                 native_test_ref=native_test_ref,
+                builder_mocked_node_ids=builder_mocked_node_ids,
                 trace_manager=trace_manager,
                 workflow_execution_id=workflow_run_id,
                 extras=extras,

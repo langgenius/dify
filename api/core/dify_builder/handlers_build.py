@@ -45,16 +45,19 @@ from core.dify_builder.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    needs_effect_confirmation,
     note_repair_error,
     note_unknown_outcome,
     perform_revert,
     publication_denied,
     publication_for_context,
+    record_effect_confirmation,
     repair_is_repeating,
     run_finished_without_output,
+    saved_test_inputs,
     start_schema,
     test_failure_reason,
-    testdata_form_fields,
+    testdata_form,
     without_endpoint_values,
     without_upload_values,
 )
@@ -669,37 +672,35 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     if kind == "run_test":
         fc.verify_run_id = ""
-        if fc.test_input_ref == "":
+        # A side effect not yet confirmed for its current target shows the form
+        # again, with the prepared inputs, so it is never mocked unannounced.
+        if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
             schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
-            # Pre-fill the form with mock values instead of asking the user to
-            # invent them: the cost is one click, not N fields. Still SHOW
-            # them -- a green check produced by inputs nobody ever saw is weak
-            # evidence about the workflow. Upload fields stay empty because
-            # nothing can mock a file. Endpoint fields -- a start variable an
-            # http-request node reads its URL from (ESQ1-302's placeholder
-            # grounding) -- stay empty too: a mocked endpoint is just another
-            # invented URL, so the form asks for those alone as well.
-            mocked = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
-            prefill = without_endpoint_values(graph, mocked)
-            form_items = append_card(
-                fc,
-                FormCard(
-                    variant="testdata",
-                    title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
-                    description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
-                    fields=testdata_form_fields(schema),
-                    values=prefill,
-                    frozen=False,
-                ),
-            )
-            turn_items = append_assistant(
+            if fc.test_input_ref:
+                prefill = saved_test_inputs(env, fc)
+            else:
+                # Pre-fill the form with mock values instead of asking the user to
+                # invent them: the cost is one click, not N fields. Still SHOW
+                # them -- a green check produced by inputs nobody ever saw is weak
+                # evidence about the workflow. Upload fields stay empty because
+                # nothing can mock a file. Endpoint fields -- a start variable an
+                # http-request node reads its URL from (ESQ1-302's placeholder
+                # grounding) -- stay empty too: a mocked endpoint is just another
+                # invented URL, so the form asks for those alone as well.
+                mocked = without_upload_values(schema, env.agent.generate_mock_inputs(schema, {}))
+                prefill = without_endpoint_values(graph, mocked)
+            card, reply = testdata_form(
                 env,
                 s,
                 fc,
+                turn.actor,
+                schema,
+                prefill,
                 copy_text(BuilderCopyId.REPLIES_I_FILLED_IN_TEST_INPUTS_EDIT_THEM_IF_YOU_LIKE_THEN_RUN_THE_TEST),
-                cards=["form"],
             )
+            form_items = append_card(fc, card)
+            turn_items = append_assistant(env, s, fc, reply, cards=["form"])
             return StepResult(next=PcState.BUILD_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_RUN_TESTS)))
         return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=items)
@@ -732,10 +733,11 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
             inputs = turn.action.payload["inputs"]
+    inputs = record_effect_confirmation(env, s, fc, turn.actor, inputs)
     try:
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
-        return input_gate_result(env, s, fc, schema, inputs, PcState.BUILD_AWAIT_TESTDATA, str(exc))
+        return input_gate_result(env, s, fc, schema, inputs, PcState.BUILD_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     ti = TestInput(
         session_id=s.id,
         source=mode or "upload",
@@ -795,6 +797,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             session_id=s.id,
             test_input_id=fc.test_input_ref,
             on_workflow_event=env.emit_workflow,
+            effect_confirmation=fc.effect_confirmation,
         )
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
@@ -962,23 +965,22 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             fc,
             replace(result_card(run), failure_reason=test_failure_reason(run)),
         )
-        form_items = append_card(
+        card, reply = testdata_form(
+            env,
+            s,
             fc,
-            FormCard(
-                variant="testdata",
-                title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
-                description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
-                fields=testdata_form_fields(schema),
-                values=inputs,
-                frozen=False,
-            ),
+            turn.actor,
+            schema,
+            inputs,
+            copy_text(BuilderCopyId.REPLIES_THE_RUN_FAILED_ON_ITS_INPUTS_PROVIDE_TEST_DATA_AND_RETRY),
         )
+        form_items = append_card(fc, card)
         execution = progress.finish()
         turn_items = append_assistant(
             env,
             s,
             fc,
-            copy_text(BuilderCopyId.REPLIES_THE_RUN_FAILED_ON_ITS_INPUTS_PROVIDE_TEST_DATA_AND_RETRY),
+            reply,
             execution=execution,
             cards=["test_result", "form"],
             turn_id=progress.operation_id,

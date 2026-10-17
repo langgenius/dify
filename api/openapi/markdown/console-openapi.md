@@ -28836,13 +28836,13 @@ Tag type
 | consent_id | string |  | No |
 | dify_run_id | string |  | No |
 | executed_node_ids | [ string ] |  | No |
-| execution_mode | string, <br>**Available values:** "confirmed_tool", "mock", "restricted" |  | No |
+| execution_mode | string, <br>**Available values:** "confirmed_run", "confirmed_tool", "mock", "restricted" |  | No |
 | failure_reason | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
 | outcome | string, <br>**Available values:** "execution_failed", "execution_succeeded_needs_review", "execution_unknown", "required_output_unresolved" |  | No |
-| policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-json-parse-v1", "builder-restricted-v1" |  | No |
+| policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-confirmed-run-v1", "builder-json-parse-v1", "builder-restricted-v1" |  | No |
 | reply_language | string |  | No |
 | review_note | string<br>[BuilderCopy](#buildercopy)<br>[BuilderTextParts](#buildertextparts) |  | No |
-| safety_outcome | string, <br>**Available values:** "confirmed_tool_completed", "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
+| safety_outcome | string, <br>**Available values:** "confirmed_run_completed", "confirmed_tool_completed", "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
 | simulated_node_ids | [ string ] |  | No |
 | status | string, <br>**Available values:** "failed", "succeeded" | *Enum:* `"failed"`, `"succeeded"` | Yes |
 | terminal_outputs | object |  | No |

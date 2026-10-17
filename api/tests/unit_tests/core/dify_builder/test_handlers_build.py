@@ -2933,6 +2933,7 @@ def test_default_build_test_never_passes_consent_even_with_a_pending_reference()
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
         seen.append((confirmed_consent_id, command_id))
         return native(
@@ -2943,6 +2944,7 @@ def test_default_build_test_never_passes_consent_even_with_a_pending_reference()
             session_id=session_id,
             test_input_id=test_input_id,
             on_workflow_event=on_workflow_event,
+            effect_confirmation=effect_confirmation,
         )
 
     env.dify.run_draft = recording_run_draft

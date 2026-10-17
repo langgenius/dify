@@ -23,6 +23,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.state import PcState
+from services.dify_builder.effect_disclosure import EffectDisclosure
 
 
 def test_diagnosis_defaults_and_construction():
@@ -183,6 +184,9 @@ class _StubDifyPort:
 
     def run_draft(self, _app_id, _actor, _inputs, _on_event):
         return Run()
+
+    def disclose_effects(self, _app_id, _actor):
+        return EffectDisclosure()
 
     def publish(self, _app_id, _actor):
         return None

@@ -921,7 +921,7 @@ export type TestResultCard = {
   consent_id?: string | null
   dify_run_id?: string
   executed_node_ids?: Array<string>
-  execution_mode?: 'confirmed_tool' | 'mock' | 'restricted' | null
+  execution_mode?: 'confirmed_run' | 'confirmed_tool' | 'mock' | 'restricted' | null
   failure_reason?: string | BuilderCopy | BuilderTextParts | null
   outcome?:
     | 'execution_failed'
@@ -931,12 +931,14 @@ export type TestResultCard = {
     | null
   policy_version?:
     | 'builder-confirmed-gmail-read-v1'
+    | 'builder-confirmed-run-v1'
     | 'builder-json-parse-v1'
     | 'builder-restricted-v1'
     | null
   reply_language?: string
   review_note?: string | BuilderCopy | BuilderTextParts | null
   safety_outcome?:
+    | 'confirmed_run_completed'
     | 'confirmed_tool_completed'
     | 'execution_blocked'
     | 'execution_evidence_unknown'
@@ -1231,7 +1233,9 @@ export type BuilderCopyId =
   | 'forms.goal'
   | 'forms.requirements.description'
   | 'forms.requirements.title'
+  | 'forms.testData.confirmEffect'
   | 'forms.testData.description'
+  | 'forms.testData.effectAccount'
   | 'forms.testData.title'
   | 'forms.userMessage'
   | 'json.failed'
@@ -1396,8 +1400,13 @@ export type BuilderCopyId =
   | 'replies.useTemplateInputsFromStartScalars'
   | 'resources.description'
   | 'resources.title'
+  | 'test.effectAlwaysMocked'
+  | 'test.effectCalls'
+  | 'test.effectConfirmRequired'
+  | 'test.effectsIntro'
   | 'test.failedFallback'
   | 'test.invalidInputs'
+  | 'test.mockedNote'
   | 'test.noDetailedError'
   | 'test.policyReview'
   | 'values.empty'

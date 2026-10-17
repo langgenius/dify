@@ -619,7 +619,7 @@ class TestResultCard(_Card, BuilderPresentation):
     terminal_outputs: dict[str, Any] | None = None
     executed_node_ids: list[str] = field(default_factory=list)
     review_note: BuilderText | None = None
-    execution_mode: Literal["restricted", "mock", "confirmed_tool"] | None = None
+    execution_mode: Literal["restricted", "mock", "confirmed_tool", "confirmed_run"] | None = None
     safety_outcome: (
         Literal[
             "unsupported_safe_execution",
@@ -627,6 +627,7 @@ class TestResultCard(_Card, BuilderPresentation):
             "simulation_completed",
             "restricted_execution_completed",
             "confirmed_tool_completed",
+            "confirmed_run_completed",
             "execution_evidence_unknown",
             "native_failed",
         ]
@@ -637,7 +638,13 @@ class TestResultCard(_Card, BuilderPresentation):
     # Confirmed Tool runs only: the policy, the spent grant and its sanitized
     # outcome. Message content stays in the native authorized Run.
     policy_version: (
-        Literal["builder-restricted-v1", "builder-confirmed-gmail-read-v1", "builder-json-parse-v1"] | None
+        Literal[
+            "builder-restricted-v1",
+            "builder-confirmed-gmail-read-v1",
+            "builder-json-parse-v1",
+            "builder-confirmed-run-v1",
+        ]
+        | None
     ) = None
     consent_id: str | None = None
     action_state: Literal["completed", "failed", "unknown"] | None = None

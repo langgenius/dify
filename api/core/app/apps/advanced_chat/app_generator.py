@@ -88,6 +88,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -103,6 +104,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Generator[Mapping | str]: ...
 
     @overload
@@ -118,6 +120,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
@@ -132,6 +135,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
@@ -144,6 +148,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param streaming: is stream
         :param session: database session supplied by the caller
         """
+        if builder_mocked_node_ids and invoke_from != InvokeFrom.DEBUGGER:
+            raise ValueError("Mocked Builder nodes are only available in draft Test Runs.")
         if not args.get("query"):
             raise ValueError("query is required")
 
@@ -227,6 +233,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 extras=extras,
                 trace_manager=trace_manager,
                 workflow_run_id=str(workflow_run_id),
+                builder_mocked_node_ids=builder_mocked_node_ids,
             )
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())

@@ -401,6 +401,13 @@ class DifyBuilderContext:
     confirmed_consent_id: str = ""
     confirmed_command_id: str = ""
 
+    # -- Test Run effect confirmation (PRD §9.1, additive) --
+    # Side-effect node id -> the effect signature the user ticked in the
+    # test-data form. A node runs for real only while its current signature
+    # still matches; every other side effect, and every destructive node, is
+    # mocked. Empty (all older rows) means nothing was confirmed.
+    effect_confirmation: dict[str, str] = field(default_factory=dict)
+
     # -- Governance fields (C-2, additive) --
     skill_learning_policy: str = "ask"
 

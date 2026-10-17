@@ -51,10 +51,12 @@ import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
@@ -76,6 +78,7 @@ from core.dify_builder.execution_policy import (
     scalar_inputs_digest,
 )
 from core.dify_builder.handlers_fix import run_finished_without_output
+from core.dify_builder.input_schema import SYSTEM_QUERY, validate_query
 from core.dify_builder.models import (
     Actor,
     ApplyResult,
@@ -95,10 +98,12 @@ from libs.flask_utils import set_login_user
 from models.account import Account
 from models.dify_builder import DifyBuilderTestInput
 from models.model import App
+from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.dify_builder import graph_ops
+from services.dify_builder.effect_disclosure import EffectDisclosure, disclose
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.execution_policy_service import (
     BuilderExecutionPolicyService,
@@ -114,6 +119,7 @@ from services.dify_builder.preflight import new_preflight_problems
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, ServiceConfirmedToolGuard
 from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
 from services.dify_builder.run_mapping import (
+    error_from_stream_chunk,
     is_unfinished_run_status,
     map_error_frame_run,
     map_run_result,
@@ -121,6 +127,7 @@ from services.dify_builder.run_mapping import (
     node_event_from_stream_chunk,
     run_id_from_stream_chunk,
     run_result_data_from_run_row,
+    run_result_data_from_terminal_chunk,
     sanitize_confirmed_node_event,
     sanitize_confirmed_run,
     sanitize_confirmed_stream_event,
@@ -535,6 +542,38 @@ class _BuilderExecutionLaunch:
 _DUPLICATE_LAUNCH_REASONS = frozenset({"execution_already_launched", "execution_already_claimed"})
 
 
+def _tool_account_names(session: Session, tenant_id: str, graph: Mapping[str, Any]) -> dict[str, str]:
+    """Credential display name per Tool node: the selected credential, else the workspace default."""
+    selections: dict[str, tuple[str, str]] = {}
+    for node in graph.get("nodes") or []:
+        data = node.get("data") if isinstance(node, Mapping) else None
+        if not isinstance(data, Mapping) or data.get("type") != BuiltinNodeTypes.TOOL:
+            continue
+        if data.get("provider_type") not in {"builtin", "plugin"} or not isinstance(data.get("provider_id"), str):
+            continue
+        selections[str(node.get("id"))] = (data["provider_id"], str(data.get("credential_id") or ""))
+    if not selections:
+        return {}
+    rows = session.scalars(
+        select(BuiltinToolProvider).where(
+            BuiltinToolProvider.tenant_id == tenant_id,
+            BuiltinToolProvider.provider.in_({provider for provider, _ in selections.values()}),
+        )
+    ).all()
+    names: dict[str, str] = {}
+    for node_id, (provider, credential_id) in selections.items():
+        candidates = [row for row in rows if row.provider == provider]
+        if credential_id:
+            chosen = next((row for row in candidates if row.id == credential_id), None)
+        else:
+            chosen = next((row for row in candidates if row.is_default), None) or min(
+                candidates, key=lambda row: row.created_at, default=None
+            )
+        if chosen is not None and chosen.name:
+            names[node_id] = chosen.name
+    return names
+
+
 def _unsupported_run(error: BuilderExecutionPolicyError) -> Run:
     return Run(status="failed", execution_refusal=BuilderExecutionRefusal(reason_code=error.reason_code))
 
@@ -561,6 +600,19 @@ class WorkflowServiceDifyPort:
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
             return dict(workflow.graph_dict), execution_revision(workflow)
+
+    def disclose_effects(self, app_id: str, actor: Actor) -> EffectDisclosure:
+        """What a Test Run of the current draft would touch, with each Tool's credential name.
+
+        Empty unless the run takes the confirmed full run: the restricted
+        runtime keeps its own fixture and consent rules.
+        """
+        if not dify_config.DIFY_BUILDER_CONFIRMED_RUN_ENABLED or self._restricted_admissible(app_id, actor):
+            return EffectDisclosure()
+        with _session_factory()() as session:
+            app = load_app(session, app_id, actor)
+            graph = dict(_load_draft_workflow_or_raise(app, session=session).graph_dict)
+            return disclose(graph, _tool_account_names(session, app.tenant_id, graph))
 
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
         with _session_factory()() as session:
@@ -915,6 +967,7 @@ class WorkflowServiceDifyPort:
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
         if confirmed_consent_id is not None or command_id is not None:
             if not confirmed_consent_id or not command_id:
@@ -928,6 +981,17 @@ class WorkflowServiceDifyPort:
                 on_workflow_event=on_workflow_event,
                 consent_id=confirmed_consent_id,
                 command_id=command_id,
+            )
+        if dify_config.DIFY_BUILDER_CONFIRMED_RUN_ENABLED and not self._restricted_admissible(app_id, actor):
+            return self._run_confirmed_full_draft(
+                app_id,
+                actor,
+                inputs,
+                on_event,
+                session_id=session_id,
+                test_input_id=test_input_id,
+                on_workflow_event=on_workflow_event,
+                effect_confirmation=effect_confirmation or {},
             )
         launch: _BuilderExecutionLaunch | None = None
         try:
@@ -989,6 +1053,135 @@ class WorkflowServiceDifyPort:
 
         completed, candidate_ids = self._consume_launch(launch, response, on_event, on_workflow_event, sanitize=False)
         return self._finalize_launch(launch, actor, response_completed=completed, candidate_ids=candidate_ids)
+
+    def _restricted_admissible(self, app_id: str, actor: Actor) -> bool:
+        """Whether the audited restricted (or JSON) runtime can run the whole draft."""
+        with _session_factory()() as session:
+            app = load_app(session, app_id, actor)
+            draft = _load_draft_workflow_or_raise(app, session=session)
+            try:
+                snapshot = restricted_admission_snapshot(draft, app)
+                if _is_json_parse_candidate(snapshot):
+                    admit_json_workflow(snapshot)
+                else:
+                    admitted_node_bindings(snapshot)
+            except BuilderExecutionPolicyError:
+                return False
+        return True
+
+    def _run_confirmed_full_draft(
+        self,
+        app_id: str,
+        actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        session_id: str,
+        test_input_id: str,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None,
+        effect_confirmation: Mapping[str, str],
+    ) -> Run:
+        """Run the whole draft natively (PRD §5.8.2); unconfirmed side effects return mocked results (§9.1).
+
+        Model, sandbox and read-only nodes run for real after the test-data
+        disclosure. A side-effect node runs only while its confirmed signature
+        still matches; a destructive node is always mocked. The native Run is
+        the evidence: its ID is sealed into the summary and mocked steps are
+        listed, which keeps the run from qualifying for publication.
+        """
+        with _session_factory()() as session:
+            account = resolve_account(session, actor)
+            app = load_app(session, app_id, actor)
+            tenant_id = app.tenant_id
+            saved = session.get(DifyBuilderTestInput, test_input_id) if test_input_id else None
+            if saved is None or saved.session_id != session_id:
+                return _unsupported_run(BuilderExecutionPolicyError("test_input_binding_mismatch"))
+            draft = _load_draft_workflow_or_raise(app, session=session)
+            graph = dict(draft.graph_dict)
+            before_revision = execution_revision(draft)
+            before_graph_revision = executable_graph_revision(graph)
+            mocked = disclose(graph).mocked_node_ids(effect_confirmation)
+            args: dict[str, Any] = {"inputs": dict(inputs)}
+            if app.mode == "advanced-chat":
+                validate_query(inputs)
+                args = {
+                    "query": inputs[SYSTEM_QUERY],
+                    "inputs": {key: value for key, value in inputs.items() if key != SYSTEM_QUERY},
+                }
+            # Match the native task's user context before the runtime copies it.
+            set_login_user(account)
+            response = AppGenerateService.generate(
+                app_model=app,
+                user=account,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                session=session,
+                streaming=True,
+                workflow_execution_mode="in_process",
+                builder_mocked_node_ids=mocked,
+            )
+
+        final: dict[str, Any] = {}
+        stream_run_id = ""
+        error_frame: dict[str, str] | None = None
+        if isinstance(response, Mapping):
+            final = dict(response.get("data") or {})
+            if not final.get("id"):
+                final["id"] = str(response.get("workflow_run_id") or "")
+        else:
+            try:
+                for chunk in response:
+                    payload = stream_chunk_as_mapping(chunk)
+                    if payload is None:
+                        continue
+                    if on_workflow_event is not None:
+                        on_workflow_event(payload)
+                    stream_run_id = stream_run_id or run_id_from_stream_chunk(payload)
+                    node_event = node_event_from_stream_chunk(payload)
+                    if node_event is not None:
+                        on_event(node_event)
+                        continue
+                    terminal = run_result_data_from_terminal_chunk(payload)
+                    if terminal is not None:
+                        final = terminal
+                    error_frame = error_frame or error_from_stream_chunk(payload)
+            finally:
+                # Only closing the stream releases the app's rate-limit slot.
+                close = getattr(response, "close", None)
+                if callable(close):
+                    close()
+
+        result = self._finish_run(tenant_id, app_id, final, stream_run_id, error_frame=error_frame)
+        run, _ = result
+        if run.verification is None:
+            from core.dify_builder.models import RunVerification
+
+            run.verification = RunVerification(
+                execution_revision="",
+                executed_graph_revision="",
+                terminal_outputs=None,
+                output_findings=[],
+                executed_node_ids=[],
+                no_output_dead_branch=False,
+            )
+        determinate = bool(run.dify_run_id) and run.status in {"succeeded", "failed"}
+        run.verification.execution_evidence = ExecutionEvidenceSummary(
+            request_id=str(uuid4()),
+            policy_version="builder-confirmed-run-v1",
+            mode="confirmed_run",
+            sealed=determinate,
+            safety_outcome=(
+                "execution_evidence_unknown"
+                if not determinate
+                else "confirmed_run_completed"
+                if run.status == "succeeded"
+                else "native_failed"
+            ),
+            simulated_node_ids=tuple(sorted(mocked & {node.node_id for node in run.per_node})),
+            sandbox_profile="native",
+            native_run_id=run.dify_run_id or None,
+        )
+        return self._bind_run(result, app_id, actor, before_revision, before_graph_revision, restricted=False)
 
     def _run_confirmed_draft(
         self,
@@ -1254,6 +1447,7 @@ class WorkflowServiceDifyPort:
         before_graph_revision: str,
         *,
         execution_recorder: BuilderExecutionRecorder | None = None,
+        restricted: bool = True,
     ) -> Run:
         """Bind only the actual persisted run graph and equal before/after full revisions.
 
@@ -1276,11 +1470,12 @@ class WorkflowServiceDifyPort:
         with _session_factory()() as session:
             app = load_app(session, app_id, actor)
             draft = _load_draft_workflow_or_raise(app, session=session)
-            try:
-                restricted_admission_snapshot(draft, app)
-            except BuilderExecutionPolicyError as error:
-                run.execution_refusal = BuilderExecutionRefusal(reason_code=error.reason_code)
-                return run
+            if restricted:
+                try:
+                    restricted_admission_snapshot(draft, app)
+                except BuilderExecutionPolicyError as error:
+                    run.execution_refusal = BuilderExecutionRefusal(reason_code=error.reason_code)
+                    return run
             graph, after_revision = dict(draft.graph_dict), execution_revision(draft)
         if (
             before_revision

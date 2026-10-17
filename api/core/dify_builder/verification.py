@@ -3,9 +3,10 @@
 from core.dify_builder.contract import TestResultCard
 from core.dify_builder.models import PublicationDecision, Run
 from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.effect_presentation import mocked_note
 from services.dify_builder.execution_messages import FALLBACK, execution_refusal_message
 from services.dify_builder.json_execution_presentation import json_execution_blocks_repair, json_failed_reason
-from services.dify_builder.presentation import copy_text
+from services.dify_builder.presentation import copy_text, text_parts
 
 REVIEW_NOTE = copy_text(BuilderCopyId.REPLIES_OTHER_PATHS_AND_GOAL_ACCEPTANCE_WERE_NOT_VERIFIED)
 SUCCESS_REPLY = copy_text(BuilderCopyId.LABELS_EXECUTION_SUCCEEDED_OUTPUT_NEEDS_REVIEW)
@@ -43,7 +44,15 @@ def publication_decision(
         return PublicationDecision(allowed=False, reason="execution_evidence_unknown")
     if summary.safety_outcome == "simulation_completed":
         return PublicationDecision(allowed=False, reason="simulation_only")
+    # PRD §19.2: a run that mocked any step proves nothing about that step.
+    if summary.mode == "confirmed_run" and summary.simulated_node_ids:
+        return PublicationDecision(allowed=False, reason="simulation_only")
     restricted_success = summary.safety_outcome == "restricted_execution_completed" and summary.mode == "restricted"
+    confirmed_run_success = (
+        summary.safety_outcome == "confirmed_run_completed"
+        and summary.mode == "confirmed_run"
+        and summary.policy_version == "builder-confirmed-run-v1"
+    )
     # Confirmation is not publication approval: only the sealed exact-revision
     # confirmed success passes, and every check below still applies.
     confirmed_success = (
@@ -53,7 +62,7 @@ def publication_decision(
         and summary.action_state == "completed"
         and summary.consent_id is not None
     )
-    if not (restricted_success or confirmed_success):
+    if not (restricted_success or confirmed_run_success or confirmed_success):
         return PublicationDecision(allowed=False, reason="execution_failed")
     if run.status == "failed":
         return PublicationDecision(allowed=False, reason="execution_failed")
@@ -169,6 +178,13 @@ def result_card(run: Run) -> TestResultCard:
         card.outcome = "execution_succeeded_needs_review"
         if evidence is None or not evidence.execution_revision:
             card.review_note = copy_text(BuilderCopyId.REPLIES_OTHER_PATHS_AND_GOAL_ACCEPTANCE_WERE)
+        mocked = (
+            mocked_note(summary.simulated_node_ids, run.per_node)
+            if summary is not None and summary.mode == "confirmed_run"
+            else None
+        )
+        if mocked is not None:
+            card.review_note = text_parts(card.review_note, " ", mocked) if card.review_note else mocked
     elif run.status == "failed":
         card.outcome = "execution_failed"
         card.failure_reason = run.error or next(

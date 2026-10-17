@@ -377,10 +377,13 @@ class ExecutionEvidenceSummary(_TrustedModel):
     """
 
     request_id: BoundedID
-    policy_version: Literal["builder-restricted-v1", "builder-confirmed-gmail-read-v1", "builder-json-parse-v1"] = (
-        "builder-restricted-v1"
-    )
-    mode: Literal["restricted", "mock", "confirmed_tool"]
+    policy_version: Literal[
+        "builder-restricted-v1",
+        "builder-confirmed-gmail-read-v1",
+        "builder-json-parse-v1",
+        "builder-confirmed-run-v1",
+    ] = "builder-restricted-v1"
+    mode: Literal["restricted", "mock", "confirmed_tool", "confirmed_run"]
     sealed: bool
     safety_outcome: Literal[
         "unsupported_safe_execution",
@@ -388,12 +391,15 @@ class ExecutionEvidenceSummary(_TrustedModel):
         "simulation_completed",
         "restricted_execution_completed",
         "confirmed_tool_completed",
+        "confirmed_run_completed",
         "execution_evidence_unknown",
         "native_failed",
     ]
+    # Confirmed run: the side-effect nodes that returned a mocked result instead of running.
     simulated_node_ids: tuple[BoundedID, ...] = ()
     blocked_node_ids: tuple[BoundedID, ...] = ()
-    sandbox_profile: Literal["disabled", "network-disabled-v1"]
+    # ``native`` only for a confirmed run, which uses the workspace's ordinary sandbox.
+    sandbox_profile: Literal["disabled", "network-disabled-v1", "native"]
     # ``None`` only for a confirmed run, which serves no fixtures.
     fixture_digest: Digest | None = None
     native_run_id: BoundedID | None = None
@@ -416,6 +422,25 @@ class ExecutionEvidenceSummary(_TrustedModel):
 
     @model_validator(mode="after")
     def validate_variant(self) -> "ExecutionEvidenceSummary":
+        if self.policy_version == "builder-confirmed-run-v1":
+            if (
+                self.mode != "confirmed_run"
+                or self.sandbox_profile != "native"
+                or self.fixture_digest is not None
+                or self.blocked_node_ids
+                or (self.consent_id, self.action_state, self.action_reason_code) != (None, None, None)
+                or self.safety_outcome not in {"confirmed_run_completed", "native_failed", "execution_evidence_unknown"}
+            ):
+                raise ValueError("invalid confirmed run evidence")
+            if self.safety_outcome != "execution_evidence_unknown" and (not self.sealed or self.native_run_id is None):
+                raise ValueError("confirmed run outcome requires sealed native proof")
+            return self
+        if (
+            self.mode == "confirmed_run"
+            or self.sandbox_profile == "native"
+            or (self.safety_outcome == "confirmed_run_completed")
+        ):
+            raise ValueError("confirmed run metadata requires the confirmed run policy")
         if self.policy_version == "builder-restricted-v1":
             if (
                 self.mode == "confirmed_tool"

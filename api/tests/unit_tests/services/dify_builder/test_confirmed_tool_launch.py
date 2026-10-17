@@ -423,8 +423,9 @@ class ConfirmedSpyPort(FakeDifyPort):
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
+        effect_confirmation: Mapping[str, str] | None = None,
     ) -> Run:
-        _ = (session_id, on_workflow_event)  # the shared port signature; not inspected here
+        _ = (session_id, on_workflow_event, effect_confirmation)  # the shared port signature; not inspected here
         self.confirmed_calls.append(
             {
                 "inputs": dict(inputs),
@@ -644,6 +645,7 @@ def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winne
             on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
             confirmed_consent_id: str | None = None,
             command_id: str | None = None,
+            effect_confirmation: Mapping[str, str] | None = None,
         ) -> Run:
             # A has launched: its sidecar launch identity is claimed (existing fixture stand-in).
             simulate_task6_launch(owner, reserved)
@@ -661,6 +663,7 @@ def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winne
                 on_workflow_event=on_workflow_event,
                 confirmed_consent_id=confirmed_consent_id,
                 command_id=command_id,
+                effect_confirmation=effect_confirmation,
             )
 
     port = WinnerPort()

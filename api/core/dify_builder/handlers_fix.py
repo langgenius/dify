@@ -44,6 +44,7 @@ from core.dify_builder.execution_policy import BuilderExecutionRefusal
 from core.dify_builder.input_schema import SYSTEM_QUERY, schema_hash, start_schema, validate_runtime_inputs
 from core.dify_builder.models import (
     CONFIRMED_TOOL_ACTION,
+    Actor,
     ApplyResult,
     ChangeSet,
     ChecklistError,
@@ -74,6 +75,13 @@ from core.dify_builder.verification import (
     result_card,
 )
 from services.dify_builder.copy_ids import BuilderCopyId
+from services.dify_builder.effect_disclosure import split_confirmations
+from services.dify_builder.effect_presentation import (
+    effect_confirmation_fields,
+    effect_confirmation_values,
+    effects_note,
+    with_effects_note,
+)
 from services.dify_builder.presentation import BuilderPresentation, BuilderText, copy_text, stored_text, text_parts
 
 logger = logging.getLogger(__name__)
@@ -116,14 +124,17 @@ __all__ = [
     "merge_known_keys",
     "mint_checkpoint",
     "model_config_error_text",
+    "needs_effect_confirmation",
     "needs_upload_inputs",
     "note_repair_error",
     "note_unknown_outcome",
     "perform_revert",
+    "record_effect_confirmation",
     "repair_is_repeating",
     "run_finished_without_output",
     "start_schema",
     "test_failure_reason",
+    "testdata_form",
     "testdata_form_fields",
     "upload_variable_names",
     "without_endpoint_values",
@@ -902,6 +913,56 @@ def testdata_form_fields(schema: StartSchema) -> list[FormField]:
     return fields
 
 
+def testdata_form(
+    env: Env,
+    s: Session,
+    fc: DifyBuilderContext,
+    actor: Actor,
+    schema: StartSchema,
+    values: dict[str, Any],
+    reply: BuilderText,
+) -> tuple[FormCard, BuilderText]:
+    """The test-data form plus its reply, carrying the Test Run effect
+    disclosure (PRD §9.1): one unticked checkbox per side effect, so Mock stays
+    the default, and the reply lists what else the run reaches."""
+    disclosure = env.dify.disclose_effects(s.app_id, actor)
+    card = FormCard(
+        variant="testdata",
+        title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
+        description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
+        fields=[*testdata_form_fields(schema), *effect_confirmation_fields(disclosure)],
+        values={**values, **effect_confirmation_values(disclosure, fc.effect_confirmation)},
+        frozen=False,
+    )
+    return card, with_effects_note(reply, effects_note(disclosure))
+
+
+def record_effect_confirmation(
+    env: Env, s: Session, fc: DifyBuilderContext, actor: Actor, inputs: dict[str, Any]
+) -> dict[str, Any]:
+    """Bind the ticked side effects to their current signatures; return the Start inputs alone."""
+    plain, confirmed = split_confirmations(inputs)
+    fc.effect_confirmation = env.dify.disclose_effects(s.app_id, actor).confirmation(confirmed)
+    return plain
+
+
+def needs_effect_confirmation(env: Env, s: Session, fc: DifyBuilderContext, actor: Actor) -> bool:
+    """True while a side effect has no confirmation for its current target, so
+    Run test shows the form again instead of silently mocking it."""
+    disclosure = env.dify.disclose_effects(s.app_id, actor)
+    return any(fc.effect_confirmation.get(item.node_id) != item.signature for item in disclosure.confirmable)
+
+
+def saved_test_inputs(env: Env, fc: DifyBuilderContext) -> dict[str, Any]:
+    """The prepared inputs to prefill the form with, or none."""
+    if not fc.test_input_ref:
+        return {}
+    try:
+        return dict(env.repo.get_test_input(fc.test_input_ref).inputs)
+    except NotFoundError:
+        return {}
+
+
 def input_gate_result(
     env: Env,
     s: Session,
@@ -910,30 +971,25 @@ def input_gate_result(
     inputs: dict[str, Any],
     state: PcState,
     reason: BuilderText,
+    *,
+    actor: Actor,
 ) -> StepResult:
     """Return invalid runtime test data for correction without losing uploads."""
     fc.test_input_ref = ""
     fc.verify_run_id = ""
-    form_items = append_card(
-        fc,
-        FormCard(
-            variant="testdata",
-            title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
-            description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
-            fields=testdata_form_fields(schema),
-            values=inputs,
-            frozen=False,
-        ),
-    )
-    items = append_assistant(
+    card, reply = testdata_form(
         env,
         s,
         fc,
+        actor,
+        schema,
+        inputs,
         copy_text(BuilderCopyId.TEST_INVALID_INPUTS, reason=reason)
         if isinstance(reason, str)
         else text_parts(copy_text(BuilderCopyId.TEST_INVALID_INPUTS, reason=""), reason),
-        cards=["form"],
     )
+    form_items = append_card(fc, card)
+    items = append_assistant(env, s, fc, reply, cards=["form"])
     return StepResult(next=state, context=fc, items=[*form_items, *items])
 
 
@@ -1128,28 +1184,22 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
-    # run_verify: if we have prepared inputs, go verify; else prepare test data.
+    # run_verify: if we have prepared inputs and every side effect is
+    # confirmed for its current target, go verify; else prepare test data.
     fc.verify_run_id = ""
-    if fc.test_input_ref == "":
+    if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-        form_items = append_card(
-            fc,
-            FormCard(
-                variant="testdata",
-                title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
-                description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
-                fields=testdata_form_fields(start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))),
-                values={},
-                frozen=False,
-            ),
-        )
-        turn_items = append_assistant(
+        card, reply = testdata_form(
             env,
             s,
             fc,
+            turn.actor,
+            start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor)),
+            saved_test_inputs(env, fc),
             copy_text(BuilderCopyId.REPLIES_PROVIDE_TEST_INPUTS_OR_USE_MOCK_DATA_TO_RUN_VALIDATION),
-            cards=["form"],
         )
+        form_items = append_card(fc, card)
+        turn_items = append_assistant(env, s, fc, reply, cards=["form"])
         return StepResult(
             next=PcState.FIX_AWAIT_TESTDATA,
             context=fc,
@@ -1184,11 +1234,12 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
             raw = turn.action.payload.get("inputs")
             if isinstance(raw, dict):
                 inputs = raw
+    inputs = record_effect_confirmation(env, s, fc, turn.actor, inputs)
 
     try:
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
-        return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc))
+        return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     ti = TestInput(
         session_id=s.id,
         source=_mode_or_default(mode),
@@ -1212,7 +1263,14 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
         return input_gate_result(
-            env, s, fc, schema, {}, PcState.FIX_AWAIT_TESTDATA, "Provide test data before validation"
+            env,
+            s,
+            fc,
+            schema,
+            {},
+            PcState.FIX_AWAIT_TESTDATA,
+            "Provide test data before validation",
+            actor=turn.actor,
         )
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
@@ -1250,6 +1308,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             session_id=s.id,
             test_input_id=fc.test_input_ref,
             on_workflow_event=env.emit_workflow,
+            effect_confirmation=fc.effect_confirmation,
         )
     except Exception as exc:
         # Same degrade as Build/Edit: never crash the advance; the launch error
@@ -1370,7 +1429,9 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
     if result.status == "failed" and schema.get("system_query") == SYSTEM_QUERY and is_input_failure(run):
         progress.finish()
-        gated = input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, test_failure_reason(run))
+        gated = input_gate_result(
+            env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, test_failure_reason(run), actor=turn.actor
+        )
         # The shared prelaunch gate clears older evidence. This post-run gate
         # must retain the failed attempt that Runner persists before the CAS.
         fc.verify_run_id = run.id

@@ -208,6 +208,7 @@ class WorkflowBasedAppRunner:
         native_test_ref: NativeTestContextRef | None = None,
         native_runtime: NativeRuntimeBridge | None = None,
         native_call_depth: int = 0,
+        builder_mocked_node_ids: frozenset[str] = frozenset(),
     ) -> Graph:
         """
         Init graph
@@ -220,10 +221,13 @@ class WorkflowBasedAppRunner:
         # extras, before Graph.init introduces typed node data.
 
         # Create explicit graph init context for Graph.init.
+        if builder_mocked_node_ids and (builder_execution is not None or native_test_ref is not None):
+            raise BuilderExecutionPolicyError("unsupported_execution_policy")
         run_context = build_dify_run_context(
             builder_execution=builder_execution,
             native_test_required=native_test_required,
             native_test_ref=native_test_ref,
+            builder_mocked_node_ids=builder_mocked_node_ids,
             tenant_id=tenant_id or "",
             app_id=self._app_id,
             user_id=user_id,

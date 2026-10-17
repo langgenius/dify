@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from constants import UUID_NIL
 from models.model import AppMode
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 from services.dify_builder.native_testing.contracts import NativeTestContextRef
 
@@ -114,6 +114,13 @@ class DifyRunContext(BaseModel):
     # Separate server marker: missing native authority must never select ordinary execution.
     native_test_required: bool = False
     native_test_ref: NativeTestContextRef | None = None
+    # Builder confirmed Test Run only: nodes whose side effect was not confirmed
+    # return a mocked result instead of running. Never set for ordinary runs.
+    builder_mocked_node_ids: frozenset[str] = frozenset()
+
+    @field_serializer("builder_mocked_node_ids")
+    def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:
+        return sorted(value)
 
     tenant_id: str
     app_id: str
@@ -158,6 +165,7 @@ def build_dify_run_context(
     builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext | None = None,
     native_test_required: bool = False,
     native_test_ref: NativeTestContextRef | None = None,
+    builder_mocked_node_ids: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -170,6 +178,7 @@ def build_dify_run_context(
         builder_execution=builder_execution,
         native_test_required=native_test_required,
         native_test_ref=native_test_ref,
+        builder_mocked_node_ids=builder_mocked_node_ids,
         tenant_id=tenant_id,
         app_id=app_id,
         user_id=user_id,
@@ -213,6 +222,12 @@ class AppGenerateEntity(BaseModel):
     # Separate server marker: missing native authority must never select ordinary execution.
     native_test_required: bool = False
     native_test_ref: NativeTestContextRef | None = None
+    # Builder confirmed Test Run only; see ``DifyRunContext.builder_mocked_node_ids``.
+    builder_mocked_node_ids: frozenset[str] = frozenset()
+
+    @field_serializer("builder_mocked_node_ids")
+    def _dump_builder_mocked_node_ids(self, value: frozenset[str]) -> list[str]:
+        return sorted(value)
 
     @field_validator("builder_execution", mode="before")
     @classmethod

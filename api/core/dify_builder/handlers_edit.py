@@ -40,16 +40,19 @@ from core.dify_builder.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
+    needs_effect_confirmation,
     note_repair_error,
     note_unknown_outcome,
     perform_revert,
     publication_denied,
     publication_for_context,
+    record_effect_confirmation,
     repair_is_repeating,
     run_finished_without_output,
+    saved_test_inputs,
     start_schema,
     test_failure_reason,
-    testdata_form_fields,
+    testdata_form,
     without_endpoint_values,
 )
 from core.dify_builder.input_schema import schema_hash, validate_runtime_inputs
@@ -562,26 +565,19 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind == "run_affected_tests":
         fc.verify_run_id = ""
-        if fc.test_input_ref == "":
+        if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
-            form_items = append_card(
-                fc,
-                FormCard(
-                    variant="testdata",
-                    title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
-                    description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
-                    fields=testdata_form_fields(start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))),
-                    values={},
-                    frozen=False,
-                ),
-            )
-            turn_items = append_assistant(
+            card, reply = testdata_form(
                 env,
                 s,
                 fc,
+                turn.actor,
+                start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor)),
+                saved_test_inputs(env, fc),
                 copy_text(BuilderCopyId.REPLIES_PROVIDE_TEST_INPUTS_OR_USE_MOCK_DATA_TO_RUN_THE_AFFECTED_PATH_TEST),
-                cards=["form"],
             )
+            form_items = append_card(fc, card)
+            turn_items = append_assistant(env, s, fc, reply, cards=["form"])
             return StepResult(next=PcState.EDIT_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
         items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.ACTIONS_RUN_AFFECTED_PATH_TESTS)))
         return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=items)
@@ -614,10 +610,11 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         inputs = {}
         if turn.action is not None and isinstance(turn.action.payload.get("inputs"), dict):
             inputs = turn.action.payload["inputs"]
+    inputs = record_effect_confirmation(env, s, fc, turn.actor, inputs)
     try:
         validate_runtime_inputs(schema, inputs)
     except ValueError as exc:
-        return input_gate_result(env, s, fc, schema, inputs, PcState.EDIT_AWAIT_TESTDATA, str(exc))
+        return input_gate_result(env, s, fc, schema, inputs, PcState.EDIT_AWAIT_TESTDATA, str(exc), actor=turn.actor)
     ti = TestInput(
         session_id=s.id,
         source=mode or "upload",
@@ -676,6 +673,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             session_id=s.id,
             test_input_id=fc.test_input_ref,
             on_workflow_event=env.emit_workflow,
+            effect_confirmation=fc.effect_confirmation,
         )
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
@@ -826,23 +824,22 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             fc,
             replace(result_card(run), failure_reason=test_failure_reason(run)),
         )
-        form_items = append_card(
+        card, reply = testdata_form(
+            env,
+            s,
             fc,
-            FormCard(
-                variant="testdata",
-                title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
-                description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
-                fields=testdata_form_fields(schema),
-                values=inputs,
-                frozen=False,
-            ),
+            turn.actor,
+            schema,
+            inputs,
+            copy_text(BuilderCopyId.REPLIES_THE_RUN_FAILED_ON_ITS_INPUTS_PROVIDE_TEST_DATA_AND_RETRY),
         )
+        form_items = append_card(fc, card)
         execution = progress.finish()
         turn_items = append_assistant(
             env,
             s,
             fc,
-            copy_text(BuilderCopyId.REPLIES_THE_RUN_FAILED_ON_ITS_INPUTS_PROVIDE_TEST_DATA_AND_RETRY),
+            reply,
             execution=execution,
             cards=["test_result", "form"],
             turn_id=progress.operation_id,

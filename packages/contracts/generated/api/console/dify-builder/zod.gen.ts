@@ -739,7 +739,9 @@ export const zBuilderCopyId = z.enum([
   'forms.goal',
   'forms.requirements.description',
   'forms.requirements.title',
+  'forms.testData.confirmEffect',
   'forms.testData.description',
+  'forms.testData.effectAccount',
   'forms.testData.title',
   'forms.userMessage',
   'json.failed',
@@ -904,8 +906,13 @@ export const zBuilderCopyId = z.enum([
   'replies.useTemplateInputsFromStartScalars',
   'resources.description',
   'resources.title',
+  'test.effectAlwaysMocked',
+  'test.effectCalls',
+  'test.effectConfirmRequired',
+  'test.effectsIntro',
   'test.failedFallback',
   'test.invalidInputs',
+  'test.mockedNote',
   'test.noDetailedError',
   'test.policyReview',
   'values.empty',
@@ -1018,7 +1025,7 @@ export const zTestResultCard = z.object({
   consent_id: z.string().nullish(),
   dify_run_id: z.string().optional().default(''),
   executed_node_ids: z.array(z.string()).optional(),
-  execution_mode: z.enum(['confirmed_tool', 'mock', 'restricted']).nullish(),
+  execution_mode: z.enum(['confirmed_run', 'confirmed_tool', 'mock', 'restricted']).nullish(),
   failure_reason: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
   outcome: z
     .enum([
@@ -1029,12 +1036,18 @@ export const zTestResultCard = z.object({
     ])
     .nullish(),
   policy_version: z
-    .enum(['builder-confirmed-gmail-read-v1', 'builder-json-parse-v1', 'builder-restricted-v1'])
+    .enum([
+      'builder-confirmed-gmail-read-v1',
+      'builder-confirmed-run-v1',
+      'builder-json-parse-v1',
+      'builder-restricted-v1',
+    ])
     .nullish(),
   reply_language: z.string().optional().default(''),
   review_note: z.union([z.string(), zBuilderCopy, zBuilderTextParts]).nullish(),
   safety_outcome: z
     .enum([
+      'confirmed_run_completed',
       'confirmed_tool_completed',
       'execution_blocked',
       'execution_evidence_unknown',
