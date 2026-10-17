@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import mermaid from 'mermaid'
 import Flowchart from '../index'
@@ -173,14 +173,17 @@ it('keeps the current SVG visible while loading and ignores an older render that
 })
 
 it('opens a preview of the rendered SVG and closes it through the preview action', async () => {
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   render(<Flowchart PrimitiveCode={code} />)
   await flushRender()
+  vi.useRealTimers()
+  const user = userEvent.setup()
+
   await user.click(screen.getByText('Classic diagram'))
-  await flushRender()
-  expect(screen.getByTestId('image-preview-container')).toBeInTheDocument()
+  expect(await screen.findByRole('dialog', { name: 'mermaid_chart' })).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-  expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog', { name: 'mermaid_chart' })).not.toBeInTheDocument()
+  })
 })
 
 it('cancels a scheduled render when unmounted', async () => {

@@ -185,6 +185,13 @@ describe('ServiceApiAccessPointCard', () => {
 
     expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
 
+    await waitFor(() => {
+      expect(mocks.apiEnable).toHaveBeenCalledWith({
+        params: { app_id: 'app-1' },
+        body: { enable_api: false },
+      })
+    })
+
     toggle.reject(new Error('request failed'))
 
     await waitFor(() => {
