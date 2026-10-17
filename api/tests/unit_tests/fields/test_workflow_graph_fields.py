@@ -1,3 +1,5 @@
+import pytest
+
 from fields.workflow_graph_fields import (
     WorkflowFeaturesResponse,
     WorkflowGraphResponse,
@@ -40,6 +42,23 @@ def test_graph_round_trips_without_adding_or_dropping_keys() -> None:
 
 def test_empty_graph_stays_empty() -> None:
     assert WorkflowGraphResponse.model_validate({}).model_dump(mode="json") == {}
+
+
+@pytest.mark.parametrize(
+    "node",
+    [
+        {"id": "start", "type": "start"},
+        {"id": "start", "data": {"title": "Start", "variables": []}},
+        {"id": "start", "data": None},
+        {"id": "start", "data": {"type": None}},
+    ],
+)
+def test_sparse_stored_nodes_round_trip_without_inventing_data(node: dict) -> None:
+    # 1.9.0's workflow service integration test persisted a node with only id/type.
+    # Reading stored JSON must not impose the executable graph's required fields.
+    graph = {"nodes": [node], "edges": []}
+
+    assert WorkflowGraphResponse.model_validate(graph).model_dump(mode="json") == graph
 
 
 def test_features_keep_unknown_settings_and_camel_case_keys() -> None:

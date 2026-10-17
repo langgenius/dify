@@ -55,6 +55,15 @@ describe('toCanvasGraph', () => {
     )
   })
 
+  it.each([
+    { id: 'start', type: 'start' },
+    { id: 'start', data: { title: 'Start' } },
+    { id: 'start', data: null },
+    { id: 'start', data: { type: null } },
+  ])('refuses unrenderable stored nodes with a controlled error: %o', (node) => {
+    expect(() => toCanvasGraph({ nodes: [node], edges: [] })).toThrow(UnknownWorkflowBlockError)
+  })
+
   it('derives missing edge ids and endpoint types from the connected nodes', () => {
     const { edges } = toCanvasGraph({
       nodes: [

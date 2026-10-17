@@ -28955,13 +28955,13 @@ request validation and response serialization.
 | ---- | ---- | ----------- | -------- |
 | desc | string |  | No |
 | title | string |  | No |
-| type | string |  | Yes |
+| type | string |  | No |
 
 #### WorkflowGraphNodeResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [WorkflowGraphNodeDataResponse](#workflowgraphnodedataresponse) |  | Yes |
+| data | [WorkflowGraphNodeDataResponse](#workflowgraphnodedataresponse) |  | No |
 | id | string |  | Yes |
 | position | [WorkflowGraphPositionResponse](#workflowgraphpositionresponse) |  | No |
 | type | string |  | No |

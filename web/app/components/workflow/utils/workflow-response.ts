@@ -51,7 +51,7 @@ const NODE_DATA_TYPES = { ...BlockEnum, note: NOTE_NODE_DATA_TYPE } satisfies Re
 >
 
 /**
- * Thrown when a stored graph holds a block this client does not know. Loading it without the
+ * Thrown when a stored graph holds a block type that is missing or unknown. Loading it without the
  * node would drop it from the next draft sync, so the editor refuses instead.
  */
 export class UnknownWorkflowBlockError extends Error {
@@ -65,8 +65,8 @@ export class UnknownWorkflowBlockError extends Error {
 }
 
 const toCanvasNode = (node: WorkflowGraphNodeResponse, index: number): Node => {
-  const { type, title, desc } = node.data
-  if (!isOneOf(NODE_DATA_TYPES, type)) throw new UnknownWorkflowBlockError(type)
+  const { type, title, desc } = node.data ?? {}
+  if (!isOneOf(NODE_DATA_TYPES, type)) throw new UnknownWorkflowBlockError(type ?? '<missing>')
 
   return {
     ...node,

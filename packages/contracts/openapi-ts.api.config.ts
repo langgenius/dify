@@ -739,12 +739,12 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
           )
             return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('json').call())
 
-          // Open objects (`additionalProperties: true`) keep their extra keys, matching the
-          // `[key: string]: unknown` index signature the TypeScript plugin emits for them.
+          // openapi-ts normalizes `additionalProperties: true` to `unknown`. Preserve extra
+          // keys, matching the index signature the TypeScript plugin emits for open objects.
           if (
             ctx.schema.properties &&
-            (additionalProperties === true ||
-              (typeof additionalProperties === 'object' && additionalProperties.type === 'unknown'))
+            typeof additionalProperties === 'object' &&
+            additionalProperties.type === 'unknown'
           )
             return objectSchema.attr('catchall').call($(ctx.symbols.z).attr('unknown').call())
 

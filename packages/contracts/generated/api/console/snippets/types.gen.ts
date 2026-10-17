@@ -675,7 +675,7 @@ export type WorkflowGraphEdgeResponse = {
 }
 
 export type WorkflowGraphNodeResponse = {
-  data: WorkflowGraphNodeDataResponse
+  data?: WorkflowGraphNodeDataResponse | null
   id: string
   position?: WorkflowGraphPositionResponse | null
   type?: string | null
@@ -982,7 +982,7 @@ export type WorkflowGraphEdgeDataResponse = {
 export type WorkflowGraphNodeDataResponse = {
   desc?: string | null
   title?: string | null
-  type: string
+  type?: string | null
   [key: string]: unknown
 }
 

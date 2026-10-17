@@ -1949,7 +1949,7 @@ export const zWorkflowGraphNodeDataResponse = z
   .object({
     desc: z.string().nullish(),
     title: z.string().nullish(),
-    type: z.string(),
+    type: z.string().nullish(),
   })
   .catchall(z.unknown())
 
@@ -1968,7 +1968,7 @@ export const zWorkflowGraphPositionResponse = z
  */
 export const zWorkflowGraphNodeResponse = z
   .object({
-    data: zWorkflowGraphNodeDataResponse,
+    data: zWorkflowGraphNodeDataResponse.nullish(),
     id: z.string(),
     position: zWorkflowGraphPositionResponse.nullish(),
     type: z.string().nullish(),

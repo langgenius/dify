@@ -3501,13 +3501,13 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | ---- | ---- | ----------- | -------- |
 | desc | string |  | No |
 | title | string |  | No |
-| type | string |  | Yes |
+| type | string |  | No |
 
 #### WorkflowGraphNodeResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [WorkflowGraphNodeDataResponse](#workflowgraphnodedataresponse) |  | Yes |
+| data | [WorkflowGraphNodeDataResponse](#workflowgraphnodedataresponse) |  | No |
 | id | string |  | Yes |
 | position | [WorkflowGraphPositionResponse](#workflowgraphpositionresponse) |  | No |
 | type | string |  | No |

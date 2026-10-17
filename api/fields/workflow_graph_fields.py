@@ -43,7 +43,9 @@ class WorkflowGraphViewportResponse(StoredJsonResponseModel):
 
 
 class WorkflowGraphNodeDataResponse(StoredJsonResponseModel):
-    type: str
+    # Old draft writes accepted incomplete node data. None represents missing/null
+    # stored metadata, not an executable node type.
+    type: str | None = None
     title: str | None = None
     desc: str | None = None
 
@@ -52,7 +54,8 @@ class WorkflowGraphNodeResponse(StoredJsonResponseModel):
     id: str
     type: str | None = None
     position: WorkflowGraphPositionResponse | None = None
-    data: WorkflowGraphNodeDataResponse
+    # A persisted draft may have no data yet; keep absent and explicit null distinct.
+    data: WorkflowGraphNodeDataResponse | None = None
 
 
 class WorkflowGraphEdgeDataResponse(StoredJsonResponseModel):
