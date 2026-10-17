@@ -185,7 +185,10 @@ describe('workflow state transformations', () => {
     let process = upsertWorkflowNode(undefined, createTrace())!
     process = updateHumanInputRequired(process, createHumanInput())
     process = updateHumanInputRequired(process, createHumanInput({ expiration_time: 300 }))
-    process = updateHumanInputRequired(process, createHumanInput({ node_id: 'node-2', form_id: 'form-2' }))
+    process = updateHumanInputRequired(
+      process,
+      createHumanInput({ node_id: 'node-2', form_id: 'form-2' }),
+    )
     expect(process.tracing[0]?.status).toBe(NodeRunningStatus.Paused)
     expect(process.humanInputFormDataList?.map((form) => form.node_id)).toEqual([
       'node-1',
