@@ -1191,6 +1191,34 @@ class TestDocumentListApi(SQLiteControllerTest):
         assert "data_source_info_dict" not in response["data"][0]
         assert "doc_metadata_details" not in response["data"][0]
 
+    @patch("controllers.service_api.dataset.document.DocumentService")
+    def test_list_documents_keyword_is_case_insensitive_and_treats_wildcards_literally(
+        self, mock_doc_svc, app: Flask, mock_tenant, mock_dataset
+    ):
+        self._persist_dataset(mock_dataset)
+        self.session.add_all(
+            [
+                make_serializable_document(
+                    id="match", name="Annual_Report.pdf", tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                ),
+                make_serializable_document(
+                    id="wildcard-only", name="AnnualXReport.pdf", tenant_id=mock_tenant, dataset_id=mock_dataset.id
+                ),
+            ]
+        )
+        self.session.commit()
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents?keyword=annual_report",
+            method="GET",
+        ):
+            api = DocumentListApi()
+            response = inspect.unwrap(type(api).get)(
+                api, self.session, tenant_id=mock_tenant, dataset_id=mock_dataset.id
+            )
+
+        assert [document["id"] for document in response["data"]] == ["match"]
+
     @patch("controllers.service_api.dataset.document.paginate_query")
     @patch("controllers.service_api.dataset.document.DocumentService")
     def test_list_documents_has_more_false_on_last_page_exact_limit(
