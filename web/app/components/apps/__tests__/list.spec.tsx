@@ -31,6 +31,10 @@ vi.mock('react-i18next', async () => {
     'app.studio.sort.recentlyCreated': 'Recently created',
     'app.studio.sort.sortBy': 'Sort by',
     'app.studio.starred': 'Starred',
+    'app.studio.availability.all': 'All',
+    'app.studio.availability.available': 'Available',
+    'app.studio.availability.unavailable': 'Unavailable',
+    'app.studio.availability.status': 'Status',
   })
 })
 
@@ -412,6 +416,8 @@ const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   })
   const category =
     appListQueryParsers.category.parse(mockSearchParams.get('category') ?? '') ?? 'all'
+  const availability =
+    appListQueryParsers.availability.parse(mockSearchParams.get('availability') ?? '') ?? 'all'
   const query = {
     name: mockSearchParams.get('keywords') ?? '',
     page: 1,
@@ -419,6 +425,7 @@ const renderList = (searchParams = '', options: RenderListOptions = {}) => {
     sort_by:
       appListQueryParsers.sort_by.parse(mockSearchParams.get('sort_by') ?? '') ?? 'last_modified',
     ...(category !== 'all' ? { mode: category } : {}),
+    ...(availability !== 'all' ? { availability } : {}),
   }
   const appOptions = consoleQuery.apps.get.infiniteOptions({
     input: (page: number) => ({ query: { ...query, page } }),
@@ -867,17 +874,20 @@ describe('List', () => {
       expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
     })
 
-    it('should keep the regular empty state for empty filtered results', () => {
+    it('should keep the regular empty state for empty filtered results', async () => {
       mockAppData = { pages: [{ data: [], total: 0 }] }
+      getApps.mockResolvedValue({ data: [], total: 0, page: 1, limit: 30, has_more: false })
 
       renderList('?keywords=missing+app')
 
       expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
       expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
       expect(screen.getByRole('status')).toHaveClass('sr-only')
-      expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
-        'aria-busy',
-        'false',
+      await waitFor(() =>
+        expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        ),
       )
       expect(screen.getByRole('combobox', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
@@ -886,11 +896,20 @@ describe('List', () => {
 
     it('keeps the settled empty status during a real background refresh', async () => {
       mockAppData = { pages: [{ data: [], total: 0 }] }
+      getApps
+        .mockResolvedValueOnce({ data: [], total: 0, page: 1, limit: 30, has_more: false })
+        .mockImplementationOnce(() => new Promise(() => {}))
       const { queryClient } = renderList('?keywords=missing+app')
+      await waitFor(() =>
+        expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        ),
+      )
       act(() => {
         void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
       })
-      await waitFor(() => expect(getApps).toHaveBeenCalledOnce())
+      await waitFor(() => expect(getApps).toHaveBeenCalledTimes(2))
       expect(screen.getByRole('status')).toHaveTextContent('app.filterEmpty.noApps')
       expect(screen.getByTestId('empty-state').closest('[aria-busy]')).toHaveAttribute(
         'aria-busy',
@@ -1034,6 +1053,57 @@ describe('List', () => {
 
       expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
     })
+
+    it('should filter availability in both lists, preserve URL filters, and reset scrolling', async () => {
+      const user = userEvent.setup()
+      const { onUrlUpdate } = renderList('?category=workflow&keywords=sales')
+      const viewport = screen.getByRole('region', { name: 'navigation.menus.apps' })
+      const scrollTo = vi.fn()
+      viewport.scrollTo = scrollTo
+      await user.click(screen.getByRole('combobox', { name: 'Status' }))
+      await user.click(screen.getByRole('option', { name: 'Unavailable' }))
+      const filters = {
+        page: 1,
+        availability: 'unavailable',
+        mode: 'workflow',
+        name: 'sales',
+        sort_by: 'last_modified',
+      }
+      await waitFor(() =>
+        expect(getApps).toHaveBeenLastCalledWith({ query: { ...filters, limit: 30 } }),
+      )
+      expect(getStarredApps).toHaveBeenLastCalledWith({ query: { ...filters, limit: 100 } })
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+      await waitFor(() => {
+        const params = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams
+        expect(params?.get('availability')).toBe('unavailable')
+        expect(params?.get('category')).toBe('workflow')
+        expect(params?.get('keywords')).toBe('sales')
+      })
+      await user.click(screen.getByRole('combobox', { name: 'Status' }))
+      await user.click(screen.getByRole('option', { name: 'All' }))
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('availability')).toBe(false),
+      )
+    })
+
+    it.each([
+      ['available', 'Available', 'available'],
+      ['unavailable', 'Unavailable', 'unavailable'],
+      ['invalid', 'All', undefined],
+    ])(
+      'should restore and validate availability from the URL: %s',
+      async (query, label, expected) => {
+        seedAppList = false
+        seedStarredList = false
+        renderList(`?availability=${query}`)
+        expect(screen.getByRole('combobox', { name: 'Status' })).toHaveTextContent(label)
+        await waitFor(() => expect(getApps).toHaveBeenCalled())
+        await waitFor(() => expect(getStarredApps).toHaveBeenCalled())
+        expect(getApps.mock.calls.at(-1)?.[0].query.availability).toBe(expected)
+        expect(getStarredApps.mock.calls.at(-1)?.[0].query.availability).toBe(expected)
+      },
+    )
 
     it('requests main and starred results with current filters and their own page limits', async () => {
       const user = userEvent.setup()
@@ -1249,17 +1319,30 @@ describe('List', () => {
   })
 
   describe('Infinite Scroll', () => {
-    it('requests and appends the next page when the sentinel intersects', async () => {
+    it('requests and appends the next page with the active availability filter', async () => {
       hasMoreApps = true
-      getApps.mockResolvedValue({
-        data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'app-3', name: 'Third app' }],
-        page: 2,
-        limit: 30,
-        total: 3,
-        has_more: false,
-      })
-      renderList()
+      getApps
+        .mockResolvedValueOnce({
+          ...defaultAppData.pages[0],
+          page: 1,
+          limit: 30,
+          has_more: true,
+        })
+        .mockResolvedValue({
+          data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'app-3', name: 'Third app' }],
+          page: 2,
+          limit: 30,
+          total: 3,
+          has_more: false,
+        })
+      renderList('?availability=unavailable')
       await waitFor(() => expect(mockObserve).toHaveBeenCalled())
+      await waitFor(() =>
+        expect(screen.getByTestId('app-card-app-1').closest('[aria-busy]')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        ),
+      )
       act(() => {
         for (const callback of [...intersectionCallbacks])
           callback(
@@ -1269,12 +1352,21 @@ describe('List', () => {
       })
       expect(await screen.findByTestId('app-card-app-3')).toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
-      expect(getApps).toHaveBeenCalledWith({ query: expect.objectContaining({ page: 2 }) })
+      expect(getApps).toHaveBeenCalledWith({
+        query: expect.objectContaining({ page: 2, availability: 'unavailable' }),
+      })
     })
 
-    it('should not call fetchNextPage when not intersecting', () => {
+    it('should not call fetchNextPage when not intersecting', async () => {
       hasMoreApps = true
+      getApps.mockResolvedValue({
+        ...defaultAppData.pages[0],
+        page: 1,
+        limit: 30,
+        has_more: true,
+      })
       renderList()
+      await waitFor(() => expect(mockObserve).toHaveBeenCalled())
 
       for (const callback of intersectionCallbacks) {
         act(() => {
@@ -1285,7 +1377,8 @@ describe('List', () => {
         })
       }
 
-      expect(getApps).not.toHaveBeenCalled()
+      expect(getApps).toHaveBeenCalledOnce()
+      expect(getApps).toHaveBeenCalledWith({ query: expect.objectContaining({ page: 1 }) })
     })
 
     it('shows one skeleton until both requests have resolved', async () => {
@@ -1321,15 +1414,29 @@ describe('List', () => {
     it('keeps resolved results and retries the failed next page', async () => {
       const user = userEvent.setup()
       hasMoreApps = true
-      getApps.mockRejectedValueOnce(new Error('Next page failed')).mockResolvedValue({
-        data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'app-3' }],
-        page: 2,
-        limit: 30,
-        total: 3,
-        has_more: false,
-      })
+      getApps
+        .mockResolvedValueOnce({
+          ...defaultAppData.pages[0],
+          page: 1,
+          limit: 30,
+          has_more: true,
+        })
+        .mockRejectedValueOnce(new Error('Next page failed'))
+        .mockResolvedValue({
+          data: [{ ...defaultAppData.pages[0]!.data[0]!, id: 'app-3' }],
+          page: 2,
+          limit: 30,
+          total: 3,
+          has_more: false,
+        })
       renderList()
       await waitFor(() => expect(mockObserve).toHaveBeenCalled())
+      await waitFor(() =>
+        expect(screen.getByTestId('app-card-app-1').closest('[aria-busy]')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        ),
+      )
       act(() => {
         for (const callback of [...intersectionCallbacks])
           callback(
@@ -1341,7 +1448,7 @@ describe('List', () => {
       expect(screen.getByTestId('app-card-app-1')).toBeInTheDocument()
       await user.click(retryButton)
       expect(await screen.findByTestId('app-card-app-3')).toBeInTheDocument()
-      expect(getApps).toHaveBeenCalledTimes(2)
+      expect(getApps).toHaveBeenCalledTimes(3)
       expect(getApps).toHaveBeenLastCalledWith({ query: expect.objectContaining({ page: 2 }) })
     })
   })

@@ -40,6 +40,7 @@ from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig, AppStar, IconType
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
+from repositories.app.availability_repository import AppAvailabilityRepository
 from repositories.app.response import app_record, app_summary
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
@@ -204,6 +205,9 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             if page is None:
                 return AppPage(page=params.page, limit=params.limit, total=0, has_more=False, data=[])
             trigger_app_ids = self._draft_trigger_app_ids(session, context.active_workspace_id, page.items)
+            plans = AppAvailabilityRepository(session=session, tenant_id=context.active_workspace_id).collect_many(
+                page.items
+            )
             return AppPage(
                 page=page.page,
                 limit=page.per_page,
@@ -213,6 +217,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                     replace(
                         app_record(app, session=session),
                         has_draft_trigger=app.id in trigger_app_ids,
+                        availability_plan=plans[app.id],
                     )
                     for app in page.items
                 ],
@@ -409,7 +414,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
 
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
-        elif params.accessible_app_ids is not None:
+        if params.accessible_app_ids is not None:
             accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
             if params.include_own_apps:
                 accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
@@ -510,7 +515,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         order_by = cls._build_app_list_order_by(params.sort_by)
 
         app_models = paginate_query(
-            sa.select(App).where(*filters).order_by(order_by),
+            sa.select(App).where(*filters).order_by(order_by, App.id),
             page=params.page,
             per_page=params.limit,
             session=session,
@@ -612,7 +617,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 ),
             )
             .where(AppStar.tenant_id == tenant_id, *filters)
-            .order_by(order_by),
+            .order_by(order_by, App.id),
             page=params.page,
             per_page=params.limit,
             session=session,
