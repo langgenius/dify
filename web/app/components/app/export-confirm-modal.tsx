@@ -21,6 +21,7 @@ type AppExportConfirmModalProps = {
   envList: Pick<EnvironmentVariableItemResponse, 'name' | 'value'>[]
   onConfirm: (includeSecret: boolean) => Promise<boolean>
   isExporting: boolean
+  errorMessage?: string
   onClose: () => void
 }
 
@@ -29,6 +30,7 @@ const AppExportConfirmContent = ({
   onConfirm,
   onClose,
   isExporting,
+  errorMessage,
 }: AppExportConfirmModalProps) => {
   const { t } = useTranslation(['app', 'workflow', 'common'])
 
@@ -119,6 +121,11 @@ const AppExportConfirmContent = ({
             {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
           </span>
         </label>
+        {errorMessage && (
+          <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+            {errorMessage}
+          </p>
+        )}
       </AlertDialogBody>
       <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isExporting}>
