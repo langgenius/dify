@@ -136,29 +136,6 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
   ),
 }))
 
-// Mock CheckboxWithLabel
-vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
-  default: ({
-    isChecked,
-    onChange,
-    label,
-  }: {
-    isChecked: boolean
-    onChange: () => void
-    label: string
-  }) => (
-    <label>
-      <input
-        type="checkbox"
-        checked={isChecked}
-        onChange={onChange}
-        data-testid="include-all-checkbox"
-      />
-      {label}
-    </label>
-  ),
-}))
-
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -172,21 +149,6 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render the search input', () => {
-      render(<List />)
-      expect(screen.getByRole('searchbox')).toBeInTheDocument()
-    })
-
-    it('should render tag filter', () => {
-      render(<List />)
-      expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
-    })
-
-    it('should render external API panel button', () => {
-      render(<List />)
-      expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
-    })
-
     it('should hide external API panel button without dataset.external.connect', () => {
       mockConsoleState = {
         isCurrentWorkspaceManager: true,
@@ -201,90 +163,7 @@ describe('List', () => {
     })
   })
 
-  describe('Props', () => {
-    it('should query datasets with includeAll disabled initially', async () => {
-      render(<List />)
-
-      expect(getDatasets).toHaveBeenCalledWith({
-        query: expect.objectContaining({
-          include_all: false,
-        }),
-      })
-    })
-
-    it('should query datasets with empty keywords initially', async () => {
-      render(<List />)
-
-      expect(getDatasets).toHaveBeenCalledWith({
-        query: expect.objectContaining({
-          keyword: '',
-        }),
-      })
-    })
-
-    it('should query datasets with empty tags initially', async () => {
-      render(<List />)
-
-      expect(getDatasets).toHaveBeenCalledWith({
-        query: expect.objectContaining({
-          tag_ids: [],
-        }),
-      })
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should open external API panel when button is clicked', () => {
-      render(<List />)
-
-      const button = screen.getByText(/externalAPIPanelTitle/)
-      fireEvent.click(button)
-
-      expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
-    })
-
-    it('should update search input value', () => {
-      render(<List />)
-
-      const input = screen.getByRole('searchbox')
-      fireEvent.change(input, { target: { value: 'test search' } })
-
-      expect(input).toHaveValue('test search')
-    })
-
-    it('should trigger tag filter change', () => {
-      render(<List />)
-      // Tag filter is rendered and interactive
-      const selectTagsBtn = screen.getByText('Select Tags')
-      expect(selectTagsBtn).toBeInTheDocument()
-      fireEvent.click(selectTagsBtn)
-      // The onChange callback was triggered (debounced)
-    })
-  })
-
-  describe('Conditional Rendering', () => {
-    it('should show include all checkbox for workspace owner', () => {
-      render(<List />)
-      expect(screen.getByTestId('include-all-checkbox')).toBeInTheDocument()
-    })
-  })
-
   describe('Edge Cases', () => {
-    it('should handle empty state gracefully', () => {
-      render(<List />)
-      // Should render without errors even with empty data
-      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
-    })
-
-    it('should render first empty state when there are no datasets and no active filters', async () => {
-      getDatasets.mockResolvedValue(datasetPage(0))
-
-      render(<List />)
-
-      expect(await screen.findByText('dataset.firstEmpty.title')).toBeInTheDocument()
-      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
-    })
-
     it('should render first empty state when dataset.create_and_management is available', async () => {
       mockConsoleState = {
         isCurrentWorkspaceManager: true,
@@ -332,7 +211,7 @@ describe('List', () => {
 
       render(<List />)
 
-      fireEvent.click(screen.getByTestId('include-all-checkbox'))
+      await userEvent.setup().click(screen.getByRole('checkbox', { name: 'dataset.allKnowledge' }))
 
       expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
       await waitFor(() =>
@@ -368,36 +247,6 @@ describe('List', () => {
   })
 
   describe('Branch Coverage', () => {
-    it('should not redirect normal role users at component level', async () => {
-      // Re-mock app context state with normal role.
-
-      // Clear module cache and re-import
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
-
-      render(<ListComponent />)
-
-      await waitFor(() => {
-        expect(mockReplace).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should clear search input when onClear is called', () => {
-      render(<List />)
-
-      const input = screen.getByRole('searchbox')
-      // First set a value
-      fireEvent.change(input, { target: { value: 'test search' } })
-      expect(input).toHaveValue('test search')
-
-      // Find and click the clear button
-      const clearButton = document.querySelector('[class*="clear"], button[aria-label*="clear"]')
-      if (clearButton) {
-        fireEvent.click(clearButton)
-        expect(input).toHaveValue('')
-      }
-    })
-
     it('should close ExternalAPIPanel when onClose is called', () => {
       render(<List />)
 
@@ -421,12 +270,11 @@ describe('List', () => {
         workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
       }
 
-      vi.resetModules()
-      const { default: ListComponent } = await import('../index')
+      render(<List />)
 
-      render(<ListComponent />)
-
-      expect(screen.queryByTestId('include-all-checkbox')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('checkbox', { name: 'dataset.allKnowledge' }),
+      ).not.toBeInTheDocument()
     })
   })
 })

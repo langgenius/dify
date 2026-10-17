@@ -1,5 +1,6 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import { agentAction, agentSearchQueryOptions } from '../agent'
+import { zAgentAppPartial } from '@dify/contracts/api/console/agent/zod.gen'
+import { agentSearchQueryOptions } from '../agent'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
@@ -7,18 +8,8 @@ vi.mock('@/service/console', () => ({
   consoleQuery: { agent: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'roster.title': 'Agents',
-    'roster.searchLabel': 'Search agents',
-  })
-})
-
-vi.mock('../../../base/app-icon', () => ({ default: () => null }))
-
-function agent(overrides: Partial<AgentAppPartial> = {}): AgentAppPartial {
-  return {
+function agent(overrides: Partial<AgentAppPartial> = {}) {
+  return zAgentAppPartial.parse({
     id: 'agent-1',
     name: 'Researcher',
     description: 'Investigates a topic',
@@ -26,22 +17,10 @@ function agent(overrides: Partial<AgentAppPartial> = {}): AgentAppPartial {
     icon_url: null,
     permission_keys: [],
     ...overrides,
-  }
+  })
 }
 
 describe('agent search query', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('exposes the @agents scope', () => {
-    expect(agentAction).toMatchObject({
-      key: '@agents',
-      shortcut: '@agents',
-      title: 'Agents',
-      description: 'Search agents',
-      source: 'remote',
-    })
-  })
-
   it('queries the generated agent endpoint by name', () => {
     agentSearchQueryOptions('research')
 
@@ -64,7 +43,7 @@ describe('agent search query', () => {
   it('maps agents to their configure pages', () => {
     const options = agentSearchQueryOptions('research')
     const results = options.select!({
-      data: [agent()] as never,
+      data: [agent()],
       has_more: false,
       limit: 10,
       page: 1,

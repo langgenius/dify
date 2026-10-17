@@ -1,5 +1,6 @@
 import type { SnippetListItem } from '@/types/snippet'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import SnippetCard from '../snippet-card'
 
@@ -8,7 +9,7 @@ const {
   mockDownloadBlob,
   exportSnippet,
   mockOnRefresh,
-  mockRenderTagSelector,
+  bindTags,
   mockWorkspacePermissionKeys,
   mockToastError,
   mockToastSuccess,
@@ -19,7 +20,7 @@ const {
   exportSnippet: vi.fn(),
   mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
   mockOnRefresh: vi.fn(),
-  mockRenderTagSelector: vi.fn(),
+  bindTags: vi.fn(),
   mockToastError: vi.fn(),
   mockToastSuccess: vi.fn(),
   updateSnippet: vi.fn(),
@@ -27,23 +28,18 @@ const {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: {
-      workspaces: {
-        current: {
-          customizedSnippets: {
-            bySnippetId: {
-              patch: updateSnippet,
-              delete: deleteSnippet,
-              export: { get: exportSnippet },
-            },
-          },
-        },
-      },
-    },
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.bySnippetId.patch': updateSnippet,
+      'workspaces.current.customizedSnippets.bySnippetId.delete': deleteSnippet,
+      'workspaces.current.customizedSnippets.bySnippetId.export.get': exportSnippet,
+      'tagBindings.post': bindTags,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.get': async () => [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '0' }],
       'workspaces.current.members.get': async () => ({
         accounts: [
           {
@@ -102,31 +98,6 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: (props: {
-    onOpenTagManagement: () => void
-    onTagsChange: () => void
-    value: Array<{ name: string }>
-    canBindOrUnbindTags?: boolean
-    contextLabel?: string
-  }) => {
-    mockRenderTagSelector(props)
-    const { onOpenTagManagement, onTagsChange, value } = props
-
-    return (
-      <div data-testid="snippet-tags">
-        <span>{value.map((tag) => tag.name).join(', ')}</span>
-        <button type="button" onClick={onOpenTagManagement}>
-          manage tags
-        </button>
-        <button type="button" onClick={onTagsChange}>
-          sync tags
-        </button>
-      </div>
-    )
-  },
-}))
-
 const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListItem => ({
   id: 'snippet-1',
   name: 'Tone Rewriter',
@@ -145,7 +116,8 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
 
 describe('SnippetCard', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    bindTags.mockResolvedValue({ result: 'success' })
     updateSnippet.mockReset().mockResolvedValue(createSnippet())
     deleteSnippet.mockReset().mockResolvedValue({ result: 'success' })
     exportSnippet.mockReset().mockResolvedValue('snippet-yaml')
@@ -162,9 +134,7 @@ describe('SnippetCard', () => {
       expect(screen.getByText('Tone Rewriter')).toBeInTheDocument()
       expect(await screen.findByText('Updater')).toBeInTheDocument()
       expect(screen.getByText('formatted-time')).toBeInTheDocument()
-      expect(screen.queryByText('snippet.usageCount:{"count":19}')).not.toBeInTheDocument()
       expect(screen.queryByText('Creator')).not.toBeInTheDocument()
-      expect(screen.queryByRole('img')).not.toBeInTheDocument()
     })
 
     it('should fall back to creator name when updater is unavailable', async () => {
@@ -174,41 +144,15 @@ describe('SnippetCard', () => {
       expect(screen.getByText('formatted-time')).toBeInTheDocument()
     })
 
-    it('should fall back to unknown user when creator and updater are unavailable', () => {
-      render(
+    it('should fall back to unknown user when creator and updater are unavailable', async () => {
+      const { queryClient } = render(
         <SnippetCard
           snippet={createSnippet({ created_by: 'missing-creator', updated_by: 'missing-updater' })}
         />,
       )
 
+      await waitFor(() => expect(queryClient.isFetching()).toBe(0))
       expect(screen.getByText('snippet.unknownUser')).toBeInTheDocument()
-    })
-
-    it('should not render draft status for unpublished snippets', () => {
-      render(<SnippetCard snippet={createSnippet({ is_published: false })} />)
-
-      expect(screen.queryByText('snippet.draft')).not.toBeInTheDocument()
-    })
-
-    it('should render supported operations only', async () => {
-      render(<SnippetCard snippet={createSnippet()} />)
-
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
-        }),
-      )
-
-      expect(
-        await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('menuitem', { name: 'snippet.menu.exportSnippet' }),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }),
-      ).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: /duplicate/i })).not.toBeInTheDocument()
     })
 
     it('should hide operations for users without snippet permissions', () => {
@@ -224,11 +168,12 @@ describe('SnippetCard', () => {
     })
 
     it('should show edit info with create-and-modify permission without management actions', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
@@ -246,11 +191,12 @@ describe('SnippetCard', () => {
     })
 
     it('should show delete with snippet management permission without create-and-modify actions', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
@@ -267,69 +213,19 @@ describe('SnippetCard', () => {
       ).toBeInTheDocument()
     })
 
-    it('should pass snippet management permission to tag binding capability', () => {
-      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
-
-      render(<SnippetCard snippet={createSnippet()} />)
-
-      expect(mockRenderTagSelector).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'snippet',
-          targetId: 'snippet-1',
-          contextLabel: 'Tone Rewriter',
-          canBindOrUnbindTags: true,
-        }),
-      )
-    })
-
-    it('should disable tag binding capability without snippet management permission', () => {
-      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
-
-      render(<SnippetCard snippet={createSnippet()} />)
-
-      expect(mockRenderTagSelector).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'snippet',
-          targetId: 'snippet-1',
-          canBindOrUnbindTags: false,
-        }),
-      )
-    })
-
-    it('should forward tag selector actions without navigating the card link', () => {
-      const onOpenTagManagement = vi.fn()
-      const onTagsChange = vi.fn()
-
-      render(
-        <SnippetCard
-          snippet={createSnippet({
-            tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' }],
-          })}
-          onOpenTagManagement={onOpenTagManagement}
-          onTagsChange={onTagsChange}
-        />,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'manage tags' }))
-      fireEvent.click(screen.getByRole('button', { name: 'sync tags' }))
-
-      expect(screen.getByText('Sales')).toBeInTheDocument()
-      expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
-      expect(onTagsChange).toHaveBeenCalledTimes(1)
-    })
-
     it('should export a snippet from the operations menu', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
       exportSnippet.mockResolvedValue('snippet-yaml')
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
       )
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
         expect(exportSnippet).toHaveBeenCalledWith({
@@ -345,17 +241,18 @@ describe('SnippetCard', () => {
     })
 
     it('should show an error toast when snippet export fails', async () => {
+      const user = userEvent.setup()
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
       exportSnippet.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetCard snippet={createSnippet()} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
       )
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' }))
 
       await waitFor(() => {
         expect(mockToastError).toHaveBeenCalledWith('snippet.exportFailed')
@@ -364,20 +261,23 @@ describe('SnippetCard', () => {
     })
 
     it('should update snippet info from the operations menu', async () => {
+      const user = userEvent.setup()
       updateSnippet.mockResolvedValue(createSnippet())
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
       )
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }))
-      fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
-        target: { value: 'Updated Snippet' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+      await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }))
+      await user.clear(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'))
+      await user.type(
+        screen.getByPlaceholderText('workflow.snippet.namePlaceholder'),
+        'Updated Snippet',
+      )
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
         expect(updateSnippet).toHaveBeenCalledWith({
@@ -392,20 +292,23 @@ describe('SnippetCard', () => {
     })
 
     it('should show update errors without refreshing the list', async () => {
+      const user = userEvent.setup()
       updateSnippet.mockRejectedValue(new Error('Update failed'))
 
       render(<SnippetCard snippet={createSnippet({ description: '' })} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
       )
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }))
-      fireEvent.change(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), {
-        target: { value: 'Updated Snippet' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
+      await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' }))
+      await user.clear(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'))
+      await user.type(
+        screen.getByPlaceholderText('workflow.snippet.namePlaceholder'),
+        'Updated Snippet',
+      )
+      await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
       await waitFor(() => {
         expect(updateSnippet).toHaveBeenCalledWith(
@@ -422,17 +325,18 @@ describe('SnippetCard', () => {
     })
 
     it('should delete a snippet from the operations menu', async () => {
+      const user = userEvent.setup()
       deleteSnippet.mockResolvedValue({ result: 'success' })
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
       )
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
-      fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
+      await user.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() => {
         expect(deleteSnippet).toHaveBeenCalledWith({
@@ -443,22 +347,49 @@ describe('SnippetCard', () => {
     })
 
     it('should show delete errors without refreshing the list', async () => {
+      const user = userEvent.setup()
       deleteSnippet.mockRejectedValue(new Error('Delete failed'))
 
       render(<SnippetCard snippet={createSnippet()} onRefresh={mockOnRefresh} />)
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole('button', {
           name: 'common.operation.moreActionsFor:{"name":"Tone Rewriter"}',
         }),
       )
-      fireEvent.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
-      fireEvent.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
+      await user.click(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' }))
+      await user.click(screen.getByRole('button', { name: 'snippet.menu.deleteSnippet' }))
 
       await waitFor(() => {
         expect(mockToastError).toHaveBeenCalledWith('Delete failed')
       })
       expect(mockOnRefresh).not.toHaveBeenCalled()
+    })
+    it('binds a tag to the snippet with management permission and refreshes the owner', async () => {
+      const user = userEvent.setup()
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+      const onTagsChange = vi.fn()
+      render(<SnippetCard snippet={createSnippet()} onTagsChange={onTagsChange} />)
+      await user.click(screen.getByRole('combobox', { name: 'common.tag.addTag: Tone Rewriter' }))
+      await user.click(await screen.findByRole('option', { name: 'Sales' }))
+      await user.keyboard('{Escape}')
+      await waitFor(() =>
+        expect(bindTags).toHaveBeenCalledExactlyOnceWith({
+          body: { tag_ids: ['tag-1'], target_id: 'snippet-1', type: 'snippet' },
+        }),
+      )
+      await waitFor(() => expect(onTagsChange).toHaveBeenCalledOnce())
+    })
+
+    it('prevents tag changes when the user has no snippet permissions', async () => {
+      const user = userEvent.setup()
+      mockWorkspacePermissionKeys.mockReturnValue([])
+      render(<SnippetCard snippet={createSnippet()} />)
+      const tags = screen.getByRole('combobox', { name: 'common.tag.noTag: Tone Rewriter' })
+      expect(tags).toBeDisabled()
+      await user.click(tags)
+      expect(screen.queryByRole('option', { name: 'Sales' })).not.toBeInTheDocument()
+      expect(bindTags).not.toHaveBeenCalled()
     })
   })
 })

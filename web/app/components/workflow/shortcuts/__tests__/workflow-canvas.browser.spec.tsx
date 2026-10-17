@@ -38,10 +38,6 @@ const actions = vi.hoisted(() => ({
   comment: vi.fn(),
   dim: vi.fn(),
   undim: vi.fn(),
-  zoomTo: vi.fn(),
-  fitView: vi.fn(),
-  getZoom: vi.fn(() => 1),
-  getNodes: vi.fn<() => { data: { _isBundled?: boolean } }[]>(() => []),
 }))
 
 vi.mock('../../hooks/use-nodes-interactions', () => ({
@@ -454,10 +450,12 @@ it('returns to canvas undo after a selection context-menu action removes the foc
   await expect
     .element(screen.getByRole('button', { name: 'Workflow node' }))
     .not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Other node' })).not.toBeInTheDocument()
   await expect.element(canvas).toHaveFocus()
   const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
   await userEvent.keyboard(`{${mod}>}z{/${mod}}`)
   await expect.element(screen.getByRole('button', { name: 'Workflow node' })).toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Other node' })).toBeInTheDocument()
   expect(actions.undo).toHaveBeenCalledTimes(1)
 })
 

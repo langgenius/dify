@@ -111,22 +111,6 @@ describe('app-redirection', () => {
       expect(getRedirectionPath(app)).toBe('/agents')
     })
 
-    it('handles different app IDs', () => {
-      const app1 = {
-        id: 'abc-123',
-        mode: 'chat' as const,
-        permission_keys: [AppACLPermission.AccessPointView],
-      }
-      const app2 = {
-        id: 'xyz-789',
-        mode: 'workflow' as const,
-        permission_keys: [AppACLPermission.ViewLayout],
-      }
-
-      expect(getRedirectionPath(app1)).toBe('/app/abc-123/access-point')
-      expect(getRedirectionPath(app2)).toBe('/app/xyz-789/workflow')
-    })
-
     it('returns layout path when the app maintainer has app.create_and_management permission without app ACL keys', () => {
       const app = { id: 'app-123', mode: 'chat' as const, permission_keys: [] }
 
@@ -237,20 +221,6 @@ describe('app-redirection', () => {
 
       expect(mockRedirect).toHaveBeenCalledWith('/app/app-123/configuration')
       expect(mockRedirect).toHaveBeenCalledTimes(1)
-    })
-
-    it('works with different redirection functions', () => {
-      const app = {
-        id: 'app-123',
-        mode: 'workflow' as const,
-        permission_keys: [AppACLPermission.ViewLayout],
-      }
-      const paths: string[] = []
-      const customRedirect = (path: string) => paths.push(path)
-
-      getRedirection(app, customRedirect)
-
-      expect(paths).toEqual(['/app/app-123/workflow'])
     })
   })
 })

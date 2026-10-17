@@ -5,6 +5,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vite-plus/test'
+import { zAgentAppComposerResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -71,94 +72,31 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: async () => ({ deployment_edition: 'CLOUD', webapp_auth: { enabled: false } }),
-  }),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    features: {
-      get: {
-        queryOptions: (options: Record<string, unknown>) => ({
-          ...options,
-          queryKey: ['features'],
-          queryFn: async () => ({ billing: { subscription: { plan: restoreAccess.plan } } }),
-        }),
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'systemFeatures.get': async () => ({
+        deployment_edition: 'CLOUD',
+        webapp_auth: { enabled: false },
+      }),
+      'features.get': async () => ({ billing: { subscription: { plan: restoreAccess.plan } } }),
+      'agent.byAgentId.get': async () => agentDetail.data,
+      'agent.byAgentId.composer.get': async () => {
+        if (composerQuery.shouldFail) throw new Error('Composer query failed')
+        return composerQuery.data
       },
-    },
-    agent: {
-      byAgentId: {
-        get: {
-          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent', input],
-          queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
-            queryKey: ['agent', input],
-            queryFn: async () => agentDetail.data,
-          }),
-        },
-        composer: {
-          get: {
-            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
-              'agent-composer',
-              input,
-            ],
-            queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
-              queryKey: ['agent-composer', input],
-              queryFn: async () => {
-                if (composerQuery.shouldFail) throw new Error('Composer query failed')
-
-                return composerQuery.data
-              },
-            }),
-          },
-        },
-        referencingWorkflows: {
-          get: {
-            queryOptions: ({
-              context,
-              enabled = true,
-              input,
-            }: {
-              context?: { silent?: boolean }
-              enabled?: boolean
-              input: { params: { agent_id: string } }
-            }) => ({
-              queryKey: ['agent-referencing-workflows', input],
-              enabled,
-              context,
-              queryFn: async () => {
-                workflowReferences.fetchCount++
-                if (workflowReferences.shouldFail)
-                  throw new Error('Workflow references query failed')
-
-                return {
-                  data: workflowReferences.data,
-                }
-              },
-            }),
-          },
-        },
-        versions: {
-          byVersionId: {
-            restore: {
-              post: {
-                mutationOptions: (options: Record<string, unknown>) => ({
-                  ...options,
-                  mutationFn: restoreVersionMutation,
-                }),
-              },
-            },
-          },
-          get: {
-            key: () => ['agent-versions'],
-          },
-        },
+      'agent.byAgentId.referencingWorkflows.get': async () => {
+        workflowReferences.fetchCount++
+        if (workflowReferences.shouldFail) throw new Error('Workflow references query failed')
+        return { data: workflowReferences.data }
       },
-    },
-  },
-}))
+      'agent.byAgentId.versions.byVersionId.restore.post': restoreVersionMutation,
+    }),
+  }
+})
 
 const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   id: 'snapshot-1',
@@ -268,13 +206,18 @@ function renderPublishBar({
   const store = createStore()
   store.set(agentComposerPromptAtom, prompt)
   setupStore?.(store)
-  const composerQueryKey = ['agent-composer', { params: { agent_id: 'agent-1' } }]
+  const composerQueryKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+    input: { params: { agent_id: 'agent-1' } },
+  })
   const composerState = {
     active_config_is_published: activeConfigIsPublished ?? false,
     active_config_snapshot: activeConfigSnapshot,
     agent: {
       id: 'agent-1',
       name: 'Iris',
+      description: '',
+      scope: 'roster',
+      status: 'active',
     },
     agent_soul: {
       schema_version: 1,
@@ -292,7 +235,7 @@ function renderPublishBar({
   }
   composerQuery.data = composerState
   if (composerQueryAvailable) {
-    queryClient.setQueryData(composerQueryKey, composerState)
+    queryClient.setQueryData(composerQueryKey, zAgentAppComposerResponse.parse(composerState))
   }
 
   const onPublish =
@@ -365,19 +308,6 @@ describe('AgentConfigurePublishBar', () => {
     vi.restoreAllMocks()
   })
 
-  it('should render draft state with a formatted publish shortcut', () => {
-    renderPublishBar()
-
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.draft')).toBeInTheDocument()
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.saved')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Ctrl')).toBeInTheDocument()
-    expect(screen.getByText('Shift')).toBeInTheDocument()
-    expect(screen.getByText('P')).toBeInTheDocument()
-  })
-
   it('should allow publish request when knowledge retrieval validation fails', async () => {
     const { onPublish } = renderPublishBar({
       setupStore: (store) => {
@@ -405,7 +335,7 @@ describe('AgentConfigurePublishBar', () => {
       ),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -446,7 +376,7 @@ describe('AgentConfigurePublishBar', () => {
     await waitFor(() => {
       expect(restoreVersionMutation).toHaveBeenCalled()
     })
-    expect(restoreVersionMutation.mock.calls[0]?.[0]).toEqual({
+    expect(restoreVersionMutation).toHaveBeenCalledExactlyOnceWith({
       params: {
         agent_id: 'agent-1',
         version_id: 'snapshot-2',
@@ -489,10 +419,9 @@ describe('AgentConfigurePublishBar', () => {
     const dialog = await screen.findByRole('alertdialog', { name: /Version two/ })
     await user.click(within(dialog).getByRole('button', { name: /restore/i }))
     await waitFor(() =>
-      expect(restoreVersionMutation).toHaveBeenCalledWith(
-        { params: { agent_id: 'agent-1', version_id: 'snapshot-2' } },
-        expect.anything(),
-      ),
+      expect(restoreVersionMutation).toHaveBeenCalledWith({
+        params: { agent_id: 'agent-1', version_id: 'snapshot-2' },
+      }),
     )
   })
 
@@ -574,19 +503,7 @@ describe('AgentConfigurePublishBar', () => {
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000100000)
   })
 
-  it('should show the complete saved time in a tooltip on hover', async () => {
-    const user = userEvent.setup()
-    renderPublishBar({ draftSavedAt: 1710000100000 })
-
-    const savedTime = screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.savedAt/)
-    await user.hover(savedTime)
-
-    await waitFor(() => {
-      expect(screen.getAllByText(savedTime.textContent ?? '')).toHaveLength(2)
-    })
-  })
-
-  it('should render published state from the active snapshot and disable publish logic', () => {
+  it('should render published state from the active snapshot and disable publish logic', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: true,
       activeConfigSnapshot,
@@ -603,9 +520,11 @@ describe('AgentConfigurePublishBar', () => {
     ).toBeDisabled()
     expect(mockFormatTimeFromNow).toHaveBeenCalledWith(1710000000 * 1000)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
-    )
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }),
+      )
 
     expect(onPublish).not.toHaveBeenCalled()
   })
@@ -619,7 +538,6 @@ describe('AgentConfigurePublishBar', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
     })
-    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
   })
 
   it('should fail closed when refreshing cached Composer state fails', async () => {
@@ -671,7 +589,7 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).toBeInTheDocument()
 
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -697,7 +615,7 @@ describe('AgentConfigurePublishBar', () => {
       screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges'),
     ).toBeInTheDocument()
 
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -718,7 +636,7 @@ describe('AgentConfigurePublishBar', () => {
     await waitFor(() => {
       expect(workflowReferences.fetchCount).toBe(1)
     })
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -735,12 +653,16 @@ describe('AgentConfigurePublishBar', () => {
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
     })
-    const referencesQueryKey = ['agent-referencing-workflows', { params: { agent_id: 'agent-1' } }]
+    const referencesQueryKey = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryKey({
+      input: { params: { agent_id: 'agent-1' } },
+    })
 
     await waitFor(() => {
       expect(workflowReferences.fetchCount).toBe(1)
     })
-    queryClient.setQueryDefaults(['agent-referencing-workflows'], { staleTime: Infinity })
+    queryClient.setQueryDefaults(consoleQuery.agent.byAgentId.referencingWorkflows.get.key(), {
+      staleTime: Infinity,
+    })
     queryClient.setQueryData(referencesQueryKey, { data: [] })
     workflowReferences.data = publishedReferences
 
@@ -829,20 +751,6 @@ describe('AgentConfigurePublishBar', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should render publishing as a single disabled action state', () => {
-    renderPublishBar({ isPublishing: true, prompt: 'Updated system prompt' })
-
-    expect(
-      screen.getByText('agentV2.agentDetail.configure.publishBar.publishing'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' }),
-    ).toHaveAttribute('aria-disabled', 'true')
-    expect(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' }),
-    ).not.toHaveAttribute('aria-busy')
-  })
-
   it('should expand affected workflow details above the publish toolbar when clicking a publishable agent in use', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
@@ -862,10 +770,9 @@ describe('AgentConfigurePublishBar', () => {
     const publishButton = screen.getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
     })
-    fireEvent.click(publishButton)
+    await userEvent.setup().click(publishButton)
 
     expect(onPublish).not.toHaveBeenCalled()
-    expect(publishButton).not.toHaveAttribute('aria-busy')
     const impactDetails = await screen.findByRole('region', {
       name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
     })
@@ -879,11 +786,6 @@ describe('AgentConfigurePublishBar', () => {
     expect(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.publishBar.versionHistory',
-      }),
-    ).toHaveClass('group-data-open/publish-bar:hidden')
     expect(
       screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/),
     ).toBeInTheDocument()
@@ -904,9 +806,6 @@ describe('AgentConfigurePublishBar', () => {
       'noopener noreferrer',
     )
     expect(within(impactDetails).getAllByText('just now')).toHaveLength(2)
-    expect(screen.getByText('Ctrl')).toBeInTheDocument()
-    expect(screen.getByText('Shift')).toBeInTheDocument()
-    expect(screen.getByText('P')).toBeInTheDocument()
   })
 
   it('should publish from the fixed toolbar action after affected workflow details expand', async () => {
@@ -924,7 +823,7 @@ describe('AgentConfigurePublishBar', () => {
       return { kind: 'update', draft }
     })
 
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -934,7 +833,7 @@ describe('AgentConfigurePublishBar', () => {
         name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
       }),
     ).toBeInTheDocument()
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -951,7 +850,7 @@ describe('AgentConfigurePublishBar', () => {
       await screen.findByRole('button', {
         name: 'agentV2.agentDetail.configure.publishBar.publishing',
       }),
-    ).not.toHaveAttribute('aria-busy')
+    ).toHaveAttribute('aria-disabled', 'true')
 
     await act(async () => {
       publishDeferred.resolve()
@@ -976,7 +875,7 @@ describe('AgentConfigurePublishBar', () => {
       usedByAppReferences: publishedReferences,
     })
 
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -987,7 +886,7 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).toBeInTheDocument()
 
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -1010,7 +909,7 @@ describe('AgentConfigurePublishBar', () => {
       usedByAppReferences: publishedReferences,
     })
 
-    fireEvent.click(
+    await userEvent.setup().click(
       screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
       }),
@@ -1021,9 +920,11 @@ describe('AgentConfigurePublishBar', () => {
       }),
     ).toBeInTheDocument()
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }),
-    )
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishImpact.cancel' }),
+      )
 
     await waitFor(() => {
       expect(

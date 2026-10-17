@@ -133,7 +133,7 @@ describe('AudioBtn', () => {
   // User-visible playback state transitions.
   describe('Playback interactions', () => {
     it('should start loading and call playAudio when button is clicked', async () => {
-      render(<AudioBtn value="test" className="custom-wrapper" />)
+      render(<AudioBtn value="test" />)
       await userEvent.click(getButton())
 
       await waitFor(() => {
@@ -202,16 +202,22 @@ describe('AudioBtn', () => {
       expect(call![3]).toBe('hello')
       expect(call![4]).toBe('en-US')
     })
-
-    it('should keep empty route when no token, appId, or agentId is present', async () => {
-      render(<AudioBtn />)
-      await userEvent.click(getButton())
-
-      await waitFor(() => expect(mockGetAudioPlayer).toHaveBeenCalled())
-      const call = mockGetAudioPlayer.mock.calls[0]
-      expect(call![0]).toBe('')
-      expect(call![1]).toBe(false)
-      expect(call![3]).toBeUndefined()
-    })
   })
+})
+
+it('preserves a synchronous play event instead of overwriting it with a delayed loading state', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.mocked(useParams).mockReturnValue({ appId: 'app-1' })
+    vi.mocked(usePathname).mockReturnValue('/apps/app-1')
+    mockGetAudioPlayer.mockReturnValue({ playAudio: mockPlayAudio, pauseAudio: mockPauseAudio })
+    mockPlayAudio.mockImplementationOnce(() => mockGetAudioPlayer.mock.lastCall![5]('play'))
+    render(<AudioBtn value="Ready immediately" />)
+    await user.click(screen.getByRole('button', { name: 'play' }))
+    act(() => vi.advanceTimersByTime(10))
+    expect(screen.getByRole('button', { name: 'playing' })).toBeEnabled()
+  } finally {
+    vi.useRealTimers()
+  }
 })

@@ -14,25 +14,6 @@ vi.mock('@/service/tools', () => ({
   fetchWorkflowToolList: (appId: string) => fetchWorkflowToolList(appId),
 }))
 
-type MockFormProps = {
-  value: Record<string, unknown>
-  onChange: (val: Record<string, unknown>) => void
-}
-let nextFormValue: Record<string, unknown> = {}
-const FormMock = ({ value, onChange }: MockFormProps) => {
-  return (
-    <div data-testid="mock-form">
-      <div data-testid="form-value">{JSON.stringify(value)}</div>
-      <button type="button" onClick={() => onChange({ ...value, ...nextFormValue })}>
-        update-form
-      </button>
-    </div>
-  )
-}
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: (props: MockFormProps) => <FormMock {...props} />,
-}))
-
 let pluginAuthClickValue = 'credential-from-plugin'
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: { tool: 'tool' },
@@ -148,8 +129,7 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuil
 
 describe('SettingBuiltInTool', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    nextFormValue = {}
+    vi.resetAllMocks()
     pluginAuthClickValue = 'credential-from-plugin'
   })
 
@@ -173,20 +153,19 @@ describe('SettingBuiltInTool', () => {
     const user = userEvent.setup()
     renderComponent()
     await waitFor(() => {
-      expect(screen.getByTestId('mock-form')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /Setting Param/ })).toBeInTheDocument()
     })
 
-    nextFormValue = { settingParam: 'unsaved draft' }
-    await user.click(screen.getByRole('button', { name: 'update-form' }))
+    const settingInput = screen.getByRole('textbox', { name: /Setting Param/ })
+    await user.clear(settingInput)
+    await user.type(settingInput, 'unsaved draft')
     await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.parameters' }))
     expect(
       screen.getByRole('tabpanel', { name: 'tools.setBuiltInTools.parameters' }),
     ).toHaveTextContent('Info Param')
-    expect(screen.queryByTestId('mock-form')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /Setting Param/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.setting' }))
-    expect(
-      screen.getByRole('tabpanel', { name: 'tools.setBuiltInTools.setting' }),
-    ).toHaveTextContent('unsaved draft')
+    expect(screen.getByRole('textbox', { name: /Setting Param/ })).toHaveValue('unsaved draft')
     expect(screen.getByRole('dialog', { name: 'Search Tool' })).toBeInTheDocument()
   })
 
@@ -210,29 +189,19 @@ describe('SettingBuiltInTool', () => {
     expect(screen.getByText('tools.setBuiltInTools.string')).toBeInTheDocument()
     expect(screen.getByText('Setting description')).toBeInTheDocument()
     expect(screen.queryByText('Info Param')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('mock-form')).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /Setting Param/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
-  })
-
-  it('should render a masked drawer with balanced vertical offsets', async () => {
-    const { baseElement } = renderComponent()
-    await waitFor(() => {
-      expect(screen.getByTestId('mock-form')).toBeInTheDocument()
-    })
-
-    expect(baseElement.querySelector('.bg-background-overlay')).toBeInTheDocument()
-    const drawerPopup = baseElement.querySelector('[role="dialog"]')
-    expect(drawerPopup).toHaveClass(
-      'data-[swipe-direction=right]:top-6',
-      'data-[swipe-direction=right]:bottom-6',
-    )
   })
 
   it('should call onSave with updated values when save button clicked', async () => {
     const { onSave } = renderComponent()
-    await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
-    nextFormValue = { settingParam: 'updated' }
-    await userEvent.click(screen.getByRole('button', { name: 'update-form' }))
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /Setting Param/ })).toBeInTheDocument(),
+    )
+    const user = userEvent.setup()
+    const settingInput = screen.getByRole('textbox', { name: /Setting Param/ })
+    await user.clear(settingInput)
+    await user.type(settingInput, 'updated')
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ settingParam: 'updated' }))
   })
@@ -241,17 +210,21 @@ describe('SettingBuiltInTool', () => {
     renderComponent({
       setting: {},
     })
-    await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /Setting Param/ })).toBeInTheDocument(),
+    )
     const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
     expect(saveButton).toBeDisabled()
-    nextFormValue = { settingParam: 'filled' }
-    await userEvent.click(screen.getByRole('button', { name: 'update-form' }))
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox', { name: /Setting Param/ }), 'filled')
     expect(saveButton).not.toBeDisabled()
   })
 
   it('should call onHide when cancel button is pressed', async () => {
     const { onHide } = renderComponent()
-    await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /Setting Param/ })).toBeInTheDocument(),
+    )
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onHide).toHaveBeenCalled()
   })

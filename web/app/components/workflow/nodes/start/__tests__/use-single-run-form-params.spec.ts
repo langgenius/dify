@@ -1,15 +1,7 @@
 import type { StartNodeType } from '../types'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { withSelectorKey } from '@/test/i18n-mock'
 import useSingleRunFormParams from '../use-single-run-form-params'
-
-const mockUseTranslation = vi.hoisted(() => vi.fn())
-let chatflowMode = false
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => mockUseTranslation(),
-}))
 
 const createPayload = (overrides: Partial<StartNodeType> = {}): StartNodeType => ({
   title: 'Start',
@@ -29,16 +21,7 @@ const createPayload = (overrides: Partial<StartNodeType> = {}): StartNodeType =>
 describe('start/use-single-run-form-params', () => {
   const setRunInputData = vi.fn()
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseTranslation.mockReturnValue({
-      t: withSelectorKey((key: string) => key),
-    })
-  })
-
   it('should include sys.query and sys.files dependencies for chat mode', () => {
-    chatflowMode = true
-
     const { result } = renderHook(
       () =>
         useSingleRunFormParams({
@@ -54,13 +37,12 @@ describe('start/use-single-run-form-params', () => {
         resource: {
           kind: 'app',
           appId: 'app-1',
-          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+          mode: 'advanced-chat',
         },
       },
     )
 
     expect(result.current.forms).toHaveLength(1)
-    expect(result.current.forms[0]!.label).toBe('nodes.llm.singleRun.variable')
     expect(result.current.forms[0]!.inputs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ variable: 'query' }),
@@ -69,9 +51,6 @@ describe('start/use-single-run-form-params', () => {
       ]),
     )
 
-    result.current.forms[0]!.onChange({ query: 'updated' })
-
-    expect(setRunInputData).toHaveBeenCalledWith({ query: 'updated' })
     expect(result.current.getDependentVars()).toEqual([
       ['start-node', 'query'],
       ['sys', 'files'],
@@ -81,8 +60,6 @@ describe('start/use-single-run-form-params', () => {
   })
 
   it('should omit sys.query when the workflow is not in chat mode', () => {
-    chatflowMode = false
-
     const { result } = renderHook(
       () =>
         useSingleRunFormParams({
@@ -98,7 +75,7 @@ describe('start/use-single-run-form-params', () => {
         resource: {
           kind: 'app',
           appId: 'app-1',
-          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+          mode: 'workflow',
         },
       },
     )

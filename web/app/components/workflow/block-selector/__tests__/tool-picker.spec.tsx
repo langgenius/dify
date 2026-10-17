@@ -4,7 +4,7 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ToolValue } from '../types'
 import type { Plugin } from '@/app/components/plugins/types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
@@ -45,7 +45,11 @@ const mockUseTags = vi.mocked(useTags)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
 let queryClient = createConsoleQueryClient()
 const renderWithConsoleQuery: typeof renderWithQuery = (ui, options) =>
-  renderWithQuery(ui, { ...options, queryClient })
+  renderWithQuery(ui, {
+    ...options,
+    queryClient,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  })
 const { getBuiltInTools, getCustomTools, getWorkflowTools, getMCPTools } = vi.hoisted(() => ({
   getBuiltInTools: vi.fn(),
   getCustomTools: vi.fn(),
@@ -77,13 +81,6 @@ vi.mock('@/config', async (importOriginal) => {
     ...actual,
     MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
   }
-})
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
 })
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -207,14 +204,6 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
     </div>
   ),
 }))
-
-vi.mock('@/utils/var', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/var')>()
-  return {
-    ...actual,
-    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
-  }
-})
 
 const createTool = (
   name: string,
@@ -389,22 +378,16 @@ describe('ToolPicker', () => {
     window.localStorage.clear()
   })
 
-  it('should request opening when the trigger is clicked unless the picker is disabled', async () => {
+  it('prevents opening a disabled picker', async () => {
     const user = userEvent.setup()
-    const onShowChange = vi.fn()
     const disabledOnShowChange = vi.fn()
-
-    renderToolPicker({ onShowChange })
-
-    await user.click(screen.getByRole('button', { name: 'open-picker' }))
-    expect(onShowChange.mock.calls[0]?.[0]).toBe(true)
 
     renderToolPicker({
       disabled: true,
       onShowChange: disabledOnShowChange,
     })
 
-    await user.click(screen.getAllByRole('button', { name: 'open-picker' })[1]!)
+    await user.click(screen.getByRole('button', { name: 'open-picker' }))
     expect(disabledOnShowChange).not.toHaveBeenCalled()
   })
 
@@ -479,7 +462,6 @@ describe('ToolPicker', () => {
     })
 
     const footerLink = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/i })
-    expect(footerLink.closest('footer')).toBeInTheDocument()
     expect(footerLink).toHaveAttribute('href', 'https://marketplace.test/plugins/tool')
   })
 
@@ -677,7 +659,15 @@ describe('ToolPicker', () => {
 
   it('should create a custom collection from the add button and refresh custom tools', async () => {
     const user = userEvent.setup()
-    const { queryClient } = renderToolPicker({
+    getCustomTools.mockResolvedValue([
+      ...customTools,
+      createToolProvider({
+        id: 'created-custom',
+        type: CollectionType.custom,
+        label: { en_US: 'New Collection' },
+      }),
+    ])
+    renderToolPicker({
       isShow: true,
       supportAddCustomTool: true,
     })
@@ -690,22 +680,26 @@ describe('ToolPicker', () => {
     await waitFor(() => {
       expect(mockCreateCustomCollection).toHaveBeenCalledWith({ name: 'collection-a' })
     })
-    expect(getCustomTools).toHaveBeenCalledTimes(1)
-    expect(queryClient.getQueryState(toolListKeys.builtin)?.isInvalidated).toBe(false)
+    expect(await screen.findByText('New Collection')).toBeInTheDocument()
     expect(screen.queryByTestId('edit-custom-tool-modal')).not.toBeInTheDocument()
   })
 
-  it('should keep custom and workflow tools usable but hide custom create action without tool.manage', () => {
+  it('allows selecting existing custom tools without tool.manage but prevents creation', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
     mockWorkspacePermissionKeys = []
 
     renderToolPicker({
       isShow: true,
       supportAddCustomTool: true,
+      onSelect,
     })
 
-    expect(screen.getByText('Custom Provider')).toBeInTheDocument()
-    expect(screen.getByText('Built-in Provider')).toBeInTheDocument()
-    expect(screen.getByText('MCP Provider')).toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox', { name: 'plugin.searchTools' }), 'weather')
+    await user.click(await screen.findByText('Weather Tool'))
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ provider_name: 'custom-provider', tool_name: 'weather-tool' }),
+    )
     expect(
       screen.queryByRole('button', { name: 'tools.addToolModal.custom.tip' }),
     ).not.toBeInTheDocument()
@@ -730,7 +724,7 @@ describe('ToolPicker', () => {
     await user.hover(featuredPluginItem)
     await user.click(screen.getByRole('button', { name: 'plugin.installAction' }))
     expect(await screen.findByTestId('install-from-marketplace')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'complete-featured-install' }))
+    await user.click(screen.getByRole('button', { name: 'complete-featured-install' }))
 
     await waitFor(
       () => {

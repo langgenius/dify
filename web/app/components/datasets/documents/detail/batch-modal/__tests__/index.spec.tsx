@@ -1,192 +1,91 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ChunkingMode } from '@/models/datasets'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import BatchModal from '../index'
 
-vi.mock('../csv-downloader', () => ({
-  default: ({ docForm }: { docForm: ChunkingMode }) => (
-    <div data-testid="csv-downloader" data-doc-form={docForm}>
-      CSV Downloader
-    </div>
-  ),
+const { upload } = vi.hoisted(() => ({ upload: vi.fn() }))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  upload,
 }))
+vi.mock('@/hooks/use-theme', () => ({ default: () => ({ theme: 'light' }) }))
 
-vi.mock('../csv-uploader', () => ({
-  default: ({
-    file,
-    updateFile,
-  }: {
-    file: { file?: { id: string } } | undefined
-    updateFile: (file: { file: { id: string } } | undefined) => void
-  }) => (
-    <div data-testid="csv-uploader">
-      <button data-testid="upload-btn" onClick={() => updateFile({ file: { id: 'test-file-id' } })}>
-        Upload
-      </button>
-      <button data-testid="clear-btn" onClick={() => updateFile(undefined)}>
-        Clear
-      </button>
-      {file && <span data-testid="file-info">{file.file?.id}</span>}
-    </div>
-  ),
-}))
+const render = (props: React.ComponentProps<typeof BatchModal>) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(
+    consoleQuery.files.upload.get.queryKey(),
+    createFileUploadConfigFixture(),
+  )
+  return renderWithConsoleQuery(<BatchModal {...props} />, { queryClient })
+}
+const defaults = { isShow: true, docForm: ChunkingMode.text, onCancel: vi.fn(), onConfirm: vi.fn() }
+const file = new File(['segment content\nFirst chunk'], 'chunks.csv', { type: 'text/csv' })
+const uploaded = {
+  id: 'uploaded-1',
+  name: 'chunks.csv',
+  size: file.size,
+  extension: 'csv',
+  mime_type: 'text/csv',
+  created_by: 'user',
+  created_at: 0,
+}
 
-describe('BatchModal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+it('allows running the batch only after CSV upload completes and passes the uploaded ID', async () => {
+  const user = userEvent.setup()
+  const pending = createDeferred<typeof uploaded>()
+  upload.mockReturnValue(pending.promise)
+  render(defaults)
+  const run = screen.getByRole('button', { name: 'datasetDocuments.list.batchModal.run' })
+  expect(run).toBeDisabled()
+  // This browser file-picker input is intentionally hidden.
+  await user.upload(document.getElementById('fileUploader') as HTMLInputElement, file)
+  expect(run).toBeDisabled()
+  await act(async () => pending.resolve(uploaded))
+  await waitFor(() => expect(run).toBeEnabled())
+  await user.click(run)
+  expect(defaults.onConfirm).toHaveBeenCalledWith(
+    expect.objectContaining({
+      progress: 100,
+      file: expect.objectContaining({ id: 'uploaded-1' }),
+    }),
+  )
+  expect(defaults.onCancel).toHaveBeenCalledOnce()
+})
 
-  const defaultProps = {
-    isShow: true,
-    docForm: ChunkingMode.text,
-    onCancel: vi.fn(),
-    onConfirm: vi.fn(),
-  }
+it('disables running again after removing the selected CSV', async () => {
+  const user = userEvent.setup()
+  upload.mockResolvedValue(uploaded)
+  render(defaults)
+  await user.upload(document.getElementById('fileUploader') as HTMLInputElement, file)
+  const run = screen.getByRole('button', { name: 'datasetDocuments.list.batchModal.run' })
+  await waitFor(() => expect(run).toBeEnabled())
+  await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+  expect(run).toBeDisabled()
+  await user.click(run)
+  expect(defaults.onConfirm).not.toHaveBeenCalled()
+})
 
-  describe('Rendering', () => {
-    it('should not render content when isShow is false', () => {
-      render(<BatchModal {...defaultProps} isShow={false} />)
-
-      // Assert - Modal is closed
-      expect(screen.queryByText(/list\.batchModal\.title/i)).not.toBeInTheDocument()
-    })
-
-    it('should render CSVDownloader component', () => {
-      render(<BatchModal {...defaultProps} />)
-
-      expect(screen.getByTestId('csv-downloader')).toBeInTheDocument()
-    })
-
-    it('should render CSVUploader component', () => {
-      render(<BatchModal {...defaultProps} />)
-
-      expect(screen.getByTestId('csv-uploader')).toBeInTheDocument()
-    })
-
-    it('should render cancel and run buttons', () => {
-      render(<BatchModal {...defaultProps} />)
-
-      expect(screen.getByText(/list\.batchModal\.cancel/i)).toBeInTheDocument()
-      expect(screen.getByText(/list\.batchModal\.run/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onCancel when cancel button is clicked', () => {
-      const mockOnCancel = vi.fn()
-      render(<BatchModal {...defaultProps} onCancel={mockOnCancel} />)
-
-      fireEvent.click(screen.getByText(/list\.batchModal\.cancel/i))
-
-      expect(mockOnCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should disable run button when no file is uploaded', () => {
-      render(<BatchModal {...defaultProps} />)
-
-      const runButton = screen.getByText(/list\.batchModal\.run/i).closest('button')
-      expect(runButton).toBeDisabled()
-    })
-
-    it('should enable run button after file is uploaded', async () => {
-      render(<BatchModal {...defaultProps} />)
-
-      fireEvent.click(screen.getByTestId('upload-btn'))
-
-      await waitFor(() => {
-        const runButton = screen.getByText(/list\.batchModal\.run/i).closest('button')
-        expect(runButton).not.toBeDisabled()
-      })
-    })
-
-    it('should call onConfirm with file when run button is clicked', async () => {
-      const mockOnConfirm = vi.fn()
-      const mockOnCancel = vi.fn()
-      render(<BatchModal {...defaultProps} onConfirm={mockOnConfirm} onCancel={mockOnCancel} />)
-
-      // Act - upload file first
-      fireEvent.click(screen.getByTestId('upload-btn'))
-
-      await waitFor(() => {
-        const runButton = screen.getByText(/list\.batchModal\.run/i).closest('button')
-        expect(runButton).not.toBeDisabled()
-      })
-
-      // Act - click run
-      fireEvent.click(screen.getByText(/list\.batchModal\.run/i))
-
-      expect(mockOnCancel).toHaveBeenCalledTimes(1)
-      expect(mockOnConfirm).toHaveBeenCalledWith({ file: { id: 'test-file-id' } })
-    })
-  })
-
-  describe('Props', () => {
-    it('should pass docForm to CSVDownloader', () => {
-      render(<BatchModal {...defaultProps} docForm={ChunkingMode.qa} />)
-
-      expect(screen.getByTestId('csv-downloader').getAttribute('data-doc-form')).toBe(
-        ChunkingMode.qa,
-      )
-    })
-  })
-
-  // State reset tests
-  describe('State Reset', () => {
-    it('should reset file when modal is closed and reopened', async () => {
-      const { rerender } = render(<BatchModal {...defaultProps} />)
-
-      // Upload a file
-      fireEvent.click(screen.getByTestId('upload-btn'))
-      await waitFor(() => {
-        expect(screen.getByTestId('file-info')).toBeInTheDocument()
-      })
-
-      rerender(<BatchModal {...defaultProps} isShow={false} />)
-
-      // Reopen modal
-      rerender(<BatchModal {...defaultProps} isShow={true} />)
-
-      // Assert - file should be cleared
-      expect(screen.queryByTestId('file-info')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should not call onConfirm when no file is present', () => {
-      const mockOnConfirm = vi.fn()
-      render(<BatchModal {...defaultProps} onConfirm={mockOnConfirm} />)
-
-      // Act - try to click run (should be disabled)
-      const runButton = screen.getByText(/list\.batchModal\.run/i).closest('button')
-      if (runButton) fireEvent.click(runButton)
-
-      expect(mockOnConfirm).not.toHaveBeenCalled()
-    })
-
-    it('should maintain structure when rerendered', () => {
-      const { rerender } = render(<BatchModal {...defaultProps} />)
-
-      rerender(<BatchModal {...defaultProps} docForm={ChunkingMode.qa} />)
-
-      expect(screen.getByText(/list\.batchModal\.title/i)).toBeInTheDocument()
-    })
-
-    it('should handle file cleared after upload', async () => {
-      const mockOnConfirm = vi.fn()
-      render(<BatchModal {...defaultProps} onConfirm={mockOnConfirm} />)
-
-      // Upload a file first
-      fireEvent.click(screen.getByTestId('upload-btn'))
-      await waitFor(() => {
-        expect(screen.getByTestId('file-info')).toBeInTheDocument()
-      })
-
-      // Clear the file
-      fireEvent.click(screen.getByTestId('clear-btn'))
-
-      // Assert - run button should be disabled again
-      const runButton = screen.getByText(/list\.batchModal\.run/i).closest('button')
-      expect(runButton).toBeDisabled()
-    })
-  })
+it('drops the selected CSV when the batch dialog is closed and reopened', async () => {
+  const user = userEvent.setup()
+  upload.mockResolvedValue(uploaded)
+  const { rerender } = render(defaults)
+  await user.upload(document.getElementById('fileUploader') as HTMLInputElement, file)
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'datasetDocuments.list.batchModal.run' }),
+    ).toBeEnabled(),
+  )
+  rerender(<BatchModal {...defaults} isShow={false} />)
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  rerender(<BatchModal {...defaults} />)
+  expect(
+    await screen.findByRole('button', { name: 'datasetDocuments.list.batchModal.run' }),
+  ).toBeDisabled()
+  expect(
+    screen.getByRole('button', { name: 'datasetDocuments.list.batchModal.browse' }),
+  ).toBeInTheDocument()
 })

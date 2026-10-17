@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   createSkillDetail,
   getFileTreeButton,
@@ -13,6 +13,7 @@ const mocks = getMocks()
 
 describe('SkillDetailPage editor', () => {
   beforeEach(resetDetailPageFixture)
+  afterEach(() => vi.restoreAllMocks())
 
   it('does not render the markdown editor before external file content loads', async () => {
     mocks.fetchSkillFileBlob.mockImplementation(() => new Promise<Blob>(() => undefined))
@@ -35,7 +36,7 @@ describe('SkillDetailPage editor', () => {
     const { container } = renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
-    fireEvent.click(getFileTreeButton('references/guide.md'))
+    await userEvent.setup().click(getFileTreeButton('references/guide.md'))
 
     await waitFor(() => {
       expect(mocks.fetchSkillFileBlob).toHaveBeenCalledOnce()
@@ -111,7 +112,7 @@ describe('SkillDetailPage editor', () => {
     renderSkillDetailPage()
 
     await screen.findByText('skill.skillManagement.detail.builder.title')
-    fireEvent.click(getFileTreeButton('scripts/action.ts'))
+    await userEvent.setup().click(getFileTreeButton('scripts/action.ts'))
 
     expect(await screen.findByText('skill.skillManagement.detail.loadFailed')).toBeInTheDocument()
     expect(screen.queryByLabelText('code-editor')).not.toBeInTheDocument()
@@ -287,7 +288,6 @@ describe('SkillDetailPage editor', () => {
 
     const preview = await screen.findByAltText('assets/logo.png')
     const activePreviewUrl = createObjectURL.mock.results.at(-1)?.value
-    expect(preview).toBeInTheDocument()
     expect(preview).toHaveAttribute('src', activePreviewUrl)
     expect(revokeObjectURL).not.toHaveBeenCalledWith(activePreviewUrl)
     expect(mocks.fetchSkillFileBlob).toHaveBeenCalledWith({
@@ -360,7 +360,7 @@ describe('SkillDetailPage editor', () => {
 
     await user.click(liveEditor)
     expect(fireEvent.keyDown(liveEditor, { key: 'Enter', isComposing: true })).toBe(true)
-    expect(liveEditor).toHaveTextContent('')
+    expect(liveEditor.textContent).toBe('')
     await user.type(liveEditor, 'First line{Enter}Second line')
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),

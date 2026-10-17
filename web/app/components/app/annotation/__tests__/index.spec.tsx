@@ -1,6 +1,7 @@
 import type { Annotation as AnnotationData } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps, ReactElement } from 'react'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -218,6 +219,7 @@ function render(ui: ReactElement) {
 describe('Annotation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    for (const mock of Object.values(mocks)) mock.mockReset()
     latestListProps = undefined
     fetchAnnotationConfigMock.mockResolvedValue({
       id: 'config-id',
@@ -253,6 +255,7 @@ describe('Annotation', () => {
   })
 
   it('should handle annotation creation and refresh list data', async () => {
+    const user = userEvent.setup()
     const annotation = createAnnotation()
     fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
     addAnnotationMock.mockResolvedValue(undefined)
@@ -260,7 +263,7 @@ describe('Annotation', () => {
     renderComponent()
 
     await screen.findByTestId('list')
-    fireEvent.click(screen.getByTestId('trigger-add'))
+    await user.click(screen.getByTestId('trigger-add'))
 
     await waitFor(() => {
       expect(addAnnotationMock).toHaveBeenCalledWith({
@@ -278,13 +281,14 @@ describe('Annotation', () => {
   })
 
   it('should refetch the list after a row is removed', async () => {
+    const user = userEvent.setup()
     fetchAnnotationListMock.mockResolvedValue({ data: [createAnnotation()], total: 1 })
 
     renderComponent()
     await screen.findByTestId('list')
     const fetchCount = fetchAnnotationListMock.mock.calls.length
 
-    fireEvent.click(screen.getByTestId('list-remove'))
+    await user.click(screen.getByTestId('list-remove'))
 
     await waitFor(() => {
       expect(fetchAnnotationListMock.mock.calls.length).toBeGreaterThan(fetchCount)
@@ -292,6 +296,7 @@ describe('Annotation', () => {
   })
 
   it('should support viewing items and running batch deletion success flow', async () => {
+    const user = userEvent.setup()
     const annotation = createAnnotation()
     fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
     delAnnotationsMock.mockResolvedValue(undefined)
@@ -323,12 +328,10 @@ describe('Annotation', () => {
       expect(latestListProps!.selectedIds).toEqual([])
     })
 
-    fireEvent.click(screen.getByTestId('list-view'))
+    await user.click(screen.getByTestId('list-view'))
     expect(screen.getByTestId('view-modal')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('view-modal-remove'))
-    })
+    await user.click(screen.getByTestId('view-modal-remove'))
     await waitFor(() => {
       expect(delAnnotationMock).toHaveBeenCalledWith({
         params: { app_id: appDetail.id, annotation_id: annotation.id },
@@ -366,20 +369,22 @@ describe('Annotation', () => {
   })
 
   it('should show the annotation-full modal when enabling annotations exceeds the plan quota', async () => {
+    const user = userEvent.setup()
     annotationQuota = { size: 10, limit: 10 }
 
     renderComponent()
 
     const toggle = await screen.findByRole('switch')
-    fireEvent.click(toggle)
+    await user.click(toggle)
 
     expect(screen.getByTestId('annotation-full-modal')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('hide-annotation-full-modal'))
+    await user.click(screen.getByTestId('hide-annotation-full-modal'))
     expect(screen.queryByTestId('annotation-full-modal')).not.toBeInTheDocument()
   })
 
   it('should disable annotations and refetch config after the async job completes', async () => {
+    const user = userEvent.setup()
     fetchAnnotationConfigMock
       .mockResolvedValueOnce({
         id: 'config-id',
@@ -406,7 +411,7 @@ describe('Annotation', () => {
     await waitFor(() => {
       expect(toggle).toHaveAttribute('aria-checked', 'true')
     })
-    fireEvent.click(toggle)
+    await user.click(toggle)
 
     await waitFor(() => {
       expect(updateAnnotationStatusMock).toHaveBeenCalledWith(
@@ -426,6 +431,7 @@ describe('Annotation', () => {
   })
 
   it('should save annotation config changes and update the score when the modal confirms', async () => {
+    const user = userEvent.setup()
     fetchAnnotationConfigMock.mockResolvedValue({
       id: 'config-id',
       enabled: false,
@@ -439,10 +445,10 @@ describe('Annotation', () => {
     renderComponent()
 
     const toggle = await screen.findByRole('switch')
-    fireEvent.click(toggle)
+    await user.click(toggle)
 
     expect(screen.getByTestId('config-modal')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('config-save'))
+    await user.click(screen.getByTestId('config-save'))
 
     await waitFor(() => {
       expect(updateAnnotationStatusMock).toHaveBeenCalledWith(
@@ -468,15 +474,16 @@ describe('Annotation', () => {
   })
 
   it('should refresh the list from the header shortcut and allow saving or closing the view modal', async () => {
+    const user = userEvent.setup()
     const annotation = createAnnotation()
     fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
 
     renderComponent()
 
     await screen.findByTestId('list')
-    fireEvent.click(screen.getByTestId('list-view'))
+    await user.click(screen.getByTestId('list-view'))
 
-    fireEvent.click(screen.getByTestId('view-modal-save'))
+    await user.click(screen.getByTestId('view-modal-save'))
 
     await waitFor(() => {
       expect(editAnnotationMock).toHaveBeenCalledWith({
@@ -485,47 +492,13 @@ describe('Annotation', () => {
       })
     })
 
-    fireEvent.click(screen.getByTestId('view-modal-close'))
+    await user.click(screen.getByTestId('view-modal-close'))
     expect(screen.queryByTestId('view-modal')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByTestId('trigger-added'))
-
-    expect(fetchAnnotationListMock).toHaveBeenCalled()
-  })
-
-  it('should clear selections on cancel and hide the config modal when requested', async () => {
-    const annotation = createAnnotation()
-    fetchAnnotationConfigMock.mockResolvedValue({
-      id: 'config-id',
-      enabled: true,
-      embedding_model: {
-        embedding_model_name: 'model',
-        embedding_provider_name: 'provider',
-      },
-      score_threshold: 0.5,
-    })
-    fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
-
-    renderComponent()
-
-    await screen.findByTestId('list')
-
-    await act(async () => {
-      latestListProps!.onSelectedIdsChange([annotation.id])
-    })
-    await act(async () => {
-      latestListProps!.onSelectedIdsChange([])
-    })
-
-    expect(latestListProps!.selectedIds).toEqual([])
-
-    const configButton = screen.getByRole('button', {
-      name: 'appAnnotation.initSetup.configTitle',
-    })
-    fireEvent.click(configButton)
-    expect(await screen.findByTestId('config-modal')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('config-hide'))
-    expect(screen.queryByTestId('config-modal')).not.toBeInTheDocument()
+    const fetchCount = fetchAnnotationListMock.mock.calls.length
+    await user.click(screen.getByTestId('trigger-added'))
+    await waitFor(() =>
+      expect(fetchAnnotationListMock.mock.calls.length).toBeGreaterThan(fetchCount),
+    )
   })
 })

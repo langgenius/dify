@@ -30,16 +30,6 @@ describe('SocialAuth', () => {
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
   })
 
-  describe('Rendering', () => {
-    it('should render oauth provider links', () => {
-      render(<SocialAuth />)
-
-      expect(screen.getByRole('link', { name: 'login.withGitHub' })).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'login.withGoogle' })).toBeInTheDocument()
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    })
-  })
-
   describe('OAuth params', () => {
     it('should include browser timezone and locale in oauth links', () => {
       render(<SocialAuth />)

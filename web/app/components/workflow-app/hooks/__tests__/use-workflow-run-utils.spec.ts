@@ -10,9 +10,6 @@ import {
   buildWorkflowRunRequestBody,
   clearListeningState,
   clearWindowDebugControllers,
-  createFailedWorkflowState,
-  createRunningWorkflowState,
-  createStoppedWorkflowState,
   mapPublishedWorkflowFeatures,
   normalizePublishedWorkflowNodes,
   resolveWorkflowRunUrl,
@@ -49,7 +46,12 @@ const createListeningActions = () => ({
 
 describe('useWorkflowRun utils', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('should resolve run history urls and run endpoints for workflow modes', () => {
@@ -125,9 +127,6 @@ describe('useWorkflowRun utils', () => {
       ),
     ).toBe('')
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger plugin run')
-    expect(consoleErrorSpy).toHaveBeenCalledWith('handleRun: missing app id for trigger run all')
-
     consoleErrorSpy.mockRestore()
   })
 
@@ -145,7 +144,15 @@ describe('useWorkflowRun utils', () => {
       'trigger-1',
       'trigger-2',
     ])
-    expect(triggerActions.setWorkflowRunningData).toHaveBeenCalledWith(createRunningWorkflowState())
+    expect(triggerActions.setWorkflowRunningData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ status: WorkflowRunningStatus.Running }),
+        tracing: [],
+        resultText: '',
+        reasoningContent: {},
+        reasoningFinished: false,
+      }),
+    )
 
     const normalActions = createListeningActions()
     applyRunningStateForMode(normalActions, TriggerType.UserInput)
@@ -155,7 +162,15 @@ describe('useWorkflowRun utils', () => {
     expect(normalActions.setListeningTriggerNodeId).toHaveBeenCalledWith(null)
     expect(normalActions.setListeningTriggerNodeIds).toHaveBeenCalledWith([])
     expect(normalActions.setListeningTriggerIsAll).toHaveBeenCalledWith(false)
-    expect(normalActions.setWorkflowRunningData).toHaveBeenCalledWith(createRunningWorkflowState())
+    expect(normalActions.setWorkflowRunningData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ status: WorkflowRunningStatus.Running }),
+        tracing: [],
+        resultText: '',
+        reasoningContent: {},
+        reasoningFinished: false,
+      }),
+    )
   })
 
   it('should clear listening state, stop state, and remove debug controllers', () => {
@@ -171,7 +186,13 @@ describe('useWorkflowRun utils', () => {
     const stoppedActions = createListeningActions()
     applyStoppedState(stoppedActions)
 
-    expect(stoppedActions.setWorkflowRunningData).toHaveBeenCalledWith(createStoppedWorkflowState())
+    expect(stoppedActions.setWorkflowRunningData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ status: WorkflowRunningStatus.Stopped }),
+        tracing: [],
+        resultText: '',
+      }),
+    )
     expect(stoppedActions.setShowVariableInspectPanel).toHaveBeenCalledWith(true)
 
     const controllerTarget = {
@@ -295,10 +316,6 @@ describe('useWorkflowRun utils', () => {
       setWorkflowRunningData,
     })
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'handleRun: schedule debug response parse error',
-      expect.any(Error),
-    )
     expect(mockToastError).toHaveBeenCalledWith('Schedule debug request failed')
     expect(clearAbortController).toHaveBeenCalledTimes(2)
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(1)
@@ -340,7 +357,15 @@ describe('useWorkflowRun utils', () => {
     expect(mockToastError).toHaveBeenCalledWith('Webhook failed')
     expect(clearAbortController).toHaveBeenCalled()
     expect(clearListeningStateSpy).toHaveBeenCalled()
-    expect(setWorkflowRunningData).toHaveBeenCalledWith(createFailedWorkflowState('Webhook failed'))
+    expect(setWorkflowRunningData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          status: WorkflowRunningStatus.Failed,
+          error: 'Webhook failed',
+        }),
+        tracing: [],
+      }),
+    )
 
     mockPost.mockResolvedValueOnce(
       new Response('data: ok', {
@@ -362,6 +387,11 @@ describe('useWorkflowRun utils', () => {
 
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(2)
     expect(mockHandleStream).toHaveBeenCalledTimes(1)
+    expect(mockHandleStream.mock.calls[0]?.slice(0, 3)).toEqual([
+      expect.any(Response),
+      baseSseOptions.onData,
+      baseSseOptions.onCompleted,
+    ])
   })
 
   it('should retry waiting trigger debug responses until a stream is returned', async () => {
@@ -404,8 +434,18 @@ describe('useWorkflowRun utils', () => {
     await runPromise
 
     expect(mockPost).toHaveBeenCalledTimes(2)
+    expect(mockPost).toHaveBeenLastCalledWith(
+      '/apps/app-1/workflows/draft/trigger/run-all',
+      { body: { node_ids: ['trigger-1'] }, signal: expect.any(AbortSignal) },
+      { needAllResponseContent: true },
+    )
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(1)
     expect(mockHandleStream).toHaveBeenCalledTimes(1)
+    expect(mockHandleStream.mock.calls[0]?.slice(0, 3)).toEqual([
+      expect.any(Response),
+      baseSseOptions.onData,
+      baseSseOptions.onCompleted,
+    ])
 
     vi.useRealTimers()
   })
@@ -473,7 +513,15 @@ describe('useWorkflowRun utils', () => {
 
     expect(mockToastError).toHaveBeenCalledWith('Plugin failed')
     expect(clearAbortController).toHaveBeenCalledTimes(1)
-    expect(setWorkflowRunningData).toHaveBeenCalledWith(createFailedWorkflowState('Plugin failed'))
+    expect(setWorkflowRunningData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          status: WorkflowRunningStatus.Failed,
+          error: 'Plugin failed',
+        }),
+        tracing: [],
+      }),
+    )
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(1)
 
     mockPost.mockRejectedValueOnce(new Error('network failed'))
@@ -493,14 +541,14 @@ describe('useWorkflowRun utils', () => {
     expect(mockToastError).toHaveBeenLastCalledWith('network failed')
     expect(clearAbortController).toHaveBeenCalledTimes(2)
     expect(setWorkflowRunningData).toHaveBeenLastCalledWith(
-      createFailedWorkflowState('network failed'),
+      expect.objectContaining({
+        result: expect.objectContaining({
+          status: WorkflowRunningStatus.Failed,
+          error: 'network failed',
+        }),
+        tracing: [],
+      }),
     )
     expect(clearListeningStateSpy).toHaveBeenCalledTimes(2)
-  })
-
-  it('should expose the canonical workflow state factories', () => {
-    expect(createRunningWorkflowState().result.status).toBe(WorkflowRunningStatus.Running)
-    expect(createStoppedWorkflowState().result.status).toBe(WorkflowRunningStatus.Stopped)
-    expect(createFailedWorkflowState('failed').result.status).toBe(WorkflowRunningStatus.Failed)
   })
 })

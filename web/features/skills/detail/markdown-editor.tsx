@@ -668,6 +668,7 @@ export function MarkdownSourceEditor({
   readOnly: boolean
   value: string
 }) {
+  const { t } = useTranslation(['skill'])
   const [focused, setFocused] = useState(false)
   const [selectionOffset, setSelectionOffset] = useState(0)
   const [scrollTop, setScrollTop] = useState(0)
@@ -694,6 +695,7 @@ export function MarkdownSourceEditor({
         </div>
       </div>
       <textarea
+        aria-label={t(($) => $['skillManagement.detail.markdownSourceMode'])}
         ref={editorRef}
         readOnly={readOnly}
         value={value}

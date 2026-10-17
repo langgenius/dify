@@ -1,13 +1,13 @@
 import type { ComponentProps } from 'react'
 import type { QuestionClassifierNodeType } from '../types'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { useEdgesInteractions } from '../../../hooks/use-edges-interactions'
-import ClassItem from '../../_base/components/branch-list/class-item'
 import ClassList from '../../_base/components/branch-list/class-list'
 import AdvancedSetting from '../components/advanced-setting'
 import Node from '../node'
@@ -19,34 +19,24 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
     onChange,
     onRemove,
     showRemove,
-    headerClassName,
+    readOnly,
   }: ComponentProps<
     typeof import('@/app/components/workflow/nodes/_base/components/prompt/editor').default
   >) => (
-    <div className={headerClassName}>
-      <div>{typeof title === 'string' ? title : 'editor-title'}</div>
-      <input value={value} onChange={(event) => onChange(event.target.value)} />
-      {showRemove && (
+    <div>
+      <div>{title}</div>
+      <input
+        aria-label="Class description"
+        readOnly={readOnly}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {showRemove && !readOnly && (
         <button type="button" onClick={onRemove}>
           remove-item
         </button>
       )}
     </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
-  default: ({
-    onChange,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/memory-config').default
-  >) => (
-    <button
-      type="button"
-      onClick={() => onChange({ window: { enabled: true, size: 10 }, query_prompt_template: '' })}
-    >
-      memory-config
-    </button>
   ),
 }))
 
@@ -66,19 +56,6 @@ vi.mock('../../../hooks/use-edges-interactions', async (importOriginal) => {
     useEdgesInteractions: vi.fn(),
   }
 })
-
-vi.mock('@/app/components/workflow/nodes/_base/components/add-button', () => ({
-  default: ({
-    text,
-    onClick,
-  }: ComponentProps<
-    typeof import('@/app/components/workflow/nodes/_base/components/add-button').default
-  >) => (
-    <button type="button" onClick={onClick}>
-      {text}
-    </button>
-  ),
-}))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: vi.fn(),
@@ -194,131 +171,105 @@ describe('question-classifier path', () => {
       )
 
       await user.type(screen.getByDisplayValue('Route by topic'), '!')
-      await user.click(screen.getByText('memory-config'))
+      await user.click(screen.getByRole('switch'))
 
-      expect(onInstructionChange).toHaveBeenCalled()
+      expect(onInstructionChange).toHaveBeenCalledWith('Route by topic!')
       expect(onMemoryChange).toHaveBeenCalledWith({
-        window: { enabled: true, size: 10 },
-        query_prompt_template: '',
+        window: { enabled: false, size: 50 },
+        query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
       })
     })
 
-    it('should edit and remove a single class item', async () => {
+    it('adds, edits, removes and collapses classes while retaining unrelated branches', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
-      const onRemove = vi.fn()
-
-      render(
-        <ClassItem
-          nodeId="node-1"
-          payload={createTopic()}
-          onChange={onChange}
-          onRemove={onRemove}
-          index={1}
-          filterVar={() => true}
-        />,
-      )
-
-      await user.type(screen.getByDisplayValue('Billing questions'), ' updated')
-      await user.click(screen.getByText('remove-item'))
-
-      expect(onChange).toHaveBeenCalled()
-      expect(onRemove).toHaveBeenCalled()
-    })
-
-    it('should add classes and collapse the class list', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-      const { container } = render(
-        <ClassList
-          nodeId="node-1"
-          list={[createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })]}
-          onChange={onChange}
-          filterVar={() => true}
-        />,
-      )
-
-      await user.click(screen.getByText('workflowModels.nodes.questionClassifiers.addClass'))
-      await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
-      expect(
-        screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
-      ).not.toBeInTheDocument()
-      await user.click(screen.getByText('workflow.nodes.questionClassifiers.class'))
-      expect(
-        screen.getByText('workflowModels.nodes.questionClassifiers.addClass'),
-      ).toBeInTheDocument()
-      expect(container.querySelector('.handle')).not.toBeNull()
-
-      expect(onChange).toHaveBeenCalled()
-    })
-
-    it('should update and remove classes from the class list and delete the related edge branch', async () => {
-      const user = userEvent.setup()
-      const onChange = vi.fn()
-      const handleEdgeDeleteByDeleteBranch = vi.fn()
-      mockUseEdgesInteractions.mockReturnValueOnce({
-        handleEdgeDeleteByDeleteBranch,
+      const removeEdge = vi.fn()
+      mockUseEdgesInteractions.mockReturnValue({
+        handleEdgeDeleteByDeleteBranch: removeEdge,
       } as unknown as ReturnType<typeof useEdgesInteractions>)
-
-      render(
-        <ClassList
-          nodeId="node-1"
-          list={[createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })]}
-          onChange={onChange}
-          filterVar={() => true}
-        />,
+      function ClassListHarness() {
+        const [list, setList] = useState([
+          createTopic(),
+          createTopic({ id: 'topic-2', name: 'Refunds' }),
+        ])
+        return (
+          <ClassList
+            nodeId="node-1"
+            list={list}
+            onChange={(next) => {
+              setList(next)
+              onChange(next)
+            }}
+            filterVar={() => true}
+          />
+        )
+      }
+      render(<ClassListHarness />)
+      await user.click(
+        screen.getByRole('button', { name: 'workflowModels.nodes.questionClassifiers.addClass' }),
       )
-
-      fireEvent.change(screen.getByDisplayValue('Billing questions'), {
-        target: { value: 'Updated billing' },
-      })
-      await user.click(screen.getAllByText('remove-item')[0]!)
-
-      expect(onChange).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ name: 'Updated billing' })]),
+      expect(onChange).toHaveBeenLastCalledWith([
+        createTopic(),
+        createTopic({ id: 'topic-2', name: 'Refunds' }),
+        expect.objectContaining({ id: expect.any(String), name: '' }),
+      ])
+      await user.type(screen.getByDisplayValue('Billing questions'), ' updated')
+      expect(onChange).toHaveBeenLastCalledWith([
+        createTopic({ name: 'Billing questions updated' }),
+        createTopic({ id: 'topic-2', name: 'Refunds' }),
+        expect.objectContaining({ name: '' }),
+      ])
+      await user.click(screen.getAllByRole('button', { name: 'remove-item' })[0]!)
+      expect(screen.queryByDisplayValue('Billing questions updated')).not.toBeInTheDocument()
+      expect(screen.getByDisplayValue('Refunds')).toBeInTheDocument()
+      expect(removeEdge).toHaveBeenCalledExactlyOnceWith('node-1', 'topic-1')
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.questionClassifiers.class/ }),
       )
-      expect(handleEdgeDeleteByDeleteBranch).toHaveBeenCalledWith('node-1', 'topic-1')
-    })
-
-    it('should disable dragging and hide the add button when the class list is readonly', () => {
-      const { container } = render(
-        <ClassList
-          nodeId="node-1"
-          list={[createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })]}
-          onChange={vi.fn()}
-          filterVar={() => true}
-          readonly
-        />,
-      )
-
       expect(
-        screen.queryByText('workflowModels.nodes.questionClassifiers.addClass'),
+        screen.queryByRole('button', { name: 'workflowModels.nodes.questionClassifiers.addClass' }),
       ).not.toBeInTheDocument()
-      expect(container.querySelector('.handle')).toBeNull()
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.questionClassifiers.class/ }),
+      )
+      expect(screen.getByDisplayValue('Refunds')).toBeInTheDocument()
     })
 
-    it('should render the node model and output handles for each class', () => {
-      renderWorkflowFlowComponent(
-        <Node
-          id="node-1"
-          data={createData({
-            classes: [createTopic(), createTopic({ id: 'topic-2', name: 'Refunds' })],
-          })}
-          type="custom"
-          selected={false}
-          zIndex={1}
-          xPos={0}
-          yPos={0}
-          dragging={false}
-          isConnectable
-        />,
-        { nodes: [], edges: [] },
+    it('prevents editing descriptions and memory settings in readonly mode', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      const onMemoryChange = vi.fn()
+      render(
+        <>
+          <ClassList
+            nodeId="node-1"
+            list={[createTopic()]}
+            onChange={onChange}
+            filterVar={() => true}
+            readonly
+          />
+          <AdvancedSetting
+            instruction="Route by topic"
+            onInstructionChange={onChange}
+            hideMemorySetting={false}
+            onMemoryChange={onMemoryChange}
+            isChatModel
+            isChatApp
+            nodesOutputVars={[]}
+            availableNodes={[]}
+            readonly
+          />
+        </>,
       )
-
-      expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
-      expect(screen.getByText('Billing questions')).toBeInTheDocument()
-      expect(screen.getByText('handle-topic-1')).toBeInTheDocument()
-      expect(screen.getByText('handle-topic-2')).toBeInTheDocument()
+      await user.type(screen.getByDisplayValue('Billing questions'), '!')
+      expect(onChange).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: 'remove-item' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'workflowModels.nodes.questionClassifiers.addClass' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
+      await user.click(screen.getByRole('switch'))
+      expect(onMemoryChange).not.toHaveBeenCalled()
     })
 
     it('should render the node when only classes are set and return null when both model and classes are missing', async () => {

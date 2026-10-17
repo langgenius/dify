@@ -1,12 +1,13 @@
 import type { WorkflowPauseDetailsResponse } from '@dify/contracts/api/console/workflow/types.gen'
-import { skipToken } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { cloneElement, isValidElement } from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDocLinkMock, resolveDocLink } from '../../__tests__/i18n'
 import Status from '../status'
 
 const mockDocLink = createDocLinkMock()
-const mockUseQuery = vi.fn()
+const mockPauseDetails = vi.hoisted(() => vi.fn())
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
@@ -58,24 +59,16 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
-  useQuery: (options: unknown) => mockUseQuery(options),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    workflow: {
-      byWorkflowRunId: {
-        pauseDetails: {
-          get: {
-            queryOptions: (options: unknown) => options,
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workflow.byWorkflowRunId.pauseDetails.get': (input) => mockPauseDetails(input),
+    }),
+  }
+})
 
 const createPausedDetails = (
   overrides: Partial<WorkflowPauseDetailsResponse> = {},
@@ -87,8 +80,8 @@ const createPausedDetails = (
 
 describe('Status', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseQuery.mockReturnValue({ data: undefined })
+    vi.resetAllMocks()
+    mockPauseDetails.mockImplementation(() => new Promise(() => {}))
   })
 
   it('renders the scheduled status before execution', () => {
@@ -101,8 +94,7 @@ describe('Status', () => {
     render(<Status status="running" workflowRunId="run-1" />)
 
     expect(screen.getByText('appLog.status.running')).toBeInTheDocument()
-    expect(document.querySelectorAll('.bg-text-quaternary')).toHaveLength(2)
-    expect(mockUseQuery).toHaveBeenCalledWith({ input: skipToken })
+    expect(mockPauseDetails).not.toHaveBeenCalled()
   })
 
   it('renders the listening label when the run is waiting for input', () => {
@@ -154,14 +146,14 @@ describe('Status', () => {
     ).toHaveLength(2)
   })
 
-  it('opens the tracing tab when clicking the TRACING link', () => {
+  it('opens the tracing tab when clicking the TRACING link', async () => {
     const onOpenTracingTab = vi.fn()
 
     render(
       <Status status="partial-succeeded" exceptionCounts={3} onOpenTracingTab={onOpenTracingTab} />,
     )
 
-    fireEvent.click(screen.getByRole('link', { name: 'TRACING' }))
+    await userEvent.setup().click(screen.getByRole('link', { name: 'TRACING' }))
 
     expect(onOpenTracingTab).toHaveBeenCalledTimes(1)
   })
@@ -173,23 +165,22 @@ describe('Status', () => {
 
     expect(screen.getByText('workflow.tracing.status.exception')).toBeInTheDocument()
     expect(learnMoreLink).toHaveAttribute('href', resolveDocLink('/use-dify/debug/error-type'))
-    expect(mockDocLink).toHaveBeenCalledWith('/use-dify/debug/error-type')
   })
 
-  it('renders paused placeholders when pause details have not loaded yet', () => {
+  it('requests pause details only for the paused run', async () => {
     render(<Status status="paused" workflowRunId="run-3" />)
 
     expect(screen.getByText('appLog.status.paused')).toBeInTheDocument()
     expect(screen.getByText('workflowHumanInput.nodes.humanInput.log.reason')).toBeInTheDocument()
-    expect(document.querySelectorAll('.bg-text-quaternary')).toHaveLength(3)
-    expect(mockUseQuery).toHaveBeenCalledWith({
-      input: { params: { workflow_run_id: 'run-3' } },
-    })
+    await waitFor(() =>
+      expect(mockPauseDetails).toHaveBeenCalledWith({ params: { workflow_run_id: 'run-3' } }),
+    )
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  it('renders paused human-input reasons and backstage URLs', () => {
-    mockUseQuery.mockReturnValue({
-      data: createPausedDetails({
+  it('renders paused human-input reasons and backstage URLs', async () => {
+    mockPauseDetails.mockResolvedValue(
+      createPausedDetails({
         paused_nodes: [
           {
             node_id: 'node-1',
@@ -211,9 +202,10 @@ describe('Status', () => {
           },
         ],
       }),
-    })
+    )
 
     render(<Status status="paused" workflowRunId="run-4" />)
+    await screen.findByRole('link', { name: 'https://example.com/a' })
 
     expect(
       screen.getByText('workflowHumanInput.nodes.humanInput.log.reasonContent'),

@@ -155,7 +155,7 @@ const ChatWrapper = () => {
 
   useEffect(() => {
     if (currentChatInstanceRef.current) currentChatInstanceRef.current.handleStop = handleStop
-  }, [])
+  }, [currentChatInstanceRef, handleStop])
 
   useEffect(() => {
     setIsResponding(respondingState)
@@ -169,9 +169,6 @@ const ChatWrapper = () => {
     let lastPausedNode: ChatItemInTree | undefined
     const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
-        // DFS: recurse to children first
-        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
-
         // Track the last node with humanInputFormDataList
         if (
           node.isAnswer &&
@@ -180,6 +177,9 @@ const ChatWrapper = () => {
           node.humanInputFormDataList.length > 0
         )
           lastPausedNode = node
+
+        // A paused descendant supersedes its ancestor.
+        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
       })
     }
 

@@ -5,13 +5,14 @@ import type {
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeRetrievalNodeType } from '../types'
 import { act, waitFor } from '@testing-library/react'
+import { createElement } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { DatasetsDetailContext } from '@/app/components/workflow/datasets-detail-store/provider'
+import { createDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { DATASET_DEFAULT } from '@/config'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
@@ -20,7 +21,8 @@ import { fetchDatasets } from '@/service/datasets'
 import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import { useNodesReadOnly, useWorkflow } from '../../../hooks/use-workflow'
+import { createEdge, createNode } from '../../../__tests__/fixtures'
+import { fullWorkflowAccessControl } from '../../../hooks-store'
 import { renderNodeConfig } from '../../__tests__/render-node-config'
 import {
   ComparisonOperator,
@@ -33,9 +35,42 @@ const renderConfig = (
   data: KnowledgeRetrievalNodeType,
   options: Parameters<typeof renderNodeConfig>[2],
 ) => {
-  const rendered = renderNodeConfig(useConfig, data, { ...options, nodeId: 'knowledge-node' })
+  const datasetsStore = createDatasetsDetailStore()
+  const rendered = renderNodeConfig(useConfig, data, {
+    ...options,
+    nodeId: 'knowledge-node',
+    hooksStoreProps: { accessControl: fullWorkflowAccessControl },
+    wrapper: ({ children }) =>
+      createElement(DatasetsDetailContext.Provider, { value: datasetsStore }, children),
+    nodes: [
+      createNode({ id: 'start-node', data: { type: BlockEnum.Start, variables: [] } }),
+      createNode({
+        id: 'string-node',
+        data: {
+          type: BlockEnum.Code,
+          title: 'String Node',
+          outputs: { topic: { type: VarType.string } },
+        },
+      }),
+      createNode({
+        id: 'number-node',
+        data: {
+          type: BlockEnum.Code,
+          title: 'Number Node',
+          outputs: { score: { type: VarType.number } },
+        },
+      }),
+      createNode({ id: 'knowledge-node', data }),
+    ],
+    edges: [
+      createEdge({ source: 'start-node', target: 'string-node' }),
+      createEdge({ source: 'string-node', target: 'number-node' }),
+      createEdge({ source: 'number-node', target: 'knowledge-node' }),
+    ],
+  })
   return {
     ...rendered,
+    datasetsStore,
     result: {
       get current() {
         return rendered.result.current.config
@@ -52,29 +87,9 @@ vi.mock('uuid', () => ({
   }),
 }))
 
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: vi.fn(),
-
-    useWorkflow: vi.fn(),
-  }
-})
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
   useCurrentProviderAndModel: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow/datasets-detail-store/store', () => ({
-  useDatasetsDetailStore: vi.fn(),
 }))
 
 vi.mock('@/service/datasets', () => ({
@@ -83,15 +98,10 @@ vi.mock('@/service/datasets', () => ({
 
 type DatasetListItem = DatasetListResponse['data'][number]
 
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-let chatflowMode = false
-const mockUseWorkflow = vi.mocked(useWorkflow)
 const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 )
 const mockUseCurrentProviderAndModel = vi.mocked(useCurrentProviderAndModel)
-const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
-const mockUseDatasetsDetailStore = vi.mocked(useDatasetsDetailStore)
 const mockFetchDatasets = vi.mocked(fetchDatasets)
 
 const createDataset = (overrides: Partial<DatasetListItem> = {}): DatasetListItem => ({
@@ -185,24 +195,10 @@ const createData = (
 })
 
 describe('knowledge-retrieval/use-config', () => {
-  const updateDatasetsDetail = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
     uuidCounter = 0
 
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
-    chatflowMode = true
-    mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranch: () => [
-        {
-          id: 'start-node',
-          data: {
-            type: BlockEnum.Start,
-          },
-        },
-      ],
-    } as unknown as ReturnType<typeof useWorkflow>)
     const createModelCatalog = (type: ModelTypeEnum) => {
       if (type === 'rerank') {
         return {
@@ -253,50 +249,6 @@ describe('knowledge-retrieval/use-config', () => {
       currentProvider: { provider: 'rerank-provider' },
       currentModel: { model: 'rerank-model' },
     } as unknown as ReturnType<typeof useCurrentProviderAndModel>)
-    mockUseAvailableVarList.mockImplementation((_id, config) => {
-      const activeConfig = config!
-      const stringVars = [
-        {
-          nodeId: 'string-node',
-          title: 'String Node',
-          vars: [
-            {
-              variable: 'topic',
-              type: VarType.string,
-            },
-          ],
-        },
-      ]
-      const numberVars = [
-        {
-          nodeId: 'number-node',
-          title: 'Number Node',
-          vars: [
-            {
-              variable: 'score',
-              type: VarType.number,
-            },
-          ],
-        },
-      ]
-
-      if (activeConfig.filterVar({ type: VarType.string } as never, ['string-node', 'topic'])) {
-        return {
-          availableVars: stringVars,
-          availableNodes: [],
-          availableNodesWithParent: [],
-        } as unknown as ReturnType<typeof useAvailableVarList>
-      }
-
-      return {
-        availableVars: numberVars,
-        availableNodes: [],
-        availableNodesWithParent: [],
-      } as unknown as ReturnType<typeof useAvailableVarList>
-    })
-    mockUseDatasetsDetailStore.mockImplementation((selector) => {
-      return selector({ updateDatasetsDetail } as never)
-    })
     mockFetchDatasets.mockResolvedValue({
       data: [createDataset({ id: 'dataset-1', name: 'Knowledge Base', is_multimodal: true })],
       page: 1,
@@ -308,7 +260,7 @@ describe('knowledge-retrieval/use-config', () => {
 
   it('initializes defaults, loads dataset details, and exposes metadata variables', async () => {
     const { result } = renderConfig(createData(), {
-      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
     })
 
     await waitFor(() => {
@@ -330,30 +282,18 @@ describe('knowledge-retrieval/use-config', () => {
       }),
     )
     expect(result.current.showImageQueryVarSelector).toBe(true)
-    expect(result.current.availableStringVars).toEqual([
-      {
-        nodeId: 'string-node',
-        title: 'String Node',
-        vars: [
-          {
-            variable: 'topic',
-            type: VarType.string,
-          },
-        ],
-      },
-    ])
-    expect(result.current.availableNumberVars).toEqual([
-      {
-        nodeId: 'number-node',
-        title: 'Number Node',
-        vars: [
-          {
-            variable: 'score',
-            type: VarType.number,
-          },
-        ],
-      },
-    ])
+    expect(
+      result.current.availableStringVars.find((node) => node.nodeId === 'string-node')?.vars,
+    ).toEqual([expect.objectContaining({ variable: 'topic', type: VarType.string })])
+    expect(
+      result.current.availableNumberVars.find((node) => node.nodeId === 'number-node')?.vars,
+    ).toEqual([expect.objectContaining({ variable: 'score', type: VarType.number })])
+    expect(result.current.availableStringVars.some((node) => node.nodeId === 'number-node')).toBe(
+      false,
+    )
+    expect(result.current.availableNumberVars.some((node) => node.nodeId === 'string-node')).toBe(
+      false,
+    )
   })
 
   it('keeps edits made while the initial dataset details request is pending', async () => {
@@ -379,7 +319,7 @@ describe('knowledge-retrieval/use-config', () => {
 
   it('updates query and single retrieval model state through the real hook', async () => {
     const { result } = renderConfig(createData(), {
-      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
     })
 
     await waitFor(() => {
@@ -401,9 +341,6 @@ describe('knowledge-retrieval/use-config', () => {
         modelId: 'claude-sonnet',
         mode: 'chat' as const,
       })
-    })
-    act(() => {
-      result.current.handleCompletionParamsChange({ temperature: 0.2 })
     })
     act(() => {
       result.current.handleCompletionParamsChange({ temperature: 0.2 })
@@ -435,8 +372,8 @@ describe('knowledge-retrieval/use-config', () => {
   })
 
   it('updates retrieval config and dataset state through the real hook', async () => {
-    const { result } = renderConfig(createData(), {
-      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+    const { result, datasetsStore } = renderConfig(createData(), {
+      resource: { kind: 'app', appId: 'app-1', mode: 'advanced-chat' },
     })
 
     await waitFor(() => {
@@ -496,10 +433,10 @@ describe('knowledge-retrieval/use-config', () => {
       expect(result.current.rerankModelOpen).toBe(true)
     })
 
-    expect(updateDatasetsDetail).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'dataset-2' }),
-      expect.objectContaining({ id: 'dataset-3' }),
-    ])
+    expect(datasetsStore.getState().datasetsDetail).toMatchObject({
+      'dataset-2': { id: 'dataset-2', name: 'Economic' },
+      'dataset-3': { id: 'dataset-3', name: 'High Quality' },
+    })
   })
 
   it('manages metadata conditions, metadata model config, and variable filters', async () => {
@@ -511,7 +448,7 @@ describe('knowledge-retrieval/use-config', () => {
         resource: {
           kind: 'app',
           appId: 'app-1',
-          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+          mode: 'advanced-chat',
         },
       },
     )
@@ -549,6 +486,11 @@ describe('knowledge-retrieval/use-config', () => {
         value: 'agent',
         comparison_operator: ComparisonOperator.contains,
       })
+    })
+    expect(result.current.inputs.metadata_filtering_conditions?.conditions[0]).toMatchObject({
+      id: firstCondition.id,
+      value: 'agent',
+      comparison_operator: ComparisonOperator.contains,
     })
     act(() => {
       result.current.handleToggleConditionLogicalOperator()

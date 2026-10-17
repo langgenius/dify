@@ -1,9 +1,9 @@
-import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createElement } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { useDatasetCardState } from '../use-dataset-card-state'
 
 const mocks = vi.hoisted(() => ({
@@ -19,21 +19,7 @@ vi.mock('@/service/base', () => ({
   sseGeneratorPost: vi.fn(),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'rag.pipelines.byPipelineId.exports.get': (input) => vi.fn()(input),
-    }),
-  }
-})
-
-const dataset = {
-  id: 'dataset-1',
-  name: 'Test Dataset',
-} as DatasetDetailWithPartialMembersResponse
+const dataset = createDatasetFixture({ id: 'dataset-1', name: 'Test Dataset' })
 
 function renderDatasetCardState() {
   const onSuccess = vi.fn()

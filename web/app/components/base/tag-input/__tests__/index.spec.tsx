@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TagInput from '../index'
 
@@ -34,32 +34,8 @@ describe('TagInput', () => {
   })
 
   describe('Rendering', () => {
-    it('should render existing tags and default placeholder', () => {
-      renderTagInput({ items: ['alpha', 'beta'] })
-
-      expect(screen.getByText('alpha'))!.toBeInTheDocument()
-      expect(screen.getByText('beta'))!.toBeInTheDocument()
-      expect(
-        screen.getByPlaceholderText('datasetDocuments.segment.addKeyWord'),
-      )!.toBeInTheDocument()
-    })
-
-    it('should render special mode placeholder when confirm key is Tab', () => {
-      renderTagInput({ customizedConfirmKey: 'Tab' })
-
-      expect(
-        screen.getByPlaceholderText('common.model.params.stop_sequencesPlaceholder'),
-      )!.toBeInTheDocument()
-    })
-
-    it('should render custom placeholder when placeholder prop is provided', () => {
-      renderTagInput({ placeholder: 'Custom placeholder' })
-
-      expect(screen.getByPlaceholderText('Custom placeholder'))!.toBeInTheDocument()
-    })
-
-    it('should apply input className and expose visible text for CSS sizing', async () => {
-      renderTagInput({ inputClassName: 'custom-input', placeholder: 'Tag' })
+    it('should expose the current input text for CSS sizing', async () => {
+      renderTagInput({ placeholder: 'Tag' })
       const input = screen.getByRole('textbox')
       const inputContainer = input.parentElement
 
@@ -126,7 +102,7 @@ describe('TagInput', () => {
       })
     })
 
-    it('should add tag on blur-sm when input has valid value', async () => {
+    it('should add tag on blur when input has valid value', async () => {
       const { onChange } = renderTagInput()
       const input = screen.getByRole('textbox')
 
@@ -148,13 +124,8 @@ describe('TagInput', () => {
       expect(input)!.toHaveValue('stop↵')
       expect(onChange).not.toHaveBeenCalled()
 
-      // Low-level test for preventDefault
-      const tabEvent = createEvent.keyDown(input, { key: 'Tab' })
-      tabEvent.preventDefault = vi.fn()
-
-      fireEvent(input, tabEvent)
-
-      expect(tabEvent.preventDefault).toHaveBeenCalledTimes(1)
+      await user.keyboard('{Tab}')
+      expect(input).toHaveFocus()
       expect(onChange).toHaveBeenCalledWith(['stop↵'])
     })
   })

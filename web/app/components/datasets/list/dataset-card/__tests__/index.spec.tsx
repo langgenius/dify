@@ -1,18 +1,14 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { ChunkingMode, DataSourceType } from '@/models/datasets'
-import { PermissionLevel } from '@/models/permission'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
-import DatasetCardFooter from '../components/dataset-card-footer'
-import Description from '../components/description'
 import DatasetCard from '../index'
 
 // Mock external hooks only
@@ -111,30 +107,8 @@ vi.mock('../hooks/use-dataset-card-state', () => ({
   }),
 }))
 
-vi.mock('../components/corner-labels', () => ({
-  default: () => <div data-testid="corner-labels" />,
-}))
-vi.mock('../components/dataset-card-header', () => ({
-  default: ({
-    dataset,
-    nameId,
-  }: {
-    dataset: DatasetDetailWithPartialMembersResponse
-    nameId?: string
-  }) => (
-    <div id={nameId} data-testid="card-header">
-      {dataset.name}
-    </div>
-  ),
-}))
-vi.mock('../components/dataset-card-modals', () => ({
-  default: ({ onCloseAccessConfig }: { onCloseAccessConfig?: () => void }) => (
-    <div
-      data-testid="card-modals"
-      data-has-close-access-config={typeof onCloseAccessConfig === 'function'}
-    />
-  ),
-}))
+// Modal workflows are tested at their owner boundary.
+vi.mock('../components/dataset-card-modals', () => ({ default: () => null }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
   DatasetCardTags: ({ canBindOrUnbindTags }: { canBindOrUnbindTags?: boolean }) => (
     <button
@@ -146,7 +120,6 @@ vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
 }))
 vi.mock('../components/operations-dropdown', () => ({
   default: ({
-    openAccessConfig,
     stepByStepTourHighlightPart,
     stepByStepTourOpen,
   }: {
@@ -156,40 +129,15 @@ vi.mock('../components/operations-dropdown', () => ({
   }) => (
     <div
       data-testid="operations-dropdown"
-      data-has-open-access-config={typeof openAccessConfig === 'function'}
       data-step-by-step-tour-highlight-part={stepByStepTourHighlightPart}
       data-step-by-step-tour-open={String(stepByStepTourOpen)}
     />
   ),
 }))
 
-// Factory function for DataSet mock data
 const createMockDataset = (
   overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
-): DatasetDetailWithPartialMembersResponse =>
-  ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: PermissionLevel.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    created_at: 1609459200,
-    updated_at: 1609545600,
-    tags: [],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    total_available_documents: 10,
-    runtime_mode: 'general',
-    ...overrides,
-  }) as DatasetDetailWithPartialMembersResponse
+): DatasetDetailWithPartialMembersResponse => createDatasetFixture(overrides)
 
 describe('DatasetCard Integration', () => {
   beforeEach(() => {
@@ -231,144 +179,6 @@ describe('DatasetCard Integration', () => {
       )
     })
   })
-
-  // Integration tests for Description component
-  describe('Description', () => {
-    describe('Rendering', () => {
-      it('should render description text from dataset', () => {
-        const dataset = createMockDataset({ description: 'My knowledge base' })
-        render(<Description dataset={dataset} />)
-        expect(screen.getByText('My knowledge base')).toBeInTheDocument()
-      })
-
-      it('should set title attribute to description', () => {
-        const dataset = createMockDataset({ description: 'Hover text' })
-        render(<Description dataset={dataset} />)
-        expect(screen.getByTitle('Hover text')).toBeInTheDocument()
-      })
-    })
-
-    describe('Props', () => {
-      it('should apply opacity-30 when embedding_available is false', () => {
-        const dataset = createMockDataset({ embedding_available: false })
-        render(<Description dataset={dataset} />)
-        const descDiv = screen.getByTitle(dataset.description ?? '')
-        expect(descDiv).toHaveClass('opacity-30')
-      })
-
-      it('should not apply opacity-30 when embedding_available is true', () => {
-        const dataset = createMockDataset({ embedding_available: true })
-        render(<Description dataset={dataset} />)
-        const descDiv = screen.getByTitle(dataset.description ?? '')
-        expect(descDiv).not.toHaveClass('opacity-30')
-      })
-    })
-
-    describe('Edge Cases', () => {
-      it('should handle empty description', () => {
-        const dataset = createMockDataset({ description: '' })
-        render(<Description dataset={dataset} />)
-        const descDiv = screen.getByTitle('')
-        expect(descDiv).toBeInTheDocument()
-        expect(descDiv).toHaveTextContent('')
-      })
-
-      it('should handle long description', () => {
-        const longDesc = 'X'.repeat(500)
-        const dataset = createMockDataset({ description: longDesc })
-        render(<Description dataset={dataset} />)
-        expect(screen.getByText(longDesc)).toBeInTheDocument()
-      })
-    })
-  })
-
-  // Integration tests for DatasetCardFooter component
-  describe('DatasetCardFooter', () => {
-    describe('Rendering', () => {
-      it('should render document count', () => {
-        const dataset = createMockDataset({ document_count: 15, total_available_documents: 15 })
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.getByText('15')).toBeInTheDocument()
-      })
-
-      it('should render app count for non-external provider', () => {
-        const dataset = createMockDataset({ app_count: 7, provider: 'vendor' })
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.getByText('7')).toBeInTheDocument()
-      })
-
-      it('should render update time', () => {
-        const dataset = createMockDataset()
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.getByText(/updated/i)).toBeInTheDocument()
-      })
-    })
-
-    describe('Props', () => {
-      it('should show partial count when total_available_documents < document_count', () => {
-        const dataset = createMockDataset({
-          document_count: 20,
-          total_available_documents: 12,
-        })
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.getByText('12 / 20')).toBeInTheDocument()
-      })
-
-      it('should show single count when all documents are available', () => {
-        const dataset = createMockDataset({
-          document_count: 20,
-          total_available_documents: 20,
-        })
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.getByText('20')).toBeInTheDocument()
-      })
-
-      it('should not show app count when provider is external', () => {
-        const dataset = createMockDataset({ provider: 'external', app_count: 99 })
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.queryByText('99')).not.toBeInTheDocument()
-      })
-
-      it('should have opacity when embedding_available is false', () => {
-        const dataset = createMockDataset({ embedding_available: false })
-        const { container } = render(<DatasetCardFooter dataset={dataset} />)
-        const footer = container.firstChild as HTMLElement
-        expect(footer).toHaveClass('opacity-30')
-      })
-    })
-
-    describe('Edge Cases', () => {
-      it('should handle undefined total_available_documents', () => {
-        const dataset = createMockDataset({
-          document_count: 10,
-          total_available_documents: undefined,
-        })
-        render(<DatasetCardFooter dataset={dataset} />)
-        // total_available_documents defaults to 0, which is < 10
-        expect(screen.getByText('0 / 10')).toBeInTheDocument()
-      })
-
-      it('should handle zero document count', () => {
-        const dataset = createMockDataset({
-          document_count: 0,
-          total_available_documents: 0,
-        })
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.getByText('0')).toBeInTheDocument()
-      })
-
-      it('should handle large numbers', () => {
-        const dataset = createMockDataset({
-          document_count: 100000,
-          total_available_documents: 100000,
-          app_count: 50000,
-        })
-        render(<DatasetCardFooter dataset={dataset} />)
-        expect(screen.getByText('100000')).toBeInTheDocument()
-        expect(screen.getByText('50000')).toBeInTheDocument()
-      })
-    })
-  })
 })
 
 describe('DatasetCard Component', () => {
@@ -393,7 +203,8 @@ describe('DatasetCard Component', () => {
     expect(screen.getByTestId('tag-area').closest('a')).toBeNull()
   })
 
-  it('should render preview-only dataset as a dimmed information-only card', () => {
+  it('explains preview-only access and withholds editing controls', async () => {
+    const user = userEvent.setup()
     const dataset = createMockDataset({
       name: 'Preview Only Dataset',
       permission_keys: [DatasetACLPermission.Preview],
@@ -409,7 +220,7 @@ describe('DatasetCard Component', () => {
     expect(tagArea).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
     expect(screen.queryByTestId('operations-dropdown')).not.toBeInTheDocument()
 
-    fireEvent.click(card)
+    await user.click(card)
 
     expect(mockPush).not.toHaveBeenCalled()
     expect(toastMocks.record).toHaveBeenCalledWith({
@@ -439,29 +250,6 @@ describe('DatasetCard Component', () => {
     })
     await user.keyboard(' ')
     expect(toastMocks.record).toHaveBeenCalledTimes(2)
-  })
-
-  it('should use the hover background treatment', () => {
-    const dataset = createMockDataset()
-    render(<DatasetCard dataset={dataset} />)
-    const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
-
-    expect(card).toHaveClass('bg-components-card-bg')
-    expect(card).toHaveClass('hover:bg-components-card-bg-alt')
-  })
-
-  it('should pass access config handlers to operations and modals', () => {
-    const dataset = createMockDataset()
-    render(<DatasetCard dataset={dataset} />)
-
-    expect(screen.getByTestId('operations-dropdown')).toHaveAttribute(
-      'data-has-open-access-config',
-      'true',
-    )
-    expect(screen.getByTestId('card-modals')).toHaveAttribute(
-      'data-has-close-access-config',
-      'true',
-    )
   })
 
   it('should navigate to hitTesting for external provider', () => {

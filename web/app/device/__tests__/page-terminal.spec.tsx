@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { DeviceFlowError } from '@/service/device-flow'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
 
@@ -15,40 +16,18 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/device',
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useQuery: vi.fn(),
-  }
-})
-
-vi.mock('@/service/device-flow', () => ({
+vi.mock('@/service/device-flow', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/device-flow')>()),
   deviceLookup: (...args: unknown[]) => mockDeviceLookup(...args),
-  DeviceFlowError: class extends Error {
-    code: string
-    status: number
-    constructor(code: string, status = 400) {
-      super(code)
-      this.code = code
-      this.status = status
-    }
-  },
 }))
 
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({ queryKey: ['profile'], queryFn: async () => null }),
 }))
 
-const mockUseQuery = vi.mocked(useQuery)
-
 const VALID_CODE = 'ABCD-3456'
 
-// Typed reference to the mocked DeviceFlowError — same module reference as classifyLookupError uses
-type MockDeviceFlowErrorCtor = new (code: string, status: number) => Error
-let MockDeviceFlowError: MockDeviceFlowErrorCtor
-
-beforeEach(async () => {
+beforeEach(() => {
   vi.clearAllMocks()
   document.title = ''
   mockSearchParams = {}
@@ -57,69 +36,40 @@ beforeEach(async () => {
   mockReplace.mockImplementation(() => {
     mockSearchParams = {}
   })
-  mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
-  const mod = (await import('@/service/device-flow')) as {
-    DeviceFlowError: MockDeviceFlowErrorCtor
-  }
-  MockDeviceFlowError = mod.DeviceFlowError
 })
 
 async function reachTerminal(rejectWith: unknown) {
   mockDeviceLookup.mockRejectedValue(rejectWith)
   render(<DevicePage />)
-  const input = screen.getByRole('textbox')
-  fireEvent.change(input, { target: { value: VALID_CODE } })
-  fireEvent.click(screen.getByRole('button', { name: /deviceFlow.codeEntry.continue/i }))
+  const user = userEvent.setup()
+  await user.type(screen.getByRole('textbox'), VALID_CODE)
+  await user.click(screen.getByRole('button', { name: /deviceFlow.codeEntry.continue/i }))
 }
 
-describe('error_expired terminal state', () => {
-  it('shows "errorExpired.title" heading', async () => {
-    await reachTerminal(new Error('expired'))
-    await screen.findByText('deviceFlow.errorExpired.title')
-    await waitFor(() => {
-      expect(document.title).toBe('deviceFlow.errorExpired.title - Dify')
-    })
-  })
-
-  it('ghost button resets to code_entry', async () => {
-    await reachTerminal(new Error('expired'))
-    await screen.findByText('deviceFlow.errorExpired.title')
-    fireEvent.click(
-      screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }),
-    )
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('deviceFlow.errorExpired.title')).not.toBeInTheDocument()
-  })
-})
-
-describe('error_rate_limited terminal state', () => {
-  it('shows "errorRateLimited.title" heading', async () => {
-    await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
-    await screen.findByText('deviceFlow.errorRateLimited.title')
-  })
-
-  it('ghost button resets to code_entry', async () => {
-    await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
-    await screen.findByText('deviceFlow.errorRateLimited.title')
-    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.tryAgain/i }))
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('deviceFlow.errorRateLimited.title')).not.toBeInTheDocument()
-  })
-})
-
-describe('error_lookup_failed terminal state', () => {
-  it('shows "errorLookupFailed.title" heading', async () => {
-    await reachTerminal(new MockDeviceFlowError('server_error', 500))
-    await screen.findByText('deviceFlow.errorLookupFailed.title')
-  })
-
-  it('ghost button resets to code_entry', async () => {
-    await reachTerminal(new MockDeviceFlowError('server_error', 500))
-    await screen.findByText('deviceFlow.errorLookupFailed.title')
-    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.tryAgain/i }))
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('deviceFlow.errorLookupFailed.title')).not.toBeInTheDocument()
-  })
+it.each([
+  {
+    error: new Error('expired'),
+    title: 'deviceFlow.errorExpired.title',
+    retry: 'deviceFlow.errorExpired.tryDifferentCode',
+  },
+  {
+    error: new DeviceFlowError('rate_limited', 429),
+    title: 'deviceFlow.errorRateLimited.title',
+    retry: 'deviceFlow.tryAgain',
+  },
+  {
+    error: new DeviceFlowError('server_error', 500),
+    title: 'deviceFlow.errorLookupFailed.title',
+    retry: 'deviceFlow.tryAgain',
+  },
+])('shows $title and lets the user enter another code', async ({ error, title, retry }) => {
+  const user = userEvent.setup()
+  await reachTerminal(error)
+  expect(await screen.findByRole('heading', { name: title })).toBeVisible()
+  await waitFor(() => expect(document.title).toBe(`${title} - Dify`))
+  await user.click(screen.getByRole('button', { name: retry }))
+  expect(screen.getByRole('textbox')).toBeVisible()
+  expect(screen.queryByRole('heading', { name: title })).not.toBeInTheDocument()
 })
 
 describe('error_sso dedicated view', () => {
@@ -134,26 +84,14 @@ describe('error_sso dedicated view', () => {
     expect(await screen.findByText(TITLE)).toBeInTheDocument()
     expect(await screen.findByText(GENERIC)).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(mockReplace).toHaveBeenCalledWith('/device')
   })
 
   it('shows the email special-case copy', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account', user_code: 'ABCD-3456' }
     render(<DevicePage />)
     expect(await screen.findByText(EMAIL_COPY)).toBeInTheDocument()
-  })
-
-  it('never surfaces the raw backend code', async () => {
-    mockSearchParams = { sso_error: 'email_belongs_to_dify_account', user_code: 'ABCD-3456' }
-    render(<DevicePage />)
-    await screen.findByText(EMAIL_COPY)
     expect(screen.queryByText('email_belongs_to_dify_account')).not.toBeInTheDocument()
-  })
-
-  it('scrubs sso_error + user_code from the URL on mount', async () => {
-    mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
-    render(<DevicePage />)
-    await screen.findByText(TITLE)
-    expect(mockReplace).toHaveBeenCalledWith('/device')
   })
 
   it('"Back to login options" re-checks the code and advances to the chooser', async () => {
@@ -161,7 +99,7 @@ describe('error_sso dedicated view', () => {
     mockDeviceLookup.mockResolvedValue({ valid: true })
     render(<DevicePage />)
     await screen.findByText(TITLE)
-    fireEvent.click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
+    await userEvent.setup().click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
     await screen.findByText('deviceFlow.chooser.subtitle')
     expect(mockDeviceLookup).toHaveBeenCalledWith('ABCD-3456')
   })

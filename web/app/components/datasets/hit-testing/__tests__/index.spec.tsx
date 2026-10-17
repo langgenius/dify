@@ -4,7 +4,6 @@ import type {
   HitTestingResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
-import type { RetrievalConfig } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -26,58 +25,6 @@ vi.mock('react-i18next', async () => {
     'datasetHitTesting.hit.title': '{{num}} Retrieved Chunks',
   })
 })
-
-vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: RetrievalConfig
-    onChange: (value: RetrievalConfig) => void
-  }) => (
-    <button type="button" onClick={() => onChange({ ...value, top_k: 8 })}>
-      Use Top K 8
-    </button>
-  ),
-}))
-
-// Note: These components use real implementations for integration testing:
-// - Toast, FloatRightContainer, Drawer, Pagination, Loading
-// - RetrievalMethodConfig, EconomicalRetrievalMethodConfig
-// - ImageUploaderInRetrievalTesting, retrieval-method-info, check-rerank-model
-
-// Mock RetrievalSettings to allow triggering onChange
-vi.mock('@/app/components/datasets/external-knowledge-base/create/RetrievalSettings', () => ({
-  default: ({
-    onChange,
-  }: {
-    onChange: (data: {
-      top_k?: number
-      score_threshold?: number
-      score_threshold_enabled?: boolean
-    }) => void
-  }) => {
-    return (
-      <div data-testid="retrieval-settings-mock">
-        <button data-testid="change-top-k" onClick={() => onChange({ top_k: 8 })}>
-          Change Top K
-        </button>
-        <button
-          data-testid="change-score-threshold"
-          onClick={() => onChange({ score_threshold: 0.9 })}
-        >
-          Change Score Threshold
-        </button>
-        <button
-          data-testid="change-score-enabled"
-          onClick={() => onChange({ score_threshold_enabled: true })}
-        >
-          Change Score Enabled
-        </button>
-      </div>
-    )
-  },
-}))
 
 // Mock Setup
 
@@ -156,6 +103,14 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.byDatasetId.queries.get': getRecords,
+      'datasets.retrievalSetting.get': async () => ({
+        retrieval_method: [
+          RETRIEVE_METHOD.semantic,
+          RETRIEVE_METHOD.fullText,
+          RETRIEVE_METHOD.hybrid,
+        ],
+      }),
+      'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
     }),
     consoleClient: {
       datasets: {
@@ -167,14 +122,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     },
   }
 })
-// Model catalog is a fixed boundary for retrieval settings; queries and mutations under test stay real.
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.models.modelTypes.byModelType.get': () => ({ data: [], isPending: false }),
-  })
-})
-
 // Mock breakpoints hook
 vi.mock('@/hooks/use-breakpoints', () => ({
   default: vi.fn(() => 'pc'),
@@ -195,67 +142,16 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 // Mock use-common to avoid QueryClient issues in nested hooks
 
-// Store ref to ImageUploader onChange for testing
-let _mockImageUploaderOnChange:
-  | ((
-      files: Array<{
-        sourceUrl?: string
-        uploadedId?: string
-        mimeType: string
-        name: string
-        size: number
-        extension: string
-      }>,
-    ) => void)
-  | null = null
-
-// Mock ImageUploaderInRetrievalTesting to capture onChange
+// The uploader owns image transport; keep the query form and submit controls real.
 vi.mock(
   '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
   () => ({
-    default: ({
-      textArea,
-      actionButton,
-      onChange,
-    }: {
-      textArea: React.ReactNode
-      actionButton: React.ReactNode
-      onChange: (
-        files: Array<{
-          sourceUrl?: string
-          uploadedId?: string
-          mimeType: string
-          name: string
-          size: number
-          extension: string
-        }>,
-      ) => void
-    }) => {
-      _mockImageUploaderOnChange = onChange
-      return (
-        <div data-testid="image-uploader-mock">
-          {textArea}
-          {actionButton}
-          <button
-            data-testid="trigger-image-change"
-            onClick={() =>
-              onChange([
-                {
-                  sourceUrl: 'http://example.com/new-image.png',
-                  uploadedId: 'new-uploaded-id',
-                  mimeType: 'image/png',
-                  name: 'new-image.png',
-                  size: 2000,
-                  extension: 'png',
-                },
-              ])
-            }
-          >
-            Add Image
-          </button>
-        </div>
-      )
-    },
+    default: ({ textArea, actionButton }: { textArea: ReactNode; actionButton: ReactNode }) => (
+      <>
+        {textArea}
+        {actionButton}
+      </>
+    ),
   }),
 )
 
@@ -365,22 +261,6 @@ const createMockRecord = (overrides = {}): DatasetQueryDetailResponse => ({
   queries: [{ content: 'Test query', content_type: 'text_query', file_info: null }],
   ...overrides,
 })
-
-const _createMockRetrievalConfig = (overrides = {}): RetrievalConfig =>
-  ({
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_mode: undefined,
-    reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
-    },
-    weights: undefined,
-    top_k: 10,
-    score_threshold_enabled: false,
-    score_threshold: 0.5,
-    ...overrides,
-  }) as RetrievalConfig
 
 // HitTestingPage integration tests
 
@@ -557,7 +437,8 @@ describe('HitTestingPage', () => {
     expect(
       await screen.findByRole('dialog', { name: /form.retrievalSetting.title/ }),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Use Top K 8' }))
+    await user.click(await screen.findByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }))
+    await user.keyboard('{ArrowDown}')
     await user.click(screen.getByRole('button', { name: /operation.save/ }))
     await user.type(screen.getByRole('textbox'), 'Test query')
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
@@ -571,7 +452,7 @@ describe('HitTestingPage', () => {
             attachment_ids: [],
             retrieval_model: expect.objectContaining({
               search_method: RETRIEVE_METHOD.semantic,
-              top_k: 8,
+              top_k: 9,
             }),
           }),
         }),
@@ -603,7 +484,8 @@ describe('HitTestingPage', () => {
 
     renderWithProviders(<HitTestingPage datasetId="dataset-1" />)
     await user.click(screen.getByRole('button', { name: /settingTitle/ }))
-    await user.click(screen.getByRole('button', { name: 'Change Top K' }))
+    await user.click(await screen.findByRole('textbox', { name: 'appDebug.datasetConfig.top_k' }))
+    await user.keyboard('{ArrowUp}')
     await user.click(screen.getByRole('button', { name: /operation.save/ }))
     await user.type(screen.getByRole('textbox'), 'External query')
     await user.click(screen.getByRole('button', { name: /input.testing/ }))
@@ -614,7 +496,7 @@ describe('HitTestingPage', () => {
         body: {
           query: 'External query',
           external_retrieval_model: {
-            top_k: 8,
+            top_k: 5,
             score_threshold: 0.5,
             score_threshold_enabled: false,
           },

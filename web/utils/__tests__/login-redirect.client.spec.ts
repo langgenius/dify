@@ -6,11 +6,10 @@ describe('replaceLoginRedirect', () => {
   const locationReplace = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.stubGlobal('location', {
       ...window.location,
       replace: locationReplace,
-    } as unknown as Location)
+    })
   })
 
   afterEach(() => {

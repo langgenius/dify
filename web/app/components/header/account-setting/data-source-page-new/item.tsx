@@ -108,7 +108,10 @@ const Item = ({
             triggerRef={operatorTriggerRef}
             credentialItem={credentialItem}
             onAction={onAction}
-            onRename={() => setRenaming(true)}
+            onRename={() => {
+              setRenameValue(credentialItem.name)
+              setRenaming(true)
+            }}
             canUseCredential={canUseCredential}
             canManageCredential={canManageCredential}
           />

@@ -7,6 +7,8 @@ import { render } from 'vitest-browser-react'
 import datasetSettings from '@/i18n/locales/en-US/dataset-settings.json'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
+import { consoleQuery } from '@/service/console'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
@@ -20,12 +22,6 @@ vi.mock('react-i18next', async () => {
   return createReactI18nextMock({ ...settings, ...creation })
 })
 vi.mock('@/context/i18n', () => ({ useDocLink: () => (path: string) => path }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['settings-reflow-system-features'],
-    queryFn: async () => ({ deployment_edition: 'CLOUD' }),
-  }),
-}))
 // These independently tested controls do not own the warning or external field layout.
 vi.mock('@/app/components/datasets/settings/chunk-structure', () => ({ default: () => null }))
 vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({ default: () => null }))
@@ -141,14 +137,17 @@ describe('Knowledge settings narrow-screen readability', () => {
   beforeEach(async () => {
     await page.viewport(320, 900)
   })
-  afterEach(async () => {
-    await page.viewport(1280, 720)
-  })
 
   // DOM presence checks miss text painted outside fixed-height warnings and long URL fields.
   // Keep the production sections and assert every rendered text line fits its visible field.
   it('keeps the full upgrade warning inside its panel after selecting High Quality', async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    })
+    queryClient.setQueryData(
+      consoleQuery.systemFeatures.get.queryKey(),
+      createSystemFeaturesFixture({ deployment_edition: 'CLOUD' }),
+    )
     const screen = await render(
       <QueryClientProvider client={queryClient}>
         <div className="@container/settings" style={{ width: 220 }}>

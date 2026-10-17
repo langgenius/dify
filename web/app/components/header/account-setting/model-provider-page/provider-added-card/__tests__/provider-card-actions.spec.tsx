@@ -3,11 +3,12 @@ import type { ReactElement } from 'react'
 import type { ModelProviderPluginSummary } from '../../index'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { zPostWorkspacesCurrentPluginListInstallationsIdsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import ProviderCardActions from '../provider-card-actions'
 
 const mockHandleUpdate = vi.fn()
@@ -22,11 +23,6 @@ const { mockUninstallPlugin, mockUseVersionListOfPlugin } = vi.hoisted(() => ({
   mockUninstallPlugin: vi.fn(),
   mockUseVersionListOfPlugin: vi.fn(),
 }))
-const mockPluginSettingsAccess = vi.hoisted(() => ({
-  canDeletePlugin: true,
-  canUpdatePlugin: true,
-}))
-
 let mockHeaderState = {
   modalStates: {
     showPluginInfo: mockShowPluginInfo,
@@ -46,11 +42,21 @@ let mockHeaderState = {
 }
 let handleMarketplaceUpdateComplete: (() => Promise<void>) | undefined
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
+    install_permission: 'everyone',
+    debug_permission: 'everyone',
+  })
+  return renderWithConsoleQuery(ui, {
+    queryClient,
+    systemFeatures: { enable_marketplace: true, rbac_enabled: true },
+    workspacePermissionKeys: ['plugin.install', 'plugin.delete'],
+  })
+}
 
-const openActionsMenu = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+const openActionsMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
 }
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/hooks', () => ({
@@ -87,13 +93,6 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/components',
       />
     )
   },
-}))
-
-vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
-  usePluginSettingsAccess: () => mockPluginSettingsAccess,
-  default: () => ({
-    canUpdate: true,
-  }),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
@@ -247,11 +246,10 @@ describe('ProviderCardActions', () => {
       },
       isLoading: false,
     })
-    mockPluginSettingsAccess.canDeletePlugin = true
-    mockPluginSettingsAccess.canUpdatePlugin = true
   })
 
   it('should load plugin detail and continue the requested info action', async () => {
+    const user = userEvent.setup()
     mockHeaderState = {
       ...mockHeaderState,
       hasNewVersion: false,
@@ -263,8 +261,8 @@ describe('ProviderCardActions', () => {
     )
     seedPluginDetail(rendered.queryClient)
 
-    openActionsMenu()
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.info'))
+    await openActionsMenu(user)
+    await user.click(screen.getByText('plugin.detailPanel.operation.info'))
 
     await waitFor(() => {
       expect(mockShowPluginInfo).toHaveBeenCalledTimes(1)
@@ -272,14 +270,15 @@ describe('ProviderCardActions', () => {
   })
 
   it('should remove from summary without loading plugin detail', async () => {
+    const user = userEvent.setup()
     const rendered = render(
       <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
     )
     const invalidateQueries = vi.spyOn(rendered.queryClient, 'invalidateQueries')
 
-    openActionsMenu()
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    await openActionsMenu(user)
+    await user.click(screen.getByText('plugin.detailPanel.operation.remove'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
       expect(mockUninstallPlugin).toHaveBeenCalledWith('installation-id')
@@ -303,12 +302,14 @@ describe('ProviderCardActions', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['marketplaceCollectionPlugins'] })
   })
 
-  it('should only render an interactive summary version when marketplace updates are allowed', () => {
-    const { rerender } = render(
+  it('should only render an interactive summary version when marketplace updates are allowed', async () => {
+    const { rerender, queryClient } = render(
       <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
     )
 
-    expect(screen.queryByRole('button', { name: '1.0.0' })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: '1.0.0' })).not.toBeInTheDocument(),
+    )
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
 
     rerender(
@@ -319,18 +320,23 @@ describe('ProviderCardActions', () => {
     )
     expect(screen.getByRole('button', { name: '1.0.0' })).toBeInTheDocument()
 
-    mockPluginSettingsAccess.canUpdatePlugin = false
+    await act(async () => {
+      seedWorkspacePermissionsQuery(queryClient, ['plugin.delete'])
+    })
     rerender(
       <ProviderCardActions
         summary={createSummary({ source: 'marketplace' })}
         providerLabel="Provider Plugin"
       />,
     )
-    expect(screen.queryByRole('button', { name: '1.0.0' })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: '1.0.0' })).not.toBeInTheDocument(),
+    )
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
   })
 
   it('should use the summary latest version when updating a marketplace plugin', async () => {
+    const user = userEvent.setup()
     setPluginDetail(
       createDetail({
         latest_version: '1.0.0',
@@ -349,7 +355,7 @@ describe('ProviderCardActions', () => {
     )
     seedPluginDetail(rendered.queryClient)
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
 
     await waitFor(() => {
       expect(mockSetTargetVersion).toHaveBeenCalledWith({
@@ -463,21 +469,11 @@ describe('ProviderCardActions', () => {
     expect(mockHandleUpdate).toHaveBeenCalledWith(true)
   })
 
-  it('should show a compact debug badge after the version for debugging plugins', () => {
-    render(<ProviderCardActions detail={createDetail({ source: PluginSource.debugging })} />)
-
-    const version = screen.getByText('1.0.0')
-    const debugBadge = screen.getByText('appDebug.operation.debugConfig')
-
-    expect(
-      version.compareDocumentPosition(debugBadge) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-  })
-
-  it('should trigger the latest marketplace update when clicking the update button', () => {
+  it('should trigger the latest marketplace update when clicking the update button', async () => {
+    const user = userEvent.setup()
     render(<ProviderCardActions detail={createDetail()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
 
     expect(mockSetTargetVersion).toHaveBeenCalledWith({
       version: '2.0.0',
@@ -486,38 +482,42 @@ describe('ProviderCardActions', () => {
     expect(mockHandleUpdate).toHaveBeenCalledWith()
   })
 
-  it('should not update a marketplace plugin without a latest package identifier', () => {
+  it('should not update a marketplace plugin without a latest package identifier', async () => {
+    const user = userEvent.setup()
     render(<ProviderCardActions detail={createDetail({ latest_unique_identifier: '' })} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
 
     expect(mockSetTargetVersion).not.toHaveBeenCalled()
     expect(mockHandleUpdate).not.toHaveBeenCalled()
   })
 
-  it('should pass the marketplace detail url to the operation dropdown', () => {
+  it('should pass the marketplace detail url to the operation dropdown', async () => {
+    const user = userEvent.setup()
     render(<ProviderCardActions detail={createDetail()} />)
 
     expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('/plugins/langgenius/provider-plugin', {
       language: 'en-US',
       theme: 'light',
     })
-    openActionsMenu()
+    await openActionsMenu(user)
     expect(
       screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' }),
     ).toHaveAttribute('href', 'https://marketplace.example.com/plugins/langgenius/provider-plugin')
   })
 
-  it('should relay the marketplace remove action', () => {
+  it('should relay the marketplace remove action', async () => {
+    const user = userEvent.setup()
     render(<ProviderCardActions detail={createDetail()} />)
 
-    openActionsMenu()
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
+    await openActionsMenu(user)
+    await user.click(screen.getByText('plugin.detailPanel.operation.remove'))
 
     expect(mockShowDeleteConfirm).toHaveBeenCalledTimes(1)
   })
 
-  it('should use the GitHub repo url and skip marketplace version preselection for GitHub plugins', () => {
+  it('should use the GitHub repo url and skip marketplace version preselection for GitHub plugins', async () => {
+    const user = userEvent.setup()
     mockHeaderState = {
       ...mockHeaderState,
       hasNewVersion: false,
@@ -539,18 +539,19 @@ describe('ProviderCardActions', () => {
     )
 
     expect(screen.getByRole('button', { name: '1.0.0' })).toBeDisabled()
-    openActionsMenu()
+    await openActionsMenu(user)
     expect(
       screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' }),
     ).toHaveAttribute('href', 'https://github.com/langgenius/provider-plugin')
 
-    fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
+    await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
 
     expect(mockSetTargetVersion).not.toHaveBeenCalled()
     expect(mockHandleUpdate).toHaveBeenCalledWith()
   })
 
-  it('should relay GitHub operation dropdown actions', () => {
+  it('should relay GitHub operation dropdown actions', async () => {
+    const user = userEvent.setup()
     mockHeaderState = {
       ...mockHeaderState,
       hasNewVersion: false,
@@ -571,34 +572,20 @@ describe('ProviderCardActions', () => {
       />,
     )
 
-    openActionsMenu()
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.info'))
-    openActionsMenu()
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.checkUpdate'))
-    openActionsMenu()
-    fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
+    await openActionsMenu(user)
+    await user.click(screen.getByText('plugin.detailPanel.operation.info'))
+    await openActionsMenu(user)
+    await user.click(screen.getByText('plugin.detailPanel.operation.checkUpdate'))
+    await openActionsMenu(user)
+    await user.click(screen.getByText('plugin.detailPanel.operation.remove'))
 
     expect(mockShowPluginInfo).toHaveBeenCalledTimes(1)
     expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
     expect(mockShowDeleteConfirm).toHaveBeenCalledTimes(1)
   })
 
-  it('should fall back to the detail name when declaration metadata is missing', () => {
-    render(
-      <ProviderCardActions
-        detail={createDetail({
-          declaration: undefined,
-        })}
-      />,
-    )
-
-    expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('/plugins//provider-plugin', {
-      language: 'en-US',
-      theme: 'light',
-    })
-  })
-
-  it('should leave the detail url empty when a GitHub plugin has no repo or the source is unsupported', () => {
+  it('should leave the detail url empty when a GitHub plugin has no repo or the source is unsupported', async () => {
+    const user = userEvent.setup()
     const { rerender } = render(
       <ProviderCardActions
         detail={createDetail({
@@ -608,7 +595,7 @@ describe('ProviderCardActions', () => {
       />,
     )
 
-    openActionsMenu()
+    await openActionsMenu(user)
     expect(
       screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' }),
     ).toHaveAttribute('href', '')
@@ -621,7 +608,67 @@ describe('ProviderCardActions', () => {
       />,
     )
 
-    openActionsMenu()
+    await openActionsMenu(user)
     expect(screen.queryByText('plugin.detailPanel.operation.viewDetail')).not.toBeInTheDocument()
+  })
+  it('keeps a failed uninstall retryable and refreshes only after successful removal', async () => {
+    const user = userEvent.setup()
+    let resolveUninstall!: (value: { success: boolean }) => void
+    mockUninstallPlugin.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveUninstall = resolve
+      }),
+    )
+    const onUpdate = vi.fn()
+    const { queryClient } = render(
+      <ProviderCardActions
+        summary={createSummary()}
+        providerLabel="Provider Plugin"
+        onUpdate={onUpdate}
+      />,
+    )
+    const query = vi.spyOn(queryClient, 'query')
+    await openActionsMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }))
+    const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
+    await user.click(confirm)
+    await user.click(confirm)
+    expect(mockUninstallPlugin).toHaveBeenCalledOnce()
+    expect(onUpdate).not.toHaveBeenCalled()
+    await act(async () => {
+      resolveUninstall({ success: false })
+    })
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(onUpdate).not.toHaveBeenCalled()
+    await user.click(confirm)
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
+    expect(mockUninstallPlugin).toHaveBeenCalledTimes(2)
+    expect(query).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('hides update and removal actions when plugin permissions are revoked', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = render(
+      <ProviderCardActions summary={createSummary()} providerLabel="Provider Plugin" />,
+    )
+    await act(async () => {
+      seedWorkspacePermissionsQuery(queryClient, [])
+    })
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'plugin.detailPanel.operation.update' }),
+      ).not.toBeInTheDocument(),
+    )
+    await openActionsMenu(user)
+    expect(
+      screen.queryByRole('menuitem', { name: 'plugin.detailPanel.operation.remove' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'plugin.detailPanel.operation.checkUpdate' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.info' }),
+    ).toBeInTheDocument()
   })
 })

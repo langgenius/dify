@@ -1,7 +1,6 @@
 import type { Shape } from '../../store/workflow'
-import type { HumanInputFieldValue } from '@/app/components/base/chat/chat/answer/human-input-content/field-renderer'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import { ReactFlowProvider } from 'reactflow'
@@ -10,7 +9,7 @@ import {
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { submitHumanInputForm } from '@/service/workflow'
 import WorkflowPreview from '../workflow-preview'
@@ -59,27 +58,6 @@ vi.mock('@/app/components/workflow/run/result-panel', () => ({
   ),
 }))
 
-vi.mock('@/app/components/workflow/run/result-text', () => ({
-  default: ({
-    outputs,
-    isPaused,
-    isRunning,
-    onClick,
-  }: {
-    outputs?: string
-    isPaused?: boolean
-    isRunning?: boolean
-    onClick?: () => void
-  }) => (
-    <div>
-      <div data-testid="result-text">{JSON.stringify({ outputs, isPaused, isRunning })}</div>
-      <button type="button" onClick={onClick}>
-        open-detail
-      </button>
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
   default: ({ list }: { list: unknown[] }) => <div data-testid="tracing-panel">{list.length}</div>,
 }))
@@ -97,37 +75,6 @@ vi.mock('@/app/components/workflow/panel/inputs-panel', () => ({
     <button type="button" onClick={onRun}>
       run-inputs
     </button>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/panel/human-input-form-list', () => ({
-  default: ({
-    humanInputFormDataList,
-    onHumanInputFormSubmit,
-  }: {
-    humanInputFormDataList: unknown[]
-    onHumanInputFormSubmit?: (
-      token: string,
-      formData: { inputs: Record<string, HumanInputFieldValue>; action: string },
-    ) => Promise<void>
-  }) => (
-    <div>
-      <div data-testid="human-form-list">{humanInputFormDataList.length}</div>
-      <button
-        type="button"
-        onClick={() =>
-          onHumanInputFormSubmit?.('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
-        }
-      >
-        submit-human-form
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/panel/human-input-filled-form-list', () => ({
-  default: ({ humanInputFilledFormDataList }: { humanInputFilledFormDataList: unknown[] }) => (
-    <div data-testid="filled-form-list">{humanInputFilledFormDataList.length}</div>
   ),
 }))
 
@@ -152,8 +99,14 @@ const createHumanInputFormData = (
   node_id: 'human-node-1',
   node_title: 'Need Approval',
   form_content: 'Before {{#$output.reason#}} after',
-  inputs: [],
-  actions: [],
+  inputs: [
+    {
+      type: InputVarType.paragraph,
+      output_variable_name: 'reason',
+      default: { type: 'constant', value: '', selector: [] },
+    },
+  ],
+  actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
   form_token: 'token-1',
   resolved_default_values: {},
   display_in_ui: true,
@@ -173,12 +126,17 @@ const createHumanInputFilledFormData = (
 })
 
 describe('WorkflowPreview', () => {
+  const originalInnerWidth = Object.getOwnPropertyDescriptor(window, 'innerWidth')
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSubmitHumanInputForm.mockResolvedValue({ result: 'success' })
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       value: 1200,
     })
+  })
+  afterEach(() => {
+    if (originalInnerWidth) Object.defineProperty(window, 'innerWidth', originalInnerWidth)
   })
 
   it('resizes the run panel with the keyboard within the available canvas width', async () => {
@@ -199,7 +157,7 @@ describe('WorkflowPreview', () => {
 
   it('should keep the input tab active, switch to result after running, and close the preview panel', async () => {
     const user = userEvent.setup()
-    renderWorkflowComponent(<WorkflowPreview />, {
+    const { store } = renderWorkflowComponent(<WorkflowPreview />, {
       initialStoreState: {
         showInputsPanel: true,
         showDebugAndPreviewPanel: true,
@@ -210,7 +168,16 @@ describe('WorkflowPreview', () => {
     expect(screen.getByRole('button', { name: 'run-inputs' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'run-inputs' }))
-    expect(screen.getByTestId('result-text')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'run-inputs' })).not.toBeInTheDocument()
+    act(() =>
+      store.setState({
+        workflowRunningData: {
+          ...createWorkflowRunningData(),
+          resultText: 'Streaming answer',
+        } as NonNullable<Shape['workflowRunningData']>,
+      }),
+    )
+    expect(await screen.findByText('Streaming answer')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /operation\.close/ }))
     expect(mockHandleCancelDebugAndPreviewPanel).toHaveBeenCalledTimes(1)
@@ -266,12 +233,11 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    expect(screen.getByTestId('human-form-list')).toHaveTextContent('1')
-    expect(screen.getByTestId('filled-form-list')).toHaveTextContent('1')
-
-    await user.click(screen.getByRole('button', { name: 'submit-human-form' }))
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('form-token', {
-      inputs: { answer: 'ok' },
+    expect(await screen.findByText('rendered')).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: 'reason' }), 'Looks good')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-1', {
+      inputs: { reason: 'Looks good' },
       action: 'approve',
     })
   })
@@ -338,21 +304,23 @@ describe('WorkflowPreview', () => {
     await user.click(screen.getByText('runLog.tracing'))
     expect(screen.getByRole('button', { name: 'run-inputs' })).toBeInTheDocument()
 
-    store.setState({
-      workflowRunningData: {
-        ...createWorkflowRunningData({
-          result: createWorkflowResult({
-            status: WorkflowRunningStatus.Succeeded,
-            files: [],
+    act(() =>
+      store.setState({
+        workflowRunningData: {
+          ...createWorkflowRunningData({
+            result: createWorkflowResult({
+              status: WorkflowRunningStatus.Succeeded,
+              files: [],
+            }),
+            tracing: [createNodeTracing()],
           }),
-          tracing: [createNodeTracing()],
-        }),
-        resultText: 'ready',
-      } as NonNullable<Shape['workflowRunningData']>,
-    })
+          resultText: 'ready',
+        } as NonNullable<Shape['workflowRunningData']>,
+      }),
+    )
 
     await user.click(screen.getByText('runLog.result'))
-    expect(screen.getByTestId('result-text')).toBeInTheDocument()
+    expect(screen.getByText('ready')).toBeInTheDocument()
 
     await user.click(screen.getByText('runLog.detail'))
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
@@ -360,8 +328,13 @@ describe('WorkflowPreview', () => {
     await user.click(screen.getByText('runLog.tracing'))
     expect(screen.getByTestId('tracing-panel')).toHaveTextContent('1')
 
+    act(() =>
+      store.setState({
+        workflowRunningData: { ...store.getState().workflowRunningData!, resultText: '' },
+      }),
+    )
     await user.click(screen.getByText('runLog.result'))
-    await user.click(screen.getByRole('button', { name: 'open-detail' }))
+    await user.click(screen.getByRole('button', { name: 'runLog.resultEmpty.link' }))
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
   })
 
@@ -455,14 +428,14 @@ describe('WorkflowPreview', () => {
   })
 
   it('should resize the preview panel within the allowed workflow canvas bounds', async () => {
-    const { container, store } = renderWorkflowComponent(<WorkflowPreview />, {
+    const { store } = renderWorkflowComponent(<WorkflowPreview />, {
       initialStoreState: {
         previewPanelWidth: 450,
         workflowCanvasWidth: 1000,
       },
     })
 
-    const resizeHandle = container.querySelector('.cursor-col-resize') as HTMLElement
+    const resizeHandle = screen.getByRole('separator', { name: 'workflow.singleRun.testRun' })
 
     fireEvent.mouseDown(resizeHandle)
     fireEvent.mouseMove(window, { clientX: 700 })

@@ -193,17 +193,13 @@ describe('ConfigContent', () => {
     toastErrorSpy.mockRestore()
   })
 
-  // State management
   describe('Effects', () => {
     it('should normalize oneWay retrieval mode to multiWay', async () => {
-      // Arrange
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({ retrieval_model: RETRIEVE_TYPE.oneWay })
 
-      // Act
       render(<ConfigContent datasetConfigs={datasetConfigs} onChange={onChange} />)
 
-      // Assert
       await waitFor(() => {
         expect(onChange).toHaveBeenCalled()
       })
@@ -212,48 +208,8 @@ describe('ConfigContent', () => {
     })
   })
 
-  // Rendering tests (REQUIRED)
-  describe('Rendering', () => {
-    it('should render weighted score panel when datasets are high-quality and consistent', () => {
-      // Arrange
-      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
-      const datasetConfigs = createDatasetConfigs({
-        reranking_mode: RerankingModeEnum.WeightedScore,
-      })
-      const selectedDatasets: DatasetDetailWithPartialMembersResponse[] = [
-        createDataset({
-          indexing_technique: 'high_quality' as IndexingType,
-          provider: 'dify',
-          embedding_model: 'text-embedding',
-          embedding_model_provider: 'openai',
-          retrieval_model_dict: {
-            ...baseRetrievalConfig,
-            search_method: RETRIEVE_METHOD.semantic,
-          },
-        }),
-      ]
-
-      // Act
-      render(
-        <ConfigContent
-          datasetConfigs={datasetConfigs}
-          onChange={onChange}
-          selectedDatasets={selectedDatasets}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('dataset.weightedScore.title'))!.toBeInTheDocument()
-      expect(screen.getByText('modelProvider.modelProvider.rerankModel.key'))!.toBeInTheDocument()
-      expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
-      expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
-    })
-  })
-
-  // User interactions
   describe('User Interactions', () => {
     it('should update weights when user changes weighted score slider', async () => {
-      // Arrange
       const user = userEvent.setup()
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
@@ -283,7 +239,6 @@ describe('ConfigContent', () => {
         }),
       ]
 
-      // Act
       render(
         <ConfigContent
           datasetConfigs={datasetConfigs}
@@ -299,7 +254,6 @@ describe('ConfigContent', () => {
       const callsBefore = onChange.mock.calls.length
       await user.keyboard('{ArrowRight}')
 
-      // Assert
       expect(onChange.mock.calls.length).toBeGreaterThan(callsBefore)
       const [nextConfigs] = onChange.mock.calls.at(-1) ?? []
       expect(nextConfigs?.weights?.vector_setting.vector_weight).toBeCloseTo(0.6, 5)
@@ -307,7 +261,6 @@ describe('ConfigContent', () => {
     })
 
     it('should warn when switching to rerank model mode without a valid model', async () => {
-      // Arrange
       const user = userEvent.setup()
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
@@ -326,7 +279,6 @@ describe('ConfigContent', () => {
         }),
       ]
 
-      // Act
       render(
         <ConfigContent
           datasetConfigs={datasetConfigs}
@@ -336,7 +288,6 @@ describe('ConfigContent', () => {
       )
       await user.click(screen.getByText('modelProvider.modelProvider.rerankModel.key'))
 
-      // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -346,7 +297,6 @@ describe('ConfigContent', () => {
     })
 
     it('should warn when enabling rerank without a valid model in manual toggle mode', async () => {
-      // Arrange
       const user = userEvent.setup()
       const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
@@ -365,7 +315,6 @@ describe('ConfigContent', () => {
         }),
       ]
 
-      // Act
       render(
         <ConfigContent
           datasetConfigs={datasetConfigs}
@@ -375,7 +324,6 @@ describe('ConfigContent', () => {
       )
       await user.click(screen.getByRole('switch'))
 
-      // Assert
       expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({

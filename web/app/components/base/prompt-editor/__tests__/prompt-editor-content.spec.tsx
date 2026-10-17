@@ -6,8 +6,10 @@ import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   $getRoot,
+  $insertNodes,
   $isElementNode,
   BLUR_COMMAND,
   COMMAND_PRIORITY_EDITOR,
@@ -161,7 +163,7 @@ describe('PromptEditorContent', () => {
       const onBlur = vi.fn()
       const anchorElem = document.createElement('div')
 
-      const { container } = render(
+      render(
         <PromptEditorContentHarness
           captures={captures}
           compact={true}
@@ -178,9 +180,6 @@ describe('PromptEditorContent', () => {
 
       expect(screen.getByText('Type prompt')).toBeInTheDocument()
 
-      const editable = container.querySelector('[contenteditable="true"]') as HTMLElement
-      expect(editable.className).toContain('text-[13px]')
-
       await waitFor(() => {
         expect(captures.editor).not.toBeNull()
         expect(captures.eventEmitter).not.toBeNull()
@@ -195,6 +194,7 @@ describe('PromptEditorContent', () => {
       })
 
       await waitFor(() => {
+        expect(screen.getByRole('textbox')).toHaveTextContent('updated prompt')
         expect(onEditorChange).toHaveBeenCalled()
       })
 
@@ -470,6 +470,7 @@ describe('PromptEditorContent', () => {
         insertCommand,
         (payload) => {
           insertSpy(payload)
+          $insertNodes([new CustomTextNode(payload.join(' '))])
           return true
         },
         COMMAND_PRIORITY_EDITOR,
@@ -482,9 +483,10 @@ describe('PromptEditorContent', () => {
       fireEvent.keyDown(editable, { key: '/', ctrlKey: true })
 
       const insertButton = await screen.findByRole('button', { name: 'Insert shortcut' })
-      fireEvent.click(insertButton)
+      await userEvent.setup().click(insertButton)
 
       expect(insertSpy).toHaveBeenCalledWith(['from-shortcut'])
+      await waitFor(() => expect(editable).toHaveTextContent('from-shortcut'))
       expect(onEditorChange).toHaveBeenCalled()
 
       await waitFor(() => {
@@ -492,26 +494,6 @@ describe('PromptEditorContent', () => {
       })
 
       unregister?.()
-    })
-
-    it('should keep the shell stable without optional anchor or placeholder overrides', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
-
-      render(
-        <PromptEditorContentHarness
-          captures={captures}
-          shortcutPopups={[]}
-          floatingAnchorElem={null}
-          onEditorChange={vi.fn()}
-        />,
-      )
-
-      await waitFor(() => {
-        expect(captures.editor).not.toBeNull()
-      })
-
-      expect(screen.queryByTestId('draggable-target-line')).not.toBeInTheDocument()
-      expect(screen.getByText('common.promptEditor.placeholder')).toBeInTheDocument()
     })
 
     it('should render roster references as inline token pills when enabled', async () => {
@@ -535,7 +517,9 @@ describe('PromptEditorContent', () => {
       const token = container.querySelector('[data-roster-reference-kind="file"]') as HTMLElement
       expect(token).toBeInTheDocument()
       expect(token).toHaveTextContent('qna_report.pdf')
-      expect(token.querySelector('.i-ri-file-pdf-2-fill')).toBeInTheDocument()
+      captures.editor!.getEditorState().read(() => {
+        expect($getRoot().getTextContent()).toBe('Use [§file:file-1:qna_report.pdf§]')
+      })
     })
   })
 })

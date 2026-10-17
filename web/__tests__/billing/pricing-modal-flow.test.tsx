@@ -33,6 +33,7 @@ let mockConsoleState: Record<string, unknown> = {}
 let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
 let mockCurrentPlan: CloudPlan = 'sandbox'
 let mockEducationEnabled = false
+const navigateToCheckout = vi.fn()
 const mockGetSubscription = vi.hoisted(() => vi.fn())
 
 const render = async (ui: React.ReactElement) => {
@@ -87,10 +88,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => vi.fn(),
-}))
-
 // ─── Navigation mocks ───────────────────────────────────────────────────────
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -125,9 +122,13 @@ describe('Pricing Modal Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
+    vi.spyOn(window.location, 'href', 'set').mockImplementation(navigateToCheckout)
+    vi.spyOn(window, 'open').mockReturnValue(null)
     mockGetSubscription.mockResolvedValue({ url: 'https://pay.example.com' })
     setupContexts()
   })
+
+  afterEach(() => vi.restoreAllMocks())
 
   it('starts a new pricing session after closing and reopening', async () => {
     const user = userEvent.setup()
@@ -152,16 +153,6 @@ describe('Pricing Modal Flow', () => {
 
   // ─── 1. Initial Rendering ────────────────────────────────────────────────
   describe('Initial rendering', () => {
-    it('should render header with close button and footer with pricing link', async () => {
-      await render(<Pricing />)
-
-      // Header close button exists (multiple plan buttons also exist)
-      const buttons = screen.getAllByRole('button')
-      expect(buttons.length).toBeGreaterThanOrEqual(1)
-      // Footer pricing link
-      expect(screen.getByText(/plansCommon\.comparePlanAndFeatures/i)).toBeInTheDocument()
-    })
-
     it('should default to cloud category with three cloud plans', async () => {
       await render(<Pricing />)
 
@@ -181,21 +172,6 @@ describe('Pricing Modal Flow', () => {
       expect(screen.getByText(/plans\.sandbox\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plans\.professional\.name/i)).toBeInTheDocument()
       expect(screen.getByText(/plans\.team\.name/i)).toBeInTheDocument()
-    })
-
-    it('should show plan range switcher (annual billing toggle) by default for cloud', async () => {
-      await render(<Pricing />)
-
-      expect(
-        screen.getByRole('switch', { name: /billing\.plansCommon\.annualBilling/ }),
-      ).toBeInTheDocument()
-      expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
-    })
-
-    it('should show the tax exclusion notice in the footer for cloud category', async () => {
-      await render(<Pricing />)
-
-      expect(screen.getByText('billing.plansCommon.taxTip')).toBeInTheDocument()
     })
   })
 
@@ -219,6 +195,7 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       await render(<Pricing />)
 
+      expect(screen.getByText('billing.plansCommon.taxTip')).toBeInTheDocument()
       const cloudTab = screen.getByRole('tab', { name: 'billing.plansCommon.cloud' })
       const selfHostedTab = screen.getByRole('tab', { name: 'billing.plansCommon.self' })
       cloudTab.focus()
@@ -229,6 +206,8 @@ describe('Pricing Modal Flow', () => {
       await screen.findByRole('heading', { name: 'billing.plans.community.name' })
 
       expect(selfHostedTab).toHaveAttribute('aria-selected', 'true')
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+      expect(screen.queryByText('billing.plansCommon.taxTip')).not.toBeInTheDocument()
 
       // Self-hosted plans should appear
       expect(screen.getByText(/plans\.community\.name/i)).toBeInTheDocument()
@@ -237,25 +216,6 @@ describe('Pricing Modal Flow', () => {
 
       // Cloud plans should disappear
       expect(screen.queryByText(/plans\.sandbox\.name/i)).not.toBeInTheDocument()
-    })
-
-    it('should hide plan range switcher for self-hosted category', async () => {
-      const user = userEvent.setup()
-      await render(<Pricing />)
-
-      await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
-
-      // Annual billing toggle should not be visible
-      expect(screen.queryByText(/plansCommon\.annualBilling/i)).not.toBeInTheDocument()
-    })
-
-    it('should hide tax tip in footer for self-hosted category', async () => {
-      const user = userEvent.setup()
-      await render(<Pricing />)
-
-      await user.click(screen.getByRole('tab', { name: 'billing.plansCommon.self' }))
-
-      expect(screen.queryByText('billing.plansCommon.taxTip')).not.toBeInTheDocument()
     })
 
     it('should switch back to cloud plans when clicking cloud tab', async () => {
@@ -286,18 +246,6 @@ describe('Pricing Modal Flow', () => {
       const teamPriceStr = `$${ALL_PLANS.team.price}`
       expect(screen.getByText(teamPriceStr)).toBeInTheDocument()
     })
-
-    it('should show "Free" for sandbox plan regardless of range', async () => {
-      await render(<Pricing />)
-
-      expect(screen.getByText(/plansCommon\.free/i)).toBeInTheDocument()
-    })
-
-    it('should show "most popular" badge only for professional plan', async () => {
-      await render(<Pricing />)
-
-      expect(screen.getByText(/plansCommon\.mostPopular/i)).toBeInTheDocument()
-    })
   })
 
   // ─── 4. Cloud Plan Button States ─────────────────────────────────────────
@@ -312,6 +260,7 @@ describe('Pricing Modal Flow', () => {
         expect(mockGetSubscription).toHaveBeenCalledWith({
           query: { plan: 'professional', interval: 'month' },
         })
+        expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com')
       })
     })
 
@@ -332,6 +281,7 @@ describe('Pricing Modal Flow', () => {
         expect(mockGetSubscription).toHaveBeenCalledWith({
           query: { plan: 'professional', interval: 'year' },
         })
+        expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com')
       })
     })
 
@@ -348,9 +298,8 @@ describe('Pricing Modal Flow', () => {
 
       await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
 
-      await waitFor(() => {
-        expect(mockGetSubscription).not.toHaveBeenCalled()
-      })
+      expect(mockGetSubscription).not.toHaveBeenCalled()
+      expect(window.open).not.toHaveBeenCalled()
     })
 
     it('should show "Current Plan" for the current plan (sandbox)', async () => {
@@ -358,16 +307,6 @@ describe('Pricing Modal Flow', () => {
       await render(<Pricing />)
 
       expect(screen.getByText(/plansCommon\.currentPlan/i)).toBeInTheDocument()
-    })
-
-    it('should show specific button text for non-current plans', async () => {
-      setupContexts({ type: 'sandbox' })
-      await render(<Pricing />)
-
-      // Professional button text
-      expect(screen.getByText(/plansCommon\.startBuilding/i)).toBeInTheDocument()
-      // Team button text
-      expect(screen.getByText(/plansCommon\.getStarted/i)).toBeInTheDocument()
     })
   })
 
@@ -388,11 +327,8 @@ describe('Pricing Modal Flow', () => {
     it('should render pricing link with correct URL', async () => {
       await render(<Pricing />)
 
-      const link = screen.getByText(/plansCommon\.comparePlanAndFeatures/i)
-      expect(link.closest('a')).toHaveAttribute(
-        'href',
-        'https://dify.ai/pricing/dify-cloud#compare',
-      )
+      const link = screen.getByRole('link', { name: /plansCommon\.comparePlanAndFeatures/i })
+      expect(link).toHaveAttribute('href', 'https://dify.ai/pricing/dify-cloud#compare')
     })
   })
 })

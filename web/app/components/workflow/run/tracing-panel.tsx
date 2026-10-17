@@ -118,10 +118,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
               }}
             ></div>
           </div>
-          <div
-            id={`${node.id}-children`}
-            className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}
-          >
+          <div id={`${node.id}-children`} hidden={isCollapsed} className="relative pl-2">
             <div
               className={cn(
                 'absolute top-0 bottom-0 left-1.25 w-0.5',

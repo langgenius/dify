@@ -1,22 +1,15 @@
 import type { ApiKeyList as AppApiKeyList } from '@dify/contracts/api/console/apps/types.gen'
 import type { ApiKeyList as DatasetApiKeyList } from '@dify/contracts/api/console/datasets/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiSecretKeyButton } from '@/app/components/app/access-point/built-in-access-points/api-secret-key-button'
 import { EnvironmentApiKeyButton } from '@/app/components/app/access-point/deployed-environment-access-points/environment-api-key-button'
 import { ServiceApi } from '@/app/components/datasets/extra-info/service-api'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
-import { createTestQueryClient } from '@/test/query-client'
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: ['dataset.api_key.manage'],
-  }))
-})
 vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
@@ -76,25 +69,6 @@ vi.mock('@/service/console/browser', () => ({
   },
 }))
 
-const mockCurrentWorkspace = vi.fn().mockReturnValue({
-  id: 'workspace-1',
-  name: 'Test Workspace',
-})
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: mockCurrentWorkspace(),
-    isCurrentWorkspaceManager: true,
-  }))
-})
-
-vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({
-    formatTime: (value: number) => `Formatted: ${value}`,
-  }),
-}))
-
 const appScope = { type: 'app', appId: 'app-123' } as const
 const datasetScope = { type: 'dataset' } as const
 const environmentScope = {
@@ -106,10 +80,13 @@ const environmentScope = {
 async function renderDialog(
   scope: typeof appScope | typeof datasetScope | typeof environmentScope,
 ) {
-  const queryClient = createTestQueryClient()
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({
+    workspacePermissionKeys: ['dataset.api_key.manage'],
+    currentWorkspace: { id: 'workspace-1', name: 'Test Workspace' },
+  })
   const user = userEvent.setup()
   render(
-    <QueryClientProvider client={queryClient}>
+    <Wrapper>
       {scope.type === 'dataset' ? (
         <ServiceApi apiBaseUrl="https://api.example.com" />
       ) : scope.type === 'environment' ? (
@@ -121,7 +98,7 @@ async function renderDialog(
       ) : (
         <ApiSecretKeyButton appId={scope.appId} canManage />
       )}
-    </QueryClientProvider>,
+    </Wrapper>,
   )
   if (scope.type === 'dataset') {
     await user.click(screen.getByRole('button', { name: 'dataset.serviceApi.title' }))
@@ -143,7 +120,7 @@ async function confirmKeyDeletion(accessibleName: string) {
 
 describe('API key management', () => {
   beforeEach(() => {
-    mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
+    vi.clearAllMocks()
     apiMocks.listApp.mockReset()
     apiMocks.listDataset.mockReset()
     apiMocks.listEnvironment.mockReset()

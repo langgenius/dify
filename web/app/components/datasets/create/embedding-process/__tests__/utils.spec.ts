@@ -5,46 +5,54 @@ import type {
 import { describe, expect, it } from 'vite-plus/test'
 import { createDocumentLookup, getFileType, getSourcePercent, isSourceEmbedding } from '../utils'
 
-describe('isSourceEmbedding', () => {
-  const embeddingStatuses = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting']
-  const nonEmbeddingStatuses = ['completed', 'error', 'paused', 'unknown']
+const status = (overrides: Partial<DocumentStatusResponse> = {}): DocumentStatusResponse => ({
+  id: 'doc-1',
+  indexing_status: 'indexing',
+  processing_started_at: null,
+  parsing_completed_at: null,
+  cleaning_completed_at: null,
+  splitting_completed_at: null,
+  completed_at: null,
+  paused_at: null,
+  error: null,
+  stopped_at: null,
+  completed_segments: 0,
+  total_segments: 0,
+  ...overrides,
+})
 
-  it.each(embeddingStatuses)('should return true for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as DocumentStatusResponse)).toBe(true)
+describe('isSourceEmbedding', () => {
+  const embeddingStatuses = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
+  const nonEmbeddingStatuses = ['completed', 'error', 'paused'] as const
+
+  it.each(embeddingStatuses)('should return true for status "%s"', (indexing_status) => {
+    expect(isSourceEmbedding(status({ indexing_status }))).toBe(true)
   })
 
-  it.each(nonEmbeddingStatuses)('should return false for status "%s"', (status) => {
-    expect(isSourceEmbedding({ indexing_status: status } as DocumentStatusResponse)).toBe(false)
+  it.each(nonEmbeddingStatuses)('should return false for status "%s"', (indexing_status) => {
+    expect(isSourceEmbedding(status({ indexing_status }))).toBe(false)
   })
 })
 
 describe('getSourcePercent', () => {
   it('should calculate correct percentage', () => {
-    expect(
-      getSourcePercent({ completed_segments: 50, total_segments: 100 } as DocumentStatusResponse),
-    ).toBe(50)
+    expect(getSourcePercent(status({ completed_segments: 50, total_segments: 100 }))).toBe(50)
   })
 
   it('should return 0 when total is 0', () => {
-    expect(
-      getSourcePercent({ completed_segments: 0, total_segments: 0 } as DocumentStatusResponse),
-    ).toBe(0)
+    expect(getSourcePercent(status({ completed_segments: 0, total_segments: 0 }))).toBe(0)
   })
 
   it('should cap at 100', () => {
-    expect(
-      getSourcePercent({ completed_segments: 150, total_segments: 100 } as DocumentStatusResponse),
-    ).toBe(100)
+    expect(getSourcePercent(status({ completed_segments: 150, total_segments: 100 }))).toBe(100)
   })
 
   it('should round to nearest integer', () => {
-    expect(
-      getSourcePercent({ completed_segments: 1, total_segments: 3 } as DocumentStatusResponse),
-    ).toBe(33)
+    expect(getSourcePercent(status({ completed_segments: 1, total_segments: 3 }))).toBe(33)
   })
 
-  it('should handle undefined segments as 0', () => {
-    expect(getSourcePercent({} as DocumentStatusResponse)).toBe(0)
+  it('treats absent segment totals as zero', () => {
+    expect(getSourcePercent(status({ completed_segments: null, total_segments: null }))).toBe(0)
   })
 })
 
@@ -67,8 +75,9 @@ describe('getFileType', () => {
 })
 
 describe('createDocumentLookup', () => {
-  const documents = [
+  const documents: DocumentResponse[] = [
     {
+      data_source_detail_dict: {},
       id: 'doc-1',
       name: 'test.pdf',
       data_source_type: 'upload_file',
@@ -78,6 +87,7 @@ describe('createDocumentLookup', () => {
       },
     },
     {
+      data_source_detail_dict: {},
       id: 'doc-2',
       name: 'notion-page',
       data_source_type: 'notion_import',
@@ -86,17 +96,7 @@ describe('createDocumentLookup', () => {
         notion_page_icon: 'https://icon.url',
       },
     },
-  ] as unknown as DocumentResponse[]
-
-  it('should get document by id', () => {
-    const lookup = createDocumentLookup(documents)
-    expect(lookup.getDocument('doc-1')).toBe(documents[0])
-  })
-
-  it('should return undefined for non-existent id', () => {
-    const lookup = createDocumentLookup(documents)
-    expect(lookup.getDocument('non-existent')).toBeUndefined()
-  })
+  ]
 
   it('should get name by id', () => {
     const lookup = createDocumentLookup(documents)
@@ -114,12 +114,14 @@ describe('createDocumentLookup', () => {
   })
 
   it('should return undefined notion icon for non-legacy info', () => {
-    const docs = [
+    const docs: DocumentResponse[] = [
       {
         id: 'doc-3',
+        name: 'New source',
+        data_source_detail_dict: {},
         data_source_info: { some_other: 'field' },
       },
-    ] as unknown as DocumentResponse[]
+    ]
     const lookup = createDocumentLookup(docs)
     expect(lookup.getNotionIcon('doc-3')).toBeUndefined()
   })

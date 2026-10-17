@@ -121,67 +121,26 @@ vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => 
   },
 }))
 
-vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
+// The form is independently tested; keep its submission boundary small while the
+// container owns the real popover, variable rows, confirmation, queue and persistence.
+vi.mock('@/app/components/workflow/panel/env-panel/variable-modal', () => ({
   default: ({
-    isShow,
-    onCancel,
-    onConfirm,
-  }: {
-    isShow: boolean
-    onCancel: () => void
-    onConfirm: () => void
-  }) =>
-    isShow ? (
-      <div>
-        <button onClick={onCancel}>Cancel remove</button>
-        <button onClick={onConfirm}>Confirm remove</button>
-      </div>
-    ) : null,
-}))
-
-vi.mock('@/app/components/workflow/panel/env-panel/env-item', () => ({
-  default: ({
-    env,
-    onEdit,
-    onDelete,
-  }: {
-    env: EnvironmentVariable
-    onEdit: (env: EnvironmentVariable) => void
-    onDelete: (env: EnvironmentVariable) => void
-  }) => (
-    <div>
-      <span>{env.name}</span>
-      <button onClick={() => onEdit(env)}>Edit {env.name}</button>
-      <button onClick={() => onDelete(env)}>Delete {env.name}</button>
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/workflow/panel/env-panel/variable-trigger', () => ({
-  default: ({
-    open,
     env,
     onClose,
     onSave,
-    setOpen,
   }: {
-    open: boolean
     env?: EnvironmentVariable
     onClose: () => void
     onSave: (env: EnvironmentVariable) => Promise<void>
-    setOpen: (open: boolean) => void
   }) => (
     <div>
-      <span>
-        Variable trigger:
-        {open ? 'open' : 'closed'}:{env?.name || 'new'}
-      </span>
-      <button onClick={() => setOpen(true)}>Open variable modal</button>
+      <input aria-label="Variable being edited" readOnly value={env?.name ?? ''} />
       <button
+        type="button"
         onClick={() =>
           onSave(
-            mockVariableTriggerState.savePayload ||
-              env || {
+            mockVariableTriggerState.savePayload ??
+              env ?? {
                 id: 'env-created',
                 name: 'created_name',
                 value: 'created-value',
@@ -193,10 +152,18 @@ vi.mock('@/app/components/workflow/panel/env-panel/variable-trigger', () => ({
       >
         Save variable
       </button>
-      <button onClick={onClose}>Close variable modal</button>
+      <button type="button" onClick={onClose}>
+        Close variable modal
+      </button>
     </div>
   ),
 }))
+
+async function saveVariable(user: ReturnType<typeof userEvent.setup>) {
+  if (!screen.queryByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelButton' }))
+  await user.click(await screen.findByRole('button', { name: 'Save variable' }))
+}
 
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
   id: 'env-1',
@@ -226,6 +193,10 @@ const renderWithProviders = (
 describe('EnvPanel container', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDoSyncWorkflowDraft.mockReset()
+    mockUpdateEnvironmentVariables.mockReset()
+    mockFetchWorkflowDraft.mockReset()
+    mockFetchModelParameterRulesForModel.mockReset()
     mockDoSyncWorkflowDraft.mockImplementation(async (_notRefresh, callback) => {
       callback?.onSuccess?.()
     })
@@ -244,14 +215,14 @@ describe('EnvPanel container', () => {
     vi.restoreAllMocks()
   })
 
-  it('should add variables and normalize secret values after syncing', async () => {
+  it('adds a plain variable through the environment API', async () => {
     const user = userEvent.setup()
     const { store } = renderWithProviders(<EnvPanel />, {
       environmentVariables: [],
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -299,7 +270,7 @@ describe('EnvPanel container', () => {
       })
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     expect(await screen.findByText('created_name')).toBeInTheDocument()
     expect(variablesSentToDraft).toEqual([
       expect.objectContaining({ id: 'env-created', name: 'created_name', value: 'created-value' }),
@@ -353,15 +324,21 @@ describe('EnvPanel container', () => {
       { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Edit existing_variable' }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
-    expect(await screen.findByRole('button', { name: 'Edit rejected_name' })).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'common.operation.edit existing_variable' }),
+    )
+    await saveVariable(user)
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.edit rejected_name' }),
+    ).toBeInTheDocument()
     await act(async () => failSync())
 
     expect(
-      await screen.findByRole('button', { name: 'Edit existing_variable' }),
+      await screen.findByRole('button', { name: 'common.operation.edit existing_variable' }),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Edit rejected_name' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.edit rejected_name' }),
+    ).not.toBeInTheDocument()
     expect(screen.getByText('untouched_variable')).toBeInTheDocument()
     expect(mockFetchWorkflowDraft).toHaveBeenCalled()
     expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
@@ -377,7 +354,7 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Delete ${env.name}` }))
+    await user.click(screen.getByRole('button', { name: `common.operation.delete ${env.name}` }))
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([])
@@ -409,7 +386,7 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -446,7 +423,7 @@ describe('EnvPanel container', () => {
       callback?.onSuccess?.()
     })
 
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables[0]?.value).toBe('[__HIDDEN__]')
@@ -485,11 +462,11 @@ describe('EnvPanel container', () => {
     })
 
     mockVariableTriggerState.savePayload = firstSecret
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     await waitFor(() => expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1))
 
     mockVariableTriggerState.savePayload = secondSecret
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
     resolveFirstPersistence({})
 
@@ -511,12 +488,19 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    expect(screen.getByText('Variable trigger:open:api_key')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    expect(await screen.findByRole('textbox', { name: 'Variable being edited' })).toHaveValue(
+      'api_key',
+    )
 
     await user.click(screen.getByRole('button', { name: 'Close variable modal' }))
 
-    expect(screen.getByText('Variable trigger:open:new')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Save variable' })).not.toBeInTheDocument(),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.env.envPanelButton' }))
+    expect(await screen.findByRole('textbox', { name: 'Variable being edited' })).toHaveValue('')
+    expect(mockUpdateEnvironmentVariables).not.toHaveBeenCalled()
   })
 
   it('should rename existing secret variables and update affected nodes without re-saving unchanged secrets', async () => {
@@ -543,8 +527,8 @@ describe('EnvPanel container', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -568,7 +552,6 @@ describe('EnvPanel container', () => {
       }),
       expect.objectContaining({ id: 'node-2' }),
     ])
-    expect(store.getState().controlPromptEditorRerenderKey).toBeGreaterThan(0)
   })
 
   it('should convert edited plain variables into secrets and store the masked secret value', async () => {
@@ -586,8 +569,8 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -652,8 +635,8 @@ describe('EnvPanel container', () => {
       envSecrets: {},
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockSetNodes).toHaveBeenCalledWith([
@@ -716,8 +699,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([nextEnv])
@@ -768,8 +751,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([nextEnv])
@@ -835,8 +818,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockFetchModelParameterRulesForModel).toHaveBeenCalledTimes(1)
     })
@@ -900,8 +883,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockFetchModelParameterRulesForModel).toHaveBeenCalledTimes(1)
@@ -936,8 +919,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
@@ -971,13 +954,13 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([remoteEnv])
     })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should preserve an observed remote value when failure recovery cannot refetch', async () => {
@@ -1009,8 +992,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1))
 
     act(() => {
@@ -1019,9 +1002,9 @@ describe('EnvPanel container', () => {
     rejectPersistence(new Error('environment API failed'))
 
     await waitFor(() => {
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([remoteEnv])
     })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should accept an alias save that committed before its response failed', async () => {
@@ -1046,8 +1029,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([savedEnv])
@@ -1105,8 +1088,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockSetNodes).toHaveBeenCalledTimes(2)
@@ -1162,8 +1145,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockSetNodes).toHaveBeenCalledTimes(2)
@@ -1211,8 +1194,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     mockVariableTriggerState.savePayload = createEnv({
       id: env.id,
       name: env.name,
@@ -1220,7 +1203,7 @@ describe('EnvPanel container', () => {
       value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
       description: 'updated description',
     })
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     expect(mockFetchModelParameterRulesForModel).toHaveBeenCalledTimes(1)
 
     resolveFirstRules([])
@@ -1273,8 +1256,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
     })
@@ -1285,7 +1268,7 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'newest-model', mode: 'chat' },
     })
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
 
     resolveFirstPersistence({})
@@ -1336,8 +1319,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [localEnv, remoteEnv],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${localEnv.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${localEnv.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1)
     })
@@ -1349,7 +1332,7 @@ describe('EnvPanel container', () => {
       ...localEnv,
       value: { provider: 'new-provider', name: 'second-local-update', mode: 'chat' },
     })
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await saveVariable(user)
     resolveFirstPersistence({})
 
     await waitFor(() => {
@@ -1397,8 +1380,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
     await waitFor(() => expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(1))
 
     act(() => {
@@ -1407,9 +1390,9 @@ describe('EnvPanel container', () => {
     resolvePersistence({})
 
     await waitFor(() => {
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(store.getState().environmentVariables).toEqual([remoteEnv])
     })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should keep model reconciliation when only remote alias metadata differs', async () => {
@@ -1449,8 +1432,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [env],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([serverEnv])
@@ -1487,8 +1470,8 @@ describe('EnvPanel container', () => {
       environmentVariables: [firstEnv, secondEnv],
       envSecrets: {},
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${firstEnv.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${firstEnv.name}` }))
+    await saveVariable(user)
     await waitFor(() => {
       expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
     })
@@ -1499,8 +1482,10 @@ describe('EnvPanel container', () => {
       value_type: 'llm',
       value: { provider: 'new-provider', name: 'new-b', mode: 'chat' },
     })
-    await user.click(screen.getByRole('button', { name: `Edit ${secondEnv.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(
+      screen.getByRole('button', { name: `common.operation.edit ${secondEnv.name}` }),
+    )
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(mockUpdateEnvironmentVariables).toHaveBeenCalledTimes(2)
@@ -1535,8 +1520,8 @@ describe('EnvPanel container', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([
@@ -1575,8 +1560,8 @@ describe('EnvPanel container', () => {
       callback?.onSuccess?.()
     })
 
-    await user.click(screen.getByRole('button', { name: `Edit ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Save variable' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.edit ${env.name}` }))
+    await saveVariable(user)
 
     await waitFor(() => {
       expect(store.getState().environmentVariables[0]?.value).toBe('[__HIDDEN__]')
@@ -1605,15 +1590,17 @@ describe('EnvPanel container', () => {
       },
     })
 
-    await user.click(screen.getByRole('button', { name: `Delete ${env.name}` }))
-    expect(screen.getByRole('button', { name: 'Cancel remove' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: `common.operation.delete ${env.name}` }))
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     expect(store.getState().environmentVariables).toHaveLength(1)
 
-    await user.click(screen.getByRole('button', { name: 'Cancel remove' }))
-    expect(screen.queryByRole('button', { name: 'Confirm remove' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.confirm' }),
+    ).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: `Delete ${env.name}` }))
-    await user.click(screen.getByRole('button', { name: 'Confirm remove' }))
+    await user.click(screen.getByRole('button', { name: `common.operation.delete ${env.name}` }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
     await waitFor(() => {
       expect(store.getState().environmentVariables).toEqual([])

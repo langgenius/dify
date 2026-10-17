@@ -51,6 +51,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
       const res = await consoleClient.apps.byAppId.annotationReply.byAction.status.byJobId.get({
         params: { app_id: appId, action: status, job_id: jobId },
       })
+      if (res.job_status === 'error') throw new Error(res.error_msg || 'Annotation job failed')
       isCompleted = res.job_status === JobStatus.completed
       if (isCompleted) break
 
@@ -72,8 +73,7 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
       produce(annotationConfig, (draft: AnnotationReplyConfig) => {
         draft.enabled = true
         draft.embedding_model = embeddingModel
-        if (draft.score_threshold === undefined || draft.score_threshold === null)
-          draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
+        draft.score_threshold = score ?? draft.score_threshold ?? ANNOTATION_DEFAULT.score_threshold
       }),
     )
   }

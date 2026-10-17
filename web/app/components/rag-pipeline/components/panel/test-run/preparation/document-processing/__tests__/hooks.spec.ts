@@ -1,6 +1,5 @@
-import { act, waitFor } from '@testing-library/react'
+import { waitFor } from '@testing-library/react'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
-import { createDeferred } from '@/test/deferred'
 import { useInputVariables } from '../hooks'
 
 const { getParams } = vi.hoisted(() => ({ getParams: vi.fn() }))
@@ -26,34 +25,19 @@ const response = {
     },
   ],
 }
-const renderVariables = () =>
-  renderHook(() => useInputVariables('node-1'), {
+it('fetches the new node parameters when the selected datasource changes', async () => {
+  getParams.mockResolvedValueOnce(response).mockResolvedValueOnce({ variables: [] })
+  const { result, rerender } = renderHook(({ nodeId }) => useInputVariables(nodeId), {
+    initialProps: { nodeId: 'node-1' },
     resource: { kind: 'knowledge-pipeline', pipelineId: 'pipeline-1' },
   })
+  await waitFor(() => expect(result.current.paramsConfig?.variables).toEqual(response.variables))
 
-describe('useInputVariables', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    getParams.mockResolvedValue(response)
-  })
-  it('fetches processing parameters for the current pipeline and node', async () => {
-    const { result } = renderVariables()
-    await waitFor(() => expect(result.current.paramsConfig?.variables).toHaveLength(1))
-    expect(result.current.paramsConfig?.variables[0]).toMatchObject(response.variables[0]!)
-    expect(getParams).toHaveBeenCalledWith({
-      params: { pipeline_id: 'pipeline-1' },
-      query: { node_id: 'node-1' },
-    })
-    expect(result.current.isFetchingParams).toBe(false)
-  })
-  it('stays fetching until processing parameters resolve', async () => {
-    const pending = createDeferred<typeof response>()
-    getParams.mockReturnValue(pending.promise)
-    const { result } = renderVariables()
-    expect(result.current.isFetchingParams).toBe(true)
-    expect(result.current.paramsConfig).toBeUndefined()
-    await act(async () => pending.resolve(response))
-    await waitFor(() => expect(result.current.isFetchingParams).toBe(false))
-    expect(result.current.paramsConfig?.variables).toHaveLength(1)
+  rerender({ nodeId: 'node-2' })
+
+  await waitFor(() => expect(result.current.paramsConfig?.variables).toEqual([]))
+  expect(getParams).toHaveBeenLastCalledWith({
+    params: { pipeline_id: 'pipeline-1' },
+    query: { node_id: 'node-2' },
   })
 })

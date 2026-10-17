@@ -4,24 +4,15 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowOnboardingModal from '../index'
 
 describe('WorkflowOnboardingModal', () => {
-  it('only renders while onboarding is open', () => {
-    const props = { onClose: vi.fn(), onSelectStartNode: vi.fn() }
-    const { rerender } = render(<WorkflowOnboardingModal {...props} isShow={false} />)
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-    rerender(<WorkflowOnboardingModal {...props} isShow />)
-    expect(screen.getByRole('dialog', { name: 'workflow.onboarding.title' })).toBeInTheDocument()
-  })
-
   it('selects a user input start node', async () => {
     const user = userEvent.setup()
     const onSelectStartNode = vi.fn()
-    render(
-      <WorkflowOnboardingModal isShow onClose={vi.fn()} onSelectStartNode={onSelectStartNode} />,
-    )
+    const props = { onClose: vi.fn(), onSelectStartNode }
+    const { rerender } = render(<WorkflowOnboardingModal {...props} isShow={false} />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    rerender(<WorkflowOnboardingModal {...props} isShow />)
 
-    await user.click(screen.getByText('workflow.onboarding.userInputFull'))
+    await user.click(screen.getByRole('button', { name: /workflow.onboarding.userInputFull/ }))
 
     expect(onSelectStartNode).toHaveBeenCalledWith(BlockEnum.Start)
   })

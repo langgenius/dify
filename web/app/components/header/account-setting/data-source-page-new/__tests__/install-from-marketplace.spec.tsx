@@ -1,33 +1,14 @@
 import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { Plugin } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useTheme } from 'next-themes'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useMarketplaceAllPlugins } from '../hooks'
 import InstallFromMarketplace from '../install-from-marketplace'
 
-/**
- * InstallFromMarketplace Component Tests
- * Using Unit approach to focus on the component's internal state and conditional rendering.
- */
-
-// Mock external dependencies
 vi.mock('next-themes', () => ({
   useTheme: vi.fn(),
-}))
-
-vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href} data-testid="mock-link">
-      {children}
-    </a>
-  ),
-}))
-
-vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn(
-    (path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`,
-  ),
 }))
 
 // Mock marketplace components
@@ -63,7 +44,8 @@ vi.mock('@/app/components/plugins/provider-card', () => ({
   ),
 }))
 
-vi.mock('../hooks', () => ({
+vi.mock('../hooks', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../hooks')>()),
   useMarketplaceAllPlugins: vi.fn(),
 }))
 
@@ -96,7 +78,6 @@ describe('InstallFromMarketplace Component', () => {
       plugin_id: 'plugin-1',
       name: 'Plugin 1',
       category: PluginCategoryEnum.datasource,
-      // ...other minimal fields
     } as Plugin,
     {
       type: 'bundle',
@@ -108,6 +89,7 @@ describe('InstallFromMarketplace Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })
     vi.mocked(useTheme).mockReturnValue({
       theme: 'light',
       setTheme: vi.fn(),
@@ -132,91 +114,50 @@ describe('InstallFromMarketplace Component', () => {
     })
 
     it('should render correctly when not loading and not collapsed', () => {
-      // Arrange
       vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
         plugins: mockPlugins,
         isLoading: false,
       })
-
-      // Act
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-
-      // Assert
       expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
       expect(screen.getByText('modelProvider.modelProvider.discoverMore')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-link')).toHaveAttribute(
-        'href',
-        'https://marketplace.url/plugins/datasource?theme=light',
-      )
+      const link = screen.getByRole('link', { name: 'plugin.marketplace.difyMarketplace' })
+      const url = new URL(link.getAttribute('href')!, window.location.href)
+      expect(url.pathname).toBe('/plugins/datasource')
+      expect(url.searchParams.get('theme')).toBe('light')
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-list')).toHaveClass(
-        'grid',
-        'grid-cols-1',
-        'sm:grid-cols-2',
-        'lg:grid-cols-3',
-        'xl:grid-cols-4',
-        'gap-2',
-      )
-      expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-36.5')
+      expect(screen.getByText('Plugin 1')).toBeInTheDocument()
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
-    })
-
-    it('should show loading state when marketplace plugins are loading and component is not collapsed', () => {
-      // Arrange
-      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
-        plugins: [],
-        isLoading: true,
-      })
-
-      // Act
-      render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-
-      // Assert
-      expect(screen.getByRole('progressbar')).toBeInTheDocument()
-      expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
     })
   })
 
   describe('Interactions', () => {
-    it('should toggle collapse state when clicking the header', () => {
-      // Arrange
+    it('should toggle collapse state when clicking the header', async () => {
       vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
         plugins: mockPlugins,
         isLoading: false,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
       const toggleHeader = screen.getByText('modelProvider.modelProvider.installDataSource')
-
-      // Act (Collapse)
-      fireEvent.click(toggleHeader)
-      // Assert
+      await userEvent.setup().click(toggleHeader)
       expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
-
-      // Act (Expand)
-      fireEvent.click(toggleHeader)
-      // Assert
+      await userEvent.setup().click(toggleHeader)
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
     })
 
-    it('should not show loading state even if isLoading is true when component is collapsed', () => {
-      // Arrange
+    it('should not show loading state even if isLoading is true when component is collapsed', async () => {
       vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
         plugins: [],
         isLoading: true,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
       const toggleHeader = screen.getByText('modelProvider.modelProvider.installDataSource')
-
-      // Act (Collapse)
-      fireEvent.click(toggleHeader)
-
-      // Assert
+      await userEvent.setup().click(toggleHeader)
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
 
-    it('should use the marketplace callback action when provided', () => {
-      // Arrange
+    it('should use the marketplace callback action when provided', async () => {
       vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
         plugins: mockPlugins,
         isLoading: false,
@@ -229,11 +170,9 @@ describe('InstallFromMarketplace Component', () => {
           onOpenMarketplace={onOpenMarketplace}
         />,
       )
-
-      // Act
-      fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.difyMarketplace' }))
-
-      // Assert
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'plugin.marketplace.difyMarketplace' }))
       expect(onOpenMarketplace).toHaveBeenCalledTimes(1)
       expect(
         screen.queryByRole('link', { name: 'plugin.marketplace.difyMarketplace' }),

@@ -125,7 +125,7 @@ describe('useInsertSnippet', () => {
     })
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     queryClient = createTestQueryClient()
     mockEdges = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
     mockGetNodes.mockReturnValue([
@@ -425,6 +425,10 @@ describe('useInsertSnippet', () => {
       const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
       const insertedLoop = nextNodes.find((node) => node.data.type === 'loop')!
       const insertedCode = nextNodes.find((node) => node.data.type === 'code')!
+      const loopStart = nextNodes.find((node) => node.data.type === 'loop-start')!
+      expect(insertedLoop.data.start_node_id).toBe(loopStart.id)
+      expect(loopStart.data.loop_id).toBe(insertedLoop.id)
+      expect(loopStart.parentId).toBe(insertedLoop.id)
       const insertedAssigners = nextNodes.filter((node) => node.data.type === 'assigner')
       const insertedV2Assigner = insertedAssigners.find((node) => node.data.items)!
       const insertedV1Assigner = insertedAssigners.find(
@@ -568,49 +572,6 @@ describe('useInsertSnippet', () => {
         { variable: 'external', value_selector: ['env', 'api_key'] },
       ])
       expect(sourceGraph).toEqual(originalGraph)
-    })
-
-    it('should remap structural node ids inside a loop snippet', async () => {
-      seedPublishedWorkflow(queryClient, {
-        graph: {
-          nodes: [
-            {
-              id: 'snippet-loop',
-              position: { x: 10, y: 20 },
-              data: {
-                type: 'loop',
-                selected: false,
-                _children: [{ nodeId: 'snippet-loop-start', nodeType: 'loop-start' }],
-                start_node_id: 'snippet-loop-start',
-              },
-            },
-            {
-              id: 'snippet-loop-start',
-              parentId: 'snippet-loop',
-              position: { x: 30, y: 40 },
-              data: {
-                type: 'loop-start',
-                selected: false,
-                loop_id: 'snippet-loop',
-              },
-            },
-          ],
-          edges: [],
-        },
-      })
-
-      const { result } = renderUseInsertSnippet()
-
-      await act(async () => {
-        await result.current.handleInsertSnippet('snippet-1')
-      })
-
-      const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
-      const insertedLoopNode = nextNodes.find((node) => node.data.type === 'loop')!
-      const insertedLoopStartNode = nextNodes.find((node) => node.data.type === 'loop-start')!
-
-      expect(insertedLoopNode.data.start_node_id).toBe(insertedLoopStartNode.id)
-      expect(insertedLoopStartNode.data.loop_id).toBe(insertedLoopNode.id)
     })
 
     it.each([
@@ -858,6 +819,10 @@ describe('useInsertSnippet', () => {
       })
 
       expect(mockToastError).toHaveBeenCalledWith('insert failed')
+      expect(mockSetNodes).not.toHaveBeenCalled()
+      expect(mockSetEdges).not.toHaveBeenCalled()
+      expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
       expect(mockIncrementSnippetUseCount).not.toHaveBeenCalled()
     })
   })

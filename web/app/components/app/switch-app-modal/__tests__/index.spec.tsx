@@ -22,22 +22,15 @@ vi.mock('@/next/navigation', () => ({
 const mockConvertToWorkflow = vi.hoisted(() => vi.fn())
 const mockDeleteOriginalApp = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useMutation: (options: Parameters<typeof actual.useMutation>[0]) => {
-      const key = JSON.stringify(options.mutationKey)
-      return actual.useMutation({
-        ...options,
-        ...(key.includes('convertToWorkflow')
-          ? { mutationFn: (input: unknown) => mockConvertToWorkflow(input) }
-          : key.includes('delete')
-            ? { mutationFn: (input: unknown) => mockDeleteOriginalApp(input) }
-            : {}),
-      })
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.convertToWorkflow.post': (input) => mockConvertToWorkflow(input),
+      'apps.byAppId.delete': (input) => mockDeleteOriginalApp(input),
+    }),
   }
 })
 
@@ -168,23 +161,9 @@ describe('SwitchAppModal', () => {
 
   // Rendering behavior for modal visibility and default values.
   describe('Rendering', () => {
-    it('should render modal content when show is true', () => {
-      // Arrange
-      renderComponent()
-
-      // Assert
-      expect(screen.getByText('app.switch')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('Demo App(copy)')).toBeInTheDocument()
-      expect(
-        document.querySelector('.i-custom-vender-solid-alertsAndFeedback-alert-triangle'),
-      ).toBeInTheDocument()
-    })
-
     it('should not render modal content when show is false', () => {
-      // Arrange
       renderComponent({ open: false })
 
-      // Assert
       expect(screen.queryByText('app.switch')).not.toBeInTheDocument()
     })
   })
@@ -210,7 +189,6 @@ describe('SwitchAppModal', () => {
     })
 
     it('should render the apps full warning when plan limits are reached', () => {
-      // Arrange
       deploymentEdition = 'CLOUD'
       mockPlan = {
         ...mockPlan,
@@ -219,7 +197,6 @@ describe('SwitchAppModal', () => {
       }
       renderComponent()
 
-      // Assert
       expect(screen.getByTestId('apps-full')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'app.switchStart' })).toBeDisabled()
     })
@@ -229,13 +206,11 @@ describe('SwitchAppModal', () => {
   describe('Interactions', () => {
     it('should call onOpenChange when cancel is clicked', async () => {
       const user = userEvent.setup()
-      // Arrange
+
       const { onOpenChange } = renderComponent()
 
-      // Act
       await user.click(screen.getByRole('button', { name: 'app.newApp.Cancel' }))
 
-      // Assert
       expect(onOpenChange).toHaveBeenCalledTimes(1)
     })
 
@@ -250,17 +225,15 @@ describe('SwitchAppModal', () => {
 
     it('should switch app and navigate with push when keeping original', async () => {
       const user = userEvent.setup()
-      // Arrange
+
       const { appDetail, onOpenChange } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-001',
         permission_keys: ['app.acl.view_layout'],
       })
 
-      // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
-      // Assert
       await waitFor(() => {
         expect(mockConvertToWorkflow).toHaveBeenCalledWith({
           params: { app_id: appDetail.id },
@@ -335,31 +308,22 @@ describe('SwitchAppModal', () => {
       expect(screen.getByRole('checkbox')).not.toBeChecked()
     })
 
-    it('should toggle remove-original from the checkbox control itself', async () => {
-      const user = userEvent.setup()
-      renderComponent()
-
-      await user.click(screen.getByRole('checkbox'))
-
-      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).toBeInTheDocument()
-    })
-
     it('should delete the original app and use replace when remove original is confirmed', async () => {
       const user = userEvent.setup()
-      // Arrange
+
       const { appDetail } = renderComponent()
       mockConvertToWorkflow.mockResolvedValueOnce({
         new_app_id: 'new-app-002',
         permission_keys: ['app.acl.view_layout'],
       })
 
-      // Act
       await user.click(screen.getByText('app.removeOriginal'))
       const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
+      expect(mockDeleteOriginalApp).not.toHaveBeenCalled()
       await user.click(confirmButton)
+      expect(mockDeleteOriginalApp).not.toHaveBeenCalled()
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
-      // Assert
       await waitFor(() => {
         expect(mockDeleteOriginalApp).toHaveBeenCalledWith({
           params: { app_id: appDetail.id },
@@ -403,14 +367,12 @@ describe('SwitchAppModal', () => {
 
     it('should notify error when switch app fails', async () => {
       const user = userEvent.setup()
-      // Arrange
+
       const { notify, onOpenChange } = renderComponent()
       mockConvertToWorkflow.mockRejectedValueOnce(new Error('fail'))
 
-      // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
 
-      // Assert
       await waitFor(() => {
         expect(notify).toHaveBeenCalledWith({
           type: 'error',

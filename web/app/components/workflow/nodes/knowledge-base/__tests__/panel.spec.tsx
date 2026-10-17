@@ -1,57 +1,36 @@
-import type { ReactNode } from 'react'
 import type { PanelProps } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 
-const mockModelListQuery = vi.hoisted(() => vi.fn())
-const mockUseQuery = vi.hoisted(() => vi.fn())
 const mockUseEmbeddingModelStatus = vi.hoisted(() => vi.fn())
 const mockChunkStructure = vi.hoisted(() => vi.fn(() => <div data-testid="chunk-structure" />))
 const mockEmbeddingModel = vi.hoisted(() => vi.fn(() => <div data-testid="embedding-model" />))
 const mockSummaryIndexSetting = vi.hoisted(() =>
   vi.fn(() => <div data-testid="summary-index-setting" />),
 )
-const mockQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  return {
-    consoleQuery: {
-      systemFeatures: {
-        get: {
-          queryKey: () => ['console', 'systemFeatures', 'get'],
-          queryOptions: (options?: Record<string, unknown>) => ({
-            queryKey: ['console', 'systemFeatures', 'get'],
-            ...options,
-          }),
-        },
-      },
-      workspaces: {
-        current: {
-          models: actual.consoleQuery.workspaces.current.models,
-          modelProviders: {
-            byProvider: {
-              models: {
-                get: {
-                  queryOptions: mockQueryOptions,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  }
-})
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useNodesReadOnly: () => ({ nodesReadOnly: false }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.models.modelTypes.byModelType.get': async ({
+        params,
+      }: {
+        params: { model_type: string }
+      }) => ({
+        data:
+          params.model_type === ModelTypeEnum.textEmbedding
+            ? [{ provider: 'openai', models: [{ model: 'text-embedding-3-large' }] }]
+            : [],
+      }),
+      'workspaces.current.modelProviders.byProvider.models.get': async () => ({ data: [] }),
+    }),
   }
 })
 
@@ -76,27 +55,6 @@ vi.mock('../hooks/use-config', () => ({
 
 vi.mock('../hooks/use-embedding-model-status', () => ({
   useEmbeddingModelStatus: mockUseEmbeddingModelStatus,
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
-  Group: ({ children }: { children: ReactNode }) => <div data-testid="group">{children}</div>,
-  BoxGroup: ({ children }: { children: ReactNode }) => (
-    <div data-testid="box-group">{children}</div>
-  ),
-  BoxGroupField: ({
-    children,
-    fieldProps,
-  }: {
-    children: ReactNode
-    fieldProps: { fieldTitleProps: { warningDot?: boolean } }
-  }) => (
-    <div
-      data-testid="box-group-field"
-      data-warning-dot={String(!!fieldProps.fieldTitleProps.warningDot)}
-    >
-      {children}
-    </div>
-  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
@@ -124,6 +82,9 @@ vi.mock('../components/retrieval-setting', () => ({
 }))
 
 const createData = (overrides: Record<string, unknown> = {}) => ({
+  title: 'Knowledge Base',
+  desc: '',
+  type: BlockEnum.KnowledgeBase,
   index_chunk_variable_selector: ['chunks', 'results'],
   chunk_structure: ChunkStructureEnum.general,
   indexing_technique: IndexMethodEnum.QUALIFIED,
@@ -152,24 +113,6 @@ const panelProps: PanelProps = {
 describe('KnowledgeBasePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseQuery.mockReturnValue({ data: undefined })
-    mockModelListQuery.mockImplementation(
-      ({ input }: { input: { params: { model_type: string } } }) => {
-        const type = input.params.model_type
-        const modelType = type
-        if (modelType === ModelTypeEnum.textEmbedding) {
-          return {
-            data: [
-              {
-                provider: 'openai',
-                models: [{ model: 'text-embedding-3-large' }],
-              },
-            ],
-          }
-        }
-        return { data: [] }
-      },
-    )
     mockUseEmbeddingModelStatus.mockReturnValue({ status: 'active' })
   })
 
@@ -188,12 +131,7 @@ describe('KnowledgeBasePanel', () => {
       }),
       undefined,
     )
-    expect(screen.queryByTestId('box-group-field')).not.toBeInTheDocument()
-    expect(mockQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: true,
-      }),
-    )
+    expect(screen.queryByText('workflow.nodes.knowledgeBase.chunksInput')).not.toBeInTheDocument()
   })
 
   it('should pass warning dots and render summary settings when the qualified configuration needs attention', () => {
@@ -207,18 +145,12 @@ describe('KnowledgeBasePanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('box-group-field')).toHaveAttribute('data-warning-dot', 'true')
+    expect(screen.getByText('workflow.nodes.knowledgeBase.chunksInput')).toBeInTheDocument()
     expect(mockEmbeddingModel).toHaveBeenCalledWith(
       expect.objectContaining({
         warningDot: true,
       }),
       undefined,
-    )
-    expect(mockQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: { params: { provider: 'openai' } },
-        enabled: true,
-      }),
     )
     expect(screen.getByTestId('summary-index-setting')).toBeInTheDocument()
   })
@@ -234,24 +166,5 @@ describe('KnowledgeBasePanel', () => {
 
     expect(screen.queryByTestId('embedding-model')).not.toBeInTheDocument()
     expect(screen.queryByTestId('summary-index-setting')).not.toBeInTheDocument()
-    expect(mockQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        enabled: false,
-      }),
-    )
   })
-})
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: ({ select }: { select: (value: unknown) => unknown }) => ({
-      data: select({ deployment_edition: 'COMMUNITY' }),
-    }),
-    useQuery: (options: { queryKey?: readonly [readonly string[], unknown] }) =>
-      options.queryKey?.[0].includes('modelTypes')
-        ? mockModelListQuery(options)
-        : mockUseQuery(options),
-  }
 })

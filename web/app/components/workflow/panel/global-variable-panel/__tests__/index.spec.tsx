@@ -2,7 +2,6 @@ import { screen } from '@testing-library/react'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
 import Panel from '../index'
 
-let chatflowMode = true
 let mockIsWorkflowPage = false
 const mockSetShowGlobalVariablePanel = vi.fn()
 
@@ -19,21 +18,16 @@ vi.mock('../../../constants', () => ({
   isInWorkflowPage: () => mockIsWorkflowPage,
 }))
 
-vi.mock('../../../hooks/use-workflow', () => ({}))
-
 describe('global-variable-panel path', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    chatflowMode = true
     mockIsWorkflowPage = false
   })
 
   it('should render workflow trigger variables for non-chat workflow pages', () => {
-    chatflowMode = false
     mockIsWorkflowPage = true
 
     render(<Panel />, {
-      resource: { kind: 'app', appId: 'app-1', mode: chatflowMode ? 'advanced-chat' : 'workflow' },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
 
     expect(screen.queryByText('sys.conversation_id')).not.toBeInTheDocument()

@@ -44,45 +44,23 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: {
-      ...actual.consoleClient,
-      tagBindings: {
-        post: ({ body }: Parameters<typeof actual.consoleClient.tagBindings.post>[0]) =>
-          bindTag(body.tag_ids, body.target_id, body.type),
-        remove: {
-          post: ({ body }: Parameters<typeof actual.consoleClient.tagBindings.remove.post>[0]) =>
-            unBindTag(body.tag_ids, body.target_id, body.type),
-        },
-      },
-    },
-    consoleQuery: {
-      ...actual.consoleQuery,
-      apps: actual.consoleQuery.apps,
-      tags: {
-        ...actual.consoleQuery.tags,
-        get: {
-          queryKey: actual.consoleQuery.tags.get.queryKey,
-          key: actual.consoleQuery.tags.get.key,
-          queryOptions: (
-            ...args: Parameters<typeof actual.consoleQuery.tags.get.queryOptions>
-          ) => ({
-            ...actual.consoleQuery.tags.get.queryOptions(...args),
-            queryFn: async () => mockUseQueryData.current,
-          }),
-        },
-        post: {
-          mutationOptions: () => ({
-            mutationFn: ({
-              body,
-            }: {
-              body: { name: string; type: 'app' | 'knowledge' | 'snippet' }
-            }) => createTag(body.name, body.type),
-          }),
-        },
-      },
-    },
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'tagBindings.post': ({ body }: Parameters<typeof actual.consoleClient.tagBindings.post>[0]) =>
+        bindTag(body.tag_ids, body.target_id, body.type),
+      'tagBindings.remove.post': ({
+        body,
+      }: Parameters<typeof actual.consoleClient.tagBindings.remove.post>[0]) =>
+        unBindTag(body.tag_ids, body.target_id, body.type),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'tags.get': async () => mockUseQueryData.current,
+      'tags.post': ({ body }: { body: { name: string; type: 'app' | 'knowledge' | 'snippet' } }) =>
+        createTag(body.name, body.type),
+    }),
   }
 })
 
@@ -118,19 +96,14 @@ describe('TagSelector', () => {
       'snippets.create_and_modify',
     ]
     mockUseQueryData.current = appTags
-    vi.mocked(createTag).mockResolvedValue({
+    createTag.mockImplementation(async (name: string, type: Tag['type']) => ({
       id: 'new-tag',
-      name: 'NewTag',
-      type: 'app',
+      name,
+      type,
       binding_count: '',
-    })
+    }))
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
-  })
-
-  it('renders selected tag names in the combobox trigger', () => {
-    render(<TagSelector {...defaultProps} />)
-    expect(screen.getByText('Frontend')).toBeInTheDocument()
   })
 
   it('adds the owning app name to the combobox accessible name', () => {
@@ -213,19 +186,6 @@ describe('TagSelector', () => {
     expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
   })
 
-  it('opens a searchable combobox popup', async () => {
-    const user = userEvent.setup()
-    render(<TagSelector {...defaultProps} />)
-
-    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
-
-    expect(
-      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
-    ).toBeInTheDocument()
-    expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
-  })
-
   it('matches existing tags without offering a case-only duplicate', async () => {
     const user = userEvent.setup()
     render(<TagSelector {...defaultProps} />)
@@ -242,7 +202,8 @@ describe('TagSelector', () => {
 
   it('applies added tags on close and refreshes their names from the query', async () => {
     const user = userEvent.setup()
-    render(<TagSelector {...defaultProps} />)
+    const onTagsChange = vi.fn()
+    render(<TagSelector {...defaultProps} onTagsChange={onTagsChange} />)
 
     const trigger = screen.getByRole('combobox', { name: /Frontend/i })
     await user.click(trigger)
@@ -260,6 +221,7 @@ describe('TagSelector', () => {
     expect(mockToast.success).toHaveBeenCalledWith(i18n.modifiedSuccessfully, {
       id: 'tag-bindings-app-target-1',
     })
+    expect(onTagsChange).toHaveBeenCalledTimes(1)
   })
 
   it('selects the highlighted tag with keyboard navigation and applies it on close', async () => {
@@ -309,25 +271,11 @@ describe('TagSelector', () => {
     expect(onTagsChange).not.toHaveBeenCalled()
   })
 
-  it('notifies after apply settles with success or error', async () => {
-    const user = userEvent.setup()
-    const onTagsChange = vi.fn()
-    render(<TagSelector {...defaultProps} onTagsChange={onTagsChange} />)
-
-    const trigger = screen.getByRole('combobox', { name: /Frontend/i })
-    await user.click(trigger)
-    await user.click(await screen.findByRole('option', { name: /Backend/i }))
-    await user.click(trigger)
-
-    await waitFor(() => {
-      expect(onTagsChange).toHaveBeenCalledTimes(1)
-    })
-  })
-
   it('shows an error toast when applying bindings fails', async () => {
     const user = userEvent.setup()
     vi.mocked(unBindTag).mockRejectedValueOnce(new Error('Unbind failed'))
-    render(<TagSelector {...defaultProps} />)
+    const onTagsChange = vi.fn()
+    render(<TagSelector {...defaultProps} onTagsChange={onTagsChange} />)
 
     const trigger = screen.getByRole('combobox', { name: /Frontend/i })
     await user.click(trigger)
@@ -339,6 +287,7 @@ describe('TagSelector', () => {
         id: 'tag-bindings-app-target-1',
       })
     })
+    expect(onTagsChange).toHaveBeenCalledTimes(1)
   })
 
   it('creates a tag with the current tag type without binding it implicitly', async () => {

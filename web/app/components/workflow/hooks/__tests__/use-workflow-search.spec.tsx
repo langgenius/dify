@@ -1,23 +1,15 @@
-import type { CommonNodeType, Node } from '../../types'
+import type { Node } from '../../types'
 import { act } from '@testing-library/react'
+import { useReactFlow } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowFlowHook as renderHook } from '../../__tests__/workflow-test-env'
 import { findWorkflowNodes } from '../../goto-anything-search'
 import { BlockEnum } from '../../types'
+import { selectWorkflowNode } from '../../utils/node-navigation'
 import { useWorkflowSearch } from '../use-workflow-search'
 
-const mockHandleNodeSelect = vi.hoisted(() => vi.fn())
-const runtimeNodes = vi.hoisted(() => [] as Node[])
-
-vi.mock('reactflow', () => ({
-  useNodes: () => runtimeNodes,
-}))
-
-vi.mock('../use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({
-    handleNodeSelect: mockHandleNodeSelect,
-  }),
-}))
+let runtimeNodes: Node[] = []
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -26,6 +18,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.defaultModel.get': async () => ({ data: null }),
       'workspaces.current.tools.builtin.get': async () => [
         createToolProviderFixture({ id: 'provider-1', icon: 'tool-icon' }),
       ],
@@ -36,22 +29,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const createNode = (overrides: Partial<Node> = {}): Node => ({
-  id: 'node-1',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  data: {
-    type: BlockEnum.LLM,
-    title: 'Writer',
-    desc: 'Draft content',
-  } as CommonNodeType,
-  ...overrides,
-})
-
 describe('useWorkflowSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    runtimeNodes.length = 0
+    runtimeNodes = []
   })
 
   it('registers workflow node search results with llm metadata scoring', async () => {
@@ -67,7 +48,7 @@ describe('useWorkflowSearch', () => {
             name: 'gpt-4o',
             mode: 'chat',
           },
-        } as CommonNodeType,
+        },
       }),
       createNode({
         id: 'tool-1',
@@ -77,7 +58,7 @@ describe('useWorkflowSearch', () => {
           desc: 'Search the web',
           provider_type: CollectionType.builtIn,
           provider_id: 'provider-1',
-        } as CommonNodeType,
+        },
       }),
       createNode({
         id: 'internal-start',
@@ -85,11 +66,11 @@ describe('useWorkflowSearch', () => {
           type: BlockEnum.IterationStart,
           title: 'Internal Start',
           desc: '',
-        } as CommonNodeType,
+        },
       }),
     )
 
-    const { unmount } = renderHook(() => useWorkflowSearch())
+    const { unmount } = renderHook(() => useWorkflowSearch(), { nodes: runtimeNodes })
 
     const llmResults = findWorkflowNodes('gpt')
     expect(llmResults.map((item) => item.id)).toEqual(['llm-1'])
@@ -99,6 +80,7 @@ describe('useWorkflowSearch', () => {
     expect(toolResults.map((item) => item.id)).toEqual(['tool-1'])
     // description now includes nodeId suffix: "desc · nodeId"
     expect(toolResults[0]?.description).toBe('Search the web · tool-1')
+    expect(findWorkflowNodes('internal')).toEqual([])
 
     unmount()
 
@@ -113,7 +95,7 @@ describe('useWorkflowSearch', () => {
           type: BlockEnum.LLM,
           title: 'Writer',
           desc: 'Draft content',
-        } as CommonNodeType,
+        },
       }),
       createNode({
         id: 'other-node',
@@ -121,11 +103,11 @@ describe('useWorkflowSearch', () => {
           type: BlockEnum.LLM,
           title: '1721234567890', // title also matches the searchTerm
           desc: '',
-        } as CommonNodeType,
+        },
       }),
     )
 
-    const { unmount } = renderHook(() => useWorkflowSearch())
+    const { unmount } = renderHook(() => useWorkflowSearch(), { nodes: runtimeNodes })
 
     // Exact nodeId match (120pts) should rank higher than title exact match (100pts)
     const results = findWorkflowNodes('1721234567890')
@@ -142,11 +124,11 @@ describe('useWorkflowSearch', () => {
           type: BlockEnum.LLM,
           title: 'Writer',
           desc: 'Draft content',
-        } as CommonNodeType,
+        },
       }),
     )
 
-    const { unmount } = renderHook(() => useWorkflowSearch())
+    const { unmount } = renderHook(() => useWorkflowSearch(), { nodes: runtimeNodes })
 
     // Prefix match
     const prefixResults = findWorkflowNodes('172123')
@@ -159,22 +141,18 @@ describe('useWorkflowSearch', () => {
     unmount()
   })
 
-  it('binds the node selection listener to handleNodeSelect', () => {
-    const { unmount } = renderHook(() => useWorkflowSearch())
-
-    act(() => {
-      document.dispatchEvent(
-        new CustomEvent('workflow:select-node', {
-          detail: {
-            nodeId: 'node-42',
-            focus: false,
-          },
-        }),
-      )
-    })
-
-    expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-42')
-
+  it('selects the requested graph node and stops listening after unmount', () => {
+    const { result, unmount } = renderHook(
+      () => {
+        useWorkflowSearch()
+        return useReactFlow()
+      },
+      { nodes: [createNode({ id: 'node-42' }), createNode({ id: 'other' })] },
+    )
+    act(() => selectWorkflowNode('node-42'))
+    expect(result.current.getNode('node-42')?.data.selected).toBe(true)
     unmount()
+    act(() => selectWorkflowNode('other'))
+    expect(result.current.getNode('other')?.data.selected).not.toBe(true)
   })
 })

@@ -6,6 +6,8 @@ import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { useNodes } from 'reactflow'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { fullWorkflowAccessControl } from '../hooks-store'
 import { SelectionContextmenu } from '../selection-contextmenu'
 import { useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
@@ -15,7 +17,6 @@ import { renderWorkflowFlowComponent } from './workflow-test-env'
 
 let latestNodes: Node[] = []
 let latestHistoryEvent: string | undefined
-const mockGetNodesReadOnly = vi.fn()
 const mockHandleNodesCopy = vi.fn()
 const mockHandleNodesDuplicate = vi.fn()
 const mockHandleNodesDelete = vi.fn()
@@ -24,13 +25,6 @@ const mockCreateSnippetDialogRender = vi.fn()
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['snippets.create_and_modify'] as string[],
 }))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
 
 vi.mock('@/app/components/snippets/hooks/use-create-snippet', async () => {
   const React = await vi.importActual<typeof import('react')>('react')
@@ -67,16 +61,6 @@ vi.mock('@/app/components/snippets/create-snippet-dialog', () => ({
   },
 }))
 
-vi.mock('../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../hooks/use-workflow')>()
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({
-      getNodesReadOnly: mockGetNodesReadOnly,
-    }),
-  }
-})
-
 vi.mock('../hooks/use-nodes-interactions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../hooks/use-nodes-interactions')>()
   return {
@@ -104,6 +88,7 @@ const RuntimeProbe = () => {
 }
 
 const hooksStoreProps = {
+  accessControl: fullWorkflowAccessControl,
   doSyncWorkflowDraft: vi.fn().mockResolvedValue(undefined),
 }
 
@@ -130,6 +115,10 @@ const renderSelectionMenu = (options?: {
   const nodes = options?.nodes ?? []
   const edges = options?.edges ?? []
 
+  const { queryClient } = createConsoleQueryWrapper({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  })
+
   return renderWorkflowFlowComponent(
     <div id="workflow-container" style={{ width: 800, height: 600 }}>
       <RuntimeProbe />
@@ -139,6 +128,7 @@ const renderSelectionMenu = (options?: {
       nodes,
       edges,
       hooksStoreProps,
+      queryClient,
       historyStore: { nodes, edges },
       initialStoreState: options?.initialStoreState,
       reactFlowProps: { fitView: false },
@@ -151,14 +141,16 @@ describe('SelectionContextmenu', () => {
     vi.clearAllMocks()
     latestNodes = []
     latestHistoryEvent = undefined
-    mockGetNodesReadOnly.mockReset()
-    mockGetNodesReadOnly.mockReturnValue(false)
     mockHandleNodesCopy.mockReset()
     mockHandleNodesDuplicate.mockReset()
     mockHandleNodesDelete.mockReset()
     mockHandleCreateSnippet.mockReset()
     mockCreateSnippetDialogRender.mockReset()
     mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it.each([
@@ -182,23 +174,7 @@ describe('SelectionContextmenu', () => {
   it('should not render when selection context menu target is absent', () => {
     renderSelectionMenu()
 
-    expect(screen.queryByText('operator.vertical')).not.toBeInTheDocument()
-  })
-
-  it('should render menu items when selection context menu target is present', async () => {
-    const nodes = [
-      createNode({ id: 'n1', selected: true, width: 80, height: 40 }),
-      createNode({ id: 'n2', selected: true, position: { x: 140, y: 0 }, width: 80, height: 40 }),
-    ]
-    const { store } = renderSelectionMenu({ nodes })
-
-    act(() => {
-      store.setState({ contextMenuTarget: { type: 'selection' } })
-    })
-
-    await waitFor(() => {
-      expect(screen.getByRole('menuitem', { name: /operator.alignLeft/ })).toBeInTheDocument()
-    })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('should render and execute copy/duplicate/delete operations', async () => {
@@ -216,21 +192,21 @@ describe('SelectionContextmenu', () => {
       expect(screen.getByRole('menuitem', { name: /common.copy/ })).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /common.copy/ }))
+    await userEvent.setup().click(screen.getByRole('menuitem', { name: /common.copy/ }))
     expect(mockHandleNodesCopy).toHaveBeenCalledTimes(1)
     expect(store.getState().contextMenuTarget).toBeUndefined()
 
     act(() => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
-    fireEvent.click(screen.getByRole('menuitem', { name: /common.duplicate/ }))
+    await userEvent.setup().click(screen.getByRole('menuitem', { name: /common.duplicate/ }))
     expect(mockHandleNodesDuplicate).toHaveBeenCalledTimes(1)
     expect(store.getState().contextMenuTarget).toBeUndefined()
 
     act(() => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
-    fireEvent.click(screen.getByRole('menuitem', { name: /operation.delete/ }))
+    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operation.delete/ }))
     expect(mockHandleNodesDelete).toHaveBeenCalledTimes(1)
     expect(store.getState().contextMenuTarget).toBeUndefined()
   })
@@ -251,9 +227,11 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(
-      await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
-    )
+    await userEvent
+      .setup()
+      .click(
+        await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+      )
 
     expect(screen.getByTestId('create-snippet-dialog')).toBeInTheDocument()
     expect(store.getState().contextMenuTarget).toBeUndefined()
@@ -321,9 +299,11 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(
-      await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
-    )
+    await userEvent
+      .setup()
+      .click(
+        await screen.findByRole('menuitem', { name: /Create Snippet|snippet\.createDialogTitle/ }),
+      )
 
     const dialogProps = mockCreateSnippetDialogRender.mock.calls.at(-1)?.[0]
     expect(dialogProps.inputFields).toEqual([
@@ -439,7 +419,9 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
+    await userEvent
+      .setup()
+      .click(screen.getByRole('menuitem', { name: /operator.distributeHorizontal/ }))
 
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(150)
   })
@@ -452,7 +434,7 @@ describe('SelectionContextmenu', () => {
         position: { x: 200, y: 0 },
         width: 100,
         height: 80,
-        data: { _children: [{ nodeId: 'child', nodeType: 'code' as never }] },
+        data: { _children: [{ nodeId: 'child', nodeType: BlockEnum.Code }] },
       }),
       createNode({
         id: 'child',
@@ -478,14 +460,14 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(40)
     expect(latestNodes.find((node) => node.id === 'other')?.position.x).toBe(40)
     expect(latestNodes.find((node) => node.id === 'child')?.position.x).toBe(210)
   })
 
-  it('should cancel when align bounds cannot be resolved', () => {
+  it('should cancel when align bounds cannot be resolved', async () => {
     const nodes = [
       createNode({ id: 'n1', selected: true }),
       createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 } }),
@@ -497,39 +479,41 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
+    expect(latestNodes.map(({ id, position }) => ({ id, position }))).toEqual(
+      nodes.map(({ id, position }) => ({ id, position })),
+    )
   })
 
-  it('should cancel without aligning when nodes are read only', () => {
-    mockGetNodesReadOnly.mockReturnValue(true)
+  it('should cancel without aligning when nodes are read only', async () => {
     const nodes = [
       createNode({ id: 'n1', selected: true, width: 40, height: 20 }),
       createNode({ id: 'n2', selected: true, position: { x: 80, y: 20 }, width: 40, height: 20 }),
     ]
 
-    const { store } = renderSelectionMenu({ nodes })
+    const { store } = renderSelectionMenu({ nodes, initialStoreState: { canvasReadOnly: true } })
 
     act(() => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'n1')?.position.x).toBe(0)
     expect(latestNodes.find((node) => node.id === 'n2')?.position.x).toBe(80)
   })
 
-  it('should cancel when alignable nodes shrink to one item', () => {
+  it('should cancel when alignable nodes shrink to one item', async () => {
     const nodes = [
       createNode({
         id: 'container',
         selected: true,
         width: 40,
         height: 20,
-        data: { _children: [{ nodeId: 'child', nodeType: 'code' as never }] },
+        data: { _children: [{ nodeId: 'child', nodeType: BlockEnum.Code }] },
       }),
       createNode({
         id: 'child',
@@ -546,7 +530,7 @@ describe('SelectionContextmenu', () => {
       store.setState({ contextMenuTarget: { type: 'selection' } })
     })
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
+    await userEvent.setup().click(screen.getByRole('menuitem', { name: /operator.alignLeft/ }))
 
     expect(store.getState().contextMenuTarget).toBeUndefined()
     expect(latestNodes.find((node) => node.id === 'container')?.position.x).toBe(0)

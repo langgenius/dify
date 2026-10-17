@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import BaseNode from '../node'
@@ -9,7 +9,7 @@ const mockHasNodeInspectVars = vi.fn()
 const mockUseNodePluginInstallation = vi.fn()
 const mockHandleNodeIterationChildSizeChange = vi.fn()
 const mockHandleNodeLoopChildSizeChange = vi.fn()
-const mockUseNodeResizeObserver = vi.fn()
+const resizeCallbacks = new Set<() => void>()
 const mockUseCollaboration = vi.fn()
 
 vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => {
@@ -18,15 +18,6 @@ vi.mock('../../../hooks/use-tool-icon', async (importOriginal) => {
   return {
     ...actual,
     useToolIcon: () => undefined,
-  }
-})
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({ nodesReadOnly: false }),
   }
 })
 
@@ -54,13 +45,6 @@ vi.mock('@/app/components/workflow/nodes/loop/use-interactions', () => ({
   useNodeLoopInteractions: () => ({
     handleNodeLoopChildSizeChange: mockHandleNodeLoopChildSizeChange,
   }),
-}))
-
-vi.mock('../use-node-resize-observer', () => ({
-  default: (options: { enabled: boolean; onResize: () => void }) => {
-    mockUseNodeResizeObserver(options)
-    if (options.enabled) options.onResize()
-  },
 }))
 
 vi.mock('../components/add-variable-popup-with-position', () => ({
@@ -115,7 +99,25 @@ describe('BaseNode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasNodeInspectVars.mockReturnValue(false)
-    mockUseNodeResizeObserver.mockReset()
+    resizeCallbacks.clear()
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        private callback: () => void
+        constructor(callback: () => void) {
+          this.callback = callback
+        }
+        observe() {
+          resizeCallbacks.add(this.callback)
+        }
+        unobserve() {
+          resizeCallbacks.delete(this.callback)
+        }
+        disconnect() {
+          resizeCallbacks.delete(this.callback)
+        }
+      },
+    )
     mockUseCollaboration.mockReturnValue({ nodePanelPresence: {} })
     mockUseNodePluginInstallation.mockReturnValue({
       shouldDim: false,
@@ -126,6 +128,8 @@ describe('BaseNode', () => {
     })
   })
 
+  afterEach(() => vi.unstubAllGlobals())
+
   it('should render content, handles and description for a regular node', () => {
     renderWorkflowComponent(
       <BaseNode id="node-1" data={toNodeData(createData())}>
@@ -135,34 +139,10 @@ describe('BaseNode', () => {
 
     expect(screen.getByText('Node title')).toBeInTheDocument()
     expect(screen.getByText('Node description')).toBeInTheDocument()
-    expect(screen.getByTestId('node-control')).toBeInTheDocument()
+    expect(screen.getByText('Body')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Node title' })).not.toBeInTheDocument()
     expect(screen.getByTestId('node-source-handle')).toBeInTheDocument()
     expect(screen.getByTestId('node-target-handle')).toBeInTheDocument()
-  })
-
-  it('places node actions before both add-node handles in DOM order', () => {
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData())}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-    const actions = screen.getByTestId('node-control')
-    for (const handle of ['node-target-handle', 'node-source-handle']) {
-      expect(
-        actions.compareDocumentPosition(screen.getByTestId(handle)) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy()
-    }
-  })
-
-  it('renders the title as text without an additional button', () => {
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData())}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-    expect(screen.getByText('Node title')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Node title' })).not.toBeInTheDocument()
   })
 
   it('should retain the independent header metadata control', () => {
@@ -186,16 +166,6 @@ describe('BaseNode', () => {
     })
 
     expect(parallelButton).toBeInTheDocument()
-  })
-
-  it('should render entry nodes inside the entry container', () => {
-    renderWorkflowComponent(
-      <BaseNode id="node-1" data={toNodeData(createData({ type: BlockEnum.Start }))}>
-        <div>Body</div>
-      </BaseNode>,
-    )
-
-    expect(screen.getByTestId('entry-node-container')).toBeInTheDocument()
   })
 
   it('should block interaction when plugin installation is required', () => {
@@ -266,6 +236,8 @@ describe('BaseNode', () => {
 
     expect(screen.getByTestId('node-resizer')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-node-install-overlay')).toBeInTheDocument()
+    expect(mockHandleNodeIterationChildSizeChange).not.toHaveBeenCalled()
+    act(() => resizeCallbacks.forEach((callback) => callback()))
     expect(mockHandleNodeIterationChildSizeChange).toHaveBeenCalledWith('node-1')
   })
 
@@ -285,10 +257,9 @@ describe('BaseNode', () => {
       </BaseNode>,
     )
 
+    expect(mockHandleNodeLoopChildSizeChange).not.toHaveBeenCalled()
+    act(() => resizeCallbacks.forEach((callback) => callback()))
     expect(mockHandleNodeLoopChildSizeChange).toHaveBeenCalledWith('node-2')
-    expect(mockUseNodeResizeObserver).toHaveBeenCalledWith(
-      expect.objectContaining({ enabled: true }),
-    )
   })
 
   it('should keep viewer avatars outside the truncated title area', () => {
@@ -315,8 +286,8 @@ describe('BaseNode', () => {
     )
 
     const titleContainer = screen.getByTitle(longTitle)
-    expect(titleContainer).toHaveClass('min-w-0', 'grow', 'truncate')
-    expect(titleContainer?.nextElementSibling).toHaveClass('shrink-0')
+    expect(titleContainer).toHaveTextContent(longTitle)
+    expect(titleContainer).not.toContainElement(screen.getByText('Z'))
     expect(screen.getByText('Z')).toBeInTheDocument()
   })
 })

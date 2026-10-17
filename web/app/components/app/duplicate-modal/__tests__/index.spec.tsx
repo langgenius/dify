@@ -70,21 +70,6 @@ describe('DuplicateAppModal', () => {
     },
   )
 
-  it('should render a named dialog', () => {
-    render(
-      <DuplicateAppModal
-        appName="Demo App"
-        icon_type="emoji"
-        icon="🤖"
-        show
-        onConfirm={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
-  })
-
   it('should validate the name before duplicating and update the input value', async () => {
     const onConfirm = vi.fn()
     const onHide = vi.fn()
@@ -102,6 +87,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
+    expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
     const input = screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })
     await user.clear(input)
     await user.type(input, 'Updated App')

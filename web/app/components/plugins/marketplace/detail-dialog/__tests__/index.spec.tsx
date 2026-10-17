@@ -77,23 +77,10 @@ describe('MarketplaceDetailDialog', () => {
       // the embedded detail page receives light/dark rather than "system".
       'about:blank?plugin=dify/plugin-a&installed=true&language=en-US&source=http://localhost:3000&theme=light&view=modal&canInstall=true',
     )
-    expect(document.querySelector('.bg-linear-to-t')).not.toBeInTheDocument()
+    expect(frame).toHaveAttribute('allow', 'clipboard-write')
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onOpenChange).toHaveBeenCalledWith(false)
-  })
-
-  it('delegates clipboard-write permission to the marketplace detail iframe', () => {
-    render(
-      <ThemeProvider forcedTheme="dark">
-        <MarketplaceDetailDialog open isInstalled plugin={plugin} onOpenChange={vi.fn()} />
-      </ThemeProvider>,
-    )
-
-    expect(screen.getByTitle('Plugin A · plugin.detailPanel.operation.detail')).toHaveAttribute(
-      'allow',
-      'clipboard-write',
-    )
   })
 
   it('installs from the embedded detail frame without opening a confirmation dialog', async () => {

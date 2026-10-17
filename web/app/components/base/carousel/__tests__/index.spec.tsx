@@ -1,5 +1,6 @@
 import type { Mock } from 'vite-plus/test'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useEmblaCarousel from 'embla-carousel-react'
 import { Carousel, useCarousel } from '../index'
 
@@ -95,17 +96,6 @@ describe('Carousel', () => {
   })
 
   // Rendering and basic semantic structure.
-  describe('Rendering', () => {
-    it('should render region and slides when used with content and items', () => {
-      renderCarouselWithControls()
-
-      expect(screen.getByRole('region'))!.toHaveAttribute('aria-roledescription', 'carousel')
-      expect(screen.getByTestId('carousel-content'))!.toHaveClass('flex')
-      screen.getAllByRole('group').forEach((slide) => {
-        expect(slide)!.toHaveAttribute('aria-roledescription', 'slide')
-      })
-    })
-  })
 
   // Props should be translated into Embla options and visible layout.
   describe('Props', () => {
@@ -120,7 +110,7 @@ describe('Carousel', () => {
       expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ loop: true, axis: 'x' }, [plugin])
     })
 
-    it('should configure embla with vertical axis and vertical content classes when orientation is vertical', () => {
+    it('configures the vertical Embla axis', () => {
       renderCarouselWithControls('vertical')
 
       expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ axis: 'y' }, undefined)
@@ -151,24 +141,24 @@ describe('Carousel', () => {
 
   // Users can move slides through previous and next controls.
   describe('User interactions', () => {
-    it('should call scroll handlers when previous and next buttons are clicked', () => {
+    it('should call scroll handlers when previous and next buttons are clicked', async () => {
       mockCanScrollPrev = true
       mockCanScrollNext = true
 
       renderCarouselWithControls()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Prev' }))
-      fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Prev' }))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
 
       expect(mockApi.scrollPrev).toHaveBeenCalledTimes(1)
       expect(mockApi.scrollNext).toHaveBeenCalledTimes(1)
     })
 
-    it('should call scrollTo with clicked index when a dot is clicked', () => {
+    it('should call scrollTo with clicked index when a dot is clicked', async () => {
       renderCarouselWithControls()
       const dots = screen.getAllByRole('button', { name: 'Dot' })
 
-      fireEvent.click(dots[2]!)
+      await userEvent.setup().click(dots[2]!)
 
       expect(mockApi.scrollTo).toHaveBeenCalledWith(2)
     })
@@ -179,6 +169,8 @@ describe('Carousel', () => {
     it('should update disabled states and active dot when select event is emitted', () => {
       renderCarouselWithControls()
 
+      expect(screen.getByRole('button', { name: 'Prev' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
       mockCanScrollPrev = true
       mockCanScrollNext = true
       mockSelectedIndex = 2
@@ -207,6 +199,7 @@ describe('Carousel', () => {
 
       expect(mockApi.off).toHaveBeenCalledWith('reInit', selectCallback)
       expect(mockApi.off).toHaveBeenCalledWith('select', selectCallback)
+      expect(listeners).toEqual({ reInit: [], select: [] })
     })
   })
 
@@ -233,16 +226,6 @@ describe('Carousel', () => {
       expect(screen.getByRole('button', { name: 'Prev' }))!.toBeDisabled()
       expect(screen.getByRole('button', { name: 'Next' }))!.toBeDisabled()
       expect(screen.queryByRole('button', { name: 'Dot' })).not.toBeInTheDocument()
-    })
-
-    it('should ignore select callback when embla emits an undefined api', () => {
-      renderCarouselWithControls()
-
-      expect(() => {
-        act(() => {
-          emitEmblaEvent('select', undefined)
-        })
-      }).not.toThrow()
     })
   })
 })

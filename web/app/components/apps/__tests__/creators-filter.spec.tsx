@@ -48,6 +48,7 @@ describe('CreatorsFilter', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
 
+    await screen.findByRole('option', { name: /Alice/ })
     const options = screen.getAllByRole('option')
 
     expect(options.map((option) => option.textContent)).toEqual([
@@ -71,7 +72,7 @@ describe('CreatorsFilter', () => {
     })
     await user.type(searchInput, 'zo')
 
-    const zoeOption = screen.getByRole('option', { name: /Zoe/ })
+    const zoeOption = await screen.findByRole('option', { name: /Zoe/ })
     expect(zoeOption).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Bob/ })).not.toBeInTheDocument()
     await waitFor(() => {
@@ -112,21 +113,12 @@ describe('CreatorsFilter', () => {
     )
 
     await user.click(screen.getByRole('combobox', { name: 'app.studio.filters.creators' }))
-    const aliceOption = screen.getByRole('option', { name: /Alice/ })
+    const aliceOption = await screen.findByRole('option', { name: /Alice/ })
     expect(aliceOption).toHaveAttribute('aria-selected', 'true')
 
     await user.click(aliceOption)
 
     expect(mockOnChange).toHaveBeenCalledWith(['missing-member', 'member-3'])
-  })
-
-  it('should expose the selected creator count from the closed trigger', async () => {
-    render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
-
-    const trigger = screen.getByRole('combobox', { name: 'app.studio.filters.creators' })
-    const selectedCount = within(trigger).getByText('common.dynamicSelect.selected:{"count":2}')
-    expect(selectedCount).toHaveClass('sr-only')
-    await waitFor(() => expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument())
   })
 
   it.each([
@@ -155,6 +147,9 @@ describe('CreatorsFilter', () => {
       for (const initial of visibleInitials) {
         expect(await within(trigger).findByText(initial, { exact: true })).toBeInTheDocument()
       }
+      expect(
+        within(trigger).getByText(`common.dynamicSelect.selected:{"count":${value.length}}`),
+      ).toBeInTheDocument()
       expect(within(trigger).queryByText('C', { exact: true })).not.toBeInTheDocument()
       expect(within(trigger).queryByText('R', { exact: true })).not.toBeInTheDocument()
       if (remainingCount > 0) {
@@ -175,9 +170,7 @@ describe('CreatorsFilter', () => {
     const searchInput = within(popup).getByRole('combobox', {
       name: 'app.studio.filters.searchCreators',
     })
-    expect(popup).toBeInTheDocument()
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(within(popup).getByRole('option', { name: /Alice/ })).toHaveAttribute(
+    expect(await within(popup).findByRole('option', { name: /Alice/ })).toHaveAttribute(
       'aria-selected',
       'false',
     )

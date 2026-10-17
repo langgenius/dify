@@ -3,18 +3,15 @@ import type {
   DatasetDocMetadataResponse,
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactElement } from 'react'
-import type { ComparisonOperator, MetadataFilteringCondition, MetadataShape } from '../types'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import type { ComparisonOperator, MetadataFilteringCondition } from '../types'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PermissionLevel } from '@/models/permission'
-import {
-  createAccountProfileQueryClient,
-  createAccountProfileQueryWrapper,
-} from '@/test/console/account-profile'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { render } from '@/test/console/render'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -31,7 +28,6 @@ import ConditionItem from '../components/metadata/condition-list/condition-item'
 import ConditionOperator from '../components/metadata/condition-list/condition-operator'
 import ConditionValueMethod from '../components/metadata/condition-list/condition-value-method'
 import ConditionVariableSelector from '../components/metadata/condition-list/condition-variable-selector'
-import MetadataFilter from '../components/metadata/metadata-filter'
 import MetadataFilterSelector from '../components/metadata/metadata-filter/metadata-filter-selector'
 import MetadataTrigger from '../components/metadata/metadata-trigger'
 import RetrievalConfig from '../components/retrieval-config'
@@ -45,7 +41,7 @@ import {
 
 const renderWithAccountProfile = (ui: ReactElement) =>
   render(ui, {
-    wrapper: createAccountProfileQueryWrapper(),
+    queryClient: createAccountProfileQueryClient(),
   })
 
 const createDataset = (
@@ -129,16 +125,6 @@ const createCondition = (
   ...overrides,
 })
 
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: { id: 'user-1' },
-  workspacePermissionKeys: [] as string[],
-}))
-
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   default: () => 'desktop',
@@ -188,18 +174,15 @@ vi.mock('@/app/components/app/configuration/dataset-config/settings-modal', () =
     onSave: (dataset: DatasetDetailWithPartialMembersResponse) => void
     onCancel: () => void
   }) {
-    const hasSavedRef = useRef(false)
-
-    useEffect(() => {
-      if (hasSavedRef.current) return
-
-      hasSavedRef.current = true
-      onSave(createDataset({ ...currentDataset, name: 'Updated Dataset' }))
-    }, [currentDataset, onSave])
-
     return (
       <div>
         <div>{currentDataset.name}</div>
+        <button
+          type="button"
+          onClick={() => onSave(createDataset({ ...currentDataset, name: 'Updated Dataset' }))}
+        >
+          save-settings
+        </button>
         <button type="button" onClick={onCancel}>
           cancel-settings
         </button>
@@ -302,12 +285,6 @@ vi.mock('../components/metadata/metadata-panel', () => ({
 }))
 
 describe('knowledge-retrieval path', () => {
-  const getDatasetItem = () => {
-    const datasetItem = screen.getByText('Dataset Name').closest('.group\\/dataset-item')
-    if (!(datasetItem instanceof HTMLElement)) throw new Error('Dataset item container not found')
-    return datasetItem
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -335,6 +312,7 @@ describe('knowledge-retrieval path', () => {
     })
 
     it('should support editing a dataset item', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
 
       render(
@@ -346,31 +324,17 @@ describe('knowledge-retrieval path', () => {
       )
 
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
-      const datasetItem = getDatasetItem()
-      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.edit' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
+      expect(onChange).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'save-settings' }))
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Dataset' }))
       })
     })
 
-    it('should support removing a dataset item', () => {
-      const onRemove = vi.fn()
-
-      render(
-        <DatasetItem
-          payload={createDataset({ is_multimodal: true })}
-          onChange={vi.fn()}
-          onRemove={onRemove}
-        />,
-      )
-
-      const datasetItem = getDatasetItem()
-      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
-      expect(onRemove).toHaveBeenCalled()
-    })
-
-    it('should render empty and populated dataset lists', () => {
+    it('removes the selected dataset from the workflow list', async () => {
+      const user = userEvent.setup()
       const onChange = vi.fn()
 
       const { rerender } = renderWithAccountProfile(<DatasetList list={[]} onChange={onChange} />)
@@ -379,8 +343,7 @@ describe('knowledge-retrieval path', () => {
 
       rerender(<DatasetList list={[createDataset()]} onChange={onChange} />)
 
-      const datasetItem = getDatasetItem()
-      fireEvent.click(within(datasetItem).getByRole('button', { name: 'common.operation.remove' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onChange).toHaveBeenCalledWith([])
     })
@@ -393,10 +356,8 @@ describe('knowledge-retrieval path', () => {
 
       renderWithAccountProfile(<DatasetList list={[dataset]} onChange={vi.fn()} />)
 
-      const datasetItem = getDatasetItem()
-
       expect(
-        within(datasetItem).queryByRole('button', { name: 'common.operation.edit' }),
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
       ).not.toBeInTheDocument()
     })
   })
@@ -536,52 +497,6 @@ describe('knowledge-retrieval path', () => {
         }),
       )
     })
-
-    it('should render automatic and manual metadata filter states', async () => {
-      const user = userEvent.setup()
-      const baseProps: MetadataShape = {
-        metadataList: [createMetadata()],
-        metadataFilteringConditions: {
-          logical_operator: LogicalOperator.and,
-          conditions: [createCondition()],
-        },
-        selectedDatasetsLoaded: true,
-        handleAddCondition: vi.fn(),
-        handleRemoveCondition: vi.fn(),
-        handleToggleConditionLogicalOperator: vi.fn(),
-        handleUpdateCondition: vi.fn(),
-      }
-
-      const { rerender } = render(
-        <MetadataFilter
-          {...baseProps}
-          metadataFilterMode={MetadataFilteringModeEnum.automatic}
-          handleMetadataFilterModeChange={vi.fn()}
-        />,
-      )
-
-      expect(
-        screen.getByRole('button', {
-          name: /workflowModels.nodes.knowledgeRetrieval.metadata.options.automatic.title/i,
-        }),
-      ).toBeInTheDocument()
-
-      rerender(
-        <MetadataFilter
-          {...baseProps}
-          metadataFilterMode={MetadataFilteringModeEnum.manual}
-          handleMetadataFilterModeChange={vi.fn()}
-        />,
-      )
-
-      await user.click(
-        screen.getByRole('button', {
-          name: /workflowModels.nodes.knowledgeRetrieval.metadata.panel.conditions/i,
-        }),
-      )
-
-      expect(screen.getByText('metadata-panel')).toBeInTheDocument()
-    })
   })
 
   describe('Condition inputs', () => {
@@ -640,9 +555,23 @@ describe('knowledge-retrieval path', () => {
       const onDateChange = vi.fn()
       const onRemoveCondition = vi.fn()
       const onUpdateCondition = vi.fn()
+      function EditableCondition() {
+        const [condition, setCondition] = useState(createCondition())
+        return (
+          <ConditionItem
+            metadataList={[createMetadata()]}
+            condition={condition}
+            onRemoveCondition={onRemoveCondition}
+            onUpdateCondition={(id, next) => {
+              onUpdateCondition(id, next)
+              setCondition(next)
+            }}
+          />
+        )
+      }
       const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
 
-      const { container } = render(
+      render(
         <QueryClientTestProvider queryClient={queryClient}>
           <div>
             <ConditionOperator
@@ -651,12 +580,7 @@ describe('knowledge-retrieval path', () => {
               onSelect={onSelect}
             />
             <ConditionDate value={1710000000} onChange={onDateChange} />
-            <ConditionItem
-              metadataList={[createMetadata()]}
-              condition={createCondition()}
-              onRemoveCondition={onRemoveCondition}
-              onUpdateCondition={onUpdateCondition}
-            />
+            <EditableCondition />
           </div>
         </QueryClientTestProvider>,
       )
@@ -664,8 +588,9 @@ describe('knowledge-retrieval path', () => {
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)
       await user.click(screen.getByText('workflowLogic.nodes.ifElse.comparisonOperator.is'))
       await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
-      fireEvent.change(screen.getByDisplayValue('agent'), { target: { value: 'updated-agent' } })
-      fireEvent.click(container.querySelector('.ml-1.mt-1') as Element)
+      await user.clear(screen.getByDisplayValue('agent'))
+      await user.type(screen.getByRole('textbox'), 'updated-agent')
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
       expect(onSelect).toHaveBeenCalledWith(MetadataComparisonOperator.is as ComparisonOperator)
       expect(onDateChange).toHaveBeenCalledWith(undefined)
@@ -674,6 +599,33 @@ describe('knowledge-retrieval path', () => {
         expect.objectContaining({ value: 'updated-agent' }),
       )
       expect(onRemoveCondition).toHaveBeenCalledWith('condition-1')
+    })
+
+    it.each([
+      [MetadataFilteringVariableType.string, 'agent'],
+      [MetadataFilteringVariableType.number, 42],
+    ])('prevents editing or deleting disabled %s conditions', async (type, value) => {
+      const user = userEvent.setup()
+      const onUpdateCondition = vi.fn()
+      const onRemoveCondition = vi.fn()
+      render(
+        <ConditionItem
+          disabled
+          metadataList={[createMetadata({ type })]}
+          condition={createCondition({ value })}
+          onUpdateCondition={onUpdateCondition}
+          onRemoveCondition={onRemoveCondition}
+        />,
+      )
+      const input = screen.getByRole('textbox', {
+        name: 'workflowModels.nodes.knowledgeRetrieval.metadata.panel.placeholder',
+      })
+      expect(input).toHaveValue(String(value))
+      expect(input).toBeDisabled()
+      await user.type(input, '123')
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(onUpdateCondition).not.toHaveBeenCalled()
+      expect(onRemoveCondition).not.toHaveBeenCalled()
     })
 
     it('should resolve built-in metadata fields by name because their ids are shared', () => {

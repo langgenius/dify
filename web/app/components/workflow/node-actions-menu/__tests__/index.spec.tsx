@@ -1,5 +1,3 @@
-import type { UseQueryResult } from '@tanstack/react-query'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,7 +5,6 @@ import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
-import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { NodeActionsDropdown } from '../index'
 
 vi.mock('../../hooks/use-nodes-interactions', async (importOriginal) => {
@@ -28,22 +25,15 @@ vi.mock('../../hooks/use-nodes-meta-data', async (importOriginal) => {
   }
 })
 
-vi.mock('../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../hooks/use-workflow')>()
-
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    useNodesReadOnly: vi.fn(),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.workflow.get': async () => [],
+    }),
   }
-})
-
-const { mockUseAllWorkflowTools } = vi.hoisted(() => ({ mockUseAllWorkflowTools: vi.fn() }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.workflow.get': () => mockUseAllWorkflowTools(),
-  })
 })
 
 vi.mock('../change-block-popup', () => ({
@@ -52,39 +42,11 @@ vi.mock('../change-block-popup', () => ({
 
 const mockUseNodeMetaData = vi.mocked(useNodeMetaData)
 const mockUseNodesInteractions = vi.mocked(useNodesInteractions)
-const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
-
-const createQueryResult = <T,>(data: T): UseQueryResult<T, Error> =>
-  ({
-    data,
-    error: null,
-    refetch: vi.fn(),
-    isError: false,
-    isPending: false,
-    isLoading: false,
-    isSuccess: true,
-    isFetching: false,
-    isRefetching: false,
-    isLoadingError: false,
-    isRefetchError: false,
-    isInitialLoading: false,
-    isPaused: false,
-    isEnabled: true,
-    status: 'success',
-    fetchStatus: 'idle',
-    dataUpdatedAt: Date.now(),
-    errorUpdatedAt: 0,
-    failureCount: 0,
-    failureReason: null,
-    errorUpdateCount: 0,
-    isFetched: true,
-    isFetchedAfterMount: true,
-    isPlaceholderData: false,
-    isStale: false,
-    promise: Promise.resolve(data),
-  }) as UseQueryResult<T, Error>
-
-const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boolean) => void) =>
+const renderComponent = (
+  showHelpLink: boolean = true,
+  onOpenChange?: (open: boolean) => void,
+  readOnly = false,
+) =>
   renderWorkflowFlowComponent(
     <NodeActionsDropdown
       id="node-1"
@@ -98,6 +60,7 @@ const renderComponent = (showHelpLink: boolean = true, onOpenChange?: (open: boo
       showHelpLink={showHelpLink}
     />,
     {
+      initialStoreState: { canvasReadOnly: readOnly },
       nodes: [],
       edges: [],
     },
@@ -125,10 +88,6 @@ describe('NodeActionsDropdown', () => {
       handleNodeSelect,
       handleNodesCopy,
     } as unknown as ReturnType<typeof useNodesInteractions>)
-    mockUseNodesReadOnly.mockReturnValue({
-      nodesReadOnly: false,
-    } as ReturnType<typeof useNodesReadOnly>)
-    mockUseAllWorkflowTools.mockReturnValue(createQueryResult<ToolWithProvider[]>([]))
   })
 
   it('should open the dropdown and trigger single-run actions', async () => {
@@ -200,11 +159,8 @@ describe('NodeActionsDropdown', () => {
   })
 
   it('does not run unavailable editing shortcuts from a readonly node menu', async () => {
-    mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true } as ReturnType<
-      typeof useNodesReadOnly
-    >)
     const user = userEvent.setup()
-    renderComponent()
+    renderComponent(true, undefined, true)
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
     await user.keyboard('{ArrowDown}')
     const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
@@ -216,11 +172,8 @@ describe('NodeActionsDropdown', () => {
 
   it('should hide single-run actions when nodes are readonly', async () => {
     const user = userEvent.setup()
-    mockUseNodesReadOnly.mockReturnValueOnce({
-      nodesReadOnly: true,
-    } as ReturnType<typeof useNodesReadOnly>)
 
-    renderComponent()
+    renderComponent(true, undefined, true)
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 

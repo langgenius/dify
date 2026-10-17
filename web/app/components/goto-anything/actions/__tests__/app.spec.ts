@@ -1,16 +1,10 @@
-import { appAction, appSearchQueryOptions } from '../app'
+import { appSearchQueryOptions } from '../app'
 
 const serviceMocks = vi.hoisted(() => ({ queryOptions: vi.fn((options) => options) }))
 
 vi.mock('@/service/console', () => ({
   consoleQuery: { apps: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
-
-vi.mock('@/utils/app-redirection', () => ({
-  getRedirectionPath: vi.fn((app: { id: string }) => `/app/${app.id}`),
-}))
-
-vi.mock('../../../app/type-selector', () => ({ AppTypeIcon: () => null }))
 
 type AppQueryResponse = Parameters<
   NonNullable<ReturnType<typeof appSearchQueryOptions>['select']>
@@ -23,6 +17,7 @@ function app(overrides: Partial<AppQueryItem> = {}): AppQueryItem {
     name: 'My App',
     description: 'A great app',
     mode: 'chat',
+    permission_keys: ['app.acl.view_layout'],
     icon: '',
     icon_type: 'emoji',
     icon_background: '',
@@ -36,12 +31,6 @@ function response(data: AppQueryItem[]): AppQueryResponse {
 }
 
 describe('app search query', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('exposes remote action metadata', () => {
-    expect(appAction).toMatchObject({ key: '@app', shortcut: '@app', source: 'remote' })
-  })
-
   it('builds generated query options from the search term', () => {
     appSearchQueryOptions('assistant', false)
 
@@ -57,7 +46,10 @@ describe('app search query', () => {
   it('selects plain app results for general search', () => {
     const options = appSearchQueryOptions('my app', false)
 
-    expect(options.select!(response([app(), app({ id: 'app-2', name: 'Other' })]))).toHaveLength(2)
+    expect(options.select!(response([app(), app({ id: 'app-2', name: 'Other' })]))).toMatchObject([
+      { id: 'app-1', title: 'My App', path: '/app/app-1/configuration' },
+      { id: 'app-2', title: 'Other', path: '/app/app-2/configuration' },
+    ])
   })
 
   it('selects app sections only for scoped search', () => {

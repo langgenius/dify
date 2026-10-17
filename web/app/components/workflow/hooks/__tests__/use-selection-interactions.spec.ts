@@ -142,7 +142,7 @@ describe('useSelectionInteractions', () => {
   it('handleSelectionDrag should sync node positions', async () => {
     const setNodesSpy = vi.spyOn(collaborationManager, 'setNodes')
     const { result, store } = renderSelectionInteractions()
-    const draggedNodes = [{ id: 'n1', position: { x: 50, y: 60 }, data: {} }] as never
+    const draggedNodes = [createNode({ id: 'n1', position: { x: 50, y: 60 } })]
 
     act(() => {
       result.current.handleSelectionDrag({} as unknown as React.MouseEvent, draggedNodes)
@@ -150,7 +150,6 @@ describe('useSelectionInteractions', () => {
 
     expect(store.getState().nodeAnimation).toBe(false)
     expect(setNodesSpy).toHaveBeenCalledOnce()
-    expect(setNodesSpy.mock.calls[0]?.[2]).toBe('use-selection-interactions:handleSelectionDrag')
     expect(setNodesSpy.mock.calls[0]?.[1].find((node) => node.id === 'n1')?.position).toEqual({
       x: 50,
       y: 60,

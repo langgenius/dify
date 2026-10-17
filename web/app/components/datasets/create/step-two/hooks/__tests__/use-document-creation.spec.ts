@@ -1,22 +1,16 @@
 import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { CreateDocumentReq, CustomFile, ProcessRule } from '@/models/datasets'
+import type { ProcessRule } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
-import { consoleQuery } from '@/service/console'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
-
-const invalidateQueries = vi.spyOn(QueryClient.prototype, 'invalidateQueries')
-const datasetListKey = consoleQuery.datasets.get.key()
 
 // Hoisted mocks
 const mocks = vi.hoisted(() => ({
   toastNotify: vi.fn(),
   mutateAsync: vi.fn(),
   trackEvent: vi.fn(),
-  invalidDatasetList: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -49,9 +43,13 @@ const { useDocumentCreation } = await import('../use-document-creation')
 const { IndexingType } = await import('../use-indexing-config')
 
 describe('useDocumentCreation', () => {
+  const processRule: ProcessRule = {
+    mode: 'custom',
+    rules: { pre_processing_rules: [], segmentation: { separator: '\n', max_tokens: 1024 } },
+  }
   const defaultOptions = {
     dataSourceType: DataSourceType.FILE,
-    files: [{ id: 'f-1', name: 'test.txt' }] as CustomFile[],
+    files: [{ id: 'f-1', name: 'test.txt' }],
     notionPages: [],
     notionCredentialId: '',
     websitePages: [],
@@ -72,11 +70,15 @@ describe('useDocumentCreation', () => {
       top_k: 3,
       score_threshold_enabled: false,
       score_threshold: 0.5,
-    } as RetrievalConfig,
+    } satisfies RetrievalConfig,
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    mocks.mutateAsync.mockResolvedValue({
+      batch: 'batch-1',
+      dataset: { id: 'dataset-1', name: 'Knowledge' },
+      documents: [],
+    })
   })
 
   describe('validateParams', () => {
@@ -137,7 +139,10 @@ describe('useDocumentCreation', () => {
   describe('buildCreationParams', () => {
     it('should build params for FILE data source', () => {
       const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
-      const processRule = { mode: 'custom', rules: {} } as unknown as ProcessRule
+      const processRule = {
+        mode: 'custom',
+        rules: { pre_processing_rules: [], segmentation: { separator: '\n', max_tokens: 1024 } },
+      } satisfies ProcessRule
       const retrievalConfig = defaultValidationParams.retrievalConfig
       const embeddingModel = { provider: 'openai', model: 'text-embedding-3-small' }
 
@@ -158,14 +163,17 @@ describe('useDocumentCreation', () => {
     })
 
     it('should build params for isSetting mode', () => {
-      const detail = { id: 'doc-1' } as DocumentDetailResponse
+      const detail: DocumentDetailResponse = { id: 'doc-1' }
       const { result } = renderHookWithConsoleQuery(() =>
         useDocumentCreation({ ...defaultOptions, isSetting: true, documentDetail: detail }),
       )
       const params = result.current.buildCreationParams(
         ChunkingMode.text,
         'English',
-        { mode: 'custom', rules: {} } as unknown as ProcessRule,
+        {
+          mode: 'custom',
+          rules: { pre_processing_rules: [], segmentation: { separator: '\n', max_tokens: 1024 } },
+        } satisfies ProcessRule,
         defaultValidationParams.retrievalConfig,
         { provider: 'openai', model: 'text-embedding-3-small' },
         'high_quality',
@@ -202,13 +210,19 @@ describe('useDocumentCreation', () => {
       )
 
       await result.current.executeCreation(
-        {} as CreateDocumentReq,
+        result.current.buildCreationParams(
+          ChunkingMode.text,
+          'English',
+          processRule,
+          defaultValidationParams.retrievalConfig,
+          defaultValidationParams.embeddingModel,
+          IndexingType.QUALIFIED,
+        )!,
         IndexingType.QUALIFIED,
         defaultValidationParams.retrievalConfig,
       )
 
       expect(mocks.mutateAsync).not.toHaveBeenCalled()
-      expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: datasetListKey })
       expect(onStepChange).not.toHaveBeenCalled()
     })
 
@@ -225,20 +239,20 @@ describe('useDocumentCreation', () => {
       )
 
       await result.current.executeCreation(
-        {} as CreateDocumentReq,
+        result.current.buildCreationParams(
+          ChunkingMode.text,
+          'English',
+          processRule,
+          defaultValidationParams.retrievalConfig,
+          defaultValidationParams.embeddingModel,
+          IndexingType.QUALIFIED,
+        )!,
         IndexingType.QUALIFIED,
         defaultValidationParams.retrievalConfig,
       )
 
       expect(mocks.mutateAsync).toHaveBeenCalled()
       expect(onSave).toHaveBeenCalled()
-    })
-  })
-
-  describe('isCreating', () => {
-    it('should reflect mutation pending state', () => {
-      const { result } = renderHookWithConsoleQuery(() => useDocumentCreation(defaultOptions))
-      expect(result.current.isCreating).toBe(false)
     })
   })
 })

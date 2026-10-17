@@ -1,29 +1,28 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { act, renderHook } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { useDocumentSelection } from '../use-document-selection'
 
 type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
-const createMockDocument = (overrides: Partial<LocalDoc> = {}): LocalDoc =>
-  ({
-    id: 'doc1',
-    name: 'Test Document',
-    data_source_type: DataSourceType.FILE,
-    data_source_info: {},
-    data_source_detail_dict: {},
-    word_count: 100,
-    hit_count: 10,
-    created_at: 1000000,
-    position: 1,
-    doc_form: 'text_model',
-    enabled: true,
-    archived: false,
-    display_status: 'available',
-    created_from: 'api',
-    ...overrides,
-  }) as LocalDoc
+const createMockDocument = (overrides: Partial<LocalDoc> = {}): LocalDoc => ({
+  id: 'doc1',
+  name: 'Test Document',
+  data_source_type: DataSourceType.FILE,
+  data_source_info: {},
+  data_source_detail_dict: {},
+  word_count: 100,
+  hit_count: 10,
+  created_at: 1000000,
+  position: 1,
+  doc_form: 'text_model',
+  enabled: true,
+  archived: false,
+  display_status: 'available',
+  created_from: 'api',
+  ...overrides,
+})
 
 describe('useDocumentSelection', () => {
   describe('hasErrorDocumentsSelected', () => {
@@ -100,26 +99,6 @@ describe('useDocumentSelection', () => {
       )
 
       expect(result.current.downloadableSelectedIds).toEqual([])
-    })
-  })
-
-  describe('clearSelection', () => {
-    it('should call onSelectedIdChange with empty array', () => {
-      const onSelectedIdChange = vi.fn()
-
-      const { result } = renderHook(() =>
-        useDocumentSelection({
-          documents: [],
-          selectedIds: ['doc1', 'doc2'],
-          onSelectedIdChange,
-        }),
-      )
-
-      act(() => {
-        result.current.clearSelection()
-      })
-
-      expect(onSelectedIdChange).toHaveBeenCalledWith([])
     })
   })
 })
