@@ -741,7 +741,7 @@ class TestFileService:
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat,sh"):
+        with patch.object(dify_config, "inner_upload_file_extension_blacklist", "exe,bat,sh"):
             filename = "malware.exe"
             content = b"test content"
             mimetype = "application/x-msdownload"
@@ -764,7 +764,7 @@ class TestFileService:
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat"):
+        with patch.object(dify_config, "inner_upload_file_extension_blacklist", "exe,bat"):
             # Test with uppercase extension
             filename = "malware.EXE"
             content = b"test content"
@@ -788,7 +788,7 @@ class TestFileService:
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat,sh"):
+        with patch.object(dify_config, "inner_upload_file_extension_blacklist", "exe,bat,sh"):
             filename = "document.pdf"
             content = b"test content"
             mimetype = "application/pdf"
@@ -814,7 +814,7 @@ class TestFileService:
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock empty blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", ""):
+        with patch.object(dify_config, "inner_upload_file_extension_blacklist", ""):
             # Should allow all file types when blacklist is empty
             filename = "script.sh"
             content = b"#!/bin/bash\necho test"
@@ -841,7 +841,7 @@ class TestFileService:
 
         # Mock blacklist with multiple extensions by patching the inner field
         blacklist_str = "exe,bat,cmd,com,scr,vbs,ps1,msi,dll"
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", blacklist_str):
+        with patch.object(dify_config, "inner_upload_file_extension_blacklist", blacklist_str):
             for ext in blacklist_str.split(","):
                 filename = f"malware.{ext}"
                 content = b"test content"
@@ -865,7 +865,7 @@ class TestFileService:
         account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Mock blacklist configuration by patching the inner field
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe,bat"):
+        with patch.object(dify_config, "inner_upload_file_extension_blacklist", "exe,bat"):
             # Files with no extension should not be blocked
             filename = "README"
             content = b"test content"
