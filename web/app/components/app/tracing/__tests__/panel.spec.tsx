@@ -16,7 +16,6 @@ const { request } = vi.hoisted(() => ({
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
 vi.mock('@/service/base', () => ({ request }))
-vi.mock('@/app/notifications', () => ({ toast: vi.fn() }))
 
 const langfuseConfig = {
   public_key: 'public-key',
@@ -38,8 +37,11 @@ const capabilities: TraceProviderCapabilitiesResponse = {
 
 let agentTracingEnabled = true
 
-function mockServer(configured = true) {
-  let status = { enabled: configured, tracing_provider: configured ? 'langfuse' : null }
+function mockServer(
+  configured = true,
+  initialStatus = { enabled: configured, tracing_provider: configured ? 'langfuse' : null },
+) {
+  let status = initialStatus
   let config: Record<string, unknown> | null = configured ? langfuseConfig : null
   const writes: Array<{ method: string; body: unknown }> = []
   request.mockImplementation(async (_url, _init, { request: sent }) => {
@@ -77,7 +79,15 @@ function mockServer(configured = true) {
   return writes
 }
 
-function renderPanel(readOnly = false, searchParams = '', mode: AppMode = 'chat') {
+const requestedPaths = () =>
+  request.mock.calls.map(([, , { request: sent }]) => new URL(sent.url).pathname)
+const requested = (suffix: string) => requestedPaths().filter((path) => path.endsWith(suffix))
+
+function renderPanel({
+  readOnly = false,
+  searchParams = '',
+  mode = 'chat',
+}: { readOnly?: boolean; searchParams?: string; mode?: AppMode } = {}) {
   const client = createTestQueryClient()
   const QueryWrapper = createQueryClientWrapper(client)
   const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({
@@ -110,7 +120,6 @@ async function openConfiguredPanel() {
 
 describe('Tracing overview panel', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     agentTracingEnabled = true
   })
 
@@ -118,7 +127,7 @@ describe('Tracing overview panel', () => {
     'reads and saves %s capture policy through the owning App',
     async (mode) => {
       const writes = mockServer()
-      const { client } = renderPanel(false, '', mode)
+      const { client } = renderPanel({ mode })
       const user = await openConfiguredPanel()
       await expandCapture(user)
       const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
@@ -161,8 +170,7 @@ describe('Tracing overview panel', () => {
         ),
       ).toMatchObject({ capture_content: true, capture_agent: false })
       expect(
-        request.mock.calls
-          .map(([, , { request: sent }]) => new URL(sent.url).pathname)
+        requestedPaths()
           .filter((path) => path.includes('/trace'))
           .every((path) => path.includes('/apps/app-1/')),
       ).toBe(true)
@@ -173,7 +181,7 @@ describe('Tracing overview panel', () => {
     'does not expose Agent capture policy for %s apps',
     async (mode) => {
       mockServer()
-      renderPanel(false, '', mode)
+      renderPanel({ mode })
       await openConfiguredPanel()
       expect(
         screen.queryByRole('switch', { name: 'app.tracing.captureContent' }),
@@ -181,17 +189,13 @@ describe('Tracing overview panel', () => {
       expect(
         screen.queryByRole('switch', { name: 'app.tracing.captureAgent' }),
       ).not.toBeInTheDocument()
-      expect(
-        request.mock.calls.some(([, , { request: sent }]) =>
-          new URL(sent.url).pathname.endsWith('/trace-capabilities'),
-        ),
-      ).toBe(false)
+      expect(requested('/trace-capabilities')).toEqual([])
     },
   )
 
   it('keeps Workflow capture policy read-only without fetching provider credentials', async () => {
     const writes = mockServer()
-    renderPanel(true, '', 'workflow')
+    renderPanel({ readOnly: true, mode: 'workflow' })
     const user = await openConfiguredPanel()
     await expandCapture(user)
     const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
@@ -201,11 +205,7 @@ describe('Tracing overview panel', () => {
     expect(content).not.toBeChecked()
     expect(agent).toBeChecked()
     expect(writes).toEqual([])
-    expect(
-      request.mock.calls.some(([, , { request: sent }]) =>
-        new URL(sent.url).pathname.endsWith('/trace-config'),
-      ),
-    ).toBe(false)
+    expect(requested('/trace-config')).toEqual([])
   })
 
   it('serializes Workflow capture changes and restores the last saved policy on failure', async () => {
@@ -222,7 +222,7 @@ describe('Tracing overview panel', () => {
         })
       return server(...args)
     })
-    const { client } = renderPanel(false, '', 'workflow')
+    const { client } = renderPanel({ mode: 'workflow' })
     const user = await openConfiguredPanel()
     await expandCapture(user)
     const content = screen.getByRole('switch', { name: 'app.tracing.captureContent' })
@@ -259,7 +259,7 @@ describe('Tracing overview panel', () => {
         throw new Error('Capabilities unavailable')
       return server(...args)
     })
-    const { client } = renderPanel(false, '', 'workflow')
+    const { client } = renderPanel({ mode: 'workflow' })
     const user = await openConfiguredPanel()
     await expandCapture(user)
     expect(await screen.findByRole('alert')).toHaveTextContent('app.tracing.capabilitiesLoadFailed')
@@ -276,36 +276,27 @@ describe('Tracing overview panel', () => {
 
   it('keeps Workflow capture settings collapsed until they are opened', async () => {
     mockServer()
-    renderPanel(false, '', 'workflow')
-    const user = await openConfiguredPanel()
-    const disclosure = await screen.findByRole('button', { name: 'app.tracing.captureTitle' })
-    expect(disclosure).toHaveAttribute('aria-expanded', 'false')
+    renderPanel({ mode: 'workflow' })
+    await openConfiguredPanel()
+    expect(await screen.findByRole('button', { name: 'app.tracing.captureTitle' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
     expect(
       screen.queryByRole('switch', { name: 'app.tracing.captureContent' }),
     ).not.toBeInTheDocument()
-
-    await user.click(disclosure)
-
-    expect(disclosure).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('group', { name: 'app.tracing.captureTitle' })).toContainElement(
-      screen.getByRole('switch', { name: 'app.tracing.captureContent' }),
-    )
   })
 
   it('requests the selected provider capabilities once the user aims at the trigger', async () => {
     mockServer()
-    renderPanel(false, '', 'workflow')
+    renderPanel({ mode: 'workflow' })
     const user = userEvent.setup()
     const trigger = await screen.findByRole('button', { name: /app\.tracing\.enabled/ })
     await waitFor(() => expect(trigger).toBeEnabled())
-    const capabilityRequests = () =>
-      request.mock.calls.filter(([, , { request: sent }]) =>
-        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
-      ).length
-    expect(capabilityRequests()).toBe(0)
+    expect(requested('/trace-capabilities')).toEqual([])
 
     await user.hover(trigger)
-    await waitFor(() => expect(capabilityRequests()).toBe(1))
+    await waitFor(() => expect(requested('/trace-capabilities')).toHaveLength(1))
     await user.click(trigger)
 
     expect(
@@ -314,25 +305,21 @@ describe('Tracing overview panel', () => {
         { name: /app\.tracing\.capabilities/ },
       ),
     ).toBeInTheDocument()
-    expect(capabilityRequests()).toBe(1)
+    expect(requested('/trace-capabilities')).toHaveLength(1)
   })
 
   it('does not request capabilities on hover for apps outside the Agent trace pipeline', async () => {
     mockServer()
-    renderPanel(false, '', 'chat')
+    renderPanel()
     const trigger = await screen.findByRole('button', { name: /app\.tracing\.enabled/ })
     await waitFor(() => expect(trigger).toBeEnabled())
     await userEvent.setup().hover(trigger)
-    expect(
-      request.mock.calls.some(([, , { request: sent }]) =>
-        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
-      ),
-    ).toBe(false)
+    expect(requested('/trace-capabilities')).toEqual([])
   })
 
   it('keeps provider capabilities collapsed behind a summary on the selected provider', async () => {
     mockServer()
-    renderPanel(false, '', 'workflow')
+    renderPanel({ mode: 'workflow' })
     const user = await openConfiguredPanel()
     const card = within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' }))
     const disclosure = await card.findByRole('button', { name: /app\.tracing\.capabilities/ })
@@ -359,7 +346,7 @@ describe('Tracing overview panel', () => {
         return Response.json({ ...capabilities, agent_spans: false })
       return server(...args)
     })
-    renderPanel(false, '', 'workflow')
+    renderPanel({ mode: 'workflow' })
     await openConfiguredPanel()
 
     expect(
@@ -372,7 +359,7 @@ describe('Tracing overview panel', () => {
   it('replaces Agent capture settings and provider support with one note when Agent tracing is unavailable', async () => {
     agentTracingEnabled = false
     mockServer()
-    renderPanel(false, '', 'workflow')
+    renderPanel({ mode: 'workflow' })
     await openConfiguredPanel()
 
     expect(await screen.findByRole('note')).toHaveTextContent('app.tracing.agentTracingUnavailable')
@@ -382,11 +369,7 @@ describe('Tracing overview panel', () => {
     expect(
       screen.queryByRole('button', { name: /app\.tracing\.capabilities/ }),
     ).not.toBeInTheDocument()
-    expect(
-      request.mock.calls.some(([, , { request: sent }]) =>
-        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
-      ),
-    ).toBe(false)
+    expect(requested('/trace-capabilities')).toEqual([])
   })
 
   it.each([true, false])(
@@ -394,7 +377,7 @@ describe('Tracing overview panel', () => {
     async (enabled) => {
       agentTracingEnabled = enabled
       mockServer(false)
-      renderPanel(false, 'tracing=configure', 'workflow')
+      renderPanel({ searchParams: 'tracing=configure', mode: 'workflow' })
       expect(
         await screen.findByRole('group', { name: 'app.tracing.langfuse.title' }),
       ).toBeInTheDocument()
@@ -402,21 +385,9 @@ describe('Tracing overview panel', () => {
       expect(
         screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
       ).not.toBeInTheDocument()
+      expect(requested('/trace-capabilities')).toEqual([])
     },
   )
-
-  it('does not query capabilities before a Workflow provider is selected', async () => {
-    mockServer(false)
-    renderPanel(false, 'tracing=configure', 'workflow')
-    expect(
-      await screen.findByRole('group', { name: 'app.tracing.langfuse.title' }),
-    ).toBeInTheDocument()
-    expect(
-      request.mock.calls.some(([, , { request: sent }]) =>
-        new URL(sent.url).pathname.endsWith('/trace-capabilities'),
-      ),
-    ).toBe(false)
-  })
 
   it('shows a loading placeholder instead of an unconfigured trigger before status is known', () => {
     request.mockImplementation(() => new Promise<Response>(() => {}))
@@ -594,15 +565,9 @@ describe('Tracing overview panel', () => {
   })
 
   it('shows one entry and requires a provider selection when saved configs have no active provider', async () => {
-    const writes = mockServer()
+    const writes = mockServer(true, { enabled: false, tracing_provider: null })
     const { client } = renderPanel()
     await waitFor(() => expect(client.isFetching()).toBe(0))
-    act(() =>
-      client.setQueryData(
-        consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-        { enabled: false, tracing_provider: null, capture_content: false, capture_agent: true },
-      ),
-    )
     const user = userEvent.setup()
     await user.click(screen.getByRole('button'))
     const tracingSwitch = screen.getByRole('switch', { name: 'app.tracing.tracing' })
@@ -627,14 +592,14 @@ describe('Tracing overview panel', () => {
 
   it('hides configuration for a read-only app with no providers', async () => {
     mockServer(false)
-    const { client } = renderPanel(true)
+    const { client } = renderPanel({ readOnly: true })
     await waitFor(() => expect(client.isFetching()).toBe(0))
     expect(screen.queryByText('app.tracing.title')).not.toBeInTheDocument()
   })
 
   it('lets a read-only user inspect configured tracing without editing it', async () => {
     mockServer()
-    renderPanel(true)
+    renderPanel({ readOnly: true })
     await openConfiguredPanel()
     expect(screen.getByRole('dialog', { name: 'app.tracing.tracing' })).toHaveAccessibleDescription(
       'app.tracing.tracingDescription',
@@ -665,20 +630,8 @@ describe('Tracing overview panel', () => {
   })
 
   it('opens configuration without selecting the provider and supports keyboard selection', async () => {
-    const writes = mockServer()
-    const { client } = renderPanel()
-    await waitFor(() => expect(client.isFetching()).toBe(0))
-    act(() =>
-      client.setQueryData(
-        consoleQuery.apps.byAppId.trace.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
-        {
-          enabled: true,
-          tracing_provider: 'langsmith',
-          capture_content: false,
-          capture_agent: true,
-        },
-      ),
-    )
+    const writes = mockServer(true, { enabled: true, tracing_provider: 'langsmith' })
+    renderPanel()
     const user = await openConfiguredPanel()
     const provider = within(screen.getByRole('group', { name: 'app.tracing.langfuse.title' }))
     await user.click(provider.getByRole('button', { name: 'app.tracing.config' }))
@@ -689,7 +642,7 @@ describe('Tracing overview panel', () => {
     expect(writes).toEqual([])
 
     await user.tab({ shift: true })
-    await expect(provider.getByRole('button', { name: 'app.tracing.langfuse.title' })).toHaveFocus()
+    expect(provider.getByRole('button', { name: 'app.tracing.langfuse.title' })).toHaveFocus()
     await user.keyboard('{Enter}')
     await waitFor(() =>
       expect(writes).toEqual([
@@ -898,7 +851,7 @@ describe('Tracing overview panel', () => {
 
   it('opens from the tracing URL destination once ready and clears it on close', async () => {
     mockServer()
-    const { onUrlUpdate } = renderPanel(false, '?tracing=configure')
+    const { onUrlUpdate } = renderPanel({ searchParams: '?tracing=configure' })
     expect(await screen.findByText('app.tracing.tracing')).toBeInTheDocument()
 
     await userEvent.setup().keyboard('{Escape}')

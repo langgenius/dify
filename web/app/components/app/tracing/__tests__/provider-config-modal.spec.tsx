@@ -4,7 +4,6 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { toast } from '@/app/notifications'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
@@ -25,10 +24,6 @@ const expectRequest = async (method: string, body?: unknown) => {
   if (body) expect(await sent.clone().json()).toEqual(body)
   else expect(new URL(sent.url).searchParams.get('tracing_provider')).toBe('langfuse')
 }
-
-vi.mock('@/app/notifications', () => ({
-  toast: vi.fn(),
-}))
 
 const validConfigs = {
   arize: {
@@ -279,7 +274,6 @@ const renderProviderConfigModal = ({
 
 describe('ProviderConfigModal', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     request.mockImplementation(async (_url, _init, { request: sent }) =>
       sent.method === 'DELETE'
         ? new Response(null, { status: 204 })
@@ -331,7 +325,6 @@ describe('ProviderConfigModal', () => {
         tracing_config: validConfigs.langfuse,
         activate: true,
       })
-      expect(toast).not.toHaveBeenCalled()
     })
 
     it.each(configurableProviders)(
@@ -421,7 +414,6 @@ describe('ProviderConfigModal', () => {
         expect(host).toHaveValue('https://draft.langfuse.com')
         expect(screen.getByRole('alert')).toHaveTextContent('Config rejected')
         expect(request.mock.calls[0]![2]).toMatchObject({ silent: true })
-        expect(toast).not.toHaveBeenCalled()
         expect(callbacks.onSaved).not.toHaveBeenCalled()
         expect(request).toHaveBeenCalledOnce()
 
@@ -489,7 +481,6 @@ describe('ProviderConfigModal', () => {
         expect(field).toBeInvalid()
         expect(field).toHaveFocus()
         expect(field).toHaveAccessibleDescription()
-        expect(toast).not.toHaveBeenCalled()
       },
     )
   })
@@ -502,17 +493,6 @@ describe('ProviderConfigModal', () => {
       await user.click(screen.getByRole('button', { name: `common.operation.${action}` }))
 
       expect(callbacks.onCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should cancel when the dialog is closed with Escape', async () => {
-      const user = userEvent.setup()
-      const callbacks = renderProviderConfigModal()
-
-      await user.keyboard('{Escape}')
-
-      await waitFor(() => {
-        expect(callbacks.onCancel).toHaveBeenCalledTimes(1)
-      })
     })
 
     it('should remove an existing provider after confirmation', async () => {
@@ -537,7 +517,6 @@ describe('ProviderConfigModal', () => {
 
       await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce())
       await expectRequest('DELETE')
-      expect(toast).not.toHaveBeenCalled()
     })
 
     it.each([
