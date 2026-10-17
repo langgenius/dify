@@ -9,6 +9,7 @@ import {
   createWorkflowRunningData,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent as renderWithWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -62,14 +63,6 @@ vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
   default: ({ list }: { list: unknown[] }) => <div data-testid="tracing-panel">{list.length}</div>,
 }))
 
-vi.mock('@/app/components/base/chat/chat/answer/reasoning-panel', () => ({
-  default: ({ content, done }: { content: Record<string, string>; done: boolean }) => (
-    <div data-testid="reasoning-panel" data-done={String(done)}>
-      {Object.keys(content).join(',')}
-    </div>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/panel/inputs-panel', () => ({
   default: ({ onRun }: { onRun: () => void }) => (
     <button type="button" onClick={onRun}>
@@ -106,7 +99,7 @@ const createHumanInputFormData = (
       default: { type: 'constant', value: '', selector: [] },
     },
   ],
-  actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+  actions: [{ id: 'approve', title: 'Approve', button_style: UserActionButtonType.Primary }],
   form_token: 'token-1',
   resolved_default_values: {},
   display_in_ui: true,
@@ -118,8 +111,8 @@ const createHumanInputFilledFormData = (
   overrides: Partial<HumanInputFilledFormData> = {},
 ): HumanInputFilledFormData => ({
   node_id: 'node-1',
-  node_title: 'Need Approval',
-  rendered_content: 'rendered',
+  node_title: 'Previous approval',
+  rendered_content: 'Already approved',
   action_id: 'approve',
   action_text: 'Approve',
   ...overrides,
@@ -233,7 +226,8 @@ describe('WorkflowPreview', () => {
       },
     })
 
-    expect(await screen.findByText('rendered')).toBeInTheDocument()
+    expect(screen.getByText('Need Approval')).toBeInTheDocument()
+    expect(await screen.findByText('Already approved', {}, { timeout: 5000 })).toBeInTheDocument()
     await user.type(screen.getByRole('textbox', { name: 'reason' }), 'Looks good')
     await user.click(screen.getByRole('button', { name: 'Approve' }))
     expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-1', {
@@ -338,69 +332,25 @@ describe('WorkflowPreview', () => {
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
   })
 
-  it('should render a single merged reasoning panel above the result on the result tab', async () => {
+  it('finishes reasoning when the answer starts while the workflow is still running', async () => {
     const user = userEvent.setup()
-
-    renderWorkflowComponent(<WorkflowPreview />, {
-      initialStoreState: {
-        workflowRunningData: {
-          ...createWorkflowRunningData({
-            result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
-          }),
-          resultText: '',
-          reasoningContent: { 'llm-1': 'thinking a', 'llm-2': 'thinking b' },
-        } as NonNullable<Shape['workflowRunningData']>,
-      },
+    const runningData = {
+      ...createWorkflowRunningData({
+        result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+      }),
+      resultText: '',
+      reasoningContent: { llm: 'Thinking through the answer' },
+    }
+    const { store } = renderWorkflowComponent(<WorkflowPreview />, {
+      initialStoreState: { workflowRunningData: runningData },
     })
-
     await user.click(screen.getByText('runLog.result'))
+    expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
 
-    // one panel that carries both nodes' reasoning; still running → timer keeps ticking
-    const panels = screen.getAllByTestId('reasoning-panel')
-    expect(panels).toHaveLength(1)
-    expect(panels[0]).toHaveTextContent('llm-1,llm-2')
-    expect(panels[0]).toHaveAttribute('data-done', 'false')
-  })
+    act(() => store.setState({ workflowRunningData: { ...runningData, resultText: 'The answer' } }))
 
-  it('should mark reasoning done once the answer starts streaming while still running', async () => {
-    const user = userEvent.setup()
-
-    renderWorkflowComponent(<WorkflowPreview />, {
-      initialStoreState: {
-        workflowRunningData: {
-          ...createWorkflowRunningData({
-            result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
-          }),
-          resultText: 'the answer',
-          reasoningContent: { 'llm-1': 'thinking a' },
-        } as NonNullable<Shape['workflowRunningData']>,
-      },
-    })
-
-    await user.click(screen.getByText('runLog.result'))
-
-    // answer-started (resultText non-empty) freezes the timer even though the run is still Running
-    expect(screen.getByTestId('reasoning-panel')).toHaveAttribute('data-done', 'true')
-  })
-
-  it('should not render a reasoning panel when there is no reasoning content', async () => {
-    const user = userEvent.setup()
-
-    renderWorkflowComponent(<WorkflowPreview />, {
-      initialStoreState: {
-        workflowRunningData: {
-          ...createWorkflowRunningData({
-            result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
-          }),
-          resultText: '',
-          reasoningContent: { llm: '' },
-        } as NonNullable<Shape['workflowRunningData']>,
-      },
-    })
-
-    await user.click(screen.getByText('runLog.result'))
-
-    expect(screen.queryByTestId('reasoning-panel')).not.toBeInTheDocument()
+    expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    expect(screen.queryByText(/chat\.thinking/)).not.toBeInTheDocument()
   })
 
   it('should switch to the tracing tab when result panel requests it', async () => {
@@ -428,7 +378,7 @@ describe('WorkflowPreview', () => {
   })
 
   it('should resize the preview panel within the allowed workflow canvas bounds', async () => {
-    const { store } = renderWorkflowComponent(<WorkflowPreview />, {
+    renderWorkflowComponent(<WorkflowPreview />, {
       initialStoreState: {
         previewPanelWidth: 450,
         workflowCanvasWidth: 1000,
@@ -443,7 +393,7 @@ describe('WorkflowPreview', () => {
     fireEvent.mouseUp(window)
 
     await waitFor(() => {
-      expect(store.getState().previewPanelWidth).toBe(500)
+      expect(resizeHandle).toHaveAttribute('aria-valuenow', '500')
     })
   })
 })

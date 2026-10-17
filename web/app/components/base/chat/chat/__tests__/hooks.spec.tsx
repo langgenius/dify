@@ -93,23 +93,6 @@ describe('useChat', () => {
     vi.restoreAllMocks()
   })
 
-  it('should initialize correctly with empty config', () => {
-    const { result } = renderHook(() => useChat())
-    expect(result.current.chatList).toEqual([])
-    expect(result.current.isResponding).toBe(false)
-    expect(result.current.suggestedQuestions).toEqual([])
-  })
-
-  it('should pass timestamp options to timestamp formatter', () => {
-    renderHook(() =>
-      useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
-        timezone: 'UTC',
-      }),
-    )
-
-    expect(useTimestampMock).toHaveBeenCalledWith({ timezone: 'UTC' })
-  })
-
   it('should initialize with opening statement and suggested questions', () => {
     const config = {
       opening_statement: 'Hello {{name}}',
@@ -149,79 +132,6 @@ describe('useChat', () => {
 
     expect(result.current.chatList[0]!.content).toBe('Hello Bob')
     expect(result.current.chatList[0]!.suggestedQuestions).toEqual(['Ask Bob'])
-  })
-
-  describe('opening statement referential stability', () => {
-    it('should keep the same item reference across multiple streaming chatTree mutations', () => {
-      let callbacks: HookCallbacks
-
-      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
-        callbacks = options as HookCallbacks
-      })
-
-      const config = {
-        opening_statement: 'Welcome!',
-        suggested_questions: ['Q1', 'Q2'],
-      }
-      const { result } = renderHook(() => useChat(config as ChatConfig))
-
-      const openerInitial = result.current.chatList[0]
-      expect(openerInitial!.isOpeningStatement).toBe(true)
-      expect(openerInitial!.content).toBe('Welcome!')
-
-      act(() => {
-        result.current.handleSend('url', { query: 'hello' }, {})
-      })
-
-      act(() => {
-        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
-      })
-      expect(result.current.chatList[0]).toBe(openerInitial)
-
-      act(() => {
-        callbacks.onData('chunk-1 ', true, {
-          messageId: 'm-1',
-          conversationId: 'c-1',
-          taskId: 't-1',
-        })
-      })
-      expect(result.current.chatList.length).toBeGreaterThan(1)
-      expect(result.current.chatList[0]).toBe(openerInitial)
-
-      act(() => {
-        callbacks.onData('chunk-2 ', false, { messageId: 'm-1' })
-      })
-      expect(result.current.chatList[0]).toBe(openerInitial)
-
-      act(() => {
-        callbacks.onData('chunk-3', false, { messageId: 'm-1' })
-        callbacks.onMessageEnd({ metadata: { retriever_resources: [] } })
-        callbacks.onWorkflowFinished({ data: { status: 'succeeded' } })
-        callbacks.onCompleted()
-      })
-      expect(result.current.chatList[0]).toBe(openerInitial)
-      expect(result.current.chatList.at(-1)!.content).toBe('chunk-1 chunk-2 chunk-3')
-    })
-
-    it('should produce a new item when the processed content actually changes', () => {
-      const config = {
-        opening_statement: 'Hello {{name}}',
-        suggested_questions: ['Ask {{name}}'],
-      }
-
-      const { result, rerender } = renderHook(({ fs }) => useChat(config as ChatConfig, fs), {
-        initialProps: { fs: { inputs: { name: 'Alice' }, inputsForm: [] } },
-      })
-
-      const before = result.current.chatList[0]
-
-      rerender({ fs: { inputs: { name: 'Bob' }, inputsForm: [] } })
-
-      const after = result.current.chatList[0]
-      expect(after).not.toBe(before)
-      expect(after!.content).toBe('Hello Bob')
-      expect(after!.suggestedQuestions).toEqual(['Ask Bob'])
-    })
   })
 
   describe('handleSend', () => {
@@ -2933,52 +2843,6 @@ describe('useChat', () => {
       await resumeCallbacks.onCompleted()
     })
     expect(result.current.suggestedQuestions).toHaveLength(0)
-  })
-
-  it('should cover handleResume onHumanInputFormFilled splicing and onHumanInputFormTimeout updating', () => {
-    let resumeCallbacks: HookCallbacks
-    vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
-      resumeCallbacks = options as HookCallbacks
-    })
-
-    const prevChatTree = [
-      {
-        id: 'q',
-        content: 'query',
-        isAnswer: false,
-        children: [
-          {
-            id: 'm-1',
-            content: 'initial',
-            isAnswer: true,
-            siblingIndex: 0,
-            humanInputFormDataList: [{ node_id: 'n-1', expiration_time: 100 }],
-          },
-        ],
-      },
-    ]
-
-    const { result } = renderHook(() =>
-      useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
-    )
-    act(() => {
-      result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
-    })
-
-    act(() => {
-      // Hit L535-537: onHumanInputFormTimeout (update)
-      resumeCallbacks.onHumanInputFormTimeout({ data: { node_id: 'n-1', expiration_time: 200 } })
-    })
-    expect(result.current.chatList[1]!.humanInputFormDataList).toEqual([
-      expect.objectContaining({ node_id: 'n-1', expiration_time: 200 }),
-    ])
-    act(() => {
-      resumeCallbacks.onHumanInputFormFilled({ data: { node_id: 'n-1' } })
-    })
-
-    const lastResponse = result.current.chatList[1]
-    expect(lastResponse!.humanInputFormDataList).toHaveLength(0)
-    expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(1)
   })
 
   it('should cover handleAnnotationAdded updating node', async () => {

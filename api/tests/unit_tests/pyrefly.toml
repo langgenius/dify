@@ -235,7 +235,6 @@ project-excludes = [
   "core/app/features/test_hosting_moderation.py",
   "core/app/layers/test_conversation_variable_persist_layer.py",
   "core/app/layers/test_pause_state_persist_layer.py",
-  "core/app/layers/test_suspend_layer.py",
   "core/app/layers/test_timeslice_layer.py",
   "core/app/layers/test_trigger_post_layer.py",
   "core/app/task_pipeline/test_based_generate_task_pipeline.py",
