@@ -2,7 +2,6 @@ import type { ClientLink } from '@orpc/client'
 import type { RouterContract } from '@orpc/contract'
 import type { ConsoleClientContext } from './index'
 import { onError } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi/fetch'
 import { cache } from 'react'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
@@ -10,6 +9,7 @@ import { cookies, headers } from '@/next/headers'
 import { httpErrorFromStandardResponse, resolveHttpErrorBody } from '@/service/http-error'
 import { createConsoleContractLink } from './contract-loader'
 import { validateDefinedErrors } from './defined-errors'
+import { ConsoleOpenAPILink } from './openapi-link'
 import { toOpenAPILinkBase } from './openapi-url'
 import 'server-only'
 
@@ -64,7 +64,7 @@ export const getServerConsoleRequestHeaders = async () => {
 function createServerConsoleOpenAPILink(
   contract: RouterContract,
 ): ClientLink<ConsoleClientContext> {
-  return new OpenAPILink<ConsoleClientContext>(contract, {
+  return new ConsoleOpenAPILink<ConsoleClientContext>(contract, {
     origin: () => toOpenAPILinkBase(getServerConsoleApiPrefix()).origin,
     url: () => toOpenAPILinkBase(getServerConsoleApiPrefix()).url,
     headers: getServerConsoleRequestHeaders,

@@ -4,7 +4,6 @@ import type { RouterContract } from '@orpc/contract'
 import type { ConsoleClientContext } from './index'
 import type { HttpError } from '@/service/http-error'
 import { onError } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi/fetch'
 import Cookies from 'js-cookie'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 // oxlint-disable-next-line no-restricted-imports -- Console auth recovery is shared with the legacy request helpers.
@@ -17,6 +16,7 @@ import {
 import { clearRequestErrorToasts, reportHttpError } from '../request-error-toast'
 import { createConsoleContractLink } from './contract-loader'
 import { validateDefinedErrors } from './defined-errors'
+import { ConsoleOpenAPILink } from './openapi-link'
 import { toOpenAPILinkBase } from './openapi-url'
 
 const REQUEST_TIMEOUT_MS = 100_000
@@ -69,7 +69,7 @@ const consoleTransportInterceptor =
 function createBrowserLink(contract: RouterContract): ClientLink<ConsoleClientContext> {
   const linkBase = () => toOpenAPILinkBase(new URL(API_PREFIX, window.location.origin))
   const origin = () => linkBase().origin ?? window.location.origin
-  return new OpenAPILink<ConsoleClientContext>(contract, {
+  return new ConsoleOpenAPILink<ConsoleClientContext>(contract, {
     origin,
     url: () => linkBase().url,
     headers: () => ({ [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '' }),
