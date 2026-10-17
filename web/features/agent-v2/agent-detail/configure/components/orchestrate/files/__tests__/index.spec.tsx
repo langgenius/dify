@@ -10,6 +10,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { consoleOperationKey } from '@/test/console/operation-hooks'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentConfigApiContextProvider } from '../../config-context'
@@ -74,8 +75,10 @@ vi.mock('@/utils/download', () => ({
   downloadUrl: mocks.downloadUrl,
 }))
 
-vi.mock('@/service/console', async () => {
+vi.mock('@/service/console', async (importOriginal) => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const trial = actual.consoleQuery.trialApps.byAppId.agent.config.files.byName
   return {
     consoleQuery: {
       systemFeatures: {
@@ -148,8 +151,26 @@ vi.mock('@/service/console', async () => {
             config: {
               files: {
                 byName: {
-                  preview: { get: { queryOptions: mocks.previewQueryOptions } },
-                  download: { get: { queryOptions: mocks.downloadQueryOptions } },
+                  preview: {
+                    get: {
+                      queryOptions: (
+                        options: Parameters<typeof trial.preview.get.queryOptions>[0],
+                      ) =>
+                        options.input === skipToken
+                          ? trial.preview.get.queryOptions(options)
+                          : { ...options, ...mocks.previewQueryOptions(options) },
+                    },
+                  },
+                  download: {
+                    get: {
+                      queryOptions: (
+                        options: Parameters<typeof trial.download.get.queryOptions>[0],
+                      ) =>
+                        options.input === skipToken
+                          ? trial.download.get.queryOptions(options)
+                          : { ...options, ...mocks.downloadQueryOptions(options) },
+                    },
+                  },
                 },
               },
             },
@@ -574,6 +595,13 @@ describe('AgentFiles', () => {
       'src',
       'https://example.com/current-diagram.png',
     )
+
+    const trialQueries = queryClient.getQueryCache().findAll({
+      queryKey: consoleOperationKey('trialApps'),
+    })
+    expect(trialQueries).toHaveLength(2)
+    for (const query of trialQueries)
+      expect(query.state).toMatchObject({ status: 'pending', fetchStatus: 'idle', error: null })
   })
 
   it('should download configured files from the row action by config name', async () => {

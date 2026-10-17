@@ -4,6 +4,7 @@ import type { RouterContract } from '@orpc/contract'
 import type { ConsoleClientContext } from './index'
 import type { HttpError } from '@/service/http-error'
 import { onError } from '@orpc/client'
+import { TimeoutLinkPlugin } from '@orpc/client/plugins'
 import Cookies from 'js-cookie'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 // oxlint-disable-next-line no-restricted-imports -- Console auth recovery is shared with the legacy request helpers.
@@ -72,20 +73,22 @@ function createBrowserLink(contract: RouterContract): ClientLink<ConsoleClientCo
   return new ConsoleOpenAPILink<ConsoleClientContext>(contract, {
     origin,
     url: () => linkBase().url,
-    headers: () => ({ [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '' }),
     fetch: (url, init, { context }) => {
-      const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      // A token refresh also rotates the CSRF cookie; read it again for transport retries.
+      const headers = new Headers(init.headers)
+      headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
       return globalThis.fetch(url, {
         ...init,
+        headers,
         mode: 'cors',
         credentials: 'include',
-        signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
         ...(context.keepalive ? { keepalive: true } : {}),
       })
     },
     customErrorResponseBodyDecoder: httpErrorFromStandardResponse,
     transportInterceptors: [consoleTransportInterceptor(origin), resolveHttpErrorBody],
     interceptors: [validateDefinedErrors(contract), onError((error) => console.error(error))],
+    plugins: [new TimeoutLinkPlugin({ timeout: REQUEST_TIMEOUT_MS })],
   })
 }
 

@@ -1,7 +1,7 @@
 import type { SkillResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, skipToken } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -13,6 +13,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { createHttpError } from '@/service/http-error'
+import { consoleOperationKey } from '@/test/console/operation-hooks'
 import { seedFeatures } from '@/test/console/query-data'
 import { AgentOrchestrateAddActionsProvider } from '../../add-actions'
 import { useAgentOrchestrateAddActions } from '../../add-actions-context'
@@ -113,10 +114,12 @@ vi.mock('@/context/permission-state', async () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const trial = actual.consoleQuery.trialApps.byAppId.agent.config.skills.byName
   return {
     consoleQuery: {
       files: { upload: { get: consoleOperationStub('files.upload.get') } },
-      features: (await importOriginal<typeof import('@/service/console')>()).consoleQuery.features,
+      features: actual.consoleQuery.features,
       tags: {
         get: {
           queryOptions: mocks.workspaceSkillTagsQueryOptions,
@@ -216,10 +219,43 @@ vi.mock('@/service/console', async (importOriginal) => {
               skills: {
                 byName: {
                   download: { get: { queryOptions: mocks.skillDownloadQueryOptions } },
-                  inspect: { get: { queryOptions: mocks.inspectQueryOptions } },
+                  inspect: {
+                    get: {
+                      queryOptions: (
+                        options: Parameters<typeof trial.inspect.get.queryOptions>[0],
+                      ) =>
+                        options.input === skipToken
+                          ? trial.inspect.get.queryOptions(options)
+                          : { ...options, ...mocks.inspectQueryOptions({ input: options.input }) },
+                    },
+                  },
                   files: {
-                    preview: { get: { queryOptions: mocks.previewQueryOptions } },
-                    download: { get: { queryOptions: mocks.downloadQueryOptions } },
+                    preview: {
+                      get: {
+                        queryOptions: (
+                          options: Parameters<typeof trial.files.preview.get.queryOptions>[0],
+                        ) =>
+                          options.input === skipToken
+                            ? trial.files.preview.get.queryOptions(options)
+                            : {
+                                ...options,
+                                ...mocks.previewQueryOptions({ input: options.input }),
+                              },
+                      },
+                    },
+                    download: {
+                      get: {
+                        queryOptions: (
+                          options: Parameters<typeof trial.files.download.get.queryOptions>[0],
+                        ) =>
+                          options.input === skipToken
+                            ? trial.files.download.get.queryOptions(options)
+                            : {
+                                ...options,
+                                ...mocks.downloadQueryOptions({ input: options.input }),
+                              },
+                      },
+                    },
                   },
                 },
               },
@@ -1880,6 +1916,14 @@ describe('AgentSkills', () => {
 
     const image = await screen.findByRole('img', { name: 'icon.png' })
     expect(image).toHaveAttribute('src', 'blob:skill-image')
+
+    const trialQueries = view.queryClient.getQueryCache().findAll({
+      queryKey: consoleOperationKey('trialApps'),
+    })
+    expect(trialQueries).toHaveLength(3)
+    for (const query of trialQueries)
+      expect(query.state).toMatchObject({ status: 'pending', fetchStatus: 'idle', error: null })
+
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
     await expect((createObjectURL.mock.calls[0]?.[0] as Blob).text()).resolves.toBe(
       'current skill image',

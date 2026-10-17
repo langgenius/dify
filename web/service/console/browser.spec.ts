@@ -49,6 +49,8 @@ describe('console browser link', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
     document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
     Object.defineProperty(globalThis, 'location', {
       value: originalLocation,
@@ -109,13 +111,73 @@ describe('console browser link', () => {
     })
   })
 
-  it('retries once after refreshing an expired access token', async () => {
-    fetchMock.mockResolvedValueOnce(unauthorized()).mockResolvedValueOnce(profile())
-    mocks.refreshAccessTokenOrReLogin.mockResolvedValue()
+  it('retries with the rotated CSRF token after refreshing an expired access token', async () => {
+    fetchMock
+      .mockResolvedValueOnce(unauthorized())
+      .mockImplementationOnce(async (_url, init) =>
+        new Headers(init?.headers).get(CSRF_HEADER_NAME) === 'csrf-2' ? profile() : unauthorized(),
+      )
+    mocks.refreshAccessTokenOrReLogin.mockImplementation(async () => {
+      document.cookie = 'csrf_token=csrf-2; path=/'
+    })
 
     await expect(consoleClient.account.profile.get()).resolves.toMatchObject({ id: 'user-1' })
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(mocks.refreshAccessTokenOrReLogin).toHaveBeenCalledOnce()
+  })
+
+  it('preserves caller cancellation without native AbortSignal.any', async () => {
+    const LegacyAbortSignal = class extends AbortSignal {}
+    Object.defineProperty(LegacyAbortSignal, 'any', { value: undefined })
+    vi.stubGlobal('AbortSignal', LegacyAbortSignal)
+    const controller = new AbortController()
+    let markStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve
+    })
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason), {
+            once: true,
+          })
+          markStarted()
+        }),
+    )
+
+    const reason = new DOMException('Cancelled by caller', 'AbortError')
+    const request = consoleClient.account.profile.get(undefined, { signal: controller.signal })
+    const rejection = expect(request).rejects.toBe(reason)
+    await started
+
+    controller.abort(reason)
+    await rejection
+  })
+
+  it('aborts a stalled request at the console timeout', async () => {
+    vi.useFakeTimers()
+    let markStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve
+    })
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason), {
+            once: true,
+          })
+          markStarted()
+        }),
+    )
+
+    const request = consoleClient.account.profile.get()
+    const rejection = expect(request).rejects.toThrow(/timed out|timeout/i)
+    await started
+    await vi.advanceTimersByTimeAsync(99_999)
+    expect(fetchMock.mock.calls[0]![1]!.signal!.aborted).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    await rejection
+    expect(fetchMock.mock.calls[0]![1]!.signal!.aborted).toBe(true)
   })
 
   it('does not refresh twice when the retried request is still unauthorized', async () => {

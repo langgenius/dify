@@ -216,17 +216,17 @@ export function useAgentSkillDetail({
     }),
     enabled: isOpen && !!apiContext.workflow,
   })
-  const trialSkillInspectQuery = useQuery({
-    ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
+  const trialSkillInspectQuery = useQuery(
+    consoleQuery.trialApps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
       input: apiContext.trialAppId
         ? {
             params: { app_id: apiContext.trialAppId, name: skill.name },
             query: { version_id: apiContext.versionId },
           }
         : skipToken,
+      enabled: isOpen,
     }),
-    enabled: isOpen,
-  })
+  )
   const inspectQuery = apiContext.trialAppId
     ? trialSkillInspectQuery
     : apiContext.workflow
@@ -281,17 +281,17 @@ export function useAgentSkillDetail({
     }),
     enabled: isOpen && !!selectedPreviewPath && !!apiContext.workflow,
   })
-  const trialPreviewQuery = useQuery({
-    ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
+  const trialPreviewQuery = useQuery(
+    consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
       input: apiContext.trialAppId
         ? {
             params: { app_id: apiContext.trialAppId, name: skill.name },
             query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
           }
         : skipToken,
+      enabled: isOpen && !!selectedPreviewPath,
     }),
-    enabled: isOpen && !!selectedPreviewPath,
-  })
+  )
   const previewQuery = apiContext.trialAppId
     ? trialPreviewQuery
     : apiContext.workflow
@@ -334,18 +334,18 @@ export function useAgentSkillDetail({
     staleTime: 0,
     enabled: shouldLoadImagePreview && !!apiContext.workflow,
   })
-  const trialDownloadQuery = useQuery({
-    ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
+  const trialDownloadQuery = useQuery(
+    consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
       input: apiContext.trialAppId
         ? {
             params: { app_id: apiContext.trialAppId, name: skill.name },
             query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
           }
         : skipToken,
+      staleTime: 0,
+      enabled: shouldLoadImagePreview,
     }),
-    staleTime: 0,
-    enabled: shouldLoadImagePreview,
-  })
+  )
   const downloadQuery = apiContext.trialAppId
     ? trialDownloadQuery
     : apiContext.workflow
