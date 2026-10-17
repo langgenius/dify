@@ -404,6 +404,10 @@ GET /apps/{app_id}/trace-runs/workflow/{workflow_run_id}?node_execution_id={node
 GET /apps/{app_id}/trace-runs/node/{node_execution_id}
 ```
 
+执行记录中的 Agent V2 仍使用 `node_type: "agent"`；`agent-v2` 是前端画布类型，不能用于判断执行接口的返回值。节点级 tracing 入口使用 `node_type === "agent"` 且 `process_data.workflow_agent_binding_id` 为非空字符串识别已绑定的 V2 执行。该标识属于本次执行，inline/reference 均适用；不要读取当前画布或当前 Agent 绑定来判断历史记录，也不要把绑定 ID 当作 trace 查询参数。
+
+Workflow Agent session 在构建 runtime 请求及 tracing invocation 前持久化该绑定标识，执行终态更新、失败/取消及 process data 截断会保留它。绑定前失败或缺少该标识的旧记录不提供 V2 节点 tracing 入口。`extras.agent_node` 只属于开始事件，历史执行接口不保证返回；不能将它作为历史记录的判别依据。展示资格与 trace 归属分开：前端识别执行后，仍由下面的运行查询解析归属、状态和冻结链接。
+
 reference Agent 日志的 `conversation_id` / `message_id` 是节点执行 ID 投影；使用日志 `source.app_id` 指向的调用方 Workflow app 和上述 `node` 路由，不能把该 ID 当作独立 Agent message ID 或 workflow run ID。后端先使用该节点自己的独立运行记录；没有独立记录时，才解析并校验同 tenant / app / workflow 的父运行。独立 preview 和已有 `not_collected` 记录优先，不会被父 trace 覆盖。
 
 父运行别名仍返回请求的 `source_kind=node` / `source_id`，状态、内容策略和目的地来自父运行的冻结快照，`span_url` 自动选择该节点最新 invocation。没有对应 invocation 或 provider 不支持节点链接时，返回 null 并回退父 `trace_url`，不拼造节点 URL。不要额外传入另一个节点的过滤器。该路由要求调用方 Workflow 的日志权限；只有被引用 Agent 的日志权限不保证有权读取父 Workflow trace。
