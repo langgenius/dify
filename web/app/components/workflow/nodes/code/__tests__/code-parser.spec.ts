@@ -143,6 +143,32 @@ function main(name, age, city) {
 }
 
 describe('extractReturnType', () => {
+  it.each(['function main() { return { result:', 'function main() { return null }'])(
+    'does not infer outputs without a valid returned object: %s',
+    (code) => {
+      expect(extractReturnType(code, CodeLanguage.javascript)).toEqual({})
+    },
+  )
+
+  it.each([
+    ['a template containing an apostrophe', `\`It's \${text}\``],
+    [
+      'nested templates and object literals',
+      `\`value: \${\`\${({ value: text }).value}\`}, done\``,
+    ],
+    ['a regex containing an apostrophe', "/'/.test(text)"],
+    ['a regex containing a bracket', '/[(]/.test(text)'],
+    ['division beside a regex', 'text.length / 2 / /[(]/.source.length'],
+  ])('preserves outputs after %s', (_description, expression) => {
+    const code = `function main(text) {
+      return { result: ${expression}, length: text.length }
+    }`
+    expect(extractReturnType(code, CodeLanguage.javascript)).toEqual({
+      result: { type: VarType.string, children: null },
+      length: { type: VarType.string, children: null },
+    })
+  })
+
   it('preserves JavaScript regex literals containing comment markers', () => {
     const code = String.raw`function main(url) {
       return {

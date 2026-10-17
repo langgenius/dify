@@ -1,4 +1,5 @@
 import type { OutputVar } from './types'
+import { parseExpressionAt, tokenizer } from 'acorn'
 import { VarType } from '../../types'
 import { CodeLanguage } from './types'
 
@@ -24,12 +25,42 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
 
   return params
 }
+
+const extractJavaScriptReturnType = (code: string): OutputVar => {
+  const options = { ecmaVersion: 'latest', allowAwaitOutsideFunction: true } as const
+  try {
+    for (const token of tokenizer(code, options)) {
+      if (token.type.keyword !== 'return') continue
+
+      const expression = parseExpressionAt(code, token.end, options)
+      if (expression.type !== 'ObjectExpression') return {}
+
+      const result: OutputVar = {}
+      for (const property of expression.properties) {
+        if (property.type !== 'Property' || property.computed) continue
+        const key = property.key
+        const name =
+          key.type === 'Identifier'
+            ? key.name
+            : key.type === 'Literal' &&
+                (typeof key.value === 'string' || typeof key.value === 'number')
+              ? String(key.value)
+              : undefined
+        if (name) result[name] = { type: VarType.string, children: null }
+      }
+      return result
+    }
+  } catch {
+    // Generated code can be incomplete; only infer outputs from a valid expression.
+  }
+  return {}
+}
+
 export const extractReturnType = (code: string, language: CodeLanguage): OutputVar => {
-  // Preserve quoted values and JavaScript regex literals before removing comments.
-  const commentsAndStrings =
-    language === CodeLanguage.python3
-      ? /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|#[^\r\n]*/g
-      : /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\/(?![/*])(?:\\.|\[(?:\\.|[^\]\\])*\]|[^/\\[\r\n])+\/[dgimsuvy]*(?![/*]))|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g
+  if (language !== CodeLanguage.python3) return extractJavaScriptReturnType(code)
+
+  // Preserve quoted Python values before removing comments.
+  const commentsAndStrings = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|#[^\r\n]*/g
   const codeWithoutComments = code.replace(
     commentsAndStrings,
     (_match, literal: string | undefined) => literal ?? ' ',
@@ -42,12 +73,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
   const codeAfterReturn = codeWithoutComments.slice(returnIndex)
 
   let bracketCount = 0
-  let startIndex = codeAfterReturn.indexOf('{')
-
-  if (language === CodeLanguage.javascript && startIndex === -1) {
-    const parenStart = codeAfterReturn.indexOf('(')
-    if (parenStart !== -1) startIndex = codeAfterReturn.indexOf('{', parenStart)
-  }
+  const startIndex = codeAfterReturn.indexOf('{')
 
   if (startIndex === -1) return {}
 

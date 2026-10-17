@@ -70,6 +70,7 @@
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "abcjs": "catalog:",
+    "acorn": "catalog:",
     "ahooks": "catalog:",
     "bowser": "catalog:",
     "class-variance-authority": "catalog:",

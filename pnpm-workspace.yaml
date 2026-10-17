@@ -149,6 +149,7 @@ catalog:
   '@vitest/coverage-v8': 5.0.3
   '@xmldom/xmldom': 0.9.12
   abcjs: 6.7.1
+  acorn: 8.17.0
   agentation: 3.1.2
   ahooks: 3.10.0
   ajv: 8.20.0

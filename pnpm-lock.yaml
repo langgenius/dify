@@ -407,6 +407,9 @@ catalogs:
     abcjs:
       specifier: 6.7.1
       version: 6.7.1
+    acorn:
+      specifier: 8.17.0
+      version: 8.17.0
     agentation:
       specifier: 3.1.2
       version: 3.1.2
@@ -1459,6 +1462,9 @@ importers:
       abcjs:
         specifier: 'catalog:'
         version: 6.7.1
+      acorn:
+        specifier: 'catalog:'
+        version: 8.17.0
       ahooks:
         specifier: 'catalog:'
         version: 3.10.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -17551,6 +17557,7 @@ time:
   '@voidzero-dev/vite-plus-core@1.1.0': '2026-10-07T02:19:23.468Z'
   '@xmldom/xmldom@0.9.12': '2026-08-21T22:32:42.389Z'
   abcjs@6.7.1: '2026-09-21T14:46:50.846Z'
+  acorn@8.17.0: '2026-06-11T16:39:51.312Z'
   agentation@3.1.2: '2026-09-22T02:41:05.110Z'
   ahooks@3.10.0: '2026-09-06T01:59:54.024Z'
   ajv@8.20.0: '2026-04-24T15:22:16.529Z'
