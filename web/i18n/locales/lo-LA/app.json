@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} ຜົນລາຍການ",
   "newApp.foundResults": "{{count}} ຜົນລາຍການ",
   "newApp.import": "ນຳເຂົ້າ",
+  "newApp.name": "ຊື່ແອັບ",
   "newApp.nameNotEmpty": "ຊື່ບໍ່ສາມາດຫວ່າງໄດ້",
   "newApp.noIdeaTip": "ບໍ່ມີໄອເດຍບໍ? ເບິ່ງແມ່ແບບຂອງພວກເຮົາ",
   "newApp.noTemplateFound": "ບໍ່ພົບແມ່ແບບ",

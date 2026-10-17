@@ -126,6 +126,18 @@ describe('CreateAppModal', () => {
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
   })
 
+  it('names the app input separately from its group and focuses the description from its visible label', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    expect(screen.getByRole('group', { name: 'app.newApp.captionName' })).toContainElement(
+      screen.getByRole('textbox', { name: 'app.newApp.name' }),
+    )
+    const description = screen.getByRole('textbox', { name: 'app.newApp.captionDescription' })
+    await user.click(screen.getByText('app.newApp.captionDescription'))
+    expect(description).toHaveFocus()
+  })
+
   it('creates an app and fires callbacks', async () => {
     const mockApp = createAppDetailFixture({
       mode: 'advanced-chat' as const,

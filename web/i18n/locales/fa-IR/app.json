@@ -197,6 +197,7 @@
   "newApp.foundResult": "{{count}} نتیجه",
   "newApp.foundResults": "{{count}} نتیجه",
   "newApp.import": "واردات",
+  "newApp.name": "نام برنامه",
   "newApp.nameNotEmpty": "نام نمی‌تواند خالی باشد",
   "newApp.noIdeaTip": "ایده ای ندارید؟ قالب های ما را بررسی کنید",
   "newApp.noTemplateFound": "هیچ الگویی یافت نشد",
