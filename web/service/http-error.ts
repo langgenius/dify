@@ -1,4 +1,10 @@
-import type { ORPCErrorOptions } from '@orpc/client'
+import type {
+  ClientContext,
+  ORPCErrorOptions,
+  StandardBody,
+  StandardLazyResponse,
+} from '@orpc/client'
+import type { StandardLinkTransportInterceptorOptions } from '@orpc/client/standard'
 import { ORPCError } from '@orpc/client'
 
 /**
@@ -104,6 +110,34 @@ export function httpErrorFromXhr(xhr: XMLHttpRequest) {
     if (separator > 0) headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
   }
   return createHttpError({ status: xhr.status, statusText: xhr.statusText, headers }, xhr.response)
+}
+
+/**
+ * Link transport interceptor that reads non-2xx bodies as JSON whatever their content type, like
+ * `httpErrorFromResponse`, so `httpErrorFromStandardResponse` decodes the backend envelope.
+ * Empty, malformed JSON and proxy HTML errors decode to no body and still carry an HTTP status.
+ */
+export async function resolveHttpErrorBody<TContext extends ClientContext>({
+  next,
+}: StandardLinkTransportInterceptorOptions<TContext> & {
+  next: () => Promise<StandardLazyResponse>
+}): Promise<StandardLazyResponse> {
+  const response = await next()
+  if (!isHttpErrorStatus(response.status)) return response
+
+  let body: Promise<StandardBody> | undefined
+  return {
+    status: response.status,
+    headers: response.headers,
+    resolveBody: () => {
+      body ??= response.resolveBody('json').catch((error: unknown) => {
+        // Body read failures, including cancellation, must keep their original identity.
+        if (!(error instanceof SyntaxError)) throw error
+        return undefined
+      })
+      return body
+    },
+  }
 }
 
 export async function httpErrorFromResponse(response: Response) {

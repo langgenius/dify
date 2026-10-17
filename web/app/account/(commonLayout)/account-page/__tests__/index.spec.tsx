@@ -5,6 +5,7 @@ import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { httpErrorFromResponse } from '@/service/http-error'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountPage from '../index'
 
@@ -18,9 +19,9 @@ vi.mock('@/service/base', () => ({
   get: mocks.get,
   patch: vi.fn(),
   post: vi.fn(),
-  request: mocks.request,
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo(mocks.request)
 
 const createAccountResponse = (name = 'Alice'): GetAccountProfileResponse => ({
   id: 'user-id',

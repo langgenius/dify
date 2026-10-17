@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { PluginCategoryEnum } from '../../../types'
 import useRefreshPluginList from '../use-refresh-plugin-list'
 
@@ -15,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   triggers: vi.fn(),
 }))
 
-vi.mock('@/service/base', () => ({ request: mocks.request }))
+routeFetchTo(mocks.request)
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateCheckInstalled: () => mocks.checkInstalled,
   useInvalidateInstalledPluginList: () => mocks.installed,

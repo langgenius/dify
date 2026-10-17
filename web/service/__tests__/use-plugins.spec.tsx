@@ -22,6 +22,7 @@ import {
   TaskStatus,
 } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,
@@ -47,8 +48,8 @@ vi.mock('@/service/base', () => ({
   getMarketplace: mockGetMarketplace,
   post: mockPost,
   postMarketplace: vi.fn(),
-  request: mockRequest,
 }))
+routeFetchTo(mockRequest)
 
 mockRequest.mockImplementation(
   async (url: string, _init: RequestInit, options: { request?: Request }) => {

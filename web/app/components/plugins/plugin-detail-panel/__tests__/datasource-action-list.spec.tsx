@@ -4,10 +4,11 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import ActionList from '../datasource-action-list'
 
 const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   return createReactI18nextMock({ 'plugin.detailPanel.actionNum': '{{num}} {{action}}' })

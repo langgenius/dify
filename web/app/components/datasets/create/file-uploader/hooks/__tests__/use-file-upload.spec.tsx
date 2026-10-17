@@ -3,6 +3,7 @@ import type { CustomFile, FileItem } from '@/models/datasets'
 import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
@@ -26,9 +27,9 @@ vi.mock('@/app/notifications', () => ({
 const mockUpload = vi.fn()
 const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
 vi.mock('@/service/base', () => ({
-  request,
   upload: (...args: unknown[]) => mockUpload(...args),
 }))
+routeFetchTo(request)
 
 // Mock file upload config
 const fileUploadConfig = createFileUploadConfigFixture({

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createHttpError } from '@/service/http-error'
+import { routeFetchTo } from '@/test/console/fetch'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import OAuthAuthorize from '../page'
 
@@ -34,9 +35,9 @@ vi.mock('@/service/base', () => ({
     )
   }),
   post: vi.fn(),
-  request: (...args: unknown[]) => mocks.request(...args),
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo((...args: unknown[]) => mocks.request(...args))
 
 function renderPage() {
   const queryClient = new QueryClient({

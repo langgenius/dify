@@ -3,21 +3,16 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { PluginImg } from '../plugin-img'
 import { PluginParagraph } from '../plugin-paragraph'
 import { getMarkdownImageURL } from '../utils'
 
 const { request } = vi.hoisted(() => ({
   request:
-    vi.fn<
-      (
-        url: string,
-        init: RequestInit,
-        options: { request: Request; silent?: boolean },
-      ) => Promise<Response>
-    >(),
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 
 const pluginInfo = { pluginUniqueIdentifier: 'org/plugin:1.0.0@hash', pluginId: 'org/plugin' }
 const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
@@ -84,7 +79,6 @@ it('shares normalized resource requests between image and paragraph consumers an
     pluginInfo.pluginUniqueIdentifier,
   )
   expect(options.request.method).toBe('GET')
-  expect(options.silent).toBe(true)
   const cached = queryClient.getQueryData(
     consoleQuery.workspaces.current.plugin.asset.get.queryKey({
       input: {
@@ -183,7 +177,6 @@ it('inherits asset retries from the client and stays silent when the first HTTP 
     expect(screen.getByTestId('gallery-image')).toHaveAttribute('src', 'blob:asset-1'),
   )
   expect(request).toHaveBeenCalledTimes(2)
-  expect(request.mock.calls.every(([, , options]) => options.silent === true)).toBe(true)
   expect(errorToast).not.toHaveBeenCalled()
 })
 

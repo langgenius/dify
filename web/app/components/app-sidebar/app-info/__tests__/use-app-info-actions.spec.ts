@@ -1,6 +1,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { act, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -89,21 +90,18 @@ vi.mock('@/app/notifications', () => ({
   }),
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (request.method === 'GET') return Response.json(await mockFetchAppDetail(url))
-    if (request.method === 'PUT')
-      return Response.json(await mockUpdateAppInfo(url, await request.json()))
-    if (request.method === 'POST' && new URL(url).pathname.endsWith('/copy'))
-      return Response.json(await mockCopyApp(url, await request.json()))
-    if (request.method === 'DELETE') {
-      await mockDeleteApp(url)
-      return new Response(null, { status: 204 })
-    }
-    throw new Error(`Unexpected request: ${request.method} ${url}`)
-  },
-}))
+routeFetchTo(async (url: string, _init: RequestInit, { request }: { request: Request }) => {
+  if (request.method === 'GET') return Response.json(await mockFetchAppDetail(url))
+  if (request.method === 'PUT')
+    return Response.json(await mockUpdateAppInfo(url, await request.json()))
+  if (request.method === 'POST' && new URL(url).pathname.endsWith('/copy'))
+    return Response.json(await mockCopyApp(url, await request.json()))
+  if (request.method === 'DELETE') {
+    await mockDeleteApp(url)
+    return new Response(null, { status: 204 })
+  }
+  throw new Error(`Unexpected request: ${request.method} ${url}`)
+})
 
 vi.mock('@/service/app-deletion', () => ({
   markAppDeletionStarted: (...args: unknown[]) => mockMarkAppDeletionStarted(...args),

@@ -7,6 +7,7 @@ import type {
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import {
   createConsoleQueryClient,
   renderWithConsoleQuery as render,
@@ -24,7 +25,7 @@ const { request, locale, toast, checkDependencies, redirect, trackCreateApp, pus
     push: vi.fn(),
   }),
 )
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => locale.value,

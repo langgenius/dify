@@ -8,6 +8,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { ModalContext, useModalContext } from '@/context/modal-context'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
@@ -23,16 +24,13 @@ import ModelLoadBalancingConfigs from '../model-load-balancing-configs'
 const { mockPost } = vi.hoisted(() => ({ mockPost: vi.fn() }))
 
 // Requests go through the console client, whose browser transport uses `request`.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (request.method !== 'POST') return Response.json({ credentials: {} })
-    mockPost(new URL(request.url).pathname.replace(/^\/console\/api/, ''), {
-      body: await request.json(),
-    })
-    return Response.json({ result: 'success' })
-  },
-}))
+routeFetchTo(async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+  if (request.method !== 'POST') return Response.json({ credentials: {} })
+  mockPost(new URL(request.url).pathname.replace(/^\/console\/api/, ''), {
+    body: await request.json(),
+  })
+  return Response.json({ result: 'success' })
+})
 
 vi.mock('../../hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../hooks')>()),

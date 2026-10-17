@@ -4,6 +4,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -22,18 +23,12 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/base', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/base')>()
-  return {
-    ...actual,
-    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
-      if (options.request.method === 'GET') return Response.json(mocks.appInfo)
-      const body = await options.request.json()
-      const updatedApp = await mocks.apiEnable({ params: { app_id: 'app-1' }, body })
-      mocks.appInfo = { ...mocks.appInfo, ...updatedApp }
-      return Response.json(mocks.appInfo)
-    },
-  }
+routeFetchTo(async (url: string, _init: RequestInit, options: { request: Request }) => {
+  if (options.request.method === 'GET') return Response.json(mocks.appInfo)
+  const body = await options.request.json()
+  const updatedApp = await mocks.apiEnable({ params: { app_id: 'app-1' }, body })
+  mocks.appInfo = { ...mocks.appInfo, ...updatedApp }
+  return Response.json(mocks.appInfo)
 })
 
 vi.mock('@/context/i18n', () => ({

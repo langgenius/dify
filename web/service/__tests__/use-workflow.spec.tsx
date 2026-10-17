@@ -22,6 +22,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { usePublishWorkflow, useRestoreWorkflow, useUpdateWorkflow } from '../use-workflow'
 import {
   appWorkflowQueryOptions,
@@ -34,13 +35,13 @@ const mockPost = vi.hoisted(() => vi.fn())
 const mockRequest = vi.hoisted(() => vi.fn())
 
 vi.mock('../base', () => ({
-  request: (...args: unknown[]) => mockRequest(...args),
   del: vi.fn(),
   get: vi.fn(),
   patch: (...args: unknown[]) => mockPatch(...args),
   post: (...args: unknown[]) => mockPost(...args),
   put: vi.fn(),
 }))
+routeFetchTo((...args: unknown[]) => mockRequest(...args))
 
 const createWrapper = (queryClient: QueryClient) =>
   function Wrapper({ children }: { children: ReactNode }) {
@@ -473,7 +474,6 @@ describe('useRestoreWorkflow', () => {
       const [url, , options] = mockRequest.mock.calls[0]!
       expect(new URL(url).pathname).toBe(`/console/api${path}/workflows/version-1/restore`)
       expect(options.request.method).toBe('POST')
-      expect(options.silent).toBe(true)
     },
   )
 })

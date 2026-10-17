@@ -3,6 +3,7 @@ import type { ImageFile } from '@/types/app'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createTestQueryClient } from '@/test/query-client'
 import { TransferMethod } from '@/types/app'
 import { createCroppedAvatarImage } from '../avatar-image'
@@ -19,14 +20,13 @@ const mocks = vi.hoisted(() => ({
   request: vi.fn(),
 }))
 
-vi.mock('@/config', () => ({
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
   API_PREFIX: '/console/api',
   DISABLE_UPLOAD_IMAGE_AS_ICON: false,
 }))
 
-vi.mock('@/service/base', () => ({
-  request: mocks.request,
-}))
+routeFetchTo(mocks.request)
 
 vi.mock('@/app/components/base/icon-picker/image-input', () => ({
   ImageIconInput: ({ onChange }: ImageIconInputProps) => (

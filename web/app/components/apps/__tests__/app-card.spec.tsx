@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import { AppCard } from '../app-card'
@@ -177,10 +178,7 @@ const { installedRequest } = vi.hoisted(() => ({
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: installedRequest,
-}))
+routeFetchTo(installedRequest)
 
 vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: () => ({

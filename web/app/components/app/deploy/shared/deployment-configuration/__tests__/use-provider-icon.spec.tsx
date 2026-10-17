@@ -6,10 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { useGetProviderIcon } from '../use-provider-icon'
 
 const request = vi.hoisted(() => vi.fn<(url: string) => Promise<Response>>())
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
   return mockConsoleOperationHooks(await importOriginal(), {

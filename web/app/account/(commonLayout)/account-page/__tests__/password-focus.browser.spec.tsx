@@ -2,6 +2,7 @@ import type { GetAccountProfileResponse } from '@dify/contracts/api/console/acco
 import { QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createTestQueryClient } from '@/test/query-client'
 import { ChangePasswordDialog } from '../change-password-dialog'
 
@@ -12,9 +13,10 @@ vi.mock('@/service/base', () => ({
   get: vi.fn(),
   patch: vi.fn(),
   post: vi.fn(),
-  request: mocks.request,
+  recoverFromAuthError: vi.fn(),
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo(mocks.request)
 
 function pendingResponse() {
   let resolve!: (response: Response) => void

@@ -1,6 +1,7 @@
 import type { QueryKey } from '@tanstack/react-query'
 import { MutationObserver, QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { routeFetchTo } from '@/test/console/fetch'
 import { consoleQuery } from './index'
 
 const { request } = vi.hoisted(() => ({
@@ -8,7 +9,7 @@ const { request } = vi.hoisted(() => ({
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
 
-vi.mock('../base', () => ({ request }))
+routeFetchTo(request)
 
 const endpoints = consoleQuery.workspaces.current.endpoints
 const plugins = consoleQuery.workspaces.current.plugin

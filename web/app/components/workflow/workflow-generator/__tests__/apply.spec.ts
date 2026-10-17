@@ -1,6 +1,7 @@
 import type { GeneratedGraph } from '../types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { createHttpError } from '@/service/http-error'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import {
   applyToCurrentApp,
@@ -14,17 +15,14 @@ const mockSyncWorkflowDraft = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockDeleteApp = vi.fn()
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
-    if (request.method === 'POST') return Response.json(await mockCreateApp(await request.json()))
-    if (request.method === 'DELETE') {
-      await mockDeleteApp(new URL(request.url).pathname.split('/').at(-1))
-      return new Response(null, { status: 204 })
-    }
-    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
-  },
-}))
+routeFetchTo(async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+  if (request.method === 'POST') return Response.json(await mockCreateApp(await request.json()))
+  if (request.method === 'DELETE') {
+    await mockDeleteApp(new URL(request.url).pathname.split('/').at(-1))
+    return new Response(null, { status: 204 })
+  }
+  throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+})
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),

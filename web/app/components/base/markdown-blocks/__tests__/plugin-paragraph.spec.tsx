@@ -2,11 +2,12 @@ import type { ExtraProps } from 'streamdown'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { routeFetchTo } from '@/test/console/fetch'
 import { PluginParagraph } from '../plugin-paragraph'
 import { getMarkdownImageURL } from '../utils'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>() }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 const pluginInfo = { pluginUniqueIdentifier: 'org/plugin:1@hash', pluginId: 'org/plugin' }
 const imageNode = (src: string): ExtraProps['node'] => ({
   type: 'element',

@@ -25,6 +25,7 @@ import {
 } from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -215,26 +216,24 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
-vi.mock('@/service/base', () => ({
-  request: async (url: string) => {
-    const pathname = new URL(url).pathname
-    if (pathname.endsWith('/explore/apps/learn-dify')) {
-      if (mockLearnDifyLoading) return new Promise<Response>(() => {})
-      return Response.json({ recommended_apps: mockLearnDifyApps })
-    }
-    if (pathname.endsWith('/explore/apps')) {
-      return Response.json({
-        categories: mockExploreData?.categories ?? [],
-        recommended_apps: mockExploreData?.allList ?? [],
-      })
-    }
-    const appId = pathname.match(/\/explore\/apps\/([^/]+)$/)?.[1]
-    if (!appId) throw new Error(`Unexpected request: ${pathname}`)
-    return Response.json(
-      await mockGetRecommendedApp({ params: { app_id: decodeURIComponent(appId) } }),
-    )
-  },
-}))
+routeFetchTo(async (url: string) => {
+  const pathname = new URL(url).pathname
+  if (pathname.endsWith('/explore/apps/learn-dify')) {
+    if (mockLearnDifyLoading) return new Promise<Response>(() => {})
+    return Response.json({ recommended_apps: mockLearnDifyApps })
+  }
+  if (pathname.endsWith('/explore/apps')) {
+    return Response.json({
+      categories: mockExploreData?.categories ?? [],
+      recommended_apps: mockExploreData?.allList ?? [],
+    })
+  }
+  const appId = pathname.match(/\/explore\/apps\/([^/]+)$/)?.[1]
+  if (!appId) throw new Error(`Unexpected request: ${pathname}`)
+  return Response.json(
+    await mockGetRecommendedApp({ params: { app_id: decodeURIComponent(appId) } }),
+  )
+})
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: mockTrackEvent,

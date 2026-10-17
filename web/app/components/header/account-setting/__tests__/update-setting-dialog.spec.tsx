@@ -10,6 +10,7 @@ import {
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { routeFetchTo } from '@/test/console/fetch'
 import { UpdateSettingDialog } from '../update-setting-dialog'
 
 const { getSettings, saveSettings } = vi.hoisted(() => ({
@@ -18,20 +19,17 @@ const { getSettings, saveSettings } = vi.hoisted(() => ({
 }))
 
 // The console client sends through `request`; adapt it back to path + params/body calls.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: async (url: string, _init: RequestInit, options: { request?: Request }) => {
-    const { pathname, searchParams } = new URL(url)
-    const path = pathname.replace('/console/api', '')
-    const data =
-      options.request?.method === 'POST'
-        ? await saveSettings(path, { body: await options.request.json() })
-        : await getSettings(path, { params: Object.fromEntries(searchParams) })
-    return new Response(JSON.stringify(data ?? {}), {
-      headers: { 'Content-Type': 'application/json' },
-    })
-  },
-}))
+routeFetchTo(async (url: string, _init: RequestInit, options: { request?: Request }) => {
+  const { pathname, searchParams } = new URL(url)
+  const path = pathname.replace('/console/api', '')
+  const data =
+    options.request?.method === 'POST'
+      ? await saveSettings(path, { body: await options.request.json() })
+      : await getSettings(path, { params: Object.fromEntries(searchParams) })
+  return new Response(JSON.stringify(data ?? {}), {
+    headers: { 'Content-Type': 'application/json' },
+  })
+})
 
 const savedConfig: AutoUpdateConfig = {
   strategy_setting: AUTO_UPDATE_STRATEGY.disabled,

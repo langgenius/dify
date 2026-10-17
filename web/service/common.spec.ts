@@ -7,6 +7,7 @@ import {
   OAUTH_REGISTRATION_GA_SENT_KEY,
   REGISTRATION_SUCCESS_STORAGE_KEY,
 } from '@/app/components/base/amplitude/registration-session-state'
+import { routeFetchTo } from '@/test/console/fetch'
 import { clearPageLeaveGuards, registerPageLeaveGuard } from '@/utils/page-leave-guard'
 import { useLogout } from './use-common'
 
@@ -22,8 +23,8 @@ vi.mock('./base', () => ({
   get: vi.fn(),
   patch: vi.fn(),
   post: mocks.post,
-  request: mocks.request,
 }))
+routeFetchTo(mocks.request)
 
 vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: mocks.resetUser }))
 vi.mock('@/utils/var', async (importOriginal) => ({

@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { createPlugin } from '@/app/components/workflow/block-selector/__tests__/factories'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createProvider, createStrategy } from '../../../agent/__tests__/strategy-fixture'
 import { AgentStrategySelector } from '../agent-strategy-selector'
@@ -14,7 +15,7 @@ const { request, searchMarketplace, marketplaceResults, marketplace, install } =
   marketplace: vi.fn(),
   install: vi.fn(),
 }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: () => ({
     queryPluginsWithDebounced: searchMarketplace,

@@ -7,6 +7,7 @@ import type { NodeDefault } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render as baseRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { routeFetchTo } from '@/test/console/fetch'
 import { EditorResourceScope } from '../../editor-resource/provider'
 import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
@@ -31,9 +32,7 @@ vi.mock('reactflow', () => ({
   }),
 }))
 
-vi.mock('@/service/base', () => ({
-  request: (...args: unknown[]) => queryMocks.request(...args),
-}))
+routeFetchTo((...args: unknown[]) => queryMocks.request(...args))
 
 vi.mock('@/app/notifications', () => ({
   toast: {

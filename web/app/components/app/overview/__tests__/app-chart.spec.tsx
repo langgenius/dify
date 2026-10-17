@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Chart, { AppCharts } from '../app-chart'
 
@@ -13,10 +14,7 @@ vi.mock('echarts-for-react/esm/core', () => ({
 }))
 
 const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request,
-}))
+routeFetchTo(request)
 
 beforeEach(() => {
   request.mockReset()

@@ -7,6 +7,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
 
@@ -41,10 +42,7 @@ const { mockedRequest } = vi.hoisted(() => ({
     vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: mockedRequest,
-}))
+routeFetchTo(mockedRequest)
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,

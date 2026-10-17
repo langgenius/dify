@@ -2,6 +2,7 @@ import type { SnippetWorkflowResponse } from '@dify/contracts/api/console/snippe
 import type { QueryClient } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createTestQueryClient } from '@/test/query-client'
 import { NESTED_ELEMENT_Z_INDEX } from '../../../constants'
@@ -63,9 +64,9 @@ const mockIncrementSnippetUseCount = vi.fn()
 let mockEdges: unknown[] = [{ id: 'existing-edge', source: 'old', target: 'old-2' }]
 
 vi.mock('@/service/base', () => ({
-  request: (...args: unknown[]) => mockRequest(...args),
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo((...args: unknown[]) => mockRequest(...args))
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => ({

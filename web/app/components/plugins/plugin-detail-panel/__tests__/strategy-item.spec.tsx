@@ -7,11 +7,12 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AgentStrategyList from '../agent-strategy-list'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn() }))
-vi.mock('@/service/base', () => ({ request }))
+routeFetchTo(request)
 vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: () => 'zh-Hans',

@@ -6,6 +6,7 @@ import { AppToastHost } from '@/app/notifications/host'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { routeFetchTo } from '@/test/console/fetch'
 import { render } from '@/test/console/render'
 import { timezones } from '@/utils/timezone'
 import PreferencePage from '../index'
@@ -18,9 +19,9 @@ let mockUserProfile: GetAccountProfileResponse
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
-  request: mockRequest,
   sseGeneratorPost: vi.fn(),
 }))
+routeFetchTo(mockRequest)
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),

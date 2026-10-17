@@ -9,7 +9,7 @@ vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
 vi.mock('@/service/base', () => ({
   get: vi.fn(),
   post: vi.fn(),
-  request: vi.fn(),
+  recoverFromAuthError: vi.fn(),
   getPublic: vi.fn(),
   getMarketplace: vi.fn(),
   postPublic: vi.fn(),

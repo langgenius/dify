@@ -6,6 +6,7 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createDatasourceProvider } from '@/app/components/rag-pipeline/__tests__/datasource-fixtures'
 import { DatasourceType } from '@/models/pipeline'
+import { routeFetchTo } from '@/test/console/fetch'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOneContent from '../step-one-content'
 
@@ -157,8 +158,8 @@ vi.mock('@/hooks/use-theme', () => ({
 // Mock upload service
 vi.mock('@/service/base', () => ({
   upload: vi.fn().mockResolvedValue({ id: 'uploaded-file-id' }),
-  request: vi.fn(async () => Response.json([createDatasourceProvider()])),
 }))
+routeFetchTo(vi.fn(async () => Response.json([createDatasourceProvider()])))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'mock-dataset-id' }),

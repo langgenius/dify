@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import CommonLayoutError from '@/app/(commonLayout)/error'
 import ErrorBoundary from '@/app/components/base/error-boundary'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
@@ -23,10 +24,7 @@ const testState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: testState.request,
-}))
+routeFetchTo(testState.request)
 
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')

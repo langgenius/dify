@@ -5,6 +5,7 @@ import type {
 import { useQuery } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { routeFetchTo } from '@/test/console/fetch'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createTestQueryClient } from '@/test/query-client'
@@ -18,22 +19,16 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/app/notifications', () => ({ toast: mocks.toast }))
 
-vi.mock('@/service/base', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/base')>()
-  return {
-    ...actual,
-    request: async (url: string, _init: RequestInit, options: { request: Request }) => {
-      const appId = /\/apps\/([^/]+)/.exec(url)?.[1]
-      if (options.request.method === 'GET')
-        return Response.json(await mocks.fetchAppDetail({ params: { app_id: appId } }))
-      return Response.json(
-        await mocks.updateAppSiteConfig({
-          params: { app_id: appId },
-          body: await options.request.json(),
-        }),
-      )
-    },
-  }
+routeFetchTo(async (url: string, _init: RequestInit, options: { request: Request }) => {
+  const appId = /\/apps\/([^/]+)/.exec(url)?.[1]
+  if (options.request.method === 'GET')
+    return Response.json(await mocks.fetchAppDetail({ params: { app_id: appId } }))
+  return Response.json(
+    await mocks.updateAppSiteConfig({
+      params: { app_id: appId },
+      body: await options.request.json(),
+    }),
+  )
 })
 
 const siteConfig = {
