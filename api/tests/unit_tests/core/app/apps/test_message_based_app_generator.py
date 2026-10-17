@@ -179,3 +179,13 @@ class TestMessageBasedAppGeneratorExtras:
         generator = MessageBasedAppGenerator()
 
         assert generator._get_conversation_introduction(entity) == "Hello {name}"
+
+    def test_get_conversation_introduction_renders_number_inputs(self):
+        app_config = _make_app_config(AppMode.CHAT)
+        app_config.additional_features.opening_statement = "Hi {{name}}, you are {{age}} years old"
+        entity = _make_chat_generate_entity(app_config)
+        entity.inputs = {"name": "Bob", "age": 30}
+
+        generator = MessageBasedAppGenerator()
+
+        assert generator._get_conversation_introduction(entity) == "Hi Bob, you are 30 years old"
